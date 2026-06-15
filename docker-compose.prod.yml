@@ -1,0 +1,252 @@
+# =============================================================================
+# CodeFlow - Production Docker Compose
+# =============================================================================
+# Optimized for cost efficiency, performance, and reliability
+# 
+# Services:
+# - Backend API (FastAPI with uvicorn)
+# - Redis (caching & session storage)
+# - Nginx (reverse proxy, load balancer, static file serving)
+# - Monitoring (Prometheus, Grafana - optional)
+#
+# Usage:
+#   Production: docker-compose -f docker-compose.prod.yml up -d
+#   Scale API: docker-compose -f docker-compose.prod.yml up -d --scale backend=4
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend API
+  # ---------------------------------------------------------------------------
+  backend:
+    image: codeflow/backend:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: production
+      args:
+        VERSION: ${VERSION:-2.0.0}
+        BUILD_DATE: ${BUILD_DATE}
+        GIT_COMMIT: ${GIT_COMMIT}
+      cache_from:
+        - codeflow/backend:latest
+    
+    container_name: codeflow-backend
+    restart: unless-stopped
+    
+    # Environment
+    env_file:
+      - .env.production
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - WORKERS=4
+      - REDIS_URL=redis://redis:6379/0
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.codeflow.ai}
+    
+    # Resource limits (cost optimization)
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Expose port internally only (accessed via nginx)
+    expose:
+      - "8000"
+    
+    # Depends on
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - backend-network
+  
+  # ---------------------------------------------------------------------------
+  # Redis Cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: codeflow-redis
+    restart: unless-stopped
+    
+    # Redis configuration
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    
+    # Volumes
+    volumes:
+      - redis-data:/data
+    
+    # Expose port internally only
+    expose:
+      - "6379"
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    
+    # Networks
+    networks:
+      - backend-network
+  
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: codeflow-nginx
+    restart: unless-stopped
+    
+    # Ports
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    
+    # Volumes
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+      - nginx-logs:/var/log/nginx
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    
+    # Depends on
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - backend-network
+      - frontend-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  redis-data:
+    driver: local
+  nginx-cache:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  backend-network:
+    driver: bridge
+    internal: true  # Backend services not directly accessible
+  
+  frontend-network:
+    driver: bridge  # Public-facing network
+
+# =============================================================================
+# Production Notes
+# =============================================================================
+# 
+# 1. Cost Optimization:
+#    - Resource limits prevent over-provisioning
+#    - Redis LRU eviction manages memory efficiently
+#    - Nginx caching reduces backend load
+#
+# 2. Scaling:
+#    - Scale backend: docker-compose up -d --scale backend=4
+#    - Nginx automatically load balances
+#
+# 3. Monitoring:
+#    - Add Prometheus & Grafana services for metrics
+#    - Enable logging aggregation (ELK, Loki)
+#
+# 4. Security:
+#    - Internal network isolation
+#    - Non-root containers
+#    - SSL/TLS termination at nginx
+#
+# 5. Backup:
+#    - Redis: automatic RDB + AOF persistence
+#    - Firestore: handled by Firebase
+#
+# 6. Updates:
+#    - Zero-downtime: docker-compose up -d --build --no-deps backend
+#    - Rollback: docker-compose up -d codeflow/backend:previous-version
+#
+# =============================================================================

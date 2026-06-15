@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codeflow-backend
+  labels:
+    app: codeflow
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: codeflow
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: codeflow
+        tier: backend
+    spec:
+      containers:
+        - name: backend
+          image: codeflow/backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: codeflow-secrets
+            - configMapRef:
+                name: codeflow-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/observability/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/observability/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codeflow-celery-worker
+  labels:
+    app: codeflow
+    tier: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: codeflow
+      tier: worker
+  template:
+    metadata:
+      labels:
+        app: codeflow
+        tier: worker
+    spec:
+      containers:
+        - name: celery-worker
+          image: codeflow/backend:latest
+          command: ["celery", "-A", "app.tasks.celery_app", "worker", "-l", "info", "-Q", "agent-tasks,analytics-tasks,notification-tasks,default"]
+          envFrom:
+            - secretRef:
+                name: codeflow-secrets
+            - configMapRef:
+                name: codeflow-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "3000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codeflow-celery-beat
+  labels:
+    app: codeflow
+    tier: scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: codeflow
+      tier: scheduler
+  template:
+    metadata:
+      labels:
+        app: codeflow
+        tier: scheduler
+    spec:
+      containers:
+        - name: celery-beat
+          image: codeflow/backend:latest
+          command: ["celery", "-A", "app.tasks.celery_app", "beat", "-l", "info"]
+          envFrom:
+            - secretRef:
+                name: codeflow-secrets
+            - configMapRef:
+                name: codeflow-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"

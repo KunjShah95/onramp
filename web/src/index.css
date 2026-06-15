@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&family=Space+Grotesk:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #070B14;
+  --bg-secondary: #0C1426;
+  --bg-tertiary: #111D35;
+  --bg-elevated: #162544;
+  --border: rgba(147, 197, 253, 0.06);
+  --border-hover: rgba(147, 197, 253, 0.12);
+  --accent-from: #FF8C00;
+  --accent-via: #FF6B35;
+  --accent-to: #FFB347;
+  --text-primary: #EBF0FF;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    @apply font-body bg-bg-primary text-text-primary;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display font-semibold;
+    line-height: 1.3;
+  }
+
+  a {
+    @apply text-text-secondary transition-colors duration-200;
+  }
+
+  a:hover {
+    @apply text-text-primary;
+  }
+
+  button {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-btn
+           font-body font-medium text-sm transition-all duration-200
+           bg-gradient-to-r from-accent-from via-accent-via to-accent-to
+           text-white shadow-card hover:shadow-elevated;
+  }
+
+  .btn-ghost {
+    @apply bg-bg-tertiary text-text-secondary border border-border
+           hover:bg-bg-elevated hover:text-text-primary hover:border-border-hover;
+  }
+
+  .card {
+    @apply bg-bg-tertiary border border-border rounded-card p-6 shadow-card
+           transition-all duration-200;
+  }
+
+  .card:hover {
+    @apply border-border-hover shadow-elevated;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-accent-from/10 text-accent-from;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-500/10 text-yellow-400;
+  }
+
+  .badge-error {
+    @apply bg-red-500/10 text-red-400;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 rounded-input
+           bg-bg-secondary border border-border text-text-primary
+           placeholder-text-muted
+           focus:outline-none focus:border-accent-via focus:ring-1 focus:ring-accent-via/30
+           transition-all duration-200;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .loader {
+    @apply w-6 h-6 border-2 border-border rounded-full;
+    border-top-color: #FF8C00;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Skeleton shimmer animation */
+  .animate-skeleton {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+}

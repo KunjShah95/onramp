@@ -1,0 +1,435 @@
+# ==========================================
+# Enhanced Horizontal Pod Autoscaler (HPA)
+# ==========================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: codeflow-backend-hpa
+  namespace: codeflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: codeflow-backend
+  minReplicas: 3  # Increased from 2 for better availability
+  maxReplicas: 20  # Increased for high traffic scenarios
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60  # Fast scale up
+      policies:
+        - type: Percent
+          value: 100  # Double pods at once
+          periodSeconds: 60
+        - type: Pods
+          value: 4  # Or add 4 pods
+          periodSeconds: 60
+      selectPolicy: Max  # Use the more aggressive policy
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Slow scale down to prevent flapping
+      policies:
+        - type: Percent
+          value: 50  # Remove 50% of pods
+          periodSeconds: 120
+        - type: Pods
+          value: 2  # Or remove 2 pods
+          periodSeconds: 120
+      selectPolicy: Min  # Use the more conservative policy
+  metrics:
+    # CPU-based scaling
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Scale when avg CPU > 70%
+    # Memory-based scaling
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Scale when avg memory > 80%
+    # Custom metrics - Request rate
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "1000"  # Scale when > 1000 req/s per pod
+    # Custom metrics - Queue length
+    - type: Pods
+      pods:
+        metric:
+          name: celery_queue_length
+        target:
+          type: AverageValue
+          averageValue: "50"  # Scale when queue > 50 tasks per pod
+---
+# ==========================================
+# Celery Worker HPA
+# ==========================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: codeflow-celery-worker-hpa
+  namespace: codeflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: codeflow-celery-worker
+  minReplicas: 2
+  maxReplicas: 15  # More workers for heavy async processing
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30  # Very fast scale up for workers
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 3
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Very slow scale down (10 min)
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+      selectPolicy: Min
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 85
+    # Task queue length
+    - type: Object
+      object:
+        metric:
+          name: celery_queue_length
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: redis
+        target:
+          type: Value
+          value: "100"  # Scale when total queue > 100
+---
+# ==========================================
+# Redis Sentinel for High Availability
+# ==========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-sentinel-config
+  namespace: codeflow
+data:
+  sentinel.conf: |
+    port 26379
+    sentinel monitor mymaster redis-master 6379 2
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel parallel-syncs mymaster 1
+    sentinel failover-timeout mymaster 10000
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-sentinel
+  namespace: codeflow
+spec:
+  serviceName: redis-sentinel
+  replicas: 3  # Quorum of 3 sentinels
+  selector:
+    matchLabels:
+      app: redis-sentinel
+  template:
+    metadata:
+      labels:
+        app: redis-sentinel
+    spec:
+      containers:
+        - name: sentinel
+          image: redis:7-alpine
+          command:
+            - redis-sentinel
+            - /etc/redis/sentinel.conf
+          ports:
+            - containerPort: 26379
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: config
+          configMap:
+            name: redis-sentinel-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: codeflow
+spec:
+  ports:
+    - port: 26379
+      targetPort: 26379
+  clusterIP: None
+  selector:
+    app: redis-sentinel
+---
+# ==========================================
+# Redis Master-Replica Setup
+# ==========================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-master
+  namespace: codeflow
+spec:
+  serviceName: redis-master
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - "2gb"
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: codeflow
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+    role: master
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-replica
+  namespace: codeflow
+spec:
+  serviceName: redis-replica
+  replicas: 2  # 2 read replicas
+  selector:
+    matchLabels:
+      app: redis
+      role: replica
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: replica
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+            - --replicaof
+            - redis-master
+            - "6379"
+            - --maxmemory
+            - "2gb"
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-replica
+  namespace: codeflow
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+    role: replica
+---
+# ==========================================
+# Pod Disruption Budget - Ensure Availability
+# ==========================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: codeflow-backend-pdb
+  namespace: codeflow
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: codeflow
+      tier: backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: codeflow-worker-pdb
+  namespace: codeflow
+spec:
+  minAvailable: 1  # Always keep at least 1 worker running
+  selector:
+    matchLabels:
+      app: codeflow
+      tier: worker
+---
+# ==========================================
+# Network Policies - Secure Communication
+# ==========================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-network-policy
+  namespace: codeflow
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from frontend and ingress
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              tier: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow to Firestore (external)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# ==========================================
+# Resource Quotas - Prevent Resource Exhaustion
+# ==========================================
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: codeflow-quota
+  namespace: codeflow
+spec:
+  hard:
+    requests.cpu: "50"  # Max 50 CPU cores across namespace
+    requests.memory: 100Gi  # Max 100GB RAM
+    limits.cpu: "100"
+    limits.memory: 200Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
+---
+# ==========================================
+# Priority Classes - Critical Workload Scheduling
+# ==========================================
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: codeflow-critical
+value: 1000000
+globalDefault: false
+description: "Critical CodeFlow application components"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: codeflow-high
+value: 100000
+globalDefault: false
+description: "High priority CodeFlow components"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: codeflow-normal
+value: 10000
+globalDefault: true
+description: "Normal priority CodeFlow components"

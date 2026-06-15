@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: codeflow
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_password}
+      POSTGRES_DB: codeflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeflow -d codeflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-test-project}
+      - GOOGLE_CLOUD_LOCATION=us-central1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
+      - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
+      - CORS_ORIGINS=http://localhost:3000
+      - LOG_LEVEL=DEBUG
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+    volumes:
+      - ./backend:/app
+      - ./backend/requirements.txt:/app/requirements.txt
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
+      - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A app.tasks.celery_app worker -l debug -Q agent-tasks,analytics-tasks,notification-tasks,default
+    profiles:
+      - worker
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A app.tasks.celery_app beat -l debug
+    profiles:
+      - worker
+
+volumes:
+  redis_data:
+  postgres_data:

@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "knowledge-tui"
+version = "1.0.0"
+description = "TUI client for Knowledge Compiler - Terminal interface for code analysis"
+authors = ["AHS 2026"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+textual = "^0.93.0"
+httpx = "^0.27.0"
+python-dotenv = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

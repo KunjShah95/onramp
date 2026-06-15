@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@vercel/analytics": "^1.6.1",
+    "firebase": "^12.7.0"
+  }
+}

@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - USER_SERVICE_URL=http://user-service:3001
+      - REPO_ANALYSIS_URL=http://repo-analysis:3002
+      - LEARNING_PATH_URL=http://learning-path:3003
+      - AI_TUTOR_URL=http://ai-tutor:3004
+      - TEAM_ANALYTICS_URL=http://team-analytics:3005
+      - NOTIFICATION_URL=http://notification:3006
+      - KNOWLEDGE_COMPILER_URL=http://knowledge-compiler:3007
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - user-service
+      - repo-analysis
+      - learning-path
+      - ai-tutor
+      - team-analytics
+      - notification
+      - knowledge-compiler
+      - redis
+
+  # User Service
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY}
+      - FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+      - FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
+      - FIREBASE_APP_ID=${FIREBASE_APP_ID}
+    depends_on:
+      - redis
+
+  # Repository Analysis Service
+  repo-analysis:
+    build: ./services/repo-analysis
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+
+  # Learning Path Service
+  learning-path:
+    build: ./services/learning-path
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+
+  # AI Tutor Service
+  ai-tutor:
+    build: ./services/ai-tutor
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+
+  # Team Analytics Service
+  team-analytics:
+    build: ./services/team-analytics
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+
+  # Knowledge Compiler Service (LLM Wiki Pattern)
+  knowledge-compiler:
+    build: ./services/knowledge-compiler
+    ports:
+      - "3007:3007"
+    environment:
+      - PORT=3007
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    volumes:
+      - ./services/knowledge-compiler/wiki:/app/wiki
+      - ./services/knowledge-compiler/repos:/app/repos
+
+  # Notification Service
+  notification:
+    build: ./services/notification
+    ports:
+      - "3006:3006"
+    environment:
+      - PORT=3006
+
+  # Frontend Web
+  web:
+    build: ./web
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://gateway:3000
+      - VITE_KNOWLEDGE_COMPILER_URL=http://knowledge-compiler:3007
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

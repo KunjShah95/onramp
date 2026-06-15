@@ -1,0 +1,122 @@
+# syntax=docker/dockerfile:1.4
+# =============================================================================
+# CodeFlow - Optimized Production Dockerfile
+# =============================================================================
+# Cost-optimized, secure, and high-performance production image
+# - Multi-stage build
+# - Minimal base image
+# - Security hardening
+# - Layer caching optimization
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1: Builder
+# -----------------------------------------------------------------------------
+FROM python:3.11-slim-bookworm AS builder
+
+WORKDIR /build
+
+# Install only essential build dependencies
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies with caching
+COPY backend/requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/install \
+    --no-warn-script-location \
+    -r requirements.txt
+
+# -----------------------------------------------------------------------------
+# Stage 2: Production Runtime
+# -----------------------------------------------------------------------------
+FROM python:3.11-slim-bookworm AS production
+
+# Metadata
+ARG VERSION="2.0.0"
+ARG BUILD_DATE
+ARG GIT_COMMIT
+LABEL maintainer="codeflow.ai" \
+      version="${VERSION}" \
+      build-date="${BUILD_DATE}" \
+      git-commit="${GIT_COMMIT}"
+
+# Security: Non-root user
+RUN groupadd --gid=10001 appgroup && \
+    useradd --uid=10001 --gid=appgroup --shell=/bin/bash --create-home appuser
+
+# Production environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ENVIRONMENT=production \
+    WORKERS=4 \
+    PORT=8000
+
+# Copy Python packages from builder
+COPY --from=builder /install /usr/local
+
+# Create app directory
+WORKDIR /app
+
+# Copy application code (ordered by change frequency for better caching)
+COPY --chown=appuser:appgroup backend/app ./app
+COPY --chown=appuser:appgroup backend/requirements.txt .
+
+# Security: Remove unnecessary permissions
+RUN chmod -R 755 /app && \
+    chmod -R 750 /home/appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Production startup command
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--loop", "uvloop", \
+     "--no-access-log", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]
+
+# -----------------------------------------------------------------------------
+# Stage 3: Development (optional)
+# -----------------------------------------------------------------------------
+FROM production AS development
+
+USER root
+
+# Install development tools
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dev dependencies
+COPY backend/requirements.txt requirements-dev.txt* ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt && \
+    (test -f requirements-dev.txt && pip install -r requirements-dev.txt || true)
+
+USER appuser
+
+# Development startup with auto-reload
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--log-level", "debug"]
