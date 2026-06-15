@@ -182,7 +182,7 @@ class TestArchitectureExplorer:
         assert len(result["modules"]) == 4
 
     @pytest.mark.asyncio
-    async def test_architecture_explorer_execute():
+    async def test_architecture_explorer_execute(self):
         """Test that explorer can execute on a real repo."""
         from app.agents.architecture_explorer import ArchitectureExplorer
 

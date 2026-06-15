@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+from dotenv import load_dotenv
+
 from app.llm import LLMClient
 from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard
+from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Configure basic logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI(
     title="CodeFlow 2.0 API",
@@ -9,6 +19,8 @@ app = FastAPI(
     description="AI-powered developer onboarding platform"
 )
 
+# Middleware is executed in reverse order of addition (last added = outermost)
+# Outermost -> Logging -> ResponseWrapper -> RateLimit -> Auth -> CORS -> Innermost (Router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "https://your-frontend.vercel.app"],
@@ -16,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(AuthMiddleware, public_paths=["/", "/docs", "/openapi.json", "/health", "/api/v1"]) # Temporary whitelist /api/v1 for MVP testing
+app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
+app.add_middleware(ResponseWrapperMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 llm_client = LLMClient()
 app.state.llm = llm_client

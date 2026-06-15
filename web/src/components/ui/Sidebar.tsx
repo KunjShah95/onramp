@@ -3,11 +3,11 @@ import { cn } from '../../lib/utils'
 import { useAuth } from '../../context/AuthContext'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: '◈' },
   { to: '/explore', label: 'Explore', icon: '◈' },
   { to: '/learn', label: 'Learn', icon: '◈' },
   { to: '/first-issue', label: 'Issues', icon: '◈' },
   { to: '/ask', label: 'Ask', icon: '◈' },
+  { to: '/reports', label: 'Reports', icon: '◈' },
 ]
 
 const bottomItems = [

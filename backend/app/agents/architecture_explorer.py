@@ -124,6 +124,7 @@ class ArchitectureExplorer(BaseAgent):
             "architecture_pattern": result["architecture_pattern"],
             "architecture_diagram": result["architecture_diagram"],
             "analysis": analysis,
+            "graph": result,
         }
 
     def _build_graph(self, entities: Dict) -> DependencyGraph:
