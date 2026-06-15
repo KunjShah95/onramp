@@ -1,8 +1,11 @@
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
+from app.llm import LLMRouter
 
 
 class LearningPathGenerator(BaseAgent):
+    """Generates personalized learning paths based on repository structure and user expertise level."""
+
     MODULE_TEMPLATES = [
         {
             "name": "Project Overview & Architecture",
@@ -78,37 +81,91 @@ class LearningPathGenerator(BaseAgent):
         },
     ]
 
-    async def execute(self, repo_structure: Dict, user_level: str) -> Dict[str, Any]:
-        if self.llm:
-            try:
-                return await self._generate_with_llm(repo_structure, user_level)
-            except Exception:
-                pass
-        return self._generate_default(repo_structure, user_level)
+    def __init__(self):
+        """Initialize LearningPathGenerator with multi-provider LLM router."""
+        super().__init__(None)
+        self.llm = LLMRouter()
+
+    async def execute(self, repo_structure: Dict, user_level: str = "junior") -> Dict[str, Any]:
+        """
+        Generate personalized learning path based on repository structure and user expertise level.
+
+        Args:
+            repo_structure: Dictionary containing parsed repository entities
+                - files: List of file dicts with 'path' key
+                - classes: List of class dicts with 'name' key
+                - functions: List of function dicts with 'name' key
+            user_level: Developer expertise level ("junior", "mid", "senior")
+
+        Returns:
+            Dictionary with keys:
+                - user_level: The expertise level passed in
+                - total_estimated_hours: Sum of all module hours
+                - path: List of module dicts with order, name, files, time_hours, objectives, description
+        """
+        try:
+            return await self._generate_with_llm(repo_structure, user_level)
+        except Exception:
+            # Gracefully fall back to default path if LLM fails
+            return self._generate_default(repo_structure, user_level)
 
     async def _generate_with_llm(self, repo_structure: Dict, user_level: str) -> Dict:
-        files = [f.get("path", "") for f in repo_structure.get("files", [])]
-        classes = [c.get("name", "") for c in repo_structure.get("classes", [])]
-        functions = [f.get("name", "") for f in repo_structure.get("functions", [])]
+        """
+        Use LLMRouter to generate personalized learning path with multi-provider fallback.
 
-        prompt = (
-            f"You are an expert developer onboarding coach. A {user_level} developer "
-            f"wants to learn this codebase.\n\n"
-            f"Repository Files ({len(files)}): {', '.join(files[:40])}\n"
-            f"Main Classes: {', '.join(classes[:25])}\n"
-            f"Main Functions: {', '.join(functions[:25])}\n\n"
-            "Create a personalized learning path with 5-8 modules. Each module must have:\n"
-            "- name: string\n"
-            "- files: list of file paths relevant to this module\n"
-            "- time_hours: number (1-8)\n"
-            "- objectives: list of 2-4 learning objectives\n"
-            "- description: string explaining why this matters\n\n"
-            "Return as JSON: {user_level, total_estimated_hours (sum of all time_hours), path: [modules]}"
-        )
+        Args:
+            repo_structure: Parsed repository entities
+            user_level: Developer expertise level
 
+        Returns:
+            Dictionary with learning path modules and metadata
+        """
+        # Summarize repository structure (limit to first 30/20/30 as per spec)
+        files = [f.get("path", "") for f in repo_structure.get("files", [])][:30]
+        classes = [c.get("name", "") for c in repo_structure.get("classes", [])][:20]
+        functions = [f.get("name", "") for f in repo_structure.get("functions", [])][:30]
+
+        prompt = f"""You are an expert developer onboarding coach. A {user_level} developer wants to learn this codebase.
+
+Repository Files: {files}
+Main Classes: {classes}
+Main Functions: {functions}
+
+Create a personalized learning path with 5-8 modules. For each module:
+1. Name (e.g., "Authentication Module")
+2. Key files to read
+3. Estimated time
+4. Learning objectives
+5. Why it matters
+
+Format as JSON:
+{{
+  "user_level": "{user_level}",
+  "total_estimated_hours": <number>,
+  "modules": [
+    {{
+      "order": 1,
+      "name": "...",
+      "files": [...],
+      "time_hours": <number>,
+      "objectives": ["...", "..."],
+      "description": "..."
+    }}
+  ]
+}}"""
+
+        # Use LLMRouter's json_chat for automatic fallback and JSON parsing
         result = await self.llm.json_chat(prompt)
-        if result.get("path"):
-            return result
+
+        # Validate response structure
+        if result.get("modules"):
+            return {
+                "user_level": user_level,
+                "total_estimated_hours": result.get("total_estimated_hours", 0),
+                "path": result.get("modules", []),
+            }
+
+        # If LLM response doesn't have modules, fall back to default
         return self._generate_default(repo_structure, user_level)
 
     def _generate_default(self, repo_structure: Dict, user_level: str) -> Dict:
