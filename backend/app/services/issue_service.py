@@ -47,7 +47,7 @@ class IssueService:
         headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
 
         # Fetch issues
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
             url = f"{self.api_base}/repos/{owner}/{repo}/issues"
             params = {
                 "labels": "good-first-issue,beginner,help-wanted",
@@ -77,7 +77,7 @@ class IssueService:
         scored_issues.sort(key=lambda x: x["complexity_score"])
         return scored_issues
 
-    def _score_complexity(self, issue: Dict) -> float:
+    def _score_complexity(self, issue: Any) -> float:
         """
         Score issue complexity on a 0-10 scale. Lower scores indicate easier issues.
 
@@ -91,27 +91,40 @@ class IssueService:
             - Architecture issues: +3
 
         Args:
-            issue: GitHub issue object from API response
+            issue: GitHub issue object or dictionary from API response
 
         Returns:
             Complexity score between 0 and 10 (inclusive)
         """
         score = 5  # Base score
 
+        # Support both Issue objects and raw API Dicts
+        if hasattr(issue, 'title'):
+            title = getattr(issue, 'title') or ""
+            body = getattr(issue, 'body') or ""
+        elif isinstance(issue, dict):
+            title = issue.get('title') or ""
+            body = issue.get('body') or ""
+        else:
+            title = ""
+            body = ""
+
+        title_lower = title.lower()
+
         # Factors that reduce score (easier):
-        if "documentation" in issue["title"].lower():
+        if "documentation" in title_lower:
             score -= 2
-        if "fix typo" in issue["title"].lower():
+        if "fix typo" in title_lower:
             score -= 3
-        if "add test" in issue["title"].lower():
+        if "add test" in title_lower:
             score -= 1
 
         # Factors that increase score (harder):
-        if len(issue.get("body", "")) > 1000:
+        if len(body) > 1000:
             score += 1
-        if "refactor" in issue["title"].lower():
+        if "refactor" in title_lower:
             score += 2
-        if "architecture" in issue["title"].lower():
+        if "architecture" in title_lower:
             score += 3
 
         return max(0, min(10, score))
