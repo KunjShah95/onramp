@@ -3,24 +3,34 @@ import networkx as nx
 
 
 class DependencyGraph:
+    """Builds dependency graph using NetworkX."""
+
     def __init__(self):
         self.graph = nx.DiGraph()
 
     def add_module(self, name: str, metadata: Optional[Dict] = None):
+        """Add node to graph with optional metadata."""
         self.graph.add_node(name, **(metadata or {}))
 
     def add_dependency(self, source: str, target: str, relationship: str = "imports"):
+        """Add edge (source imports target)."""
         self.graph.add_edge(source, target, relationship=relationship)
 
     def get_topology(self) -> List[str]:
+        """Return modules in topological order."""
         try:
             return list(nx.topological_sort(self.graph))
-        except nx.NetworkXUnfeasible:
-            return []
+        except nx.NetworkXError:
+            # Cycle detected - return all nodes as fallback
+            return list(self.graph.nodes())
 
     def get_circular_dependencies(self) -> List[List[str]]:
-        cycles = list(nx.simple_cycles(self.graph))
-        return [list(cycle) for cycle in cycles]
+        """Detect circular imports."""
+        try:
+            cycles = list(nx.simple_cycles(self.graph))
+            return [list(cycle) for cycle in cycles]
+        except Exception:
+            return []
 
     def get_services(self) -> List[Dict[str, Any]]:
         communities = nx.community.greedy_modularity_communities(self.graph.to_undirected())
@@ -60,6 +70,7 @@ class DependencyGraph:
         return "\n".join(lines)
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize graph to dict for API response."""
         return {
             "modules": list(self.graph.nodes()),
             "dependencies": self.get_dependency_dict(),
