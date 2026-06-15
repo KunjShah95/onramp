@@ -180,3 +180,21 @@ class TestArchitectureExplorer:
         assert "dependencies" in result
         assert "architecture_diagram" in result
         assert len(result["modules"]) == 4
+
+    @pytest.mark.asyncio
+    async def test_architecture_explorer_execute():
+        """Test that explorer can execute on a real repo."""
+        from app.agents.architecture_explorer import ArchitectureExplorer
+
+        explorer = ArchitectureExplorer(llm_client=None)
+
+        # Use a small public repo for testing
+        result = await explorer.execute(
+            repo_url="https://github.com/octocat/Hello-World",
+            branch="master"
+        )
+
+        assert result["repo"] == "https://github.com/octocat/Hello-World"
+        assert "entities" in result
+        assert "graph" in result
+        assert isinstance(result["entities"]["files"], list)
