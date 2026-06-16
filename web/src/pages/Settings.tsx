@@ -1,141 +1,232 @@
-import { useState, useEffect } from 'react'
-import { SettingsSkeleton } from '../components/ui/Skeleton'
-import { cn } from '../lib/utils'
+import { useState, useEffect, useCallback } from 'react'
+import { updateProfile } from 'firebase/auth'
+import { getFirebaseAuth } from '../lib/firebase'
+import { useAuth } from '../context/AuthContext'
+import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from '../lib/api'
 
 export default function Settings() {
-  const [llmProvider, setLlmProvider] = useState('openai')
-  const [llmEnabled, setLlmEnabled] = useState(true)
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('account')
 
-  // Slack Integration states
-  const [slackWebhook, setSlackWebhook] = useState('')
-  const [slackChannel, setSlackChannel] = useState('#general')
-  const [digestRepo, setDigestRepo] = useState('')
-  const [slackLoading, setSlackLoading] = useState(false)
-  const [slackStatus, setSlackStatus] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState('')
+
+  const [keys, setKeys] = useState<ApiKey[]>([])
+  const [newKey, setNewKey] = useState<string | null>(null)
+  const [keyError, setKeyError] = useState('')
+
+  // Organization scope for API keys: the signed-in user's email.
+  const orgName = user?.email || ''
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 150)
-    return () => clearTimeout(timer)
-  }, [])
+    setName(user?.displayName || '')
+    setEmail(user?.email || '')
+  }, [user])
 
-  async function handleSendSlackDigest() {
-    if (!slackWebhook.trim() || !digestRepo.trim()) return
-    setSlackLoading(true)
-    setSlackStatus('')
+  const fetchKeys = useCallback(async () => {
+    if (!orgName) return
     try {
-      const res = await fetch('http://localhost:8000/api/v1/slack/digest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo_url: digestRepo.trim(),
-          webhook_url: slackWebhook.trim(),
-          channel: slackChannel.trim() || '#general',
-          user_level: 'junior',
-        }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text)
-      }
-      const data = await res.json()
-      if (data.sent) {
-        setSlackStatus(`Success! Sent digest with ${data.issue_count} good-first-issues to ${slackChannel}.`)
-      } else {
-        setSlackStatus('Failed to post message to Slack.')
-      }
+      const data = await listApiKeys(orgName)
+      setKeys(data.keys || [])
     } catch (e) {
-      setSlackStatus(e instanceof Error ? `Error: ${e.message}` : 'Error sending digest')
+      setKeyError(e instanceof Error ? e.message : 'Failed to load API keys')
     }
-    setSlackLoading(false)
+  }, [orgName])
+
+  useEffect(() => {
+    fetchKeys()
+  }, [fetchKeys])
+
+  async function handleSaveProfile() {
+    const auth = getFirebaseAuth()
+    const current = auth.currentUser
+    if (!current) return
+    setSaving(true)
+    setSavedMsg('')
+    try {
+      await updateProfile(current, { displayName: name.trim() })
+      setSavedMsg('Profile saved')
+    } catch (e) {
+      setSavedMsg(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  if (loading) return <SettingsSkeleton />
+  async function handleGenerateKey() {
+    if (!orgName) return
+    setKeyError('')
+    setNewKey(null)
+    try {
+      const data = await createApiKey(orgName)
+      setNewKey(data.raw_key)
+      await fetchKeys()
+    } catch (e) {
+      setKeyError(e instanceof Error ? e.message : 'Failed to generate key')
+    }
+  }
+
+  async function handleRevoke(keyId: string) {
+    try {
+      await revokeApiKey(keyId)
+      await fetchKeys()
+    } catch (e) {
+      setKeyError(e instanceof Error ? e.message : 'Failed to revoke key')
+    }
+  }
+
+  const initial = (name || email || 'U').charAt(0).toUpperCase()
+
+  const tabs = [
+    { id: 'account', label: 'ACCOUNT' },
+    { id: 'notifications', label: 'NOTIFICATIONS' },
+    { id: 'integrations', label: 'INTEGRATIONS' },
+    { id: 'theme', label: 'THEME' },
+  ]
 
   return (
-    <div className="animate-in max-w-lg pb-12">
-      <h1 className="font-display text-2xl font-bold text-text-primary">Settings</h1>
+    <div className="w-full max-w-4xl pt-8 pb-12 font-body text-[#FDFBF8]">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-bold mb-2 text-white">Settings</h1>
+        <p className="text-[#FDFBF8]/60 text-sm">Manage your account settings and preferences.</p>
+      </div>
 
-      <div className="mt-8 space-y-6">
-        <div className="card">
-          <h3 className="font-display text-base font-semibold text-text-primary">LLM Configuration</h3>
-          <div className="mt-4 space-y-4">
-            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
-              <input type="checkbox" checked={llmEnabled} onChange={e => setLlmEnabled(e.target.checked)} className="accent-accent-from" />
-              Enable LLM features
-            </label>
-            <div>
-              <label className="block mb-2 text-text-secondary text-sm">Provider</label>
-              <select value={llmProvider} onChange={e => setLlmProvider(e.target.value)} className="input">
-                <option value="openai">OpenAI</option>
-                <option value="azure">Azure OpenAI</option>
-                <option value="ollama">Ollama (Local)</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
+      {/* Tabs */}
+      <div className="flex items-center gap-8 border-b border-[#FDFBF8]/10 mb-8">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-3 text-sm font-medium tracking-wide transition-colors relative ${
+              activeTab === tab.id ? 'text-[#FF8C00]' : 'text-[#FDFBF8]/50 hover:text-[#FDFBF8]'
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <span className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-[#FF8C00]" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Account Tab Content */}
+      {activeTab === 'account' && (
+        <div className="space-y-8">
+          {/* Profile Information */}
+          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <div className="mb-6">
+              <h3 className="font-display text-lg font-bold text-white mb-1">Profile Information</h3>
+              <p className="text-sm text-[#FDFBF8]/60">Update your photo and personal details here.</p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#241912] border border-[#FDFBF8]/10 flex-shrink-0 flex items-center justify-center">
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt={name || 'Avatar'} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-bold text-[#FF8C00]">{initial}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-[#FDFBF8]/80 mb-2">Display Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#FDFBF8]/80 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    readOnly
+                    title="Email is managed by your sign-in provider"
+                    className="w-full bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white/60 cursor-not-allowed focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-4 pt-2">
+                  {savedMsg && <span className="text-xs text-[#FDFBF8]/60">{savedMsg}</span>}
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving || !user}
+                    className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors shadow-glow disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="card">
-          <h3 className="font-display text-base font-semibold text-text-primary">API Keys</h3>
-          <div className="mt-4">
-            <label className="block mb-2 text-text-secondary text-sm">OpenAI API Key</label>
-            <input type="password" placeholder="sk-..." className="input w-full" />
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 className="font-display text-base font-semibold text-text-primary">Slack Integration</h3>
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="block mb-1 text-text-secondary text-xs">Slack Webhook URL</label>
-              <input
-                type="text"
-                placeholder="https://hooks.slack.com/services/..."
-                value={slackWebhook}
-                onChange={e => setSlackWebhook(e.target.value)}
-                className="input w-full text-xs"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-text-secondary text-xs">Digest Target Channel</label>
-              <input
-                type="text"
-                placeholder="#general"
-                value={slackChannel}
-                onChange={e => setSlackChannel(e.target.value)}
-                className="input w-full text-xs"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-text-secondary text-xs">Repository to digest</label>
-              <input
-                type="text"
-                placeholder="https://github.com/owner/repo"
-                value={digestRepo}
-                onChange={e => setDigestRepo(e.target.value)}
-                className="input w-full text-xs"
-              />
-            </div>
-            <div className="pt-2">
+          {/* API Keys */}
+          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="font-display text-lg font-bold text-white mb-1">API Keys</h3>
+                <p className="text-sm text-[#FDFBF8]/60">Manage your secret keys for programmatic access.</p>
+              </div>
               <button
-                onClick={handleSendSlackDigest}
-                disabled={slackLoading || !slackWebhook.trim() || !digestRepo.trim()}
-                className="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap disabled:opacity-50"
+                onClick={handleGenerateKey}
+                disabled={!orgName}
+                className="border border-[#FDFBF8]/20 bg-transparent hover:bg-[#FDFBF8]/5 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
-                {slackLoading ? 'Sending...' : 'Test: Send Good-First-Issues Digest'}
+                Generate New Key
               </button>
             </div>
-            {slackStatus && (
-              <p className={cn("text-xs mt-2 font-mono", slackStatus.includes("Error") || slackStatus.includes("Failed") ? "text-red-400" : "text-green-400")}>
-                {slackStatus}
-              </p>
+
+            {keyError && (
+              <div className="mb-4 text-sm text-red-400">{keyError}</div>
+            )}
+
+            {newKey && (
+              <div className="mb-4 bg-yellow-500/10 text-yellow-400 rounded-lg p-4 border border-yellow-500/20">
+                <p className="text-sm font-semibold mb-1">Save this key — it won't be shown again:</p>
+                <code className="text-xs bg-[#110D0A] px-3 py-2 rounded block font-mono break-all select-all">{newKey}</code>
+              </div>
+            )}
+
+            {keys.length === 0 ? (
+              <p className="text-sm text-[#FDFBF8]/40">No API keys yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {keys.map(k => (
+                  <div key={k.key_id} className="flex items-center justify-between bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[#FDFBF8]/40 text-lg">key</span>
+                      <div>
+                        <span className="font-mono text-sm text-[#FDFBF8]/80">{k.key_id}</span>
+                        <p className="text-xs text-[#FDFBF8]/40 mt-0.5">
+                          <span className="capitalize">{k.tier}</span>
+                          {' · '}Used {k.usage_count}x
+                          {k.revoked && <span className="text-red-400"> · revoked</span>}
+                        </p>
+                      </div>
+                    </div>
+                    {!k.revoked && (
+                      <button
+                        onClick={() => handleRevoke(k.key_id)}
+                        className="p-1.5 text-red-400/70 hover:text-red-400 transition-colors"
+                        title="Revoke"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        <button className="btn">Save Settings</button>
-      </div>
+      )}
     </div>
   )
 }

@@ -134,9 +134,9 @@ export interface CTOService {
 
 export interface CTOResponse {
   total_repos: number
-  tech_debt: number
-  drift_issues: number
-  wiki_pages: number
+  onboarding_time_saved_hours: number
+  first_prs_merged: number
+  learning_paths_generated: number
   actions: CTOAction[]
   services: CTOService[]
 }
@@ -392,7 +392,7 @@ export async function addTeamMember(
 ): Promise<void> {
   await fetch(`${API_BASE}/teams/${teamId}/members`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ user, role }),
   })
 }
@@ -403,6 +403,7 @@ export async function removeTeamMember(
 ): Promise<void> {
   await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
     method: 'DELETE',
+    headers: authHeaders(),
   })
 }
 
@@ -412,7 +413,7 @@ export async function changeTeamTier(
 ): Promise<void> {
   await fetch(`${API_BASE}/teams/${teamId}/tier`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ tier }),
   })
 }
@@ -473,7 +474,10 @@ export async function updatePlaybook(
 export async function archivePlaybook(
   playbookId: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/playbooks/${playbookId}`, { method: 'DELETE' })
+  await fetch(`${API_BASE}/playbooks/${playbookId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
 }
 
 // ─── Billing ──────────────────────────────────────────────────────────────
@@ -521,6 +525,7 @@ export async function updateSubscription(
 export async function cancelSubscription(teamId: string): Promise<void> {
   await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
+    headers: authHeaders(),
   })
 }
 
@@ -570,7 +575,10 @@ export async function listApiKeys(
 }
 
 export async function revokeApiKey(keyId: string): Promise<void> {
-  await fetch(`${API_BASE}/ai/keys/${keyId}`, { method: 'DELETE' })
+  await fetch(`${API_BASE}/ai/keys/${keyId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
 }
 
 export async function validateApiKey(

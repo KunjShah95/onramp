@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
 from app.agents.base_agent import BaseAgent
 from app.services.github_service import GitHubService
@@ -19,14 +19,15 @@ class ArchitectureExplorer(BaseAgent):
     5. Returns comprehensive architecture analysis
     """
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, github_token: Optional[str] = None):
         """Initialize ArchitectureExplorer with GitHub and Parser services.
 
         Args:
             llm_client: LLM client for Claude API calls (passed from main.py)
+            github_token: Optional per-user GitHub token for authenticated requests
         """
         super().__init__(llm_client)
-        self.github = GitHubService()
+        self.github = GitHubService(token=github_token)
         self.parser = ParserService()
 
     async def execute(self, repo_url: str, branch: str = "main") -> Dict[str, Any]:

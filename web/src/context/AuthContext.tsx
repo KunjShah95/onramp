@@ -14,6 +14,7 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   GoogleAuthProvider,
+  GithubAuthProvider,
   signInWithPopup,
   fetchSignInMethodsForEmail,
   type User,
@@ -26,7 +27,7 @@ interface AuthState {
   loading: boolean
   error: string | null
   /** The auth provider used by this account (from backend) */
-  authMethod: 'password' | 'google.com' | null
+  authMethod: 'password' | 'google.com' | 'github.com' | null
 }
 
 interface AuthContextValue extends AuthState {
@@ -34,6 +35,8 @@ interface AuthContextValue extends AuthState {
   register: (email: string, password: string, name: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
   registerWithGoogle: () => Promise<void>
+  loginWithGithub: () => Promise<void>
+  registerWithGithub: () => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   clearError: () => void
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   /** Register the Firebase user in the backend storage */
-  const syncToBackend = useCallback(async (provider: 'google.com' | 'password') => {
+  const syncToBackend = useCallback(async (provider: 'google.com' | 'github.com' | 'password') => {
     const auth = getFirebaseAuth()
     const currentUser = auth.currentUser
     if (!currentUser) return
@@ -61,11 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const idToken = await currentUser.getIdToken()
     try {
       const resp = await authRegister(idToken, provider)
-      setState((prev) => ({ ...prev, authMethod: resp.provider as 'google.com' | 'password' }))
+      setState((prev) => ({ ...prev, authMethod: resp.provider as 'google.com' | 'github.com' | 'password' }))
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes('409')) {
         const msg = err.message.includes('google.com')
           ? 'This email is registered with Google. Please sign in with Google.'
+          : err.message.includes('github.com')
+          ? 'This email is registered with GitHub. Please sign in with GitHub.'
           : 'This email is registered with email/password. Please sign in with your password.'
         setState((prev) => ({ ...prev, error: msg, loading: false }))
         // Sign out the Firebase user to prevent partial state
@@ -93,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const me = await authMe(idToken)
             setState((prev) => ({
               ...prev,
-              authMethod: me.provider as 'google.com' | 'password',
+              authMethod: me.provider as 'google.com' | 'github.com' | 'password',
             }))
           } catch {
             // Backend may not be reachable — that's OK for offline dev
@@ -206,6 +211,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [syncToBackend])
 
+  // ─── GitHub OAuth ───────────────────────────────────────────────────────
+
+  const loginWithGithub = useCallback(async () => {
+    setState((prev) => ({ ...prev, error: null, loading: true }))
+    try {
+      const auth = getFirebaseAuth()
+      const provider = new GithubAuthProvider()
+      provider.setCustomParameters({ allow_signup: 'false' })
+      await signInWithPopup(auth, provider)
+      await syncToBackend('github.com')
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes(PROVIDER_MISMATCH)) {
+        const msg = 'This email is registered with a different sign-in method. Please use that method instead.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
+      const message =
+        err instanceof Error ? mapFirebaseError(err.message) : 'GitHub sign-in failed'
+      setState((prev) => ({ ...prev, error: message, loading: false }))
+      throw new Error(message)
+    }
+  }, [syncToBackend])
+
+  const registerWithGithub = useCallback(async () => {
+    setState((prev) => ({ ...prev, error: null, loading: true }))
+    try {
+      const auth = getFirebaseAuth()
+      const provider = new GithubAuthProvider()
+      await signInWithPopup(auth, provider)
+      await syncToBackend('github.com')
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes(PROVIDER_MISMATCH)) {
+        const msg = 'This email is registered with a different sign-in method. Please use that method instead.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
+      const message =
+        err instanceof Error ? mapFirebaseError(err.message) : 'GitHub sign-up failed'
+      setState((prev) => ({ ...prev, error: message, loading: false }))
+      throw new Error(message)
+    }
+  }, [syncToBackend])
+
   // ─── Logout ─────────────────────────────────────────────────────────────
 
   const logout = useCallback(async () => {
@@ -252,6 +300,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         loginWithGoogle,
         registerWithGoogle,
+        loginWithGithub,
+        registerWithGithub,
         logout,
         resetPassword,
         clearError,

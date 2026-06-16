@@ -1,459 +1,210 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
-import { motion, useInView } from 'framer-motion'
-import { useAuth } from '../context/AuthContext'
-import { cn } from '../lib/utils'
-import Spotlight from '../components/ui/spotlight'
-import AnimatedGrid from '../components/ui/animated-grid'
-import CodeWindow from '../components/ui/code-window'
-import BentoCard, { BentoIcon, BentoTag } from '../components/ui/bento-card'
-
-// ─── Reusable animation variants ──────────────────────────────────────────
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: (d = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: d },
-  }),
-}
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (d = 0) => ({
-    opacity: 1,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: d },
-  }),
-}
-
-// ─── Simple SVG icons ─────────────────────────────────────────────────────
-
-function Icon({ name, className }: { name: string; className?: string }) {
-  const paths: Record<string, React.ReactNode> = {
-    search: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></>,
-    clock: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></>,
-    code: <><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></>,
-    rocket: <><path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></>,
-    users: <><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></>,
-    lock: <><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></>,
-    book: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></>,
-    arrow: <><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></>,
-    star: <><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></>,
-  }
-  return (
-    <svg className={cn('w-5 h-5 text-accent-from', className)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      {paths[name]}
-    </svg>
-  )
-}
-
-// ─── Navbar ───────────────────────────────────────────────────────────────
-
-function NavBar() {
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  return (
-    <motion.nav
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
-        scrolled ? 'bg-slate-950/70 backdrop-blur-xl border-b border-white/[0.04]' : 'bg-transparent'
-      )}
-    >
-      <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-        <Link to="/" className="font-display font-bold text-base text-white tracking-tight hover:text-accent-from transition-colors">
-          CodeFlow
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">Sign In</Link>
-          <Link to="/register" className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-slate-900 hover:bg-white/90 transition-all shadow-sm">
-            Get Started
-          </Link>
-        </div>
-      </div>
-    </motion.nav>
-  )
-}
-
-// ─── Mouse-tracking glow ─────────────────────────────────────────────────
-
-function MouseGlow() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (ref.current) {
-        const r = ref.current.getBoundingClientRect()
-        setPos({ x: e.clientX - r.left, y: e.clientY - r.top })
-      }
-    }
-    window.addEventListener('mousemove', onMove)
-    return () => window.removeEventListener('mousemove', onMove)
-  }, [])
-
-  return (
-    <div ref={ref} className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="absolute w-[400px] h-[400px] rounded-full opacity-[0.08] pointer-events-none transition-all duration-300"
-        style={{
-          background: 'radial-gradient(circle, #FF8C00 0%, transparent 70%)',
-          transform: `translate(${pos.x - 200}px, ${pos.y - 200}px)`,
-        }}
-      />
-    </div>
-  )
-}
-
-// ─── Animated counter ─────────────────────────────────────────────────────
-
-function CountUp({ end, suffix = '+', label }: { end: number; suffix?: string; label: string }) {
-  const [count, setCount] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref!, { once: true, margin: '-100px' })
-  const started = useRef(false)
-
-  useEffect(() => {
-    if (!inView || started.current) return
-    started.current = true
-    const t0 = performance.now()
-    const step = (t: number) => {
-      const p = Math.min((t - t0) / 2000, 1)
-      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * end))
-      if (p < 1) requestAnimationFrame(step)
-    }
-    requestAnimationFrame(step)
-  }, [inView, end])
-
-  return (
-    <motion.div ref={ref} className="text-center" variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-      <span className="font-display text-4xl font-bold text-white tabular-nums">{count}{suffix}</span>
-      <p className="text-xs text-slate-600 mt-1.5 tracking-wide uppercase">{label}</p>
-    </motion.div>
-  )
-}
-
-// ─── Logo cloud ───────────────────────────────────────────────────────────
-
-const logos = ['Google', 'Microsoft', 'Stripe', 'Vercel', 'Netflix', 'Spotify', 'GitHub', 'Posthog']
-
-function LogoCloud() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 opacity-40">
-      {logos.map((name) => (
-        <span key={name} className="text-xs font-semibold text-slate-500 tracking-wider uppercase">{name}</span>
-      ))}
-    </div>
-  )
-}
-
-// ─── Testimonial card ─────────────────────────────────────────────────────
-
-function Testimonial({ quote, author, role }: { quote: string; author: string; role: string }) {
-  return (
-    <motion.div
-      className="bg-slate-900/40 backdrop-blur-sm border border-white/[0.06] rounded-xl p-5 hover:border-white/[0.12] transition-colors"
-      whileHover={{ y: -2 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-    >
-      <div className="flex gap-1 mb-3">
-        {[...Array(5)].map((_, i) => (
-          <Icon key={i} name="star" className="!w-3 !h-3 text-amber-400/60" />
-        ))}
-      </div>
-      <p className="text-sm text-slate-400 leading-relaxed mb-4">&ldquo;{quote}&rdquo;</p>
-      <div>
-        <p className="text-sm font-medium text-white">{author}</p>
-        <p className="text-xs text-slate-600">{role}</p>
-      </div>
-    </motion.div>
-  )
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────
-
-function Footer() {
-  return (
-    <footer className="border-t border-white/[0.04]">
-      <div className="max-w-6xl mx-auto px-5 py-10 flex items-center justify-between text-xs text-slate-600">
-        <span>&copy; {new Date().getFullYear()} CodeFlow</span>
-        <div className="flex gap-6">
-          <span className="hover:text-slate-400 cursor-pointer transition-colors">Privacy</span>
-          <span className="hover:text-slate-400 cursor-pointer transition-colors">Terms</span>
-          <span className="hover:text-slate-400 cursor-pointer transition-colors">Docs</span>
-        </div>
-      </div>
-    </footer>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────
+import { Link } from 'react-router-dom'
+import ShaderBackground from '../components/ui/ShaderBackground'
 
 export default function LandingPage() {
-  const { user, loading } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!loading && user) navigate('/dashboard', { replace: true })
-  }, [user, loading, navigate])
-
-  if (loading || user) return null
-
   return (
-    <div className="min-h-screen bg-slate-950">
-      <NavBar />
+    <div className="text-[#FDFBF8] font-body bg-[#050505] antialiased selection:bg-[#FF8C00]/30 selection:text-[#FF8C00] relative">
+      {/* TopNavBar */}
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="font-display text-xl font-bold tracking-tight">CodeFlow</Link>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#explore">Product</a>
+          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#learn">Methodology</a>
+          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#pricing">Pricing</a>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link to="/login" className="hidden md:block text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link>
+          <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Start Building</Link>
+        </div>
+      </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <AnimatedGrid cellSize={64} fade />
-        <Spotlight className="-top-40 left-0 md:left-60 md:-top-24" fill="#FF8C00" />
-        <MouseGlow />
-
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/0 via-slate-950/60 to-slate-950 pointer-events-none" />
-
-        <div className="relative z-10 max-w-4xl mx-auto px-5 text-center pt-24 pb-32">
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-from/10 border border-accent-from/20 text-[11px] font-medium text-accent-from tracking-wide mb-8">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-from animate-pulse" />
-              AI Developer Onboarding
-            </span>
-          </motion.div>
-
-          <motion.h1
-            variants={fadeUp} initial="hidden" animate="visible" custom={0.1}
-            className="font-display text-5xl sm:text-6xl md:text-7xl font-bold text-white leading-[1.05] mb-5 tracking-tight"
-          >
-            Onboard Devs{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-from via-accent-via to-[#FFD700]">
-              In Days
-            </span>
-          </motion.h1>
-
-          <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={0.15}
-            className="text-base sm:text-lg text-slate-500 max-w-lg mx-auto mb-10 leading-relaxed"
-          >
-            Analyze any repo, generate learning paths, get AI pair programming — so new hires ship code from day one.
-          </motion.p>
-
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
-            className="flex items-center justify-center gap-4 mb-20"
-          >
-            <Link
-              to="/register"
-              className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-slate-900 font-medium text-sm shadow-lg hover:shadow-xl hover:bg-white/90 transition-all duration-300"
-            >
-              Get Started Free
-              <Icon name="arrow" />
-            </Link>
-            <Link
-              to="/login"
-              className="px-6 py-3 rounded-lg border border-white/[0.08] text-slate-400 text-sm font-medium hover:text-white hover:border-white/[0.15] transition-all"
-            >
-              Sign In
-            </Link>
-          </motion.div>
-
-          {/* Hero demo card */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.3}
-            className="max-w-xl mx-auto"
-          >
-            <CodeWindow language="bash">
-              {`$ codeflow analyze https://github.com/facebook/react
-
- ✓ Cloning repository...
- ✓ Parsing 1,247 files across 38 languages
- ✓ Detected: Component-based architecture
- ✓ Found 3 circular dependencies
- ✓ Learning path generated (4.2h estimated)
-
- → Report ready at /reports/react-onboarding`}
-            </CodeWindow>
-          </motion.div>
+      {/* Hero Section */}
+      <section className="relative min-h-[90vh] flex items-center justify-center pt-32 pb-20 overflow-hidden">
+        <ShaderBackground />
+        
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.02] z-0"></div>
+        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 flex flex-col items-center text-center gap-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1A110D] border border-[#FF8C00]/20 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-[#FF8C00] animate-pulse"></div>
+            <span className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold">Developer Onboarding Standard</span>
+          </div>
+          
+          <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight max-w-4xl">
+            Understand any codebase. <br/>
+            <span className="text-[#FDFBF8]/40">Ship your first PR today.</span>
+          </h1>
+          
+          <p className="font-body text-lg md:text-xl text-[#FDFBF8]/60 max-w-2xl leading-relaxed">
+            Stop reading outdated wikis. CodeFlow directly maps your running architecture, finds critical files, and generates linear paths for any repository.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
+            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">Deploy Your First Instance</Link>
+            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">View Documentation</Link>
+          </div>
         </div>
       </section>
 
-      {/* ── Logo cloud ─────────────────────────────────────────────── */}
-      <motion.section variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true }}
-        className="max-6xl mx-auto px-5 pb-20"
-      >
-        <p className="text-center text-[10px] text-slate-700 uppercase tracking-[0.2em] mb-6">Trusted by engineering teams at</p>
-        <LogoCloud />
-      </motion.section>
-
-      {/* ── Product demo section ───────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 pb-28">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            <span className="text-[11px] font-semibold text-accent-from uppercase tracking-[0.15em]">Product</span>
-            <h2 className="font-display text-3xl font-bold text-white mt-3 mb-4 leading-tight">
-              From repo scan to<br />onboarding report.
-            </h2>
-            <p className="text-sm text-slate-500 leading-relaxed mb-6">
-              Paste a GitHub URL. CodeFlow clones, parses, and builds a complete entity graph — architecture,
-              dependencies, services, and circular deps. Then generates a personalized learning path with time
-              estimates, key files, and objectives.
-            </p>
-            <Link to="/register" className="group inline-flex items-center gap-1.5 text-sm font-medium text-accent-from hover:text-accent-via transition-colors">
-              Try it now <Icon name="arrow" className="!w-3.5 !h-3.5" />
-            </Link>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.1}>
-            <CodeWindow language="json">
-              {`{
-  "repo": "facebook/react",
-  "architecture": "component-based",
-  "files": 1247,
-  "dependencies": 84,
-  "circular": 3,
-  "learning_path": {
-    "total_hours": 4.2,
-    "modules": [
-      { "name": "Core Concepts", "files": ["packages/react"] },
-      { "name": "Component Patterns", "files": ["packages/react-dom"] }
-    ]
-  }
-}`}
-            </CodeWindow>
-          </motion.div>
+      {/* Social Proof */}
+      <section className="py-16 border-y border-[#FDFBF8]/5 bg-[#0A0705]">
+        <div className="max-w-5xl mx-auto px-6 md:px-12">
+          <p className="text-center font-mono text-[10px] text-[#FDFBF8]/40 mb-8 uppercase tracking-widest font-bold">Infrastructure Trusted By</p>
+          <div className="flex justify-center items-center gap-12 md:gap-24 opacity-30 grayscale flex-wrap">
+            <span className="font-display text-xl font-bold tracking-tight">VERCEL</span>
+            <span className="font-display text-xl font-bold tracking-tighter">Linear</span>
+            <span className="font-display text-xl font-bold italic tracking-tight">stripe</span>
+            <span className="font-display text-xl font-bold tracking-widest">RAYCAST</span>
+          </div>
         </div>
       </section>
 
-      {/* ── Features (Bento Grid) ──────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 pb-28">
-        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="mb-14">
-          <span className="text-[11px] font-semibold text-accent-from uppercase tracking-[0.15em]">Features</span>
-          <h2 className="font-display text-3xl font-bold text-white mt-3 max-w-md">
-            Everything you need to onboard a developer.
-          </h2>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            <BentoCard size="lg">
-              <BentoIcon><Icon name="search" /></BentoIcon>
-              <BentoTag className="mb-3">Core</BentoTag>
-              <h3 className="font-display text-base font-semibold text-white mb-2">Repository Analysis</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">Auto-parse any GitHub repo — architecture, dependencies, services, and circular deps. Visualized as an interactive graph.</p>
-            </BentoCard>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.05}>
-            <BentoCard size="md">
-              <BentoIcon><Icon name="clock" /></BentoIcon>
-              <BentoTag className="mb-3">AI</BentoTag>
-              <h3 className="font-display text-base font-semibold text-white mb-2">Learning Paths</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">Personalized per skill level. LLM-powered with intelligent fallback when models are unavailable.</p>
-            </BentoCard>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.1}>
-            <BentoCard size="md" variant="accent">
-              <BentoIcon><Icon name="code" /></BentoIcon>
-              <BentoTag className="mb-3">Interactive</BentoTag>
-              <h3 className="font-display text-base font-semibold text-white mb-2">Pair Programming</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">AI narrates its thought process for any issue — key insights, testing approach, and solution steps.</p>
-            </BentoCard>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            <BentoCard size="md">
-              <BentoIcon><Icon name="book" /></BentoIcon>
-              <BentoTag className="mb-3">Onboarding</BentoTag>
-              <h3 className="font-display text-base font-semibold text-white mb-2">Reports & Playbooks</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">HTML reports with module breakdowns. Reusable playbooks for consistent team onboarding.</p>
-            </BentoCard>
-          </motion.div>
-
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.05}>
-            <BentoCard size="lg">
-              <div className="flex flex-col h-full">
-                <div className="flex items-start justify-between mb-4">
-                  <BentoIcon><Icon name="users" /></BentoIcon>
-                  <BentoTag>Team</BentoTag>
-                </div>
-                <h3 className="font-display text-base font-semibold text-white mb-2">Team Management</h3>
-                <p className="text-sm text-slate-500 leading-relaxed mb-4">Organize developers into teams, assign playbooks, track progress, manage subscriptions from one dashboard.</p>
-                <div className="mt-auto">
-                  <CodeWindow language="json">
-                    {`{ "team":"frontend-guild",
-  "members":12,
-  "playbooks":["react"],
-  "status":"active" }`}
-                  </CodeWindow>
+      {/* Features - Agency Style (Alternating Rows instead of Card Spam) */}
+      <section id="explore" className="py-32 relative bg-[#050505]">
+        <div className="max-w-5xl mx-auto px-6 md:px-12">
+          
+          {/* Feature 1 */}
+          <div className="flex flex-col md:flex-row items-center gap-16 mb-32">
+            <div className="flex-1">
+              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">01 / Architecture Mapping</div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Visualize the invisible.</h2>
+              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
+                We generate dependency graphs and architecture diagrams directly from your source code. No manual diagramming required. The map is always up to date because the code is the map.
+              </p>
+            </div>
+            <div className="flex-1 w-full relative">
+              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden flex items-center justify-center shadow-2xl">
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.05]"></div>
+                <div className="flex gap-4 items-center z-10">
+                  <div className="w-16 h-16 rounded border border-[#FF8C00]/30 bg-[#1A110D] flex items-center justify-center">
+                    <span className="text-[#FF8C00] font-mono text-xs">Auth</span>
+                  </div>
+                  <div className="w-8 h-[1px] bg-[#FDFBF8]/20"></div>
+                  <div className="w-16 h-16 rounded border border-[#FDFBF8]/20 bg-[#0A0705] flex items-center justify-center">
+                    <span className="text-[#FDFBF8]/60 font-mono text-xs">API</span>
+                  </div>
+                  <div className="w-8 h-[1px] bg-[#FDFBF8]/20"></div>
+                  <div className="w-16 h-16 rounded border border-[#FDFBF8]/20 bg-[#0A0705] flex items-center justify-center">
+                    <span className="text-[#FDFBF8]/60 font-mono text-xs">DB</span>
+                  </div>
                 </div>
               </div>
-            </BentoCard>
-          </motion.div>
+            </div>
+          </div>
 
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.1}>
-            <BentoCard size="md" variant="accent">
-              <BentoIcon><Icon name="lock" /></BentoIcon>
-              <BentoTag className="mb-3">Enterprise</BentoTag>
-              <h3 className="font-display text-base font-semibold text-white mb-2">API & Auth</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">OAuth + Google SSO, API key management, usage tracking, tiered rate limiting. Enterprise billing via Stripe.</p>
-            </BentoCard>
-          </motion.div>
+          {/* Feature 2 */}
+          <div className="flex flex-col md:flex-row-reverse items-center gap-16 mb-32">
+            <div className="flex-1">
+              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">02 / Contextual Search</div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Ask questions. Get references.</h2>
+              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
+                Query your codebase in plain text. Locate authentication logic, billing webhook handlers, or component registries instantly. Every answer includes direct file paths and line numbers.
+              </p>
+            </div>
+            <div className="flex-1 w-full relative">
+              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl flex flex-col justify-center gap-4">
+                 <div className="bg-[#1A110D] border border-[#FDFBF8]/5 p-4 rounded text-sm text-[#FDFBF8]/80 font-body self-start w-[85%]">
+                   Where is the webhook signature verified?
+                 </div>
+                 <div className="bg-[#2A1D16] border border-[#FF8C00]/20 p-4 rounded text-sm text-[#FDFBF8] font-body self-end w-[90%]">
+                   The signature is validated in <code className="font-mono text-[#FF8C00] text-xs mx-1">src/api/webhooks.ts</code> on line 42 using the SDK.
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="flex flex-col md:flex-row items-center gap-16">
+            <div className="flex-1">
+              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">03 / Guided Learning</div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Structured engineering paths.</h2>
+              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
+                Transform new hires into productive contributors. We generate sequential interactive tutorials based on your actual source code, guiding developers from environment setup to their first pull request.
+              </p>
+            </div>
+            <div className="flex-1 w-full relative">
+              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl flex items-center justify-center">
+                <div className="w-full max-w-sm">
+                  <div className="flex items-center gap-4 mb-6 opacity-50">
+                    <div className="w-6 h-6 rounded-full border border-[#FDFBF8]/20 flex items-center justify-center text-[10px] text-[#FDFBF8]/40 font-mono">1</div>
+                    <div className="text-sm font-body text-[#FDFBF8]/40">Environment Setup</div>
+                  </div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-6 h-6 rounded-full border border-[#FF8C00]/50 bg-[#FF8C00]/10 flex items-center justify-center text-[10px] text-[#FF8C00] font-mono">2</div>
+                    <div className="text-sm font-body text-[#FDFBF8]">Core Services</div>
+                  </div>
+                  <div className="flex items-center gap-4 opacity-50">
+                    <div className="w-6 h-6 rounded-full border border-[#FDFBF8]/20 flex items-center justify-center text-[10px] text-[#FDFBF8]/40 font-mono">3</div>
+                    <div className="text-sm font-body text-[#FDFBF8]/40">First Issue</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      {/* ── Stats ──────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-5 pb-28">
-        <div className="grid grid-cols-3 gap-12">
-          <CountUp end={1247} label="Repos Analyzed" />
-          <CountUp end={8340} label="Developers" />
-          <CountUp end={15200} label="Hours Saved" />
+      {/* Social Proof Quote */}
+      <section className="py-24 border-y border-[#FDFBF8]/5 bg-[#0A0705] relative overflow-hidden text-center">
+        <div className="max-w-4xl mx-auto px-6 relative z-10">
+          <h2 className="font-display text-2xl md:text-3xl font-medium text-[#FDFBF8] leading-relaxed mb-8">
+            "Before CodeFlow, onboarding consumed our senior engineers for weeks. Now, hires ship to production on day two without asking a single architectural question."
+          </h2>
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="font-bold text-[#FDFBF8] font-body text-sm">Manu Arora</div>
+            <div className="text-xs text-[#FDFBF8]/40 font-mono uppercase tracking-widest">VP of Engineering, Aceternity</div>
+          </div>
         </div>
       </section>
 
-      {/* ── Testimonials ─────────────────────────────────────────────── */}
-      <section className="max-w-4xl mx-auto px-5 pb-28">
-        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-12">
-          <span className="text-[11px] font-semibold text-accent-from uppercase tracking-[0.15em]">Testimonials</span>
-          <h2 className="font-display text-2xl font-bold text-white mt-3">Loved by engineering teams</h2>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Testimonial
-            quote="Cut our onboarding docs from 3 weeks to 2 days. The learning paths are scarily accurate."
-            author="Sarah Chen"
-            role="VP Engineering, Neon"
-          />
-          <Testimonial
-            quote="Finally, onboarding that doesn't require 50 pages of docs. New hires ship code on day one."
-            author="Marcus Rivera"
-            role="CTO, Workbase"
-          />
-          <Testimonial
-            quote="The bento grid is insane. Pair programming feature is our team's favorite — it's like having a senior dev review every PR."
-            author="Priya Sharma"
-            role="Engineering Lead, Strapi"
-          />
+      {/* Bottom CTA */}
+      <section className="py-32 bg-[#050505] text-center">
+        <div className="max-w-3xl mx-auto px-6">
+          <h2 className="font-display text-4xl md:text-5xl font-bold text-[#FDFBF8] mb-6 tracking-tight">
+            Standardize your onboarding.
+          </h2>
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">Deploy Now</Link>
+            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">Talk to Sales</Link>
+          </div>
         </div>
       </section>
 
-      {/* ── CTA ────────────────────────────────────────────────────── */}
-      <section className="max-w-2xl mx-auto px-5 pb-28 text-center">
-        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
-          className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm border border-white/[0.06] rounded-2xl p-12"
-        >
-          <h2 className="font-display text-2xl font-bold text-white mb-3">Ship developers faster.</h2>
-          <p className="text-sm text-slate-500 mb-7 max-w-xs mx-auto">Join thousands of teams using CodeFlow to turn onboarding from weeks into days.</p>
-          <Link to="/register" className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-slate-900 font-medium text-sm shadow-lg hover:shadow-xl hover:bg-white/90 transition-all duration-300">
-            Get Started Free
-            <Icon name="arrow" />
-          </Link>
-        </motion.div>
-      </section>
-
-      <Footer />
+      {/* Footer */}
+      <footer className="bg-[#050505] border-t border-[#FDFBF8]/5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 px-6 md:px-12 py-16 max-w-5xl mx-auto">
+          <div className="col-span-2 md:col-span-1">
+            <span className="font-display text-xl font-bold text-[#FDFBF8] mb-4 block tracking-tight">CodeFlow</span>
+            <p className="font-body text-sm text-[#FDFBF8]/40 leading-relaxed">Systemizing codebase comprehension for engineering teams.</p>
+          </div>
+          <div>
+            <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Product</h3>
+            <ul className="flex flex-col gap-3">
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#explore">Architecture</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#learn">Learning</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#pricing">Pricing</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Resources</h3>
+            <ul className="flex flex-col gap-3">
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Documentation</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">API Reference</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Company</h3>
+            <ul className="flex flex-col gap-3">
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">About</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Careers</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Blog</a></li>
+            </ul>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

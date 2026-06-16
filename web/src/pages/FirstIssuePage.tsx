@@ -1,336 +1,191 @@
 import { useState } from 'react'
-import {
-  findIssues,
-  generateGuide,
-  fetchPairWalkthrough,
-  fetchTestChecklist,
-} from '../lib/api'
-import type { ScoredIssue, IssueGuide } from '../lib/types'
-import IssueCard from '../components/IssueCard'
-import { IssueListSkeleton, GuideSkeleton } from '../components/ui/Skeleton'
 import { cn } from '../lib/utils'
-
-const LEVELS = ['junior', 'mid', 'senior']
+import { findIssues } from '../lib/api'
+import type { ScoredIssue } from '../lib/types'
 
 export default function FirstIssuePage() {
   const [repoUrl, setRepoUrl] = useState('')
-  const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
   const [issues, setIssues] = useState<ScoredIssue[]>([])
   const [error, setError] = useState('')
-  const [guide, setGuide] = useState<IssueGuide | null>(null)
-  const [guideLoading, setGuideLoading] = useState(false)
-
-  // Unique differentiator states
-  const [selectedIssue, setSelectedIssue] = useState<ScoredIssue | null>(null)
-  const [activeTab, setActiveTab] = useState<'guide' | 'pair' | 'test'>('guide')
-  const [pairData, setPairData] = useState<any | null>(null)
-  const [pairLoading, setPairLoading] = useState(false)
-  const [testData, setTestData] = useState<any | null>(null)
-  const [testLoading, setTestLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   async function handleFindIssues() {
     if (!repoUrl.trim()) return
     setLoading(true)
     setError('')
-    setIssues([])
-    setGuide(null)
-    setSelectedIssue(null)
     try {
-      const data = await findIssues(repoUrl.trim(), userLevel)
-      setIssues(data.issues)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch issues')
+      const result = await findIssues(repoUrl, 'junior')
+      setIssues(result.issues)
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch issues.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
-  async function handleIssueSelect(issue: ScoredIssue) {
-    setGuideLoading(true)
-    setGuide(null)
-    setSelectedIssue(issue)
-    setPairData(null)
-    setTestData(null)
-    setActiveTab('guide')
-    try {
-      const repoStructure = {
-        files: issues.map((i) => ({ path: i.title })),
-        issues: issues.map((i) => ({
-          id: i.id,
-          title: i.title,
-          body: i.body,
-        })),
-      }
-      const data = await generateGuide(issue.id, repoStructure)
-      setGuide(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate guide')
-    }
-    setGuideLoading(false)
-  }
-
-  async function handleFetchPair(issue: ScoredIssue) {
-    setPairLoading(true)
-    setError('')
-    try {
-      const repoStructure = {
-        files: issues.map((i) => ({ path: i.title })),
-        issues: issues.map((i) => ({
-          id: i.id,
-          title: i.title,
-          body: i.body,
-        })),
-      }
-      const data = await fetchPairWalkthrough(
-        issue.title,
-        issue.body || '',
-        repoStructure
-      )
-      setPairData(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch pair programming session')
-    }
-    setPairLoading(false)
-  }
-
-  async function handleFetchTestChecklist(issue: ScoredIssue) {
-    setTestLoading(true)
-    setError('')
-    try {
-      const mockDiff = `diff --git a/src/main.py b/src/main.py
-index 1234567..89abcde 100644
---- a/src/main.py
-+++ b/src/main.py
-@@ -1,5 +1,6 @@
- def process():
--    # old behavior
-+    # fix for ${issue.title}
-+    pass`
-
-      const repoStructure = {
-        files: issues.map((i) => ({ path: i.title })),
-        issues: issues.map((i) => ({
-          id: i.id,
-          title: i.title,
-          body: i.body,
-        })),
-      }
-      const data = await fetchTestChecklist(mockDiff, repoStructure)
-      setTestData(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch test checklist')
-    }
-    setTestLoading(false)
-  }
+  const filteredIssues = issues.filter(issue => 
+    issue.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (issue.body && issue.body.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
 
   return (
-    <div className="animate-in max-w-4xl pb-12">
-      <h1 className="font-display text-2xl font-bold text-text-primary mb-1">First PR Accelerator</h1>
-      <p className="text-text-secondary text-sm mb-6">Find beginner-friendly issues and get step-by-step guides</p>
+    <div className="animate-in w-full h-full min-h-[calc(100vh-4rem)] p-8 font-mono text-[#FDFBF8]">
+      
+      {/* Header Section */}
+      <div className="max-w-5xl mb-12">
+        <div className="inline-flex px-2 py-1 rounded-sm border border-[#FF8C00]/30 bg-[#1A110D] text-[#FF8C00] text-[10px] font-bold tracking-wider mb-4 uppercase">
+          Accelerator
+        </div>
+        
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+          <div className="max-w-2xl">
+            <h1 className="font-display text-4xl font-bold mb-4 tracking-tight text-[#FDFBF8]">First PR Accelerator</h1>
+            <p className="text-[#FDFBF8]/70 text-[15px] leading-relaxed font-body">
+              Discover beginner-friendly issues curated to help you make your first contribution. High-impact, low-complexity tasks across the ecosystem.
+            </p>
+          </div>
+          
+          <div className="flex flex-col gap-3 w-full lg:w-[400px]">
+            <div className="flex gap-2">
+              <input
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleFindIssues()}
+                placeholder="Enter GitHub repository URL..."
+                className="w-full bg-[#1A110D] border border-[#FDFBF8]/10 text-[#FDFBF8] text-[15px] rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF8C00]/50 transition-colors placeholder:text-[#FDFBF8]/30"
+              />
+              <button 
+                onClick={handleFindIssues}
+                disabled={loading}
+                className={cn(
+                  "px-6 py-3 rounded-lg font-bold text-[15px] transition-all",
+                  loading 
+                    ? "bg-[#FF8C00]/50 text-[#3D1C00] cursor-not-allowed" 
+                    : "bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00]"
+                )}
+              >
+                {loading ? 'Finding...' : 'Find'}
+              </button>
+            </div>
+            
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-[#FDFBF8]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </div>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter issues..."
+                className="w-full bg-[#110D0A] border border-[#FDFBF8]/10 text-[#FDFBF8] text-sm rounded-sm pl-9 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#FF8C00] transition-colors placeholder:text-[#FDFBF8]/40 font-body font-medium"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="flex gap-3 mb-6">
-        <input
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="https://github.com/facebook/react"
-          className="input flex-1"
-          onKeyDown={(e) => e.key === 'Enter' && handleFindIssues()}
-        />
-        <select
-          value={userLevel}
-          onChange={(e) => setUserLevel(e.target.value)}
-          className="input w-auto"
-        >
-          {LEVELS.map((l) => (
-            <option key={l} value={l}>
-              {l.charAt(0).toUpperCase() + l.slice(1)}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleFindIssues}
-          disabled={loading || !repoUrl.trim()}
-          className="btn whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Searching...' : 'Find Issues'}
-        </button>
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mb-12 border-b border-[#FDFBF8]/5 pb-8">
+        <div>
+          <div className="text-[10px] tracking-widest font-semibold text-[#FDFBF8]/40 mb-2 uppercase">Available Issues</div>
+          <div className="text-3xl font-bold text-[#FF8C00]">{issues.length}</div>
+        </div>
+        
+        <div>
+          <div className="text-[10px] tracking-widest font-semibold text-[#FDFBF8]/40 mb-2 uppercase">Languages</div>
+          <div className="flex flex-wrap gap-2">
+            {Array.from(new Set(issues.flatMap(i => i.labels || []))).slice(0, 4).map(label => (
+              <span key={label} className="px-2.5 py-1 rounded-sm bg-[#1A110D] text-[#FDFBF8] text-xs font-medium border border-[#FDFBF8]/10">{label}</span>
+            ))}
+          </div>
+        </div>
+        
+        <div className="md:pr-8">
+          <div className="text-[10px] tracking-widest font-semibold text-[#FDFBF8]/40 mb-2 uppercase">Your Progress</div>
+          <div className="text-[13px] text-[#FDFBF8] mb-3">0/1 First PR completed</div>
+          <div className="h-1.5 w-full bg-[#1A110D] rounded-full overflow-hidden border border-[#FDFBF8]/5">
+            <div className="h-full w-0 bg-[#FF8C00]"></div>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-card p-4 mb-6 text-sm border border-red-500/20">{error}</div>
-      )}
-
-      {loading && <IssueListSkeleton count={4} />}
-
-      {issues.length > 0 && (
-        <div className="space-y-3 mb-8">
-          <h2 className="font-display text-base font-semibold text-text-secondary">
-            Found {issues.length} issues
-          </h2>
-          {issues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} onSelect={handleIssueSelect} />
-          ))}
+        <div className="max-w-5xl mb-8 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm">
+          {error}
         </div>
       )}
 
-      {guideLoading && <div className="mt-6"><GuideSkeleton /></div>}
-
-      {guide && selectedIssue && (
-        <div className="card space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <h2 className="font-display text-base font-semibold text-text-primary">{guide.title}</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab('guide')}
-                className={cn(
-                  'px-3 py-1.5 rounded-btn text-xs font-semibold transition-all duration-200',
-                  activeTab === 'guide' ? 'bg-accent-from text-white shadow-card' : 'bg-bg-secondary text-text-secondary'
-                )}
-              >
-                Guide
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('pair')
-                  if (!pairData) handleFetchPair(selectedIssue)
-                }}
-                className={cn(
-                  'px-3 py-1.5 rounded-btn text-xs font-semibold transition-all duration-200',
-                  activeTab === 'pair' ? 'bg-accent-via text-white shadow-card' : 'bg-bg-secondary text-text-secondary'
-                )}
-              >
-                Pair Programming
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('test')
-                  if (!testData) handleFetchTestChecklist(selectedIssue)
-                }}
-                className={cn(
-                  'px-3 py-1.5 rounded-btn text-xs font-semibold transition-all duration-200',
-                  activeTab === 'test' ? 'bg-accent-to text-white shadow-card' : 'bg-bg-secondary text-text-secondary'
-                )}
-              >
-                Test Checklist
-              </button>
-            </div>
+      {/* Issues Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12 max-w-5xl">
+        {!loading && issues.length === 0 && !error && (
+          <div className="col-span-1 md:col-span-2 text-[#FDFBF8]/40 font-mono text-sm italic py-8">
+            Enter a repository URL to find beginner-friendly issues.
           </div>
+        )}
 
-          {activeTab === 'guide' && (
-            <div className="space-y-4">
-              {guide.files_to_touch.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wider">Files to modify:</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {guide.files_to_touch.map((f) => (
-                      <span key={f} className="text-[10px] bg-bg-secondary border border-border text-text-secondary px-2.5 py-1 rounded font-code">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {loading && (
+          <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-12">
+            <svg className="w-8 h-8 animate-spin text-[#FF8C00] mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-[#FDFBF8]/60 text-sm font-mono animate-pulse">Scanning repository for accessible issues...</p>
+          </div>
+        )}
 
-              <div>
-                <h3 className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wider">Step-by-step guide:</h3>
-                <ol className="space-y-2">
-                  {guide.steps.map((step, i) => (
-                    <li key={i} className="text-sm text-text-secondary flex items-start gap-2 leading-relaxed">
-                      <span className="text-accent-from font-medium shrink-0 font-mono">{i + 1}.</span>
-                      <span>{step.replace(/^\d+\.\s*/, '')}</span>
-                    </li>
-                  ))}
-                </ol>
+        {filteredIssues.map((issue) => (
+          <div key={issue.id} className="flex flex-col border-b border-[#FDFBF8]/5 pb-8 md:border-none md:pb-0">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[#FF8C00] text-[13px] font-mono">#{issue.id}</span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sm bg-[#1A110D] text-[#FDFBF8]/60 text-[11px] font-medium border border-[#FDFBF8]/5">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  ~{issue.estimated_hours}hrs
+                </span>
+                <span className="inline-flex px-2 py-1 rounded-sm bg-[#1A2633] text-[#4DA8DA] text-[10px] font-bold border border-[#4DA8DA]/20 tracking-wide uppercase">
+                  Complexity: {issue.complexity_score}/10
+                </span>
               </div>
             </div>
-          )}
-
-          {activeTab === 'pair' && (
-            <div className="space-y-4">
-              {pairLoading ? (
-                <div className="flex flex-col items-center py-8 space-y-2">
-                  <div className="loader"></div>
-                  <p className="text-xs text-text-muted">Narrating thought process and drafting changes...</p>
-                </div>
-              ) : pairData ? (
-                <div className="space-y-5 text-sm">
-                  <div className="bg-bg-secondary p-4 rounded-card border border-border/40">
-                    <span className="text-[10px] text-accent-via font-mono uppercase tracking-wider block mb-1.5 font-bold">Thought Process (Senior Dev)</span>
-                    <p className="text-text-secondary leading-relaxed text-xs italic">"{pairData.thought_process}"</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-bg-secondary/40 p-4 rounded-card border border-border/30">
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Key Insights</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-xs text-text-secondary">
-                        {pairData.key_insights.map((insight: string, idx: number) => (
-                          <li key={idx}>{insight}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="bg-bg-secondary/40 p-4 rounded-card border border-border/30">
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Testing Approach</h4>
-                      <p className="text-xs text-text-secondary leading-relaxed">{pairData.testing_approach}</p>
-                    </div>
-                  </div>
-
-                  {pairData.solution_steps && (
-                    <div>
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Actionable steps</h4>
-                      <ol className="list-decimal pl-4 space-y-1 text-xs text-text-secondary">
-                        {pairData.solution_steps.map((step: string, idx: number) => (
-                          <li key={idx}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+            
+            <h2 className="font-display text-xl font-bold text-[#FDFBF8] mb-3 leading-snug">{issue.title}</h2>
+            
+            <p className="text-[#FDFBF8]/60 text-[13px] leading-relaxed mb-6 font-body flex-1">
+              {issue.body && issue.body.length > 120 ? issue.body.substring(0, 120) + '...' : issue.body}
+            </p>
+            
+            <div className="flex flex-wrap gap-2 mb-8 mt-auto">
+              {issue.labels && issue.labels.map((label, i) => (
+                <span key={i} className="px-2 py-1 rounded-sm bg-[#1A110D] text-[#FDFBF8]/50 text-[11px] font-medium font-mono border border-[#FDFBF8]/10">
+                  {label}
+                </span>
+              ))}
             </div>
-          )}
-
-          {activeTab === 'test' && (
-            <div className="space-y-4">
-              {testLoading ? (
-                <div className="flex flex-col items-center py-8 space-y-2">
-                  <div className="loader"></div>
-                  <p className="text-xs text-text-muted">Analyzing PR changes and generating tests...</p>
-                </div>
-              ) : testData ? (
-                <div className="space-y-5 text-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-bg-secondary/40 p-4 rounded-card border border-border/30">
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Must Test</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-xs text-text-secondary">
-                        {testData.must_test.map((item: string, idx: number) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="bg-bg-secondary/40 p-4 rounded-card border border-border/30">
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Edge Cases</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-xs text-text-secondary">
-                        {testData.edge_cases.map((item: string, idx: number) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {testData.test_code_template && (
-                    <div>
-                      <h4 className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Test Code Template</h4>
-                      <pre className="bg-bg-secondary p-4 rounded-card border border-border/60 overflow-x-auto text-[11px] font-code text-accent-to leading-relaxed">
-                        <code>{testData.test_code_template}</code>
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+            
+            <div className="flex gap-3 mt-auto">
+              <button className="flex-1 bg-transparent border border-[#FDFBF8]/20 text-[#FDFBF8]/80 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5 py-2.5 rounded-sm text-[13px] font-medium transition-colors font-body">
+                View Guide
+              </button>
+              <a 
+                href={issue.url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex-1 bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] py-2.5 rounded-sm text-[13px] font-bold transition-colors font-body flex items-center justify-center gap-2"
+              >
+                Open on GitHub
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
+
+      </div>
     </div>
   )
 }

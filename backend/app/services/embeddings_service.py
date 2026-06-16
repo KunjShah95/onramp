@@ -2,7 +2,7 @@ import os
 import hashlib
 from typing import Dict, List, Optional
 from pathlib import Path
-from app.services.firestore_db import get_storage, generate_id
+from app.services.postgres_db import get_storage, generate_id
 
 
 class Document:
@@ -55,7 +55,7 @@ class EmbeddingsService:
         self.storage = get_storage()
 
     async def index_documents(self, index_id: str, repo_path: str) -> str:
-        """Walk repo_path, parse files, and persist each file as a Firestore document."""
+        """Walk repo_path, parse files, and persist each file as a stored document."""
         documents = []
 
         for root, dirs, files in os.walk(repo_path):

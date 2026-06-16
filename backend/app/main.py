@@ -1,29 +1,49 @@
+import os
+from dotenv import load_dotenv
+
+# Load environment variables BEFORE importing any modules that read them.
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
 from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
-# Load environment variables from .env file
-load_dotenv()
-
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.services.postgres_db import initialize_db
+    await initialize_db()
+    yield
+
 
 app = FastAPI(
     title="CodeFlow 2.0 API",
     version="1.0.0",
-    description="AI-powered developer onboarding platform"
+    description="AI-powered developer onboarding platform",
+    lifespan=lifespan
 )
 
 # Middleware is executed in reverse order of addition (last added = outermost)
 # Outermost -> Logging -> ResponseWrapper -> RateLimit -> Auth -> CORS -> Innermost (Router)
+# Allowed CORS origins are configured via the CORS_ALLOWED_ORIGINS env var
+# (comma-separated). Defaults to the local dev frontend.
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://your-frontend.vercel.app"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +83,8 @@ async def root():
     }
 
 
+# Named health_check (not health) to avoid shadowing the imported `health`
+# router module used above in include_router(health.router, ...).
 @app.get("/health")
-async def health():
+async def health_check():
     return {"status": "healthy"}

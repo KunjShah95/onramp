@@ -1,20 +1,24 @@
+import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 from app.services.issue_service import IssueService
+
+logger = logging.getLogger(__name__)
 
 
 class FirstPRAccelerator(BaseAgent):
     """Finds beginner-friendly issues and generates guides for first-time contributors."""
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, github_token: str = None):
         """
         Initialize FirstPRAccelerator agent.
 
         Args:
             llm_client: LLM client for generating guides (Claude).
+            github_token: Optional user-specific GitHub token to avoid shared rate limit.
         """
         super().__init__(llm_client)
-        self.issue_service = IssueService()
+        self.issue_service = IssueService(github_token=github_token)
 
     async def execute(self, **kwargs) -> Dict[str, Any]:
         """
@@ -71,6 +75,10 @@ class FirstPRAccelerator(BaseAgent):
         # Fetch beginner issues from GitHub
         issues = await self.issue_service.get_beginner_issues(repo_url, limit=limit)
 
+        # Refine scores with LLM if available (blends LLM score with keyword score)
+        if self.llm and issues:
+            issues = await self._llm_rescore(issues)
+
         # Filter by user level
         if user_level == "junior":
             # Junior: only easiest issues (complexity <= 4)
@@ -85,6 +93,59 @@ class FirstPRAccelerator(BaseAgent):
         # Already sorted by complexity from IssueService, but ensure consistent ordering
         filtered_issues.sort(key=lambda x: x["complexity_score"])
         return filtered_issues
+
+    async def _llm_rescore(self, issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Use the LLM to rescore issue complexity based on the full title + body.
+
+        Blends the LLM score (70%) with the keyword-based score (30%) so the
+        LLM can catch nuances the keyword heuristic misses, while the keyword
+        baseline prevents wild outliers.
+
+        Args:
+            issues: List of issue dicts with keyword-based `complexity_score`.
+
+        Returns:
+            Updated issue list with blended complexity scores.
+        """
+        if not self.llm or not issues:
+            return issues
+
+        # Batch up to 15 issues to stay within token limits
+        batch = issues[:15]
+        issues_text = "\n---\n".join(
+            f"#{i['number']}: {i['title']}\nBody: {i.get('body', '')[:500]}"
+            for i in batch
+        )
+
+        prompt = (
+            "Rate the complexity of each GitHub issue on a scale of 0-10.\n"
+            "- 0 = trivial fix (typo, CSS tweak, one-line change)\n"
+            "- 3 = easy (add a simple feature, update docs)\n"
+            "- 5 = moderate (refactor a function, add a small component)\n"
+            "- 8 = hard (cross-cutting change, new service, API design)\n"
+            "- 10 = very hard (architectural change, breaking changes)\n\n"
+            "Return ONLY a JSON object mapping issue numbers to scores.\n"
+            "Example: {\"42\": 3, \"57\": 7}\n\n"
+            f"Issues:\n{issues_text}"
+        )
+
+        try:
+            result = await self.llm.json_chat(prompt)
+            if isinstance(result, dict):
+                for issue in issues:
+                    str_num = str(issue["number"])
+                    if str_num in result:
+                        llm_score = float(result[str_num])
+                        # Blend: 70% LLM + 30% keyword heuristic
+                        issue["complexity_score"] = round(
+                            llm_score * 0.7 + issue["complexity_score"] * 0.3, 1
+                        )
+                        issue["estimated_hours"] = max(1, issue["complexity_score"] * 0.5)
+        except Exception:
+            logger.exception("LLM rescoring failed, falling back to keyword scores")
+
+        return issues
 
     async def generate_guide(self, issue_id: int, repo_structure: Dict) -> Dict[str, Any]:
         """

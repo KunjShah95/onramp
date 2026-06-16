@@ -19,6 +19,7 @@ import TeamPage from './pages/TeamPage'
 import PlaybooksPage from './pages/PlaybooksPage'
 import BillingPage from './pages/BillingPage'
 import ApiKeysPage from './pages/ApiKeysPage'
+import PricingPage from './pages/PricingPage'
 
 import GlobalNatureBackground from './components/ui/GlobalNatureBackground'
 
@@ -31,6 +32,7 @@ export default function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />

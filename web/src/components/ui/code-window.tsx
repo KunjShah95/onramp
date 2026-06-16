@@ -1,7 +1,7 @@
 import { cn } from '../../lib/utils'
 
 interface CodeWindowProps {
-  children: string
+  children: React.ReactNode
   className?: string
   language?: string
 }

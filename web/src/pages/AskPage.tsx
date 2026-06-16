@@ -30,24 +30,25 @@ export default function AskPage() {
   }
 
   return (
-    <div className="animate-in max-w-4xl flex flex-col h-[calc(100vh-8rem)]">
-      <h1 className="font-display text-2xl font-bold text-text-primary mb-1">Ask Your Codebase</h1>
-      <p className="text-text-secondary text-sm mb-6">Index a repository and ask questions about it</p>
+    <div className="animate-in w-full max-w-4xl pt-8 pb-12 font-body flex flex-col h-[calc(100vh-2rem)]">
+      <h1 className="font-display text-3xl font-bold text-[#FDFBF8] mb-2">Codebase Context</h1>
+      <p className="text-[#FDFBF8]/60 text-sm mb-8">Query your architecture, locate dependencies, and retrieve code references across the repository.</p>
 
-      <div className="flex gap-3 mb-6">
+      {/* Hidden/Subtle Indexing bar for functionality without breaking the mockup design */}
+      <div className="flex gap-3 mb-6 bg-[#1A1512] p-2 rounded-xl border border-[#FDFBF8]/5">
         <input
           value={repoPath}
           onChange={(e) => setRepoPath(e.target.value)}
-          placeholder="Local path to repository (e.g., C:\\projects\\my-app)"
-          className="input flex-1"
+          placeholder="Local path to repository (e.g., C:\projects\my-app)"
+          className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/30"
           onKeyDown={(e) => e.key === 'Enter' && handleIndex()}
         />
         <button
           onClick={handleIndex}
           disabled={indexing || !repoPath.trim()}
           className={cn(
-            'btn whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
-            indexId && '!bg-gradient-to-r !from-green-500 !to-emerald-500'
+            'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            indexId ? 'bg-green-500/10 text-green-400' : 'bg-[#FF8C00] text-[#3D1C00] hover:bg-[#FFB347]'
           )}
         >
           {indexing ? 'Indexing...' : indexId ? 'Re-index' : 'Index'}
@@ -55,20 +56,14 @@ export default function AskPage() {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-card p-4 mb-6 text-sm border border-red-500/20">{error}</div>
-      )}
-
-      {indexId && (
-        <div className="text-xs text-green-400 mb-4">
-          Indexed: {indexId}
-        </div>
+        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20">{error}</div>
       )}
 
       {indexing ? (
         <ChatAreaSkeleton />
       ) : (
-        <div className="flex-1 bg-bg-tertiary rounded-card border border-border overflow-hidden">
-          <ChatInterface onSend={handleAsk} placeholder="e.g., How does authentication work?" />
+        <div className="flex-1 overflow-hidden min-h-[400px]">
+          <ChatInterface onSend={handleAsk} placeholder="Ask a question..." />
         </div>
       )}
     </div>

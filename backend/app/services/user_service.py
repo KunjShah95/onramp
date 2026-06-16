@@ -9,9 +9,9 @@ dedicated error message instead of creating a duplicate.
 
 import uuid
 from datetime import datetime
-from app.services.firestore_db import get_storage, generate_id
+from app.services.postgres_db import get_storage, generate_id
 
-STORAGE_COLLECTION = "codeflow_users"
+STORAGE_COLLECTION = "users"
 
 
 async def create_user(

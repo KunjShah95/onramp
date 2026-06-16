@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from app.services.firestore_db import get_storage, generate_id
+from app.services.postgres_db import get_storage, generate_id
 
 
 class PlaybookService:

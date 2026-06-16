@@ -1,273 +1,202 @@
 import { useState } from 'react'
-import {
-  analyzeArchitecture,
-  fetchHealthScore,
-  findSimilarPatterns,
-} from '../lib/api'
-import type { ArchitectureResult } from '../lib/types'
-import ArchitectureDiagram from '../components/ArchitectureDiagram'
-import { ExploreResultSkeleton } from '../components/ui/Skeleton'
+import { analyzeArchitecture } from '../lib/api'
 import { cn } from '../lib/utils'
+
+import type { ArchitectureResult } from '../lib/types'
 
 export default function ExplorePage() {
   const [repoUrl, setRepoUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ArchitectureResult | null>(null)
-  const [health, setHealth] = useState<any | null>(null)
   const [error, setError] = useState('')
-
-  // Pattern Recognition & OS Comparisons states
-  const [selectedPattern, setSelectedPattern] = useState<string>('')
-  const [patternLoading, setPatternLoading] = useState(false)
-  const [patternData, setPatternData] = useState<any | null>(null)
 
   async function handleAnalyze() {
     if (!repoUrl.trim()) return
     setLoading(true)
     setError('')
-    setResult(null)
-    setHealth(null)
-    setSelectedPattern('')
-    setPatternData(null)
     try {
-      const data = await analyzeArchitecture(repoUrl.trim())
+      const data = await analyzeArchitecture(repoUrl)
       setResult(data)
-
-      // Parse owner and repo
-      let owner = 'owner'
-      let repo = 'repo'
-      const parts = repoUrl.trim().replace(/\.git$/, '').split('/')
-      if (parts.length >= 2) {
-        owner = parts[parts.length - 2]
-        repo = parts[parts.length - 1]
-      }
-
-      try {
-        const healthData = await fetchHealthScore(owner, repo, data)
-        setHealth(healthData)
-      } catch { /* health score optional */ }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Analysis failed')
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze repository.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
-
-  async function handleDetectPattern(pattern: string) {
-    if (!result) return
-    setSelectedPattern(pattern)
-    setPatternLoading(true)
-    setPatternData(null)
-    try {
-      const repoStructure = {
-        files: result.entities.files.map((f) => ({ path: f.path })),
-      }
-      const data = await findSimilarPatterns(pattern, repoStructure)
-      setPatternData(data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Pattern analysis failed')
-    }
-    setPatternLoading(false)
   }
 
   return (
-    <div className="animate-in max-w-5xl">
-      <h1 className="font-display text-2xl font-bold text-text-primary mb-1">Architecture Explorer</h1>
-      <p className="text-text-secondary text-sm mb-6">Analyze any GitHub repository and visualize its structure</p>
-
-      <div className="flex gap-3 mb-8">
-        <input
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="https://github.com/facebook/react"
-          className="input flex-1"
-          onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-        />
-        <button
-          onClick={handleAnalyze}
-          disabled={loading || !repoUrl.trim()}
-          className="btn whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Analyzing...' : 'Analyze'}
-        </button>
+    <div className="animate-in w-full h-full min-h-[calc(100vh-4rem)] p-8 font-mono text-[#FDFBF8]">
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+        <div>
+          <h1 className="font-display text-3xl font-bold mb-2">Architecture Explorer</h1>
+          <p className="text-[#FDFBF8]/60 text-[15px]">Deep codebase analysis and structural mapping.</p>
+        </div>
+        
+        {/* Search Input */}
+        <div className="relative w-full md:w-[480px]">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <svg className="w-[18px] h-[18px] text-[#FDFBF8]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </div>
+          <input
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+            placeholder="Enter GitHub repository URL..."
+            className="w-full bg-[#1A110D] border border-[#FDFBF8]/10 text-[#FDFBF8] text-[15px] rounded-lg pl-12 pr-16 py-3 focus:outline-none focus:border-[#FF8C00]/50 transition-colors placeholder:text-[#FDFBF8]/30"
+          />
+          <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+            <kbd className="inline-flex items-center gap-1 bg-[#2A1D16] border border-[#FDFBF8]/5 rounded-md px-1.5 py-1 text-xs font-medium text-[#FDFBF8]/40 font-mono shadow-sm">
+              <svg width="10" height="10" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.5 6C5.32843 6 6 5.32843 6 4.5C6 3.67157 5.32843 3 4.5 3C3.67157 3 3 3.67157 3 4.5C3 5.32843 3.67157 6 4.5 6ZM4.5 6V9M4.5 9C5.32843 9 6 9.67157 6 10.5C6 11.3284 5.32843 12 4.5 12C3.67157 12 3 11.3284 3 10.5C3 9.67157 3.67157 9 4.5 9ZM4.5 9H9M9 9C8.17157 9 7.5 9.67157 7.5 10.5C7.5 11.3284 8.17157 12 9 12C9.82843 12 10.5 11.3284 10.5 10.5C10.5 9.67157 9.82843 9 9 9ZM9 9V6M9 6C8.17157 6 7.5 5.32843 7.5 4.5C7.5 3.67157 8.17157 3 9 3C9.82843 3 10.5 3.67157 10.5 4.5C10.5 5.32843 9.82843 6 9 6ZM9 6H4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              K
+            </kbd>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-card p-4 mb-6 text-sm border border-red-500/20">{error}</div>
+        <div className="mb-6 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm">
+          {error}
+        </div>
       )}
 
-      {loading && <ExploreResultSkeleton />}
-
-      {result && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="card text-center">
-              <div className="font-display text-2xl font-bold text-accent-from">{result.entities.files.length}</div>
-              <div className="text-xs text-text-muted mt-1">Files</div>
-            </div>
-            <div className="card text-center">
-              <div className="font-display text-2xl font-bold text-accent-via">{result.entities.classes.length}</div>
-              <div className="text-xs text-text-muted mt-1">Classes</div>
-            </div>
-            <div className="card text-center">
-              <div className="font-display text-2xl font-bold text-accent-to">{result.entities.functions.length}</div>
-              <div className="text-xs text-text-muted mt-1">Functions</div>
-            </div>
-            <div className="card text-center">
-              <div className="font-display text-2xl font-bold text-yellow-400">{result.circular_dependencies.length}</div>
-              <div className="text-xs text-text-muted mt-1">Circular Deps</div>
-            </div>
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-[#1A110D] border border-[#FDFBF8]/5 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] tracking-wider font-semibold text-[#FDFBF8]/40 mb-1">TOTAL FILES</div>
+            <div className="font-display text-3xl font-normal text-[#FDFBF8]">{result ? result.entities.files.length : '—'}</div>
           </div>
+          <svg className="w-12 h-12 transform -rotate-90">
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#2A1D16" strokeWidth="3" />
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#FF8C00" strokeWidth="3" strokeDasharray="113.09" strokeDashoffset="28" />
+          </svg>
+        </div>
 
-          {health && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="card">
-                <h3 className="font-display text-base font-semibold text-text-primary mb-4">Codebase Health Score</h3>
-                <div className="flex items-center gap-6">
-                  <div className="relative w-20 h-20 flex items-center justify-center rounded-full border-4 border-accent-from/20">
-                    <span className="font-display text-2xl font-bold text-accent-from font-mono">{health.overall_score}</span>
-                    <span className="text-[9px] text-text-muted absolute bottom-2">/100</span>
-                  </div>
-                  <div className="space-y-1.5 text-xs">
-                    <div>
-                      <span className="text-text-muted">Test Coverage:</span>{' '}
-                      <span className="text-text-secondary font-semibold font-mono">{health.test_coverage}%</span>
-                    </div>
-                    <div>
-                      <span className="text-text-muted">Maintainability Index:</span>{' '}
-                      <span className="text-text-secondary font-semibold font-mono">{health.maintainability}/10</span>
-                    </div>
-                    <div>
-                      <span className="text-text-muted">Complexity Level:</span>{' '}
-                      <span className="badge badge-warning capitalize font-semibold py-0">{health.complexity}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card">
-                <h3 className="font-display text-base font-semibold text-text-primary mb-3">Recommendations</h3>
-                {health.recommendations && health.recommendations.length > 0 ? (
-                  <ul className="space-y-1.5 text-[11px] text-text-secondary list-disc pl-4">
-                    {health.recommendations.map((rec: string, idx: number) => (
-                      <li key={idx} className="leading-normal">{rec}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-text-muted">Repository meets all health standards.</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="card">
-            <div className="flex items-center justify-between mb-0">
-              <span className="text-sm text-text-secondary">Architecture Pattern</span>
-              <span className="badge badge-success uppercase text-xs">
-                {result.architecture_pattern}
-              </span>
-            </div>
+        <div className="bg-[#1A110D] border border-[#FDFBF8]/5 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] tracking-wider font-semibold text-[#FDFBF8]/40 mb-1">CLASSES</div>
+            <div className="font-display text-3xl font-normal text-[#FDFBF8]">{result ? result.entities.classes.length : '—'}</div>
           </div>
+          <svg className="w-12 h-12 transform -rotate-90">
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#2A1D16" strokeWidth="3" />
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#E16A6A" strokeWidth="3" strokeDasharray="113.09" strokeDashoffset="45" />
+          </svg>
+        </div>
 
-          {/* Pattern Recognition & OS Comparisons */}
-          <div className="card space-y-6">
-            <div>
-              <h3 className="font-display text-base font-semibold text-text-primary mb-1">
-                Pattern Recognition & OS Comparisons
-              </h3>
-              <p className="text-xs text-text-muted">
-                Detect design patterns in this codebase and compare them with alternative open-source architectures.
-              </p>
-            </div>
+        <div className="bg-[#1A110D] border border-[#FDFBF8]/5 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] tracking-wider font-semibold text-[#FDFBF8]/40 mb-1">FUNCTIONS</div>
+            <div className="font-display text-3xl font-normal text-[#FDFBF8]">{result ? result.entities.functions.length : '—'}</div>
+          </div>
+          <svg className="w-12 h-12 transform -rotate-90">
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#2A1D16" strokeWidth="3" />
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#4DA8DA" strokeWidth="3" strokeDasharray="113.09" strokeDashoffset="15" />
+          </svg>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-medium text-text-secondary">Select Pattern:</span>
-              <div className="flex gap-2">
-                {['authentication', 'api_design', 'database', 'testing'].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => handleDetectPattern(p)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-btn text-xs font-semibold transition-all duration-200 capitalize',
-                      selectedPattern === p
-                        ? 'bg-accent-from text-white shadow-card'
-                        : 'bg-bg-secondary text-text-secondary hover:bg-bg-secondary/80'
-                    )}
-                  >
-                    {p.replace('_', ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="bg-[#1A110D] border border-[#FDFBF8]/5 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] tracking-wider font-semibold text-[#FDFBF8]/40 mb-1">CIRCULAR DEPS</div>
+            <div className="font-display text-3xl font-normal text-[#FDFBF8]">{result ? result.circular_dependencies.length : '—'}</div>
+          </div>
+          <svg className="w-12 h-12 transform -rotate-90">
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#2A1D16" strokeWidth="3" />
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#8C8C8C" strokeWidth="3" strokeDasharray="113.09" strokeDashoffset="95" />
+          </svg>
+        </div>
+      </div>
 
-            {patternLoading ? (
-              <div className="flex flex-col items-center py-8 space-y-2">
-                <div className="loader"></div>
-                <p className="text-xs text-text-muted">Analyzing patterns and searching open-source alternatives...</p>
-              </div>
-            ) : patternData ? (
-              <div className="space-y-4">
-                <div className="bg-bg-secondary p-4 rounded-card border border-border/40">
-                  <span className="text-[10px] text-accent-from font-mono uppercase tracking-wider block mb-1 font-bold">
-                    Detected Pattern: {patternData.pattern}
-                  </span>
-                  <div className="text-xs text-text-secondary leading-relaxed">
-                    <span className="font-semibold text-text-primary">Your Approach:</span>{' '}
-                    {patternData.your_approach?.approach}
-                  </div>
-                  {patternData.your_approach?.files && patternData.your_approach.files.length > 0 && (
-                    <div className="mt-2">
-                      <span className="text-[10px] text-text-muted font-semibold block mb-1">Relevant Files:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {patternData.your_approach.files.map((f: string, i: number) => (
-                          <span key={i} className="text-[9px] bg-bg-primary border border-border/30 text-text-muted px-2 py-0.5 rounded font-code">
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+      {/* Main Terminal Window */}
+      <div className="rounded-xl border border-[#FDFBF8]/5 bg-[#0D0906] shadow-2xl overflow-hidden flex flex-col h-[500px]">
+        {/* Window Chrome */}
+        <div className="h-10 border-b border-[#FDFBF8]/5 bg-[#140D09] flex items-center px-4 relative">
+          <div className="flex gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]"></div>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[#FDFBF8]/30 text-xs font-medium tracking-wide">arch_graph.viz</span>
+          </div>
+        </div>
+
+        {/* Content Area with Grid */}
+        <div className="flex-1 relative flex flex-col items-center justify-center p-8 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzFBMTEwRCIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] overflow-auto">
+          
+          <div className="flex flex-col items-center text-center max-w-2xl z-10 w-full">
+            {!result && !loading && (
+              <>
+                <svg className="w-10 h-10 text-[#FDFBF8]/20 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                </svg>
+                <p className="text-[#FDFBF8]/60 text-sm mb-2 font-mono leading-relaxed">
+                  Interactive dependency graph will render here.<br/>
+                  Enter a GitHub URL above to analyze the codebase.
+                </p>
+                <button 
+                  onClick={handleAnalyze}
+                  className={cn(
+                    "mt-8 px-6 py-2.5 rounded text-sm border transition-all font-mono",
+                    loading 
+                      ? "bg-[#FDFBF8]/5 border-[#FDFBF8]/10 text-[#FDFBF8]/40" 
+                      : "bg-transparent border-[#FDFBF8]/20 text-[#FDFBF8]/80 hover:bg-[#FDFBF8]/5 hover:text-[#FDFBF8]"
                   )}
-                </div>
+                  disabled={loading}
+                >
+                  Initialize Graph Rendering
+                </button>
+              </>
+            )}
 
-                {patternData.similar_solutions && patternData.similar_solutions.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-border/40 text-xs">
-                      <thead>
-                        <tr className="text-text-muted text-left font-medium">
-                          <th className="pb-2 font-semibold text-left">Alternative Repository / Solution</th>
-                          <th className="pb-2 font-semibold text-left">Approach</th>
-                          <th className="pb-2 font-semibold text-left">Differences & Tradeoffs</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/20 text-text-secondary">
-                        {patternData.similar_solutions.map((sol: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-bg-secondary/20 transition-colors">
-                            <td className="py-2.5 pr-4 font-semibold text-text-primary font-mono">{sol.repo}</td>
-                            <td className="py-2.5 pr-4">{sol.approach}</td>
-                            <td className="py-2.5">{sol.why_different}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            {loading && (
+              <div className="flex flex-col items-center">
+                <svg className="w-8 h-8 animate-spin text-[#FF8C00] mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-[#FDFBF8]/60 text-sm font-mono animate-pulse">Cloning repository and analyzing AST...</p>
               </div>
-            ) : (
-              <div className="text-xs text-text-muted text-center py-4">
-                Select a pattern to compare implementations with other open-source projects.
+            )}
+
+            {result && !loading && (
+              <div className="w-full text-left bg-[#140D09] border border-[#FDFBF8]/10 rounded-lg p-6">
+                <h3 className="text-[#FF8C00] font-mono text-sm mb-4">Architecture Insight: {result.architecture_pattern}</h3>
+                <div className="mb-6">
+                  <h4 className="text-[#FDFBF8]/80 text-xs tracking-widest font-semibold mb-3">IDENTIFIED SERVICES</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {result.services && result.services.length > 0 ? (
+                      result.services.map((srv, idx) => (
+                        <div key={idx} className="bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 rounded px-3 py-1.5 text-sm text-[#FDFBF8]/90">
+                          <span className="font-semibold">{srv.name}</span>
+                          <p className="text-[#FDFBF8]/50 text-xs mt-1">{srv.description}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-[#FDFBF8]/50 text-xs">No distinct services identified.</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[#FDFBF8]/80 text-xs tracking-widest font-semibold mb-2">DIAGRAM (MERMAID)</h4>
+                  <pre className="text-xs text-[#FDFBF8]/60 bg-[#0D0906] p-4 rounded overflow-x-auto border border-[#FDFBF8]/5">
+                    {result.architecture_diagram || 'No diagram generated.'}
+                  </pre>
+                </div>
               </div>
             )}
           </div>
-
-          <div>
-            <h2 className="text-sm font-medium text-text-secondary mb-3">Architecture Diagram</h2>
-            <ArchitectureDiagram
-              mermaidCode={result.architecture_diagram}
-              dependencies={result.dependencies}
-              services={result.services}
-            />
-          </div>
+          
+          {/* Subtle vignette over the grid */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#0D0906_100%)] pointer-events-none"></div>
         </div>
-      )}
+      </div>
+      
     </div>
   )
 }

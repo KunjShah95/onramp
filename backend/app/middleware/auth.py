@@ -41,6 +41,7 @@ def get_firebase_app():
 
 _firebase_app_cache = None
 _verify_inited = False
+_dev_bypass_warned = False
 
 
 def _get_firebase_app():
@@ -51,12 +52,37 @@ def _get_firebase_app():
     return _firebase_app_cache
 
 
+def _dev_bypass_enabled() -> bool:
+    """Dev auth bypass is allowed only when explicitly enabled AND not in production.
+
+    BOTH conditions are required, so a missing/misconfigured Firebase in
+    production can never silently fall back to accepting any token.
+    """
+    bypass = os.getenv("AUTH_DEV_BYPASS", "false").lower() == "true"
+    non_prod = os.getenv("ENV", "production").lower() != "production"
+    return bypass and non_prod
+
+
 async def verify_firebase_token(token: str) -> dict | None:
     """Verify a Firebase ID token. Returns decoded token dict or None."""
+    global _dev_bypass_warned
     fb_app = _get_firebase_app()
     if fb_app is None:
-        if token and len(token) > 20:
-            return {"uid": "dev-user-id", "email": "dev@codeflow.ai", "firebase": {"sign_in_provider": "dev"}}
+        if _dev_bypass_enabled():
+            if not _dev_bypass_warned:
+                logger.warning(
+                    "AUTH_DEV_BYPASS active: accepting unverified tokens as dev user. "
+                    "This MUST never be enabled in production."
+                )
+                _dev_bypass_warned = True
+            if token and len(token) > 20:
+                return {"uid": "dev-user-id", "email": "dev@codeflow.ai", "firebase": {"sign_in_provider": "dev"}}
+            return None
+        logger.error(
+            "Firebase Admin is not configured and AUTH_DEV_BYPASS is not enabled; "
+            "rejecting authentication. Set FIREBASE_* credentials (or AUTH_DEV_BYPASS=true "
+            "with ENV!=production for local dev)."
+        )
         return None
 
     try:
@@ -77,7 +103,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        if any(request.url.path.startswith(path) for path in self.public_paths):
+        path = request.url.path
+        is_public = False
+        for pub in self.public_paths:
+            if pub == "/":
+                if path == "/":
+                    is_public = True
+                    break
+            elif path.startswith(pub):
+                is_public = True
+                break
+
+        if is_public:
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")

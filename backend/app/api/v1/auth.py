@@ -8,7 +8,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class TokenPayload(BaseModel):
     id_token: str
-    provider: str  # "google.com" or "password"
+    provider: str  # "google.com", "github.com", or "password"
 
 
 class RegisterResponse(BaseModel):
@@ -45,8 +45,7 @@ async def register(body: TokenPayload):
     If the user already exists with the same provider, returns the existing record.
     If the user exists with a *different* provider, raises 409 Conflict.
     """
-    if body.provider not in ("google.com", "password"):
-        raise HTTPException(status_code=400, detail="Provider must be 'google.com' or 'password'")
+    _ALLOWED_PROVIDERS = ("google.com", "github.com", "password")
 
     decoded = await verify_firebase_token(body.id_token)
     if decoded is None:
@@ -59,8 +58,18 @@ async def register(body: TokenPayload):
     if not email:
         raise HTTPException(status_code=400, detail="No email in token")
 
+    # Trust the provider from the verified token, NOT the client-supplied body.
+    # body.provider is only a hint; the token is authoritative.
+    token_provider = decoded.get("firebase", {}).get("sign_in_provider", "")
+    # Firebase dev-bypass reports "dev"; map it to password for storage.
+    if token_provider == "dev":
+        token_provider = "password"
+    provider = token_provider or body.provider
+    if provider not in _ALLOWED_PROVIDERS:
+        raise HTTPException(status_code=400, detail="Provider must be 'google.com', 'github.com', or 'password'")
+
     try:
-        record = await create_user(uid=uid, email=email, name=name, provider=body.provider)
+        record = await create_user(uid=uid, email=email, name=name, provider=provider)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 

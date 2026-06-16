@@ -1,22 +1,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* ── Background Layers ──────────────────────────── */
+  --bg-void: #050810;
   --bg-primary: #070B14;
   --bg-secondary: #0C1426;
   --bg-tertiary: #111D35;
   --bg-elevated: #162544;
-  --border: rgba(147, 197, 253, 0.06);
-  --border-hover: rgba(147, 197, 253, 0.12);
+  --bg-surface: #1C2D50;
+
+  /* ── Accent ─────────────────────────────────────── */
   --accent-from: #FF8C00;
   --accent-via: #FF6B35;
   --accent-to: #FFB347;
+  --accent-muted: rgba(255, 140, 0, 0.12);
+  --accent-glow: rgba(255, 140, 0, 0.06);
+
+  /* ── Text ───────────────────────────────────────── */
   --text-primary: #EBF0FF;
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
+  --text-disabled: #374151;
+
+  /* ── Borders ────────────────────────────────────── */
+  --border-subtle: rgba(147, 197, 253, 0.04);
+  --border: rgba(147, 197, 253, 0.06);
+  --border-hover: rgba(147, 197, 253, 0.12);
+  --border-active: rgba(147, 197, 253, 0.20);
+  --border-accent: rgba(255, 140, 0, 0.30);
 }
 
 @layer base {
@@ -31,6 +47,7 @@
     line-height: 1.6;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4 {
@@ -49,55 +66,146 @@
   button {
     cursor: pointer;
   }
+
+  /* Material Symbols icon font (used by literal mockup markup) */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(147, 197, 253, 0.08);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(147, 197, 253, 0.15);
+  }
 }
 
 @layer components {
+  /* ── Buttons ──────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-btn
+    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-btn
            font-body font-medium text-sm transition-all duration-200
            bg-gradient-to-r from-accent-from via-accent-via to-accent-to
-           text-white shadow-card hover:shadow-elevated;
+           text-white shadow-card;
+  }
+
+  .btn:hover {
+    @apply shadow-elevated;
+    filter: brightness(1.1);
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-secondary {
+    @apply bg-white text-slate-900 shadow-lg;
+    background-image: none;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-white/90 shadow-xl;
   }
 
   .btn-ghost {
     @apply bg-bg-tertiary text-text-secondary border border-border
            hover:bg-bg-elevated hover:text-text-primary hover:border-border-hover;
+    background-image: none;
   }
 
+  .btn-outline {
+    @apply bg-transparent text-text-secondary border border-border
+           hover:text-text-primary hover:border-border-hover;
+    background-image: none;
+  }
+
+  .btn-danger {
+    @apply bg-error-muted text-error border-none;
+    background-image: none;
+  }
+
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+  }
+
+  /* ── Cards ────────────────────────────────────────── */
   .card {
     @apply bg-bg-tertiary border border-border rounded-card p-6 shadow-card
-           transition-all duration-200;
+           transition-all duration-300;
   }
 
   .card:hover {
     @apply border-border-hover shadow-elevated;
   }
 
+  .card-elevated {
+    @apply bg-bg-elevated border border-border-hover rounded-card p-6 shadow-elevated;
+  }
+
+  /* ── Badges ───────────────────────────────────────── */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full
            text-xs font-medium;
   }
 
+  .badge-accent {
+    @apply bg-accent-muted text-accent-from;
+  }
+
   .badge-success {
-    @apply bg-accent-from/10 text-accent-from;
+    @apply bg-success-muted text-success;
   }
 
   .badge-warning {
-    @apply bg-yellow-500/10 text-yellow-400;
+    @apply bg-warning-muted text-warning;
   }
 
   .badge-error {
-    @apply bg-red-500/10 text-red-400;
+    @apply bg-error-muted text-error;
   }
 
+  .badge-info {
+    @apply bg-info-muted text-info;
+  }
+
+  /* ── Inputs ───────────────────────────────────────── */
   .input {
-    @apply w-full px-3 py-2 rounded-input
+    @apply w-full px-3.5 py-2.5 rounded-input
            bg-bg-secondary border border-border text-text-primary
-           placeholder-text-muted
-           focus:outline-none focus:border-accent-via focus:ring-1 focus:ring-accent-via/30
+           placeholder-text-muted text-sm
+           focus:outline-none focus:border-accent-via focus:ring-1 focus:ring-accent-muted
            transition-all duration-200;
   }
 
+  /* ── Section Label (overline) ─────────────────────── */
+  .overline {
+    @apply text-[11px] font-semibold text-accent-from uppercase tracking-[0.15em];
+  }
+
+  /* ── Animations ───────────────────────────────────── */
   .animate-in {
     animation: fadeIn 0.3s ease-out;
   }
@@ -139,5 +247,69 @@
   @keyframes shimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
+  }
+
+  /* ── Ring Progress ────────────────────────────────── */
+  .ring-progress {
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+
+  .ring-progress circle {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Mockup-specific utilities (CodeFlow 2.0 hero) ─── */
+  .dot-grid {
+    background-size: 20px 20px;
+    background-image: radial-gradient(circle, rgba(164, 140, 122, 0.1) 1px, transparent 1px);
+  }
+
+  .bg-dot-grid {
+    background-image: radial-gradient(rgba(164, 140, 122, 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Dark-mode autofill styling (auth forms) */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #281d15 inset !important;
+    -webkit-text-fill-color: #f3dfd1 !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .hairline-border {
+    border: 1px solid rgba(164, 140, 122, 0.2);
+  }
+
+  .bento-card {
+    transition: border-color 0.3s ease;
+  }
+
+  .bento-card:hover {
+    border-color: rgba(255, 140, 0, 0.2);
+  }
+
+  .typewriter h1 {
+    overflow: hidden;
+    border-right: .15em solid #ffb77d;
+    white-space: nowrap;
+    margin: 0 auto;
+    letter-spacing: .05em;
+    animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+  }
+
+  @keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+
+  @keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: #ffb77d; }
   }
 }
