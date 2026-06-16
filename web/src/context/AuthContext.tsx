@@ -13,53 +13,126 @@ import {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  fetchSignInMethodsForEmail,
   type User,
 } from 'firebase/auth'
 import { getFirebaseAuth } from '../lib/firebase'
+import { authRegister, authMe, setAuthToken } from '../lib/api'
 
 interface AuthState {
   user: User | null
   loading: boolean
   error: string | null
+  /** The auth provider used by this account (from backend) */
+  authMethod: 'password' | 'google.com' | null
 }
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
+  registerWithGoogle: () => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   clearError: () => void
+  getIdToken: () => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+const PROVIDER_MISMATCH = 'account-exists-with-different-credential'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
     error: null,
+    authMethod: null,
   })
+
+  /** Register the Firebase user in the backend storage */
+  const syncToBackend = useCallback(async (provider: 'google.com' | 'password') => {
+    const auth = getFirebaseAuth()
+    const currentUser = auth.currentUser
+    if (!currentUser) return
+
+    const idToken = await currentUser.getIdToken()
+    try {
+      const resp = await authRegister(idToken, provider)
+      setState((prev) => ({ ...prev, authMethod: resp.provider as 'google.com' | 'password' }))
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('409')) {
+        const msg = err.message.includes('google.com')
+          ? 'This email is registered with Google. Please sign in with Google.'
+          : 'This email is registered with email/password. Please sign in with your password.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        // Sign out the Firebase user to prevent partial state
+        await signOut(auth)
+        throw new Error(msg)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const auth = getFirebaseAuth()
     const unsubscribe = onAuthStateChanged(
       auth,
-      (user) => {
-        setState({ user, loading: false, error: null })
+      async (user) => {
+        if (user) {
+          // Set the ID token in api.ts for all subsequent API calls.
+          // Firebase auto-refreshes tokens; onAuthStateChanged fires on refresh.
+          const idToken = await user.getIdToken()
+          setAuthToken(idToken)
+
+          setState({ user, loading: false, error: null, authMethod: null })
+
+          // Silently sync to backend in background
+          try {
+            const me = await authMe(idToken)
+            setState((prev) => ({
+              ...prev,
+              authMethod: me.provider as 'google.com' | 'password',
+            }))
+          } catch {
+            // Backend may not be reachable — that's OK for offline dev
+          }
+        } else {
+          setAuthToken(null)
+          setState({ user: null, loading: false, error: null, authMethod: null })
+        }
       },
       (error) => {
-        setState({ user: null, loading: false, error: error.message })
+        setState({ user: null, loading: false, error: error.message, authMethod: null })
       }
     )
     return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ─── Email/Password Login ───────────────────────────────────────────────
 
   const login = useCallback(async (email: string, password: string) => {
     setState((prev) => ({ ...prev, error: null, loading: true }))
     try {
+      // Check provider before attempting login
       const auth = getFirebaseAuth()
+      const methods = await fetchSignInMethodsForEmail(auth, email)
+
+      if (methods.length > 0 && methods.includes('google.com') && !methods.includes('password')) {
+        const msg = 'This email uses Google sign-in. Please use "Continue with Google" instead.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
+
       await signInWithEmailAndPassword(auth, email, password)
     } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes(PROVIDER_MISMATCH)) {
+        const msg = 'This email is registered with Google. Please use "Continue with Google".'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
       const message =
         err instanceof Error ? mapFirebaseError(err.message) : 'Login failed'
       setState((prev) => ({ ...prev, error: message, loading: false }))
@@ -67,17 +140,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // ─── Email/Password Register ────────────────────────────────────────────
+
   const register = useCallback(
     async (email: string, password: string, name: string) => {
       setState((prev) => ({ ...prev, error: null, loading: true }))
       try {
         const auth = getFirebaseAuth()
-        const credential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        )
+        const credential = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(credential.user, { displayName: name })
+        await syncToBackend('password')
       } catch (err: unknown) {
         const message =
           err instanceof Error
@@ -87,13 +159,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(message)
       }
     },
-    []
+    [syncToBackend]
   )
+
+  // ─── Google OAuth ───────────────────────────────────────────────────────
+
+  const loginWithGoogle = useCallback(async () => {
+    setState((prev) => ({ ...prev, error: null, loading: true }))
+    try {
+      const auth = getFirebaseAuth()
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
+      await signInWithPopup(auth, provider)
+      await syncToBackend('google.com')
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes(PROVIDER_MISMATCH)) {
+        const msg = 'This email is registered with email/password. Please sign in with your password.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
+      const message =
+        err instanceof Error ? mapFirebaseError(err.message) : 'Google sign-in failed'
+      setState((prev) => ({ ...prev, error: message, loading: false }))
+      throw new Error(message)
+    }
+  }, [syncToBackend])
+
+  const registerWithGoogle = useCallback(async () => {
+    setState((prev) => ({ ...prev, error: null, loading: true }))
+    try {
+      const auth = getFirebaseAuth()
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
+      await signInWithPopup(auth, provider)
+      await syncToBackend('google.com')
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes(PROVIDER_MISMATCH)) {
+        const msg = 'This email is registered with email/password. Please sign in with your password.'
+        setState((prev) => ({ ...prev, error: msg, loading: false }))
+        throw new Error(msg)
+      }
+      const message =
+        err instanceof Error ? mapFirebaseError(err.message) : 'Google sign-up failed'
+      setState((prev) => ({ ...prev, error: message, loading: false }))
+      throw new Error(message)
+    }
+  }, [syncToBackend])
+
+  // ─── Logout ─────────────────────────────────────────────────────────────
 
   const logout = useCallback(async () => {
     const auth = getFirebaseAuth()
     await signOut(auth)
   }, [])
+
+  // ─── Password Reset ─────────────────────────────────────────────────────
 
   const resetPassword = useCallback(async (email: string) => {
     const auth = getFirebaseAuth()
@@ -107,8 +227,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // ─── Helpers ────────────────────────────────────────────────────────────
+
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }))
+  }, [])
+
+  const getIdToken = useCallback(async (): Promise<string | null> => {
+    const auth = getFirebaseAuth()
+    const user = auth.currentUser
+    if (!user) return null
+    try {
+      return await user.getIdToken()
+    } catch {
+      return null
+    }
   }, [])
 
   return (
@@ -117,9 +250,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...state,
         login,
         register,
+        loginWithGoogle,
+        registerWithGoogle,
         logout,
         resetPassword,
         clearError,
+        getIdToken,
       }}
     >
       {children}
@@ -145,5 +281,8 @@ function mapFirebaseError(message: string): string {
   if (message.includes('auth/too-many-requests')) return 'Too many attempts. Please try again later'
   if (message.includes('auth/network-request-failed')) return 'Network error. Check your connection'
   if (message.includes('auth/user-disabled')) return 'This account has been disabled'
+  if (message.includes('auth/popup-closed-by-user')) return 'Sign-in popup was closed'
+  if (message.includes('auth/cancelled-popup-request')) return 'Sign-in was cancelled'
+  if (message.includes('auth/popup-blocked')) return 'Pop-up was blocked by your browser'
   return message.replace(/^Firebase: /, '').replace(/ \(auth\/.*\)\.?$/, '')
 }

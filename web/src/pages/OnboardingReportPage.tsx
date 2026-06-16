@@ -1,11 +1,7 @@
 import { useState } from 'react'
+import { generateReport, generateHtmlReport } from '../lib/api'
+import type { ReportSection } from '../lib/api'
 import { cn } from '../lib/utils'
-
-interface ReportSection {
-  title: string
-  type: string
-  content: any
-}
 
 const LEVELS = [
   { value: 'junior', label: 'Junior', duration: '0-2 years' },
@@ -27,18 +23,7 @@ export default function OnboardingReportPage() {
     setError('')
     setReport(null)
     try {
-      const response = await fetch('http://localhost:8000/api/v1/reports/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo_url: repoUrl.trim(),
-          user_level: userLevel,
-        }),
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to generate report: ${response.statusText}`)
-      }
-      const data = await response.json()
+      const data = await generateReport(repoUrl.trim(), userLevel)
       setReport(data.report)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -51,18 +36,7 @@ export default function OnboardingReportPage() {
     setHtmlLoading(true)
     setError('')
     try {
-      const response = await fetch('http://localhost:8000/api/v1/reports/generate-html', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo_url: repoUrl.trim(),
-          user_level: userLevel,
-        }),
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to generate HTML report: ${response.statusText}`)
-      }
-      const data = await response.json()
+      const data = await generateHtmlReport(repoUrl.trim(), userLevel)
       
       // Trigger download
       const blob = new Blob([data.html], { type: 'text/html' })

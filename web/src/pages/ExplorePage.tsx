@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { analyzeArchitecture } from '../lib/api'
+import {
+  analyzeArchitecture,
+  fetchHealthScore,
+  findSimilarPatterns,
+} from '../lib/api'
 import type { ArchitectureResult } from '../lib/types'
 import ArchitectureDiagram from '../components/ArchitectureDiagram'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
@@ -38,20 +42,10 @@ export default function ExplorePage() {
         repo = parts[parts.length - 1]
       }
 
-      // Fetch health score
-      const healthRes = await fetch(`http://localhost:8000/api/v1/repos/${owner}/${repo}/health`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          owner,
-          repo,
-          repo_structure: data,
-        }),
-      })
-      if (healthRes.ok) {
-        const healthData = await healthRes.json()
+      try {
+        const healthData = await fetchHealthScore(owner, repo, data)
         setHealth(healthData)
-      }
+      } catch { /* health score optional */ }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Analysis failed')
     }
@@ -67,16 +61,7 @@ export default function ExplorePage() {
       const repoStructure = {
         files: result.entities.files.map((f) => ({ path: f.path })),
       }
-      const res = await fetch('http://localhost:8000/api/v1/patterns/find-similar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pattern,
-          repo_structure: repoStructure,
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to fetch pattern comparison')
-      const data = await res.json()
+      const data = await findSimilarPatterns(pattern, repoStructure)
       setPatternData(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Pattern analysis failed')

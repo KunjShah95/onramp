@@ -37,7 +37,7 @@ def sample_repo():
 
 class TestLearningPathGenerator:
     def setup_method(self):
-        self.generator = LearningPathGenerator(None)
+        self.generator = LearningPathGenerator()
 
     @pytest.mark.asyncio
     async def test_generate_junior_path(self, sample_repo):

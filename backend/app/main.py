@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 
 from app.llm import LLMClient
-from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard
+from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
 # Load environment variables from .env file
@@ -28,7 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(AuthMiddleware, public_paths=["/", "/docs", "/openapi.json", "/health", "/api/v1"]) # Temporary whitelist /api/v1 for MVP testing
+app.add_middleware(AuthMiddleware, public_paths=["/", "/docs", "/openapi.json", "/health"])
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)
@@ -46,6 +46,11 @@ app.include_router(slack.router, prefix="/api/v1")
 app.include_router(contributor.router, prefix="/api/v1")
 app.include_router(unique.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(ai_gateway.router, prefix="/api/v1")
+app.include_router(teams.router, prefix="/api/v1")
+app.include_router(playbooks.router, prefix="/api/v1")
+app.include_router(billing.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 
 
 @app.get("/")

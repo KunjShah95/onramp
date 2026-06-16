@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { findIssues, generateGuide } from '../lib/api'
+import {
+  findIssues,
+  generateGuide,
+  fetchPairWalkthrough,
+  fetchTestChecklist,
+} from '../lib/api'
 import type { ScoredIssue, IssueGuide } from '../lib/types'
 import IssueCard from '../components/IssueCard'
 import { IssueListSkeleton, GuideSkeleton } from '../components/ui/Skeleton'
@@ -76,17 +81,11 @@ export default function FirstIssuePage() {
           body: i.body,
         })),
       }
-      const res = await fetch('http://localhost:8000/api/v1/pair/walkthrough', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          issue_title: issue.title,
-          issue_body: issue.body || '',
-          repo_structure: repoStructure,
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to fetch walkthrough')
-      const data = await res.json()
+      const data = await fetchPairWalkthrough(
+        issue.title,
+        issue.body || '',
+        repoStructure
+      )
       setPairData(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch pair programming session')
@@ -116,16 +115,7 @@ index 1234567..89abcde 100644
           body: i.body,
         })),
       }
-      const res = await fetch('http://localhost:8000/api/v1/test-checklist/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pr_diff: mockDiff,
-          repo_structure: repoStructure,
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to fetch test checklist')
-      const data = await res.json()
+      const data = await fetchTestChecklist(mockDiff, repoStructure)
       setTestData(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch test checklist')

@@ -10,6 +10,14 @@ const navItems = [
   { to: '/reports', label: 'Reports', icon: '◈' },
 ]
 
+const saasItems = [
+  { to: '/dashboard', label: 'Dashboard', icon: '▣' },
+  { to: '/team', label: 'Team', icon: '▣' },
+  { to: '/playbooks', label: 'Playbooks', icon: '▣' },
+  { to: '/billing', label: 'Billing', icon: '▣' },
+  { to: '/api-keys', label: 'API Keys', icon: '▣' },
+]
+
 const bottomItems = [
   { to: '/settings', label: 'Settings' },
   { to: '/profile', label: 'Profile' },
@@ -36,7 +44,8 @@ export default function Sidebar() {
         </NavLink>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <p className="px-3 text-[10px] uppercase tracking-widest text-text-muted font-semibold mb-2">Features</p>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -46,6 +55,25 @@ export default function Sidebar() {
                 'flex items-center gap-3 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200',
                 isActive
                   ? 'bg-accent-from/20 text-accent-from shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                  : 'text-text-secondary hover:bg-white/10 hover:text-white'
+              )
+            }
+          >
+            <span className="text-lg">{item.icon}</span>
+            {item.label}
+          </NavLink>
+        ))}
+        <div className="my-3 border-t border-white/10" />
+        <p className="px-3 text-[10px] uppercase tracking-widest text-text-muted font-semibold mb-2">SaaS Platform</p>
+        {saasItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200',
+                isActive
+                  ? 'bg-accent-via/20 text-accent-via shadow-[0_0_15px_rgba(99,102,241,0.3)]'
                   : 'text-text-secondary hover:bg-white/10 hover:text-white'
               )
             }

@@ -84,7 +84,10 @@ class LearningPathGenerator(BaseAgent):
     def __init__(self):
         """Initialize LearningPathGenerator with multi-provider LLM router."""
         super().__init__(None)
-        self.llm = LLMRouter()
+        try:
+            self.llm = LLMRouter()
+        except RuntimeError:
+            self.llm = None
 
     async def execute(self, repo_structure: Dict, user_level: str = "junior") -> Dict[str, Any]:
         """

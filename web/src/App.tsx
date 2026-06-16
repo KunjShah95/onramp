@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -8,11 +8,17 @@ import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
+import LandingPage from './pages/LandingPage'
 import ExplorePage from './pages/ExplorePage'
 import LearnPage from './pages/LearnPage'
 import FirstIssuePage from './pages/FirstIssuePage'
 import AskPage from './pages/AskPage'
 import OnboardingReportPage from './pages/OnboardingReportPage'
+import DashboardPage from './pages/DashboardPage'
+import TeamPage from './pages/TeamPage'
+import PlaybooksPage from './pages/PlaybooksPage'
+import BillingPage from './pages/BillingPage'
+import ApiKeysPage from './pages/ApiKeysPage'
 
 import GlobalNatureBackground from './components/ui/GlobalNatureBackground'
 
@@ -24,7 +30,7 @@ export default function App() {
           <GlobalNatureBackground>
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<Navigate to="/explore" replace />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -37,6 +43,11 @@ export default function App() {
                   <Route path="/first-issue" element={<FirstIssuePage />} />
                   <Route path="/ask" element={<AskPage />} />
                   <Route path="/reports" element={<OnboardingReportPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/team" element={<TeamPage />} />
+                  <Route path="/playbooks" element={<PlaybooksPage />} />
+                  <Route path="/billing" element={<BillingPage />} />
+                  <Route path="/api-keys" element={<ApiKeysPage />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
                 </Route>

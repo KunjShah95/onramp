@@ -2,8 +2,71 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+
+def get_firebase_app():
+    """Lazy-init and return the Firebase Admin app (or None)."""
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+        import json
+
+        if firebase_admin._apps:
+            return firebase_admin.get_app()
+
+        project_id = os.getenv("FIREBASE_PROJECT_ID", "")
+        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+        cred_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
+
+        if not project_id and not cred_path and not cred_json:
+            return None
+
+        cred = None
+        if cred_json:
+            cred = credentials.Certificate(json.loads(cred_json))
+        elif cred_path:
+            cred = credentials.Certificate(cred_path)
+
+        opts = {"projectId": project_id} if project_id else {}
+        if cred:
+            return firebase_admin.initialize_app(cred, opts)
+        return firebase_admin.initialize_app(options=opts)
+    except Exception as e:
+        logger.warning("Firebase Admin not available — auth will use dev bypass: %s", e)
+        return None
+
+
+_firebase_app_cache = None
+_verify_inited = False
+
+
+def _get_firebase_app():
+    global _firebase_app_cache, _verify_inited
+    if not _verify_inited:
+        _firebase_app_cache = get_firebase_app()
+        _verify_inited = True
+    return _firebase_app_cache
+
+
+async def verify_firebase_token(token: str) -> dict | None:
+    """Verify a Firebase ID token. Returns decoded token dict or None."""
+    fb_app = _get_firebase_app()
+    if fb_app is None:
+        if token and len(token) > 20:
+            return {"uid": "dev-user-id", "email": "dev@codeflow.ai", "firebase": {"sign_in_provider": "dev"}}
+        return None
+
+    try:
+        import firebase_admin.auth
+        decoded = firebase_admin.auth.verify_id_token(token)
+        return decoded
+    except Exception as e:
+        logger.warning("Firebase token verification failed: %s", e)
+        return None
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_paths=None):
@@ -11,34 +74,35 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.public_paths = public_paths or ["/", "/docs", "/openapi.json", "/health"]
 
     async def dispatch(self, request: Request, call_next):
-        # Allow OPTIONS requests for CORS
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Allow public paths
         if any(request.url.path.startswith(path) for path in self.public_paths):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
-        
-        # For the MVP, we loosely enforce auth unless it's strictly a team/dashboard route.
-        # But for full auth, we'd validate the Firebase JWT here.
+
         if not auth_header or not auth_header.startswith("Bearer "):
-            # We'll log a warning and let it pass for the current testing phase, 
-            # or we could enforce it. We'll let it pass for easy MVP deployment,
-            # but mark the user state as unauthenticated.
-            request.state.user = None
-            logger.warning(f"Unauthenticated request to {request.url.path}")
-        else:
-            token = auth_header.split(" ")[1]
-            # Mock Firebase validation
-            if token == "test-token" or len(token) > 10:
-                request.state.user = {"uid": "mvp-user-123", "role": "admin"}
-            else:
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid authentication token"}
-                )
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Missing or invalid Authorization header. Use: Bearer <firebase-id-token>"}
+            )
+
+        token = auth_header.split(" ", 1)[1]
+        decoded = await verify_firebase_token(token)
+
+        if decoded is None:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or expired authentication token"}
+            )
+
+        request.state.user = {
+            "uid": decoded.get("uid", "unknown"),
+            "email": decoded.get("email", ""),
+            "name": decoded.get("name", ""),
+            "provider": decoded.get("firebase", {}).get("sign_in_provider", "unknown"),
+        }
 
         response = await call_next(request)
         return response
