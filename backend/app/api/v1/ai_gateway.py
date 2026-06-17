@@ -4,10 +4,30 @@ from typing import Optional
 from app.services.api_key_service import APIKeyService, TIER_LIMITS, CREDIT_COSTS
 from app.services.usage_tracker import UsageTracker
 from app.api.v1.auth import get_current_user
+from app.services.team_service import get_team_members, add_member
 
 router = APIRouter(prefix="/ai", tags=["ai-gateway"])
 key_service = APIKeyService()
 usage = UsageTracker()
+
+
+async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = False) -> None:
+    """Authorize access to an org's resources by team membership.
+
+    The org_name maps to a team scope. Rules:
+      - members of the team are allowed.
+      - if the org has no members yet and allow_create is set, the caller becomes
+        its owner (first-touch ownership) and is allowed.
+      - otherwise 403.
+    """
+    members = await get_team_members(org_name)
+    member_ids = {m.get("id") or m.get("user_id") for m in members}
+    if user["uid"] in member_ids:
+        return
+    if allow_create and not members:
+        await add_member(org_name, user["uid"], role="owner")
+        return
+    raise HTTPException(status_code=403, detail="Not a member of this organization")
 
 
 class CreateKeyRequest(BaseModel):
@@ -43,8 +63,8 @@ async def create_api_key(
     user: dict = Depends(get_current_user),
 ):
     # Attribution is taken from the authenticated session, never the client body.
-    # TODO: enforce that `user` is a member of `request.org_name` (team
-    # membership) before allowing key creation for that org.
+    # Caller must belong to the org (or becomes its owner if the org is new).
+    await _ensure_org_access(request.org_name, user, allow_create=True)
     result = await key_service.create_key(
         org_name=request.org_name,
         tier=request.tier,
@@ -68,7 +88,7 @@ async def list_api_keys(
     # Never list all keys across tenants. Scope to an org (with membership
     # verification) or fall back to the caller's own user-scoped keys.
     if org_name:
-        # TODO: verify `user` is a member of `org_name` before listing org keys.
+        await _ensure_org_access(org_name, user)
         keys = await key_service.list_keys(org_name, owner_type="team")
     else:
         keys = await key_service.list_keys(user["uid"], owner_type="user")
@@ -90,11 +110,13 @@ async def revoke_api_key(
         key.get("user_id") == uid
         or perms.get("created_by") == uid
     )
-    # team_id stores the org_name in this model.
-    # TODO: also allow revocation by org members via team membership check on
-    # key.get("team_id").
+    # team_id stores the org scope in this model — org members may also revoke.
     if not owns_key:
-        raise HTTPException(status_code=403, detail="Not authorized to revoke this key")
+        org_scope = key.get("team_id")
+        members = await get_team_members(org_scope) if org_scope else []
+        member_ids = {m.get("id") or m.get("user_id") for m in members}
+        if uid not in member_ids:
+            raise HTTPException(status_code=403, detail="Not authorized to revoke this key")
 
     success = await key_service.revoke_key(key_id)
     if not success:
@@ -136,7 +158,7 @@ async def get_usage(
     period: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ) -> UsageResponse:
-    # TODO: verify `user` is a member of `org_name` before exposing usage.
+    await _ensure_org_access(org_name, user)
     result = await usage.get_usage(org_name, period)
     return UsageResponse(**result)
 
@@ -146,7 +168,7 @@ async def get_usage_summary(
     org_name: str,
     user: dict = Depends(get_current_user),
 ):
-    # TODO: verify `user` is a member of `org_name` before exposing usage.
+    await _ensure_org_access(org_name, user)
     return await usage.get_org_summary(org_name)
 
 
@@ -156,7 +178,7 @@ async def check_quota(
     tier: str = "free",
     user: dict = Depends(get_current_user),
 ):
-    # TODO: verify `user` is a member of `org_name` before exposing quota.
+    await _ensure_org_access(org_name, user)
     limits = APIKeyService.get_tier_limits(tier)
     result = await usage.check_quota(org_name, limits)
     return result

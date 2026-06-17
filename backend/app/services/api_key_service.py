@@ -39,20 +39,21 @@ def generate_api_key() -> str:
 
 
 TIER_LIMITS = {
-    "free": {"requests_per_minute": 20, "requests_per_day": 100, "credits_per_month": 500},
-    "pro": {"requests_per_minute": 200, "requests_per_day": 10000, "credits_per_month": 10000},
-    "enterprise": {
-        "requests_per_minute": 2000,
-        "requests_per_day": 100000,
-        "credits_per_month": 100000,
-    },
+    "free": {"requests_per_minute": 20, "requests_per_day": 100, "credits_per_month": 500, "max_repos": 1},
+    "pro": {"requests_per_minute": 200, "requests_per_day": 10000, "credits_per_month": 10000, "max_repos": 50},
+    "enterprise": {"requests_per_minute": 2000, "requests_per_day": 100000, "credits_per_month": 100000, "max_repos": -1},
 }
+
+# Default credit cost for any action not explicitly listed.
+DEFAULT_CREDIT_COST = 5
 
 CREDIT_COSTS = {
     "chat": 1,
-    "generate": 5,
-    "analyze": 10,
     "embed": 1,
+    "generate": 5,
+    "learn": 5,
+    "explore": 10,
+    "analyze": 10,
 }
 
 
@@ -186,21 +187,26 @@ class APIKeyService:
         org_name: str,
         tier: str = "free",
         created_by: str = "system",
+        org_id: Optional[str] = None,
     ) -> dict:
         """Create an API key scoped to an org (stored as a team)."""
         if tier not in TIER_LIMITS:
             return {"error": f"Invalid tier: {tier}"}
         try:
+            # Org-centric: the org/team id IS the tenant scope for the key.
+            team_scope = org_id or org_name
             plain_key, record = await create_api_key(
                 name=org_name,
-                team_id=org_name,
-                permissions={"tier": tier, "created_by": created_by},
+                team_id=team_scope,
+                permissions={"tier": tier, "created_by": created_by, "org_name": org_name},
             )
             return {
                 "raw_key": plain_key,
                 "key_id": record["id"],
                 "org_name": org_name,
+                "team_id": team_scope,
                 "tier": tier,
+                "is_active": True,
             }
         except Exception as e:
             return {"error": str(e)}
@@ -208,7 +214,7 @@ class APIKeyService:
     async def list_keys(
         self,
         owner_id: Optional[str] = None,
-        owner_type: str = "user",
+        owner_type: str = "team",
     ) -> list[dict]:
         """List API keys scoped to a specific owner.
 
@@ -231,10 +237,23 @@ class APIKeyService:
         return await get_api_key(key_id)
 
     async def validate_key(self, raw_key: str) -> Optional[dict]:
-        """Validate an API key and return its record."""
-        return await validate_api_key(raw_key)
+        """Validate an API key and return its record (enriched with org_name/tier)."""
+        rec = await validate_api_key(raw_key)
+        if rec is None:
+            return None
+        perms = rec.get("permissions") or {}
+        return {
+            **rec,
+            "org_name": perms.get("org_name") or rec.get("name"),
+            "tier": perms.get("tier", "free"),
+        }
 
     @classmethod
     def get_tier_limits(cls, tier: str) -> dict:
         """Return limits for a given tier."""
         return TIER_LIMITS.get(tier, TIER_LIMITS["free"])
+
+    @classmethod
+    def get_credit_cost(cls, action: str) -> int:
+        """Return the credit cost for an action (default if unlisted)."""
+        return CREDIT_COSTS.get(action, DEFAULT_CREDIT_COST)

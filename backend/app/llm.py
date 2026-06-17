@@ -1,8 +1,7 @@
 import os
 import json
-import httpx
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from enum import Enum
 
 logger = logging.getLogger("codeflow.llm")
@@ -19,7 +18,13 @@ class ModelProvider(Enum):
 
 
 class LLMRouter:
-    """Multi-provider LLM with fallback chain. Priority: free first, paid second."""
+    """Multi-provider LLM with fallback chain. Priority: free first, paid second.
+
+    Each provider is called through its official AI SDK (OpenAI SDK for all
+    OpenAI-compatible endpoints, google-genai for Gemini, anthropic for Claude).
+    SDKs are imported lazily inside each call so a missing optional SDK only
+    disables that one provider instead of breaking application startup.
+    """
 
     def __init__(self):
         # Fallback chain: free providers first → paid providers second
@@ -32,49 +37,49 @@ class LLMRouter:
             ModelProvider.ANTHROPIC,
         ]
 
-        # Provider configuration: api_key, endpoint, model, free/paid flag
+        # Provider config: api_key, model, base_url (for OpenAI-compatible), type, free flag
         self.providers = {
             ModelProvider.OPENROUTER: {
                 "api_key": os.getenv("OPENROUTER_API_KEY"),
                 "model": "google/gemini-2.5-flash:free",
-                "url": "https://openrouter.ai/api/v1/chat/completions",
-                "type": "openai_compatible",
-                "free": True
+                "base_url": "https://openrouter.ai/api/v1",
+                "type": "openai_sdk",
+                "free": True,
             },
             ModelProvider.GEMINI: {
                 "api_key": os.getenv("GEMINI_API_KEY"),
                 "model": "gemini-2.5-flash",
-                "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-                "type": "gemini",
-                "free": True
+                "base_url": None,
+                "type": "gemini_sdk",
+                "free": True,
             },
             ModelProvider.GROQ: {
                 "api_key": os.getenv("GROQ_API_KEY"),
                 "model": "llama-3.3-70b-versatile",
-                "url": "https://api.groq.com/openai/v1/chat/completions",
-                "type": "openai_compatible",
-                "free": True
+                "base_url": "https://api.groq.com/openai/v1",
+                "type": "openai_sdk",
+                "free": True,
             },
             ModelProvider.NVIDIA: {
                 "api_key": os.getenv("NVIDIA_API_KEY"),
                 "model": "meta/llama-3.3-70b-instruct",
-                "url": "https://integrate.api.nvidia.com/v1/chat/completions",
-                "type": "openai_compatible",
-                "free": True
+                "base_url": "https://integrate.api.nvidia.com/v1",
+                "type": "openai_sdk",
+                "free": True,
             },
             ModelProvider.OPENAI: {
                 "api_key": os.getenv("OPENAI_API_KEY"),
                 "model": "gpt-4o-mini",
-                "url": "https://api.openai.com/v1/chat/completions",
-                "type": "openai_compatible",
-                "free": False
+                "base_url": "https://api.openai.com/v1",
+                "type": "openai_sdk",
+                "free": False,
             },
             ModelProvider.ANTHROPIC: {
                 "api_key": os.getenv("ANTHROPIC_API_KEY"),
                 "model": "claude-3-5-sonnet-20241022",
-                "url": "https://api.anthropic.com/v1/messages",
-                "type": "anthropic",
-                "free": False
+                "base_url": None,
+                "type": "anthropic_sdk",
+                "free": False,
             },
         }
 
@@ -98,10 +103,7 @@ class LLMRouter:
         )
 
     async def chat(self, prompt: str, system: str = None, max_tokens: int = 2000) -> str:
-        """
-        Call LLM with automatic fallback on error.
-        Tries each provider in fallback_chain until success.
-        """
+        """Call LLM with automatic fallback on error. Free providers tried first."""
         errors = []
         for provider in self.fallback_chain:
             config = self.providers[provider]
@@ -119,21 +121,14 @@ class LLMRouter:
                 logger.warning(err_msg)
                 errors.append(err_msg)
 
-        # All providers exhausted
-        raise RuntimeError(
-            f"All LLM providers exhausted. Errors: {'; '.join(errors)}"
-        )
+        raise RuntimeError(f"All LLM providers exhausted. Errors: {'; '.join(errors)}")
 
     async def json_chat(self, prompt: str, system: str = None) -> dict:
-        """
-        Call LLM expecting JSON response with automatic fallback.
-        Extracts JSON from response or raises ValueError.
-        """
+        """Call LLM expecting JSON response with automatic fallback."""
         response = await self.chat(prompt, system)
         try:
             return json.loads(response)
         except json.JSONDecodeError:
-            # Try to extract JSON from response (handle markdown backticks, etc.)
             start = response.find("{")
             end = response.rfind("}") + 1
             if start >= 0 and end > start:
@@ -148,107 +143,104 @@ class LLMRouter:
         provider: ModelProvider,
         prompt: str,
         system: str,
-        max_tokens: int
+        max_tokens: int,
     ) -> str:
-        """
-        Call specific provider with its API.
-        Provider-specific implementation for each API type.
-        """
+        """Dispatch to the right SDK for this provider type."""
         config = self.providers[provider]
+        ptype = config["type"]
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            if config["type"] == "gemini":
-                return await self._call_gemini(client, config, prompt, system)
-            elif config["type"] == "openai_compatible":
-                return await self._call_openai_compatible(client, config, prompt, system, max_tokens)
-            elif config["type"] == "anthropic":
-                return await self._call_anthropic(client, config, prompt, system, max_tokens)
-            else:
-                raise NotImplementedError(f"Provider type {config['type']} not implemented")
+        if ptype == "openai_sdk":
+            return await self._call_openai_sdk(provider, config, prompt, system, max_tokens)
+        elif ptype == "gemini_sdk":
+            return await self._call_gemini_sdk(config, prompt, system, max_tokens)
+        elif ptype == "anthropic_sdk":
+            return await self._call_anthropic_sdk(config, prompt, system, max_tokens)
+        raise NotImplementedError(f"Provider type {ptype} not implemented")
 
-    async def _call_gemini(
+    async def _call_openai_sdk(
         self,
-        client: httpx.AsyncClient,
-        config: Dict[str, Any],
-        prompt: str,
-        system: str
-    ) -> str:
-        """Call Google Gemini API."""
-        url = f"{config['url']}?key={config['api_key']}"
-        headers = {"Content-Type": "application/json"}
-        body = {"contents": [{"parts": [{"text": prompt}]}]}
-
-        if system:
-            body["systemInstruction"] = {"parts": [{"text": system}]}
-
-        response = await client.post(url, headers=headers, json=body)
-        response.raise_for_status()
-        res_json = response.json()
-        return res_json["candidates"][0]["content"]["parts"][0]["text"]
-
-    async def _call_openai_compatible(
-        self,
-        client: httpx.AsyncClient,
+        provider: ModelProvider,
         config: Dict[str, Any],
         prompt: str,
         system: str,
-        max_tokens: int
+        max_tokens: int,
     ) -> str:
-        """Call OpenAI-compatible API (Groq, OpenRouter, Nvidia NIM)."""
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config['api_key']}"
-        }
+        """OpenAI Python SDK — covers OpenAI, OpenRouter, Groq, NVIDIA (OpenAI-compatible)."""
+        from openai import AsyncOpenAI
 
-        # OpenRouter requires special headers
-        if config["api_key"] and os.getenv("OPENROUTER_API_KEY"):
-            headers["HTTP-Referer"] = "https://github.com/KunjShah95/codegenome"
-            headers["X-Title"] = "CodeGenome"
+        default_headers = None
+        if provider == ModelProvider.OPENROUTER:
+            # OpenRouter attribution headers (recommended, not required)
+            default_headers = {
+                "HTTP-Referer": "https://github.com/KunjShah95/codegenome",
+                "X-Title": "CodeGenome",
+            }
+
+        client = AsyncOpenAI(
+            api_key=config["api_key"],
+            base_url=config["base_url"],
+            default_headers=default_headers,
+            timeout=30.0,
+        )
 
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        body = {
-            "model": config["model"],
-            "messages": messages,
-            "max_tokens": max_tokens
-        }
+        resp = await client.chat.completions.create(
+            model=config["model"],
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        return resp.choices[0].message.content
 
-        response = await client.post(config["url"], headers=headers, json=body)
-        response.raise_for_status()
-        res_json = response.json()
-        return res_json["choices"][0]["message"]["content"]
-
-    async def _call_anthropic(
+    async def _call_gemini_sdk(
         self,
-        client: httpx.AsyncClient,
         config: Dict[str, Any],
         prompt: str,
         system: str,
-        max_tokens: int
+        max_tokens: int,
     ) -> str:
-        """Call Anthropic Claude API."""
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": config["api_key"],
-            "anthropic-version": "2023-06-01"
-        }
+        """Google Gen AI SDK (google-genai)."""
+        from google import genai
+        from google.genai import types
 
-        body = {
+        client = genai.Client(api_key=config["api_key"])
+
+        gen_config = None
+        if system:
+            gen_config = types.GenerateContentConfig(system_instruction=system)
+
+        resp = await client.aio.models.generate_content(
+            model=config["model"],
+            contents=prompt,
+            config=gen_config,
+        )
+        return resp.text
+
+    async def _call_anthropic_sdk(
+        self,
+        config: Dict[str, Any],
+        prompt: str,
+        system: str,
+        max_tokens: int,
+    ) -> str:
+        """Anthropic SDK (Claude)."""
+        from anthropic import AsyncAnthropic
+
+        client = AsyncAnthropic(api_key=config["api_key"], timeout=30.0)
+
+        kwargs = {
             "model": config["model"],
             "max_tokens": max_tokens,
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [{"role": "user", "content": prompt}],
         }
-
         if system:
-            body["system"] = system
+            kwargs["system"] = system
 
-        response = await client.post(config["url"], headers=headers, json=body)
-        response.raise_for_status()
-        res_json = response.json()
-        return res_json["content"][0]["text"]
+        resp = await client.messages.create(**kwargs)
+        return resp.content[0].text
 
 
 # For backward compatibility, maintain LLMClient as an alias

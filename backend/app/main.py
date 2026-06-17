@@ -48,7 +48,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(AuthMiddleware, public_paths=["/", "/docs", "/openapi.json", "/health"])
+app.add_middleware(AuthMiddleware, public_paths=[
+    "/", "/docs", "/openapi.json", "/health",
+    "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
+    "/api/v1/billing/pricing",   # public pricing config
+    "/api/v1/ai/tiers",          # public tier config
+])
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)

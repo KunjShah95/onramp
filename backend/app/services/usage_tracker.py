@@ -166,16 +166,19 @@ class UsageTracker:
         }
 
     async def check_quota(self, org_name: str, limits: dict) -> dict:
-        """Check whether an org is within its quota."""
+        """Check whether an org is within its monthly credit quota."""
         usage = await self.get_usage(org_name, period="month")
-        total = usage["total_requests"]
+        used = usage["total_credits"]
         monthly_limit = limits.get("credits_per_month", limits.get("requests_per_month", 0))
-        within_quota = total < monthly_limit if monthly_limit else True
-        remaining = max(0, monthly_limit - total) if monthly_limit else -1
+        within_quota = used < monthly_limit if monthly_limit else True
+        remaining = max(0, monthly_limit - used) if monthly_limit else -1
         return {
             "org_name": org_name,
             "within_quota": within_quota,
             "monthly_limit": monthly_limit,
-            "used": total,
+            "credits_per_month": monthly_limit,
+            "used": used,
             "remaining": remaining,
+            "credits_used": used,
+            "credits_remaining": remaining,
         }

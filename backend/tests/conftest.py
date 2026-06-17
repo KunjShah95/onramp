@@ -1,3 +1,8 @@
+import os
+
+# Use the in-memory storage backend for all tests (no live PostgreSQL needed).
+os.environ.setdefault("STORAGE_BACKEND", "memory")
+
 import pytest
 from fastapi.testclient import TestClient
 

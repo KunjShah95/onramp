@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 
 function IconTerminal({ className }: { className?: string }) {
@@ -76,8 +76,6 @@ const bottomItems = [
 // ── Sidebar Component ────────────────────────────────────────
 
 export default function Sidebar() {
-  const navigate = useNavigate()
-
   return (
     <aside className="w-[260px] min-h-screen bg-[#110B08] border-r border-[#FDFBF8]/5 flex flex-col shrink-0 font-mono">
       {/* Brand */}

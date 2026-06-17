@@ -3,7 +3,9 @@ PostgreSQL Database Service
 Replaces Firestore with PostgreSQL while maintaining the same interface
 """
 
+import os
 import uuid
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select, update, delete
@@ -12,6 +14,8 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import class_mapper, selectinload
 from app.database.config import db_config, get_db
 from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, DynamicDocument
+
+logger = logging.getLogger("codeflow.db")
 
 
 def _is_valid_uuid(value: str) -> bool:
@@ -348,7 +352,11 @@ class PostgresStorage:
                 if filters:
                     for key, op, value in filters:
                         if op == "==":
-                            query = query.where(DynamicDocument.data[key].astext == str(value))
+                            if isinstance(value, bool):
+                                val_str = "true" if value else "false"
+                                query = query.where(DynamicDocument.data[key].astext == val_str)
+                            else:
+                                query = query.where(DynamicDocument.data[key].astext == str(value))
                         elif op == "in":
                             # Simplistic fallback for IN
                             pass
@@ -358,14 +366,83 @@ class PostgresStorage:
         return await self._run(_query)
 
 
-_storage: Optional[PostgresStorage] = None
+class InMemoryStorage:
+    """Dict-backed storage with the same async interface as PostgresStorage.
+
+    Used for tests and local runs without a database (STORAGE_BACKEND=memory).
+    Handles arbitrary collections generically.
+    """
+
+    def __init__(self):
+        self._data: Dict[str, Dict[str, dict]] = {}
+
+    def _coll(self, collection: str) -> Dict[str, dict]:
+        return self._data.setdefault(collection, {})
+
+    async def create_document(self, collection: str, doc_id: str, data: dict) -> dict:
+        now = datetime.utcnow().isoformat()
+        record = {**data, "id": doc_id}
+        record.setdefault("created_at", now)
+        record.setdefault("updated_at", now)
+        if collection == "team_members":
+            record.setdefault("joined_at", now)
+        self._coll(collection)[doc_id] = record
+        return dict(record)
+
+    async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
+        rec = self._coll(collection).get(doc_id)
+        return dict(rec) if rec else None
+
+    async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
+        rec = self._coll(collection).get(doc_id)
+        if rec is None:
+            return None
+        rec.update(data)
+        rec["updated_at"] = datetime.utcnow().isoformat()
+        return dict(rec)
+
+    async def delete_document(self, collection: str, doc_id: str) -> None:
+        self._coll(collection).pop(doc_id, None)
+
+    async def list_documents(self, collection: str) -> List[dict]:
+        return [dict(r) for r in self._coll(collection).values()]
+
+    @staticmethod
+    def _matches(record: dict, key: str, op: str, value: Any) -> bool:
+        actual = record.get(key)
+        if op == "==":
+            return actual == value
+        if op == "in":
+            return actual in (value or [])
+        if op == ">=":
+            return actual is not None and actual >= value
+        if op == "<=":
+            return actual is not None and actual <= value
+        return False
+
+    async def query_documents(
+        self, collection: str, filters: List[Tuple[str, str, Any]] = None
+    ) -> List[dict]:
+        results = []
+        for rec in self._coll(collection).values():
+            if filters and not all(self._matches(rec, k, op, v) for k, op, v in filters):
+                continue
+            results.append(dict(rec))
+        return results
 
 
-def get_storage() -> PostgresStorage:
-    """Get the PostgreSQL storage instance"""
+_storage = None
+
+
+def _use_memory_backend() -> bool:
+    return os.getenv("STORAGE_BACKEND", "").lower() == "memory"
+
+
+def get_storage():
+    """Get the storage instance (PostgreSQL, or in-memory when STORAGE_BACKEND=memory)."""
     global _storage
     if _storage is None:
-        _storage = PostgresStorage()
+        _storage = InMemoryStorage() if _use_memory_backend() else PostgresStorage()
     return _storage
 
 
@@ -375,5 +452,15 @@ def generate_id() -> str:
 
 
 async def initialize_db() -> None:
-    """Create all database tables on startup (development only)."""
+    """Initialize storage on startup.
+
+    - Memory backend: nothing to do.
+    - Production: schema is managed by Alembic migrations, not auto-create.
+    - Dev/local Postgres: auto-create tables for convenience.
+    """
+    if _use_memory_backend():
+        return
+    if os.getenv("ENV", os.getenv("ENVIRONMENT", "production")).lower() == "production":
+        logger.info("Production: skipping auto-create; run Alembic migrations.")
+        return
     await db_config.create_tables()

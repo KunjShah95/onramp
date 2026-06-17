@@ -176,7 +176,7 @@ class TeamService:
         try:
             # Check for duplicates
             members = await get_team_members(team_id)
-            if any(m.get("user_id") == user for m in members):
+            if any(m.get("id") == user for m in members):
                 return {"error": "User already in team"}
             member = await add_member(team_id, user, role)
             return {"added": True, "user": user, "member": member}

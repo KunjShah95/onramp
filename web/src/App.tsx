@@ -1,27 +1,30 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
-import Settings from './pages/Settings'
-import Profile from './pages/Profile'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import ForgotPassword from './pages/ForgotPassword'
-import LandingPage from './pages/LandingPage'
-import ExplorePage from './pages/ExplorePage'
-import LearnPage from './pages/LearnPage'
-import FirstIssuePage from './pages/FirstIssuePage'
-import AskPage from './pages/AskPage'
-import OnboardingReportPage from './pages/OnboardingReportPage'
-import DashboardPage from './pages/DashboardPage'
-import TeamPage from './pages/TeamPage'
-import PlaybooksPage from './pages/PlaybooksPage'
-import BillingPage from './pages/BillingPage'
-import ApiKeysPage from './pages/ApiKeysPage'
-import PricingPage from './pages/PricingPage'
-
 import GlobalNatureBackground from './components/ui/GlobalNatureBackground'
+
+// Route-level code splitting: each page is its own lazily-loaded chunk so the
+// initial bundle stays small.
+const Settings = lazy(() => import('./pages/Settings'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const ExplorePage = lazy(() => import('./pages/ExplorePage'))
+const LearnPage = lazy(() => import('./pages/LearnPage'))
+const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
+const AskPage = lazy(() => import('./pages/AskPage'))
+const OnboardingReportPage = lazy(() => import('./pages/OnboardingReportPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const TeamPage = lazy(() => import('./pages/TeamPage'))
+const PlaybooksPage = lazy(() => import('./pages/PlaybooksPage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
+const PricingPage = lazy(() => import('./pages/PricingPage'))
 
 export default function App() {
   return (
@@ -29,6 +32,7 @@ export default function App() {
       <AuthProvider>
         <TransitionProvider>
           <GlobalNatureBackground>
+            <Suspense fallback={null}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<LandingPage />} />
@@ -55,6 +59,7 @@ export default function App() {
                 </Route>
               </Route>
             </Routes>
+            </Suspense>
           </GlobalNatureBackground>
         </TransitionProvider>
       </AuthProvider>

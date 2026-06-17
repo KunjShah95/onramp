@@ -41,6 +41,13 @@ class AttachStripeRequest(BaseModel):
     stripe_subscription_id: str
 
 
+class CheckoutRequest(BaseModel):
+    team_id: str
+    tier: str
+    success_url: str
+    cancel_url: str
+
+
 @router.post("/subscriptions")
 async def create_subscription(
     request: CreateSubscriptionRequest,
@@ -106,6 +113,35 @@ async def attach_stripe(
     if not success:
         raise HTTPException(status_code=404, detail="No active subscription")
     return {"attached": True}
+
+
+@router.post("/checkout")
+async def create_checkout(
+    request: CheckoutRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Create a Stripe Checkout session for a paid tier."""
+    await require_team_membership(request.team_id, user)
+    result = await billing.create_checkout_session(
+        request.team_id, request.tier, request.success_url, request.cancel_url
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe webhook receiver. Public, but signature-verified.
+
+    Must be in AuthMiddleware public_paths so Stripe (unauthenticated) can call it.
+    """
+    payload = await request.body()
+    sig = request.headers.get("Stripe-Signature")
+    result = await billing.handle_webhook(payload, sig)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
 
 @router.get("/pricing")

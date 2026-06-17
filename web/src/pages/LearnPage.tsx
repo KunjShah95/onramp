@@ -26,6 +26,8 @@ export default function LearnPage() {
       setLoading(false)
     }
   }
+
+  return (
     <div className="animate-in w-full h-full min-h-[calc(100vh-4rem)] p-8 font-mono text-[#FDFBF8] relative">
       
       {/* Background Grid Pattern (Subtle) */}

@@ -90,10 +90,8 @@ class DatabaseConfig:
                     "(postgres:postgres@localhost). Set DATABASE_URL explicitly."
                 )
 
-            # TODO: wire self.ssl_mode into the engine. asyncpg does not read the
-            # libpq `sslmode` URL query param; SSL must be passed via
-            # connect_args (e.g. {"ssl": <ssl.SSLContext>}). This is intentionally
-            # NOT wired here to avoid shipping broken/no-op SSL configuration.
+            # asyncpg does not read the libpq `sslmode` URL query param; SSL must
+            # be passed via connect_args. Map our ssl_mode to an asyncpg `ssl` arg.
             engine_params = {
                 "echo": os.getenv("DB_ECHO", "false").lower() == "true",
                 "pool_size": self.pool_size,
@@ -102,7 +100,11 @@ class DatabaseConfig:
                 "pool_recycle": self.pool_recycle,
                 "pool_pre_ping": True,
             }
-            
+
+            connect_args = self._build_connect_args()
+            if connect_args:
+                engine_params["connect_args"] = connect_args
+
             self._engine = create_async_engine(
                 self.database_url,
                 **engine_params
@@ -113,7 +115,28 @@ class DatabaseConfig:
             )
         
         return self._engine
-    
+
+    def _build_connect_args(self) -> dict:
+        """Translate ssl_mode into asyncpg connect_args.
+
+        Only applies to asyncpg URLs. Maps libpq-style modes to asyncpg's `ssl`:
+          - disable / allow / prefer -> no enforced TLS (None)
+          - require / verify-ca / verify-full -> an SSL context (enforced TLS)
+        """
+        if "asyncpg" not in (self.database_url or ""):
+            return {}
+        mode = (self.ssl_mode or "prefer").lower()
+        if mode in ("disable", "allow", "prefer"):
+            return {}
+        import ssl as _ssl
+        ctx = _ssl.create_default_context()
+        if mode == "require":
+            # Encrypt but don't verify the server cert/hostname.
+            ctx.check_hostname = False
+            ctx.verify_mode = _ssl.CERT_NONE
+        # verify-ca / verify-full keep full verification (default context).
+        return {"ssl": ctx}
+
     def get_session_factory(self) -> async_sessionmaker[AsyncSession]:
         """Get or create the session factory"""
         if self._session_factory is None:

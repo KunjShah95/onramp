@@ -531,11 +531,15 @@ export async function cancelSubscription(teamId: string): Promise<void> {
 
 export async function attachStripe(
   teamId: string,
-  stripeCustomerId: string
+  stripeCustomerId: string,
+  stripeSubscriptionId: string
 ): Promise<Subscription> {
   return request<Subscription>(
     `${API_BASE}/billing/subscriptions/${teamId}/stripe`,
-    { stripe_customer_id: stripeCustomerId }
+    {
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id: stripeSubscriptionId,
+    }
   )
 }
 
@@ -584,8 +588,10 @@ export async function revokeApiKey(keyId: string): Promise<void> {
 export async function validateApiKey(
   rawKey: string
 ): Promise<{ valid: boolean; org_name: string; tier: string }> {
-  return get<{ valid: boolean; org_name: string; tier: string }>(
-    `${API_BASE}/ai/keys/validate/${rawKey}`
+  // Key sent in body (never the URL) to avoid leaking it in logs/history.
+  return request<{ valid: boolean; org_name: string; tier: string }>(
+    `${API_BASE}/ai/keys/validate`,
+    { raw_key: rawKey }
   )
 }
 

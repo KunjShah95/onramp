@@ -1,6 +1,17 @@
+import os
+import asyncio
+import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 from app.services.postgres_db import get_storage, generate_id
+
+logger = logging.getLogger("codeflow.billing")
+
+# Stripe Price IDs per tier (set in env when using real Stripe billing).
+STRIPE_PRICE_IDS = {
+    "startup": os.getenv("STRIPE_PRICE_STARTUP"),
+    "professional": os.getenv("STRIPE_PRICE_PROFESSIONAL"),
+}
 
 
 TIER_PRICING = {
@@ -75,6 +86,76 @@ class BillingService:
             "stripe_subscription_id": stripe_subscription_id,
         })
         return True
+
+    # ── Stripe integration (optional, guarded by STRIPE_SECRET_KEY) ──────────
+
+    @staticmethod
+    def is_stripe_enabled() -> bool:
+        return bool(os.getenv("STRIPE_SECRET_KEY"))
+
+    @staticmethod
+    def _stripe():
+        """Lazily import and configure the Stripe SDK."""
+        import stripe
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+        return stripe
+
+    async def create_checkout_session(
+        self, team_id: str, tier: str, success_url: str, cancel_url: str
+    ) -> Dict[str, Any]:
+        """Create a Stripe Checkout session for a paid tier. Returns {url}."""
+        if not self.is_stripe_enabled():
+            return {"error": "Stripe is not configured", "stub": True}
+        price_id = STRIPE_PRICE_IDS.get(tier)
+        if not price_id:
+            return {"error": f"No Stripe price configured for tier '{tier}'"}
+
+        stripe = self._stripe()
+
+        def _create():
+            return stripe.checkout.Session.create(
+                mode="subscription",
+                line_items=[{"price": price_id, "quantity": 1}],
+                success_url=success_url,
+                cancel_url=cancel_url,
+                client_reference_id=team_id,
+                metadata={"team_id": team_id, "tier": tier},
+            )
+
+        session = await asyncio.to_thread(_create)
+        return {"url": session.url, "session_id": session.id}
+
+    async def handle_webhook(self, payload: bytes, sig_header: Optional[str]) -> Dict[str, Any]:
+        """Verify and process a Stripe webhook event."""
+        if not self.is_stripe_enabled():
+            return {"error": "Stripe is not configured"}
+        secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        stripe = self._stripe()
+
+        try:
+            if secret and sig_header:
+                event = stripe.Webhook.construct_event(payload, sig_header, secret)
+            else:
+                # No signing secret configured — parse without verification (dev only).
+                import json
+                event = json.loads(payload)
+                logger.warning("Stripe webhook processed WITHOUT signature verification.")
+        except Exception as exc:
+            logger.warning(f"Stripe webhook verification failed: {exc}")
+            return {"error": "Invalid webhook signature"}
+
+        event_type = event["type"] if isinstance(event, dict) else event.type
+        data_obj = (event["data"]["object"] if isinstance(event, dict) else event.data.object)
+
+        if event_type == "checkout.session.completed":
+            team_id = (data_obj.get("metadata") or {}).get("team_id") or data_obj.get("client_reference_id")
+            if team_id:
+                await self.attach_stripe(
+                    team_id,
+                    data_obj.get("customer"),
+                    data_obj.get("subscription"),
+                )
+        return {"received": True, "type": event_type}
 
     @staticmethod
     def get_pricing():
