@@ -1,6 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timedelta
+from app.services.usage_tracker import UsageTracker
+from app.services.billing_service import BillingService
+from app.api.v1.auth import get_current_user
+from app.services.team_service import get_team_members
 
 router = APIRouter(tags=["dashboard"])
+
+_usage = UsageTracker()
+_billing = BillingService()
 
 @router.get("/repos")
 async def list_repos():
@@ -160,4 +168,57 @@ async def repo_sections(owner: str, repo: str):
         ],
         "owner": owner,
         "repo": repo,
+    }
+
+
+async def _get_user_team(user: dict) -> str:
+    """Get the first team the user belongs to, or use their user_id as org scope."""
+    teams = await get_team_members(user.get("uid", ""))
+    if teams:
+        return teams[0].get("team_id") or teams[0].get("id") or user.get("uid")
+    return user.get("uid")
+
+
+@router.get("/usage/dashboard")
+async def usage_dashboard(user: dict = Depends(get_current_user)):
+    """Return comprehensive usage dashboard for the user's team/org."""
+    org_name = await _get_user_team(user)
+    
+    now = datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    week_start = now - timedelta(days=7)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    month_usage = await _usage.get_usage(org_name, period="month")
+    week_usage = await _usage.get_usage(org_name, period="week")
+    day_usage = await _usage.get_usage(org_name, period="day")
+    
+    sub = await _billing.get_subscription(org_name)
+    tier = sub.get("tier") if sub else "free"
+    limits = BillingService.get_pricing().get(tier, BillingService.get_pricing()["free"])
+    
+    return {
+        "org_name": org_name,
+        "tier": tier,
+        "limits": {
+            "monthly_credits": limits.get("features", [])[2] if len(limits.get("features", [])) > 2 else "N/A",
+        },
+        "periods": {
+            "month": {
+                "total_credits": month_usage.get("total_credits", 0),
+                "total_requests": month_usage.get("total_requests", 0),
+                "endpoint_breakdown": month_usage.get("endpoint_breakdown", {}),
+            },
+            "week": {
+                "total_credits": week_usage.get("total_credits", 0),
+                "total_requests": week_usage.get("total_requests", 0),
+                "endpoint_breakdown": week_usage.get("endpoint_breakdown", {}),
+            },
+            "day": {
+                "total_credits": day_usage.get("total_credits", 0),
+                "total_requests": day_usage.get("total_requests", 0),
+                "endpoint_breakdown": day_usage.get("endpoint_breakdown", {}),
+            },
+        },
+        "quota": await _usage.check_quota(org_name, {"credits_per_month": 5000}),
     }

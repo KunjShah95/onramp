@@ -54,6 +54,7 @@ CREDIT_COSTS = {
     "learn": 5,
     "explore": 10,
     "analyze": 10,
+    "pr_review": 15,
 }
 
 

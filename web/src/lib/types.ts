@@ -103,3 +103,12 @@ export interface QAResult {
 export interface IndexResult {
   index_id: string
 }
+
+export interface HistoryTurn {
+  id: string
+  question: string
+  answer: string
+  created_at: string
+  index_id?: string
+  user_id?: string
+}

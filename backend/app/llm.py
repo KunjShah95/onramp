@@ -243,5 +243,107 @@ class LLMRouter:
         return resp.content[0].text
 
 
+    # ── Streaming ────────────────────────────────────────────────────────────
+
+    async def chat_stream(self, prompt: str, system: str = None, max_tokens: int = 2000):
+        """Stream a response token-by-token with provider fallback.
+
+        Fallback only applies *before* the first token of a provider is emitted;
+        once a provider starts streaming we commit to it (can't cleanly resume
+        a half-emitted answer on another provider).
+        """
+        errors = []
+        for provider in self.fallback_chain:
+            config = self.providers[provider]
+            if not config["api_key"]:
+                continue
+            yielded = False
+            try:
+                async for token in self._stream_provider(provider, prompt, system, max_tokens):
+                    yielded = True
+                    yield token
+                if self.current_provider != provider:
+                    logger.info(f"Switched to provider (stream): {provider.value}")
+                    self.current_provider = provider
+                return
+            except Exception as e:
+                if yielded:
+                    raise
+                err_msg = f"{provider.value} failed: {str(e)}"
+                logger.warning(err_msg)
+                errors.append(err_msg)
+        raise RuntimeError(f"All LLM providers exhausted (stream). Errors: {'; '.join(errors)}")
+
+    async def _stream_provider(self, provider, prompt, system, max_tokens):
+        config = self.providers[provider]
+        ptype = config["type"]
+        if ptype == "openai_sdk":
+            async for t in self._stream_openai_sdk(provider, config, prompt, system, max_tokens):
+                yield t
+        elif ptype == "gemini_sdk":
+            async for t in self._stream_gemini_sdk(config, prompt, system, max_tokens):
+                yield t
+        elif ptype == "anthropic_sdk":
+            async for t in self._stream_anthropic_sdk(config, prompt, system, max_tokens):
+                yield t
+        else:
+            raise NotImplementedError(f"Provider type {ptype} not implemented")
+
+    async def _stream_openai_sdk(self, provider, config, prompt, system, max_tokens):
+        from openai import AsyncOpenAI
+
+        default_headers = None
+        if provider == ModelProvider.OPENROUTER:
+            default_headers = {
+                "HTTP-Referer": "https://github.com/KunjShah95/codegenome",
+                "X-Title": "CodeGenome",
+            }
+        client = AsyncOpenAI(
+            api_key=config["api_key"],
+            base_url=config["base_url"],
+            default_headers=default_headers,
+            timeout=60.0,
+        )
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        stream = await client.chat.completions.create(
+            model=config["model"], messages=messages, max_tokens=max_tokens, stream=True
+        )
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+    async def _stream_gemini_sdk(self, config, prompt, system, max_tokens):
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=config["api_key"])
+        gen_config = types.GenerateContentConfig(system_instruction=system) if system else None
+        stream = await client.aio.models.generate_content_stream(
+            model=config["model"], contents=prompt, config=gen_config
+        )
+        async for chunk in stream:
+            if getattr(chunk, "text", None):
+                yield chunk.text
+
+    async def _stream_anthropic_sdk(self, config, prompt, system, max_tokens):
+        from anthropic import AsyncAnthropic
+
+        client = AsyncAnthropic(api_key=config["api_key"], timeout=60.0)
+        kwargs = {
+            "model": config["model"],
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if system:
+            kwargs["system"] = system
+        async with client.messages.stream(**kwargs) as stream:
+            async for text in stream.text_stream:
+                yield text
+
+
 # For backward compatibility, maintain LLMClient as an alias
 LLMClient = LLMRouter

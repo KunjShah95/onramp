@@ -5,6 +5,7 @@ import type {
   IssueGuide,
   QAResult,
   IndexResult,
+  HistoryTurn,
 } from './types'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
@@ -105,6 +106,52 @@ export async function askQuestion(
     index_id: indexId,
     question,
   })
+}
+
+/**
+ * Stream an answer token-by-token over SSE. Calls onToken for each token.
+ * Returns when the stream completes ([DONE]) or aborts via the signal.
+ */
+export async function askQuestionStream(
+  indexId: string,
+  question: string,
+  onToken: (token: string) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/ask/query/stream`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ index_id: indexId, question }),
+    signal,
+  })
+  if (res.status === 401) throw new Error('Authentication required. Please sign in again.')
+  if (res.status === 429) throw new Error('Quota exceeded. Upgrade your plan or try again next cycle.')
+  if (!res.ok || !res.body) throw new Error(`API error ${res.status}`)
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const events = buffer.split('\n\n')
+    buffer = events.pop() ?? ''
+    for (const evt of events) {
+      const line = evt.trim()
+      if (!line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (payload === '[DONE]') return
+      try {
+        const parsed = JSON.parse(payload)
+        if (parsed.error) throw new Error(parsed.error)
+        if (parsed.token) onToken(parsed.token)
+      } catch {
+        // ignore malformed keep-alive lines
+      }
+    }
+  }
 }
 
 // ─── Dashboard endpoints ──────────────────────────────────────────────────
@@ -547,6 +594,18 @@ export async function listPricing(): Promise<{ tiers: PricingTier[] }> {
   return get<{ tiers: PricingTier[] }>(`${API_BASE}/billing/pricing`)
 }
 
+export async function createCheckoutSession(data: {
+  team_id: string
+  tier: string
+  success_url: string
+  cancel_url: string
+}): Promise<{ url: string; session_id: string }> {
+  return request<{ url: string; session_id: string }>(
+    `${API_BASE}/billing/checkout`,
+    data
+  )
+}
+
 // ─── API Keys ─────────────────────────────────────────────────────────────
 
 export interface ApiKey {
@@ -623,6 +682,31 @@ export async function getQuota(
 
 export async function listTiers(): Promise<{ tiers: any[] }> {
   return get<{ tiers: any[] }>(`${API_BASE}/ai/tiers`)
+}
+
+// ─── Ask / Q&A History ─────────────────────────────────────────────────────
+
+export async function getAskHistory(
+  indexId: string,
+  limit = 20
+): Promise<{ history: HistoryTurn[] }> {
+  return get<{ history: HistoryTurn[] }>(
+    `${API_BASE}/ask/history/${encodeURIComponent(indexId)}?limit=${limit}`
+  )
+}
+
+export async function clearAskHistory(
+  indexId: string
+): Promise<{ cleared: number }> {
+  const res = await fetch(
+    `${API_BASE}/ask/history/${encodeURIComponent(indexId)}`,
+    { method: 'DELETE', headers: authHeaders() }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────

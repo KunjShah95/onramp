@@ -8,6 +8,7 @@ from app.agents.onboarding_report_generator import OnboardingReportGenerator
 from app.agents.silent_pair_programming import SilentPairProgramming
 from app.agents.pattern_recognition import PatternRecognition
 from app.agents.regression_test_generator import RegressionTestGenerator
+from app.agents.pr_review import PRReviewAgent
 
 __all__ = [
     "BaseAgent",
@@ -20,4 +21,5 @@ __all__ = [
     "SilentPairProgramming",
     "PatternRecognition",
     "RegressionTestGenerator",
+    "PRReviewAgent",
 ]
