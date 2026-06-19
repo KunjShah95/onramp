@@ -1,4 +1,5 @@
 import { useAuth } from '../../context/AuthContext'
+import NotificationBell from './NotificationBell'
 
 export default function TopBar() {
   const { user } = useAuth()
@@ -6,10 +7,11 @@ export default function TopBar() {
   return (
     <header className="h-14 border-b border-white/10 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6">
       <div className="text-sm text-text-secondary" />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {user && (
           <>
-            <span className="text-xs text-text-muted hidden sm:block">
+            <NotificationBell />
+            <span className="text-xs text-text-muted hidden sm:block mr-1">
               {user.displayName || user.email}
             </span>
             <div className="w-7 h-7 rounded-full bg-accent-from/20 flex items-center justify-center text-xs text-accent-from font-medium">

@@ -24,6 +24,11 @@ from app.services.task_service import (
 )
 from app.api.v1.auth import get_current_user
 from app.agents import PRReviewAgent
+from app.services.notification_service import (
+    notify_task_assigned,
+    notify_task_reviewed,
+    notify_task_completed,
+)
 
 logger = logging.getLogger("codeflow.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
@@ -224,6 +229,13 @@ async def assign_task_endpoint(
     """Assign a task to a trainee."""
     try:
         task = await assign_task(task_id, request.assignee_id, user.get("uid", ""))
+        # Notify the assignee (fire-and-forget — never block on notifications)
+        try:
+            created_by_name = user.get("name") or user.get("email", "A senior")
+            if task:
+                await notify_task_assigned(task, request.assignee_id, assigned_by_name=created_by_name)
+        except Exception:
+            logger.exception("Failed to send assignment notification")
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -317,6 +329,13 @@ async def review_task_endpoint(
             approve=request.approve,
             needs_product=request.needs_product,
         )
+        # Notify the assignee about review results (fire-and-forget)
+        try:
+            reviewer_name = user.get("name") or user.get("email", "A senior")
+            if task:
+                await notify_task_reviewed(task, reviewer_name=reviewer_name, approved=request.approve)
+        except Exception:
+            logger.exception("Failed to send review notification")
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -344,6 +363,12 @@ async def complete_task_endpoint(
     """Mark task as completed — modules unlocked."""
     try:
         task = await complete_task(task_id, user.get("uid", ""))
+        # Notify the assignee (fire-and-forget)
+        try:
+            if task:
+                await notify_task_completed(task)
+        except Exception:
+            logger.exception("Failed to send completion notification")
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

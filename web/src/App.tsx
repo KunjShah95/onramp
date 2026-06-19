@@ -29,6 +29,7 @@ const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 const DocsPage = lazy(() => import('./pages/DocsPage'))
 const TasksPage = lazy(() => import('./pages/TasksPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
 export default function App() {
   return (
@@ -63,6 +64,7 @@ export default function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pr-describe" element={<PRDescriptionPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profile" element={<Profile />} />
                 </Route>
               </Route>

@@ -1058,6 +1058,72 @@ export async function getUserProgress(userId: string, teamId?: string): Promise<
   return get<UserProgress>(`${API_BASE}/tasks/progress/user/${userId}${qs}`)
 }
 
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+export interface CodeFlowNotification {
+  notification_id: string
+  user_id: string
+  type: string
+  title: string
+  message: string
+  full_message?: string
+  metadata: Record<string, any>
+  team_id: string
+  read: boolean
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse {
+  notifications: CodeFlowNotification[]
+  count: number
+}
+
+export interface UnreadCountResponse {
+  unread_count: number
+}
+
+export async function listNotifications(params?: {
+  unread_only?: boolean
+  limit?: number
+  type_filter?: string
+}): Promise<NotificationsResponse> {
+  const query = new URLSearchParams()
+  if (params?.unread_only) query.set('unread_only', 'true')
+  if (params?.limit) query.set('limit', String(params.limit))
+  if (params?.type_filter) query.set('type_filter', params.type_filter)
+  const qs = query.toString()
+  return get<NotificationsResponse>(`${API_BASE}/notifications${qs ? '?' + qs : ''}`)
+}
+
+export async function getUnreadCount(): Promise<UnreadCountResponse> {
+  return get<UnreadCountResponse>(`${API_BASE}/notifications/unread-count`)
+}
+
+export async function markNotificationsRead(notificationIds: string[]): Promise<{ marked_count: number }> {
+  return request<{ marked_count: number }>(`${API_BASE}/notifications/mark-read`, { notification_ids: notificationIds })
+}
+
+export async function markAllNotificationsRead(): Promise<{ marked_count: number }> {
+  return request<{ marked_count: number }>(`${API_BASE}/notifications/mark-all-read`, {})
+}
+
+export async function deleteNotification(notificationId: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/notifications/${notificationId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+export async function clearReadNotifications(): Promise<{ deleted_count: number }> {
+  return request<{ deleted_count: number }>(`${API_BASE}/notifications/clear-read`, {})
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthRegisterResponse {
