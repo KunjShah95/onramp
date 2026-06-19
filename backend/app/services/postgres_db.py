@@ -6,7 +6,7 @@ Replaces Firestore with PostgreSQL while maintaining the same interface
 import os
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -170,13 +170,13 @@ class PostgresStorage:
         """Update a document"""
         async def _update(session: AsyncSession) -> dict:
             if collection == "users":
-                stmt = update(User).where(User.id == doc_id).values(**data, updated_at=datetime.utcnow())
+                stmt = update(User).where(User.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
                 await session.execute(stmt)
                 result = await session.get(User, doc_id)
                 return result.to_dict() if result else None
 
             elif collection == "teams":
-                stmt = update(Team).where(Team.id == doc_id).values(**data, updated_at=datetime.utcnow())
+                stmt = update(Team).where(Team.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
                 await session.execute(stmt)
                 result = await session.execute(
                     select(Team).options(selectinload(Team.members)).where(Team.id == doc_id)
@@ -212,7 +212,7 @@ class PostgresStorage:
                 stmt = update(DynamicDocument).where(
                     DynamicDocument.id == doc_id, 
                     DynamicDocument.collection == collection
-                ).values(data=data, updated_at=datetime.utcnow())
+                ).values(data=data, updated_at=datetime.now(timezone.utc))
                 await session.execute(stmt)
                 result = await session.get(DynamicDocument, (doc_id, collection))
                 return result.to_dict() if result else None
@@ -380,7 +380,7 @@ class InMemoryStorage:
         return self._data.setdefault(collection, {})
 
     async def create_document(self, collection: str, doc_id: str, data: dict) -> dict:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         record = {**data, "id": doc_id}
         record.setdefault("created_at", now)
         record.setdefault("updated_at", now)
@@ -398,7 +398,7 @@ class InMemoryStorage:
         if rec is None:
             return None
         rec.update(data)
-        rec["updated_at"] = datetime.utcnow().isoformat()
+        rec["updated_at"] = datetime.now(timezone.utc).isoformat()
         return dict(rec)
 
     async def delete_document(self, collection: str, doc_id: str) -> None:

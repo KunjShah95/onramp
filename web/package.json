@@ -10,7 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/d3-drag": "^3.0.7",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
     "clsx": "^2.1.1",
+    "d3-drag": "^3.0.0",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
     "firebase": "^11.1.0",
     "framer-motion": "^11.18.2",
     "hls.js": "^1.6.16",

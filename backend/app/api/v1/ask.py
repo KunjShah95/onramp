@@ -20,6 +20,7 @@ class QueryRequest(BaseModel):
     index_id: str
     question: str
     use_memory: bool = True
+    mode: str = "normal"
 
 
 @router.post("/index")
@@ -54,7 +55,7 @@ async def query_repo(
     memory = await _get_memory(user_id, request.index_id, request.question, request.use_memory)
 
     try:
-        answer = await qa.ask(request.index_id, request.question, memory)
+        answer = await qa.ask(request.index_id, request.question, memory, mode=request.mode)
         await _conversation.add_turn(user_id, request.index_id, request.question, answer)
         return {"answer": answer}
     except Exception as e:
@@ -78,7 +79,7 @@ async def query_repo_stream(
     async def event_gen():
         full_answer = ""
         try:
-            async for token in qa.ask_stream(request.index_id, request.question, memory):
+            async for token in qa.ask_stream(request.index_id, request.question, memory, mode=request.mode):
                 full_answer += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
             yield "data: [DONE]\n\n"

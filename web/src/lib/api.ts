@@ -16,7 +16,7 @@ export function setAuthToken(token: string | null) {
   _idToken = token
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (_idToken) {
     headers['Authorization'] = `Bearer ${_idToken}`
@@ -116,12 +116,13 @@ export async function askQuestionStream(
   indexId: string,
   question: string,
   onToken: (token: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  mode: string = 'normal'
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ index_id: indexId, question }),
+    body: JSON.stringify({ index_id: indexId, question, mode }),
     signal,
   })
   if (res.status === 401) throw new Error('Authentication required. Please sign in again.')
@@ -179,24 +180,87 @@ export interface CTOService {
   status: string
 }
 
-export interface CTOResponse {
-  total_repos: number
-  onboarding_time_saved_hours: number
-  first_prs_merged: number
-  learning_paths_generated: number
-  actions: CTOAction[]
-  services: CTOService[]
-}
-
-export interface TeamMember {
+export interface CTODashboardMemberProgress {
+  user_id: string
   name: string
-  repos: number
-  analyses: number
-  contribution: string
+  role: string
+  total: number
+  completed: number
+  in_progress: number
+  pending_review: number
+  modules_unlocked: string[]
+  completion_rate: number
 }
 
-export interface TeamResponse {
-  members: TeamMember[]
+export interface CTODashboardPendingReview {
+  task_id: string
+  title: string
+  assigned_to: string | null
+  module: string
+  pr_url: string | null
+  state: string
+  created_at: string
+}
+
+export interface CTODashboardRecentActivity {
+  task_id: string
+  title: string
+  state: string
+  assigned_to: string | null
+  module: string
+  updated_at: string
+}
+
+export interface CTODashboardAction {
+  title: string
+  subtitle: string
+  severity: string
+}
+
+export interface CTODashboardResponse {
+  total_tasks: number
+  completed_tasks: number
+  in_progress_tasks: number
+  pending_review_tasks: number
+  blocked_tasks: number
+  completion_rate: number
+  total_members: number
+  total_trainees: number
+  total_milestones: number
+  unique_contributors: number
+  first_prs_merged: number
+  member_progress: CTODashboardMemberProgress[]
+  pending_reviews: CTODashboardPendingReview[]
+  recent_activity: CTODashboardRecentActivity[]
+  actions: CTODashboardAction[]
+}
+
+export interface TeamMemberProgress {
+  name: string
+  user_id: string
+  role: string
+  total_tasks: number
+  completed_tasks: number
+  in_progress_tasks: number
+  pending_review: number
+  modules_unlocked: string[]
+  completion_rate: number
+}
+
+export interface TeamAnalyticsResponse {
+  members: TeamMemberProgress[]
+}
+
+export interface RepoItem {
+  id: string
+  name: string
+  owner: string
+  status: 'analyzing' | 'ready' | 'error'
+  last_analyzed: string
+}
+
+export interface ReposResponse {
+  repos: RepoItem[]
 }
 
 export interface Milestone {
@@ -209,17 +273,6 @@ export interface Milestone {
 
 export interface RoadmapResponse {
   milestones: Milestone[]
-}
-
-export interface TaskItem {
-  id: string
-  title: string
-  status: 'pending' | 'in_progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
-}
-
-export interface TasksResponse {
-  tasks: TaskItem[]
 }
 
 export interface AnalysisData {
@@ -247,20 +300,16 @@ export async function fetchRepos(): Promise<ReposResponse> {
   return get<ReposResponse>(`${API_BASE}/repos`)
 }
 
-export async function fetchCTODashboard(): Promise<CTOResponse> {
-  return get<CTOResponse>(`${API_BASE}/dashboard/cto`)
+export async function fetchCTODashboard(): Promise<CTODashboardResponse> {
+  return get<CTODashboardResponse>(`${API_BASE}/dashboard/cto`)
 }
 
-export async function fetchTeamAnalytics(): Promise<TeamResponse> {
-  return get<TeamResponse>(`${API_BASE}/dashboard/team`)
+export async function fetchTeamAnalytics(): Promise<TeamAnalyticsResponse> {
+  return get<TeamAnalyticsResponse>(`${API_BASE}/dashboard/team`)
 }
 
 export async function fetchRoadmap(): Promise<RoadmapResponse> {
   return get<RoadmapResponse>(`${API_BASE}/roadmap`)
-}
-
-export async function fetchTasks(): Promise<TasksResponse> {
-  return get<TasksResponse>(`${API_BASE}/tasks`)
 }
 
 export async function fetchRepoAnalysis(
@@ -437,11 +486,27 @@ export async function addTeamMember(
   user: string,
   role = 'member'
 ): Promise<void> {
-  await fetch(`${API_BASE}/teams/${teamId}/members`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ user, role }),
   })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+}
+
+export async function getTeamMembers(teamId: string): Promise<{ user_id: string; name: string; role: string }[]> {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
+    method: 'GET',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
 }
 
 export async function removeTeamMember(
@@ -707,6 +772,290 @@ export async function clearAskHistory(
     throw new Error(`API error ${res.status}: ${text}`)
   }
   return res.json()
+}
+
+// ─── Module-Level Access Control ─────────────────────────────────────────
+
+export interface ModulePermission {
+  id: string
+  user_id: string
+  user_name: string
+  module: string
+  granted_by: string
+  granted_at: string
+  source: string
+}
+
+export interface TeamModulePermissionsResponse {
+  permissions: ModulePermission[]
+  modules: string[]
+  count: number
+}
+
+export interface UserModulePermissionsResponse {
+  user_id: string
+  modules: string[]
+  count: number
+}
+
+export interface ModuleAccessCheckResponse {
+  permitted: boolean
+}
+
+export async function getTeamModulePermissions(
+  teamId: string
+): Promise<TeamModulePermissionsResponse> {
+  return get<TeamModulePermissionsResponse>(
+    `${API_BASE}/teams/${teamId}/module-permissions`
+  )
+}
+
+export async function getUserModulePermissions(
+  teamId: string,
+  userId: string
+): Promise<UserModulePermissionsResponse> {
+  return get<UserModulePermissionsResponse>(
+    `${API_BASE}/teams/${teamId}/module-permissions/${userId}`
+  )
+}
+
+export async function grantModuleAccess(
+  teamId: string,
+  userId: string,
+  module: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/grant`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ user_id: userId, module }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+}
+
+export async function revokeModuleAccess(
+  teamId: string,
+  userId: string,
+  module: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/revoke`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ user_id: userId, module }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+}
+
+export async function revokeAllModuleAccess(
+  teamId: string,
+  userId: string
+): Promise<{ revoked: number }> {
+  const res = await fetch(
+    `${API_BASE}/teams/${teamId}/module-permissions/revoke-all`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ user_id: userId }),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+export async function checkModuleAccess(
+  teamId: string,
+  userId: string,
+  module: string
+): Promise<ModuleAccessCheckResponse> {
+  return get<ModuleAccessCheckResponse>(
+    `${API_BASE}/teams/${teamId}/module-permissions/check/${userId}/${module}`
+  )
+}
+
+// ─── Tasks / Workflow ─────────────────────────────────────────────────────
+
+export interface WorkflowTask {
+  task_id: string
+  team_id: string
+  created_by: string
+  assigned_to: string | null
+  title: string
+  description: string
+  module: string
+  state: string
+  priority: string
+  pr_url: string | null
+  branch: string | null
+  repo_url: string | null
+  unlock_modules: string[]
+  review_feedback: any | null
+  ai_review: AiReview | null
+  product_signoff: boolean
+  estimated_hours: number | null
+  created_at: string
+  updated_at: string
+  completed_at: string | null
+}
+
+export interface AiReviewIssue {
+  type: string
+  severity: string
+  file: string
+  line: number
+  message: string
+  suggestion: string
+}
+
+export interface AiReviewStats {
+  files_changed: number
+  additions: number
+  deletions: number
+}
+
+export interface AiReview {
+  summary: string
+  score: number
+  issues: AiReviewIssue[]
+  positives: string[]
+  recommendations: string[]
+  diff_stats: AiReviewStats
+}
+
+export interface WorkflowTasksResponse {
+  tasks: WorkflowTask[]
+  count: number
+}
+
+export interface TeamProgress {
+  total: number
+  by_state: Record<string, number>
+  completed: number
+  in_progress: number
+  pending_review: number
+  blocked: number
+}
+
+export interface UserProgress {
+  total: number
+  by_state: Record<string, number>
+  completed: number
+  in_progress: number
+  pending_review: number
+  modules_unlocked: string[]
+  completion_rate: number
+}
+
+export async function createTask(data: {
+  team_id: string
+  title: string
+  description?: string
+  module?: string
+  priority?: string
+  repo_url?: string
+  branch?: string
+  unlock_modules?: string[]
+  estimated_hours?: number
+  assigned_to?: string
+}): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks`, data)
+}
+
+export async function listTasks(params?: {
+  team_id?: string
+  assigned_to?: string
+  created_by?: string
+  state?: string
+}): Promise<WorkflowTasksResponse> {
+  const query = new URLSearchParams()
+  if (params?.team_id) query.set('team_id', params.team_id)
+  if (params?.assigned_to) query.set('assigned_to', params.assigned_to)
+  if (params?.created_by) query.set('created_by', params.created_by)
+  if (params?.state) query.set('state', params.state)
+  const qs = query.toString()
+  return get<WorkflowTasksResponse>(`${API_BASE}/tasks${qs ? '?' + qs : ''}`)
+}
+
+export async function getTask(taskId: string): Promise<WorkflowTask> {
+  return get<WorkflowTask>(`${API_BASE}/tasks/${taskId}`)
+}
+
+export async function updateTask(taskId: string, data: Partial<{
+  title: string
+  description: string
+  module: string
+  priority: string
+  repo_url: string
+  branch: string
+  unlock_modules: string[]
+  estimated_hours: number
+}>): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}`, data)
+}
+
+export async function transitionTask(taskId: string, newState: string, extra?: {
+  feedback?: any
+  pr_url?: string
+}): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/transition`, {
+    new_state: newState,
+    ...extra,
+  })
+}
+
+export async function assignTask(taskId: string, assigneeId: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/assign`, { assignee_id: assigneeId })
+}
+
+export async function startTask(taskId: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/start`, {})
+}
+
+export async function submitTask(taskId: string, prUrl: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/submit`, { pr_url: prUrl })
+}
+
+export async function reviewTask(taskId: string, data: {
+  approve: boolean
+  needs_product?: boolean
+  feedback?: any
+}): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/review`, data)
+}
+
+export async function approveTask(taskId: string, feedback?: any): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/approve`, { feedback })
+}
+
+export async function completeTask(taskId: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/complete`, {})
+}
+
+export async function cancelTask(taskId: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/cancel`, {})
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
+export async function getTeamProgress(teamId: string): Promise<TeamProgress> {
+  return get<TeamProgress>(`${API_BASE}/tasks/progress/team/${teamId}`)
+}
+
+export async function getUserProgress(userId: string, teamId?: string): Promise<UserProgress> {
+  const qs = teamId ? `?team_id=${teamId}` : ''
+  return get<UserProgress>(`${API_BASE}/tasks/progress/user/${userId}${qs}`)
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────

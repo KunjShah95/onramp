@@ -1,178 +1,360 @@
 import { Link } from 'react-router-dom'
 import ShaderBackground from '../components/ui/ShaderBackground'
+import Spotlight from '../components/ui/spotlight'
 
 export default function LandingPage() {
   return (
     <div className="text-[#FDFBF8] font-body bg-[#050505] antialiased selection:bg-[#FF8C00]/30 selection:text-[#FF8C00] relative">
-      {/* TopNavBar */}
+      {/* Floating Nav */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
         <div className="flex items-center gap-3">
           <Link to="/" className="font-display text-xl font-bold tracking-tight">CodeFlow</Link>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#explore">Product</a>
-          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#learn">Methodology</a>
+          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#features">Product</a>
+          <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#how">How it works</a>
           <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#pricing">Pricing</a>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/login" className="hidden md:block text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link>
-          <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Start Building</Link>
+          <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Get Started Free</Link>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center pt-32 pb-20 overflow-hidden">
+      {/* ── Hero ── */}
+      <section className="relative min-h-[92vh] flex items-center justify-center pt-32 pb-20 overflow-hidden">
         <ShaderBackground />
-        
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.02] z-0"></div>
+        {/* Aceternity-style spotlight in accent color */}
+        <Spotlight
+          className="-top-40 left-0 md:-top-20 md:left-60"
+          fill="#FF8C00"
+        />
+
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.02] z-0" />
+
         <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 flex flex-col items-center text-center gap-8">
+          {/* Status pill */}
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1A110D] border border-[#FF8C00]/20 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-[#FF8C00] animate-pulse"></div>
-            <span className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold">Developer Onboarding Standard</span>
+            <div className="w-2 h-2 rounded-full bg-[#FF8C00] animate-pulse" />
+            <span className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold">AI-Powered Developer Onboarding</span>
           </div>
-          
+
           <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight max-w-4xl">
-            Understand any codebase. <br/>
-            <span className="text-[#FDFBF8]/40">Ship your first PR today.</span>
+            Understand any codebase.{' '}
+            <br />
+            <span className="text-[#FDFBF8]/55">Ship your first PR today.</span>
           </h1>
-          
-          <p className="font-body text-lg md:text-xl text-[#FDFBF8]/60 max-w-2xl leading-relaxed">
-            Stop reading outdated wikis. CodeFlow directly maps your running architecture, finds critical files, and generates linear paths for any repository.
+
+          <p className="font-body text-lg md:text-xl text-[#FDFBF8]/65 max-w-2xl leading-relaxed">
+            Stop reading outdated wikis. CodeFlow maps your running architecture, finds critical files, and generates a guided learning path for any repository — in seconds.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
-            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">Deploy Your First Instance</Link>
-            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">View Documentation</Link>
+            <Link
+              to="/register"
+              className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center"
+            >
+              Analyze Your First Repo →
+            </Link>
+            <Link
+              to="/docs"
+              className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium"
+            >
+              View Documentation
+            </Link>
+          </div>
+
+          {/* Hero graph mockup — the product IS the graph */}
+          <div className="w-full max-w-3xl mt-8 rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.04]" />
+            {/* Browser chrome */}
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+              <div className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
+              <div className="w-3 h-3 rounded-full bg-[#28C840]" />
+              <div className="ml-4 flex-1 h-6 bg-[#1A110D] rounded border border-[#FDFBF8]/5 flex items-center px-3">
+                <span className="font-mono text-[11px] text-[#FDFBF8]/30">codeflow.dev/explore/vercel/next.js</span>
+              </div>
+            </div>
+            {/* Architecture graph viz */}
+            <div className="relative h-40 flex items-center justify-center">
+              {/* Center node */}
+              <div className="absolute w-14 h-14 rounded-lg border border-[#FF8C00]/50 bg-[#FF8C00]/10 flex items-center justify-center z-10">
+                <span className="text-[#FF8C00] font-mono text-[10px] font-bold">App</span>
+              </div>
+              {/* Connecting lines */}
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="300" y1="80" x2="120" y2="40" stroke="rgba(255,140,0,0.25)" strokeWidth="1" />
+                <line x1="300" y1="80" x2="480" y2="40" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
+                <line x1="300" y1="80" x2="80"  y2="120" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
+                <line x1="300" y1="80" x2="520" y2="120" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
+                <line x1="300" y1="80" x2="200" y2="135" stroke="rgba(253,251,248,0.08)" strokeWidth="1" />
+                <line x1="300" y1="80" x2="400" y2="135" stroke="rgba(253,251,248,0.08)" strokeWidth="1" />
+              </svg>
+              {/* Satellite nodes */}
+              <div className="absolute left-[13%] top-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">Auth</span>
+              </div>
+              <div className="absolute right-[13%] top-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">API</span>
+              </div>
+              <div className="absolute left-[5%] bottom-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">DB</span>
+              </div>
+              <div className="absolute right-[5%] bottom-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">Queue</span>
+              </div>
+              <div className="absolute left-[27%] bottom-[5%] w-10 h-10 rounded-lg border border-[#FDFBF8]/10 bg-[#0A0705] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/40 font-mono text-[8px]">Cache</span>
+              </div>
+              <div className="absolute right-[27%] bottom-[5%] w-10 h-10 rounded-lg border border-[#FDFBF8]/10 bg-[#0A0705] flex items-center justify-center">
+                <span className="text-[#FDFBF8]/40 font-mono text-[8px]">CDN</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-[#FDFBF8]/5 flex items-center justify-between">
+              <span className="font-mono text-[10px] text-[#FDFBF8]/30">6 services · 24 dependencies · 3 critical paths</span>
+              <span className="font-mono text-[10px] text-[#FF8C00]">● live</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* ── Used by ── */}
       <section className="py-16 border-y border-[#FDFBF8]/5 bg-[#0A0705]">
         <div className="max-w-5xl mx-auto px-6 md:px-12">
-          <p className="text-center font-mono text-[10px] text-[#FDFBF8]/40 mb-8 uppercase tracking-widest font-bold">Infrastructure Trusted By</p>
-          <div className="flex justify-center items-center gap-12 md:gap-24 opacity-30 grayscale flex-wrap">
-            <span className="font-display text-xl font-bold tracking-tight">VERCEL</span>
-            <span className="font-display text-xl font-bold tracking-tighter">Linear</span>
-            <span className="font-display text-xl font-bold italic tracking-tight">stripe</span>
-            <span className="font-display text-xl font-bold tracking-widest">RAYCAST</span>
+          <p className="text-center font-mono text-[10px] text-[#FDFBF8]/40 mb-8 uppercase tracking-widest font-bold">Designed for engineering teams that move fast</p>
+          <div className="flex justify-center items-center gap-6 flex-wrap">
+            {[
+              { label: '< 2 min', sub: 'avg onboard time' },
+              { label: '94%', sub: 'faster first PR' },
+              { label: '12+', sub: 'languages parsed' },
+              { label: 'Zero', sub: 'manual diagramming' },
+            ].map((s) => (
+              <div key={s.label} className="flex flex-col items-center px-8 py-4 bg-[#1A110D]/60 rounded-lg border border-[#FF8C00]/10">
+                <span className="font-display text-2xl font-bold text-[#FF8C00]">{s.label}</span>
+                <span className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-wider mt-1">{s.sub}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features - Agency Style (Alternating Rows instead of Card Spam) */}
-      <section id="explore" className="py-32 relative bg-[#050505]">
+      {/* ── Problem ── */}
+      <section id="features" className="py-28 bg-[#050505]">
         <div className="max-w-5xl mx-auto px-6 md:px-12">
-          
-          {/* Feature 1 */}
-          <div className="flex flex-col md:flex-row items-center gap-16 mb-32">
-            <div className="flex-1">
-              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">01 / Architecture Mapping</div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Visualize the invisible.</h2>
-              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
-                We generate dependency graphs and architecture diagrams directly from your source code. No manual diagramming required. The map is always up to date because the code is the map.
+          <div className="grid md:grid-cols-2 gap-16 items-center mb-28">
+            <div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] leading-tight mb-6">
+                New engineer. Day one.<br />
+                <span className="text-[#FDFBF8]/40">Where do they even start?</span>
+              </h2>
+              <p className="font-body text-[#FDFBF8]/55 text-lg leading-relaxed mb-8">
+                Most codebases have no map. Wikis are months out of date. Senior engineers spend their first week answering the same questions on Slack. That time costs real money and kills velocity.
               </p>
+              <div className="space-y-4">
+                {[
+                  { pain: 'Onboarding takes 2–4 weeks before first meaningful commit' },
+                  { pain: 'Architecture docs drift from reality immediately after writing' },
+                  { pain: 'Senior engineers lose 30–40% of time to context-sharing' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded border border-red-500/30 bg-red-500/5 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-red-400 text-[10px]">✕</span>
+                    </div>
+                    <p className="text-sm text-[#FDFBF8]/55 font-body">{item.pain}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex-1 w-full relative">
-              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden flex items-center justify-center shadow-2xl">
-                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.05]"></div>
-                <div className="flex gap-4 items-center z-10">
-                  <div className="w-16 h-16 rounded border border-[#FF8C00]/30 bg-[#1A110D] flex items-center justify-center">
-                    <span className="text-[#FF8C00] font-mono text-xs">Auth</span>
+            {/* Terminal: a real Slack convo dev pain */}
+            <div className="rounded-xl border border-[#FDFBF8]/8 bg-[#0A0705] overflow-hidden shadow-2xl">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[#FDFBF8]/5 bg-[#0D0906]">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#3D332D]" />
+                <span className="ml-2 font-mono text-[11px] text-[#FDFBF8]/25">#engineering-help</span>
+              </div>
+              <div className="p-5 space-y-4 font-body text-sm">
+                {[
+                  { user: 'sarah_new', color: 'text-blue-400', msg: 'where is the auth token refresh logic? I\'ve been searching for 2 hours 😅' },
+                  { user: 'alex_senior', color: 'text-green-400', msg: 'it\'s split across 3 files — middleware/auth.ts, lib/session.ts, and there\'s a util in utils/token.js. Long story.' },
+                  { user: 'sarah_new', color: 'text-blue-400', msg: 'why is it split like that?' },
+                  { user: 'alex_senior', color: 'text-green-400', msg: 'legacy reasons, the original auth was written before we moved to JWTs. I can walk you through it after standup' },
+                ].map((line, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="w-7 h-7 rounded-md bg-[#1A110D] border border-[#FDFBF8]/5 flex items-center justify-center shrink-0 font-mono text-[9px] text-[#FDFBF8]/40">
+                      {line.user.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <span className={`text-[11px] font-semibold font-mono ${line.color}`}>{line.user}</span>
+                      <p className="text-[#FDFBF8]/50 text-xs mt-0.5 leading-relaxed">{line.msg}</p>
+                    </div>
                   </div>
-                  <div className="w-8 h-[1px] bg-[#FDFBF8]/20"></div>
-                  <div className="w-16 h-16 rounded border border-[#FDFBF8]/20 bg-[#0A0705] flex items-center justify-center">
-                    <span className="text-[#FDFBF8]/60 font-mono text-xs">API</span>
-                  </div>
-                  <div className="w-8 h-[1px] bg-[#FDFBF8]/20"></div>
-                  <div className="w-16 h-16 rounded border border-[#FDFBF8]/20 bg-[#0A0705] flex items-center justify-center">
-                    <span className="text-[#FDFBF8]/60 font-mono text-xs">DB</span>
-                  </div>
+                ))}
+                <div className="pt-2 border-t border-[#FDFBF8]/5 flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-[#FDFBF8]/20">This conversation repeats 12× per week.</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Feature 2 */}
-          <div className="flex flex-col md:flex-row-reverse items-center gap-16 mb-32">
-            <div className="flex-1">
-              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">02 / Contextual Search</div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Ask questions. Get references.</h2>
-              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
-                Query your codebase in plain text. Locate authentication logic, billing webhook handlers, or component registries instantly. Every answer includes direct file paths and line numbers.
-              </p>
-            </div>
-            <div className="flex-1 w-full relative">
-              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl flex flex-col justify-center gap-4">
-                 <div className="bg-[#1A110D] border border-[#FDFBF8]/5 p-4 rounded text-sm text-[#FDFBF8]/80 font-body self-start w-[85%]">
-                   Where is the webhook signature verified?
-                 </div>
-                 <div className="bg-[#2A1D16] border border-[#FF8C00]/20 p-4 rounded text-sm text-[#FDFBF8] font-body self-end w-[90%]">
-                   The signature is validated in <code className="font-mono text-[#FF8C00] text-xs mx-1">src/api/webhooks.ts</code> on line 42 using the SDK.
-                 </div>
+          {/* Bento product grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            {/* Large: dependency graph */}
+            <div className="md:col-span-2 rounded-2xl border border-[#FDFBF8]/8 bg-[#0A0705] overflow-hidden group hover:border-[#FF8C00]/20 transition-colors duration-300 shadow-xl">
+              <div className="p-5 border-b border-[#FDFBF8]/5 flex items-center justify-between">
+                <div>
+                  <p className="text-[#FDFBF8] font-body text-sm font-semibold">Dependency Graph</p>
+                  <p className="text-[#FDFBF8]/40 font-mono text-[11px] mt-0.5">vercel/next.js · 847 files</p>
+                </div>
+                <span className="font-mono text-[10px] text-[#FF8C00] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF8C00] animate-pulse inline-block" />live
+                </span>
+              </div>
+              <div className="p-5 relative h-52">
+                {/* Graph nodes */}
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 480 200" fill="none">
+                  {/* Edges */}
+                  <line x1="240" y1="100" x2="100" y2="50"  stroke="rgba(255,140,0,0.3)"  strokeWidth="1.5" />
+                  <line x1="240" y1="100" x2="380" y2="50"  stroke="rgba(253,251,248,0.1)" strokeWidth="1.5" />
+                  <line x1="240" y1="100" x2="60"  y2="140" stroke="rgba(253,251,248,0.1)" strokeWidth="1.5" />
+                  <line x1="240" y1="100" x2="420" y2="140" stroke="rgba(253,251,248,0.1)" strokeWidth="1.5" />
+                  <line x1="240" y1="100" x2="170" y2="170" stroke="rgba(253,251,248,0.07)" strokeWidth="1" />
+                  <line x1="240" y1="100" x2="310" y2="170" stroke="rgba(253,251,248,0.07)" strokeWidth="1" />
+                  <line x1="100" y1="50"  x2="60"  y2="140" stroke="rgba(253,251,248,0.05)" strokeWidth="1" />
+                  <line x1="380" y1="50"  x2="420" y2="140" stroke="rgba(253,251,248,0.05)" strokeWidth="1" />
+                  {/* Center node */}
+                  <rect x="215" y="78" width="50" height="44" rx="8" fill="rgba(255,140,0,0.12)" stroke="rgba(255,140,0,0.5)" strokeWidth="1.5" />
+                  <text x="240" y="105" textAnchor="middle" fill="#FF8C00" fontSize="9" fontFamily="monospace" fontWeight="600">App</text>
+                  {/* Satellite nodes */}
+                  <rect x="74"  y="32"  width="52" height="36" rx="6" fill="#1A110D" stroke="rgba(253,251,248,0.15)" strokeWidth="1" />
+                  <text x="100" y="54"  textAnchor="middle" fill="rgba(253,251,248,0.55)" fontSize="8" fontFamily="monospace">Auth</text>
+                  <rect x="354" y="32"  width="52" height="36" rx="6" fill="#1A110D" stroke="rgba(253,251,248,0.15)" strokeWidth="1" />
+                  <text x="380" y="54"  textAnchor="middle" fill="rgba(253,251,248,0.55)" fontSize="8" fontFamily="monospace">Router</text>
+                  <rect x="34"  y="122" width="52" height="36" rx="6" fill="#1A110D" stroke="rgba(253,251,248,0.1)" strokeWidth="1" />
+                  <text x="60"  y="144" textAnchor="middle" fill="rgba(253,251,248,0.4)"  fontSize="8" fontFamily="monospace">DB</text>
+                  <rect x="394" y="122" width="52" height="36" rx="6" fill="#1A110D" stroke="rgba(253,251,248,0.1)" strokeWidth="1" />
+                  <text x="420" y="144" textAnchor="middle" fill="rgba(253,251,248,0.4)"  fontSize="8" fontFamily="monospace">Queue</text>
+                  <rect x="144" y="155" width="52" height="32" rx="6" fill="#0A0705" stroke="rgba(253,251,248,0.07)" strokeWidth="1" />
+                  <text x="170" y="175" textAnchor="middle" fill="rgba(253,251,248,0.3)"  fontSize="7" fontFamily="monospace">Cache</text>
+                  <rect x="284" y="155" width="52" height="32" rx="6" fill="#0A0705" stroke="rgba(253,251,248,0.07)" strokeWidth="1" />
+                  <text x="310" y="175" textAnchor="middle" fill="rgba(253,251,248,0.3)"  fontSize="7" fontFamily="monospace">CDN</text>
+                </svg>
+              </div>
+              <div className="px-5 py-3 border-t border-[#FDFBF8]/5 grid grid-cols-3 gap-4">
+                {[['6', 'services'], ['24', 'dep edges'], ['3', 'critical paths']].map(([n, l]) => (
+                  <div key={l}>
+                    <span className="font-display text-base font-bold text-[#FDFBF8]">{n}</span>
+                    <span className="font-mono text-[10px] text-[#FDFBF8]/35 ml-1.5">{l}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
 
-          {/* Feature 3 */}
-          <div className="flex flex-col md:flex-row items-center gap-16">
-            <div className="flex-1">
-              <div className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold mb-4">03 / Guided Learning</div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-[#FDFBF8] mb-6 leading-tight">Structured engineering paths.</h2>
-              <p className="font-body text-[#FDFBF8]/60 leading-relaxed text-lg">
-                Transform new hires into productive contributors. We generate sequential interactive tutorials based on your actual source code, guiding developers from environment setup to their first pull request.
-              </p>
-            </div>
-            <div className="flex-1 w-full relative">
-              <div className="aspect-square md:aspect-video rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl flex items-center justify-center">
-                <div className="w-full max-w-sm">
-                  <div className="flex items-center gap-4 mb-6 opacity-50">
-                    <div className="w-6 h-6 rounded-full border border-[#FDFBF8]/20 flex items-center justify-center text-[10px] text-[#FDFBF8]/40 font-mono">1</div>
-                    <div className="text-sm font-body text-[#FDFBF8]/40">Environment Setup</div>
+            {/* Tall right col: two stacked */}
+            <div className="flex flex-col gap-4">
+
+              {/* Ask codebase */}
+              <div className="rounded-2xl border border-[#FDFBF8]/8 bg-[#0A0705] overflow-hidden group hover:border-[#FF8C00]/20 transition-colors duration-300 flex-1">
+                <div className="p-4 border-b border-[#FDFBF8]/5">
+                  <p className="text-[#FDFBF8] font-body text-sm font-semibold">Ask Codebase</p>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="bg-[#1A110D] rounded-lg px-3 py-2 text-[11px] text-[#FDFBF8]/60 font-body">
+                    Where is rate limiting applied?
                   </div>
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-6 h-6 rounded-full border border-[#FF8C00]/50 bg-[#FF8C00]/10 flex items-center justify-center text-[10px] text-[#FF8C00] font-mono">2</div>
-                    <div className="text-sm font-body text-[#FDFBF8]">Core Services</div>
-                  </div>
-                  <div className="flex items-center gap-4 opacity-50">
-                    <div className="w-6 h-6 rounded-full border border-[#FDFBF8]/20 flex items-center justify-center text-[10px] text-[#FDFBF8]/40 font-mono">3</div>
-                    <div className="text-sm font-body text-[#FDFBF8]/40">First Issue</div>
+                  <div className="bg-[#2A1D16] border border-[#FF8C00]/15 rounded-lg px-3 py-2 text-[11px] text-[#FDFBF8]/80 font-body leading-relaxed">
+                    <code className="text-[#FF8C00] font-mono">middleware/rateLimit.ts:18</code>
+                    <span className="text-[#FDFBF8]/50"> — applied per-IP using Redis sliding window.</span>
                   </div>
                 </div>
               </div>
+
+              {/* PR Describe */}
+              <div className="rounded-2xl border border-[#FDFBF8]/8 bg-[#0A0705] overflow-hidden group hover:border-[#FF8C00]/20 transition-colors duration-300 flex-1">
+                <div className="p-4 border-b border-[#FDFBF8]/5">
+                  <p className="text-[#FDFBF8] font-body text-sm font-semibold">PR Description</p>
+                </div>
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">+142</span>
+                    <span className="text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">−31</span>
+                    <span className="text-[10px] font-mono text-[#FDFBF8]/30">4 files</span>
+                  </div>
+                  <p className="text-[11px] text-[#FF8C00] font-mono font-semibold">feat: add Redis-backed session store</p>
+                  <p className="text-[10px] text-[#FDFBF8]/45 font-body leading-relaxed">Replaces in-memory session storage with Redis. Fixes session loss on server restart. Tested with 10k concurrent users.</p>
+                </div>
+              </div>
             </div>
-          </div>
 
+            {/* Bottom row: two cells */}
+            <div className="rounded-2xl border border-[#FDFBF8]/8 bg-[#0A0705] p-5 group hover:border-[#FF8C00]/20 transition-colors duration-300">
+              <p className="text-[#FDFBF8] font-body text-sm font-semibold mb-3">Critical Files</p>
+              <div className="space-y-2">
+                {[
+                  { file: 'auth/middleware.ts', badge: 'entry point', hot: true },
+                  { file: 'lib/db.ts',          badge: '14 callers', hot: false },
+                  { file: 'api/payments.ts',    badge: 'critical',   hot: false },
+                ].map((f) => (
+                  <div key={f.file} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-[11px] ${f.hot ? 'border-[#FF8C00]/25 bg-[#FF8C00]/5' : 'border-[#FDFBF8]/5 bg-[#1A110D]/30'}`}>
+                    <code className={`font-mono ${f.hot ? 'text-[#FF8C00]' : 'text-[#FDFBF8]/50'}`}>{f.file}</code>
+                    <span className="text-[#FDFBF8]/30 font-mono text-[9px]">{f.badge}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 rounded-2xl border border-[#FDFBF8]/8 bg-[#0A0705] p-5 group hover:border-[#FF8C00]/20 transition-colors duration-300">
+              <p className="text-[#FDFBF8] font-body text-sm font-semibold mb-3">First Issue Path</p>
+              <div className="flex items-center gap-0">
+                {[
+                  { label: 'Clone & run', done: true },
+                  { label: 'Read auth flow', done: true },
+                  { label: 'Find issue #847', active: true },
+                  { label: 'Open PR', done: false },
+                ].map((s, i, arr) => (
+                  <div key={s.label} className="flex items-center flex-1 min-w-0">
+                    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-mono shrink-0 ${s.active ? 'bg-[#FF8C00]/15 border border-[#FF8C00]/50 text-[#FF8C00]' : s.done ? 'bg-[#FF8C00] text-[#3D1C00]' : 'border border-[#FDFBF8]/15 text-[#FDFBF8]/25'}`}>
+                        {s.done ? '✓' : i + 1}
+                      </div>
+                      <span className={`font-mono text-[9px] text-center leading-tight px-1 ${s.active ? 'text-[#FF8C00]' : s.done ? 'text-[#FDFBF8]/50' : 'text-[#FDFBF8]/25'}`}>{s.label}</span>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={`h-px w-full mx-1 mb-5 ${s.done ? 'bg-[#FF8C00]/30' : 'bg-[#FDFBF8]/8'}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
       </section>
 
-      {/* Social Proof Quote */}
-      <section className="py-24 border-y border-[#FDFBF8]/5 bg-[#0A0705] relative overflow-hidden text-center">
-        <div className="max-w-4xl mx-auto px-6 relative z-10">
-          <h2 className="font-display text-2xl md:text-3xl font-medium text-[#FDFBF8] leading-relaxed mb-8">
-            "Before CodeFlow, onboarding consumed our senior engineers for weeks. Now, hires ship to production on day two without asking a single architectural question."
-          </h2>
-          <div className="flex flex-col items-center justify-center gap-2">
-            <div className="font-bold text-[#FDFBF8] font-body text-sm">Manu Arora</div>
-            <div className="text-xs text-[#FDFBF8]/40 font-mono uppercase tracking-widest">VP of Engineering, Aceternity</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="py-32 bg-[#050505] text-center">
-        <div className="max-w-3xl mx-auto px-6">
+      {/* ── Bottom CTA ── */}
+      <section className="py-32 bg-[#050505] text-center relative overflow-hidden">
+        <Spotlight className="-top-40 left-1/2 -translate-x-1/2" fill="#FF8C00" />
+        <div className="relative z-10 max-w-3xl mx-auto px-6">
           <h2 className="font-display text-4xl md:text-5xl font-bold text-[#FDFBF8] mb-6 tracking-tight">
-            Standardize your onboarding.
+            From repo to ready — in minutes.
           </h2>
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">Deploy Now</Link>
-            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">Talk to Sales</Link>
+          <p className="font-body text-[#FDFBF8]/55 text-lg mb-10 max-w-xl mx-auto">
+            Stop losing senior engineers to onboarding. Let CodeFlow handle it.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">
+              Analyze Your First Repo →
+            </Link>
+            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">
+              Talk to Sales
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="bg-[#050505] border-t border-[#FDFBF8]/5">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12 px-6 md:px-12 py-16 max-w-5xl mx-auto">
           <div className="col-span-2 md:col-span-1">
@@ -182,25 +364,23 @@ export default function LandingPage() {
           <div>
             <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Product</h3>
             <ul className="flex flex-col gap-3">
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#explore">Architecture</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#learn">Learning</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#pricing">Pricing</a></li>
+              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#features">Features</a></li>
+              <Link to="/pricing" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Pricing</Link>
+              <Link to="/changelog" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Changelog</Link>
             </ul>
           </div>
           <div>
             <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Resources</h3>
             <ul className="flex flex-col gap-3">
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Documentation</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">API Reference</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">GitHub</a></li>
+              <li><Link to="/docs" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Documentation</Link></li>
+              <li><Link to="/docs" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">API Reference</Link></li>
             </ul>
           </div>
           <div>
             <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Company</h3>
             <ul className="flex flex-col gap-3">
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">About</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Careers</a></li>
-              <li><a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#">Blog</a></li>
+              <li><Link to="/login" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link></li>
+              <li><Link to="/register" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Sign up</Link></li>
             </ul>
           </div>
         </div>

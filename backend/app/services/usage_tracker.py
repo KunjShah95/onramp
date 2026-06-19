@@ -3,7 +3,7 @@ Usage Tracker Service - PostgreSQL backend
 Tracks API usage for billing and analytics
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
@@ -128,7 +128,7 @@ class UsageTracker:
 
     async def get_usage(self, org_name: str, period: Optional[str] = None) -> dict:
         """Return usage for an org (team) over a period."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if period == "month":
             start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         elif period == "day":

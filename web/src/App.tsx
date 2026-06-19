@@ -25,6 +25,10 @@ const PlaybooksPage = lazy(() => import('./pages/PlaybooksPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
+const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
+const DocsPage = lazy(() => import('./pages/DocsPage'))
+const TasksPage = lazy(() => import('./pages/TasksPage'))
 
 export default function App() {
   return (
@@ -37,6 +41,8 @@ export default function App() {
               {/* Public routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/changelog" element={<ChangelogPage />} />
+              <Route path="/docs" element={<DocsPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -55,6 +61,8 @@ export default function App() {
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/api-keys" element={<ApiKeysPage />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/pr-describe" element={<PRDescriptionPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
                   <Route path="/profile" element={<Profile />} />
                 </Route>
               </Route>

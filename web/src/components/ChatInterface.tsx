@@ -9,8 +9,10 @@ interface Props {
   onSend: (
     message: string,
     onToken: (token: string) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    mode?: string
   ) => Promise<void>
+  mode?: string
   placeholder?: string
   /** Change this value to restore a historical conversation */
   restoreKey?: number
@@ -34,7 +36,7 @@ const EXAMPLE_MESSAGES: Message[] = [
   },
 ]
 
-export default function ChatInterface({ onSend, placeholder = 'Ask a question...', restoreKey, restoreMessages, appendKey, appendMessages }: Props) {
+export default function ChatInterface({ onSend, mode, placeholder = 'Ask a question...', restoreKey, restoreMessages, appendKey, appendMessages }: Props) {
   const [messages, setMessages] = useState<Message[]>(EXAMPLE_MESSAGES)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -124,7 +126,7 @@ export default function ChatInterface({ onSend, placeholder = 'Ask a question...
           }
           return next
         })
-      }, controller.signal)
+      }, controller.signal, mode)
     } catch (err) {
       // If the user intentionally stopped, leave partial content as-is
       if (err instanceof DOMException && err.name === 'AbortError') {

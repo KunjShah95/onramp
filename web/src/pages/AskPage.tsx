@@ -29,6 +29,9 @@ export default function AskPage() {
     { question: string; answer: string }[] | undefined
   >(undefined)
 
+  // Roast mode toggle
+  const [roastMode, setRoastMode] = useState(false)
+
   // ── Load history when indexId changes ─────────────────────────────────
   useEffect(() => {
     if (!indexId) {
@@ -84,13 +87,14 @@ export default function AskPage() {
     async (
       question: string,
       onToken: (token: string) => void,
-      signal?: AbortSignal
+      signal?: AbortSignal,
+      mode?: string
     ): Promise<void> => {
       if (!indexId) {
         onToken('Please index a repository first.')
         return
       }
-      await askQuestionStream(indexId, question, onToken, signal)
+      await askQuestionStream(indexId, question, onToken, signal, mode ?? 'normal')
       // Refresh history after a successful answer (fire-and-forget)
       refreshHistory()
     },
@@ -196,12 +200,35 @@ export default function AskPage() {
               {historyVisible ? 'chevron_right' : 'history'}
             </span>
           </button>
+
+          {/* Roast mode toggle */}
+          <div className="absolute right-8 top-4 z-10 flex items-center gap-2">
+            <button
+              onClick={() => setRoastMode((v) => !v)}
+              className={`
+                flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wider
+                transition-all duration-200
+                ${roastMode
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_12px_rgba(255,140,0,0.15)]'
+                  : 'bg-[#1A1512] text-[#FDFBF8]/40 border border-[#FDFBF8]/10 hover:bg-[#241912] hover:text-[#FDFBF8]/70'
+                }
+              `}
+              title={roastMode ? 'Disable Roast Mode' : 'Enable Roast Mode'}
+            >
+              <span className="material-symbols-outlined text-[13px]">
+                {roastMode ? 'local_fire_department' : 'sentiment_satisfied'}
+              </span>
+              {roastMode ? 'ROAST ACTIVE' : 'ROAST'}
+            </button>
+          </div>
+
           {indexing ? (
             <ChatAreaSkeleton />
           ) : (
             <div className="h-full min-h-[400px]">
               <ChatInterface
                 onSend={handleAsk}
+                mode={roastMode ? 'roast' : 'normal'}
                 placeholder="Ask a question..."
                 restoreKey={restoreKey}
                 restoreMessages={restoreMessages}

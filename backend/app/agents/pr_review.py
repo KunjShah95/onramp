@@ -118,6 +118,82 @@ Only include the JSON response, no extra text."""
             "diff_stats": stats,
         }
 
+    async def generate_pr_description(
+        self,
+        repo_url: str,
+        pr_number: int,
+        title: str = "",
+        branch: str = "",
+    ) -> Dict[str, Any]:
+        """Generate a human-readable PR description from a diff."""
+        diff = await self.github.get_pr_diff(repo_url, pr_number)
+        if not diff:
+            return {
+                "error": "Could not fetch PR diff",
+                "repo_url": repo_url,
+                "pr_number": pr_number,
+            }
+
+        if not self.llm:
+            stats = self._get_diff_stats(diff)
+            return {
+                "title": title or f"Pull Request #{pr_number}",
+                "summary": f"This PR modifies {stats['files_changed']} files with {stats['additions']} additions and {stats['deletions']} deletions.",
+                "changes": [],
+                "testing_notes": "Manual testing recommended.",
+                "checklist": ["Code compiles", "Tests pass", "Manual QA done"],
+                "diff_stats": stats,
+            }
+
+        stats = self._get_diff_stats(diff)
+        prompt = f"""Generate a polished PR description in JSON format based on the following diff.
+
+PR title: {title or f"Untitled PR #{pr_number}"}
+Branch: {branch or "unknown"}
+
+Diff:
+```diff
+{diff[:8000]}
+```
+
+Respond in this exact JSON format:
+{{
+  "title": "Concise PR title",
+  "summary": "2-3 sentence summary of what this PR does and why",
+  "changes": [
+    {{
+      "file": "path/to/file.py",
+      "description": "What changed in this file and why"
+    }}
+  ],
+  "testing_notes": "How to test these changes",
+  "checklist": ["Item 1", "Item 2"]
+}}
+
+Only output the JSON, no extra text."""
+
+        try:
+            result = await self._call_claude(prompt)
+            import json
+            start = result.find("{")
+            end = result.rfind("}") + 1
+            if start >= 0 and end > start:
+                parsed = json.loads(result[start:end])
+                parsed["diff_stats"] = stats
+                return parsed
+        except Exception:
+            pass
+
+        # Fallback
+        return {
+            "title": title or f"Pull Request #{pr_number}",
+            "summary": f"This PR modifies {stats['files_changed']} files with {stats['additions']} additions and {stats['deletions']} deletions.",
+            "changes": [],
+            "testing_notes": "Manual testing recommended.",
+            "checklist": ["Code compiles", "Tests pass", "Manual QA done"],
+            "diff_stats": stats,
+        }
+
     def _get_diff_stats(self, diff: str) -> Dict[str, int]:
         """Extract basic stats from diff."""
         lines = diff.split("\n")

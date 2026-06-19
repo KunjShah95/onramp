@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { analyzeArchitecture } from '../lib/api'
 import { cn } from '../lib/utils'
+import ForceGraph from '../components/ForceGraph'
 
 import type { ArchitectureResult } from '../lib/types'
 
@@ -165,30 +166,46 @@ export default function ExplorePage() {
             )}
 
             {result && !loading && (
-              <div className="w-full text-left bg-[#140D09] border border-[#FDFBF8]/10 rounded-lg p-6">
-                <h3 className="text-[#FF8C00] font-mono text-sm mb-4">Architecture Insight: {result.architecture_pattern}</h3>
-                <div className="mb-6">
-                  <h4 className="text-[#FDFBF8]/80 text-xs tracking-widest font-semibold mb-3">IDENTIFIED SERVICES</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {result.services && result.services.length > 0 ? (
-                      result.services.map((srv, idx) => (
-                        <div key={idx} className="bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 rounded px-3 py-1.5 text-sm text-[#FDFBF8]/90">
-                          <span className="font-semibold">{srv.name}</span>
-                          <p className="text-[#FDFBF8]/50 text-xs mt-1">{srv.description}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-[#FDFBF8]/50 text-xs">No distinct services identified.</span>
+              <>
+                {/* Force Graph */}
+                <div className="w-full h-[400px] mb-4 bg-[#0D0906] rounded-lg border border-[#FDFBF8]/5 overflow-hidden">
+                  <ForceGraph
+                    nodes={result.services?.map((s) => ({ id: s.name, group: s.name, files: s.files })) ?? []}
+                    edges={Object.entries(result.dependencies ?? {}).flatMap(([source, targets]) =>
+                      targets.map((target) => ({ source, target }))
                     )}
+                    onNodeClick={(node) => console.log('Node clicked:', node)}
+                  />
+                </div>
+
+                {/* Architecture insights below the graph */}
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-[#140D09] border border-[#FDFBF8]/10 rounded-lg p-4">
+                    <h3 className="text-[#FF8C00] font-mono text-sm mb-2">
+                      {result.architecture_pattern}
+                    </h3>
+                    <p className="text-[#FDFBF8]/50 text-xs">
+                      {result.services?.length ?? 0} services · {Object.keys(result.dependencies ?? {}).length} dependency edges
+                    </p>
+                  </div>
+
+                  <div className="bg-[#140D09] border border-[#FDFBF8]/10 rounded-lg p-4 col-span-2">
+                    <h4 className="text-[#FDFBF8]/80 text-xs tracking-widest font-semibold mb-2">SERVICES</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {result.services && result.services.length > 0 ? (
+                        result.services.map((srv, idx) => (
+                          <div key={idx} className="bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 rounded px-2.5 py-1 text-xs text-[#FDFBF8]/90">
+                            {srv.name}
+                            <span className="text-[#FDFBF8]/40 ml-1">({srv.files.length} files)</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-[#FDFBF8]/50 text-xs">No distinct services identified.</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <h4 className="text-[#FDFBF8]/80 text-xs tracking-widest font-semibold mb-2">DIAGRAM (MERMAID)</h4>
-                  <pre className="text-xs text-[#FDFBF8]/60 bg-[#0D0906] p-4 rounded overflow-x-auto border border-[#FDFBF8]/5">
-                    {result.architecture_diagram || 'No diagram generated.'}
-                  </pre>
-                </div>
-              </div>
+              </>
             )}
           </div>
           
