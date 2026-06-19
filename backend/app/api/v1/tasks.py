@@ -29,6 +29,7 @@ from app.services.notification_service import (
     notify_task_reviewed,
     notify_task_completed,
 )
+from app.services.slack_service import send_slack_task_notification
 
 logger = logging.getLogger("codeflow.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
@@ -234,6 +235,7 @@ async def assign_task_endpoint(
             created_by_name = user.get("name") or user.get("email", "A senior")
             if task:
                 await notify_task_assigned(task, request.assignee_id, assigned_by_name=created_by_name)
+                await send_slack_task_notification(request.assignee_id, "task_assigned", task, actor_name=created_by_name)
         except Exception:
             logger.exception("Failed to send assignment notification")
         return task
@@ -334,6 +336,10 @@ async def review_task_endpoint(
             reviewer_name = user.get("name") or user.get("email", "A senior")
             if task:
                 await notify_task_reviewed(task, reviewer_name=reviewer_name, approved=request.approve)
+                notif_type = "task_approved" if request.approve else "task_needs_changes"
+                assignee_id = task.get("assigned_to", "")
+                if assignee_id:
+                    await send_slack_task_notification(assignee_id, notif_type, task, actor_name=reviewer_name)
         except Exception:
             logger.exception("Failed to send review notification")
         return task
@@ -367,6 +373,9 @@ async def complete_task_endpoint(
         try:
             if task:
                 await notify_task_completed(task)
+                assignee_id = task.get("assigned_to", "")
+                if assignee_id:
+                    await send_slack_task_notification(assignee_id, "task_completed", task)
         except Exception:
             logger.exception("Failed to send completion notification")
         return task

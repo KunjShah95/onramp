@@ -1,5 +1,68 @@
-from typing import List, Optional
+import logging
+from typing import List, Optional, Dict, Any
 import httpx
+
+from app.services.webhook_service import get_integration_config
+from app.services.notification_service import get_preferences
+
+logger = logging.getLogger("codeflow.slack")
+
+# ── Event type mapping: notification type → webhook event name ───
+
+NOTIF_TYPE_TO_SLACK_EVENT = {
+    "task_assigned": "Task Assigned",
+    "task_started": "Task Started",
+    "task_submitted": "Task Submitted",
+    "task_reviewed": "Task Reviewed",
+    "task_approved": "Task Approved",
+    "task_needs_changes": "Changes Requested",
+    "task_completed": "Task Completed",
+    "task_cancelled": "Task Cancelled",
+    "module_granted": "Module Access Granted",
+    "team_invite": "Team Invite",
+    "system_alert": "System Alert",
+    "pr_merged": "PR Merged",
+    "milestone_reached": "Milestone Reached",
+}
+
+
+def _format_task_message(task: dict, event: str, actor_name: str = "") -> str:
+    """Format a Slack message for a task event."""
+    title = task.get("title", "Untitled")
+    module = task.get("module", "")
+    state = task.get("state", "")
+    task_id = task.get("task_id", "")
+    pr_url = task.get("pr_url", "")
+
+    header = f":memo: *{event}*"
+    lines = [header, ""]
+
+    lines.append(f"*Task:* {title}")
+    if module:
+        lines.append(f"*Module:* `{module}`")
+    if task_id:
+        lines.append(f"*ID:* `{task_id}`")
+    if state:
+        lines.append(f"*Status:* `{state}`")
+    if actor_name:
+        lines.append(f"*By:* {actor_name}")
+    if pr_url:
+        lines.append(f"*PR:* <{pr_url}|View Pull Request>")
+
+    lines.append("")
+    lines.append(":arrow_right: <https://codeflow.app/tasks/" + task_id + "|View in CodeFlow>")
+
+    return "\n".join(lines)
+
+
+def _format_module_message(module: str, source: str) -> str:
+    """Format a Slack message for a module grant event."""
+    return (
+        f":unlock: *Module Access Granted*\n\n"
+        f"You now have access to module: `{module}`\n"
+        f"*Source:* {source}\n\n"
+        f":arrow_right: <https://codeflow.app/tasks|View your tasks>"
+    )
 
 
 class SlackService:
@@ -44,3 +107,102 @@ class SlackService:
                 lines.append(f"• {r}")
 
         return "\n".join(lines)
+
+
+# ── Slack Notification Dispatch ────────────────────────────────
+
+
+async def _get_slack_config(user_id: str) -> Optional[Dict[str, str]]:
+    """Get the user's configured Slack webhook URL and channel."""
+    try:
+        config = await get_integration_config(user_id, "slack")
+        if config:
+            cfg = config.get("config", {})
+            webhook_url = cfg.get("webhook_url")
+            if webhook_url:
+                return {
+                    "webhook_url": webhook_url,
+                    "channel": cfg.get("channel", "#general"),
+                }
+    except Exception:
+        logger.exception("Failed to fetch Slack integration config for %s", user_id)
+    return None
+
+
+async def _is_slack_event_enabled(user_id: str, notif_type: str) -> bool:
+    """Check if a user has Slack notifications enabled for this event type."""
+    try:
+        prefs = await get_preferences(user_id)
+        channels = prefs.get("channels", {})
+        slack_prefs = channels.get("slack", {})
+        return slack_prefs.get(notif_type, False)
+    except Exception:
+        logger.exception("Failed to check Slack notification preferences for %s", user_id)
+    return False
+
+
+def _get_slack_event_name(notif_type: str) -> str:
+    """Map internal notification type to human-readable Slack event name."""
+    return NOTIF_TYPE_TO_SLACK_EVENT.get(notif_type, notif_type.replace("_", " ").title())
+
+
+async def send_slack_task_notification(
+    user_id: str,
+    notif_type: str,
+    task: dict,
+    actor_name: str = "",
+) -> bool:
+    """Send a Slack notification for a task event if the user has Slack enabled.
+
+    Checks the user's Slack integration config and notification preferences
+    before sending. Returns True if the message was sent successfully.
+    """
+    # 1. Check if the user has Slack notifications enabled for this event type
+    if not await _is_slack_event_enabled(user_id, notif_type):
+        return False
+
+    # 2. Get the user's Slack webhook URL and channel
+    slack_cfg = await _get_slack_config(user_id)
+    if not slack_cfg:
+        return False
+
+    # 3. Format and send the message
+    event_name = _get_slack_event_name(notif_type)
+    message = _format_task_message(task, event_name, actor_name)
+
+    slack = SlackService(slack_cfg["webhook_url"])
+    try:
+        success = await slack.post_message(message, channel=slack_cfg["channel"])
+        if success:
+            logger.info("Slack notification sent to %s for event %s", user_id, notif_type)
+        else:
+            logger.warning("Slack notification failed for %s (event: %s)", user_id, notif_type)
+        return success
+    except Exception:
+        logger.exception("Slack notification error for %s (event: %s)", user_id, notif_type)
+        return False
+
+
+async def send_slack_module_granted(
+    user_id: str,
+    module: str,
+    source: str = "manual",
+) -> bool:
+    """Send a Slack notification for a module grant."""
+    if not await _is_slack_event_enabled(user_id, "module_granted"):
+        return False
+
+    slack_cfg = await _get_slack_config(user_id)
+    if not slack_cfg:
+        return False
+
+    message = _format_module_message(module, source)
+    slack = SlackService(slack_cfg["webhook_url"])
+    try:
+        success = await slack.post_message(message, channel=slack_cfg["channel"])
+        if success:
+            logger.info("Slack module grant notification sent to %s for module %s", user_id, module)
+        return success
+    except Exception:
+        logger.exception("Slack module grant notification error for %s", user_id)
+        return False
