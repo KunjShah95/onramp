@@ -1162,6 +1162,119 @@ export async function getNotificationDefaults(): Promise<NotificationPreferences
   return get<NotificationPreferencesDefaults>(`${API_BASE}/notifications/preferences/defaults`)
 }
 
+// ─── Integrations / Webhooks ─────────────────────────────────────────────
+
+export interface Webhook {
+  webhook_id: string
+  user_id: string
+  url: string
+  events: string[]
+  secret: string
+  description: string
+  active: boolean
+  created_at: string
+  updated_at: string
+  last_success_at: string | null
+  last_failure_at: string | null
+  delivery_count: number
+  failure_count: number
+}
+
+export interface WebhooksResponse {
+  webhooks: Webhook[]
+  count: number
+}
+
+export interface IntegrationConfig {
+  id?: string
+  user_id?: string
+  integration: string
+  config: Record<string, any>
+  configured: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SupportedEventsResponse {
+  events: string[]
+  labels: Record<string, string>
+}
+
+export async function listWebhooks(): Promise<WebhooksResponse> {
+  return get<WebhooksResponse>(`${API_BASE}/integrations/webhooks`)
+}
+
+export async function createWebhook(data: {
+  url: string
+  events: string[]
+  description?: string
+}): Promise<Webhook> {
+  return request<Webhook>(`${API_BASE}/integrations/webhooks`, data)
+}
+
+export async function getWebhook(webhookId: string): Promise<Webhook> {
+  return get<Webhook>(`${API_BASE}/integrations/webhooks/${webhookId}`)
+}
+
+export async function updateWebhook(webhookId: string, data: {
+  url?: string
+  events?: string[]
+  active?: boolean
+  description?: string
+}): Promise<Webhook> {
+  return request<Webhook>(`${API_BASE}/integrations/webhooks/${webhookId}`, data)
+}
+
+export async function deleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/integrations/webhooks/${webhookId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+export async function testWebhook(webhookId: string): Promise<{ success: boolean; status_code?: number; error?: string }> {
+  return request<{ success: boolean; status_code?: number; error?: string }>(
+    `${API_BASE}/integrations/webhooks/${webhookId}/test`, {}
+  )
+}
+
+export async function rotateWebhookSecret(webhookId: string): Promise<Webhook> {
+  return request<Webhook>(`${API_BASE}/integrations/webhooks/${webhookId}/rotate-secret`, {})
+}
+
+export async function getIntegration(integrationType: string): Promise<IntegrationConfig> {
+  return get<IntegrationConfig>(`${API_BASE}/integrations/${integrationType}`)
+}
+
+export async function saveIntegration(integrationType: string, config: Record<string, any>): Promise<IntegrationConfig> {
+  return request<IntegrationConfig>(`${API_BASE}/integrations/${integrationType}`, { config })
+}
+
+export async function deleteIntegration(integrationType: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/integrations/${integrationType}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+export async function listUserIntegrations(): Promise<{ integrations: IntegrationConfig[]; count: number }> {
+  return get<{ integrations: IntegrationConfig[]; count: number }>(`${API_BASE}/integrations`)
+}
+
+export async function getSupportedEvents(): Promise<SupportedEventsResponse> {
+  return get<SupportedEventsResponse>(`${API_BASE}/integrations/events/list`)
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthRegisterResponse {

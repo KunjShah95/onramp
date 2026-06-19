@@ -9,8 +9,16 @@ import {
   revokeApiKey,
   getNotificationPreferences,
   updateNotificationPreferences,
+  listWebhooks,
+  createWebhook,
+  deleteWebhook,
+  testWebhook,
+  getIntegration,
+  saveIntegration,
+  deleteIntegration,
   type ApiKey,
   type NotificationPreferences,
+  type Webhook,
 } from '../lib/api'
 
 export default function Settings() {
@@ -34,6 +42,68 @@ export default function Settings() {
   const [notifPrefsLoading, setNotifPrefsLoading] = useState(false)
   const [notifPrefsSaving, setNotifPrefsSaving] = useState(false)
   const [notifPrefsMsg, setNotifPrefsMsg] = useState('')
+
+  // ── Integrations state ───────────────────────────────────────
+  const [webhooks, setWebhooks] = useState<Webhook[]>([])
+  const [webhooksLoading, setWebhooksLoading] = useState(false)
+  const [showAddWebhook, setShowAddWebhook] = useState(false)
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookDesc, setWebhookDesc] = useState('')
+  const [webhookEvents, setWebhookEvents] = useState<string[]>(['*'])
+  const [webhookTestResult, setWebhookTestResult] = useState<string | null>(null)
+  const [webhookCreated, setWebhookCreated] = useState<Webhook | null>(null)
+
+  // Slack integration
+  const [slackConnected, setSlackConnected] = useState(false)
+  const [slackWebhook, setSlackWebhook] = useState('')
+  const [slackChannel, setSlackChannel] = useState('#general')
+
+  // GitHub integration
+  const [githubConnected, setGithubConnected] = useState(false)
+  const [githubToken, setGithubToken] = useState('')
+
+  const eventLabels: Record<string, string> = {
+    'task.assigned': 'Task Assigned',
+    'task.started': 'Task Started',
+    'task.submitted': 'Task Submitted',
+    'task.reviewed': 'Task Reviewed',
+    'task.approved': 'Task Approved',
+    'task.completed': 'Task Completed',
+    'task.needs_changes': 'Changes Requested',
+    'task.cancelled': 'Task Cancelled',
+    'module.granted': 'Module Granted',
+    'pr.merged': 'PR Merged',
+    'milestone.reached': 'Milestone Reached',
+    'team.invite': 'Team Invite',
+    '*': 'All Events',
+  }
+
+  const fetchWebhooks = useCallback(async () => {
+    setWebhooksLoading(true)
+    try {
+      const data = await listWebhooks()
+      setWebhooks(data.webhooks || [])
+    } catch { /* ignore */ }
+    setWebhooksLoading(false)
+  }, [])
+
+  const fetchIntegrations = useCallback(async () => {
+    try {
+      const slack = await getIntegration('slack')
+      if (slack.configured) {
+        setSlackConnected(true)
+        setSlackWebhook(slack.config?.webhook_url || '')
+        setSlackChannel(slack.config?.channel || '#general')
+      }
+    } catch { /* ignore */ }
+    try {
+      const github = await getIntegration('github')
+      if (github.configured) {
+        setGithubConnected(true)
+        setGithubToken(github.config?.token ? '••••••••' : '')
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const notificationTypes: Record<string, string> = {
     task_assigned: 'Task Assigned',
@@ -94,6 +164,80 @@ export default function Settings() {
   useEffect(() => {
     fetchNotifPrefs()
   }, [fetchNotifPrefs])
+
+  useEffect(() => {
+    if (activeTab === 'integrations') {
+      fetchWebhooks()
+      fetchIntegrations()
+    }
+  }, [activeTab, fetchWebhooks, fetchIntegrations])
+
+  async function handleCreateWebhook() {
+    if (!webhookUrl.trim()) return
+    try {
+      const wh = await createWebhook({
+        url: webhookUrl.trim(),
+        events: webhookEvents,
+        description: webhookDesc.trim() || undefined,
+      })
+      setWebhookCreated(wh)
+      setWebhookUrl('')
+      setWebhookDesc('')
+      setShowAddWebhook(false)
+      await fetchWebhooks()
+    } catch { /* ignore */ }
+  }
+
+  async function handleDeleteWebhook(id: string) {
+    try {
+      await deleteWebhook(id)
+      setWebhooks((prev) => prev.filter((w) => w.webhook_id !== id))
+    } catch { /* ignore */ }
+  }
+
+  async function handleTestWebhook(id: string) {
+    try {
+      const result = await testWebhook(id)
+      setWebhookTestResult(result.success ? '✓ Success' : `✗ ${result.error || 'Failed'}`)
+      setTimeout(() => setWebhookTestResult(null), 3000)
+    } catch { /* ignore */ }
+  }
+
+  async function handleSaveSlack() {
+    try {
+      await saveIntegration('slack', {
+        webhook_url: slackWebhook,
+        channel: slackChannel,
+      })
+      setSlackConnected(true)
+    } catch { /* ignore */ }
+  }
+
+  async function handleDisconnectSlack() {
+    try {
+      await deleteIntegration('slack')
+      setSlackConnected(false)
+      setSlackWebhook('')
+    } catch { /* ignore */ }
+  }
+
+  async function handleSaveGithub() {
+    try {
+      await saveIntegration('github', {
+        token: githubToken,
+      })
+      setGithubConnected(true)
+      setGithubToken('••••••••')
+    } catch { /* ignore */ }
+  }
+
+  async function handleDisconnectGithub() {
+    try {
+      await deleteIntegration('github')
+      setGithubConnected(false)
+      setGithubToken('')
+    } catch { /* ignore */ }
+  }
 
   async function handleSaveProfile() {
     const auth = getFirebaseAuth()
@@ -499,6 +643,326 @@ export default function Settings() {
                 <p><strong className="text-[#FDFBF8]/70">In-App:</strong> Notifications appear in the bell icon and on the Notifications page.</p>
                 <p><strong className="text-[#FDFBF8]/70">Email:</strong> Digest emails are sent based on your digest frequency setting.</p>
                 <p><strong className="text-[#FDFBF8]/70">Slack:</strong> Real-time alerts sent to your connected Slack workspace.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Integrations Tab Content */}
+      {activeTab === 'integrations' && (
+        <div className="space-y-6">
+          {/* Slack Integration */}
+          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#E01E5A] text-xl">chat</span>
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-white">Slack</h3>
+                  <p className="text-xs text-[#FDFBF8]/50">Send notifications and digests to Slack</p>
+                </div>
+              </div>
+              {slackConnected && (
+                <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Connected
+                </span>
+              )}
+            </div>
+
+            {!slackConnected ? (
+              <div className="space-y-4">
+                <p className="text-xs text-[#FDFBF8]/50">
+                  Connect a Slack workspace by providing an incoming webhook URL from Slack.
+                </p>
+                <div className="flex gap-3">
+                  <input
+                    value={slackWebhook}
+                    onChange={(e) => setSlackWebhook(e.target.value)}
+                    placeholder="https://hooks.slack.com/services/..."
+                    className="flex-1 bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
+                  />
+                  <input
+                    value={slackChannel}
+                    onChange={(e) => setSlackChannel(e.target.value)}
+                    placeholder="#general"
+                    className="w-28 bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
+                  />
+                  <button
+                    onClick={handleSaveSlack}
+                    disabled={!slackWebhook.trim()}
+                    className="bg-[#4A154B] hover:bg-[#611f63] text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    Connect
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-[#FDFBF8]/50">
+                  Connected to <span className="text-[#FDFBF8]/80">{slackChannel}</span>
+                  <p className="mt-0.5 text-[#FDFBF8]/30">{slackWebhook.substring(0, 40)}…</p>
+                </div>
+                <button onClick={handleDisconnectSlack} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* GitHub Integration */}
+          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#FDFBF8] text-xl">code</span>
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-white">GitHub</h3>
+                  <p className="text-xs text-[#FDFBF8]/50">Authenticate to analyze private repositories</p>
+                </div>
+              </div>
+              {githubConnected && (
+                <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Connected
+                </span>
+              )}
+            </div>
+
+            {!githubConnected ? (
+              <div className="space-y-4">
+                <p className="text-xs text-[#FDFBF8]/50">
+                  Provide a GitHub personal access token to enable private repository analysis and PR operations.
+                </p>
+                <div className="flex gap-3">
+                  <input
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    type="password"
+                    placeholder="ghp_... or github_pat_..."
+                    className="flex-1 bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
+                  />
+                  <button
+                    onClick={handleSaveGithub}
+                    disabled={!githubToken.trim()}
+                    className="bg-[#FDFBF8]/10 hover:bg-[#FDFBF8]/20 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-[#FDFBF8]/50 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  Token configured
+                </div>
+                <button onClick={handleDisconnectGithub} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Webhooks */}
+          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FF8C00]/10 border border-[#FF8C00]/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#FF8C00] text-xl">webhook</span>
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-white">Webhooks</h3>
+                  <p className="text-xs text-[#FDFBF8]/50">Send real-time events to external services</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowAddWebhook(!showAddWebhook); setWebhookCreated(null) }}
+                className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+              >
+                {showAddWebhook ? 'Cancel' : '+ Add Webhook'}
+              </button>
+            </div>
+
+            {/* Add webhook form */}
+            {showAddWebhook && (
+              <div className="mb-6 p-5 bg-[#0D0906] border border-[#FF8C00]/15 rounded-xl space-y-4">
+                <h4 className="text-sm font-semibold text-[#FDFBF8]">New Webhook Endpoint</h4>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-[#FDFBF8]/40 mb-1.5 block">Payload URL</label>
+                  <input
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    placeholder="https://example.com/webhooks/codeflow"
+                    className="w-full bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-[#FDFBF8]/40 mb-1.5 block">Description</label>
+                  <input
+                    value={webhookDesc}
+                    onChange={(e) => setWebhookDesc(e.target.value)}
+                    placeholder="e.g., CI pipeline notifications"
+                    className="w-full bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-[#FDFBF8]/40 mb-1.5 block">Events</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {Object.entries(eventLabels).map(([evt, label]) => (
+                      <button
+                        key={evt}
+                        onClick={() => {
+                          if (evt === '*') {
+                            setWebhookEvents(['*'])
+                          } else {
+                            setWebhookEvents((prev) =>
+                              prev.includes('*')
+                                ? [evt]
+                                : prev.includes(evt)
+                                ? prev.filter((e) => e !== evt)
+                                : [...prev, evt]
+                            )
+                          }
+                        }}
+                        className={cn(
+                          'px-2.5 py-1 rounded text-[10px] font-mono transition-colors border',
+                          webhookEvents.includes(evt) || (evt === '*' && webhookEvents.includes('*'))
+                            ? 'bg-[#FF8C00]/15 text-[#FF8C00] border-[#FF8C00]/30'
+                            : 'bg-[#FDFBF8]/5 text-[#FDFBF8]/40 border-transparent hover:text-[#FDFBF8]/70'
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => { setShowAddWebhook(false); setWebhookCreated(null) }}
+                    className="text-xs text-[#FDFBF8]/40 hover:text-[#FDFBF8] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateWebhook}
+                    disabled={!webhookUrl.trim()}
+                    className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                  >
+                    Create Webhook
+                  </button>
+                </div>
+
+                {webhookCreated && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mt-4">
+                    <p className="text-xs text-yellow-400 font-semibold mb-2">Webhook created! Save this secret — it won't be shown again:</p>
+                    <code className="block text-xs font-mono bg-[#0D0906] px-3 py-2 rounded select-all break-all text-[#FDFBF8]/80 border border-[#FDFBF8]/10">
+                      {webhookCreated.secret}
+                    </code>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Webhook list */}
+            {webhooksLoading && (
+              <div className="flex items-center justify-center py-8">
+                <svg className="w-5 h-5 animate-spin text-[#FF8C00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+            )}
+
+            {!webhooksLoading && webhooks.length === 0 && !showAddWebhook && (
+              <div className="text-center py-6">
+                <span className="material-symbols-outlined text-3xl text-[#FDFBF8]/10 mb-2 block">webhook</span>
+                <p className="text-xs text-[#FDFBF8]/30">No webhooks configured yet.</p>
+              </div>
+            )}
+
+            {webhooks.length > 0 && (
+              <div className="space-y-3">
+                {webhooks.map((wh) => (
+                  <div key={wh.webhook_id} className="flex items-center gap-4 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl p-4">
+                    <div className={cn(
+                      'w-2.5 h-2.5 rounded-full shrink-0',
+                      wh.active ? 'bg-green-500' : 'bg-[#FDFBF8]/20'
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-[#FDFBF8] font-medium truncate">
+                          {wh.description || 'Webhook'}
+                        </span>
+                        <span className="text-[10px] text-[#FDFBF8]/30 font-mono truncate">{wh.url}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-[10px] text-[#FDFBF8]/40">
+                          {wh.delivery_count} deliveries
+                          {wh.failure_count > 0 && (
+                            <span className="text-red-400 ml-1">({wh.failure_count} failed)</span>
+                          )}
+                        </span>
+                        <div className="flex gap-1 flex-wrap">
+                          {wh.events.slice(0, 3).map((evt) => (
+                            <span key={evt} className="text-[9px] px-1.5 py-0.5 rounded bg-[#FDFBF8]/5 text-[#FDFBF8]/40 font-mono">
+                              {eventLabels[evt] || evt}
+                            </span>
+                          ))}
+                          {wh.events.length > 3 && (
+                            <span className="text-[9px] text-[#FDFBF8]/30">+{wh.events.length - 3}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleTestWebhook(wh.webhook_id)}
+                        className="text-[10px] text-[#FDFBF8]/40 hover:text-[#FDFBF8] px-2 py-1 rounded border border-[#FDFBF8]/10 transition-colors"
+                        title="Test"
+                      >
+                        Ping
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWebhook(wh.webhook_id)}
+                        className="text-[10px] text-red-400/40 hover:text-red-400 transition-colors"
+                        title="Delete"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {webhookTestResult && (
+              <div className={cn(
+                'mt-4 text-xs px-4 py-2 rounded-lg',
+                webhookTestResult.startsWith('✓')
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+              )}>
+                {webhookTestResult}
+              </div>
+            )}
+          </div>
+
+          {/* Webhook Signature Info */}
+          <div className="bg-[#FF8C00]/5 border border-[#FF8C00]/15 rounded-xl p-5">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-[#FF8C00] text-lg mt-0.5">lock</span>
+              <div className="text-xs text-[#FDFBF8]/60 leading-relaxed">
+                <p className="font-semibold text-[#FDFBF8]/80 mb-1">Webhook Security</p>
+                <p>All webhook payloads include a <code className="font-mono bg-[#FF8C00]/10 px-1 rounded text-[#FF8C00]">X-CodeFlow-Signature</code> header. Verify signatures using the secret shown when creating a webhook. You can rotate secrets at any time.</p>
+                <p className="mt-1">Headers: <code className="font-mono bg-[#FF8C00]/10 px-1 rounded text-[#FF8C00]">X-CodeFlow-Event</code>, <code className="font-mono bg-[#FF8C00]/10 px-1 rounded text-[#FF8C00]">X-CodeFlow-Delivery</code>, <code className="font-mono bg-[#FF8C00]/10 px-1 rounded text-[#FF8C00]">X-CodeFlow-Signature</code></p>
               </div>
             </div>
           </div>
