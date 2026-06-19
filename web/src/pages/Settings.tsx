@@ -2,7 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { updateProfile } from 'firebase/auth'
 import { getFirebaseAuth } from '../lib/firebase'
 import { useAuth } from '../context/AuthContext'
-import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from '../lib/api'
+import { cn } from '../lib/utils'
+import {
+  listApiKeys,
+  createApiKey,
+  revokeApiKey,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  type ApiKey,
+  type NotificationPreferences,
+} from '../lib/api'
 
 export default function Settings() {
   const { user } = useAuth()

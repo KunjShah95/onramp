@@ -1124,6 +1124,44 @@ export async function clearReadNotifications(): Promise<{ deleted_count: number 
   return request<{ deleted_count: number }>(`${API_BASE}/notifications/clear-read`, {})
 }
 
+// ─── Notification Preferences ─────────────────────────────────────────────
+
+export interface NotificationPreferences {
+  user_id: string
+  channels: Record<string, Record<string, boolean>>
+  digest_frequency: string
+  quiet_hours_enabled: boolean
+  quiet_hours_start: string
+  quiet_hours_end: string
+  email_digest_time: string
+}
+
+export interface NotificationPreferencesDefaults {
+  defaults: Record<string, Record<string, boolean>>
+  notification_types: Record<string, string>
+  channels: Record<string, string>
+  channel_icons: Record<string, string>
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return get<NotificationPreferences>(`${API_BASE}/notifications/preferences`)
+}
+
+export async function updateNotificationPreferences(data: Partial<{
+  channels: Record<string, Record<string, boolean>>
+  digest_frequency: string
+  quiet_hours_enabled: boolean
+  quiet_hours_start: string
+  quiet_hours_end: string
+  email_digest_time: string
+}>): Promise<NotificationPreferences> {
+  return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, data)
+}
+
+export async function getNotificationDefaults(): Promise<NotificationPreferencesDefaults> {
+  return get<NotificationPreferencesDefaults>(`${API_BASE}/notifications/preferences/defaults`)
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthRegisterResponse {

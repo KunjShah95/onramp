@@ -16,6 +16,12 @@ from app.services.notification_service import (
     mark_all_as_read,
     delete_notification,
     delete_all_read,
+    get_preferences,
+    update_preferences,
+    DEFAULT_PREFERENCES,
+    NOTIFICATION_TYPE_LABELS,
+    CHANNEL_LABELS,
+    CHANNEL_ICONS,
 )
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -43,6 +49,80 @@ class MarkedCountResponse(BaseModel):
 
 class DeletedCountResponse(BaseModel):
     deleted_count: int
+
+
+# ── Preferences ──────────────────────────────────────────────
+
+
+class NotificationPreferencesRequest(BaseModel):
+    channels: Optional[dict] = None
+    digest_frequency: Optional[str] = None
+    quiet_hours_enabled: Optional[bool] = None
+    quiet_hours_start: Optional[str] = None
+    quiet_hours_end: Optional[str] = None
+    email_digest_time: Optional[str] = None
+
+
+class PreferencesResponse(BaseModel):
+    user_id: str
+    channels: dict
+    digest_frequency: str
+    quiet_hours_enabled: bool
+    quiet_hours_start: str
+    quiet_hours_end: str
+    email_digest_time: str
+
+
+@router.get("/preferences", response_model=PreferencesResponse)
+async def get_notification_preferences(
+    user: dict = Depends(get_current_user),
+):
+    """Get notification preferences for the current user."""
+    return await get_preferences(user.get("uid", ""))
+
+
+@router.put("/preferences", response_model=PreferencesResponse)
+async def update_notification_preferences(
+    request: NotificationPreferencesRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Update notification preferences."""
+    uid = user.get("uid", "")
+    existing = await get_preferences(uid)
+
+    updates = {}
+    if request.channels is not None:
+        # Merge channel settings: only update provided channels
+        merged = dict(existing.get("channels", {}))
+        for channel, types in request.channels.items():
+            if channel in merged:
+                merged[channel] = {**merged[channel], **(types if isinstance(types, dict) else {})}
+            else:
+                merged[channel] = types
+        updates["channels"] = merged
+    if request.digest_frequency is not None:
+        updates["digest_frequency"] = request.digest_frequency
+    if request.quiet_hours_enabled is not None:
+        updates["quiet_hours_enabled"] = request.quiet_hours_enabled
+    if request.quiet_hours_start is not None:
+        updates["quiet_hours_start"] = request.quiet_hours_start
+    if request.quiet_hours_end is not None:
+        updates["quiet_hours_end"] = request.quiet_hours_end
+    if request.email_digest_time is not None:
+        updates["email_digest_time"] = request.email_digest_time
+
+    return await update_preferences(uid, updates)
+
+
+@router.get("/preferences/defaults")
+async def get_default_preferences():
+    """Get default notification preferences and available types/channels."""
+    return {
+        "defaults": DEFAULT_PREFERENCES,
+        "notification_types": NOTIFICATION_TYPE_LABELS,
+        "channels": CHANNEL_LABELS,
+        "channel_icons": CHANNEL_ICONS,
+    }
 
 
 # ── Endpoints ────────────────────────────────────────────────

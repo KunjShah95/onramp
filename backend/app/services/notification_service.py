@@ -24,9 +24,132 @@ def _preview_message(title: str, message: str, max_len: int = 120) -> str:
     return message[: max_len - 3] + "..."
 
 
+# ── Notification Preferences ────────────────────────────────
+
+PREFERENCES_COLLECTION = "codeflow_notification_preferences"
+
+
+DEFAULT_PREFERENCES = {
+    "in_app": {
+        "task_assigned": True,
+        "task_started": True,
+        "task_submitted": True,
+        "task_reviewed": True,
+        "task_approved": True,
+        "task_needs_changes": True,
+        "task_completed": True,
+        "task_cancelled": False,
+        "module_granted": True,
+        "team_invite": True,
+        "system_alert": True,
+        "pr_merged": True,
+        "milestone_reached": True,
+    },
+    "email": {
+        "task_assigned": True,
+        "task_started": False,
+        "task_submitted": False,
+        "task_reviewed": True,
+        "task_approved": True,
+        "task_needs_changes": True,
+        "task_completed": True,
+        "task_cancelled": False,
+        "module_granted": True,
+        "team_invite": True,
+        "system_alert": True,
+        "pr_merged": True,
+        "milestone_reached": True,
+    },
+    "slack": {
+        "task_assigned": False,
+        "task_started": False,
+        "task_submitted": False,
+        "task_reviewed": False,
+        "task_approved": False,
+        "task_needs_changes": False,
+        "task_completed": False,
+        "task_cancelled": False,
+        "module_granted": False,
+        "team_invite": True,
+        "system_alert": True,
+        "pr_merged": True,
+        "milestone_reached": True,
+    },
+}
+
+
+async def get_preferences(user_id: str) -> dict:
+    """Get notification preferences for a user, with defaults."""
+    storage = get_storage()
+    prefs = await storage.get_document(PREFERENCES_COLLECTION, user_id)
+    if prefs:
+        return prefs
+    # Return defaults
+    return {
+        "user_id": user_id,
+        "channels": dict(DEFAULT_PREFERENCES),
+        "digest_frequency": "daily",
+        "quiet_hours_enabled": False,
+        "quiet_hours_start": "22:00",
+        "quiet_hours_end": "08:00",
+        "email_digest_time": "09:00",
+    }
+
+
+async def update_preferences(user_id: str, preferences: dict) -> dict:
+    """Update notification preferences for a user."""
+    storage = get_storage()
+    now = _utcnow()
+    prefs = {
+        "user_id": user_id,
+        "channels": preferences.get("channels", dict(DEFAULT_PREFERENCES)),
+        "digest_frequency": preferences.get("digest_frequency", "daily"),
+        "quiet_hours_enabled": preferences.get("quiet_hours_enabled", False),
+        "quiet_hours_start": preferences.get("quiet_hours_start", "22:00"),
+        "quiet_hours_end": preferences.get("quiet_hours_end", "08:00"),
+        "email_digest_time": preferences.get("email_digest_time", "09:00"),
+        "updated_at": now,
+    }
+    existing = await storage.get_document(PREFERENCES_COLLECTION, user_id)
+    if existing:
+        await storage.update_document(PREFERENCES_COLLECTION, user_id, prefs)
+    else:
+        prefs["created_at"] = now
+        await storage.create_document(PREFERENCES_COLLECTION, user_id, prefs)
+    return prefs
+
+
 # ── Types ────────────────────────────────────────────────────
 
-NOTIFICATION_TYPES = {
+NOTIFICATION_TYPES = set(DEFAULT_PREFERENCES["in_app"].keys())
+
+NOTIFICATION_TYPE_LABELS = {
+    "task_assigned": "Task Assigned",
+    "task_started": "Task Started",
+    "task_submitted": "Task Submitted",
+    "task_reviewed": "Task Reviewed",
+    "task_approved": "Task Approved",
+    "task_needs_changes": "Changes Requested",
+    "task_completed": "Task Completed",
+    "task_cancelled": "Task Cancelled",
+    "module_granted": "Module Access Granted",
+    "team_invite": "Team Invite",
+    "system_alert": "System Alert",
+    "pr_merged": "PR Merged",
+    "milestone_reached": "Milestone Reached",
+}
+
+CHANNEL_LABELS = {
+    "in_app": "In-App",
+    "email": "Email",
+    "slack": "Slack",
+}
+
+CHANNEL_ICONS = {
+    "in_app": "notifications",
+    "email": "mail",
+    "slack": "chat",
+}
     "task_assigned",
     "task_started",
     "task_submitted",
