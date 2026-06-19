@@ -9,6 +9,7 @@ from app.agents.silent_pair_programming import SilentPairProgramming
 from app.agents.pattern_recognition import PatternRecognition
 from app.agents.regression_test_generator import RegressionTestGenerator
 from app.agents.pr_review import PRReviewAgent
+from app.agents.task_qa import TaskQA
 
 __all__ = [
     "BaseAgent",
@@ -22,4 +23,5 @@ __all__ = [
     "PatternRecognition",
     "RegressionTestGenerator",
     "PRReviewAgent",
+    "TaskQA",
 ]
