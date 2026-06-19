@@ -150,20 +150,6 @@ CHANNEL_ICONS = {
     "email": "mail",
     "slack": "chat",
 }
-    "task_assigned",
-    "task_started",
-    "task_submitted",
-    "task_reviewed",
-    "task_approved",
-    "task_needs_changes",
-    "task_completed",
-    "task_cancelled",
-    "module_granted",
-    "team_invite",
-    "system_alert",
-    "pr_merged",
-    "milestone_reached",
-}
 
 
 # ── CRUD ─────────────────────────────────────────────────────
