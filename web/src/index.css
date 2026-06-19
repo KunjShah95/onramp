@@ -35,6 +35,78 @@
   --border-accent: rgba(255, 140, 0, 0.30);
 }
 
+/* ── Theme: Midnight (cool blue-dark) ──────────────────── */
+[data-theme="midnight"] {
+  --bg-void: #0A0E1A;
+  --bg-primary: #0D1225;
+  --bg-secondary: #141B33;
+  --bg-tertiary: #1A2547;
+  --bg-elevated: #24305A;
+  --bg-surface: #2D3B6F;
+  --accent-from: #6366F1;
+  --accent-via: #818CF8;
+  --accent-to: #A5B4FC;
+  --accent-muted: rgba(99, 102, 241, 0.12);
+  --accent-glow: rgba(99, 102, 241, 0.06);
+  --text-primary: #E8ECFF;
+  --text-secondary: #9499C8;
+  --text-muted: #63688A;
+  --text-disabled: #3D4260;
+  --border-subtle: rgba(129, 140, 248, 0.04);
+  --border: rgba(129, 140, 248, 0.06);
+  --border-hover: rgba(129, 140, 248, 0.12);
+  --border-active: rgba(129, 140, 248, 0.20);
+  --border-accent: rgba(99, 102, 241, 0.30);
+}
+
+/* ── Theme: Forest (earthy green) ────────────────────── */
+[data-theme="forest"] {
+  --bg-void: #0A1208;
+  --bg-primary: #0E1A0C;
+  --bg-secondary: #162613;
+  --bg-tertiary: #1E341A;
+  --bg-elevated: #284222;
+  --bg-surface: #32542A;
+  --accent-from: #22C55E;
+  --accent-via: #4ADE80;
+  --accent-to: #86EFAC;
+  --accent-muted: rgba(34, 197, 94, 0.12);
+  --accent-glow: rgba(34, 197, 94, 0.06);
+  --text-primary: #E6F7E6;
+  --text-secondary: #8DB88D;
+  --text-muted: #5E825E;
+  --text-disabled: #2D4A2D;
+  --border-subtle: rgba(74, 222, 128, 0.04);
+  --border: rgba(74, 222, 128, 0.06);
+  --border-hover: rgba(74, 222, 128, 0.12);
+  --border-active: rgba(74, 222, 128, 0.20);
+  --border-accent: rgba(34, 197, 94, 0.30);
+}
+
+/* ── Theme: Purple (warm violet) ─────────────────────── */
+[data-theme="purple"] {
+  --bg-void: #0E0818;
+  --bg-primary: #140C22;
+  --bg-secondary: #1C1430;
+  --bg-tertiary: #251C3F;
+  --bg-elevated: #2F2450;
+  --bg-surface: #3A2C62;
+  --accent-from: #A855F7;
+  --accent-via: #C084FC;
+  --accent-to: #D8B4FE;
+  --accent-muted: rgba(168, 85, 247, 0.12);
+  --accent-glow: rgba(168, 85, 247, 0.06);
+  --text-primary: #F0E8FF;
+  --text-secondary: #B894E0;
+  --text-muted: #7D5FA8;
+  --text-disabled: #3D2857;
+  --border-subtle: rgba(192, 132, 252, 0.04);
+  --border: rgba(192, 132, 252, 0.06);
+  --border-hover: rgba(192, 132, 252, 0.12);
+  --border-active: rgba(192, 132, 252, 0.20);
+  --border-accent: rgba(168, 85, 247, 0.30);
+}
+
 @layer base {
   * {
     box-sizing: border-box;

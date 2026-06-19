@@ -3,6 +3,7 @@ import { updateProfile } from 'firebase/auth'
 import { getFirebaseAuth } from '../lib/firebase'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/utils'
+import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
   listApiKeys,
   createApiKey,
@@ -649,6 +650,9 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Theme Tab Content */}
+      {activeTab === 'theme' && <ThemeTabContent />}
+
       {/* Integrations Tab Content */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
@@ -968,6 +972,240 @@ export default function Settings() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ThemeTabContent() {
+  const { theme, accentColor, setTheme, setAccentColor, resetAccentColor } = useTheme()
+
+  return (
+    <div className="space-y-8">
+      {/* Theme Picker */}
+      <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+        <div className="mb-6">
+          <h3 className="font-display text-lg font-bold text-white mb-1">Theme</h3>
+          <p className="text-sm text-[#FDFBF8]/60">Choose your preferred color scheme.</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {THEMES.map((t) => {
+            const isActive = theme === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id as Theme)}
+                className={cn(
+                  'relative group rounded-xl border-2 transition-all duration-200 overflow-hidden text-left',
+                  isActive
+                    ? 'border-[#FF8C00] ring-2 ring-[#FF8C00]/30'
+                    : 'border-[#FDFBF8]/10 hover:border-[#FDFBF8]/30'
+                )}
+              >
+                {/* Theme preview card */}
+                <div className="h-24 px-4 pt-4 pb-3" data-theme={t.id}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-5 h-5 rounded-full" style={{
+                      backgroundColor: t.id === 'himalayan' ? '#FF8C00' :
+                        t.id === 'midnight' ? '#6366F1' :
+                        t.id === 'forest' ? '#22C55E' :
+                        '#A855F7'
+                    }} />
+                    <div className="h-2 w-16 rounded-full" style={{
+                      backgroundColor: t.id === 'himalayan' ? '#EBF0FF' :
+                        t.id === 'midnight' ? '#E8ECFF' :
+                        t.id === 'forest' ? '#E6F7E6' :
+                        '#F0E8FF',
+                      opacity: 0.7
+                    }} />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="h-1.5 flex-1 rounded-full" style={{
+                      backgroundColor: t.id === 'himalayan' ? '#0C1426' :
+                        t.id === 'midnight' ? '#141B33' :
+                        t.id === 'forest' ? '#162613' :
+                        '#1C1430'
+                    }} />
+                    <div className="h-1.5 flex-1 rounded-full" style={{
+                      backgroundColor: t.id === 'himalayan' ? '#111D35' :
+                        t.id === 'midnight' ? '#1A2547' :
+                        t.id === 'forest' ? '#1E341A' :
+                        '#251C3F'
+                    }} />
+                    <div className="h-1.5 w-4 rounded-full" style={{
+                      backgroundColor: t.id === 'himalayan' ? '#FF8C00' :
+                        t.id === 'midnight' ? '#6366F1' :
+                        t.id === 'forest' ? '#22C55E' :
+                        '#A855F7',
+                      opacity: 0.5
+                    }} />
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="px-4 py-3 bg-[#0D0906]">
+                  <p className="text-sm font-medium text-[#FDFBF8]">{t.name}</p>
+                  <p className="text-[10px] text-[#FDFBF8]/40 mt-0.5">{t.description}</p>
+                </div>
+
+                {/* Active checkmark */}
+                {isActive && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#FF8C00] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[10px] text-white">check</span>
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Accent Color */}
+      <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+        <div className="mb-6">
+          <h3 className="font-display text-lg font-bold text-white mb-1">Accent Color</h3>
+          <p className="text-sm text-[#FDFBF8]/60">
+            Override the theme's accent color with your own preference.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {/* Default (no override) */}
+          <button
+            onClick={resetAccentColor}
+            className={cn(
+              'w-10 h-10 rounded-xl border-2 transition-all duration-200 flex items-center justify-center',
+              !accentColor
+                ? 'border-[#FF8C00] ring-2 ring-[#FF8C00]/30'
+                : 'border-[#FDFBF8]/10 hover:border-[#FDFBF8]/30'
+            )}
+            title="Default accent"
+          >
+            <span className="material-symbols-outlined text-sm text-[#FDFBF8]/60">auto_awesome</span>
+          </button>
+
+          {ACCENT_COLORS.map((c) => {
+            const isActive = accentColor === c.value
+            return (
+              <button
+                key={c.value}
+                onClick={() => setAccentColor(c.value)}
+                className={cn(
+                  'w-10 h-10 rounded-xl border-2 transition-all duration-200',
+                  isActive
+                    ? 'border-[#FF8C00] ring-2 ring-[#FF8C00]/30'
+                    : 'border-[#FDFBF8]/10 hover:border-[#FDFBF8]/30'
+                )}
+                style={{ backgroundColor: c.value }}
+                title={c.name}
+              />
+            )
+          })}
+        </div>
+
+        <p className="text-xs text-[#FDFBF8]/40 mt-4">
+          {accentColor
+            ? `Custom accent applied: ${ACCENT_COLORS.find(c => c.value === accentColor)?.name || accentColor}`
+            : 'Using theme default accent'
+          }
+        </p>
+      </div>
+
+      {/* Preview box */}
+      <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+        <div className="mb-6">
+          <h3 className="font-display text-lg font-bold text-white mb-1">Preview</h3>
+          <p className="text-sm text-[#FDFBF8]/60">Sample UI elements with your selected theme.</p>
+        </div>
+
+        <div className="space-y-4">
+          {/* Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[var(--accent-from,#FF8C00)] via-[var(--accent-via,#FF6B35)] to-[var(--accent-to,#FFB347)] text-white text-sm font-semibold shadow-lg">
+              Primary Button
+            </button>
+            <button className="px-5 py-2.5 rounded-lg border border-[var(--border,#FDFBF8/10)] text-sm text-[var(--text-secondary,#94A3B8)] hover:text-[var(--text-primary,#EBF0FF)] transition-colors">
+              Secondary
+            </button>
+            <button className="px-5 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold">
+              Success
+            </button>
+            <button className="px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold">
+              Danger
+            </button>
+          </div>
+
+          {/* Card preview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-[var(--border)] p-5" style={{
+              backgroundColor: 'var(--bg-tertiary, #111D35)',
+            }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg" style={{
+                  backgroundColor: 'var(--accent-muted, rgba(255,140,0,0.12))',
+                }}>
+                  <span className="material-symbols-outlined text-sm flex items-center justify-center h-full" style={{
+                    color: 'var(--accent-from, #FF8C00)',
+                  }}>code</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary, #EBF0FF)' }}>Sample Card</p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted, #64748B)' }}>With description text</p>
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-secondary, #94A3B8)' }}>
+                This is how cards, text, and borders render with your current theme settings.
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-5" style={{
+              backgroundColor: 'var(--bg-secondary, #0C1426)',
+              borderColor: 'var(--border)'
+            }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-xs font-mono" style={{ color: 'var(--text-secondary, #94A3B8)' }}>Status: Active</span>
+              </div>
+              <div className="flex gap-1 mb-3">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{
+                  backgroundColor: 'var(--accent-muted, rgba(255,140,0,0.12))',
+                  color: 'var(--accent-from, #FF8C00)',
+                }}>badge</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20">active</span>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-muted, #64748B)' }}>
+                Badges and status indicators.
+              </p>
+            </div>
+          </div>
+
+          {/* Input preview */}
+          <div>
+            <input
+              readOnly
+              value="Sample input field"
+              className="w-full px-3.5 py-2.5 rounded-lg text-sm"
+              style={{
+                backgroundColor: 'var(--bg-secondary, #0C1426)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary, #EBF0FF)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Info box */}
+      <div className="bg-[#FF8C00]/5 border border-[#FF8C00]/15 rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#FF8C00] text-lg mt-0.5">palette</span>
+          <div className="text-xs text-[#FDFBF8]/60 leading-relaxed">
+            <p className="font-semibold text-[#FDFBF8]/80 mb-1">Theme Notes</p>
+            <p>The accent color override applies on top of your chosen theme. Themes affect all backgrounds, borders, and text colors. The accent color affects buttons, links, badges, and highlighted elements.</p>
+            <p className="mt-1">Settings are saved to local storage and persist across sessions.</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
