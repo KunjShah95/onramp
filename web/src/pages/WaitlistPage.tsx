@@ -83,9 +83,6 @@ export default function WaitlistPage() {
       {/* Nav */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
         <Link to="/" className="font-display text-xl font-bold tracking-tight">CodeFlow</Link>
-        <Link to="/login" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">
-          Log in
-        </Link>
       </nav>
 
       {/* Background */}

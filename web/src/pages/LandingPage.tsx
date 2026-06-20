@@ -17,7 +17,6 @@ export default function LandingPage() {
           <Link to="/waitlist" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Waitlist</Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link to="/login" className="hidden md:block text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link>
           <Link to="/waitlist" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Join Waitlist</Link>
         </div>
       </nav>
@@ -348,9 +347,6 @@ export default function LandingPage() {
             <Link to="/waitlist" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">
               Join the Waitlist →
             </Link>
-            <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">
-              Talk to Sales
-            </Link>
           </div>
         </div>
       </section>
@@ -380,8 +376,7 @@ export default function LandingPage() {
           <div>
             <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Company</h3>
             <ul className="flex flex-col gap-3">
-              <li><Link to="/login" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link></li>
-              <li><Link to="/register" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Sign up</Link></li>
+              <li><Link to="/waitlist" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Join Waitlist</Link></li>
             </ul>
           </div>
         </div>
