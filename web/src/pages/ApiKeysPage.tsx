@@ -44,7 +44,7 @@ export default function ApiKeysPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8] max-w-4xl">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full lg:max-w-4xl overflow-x-hidden mx-auto">
       <GradientHeading as="h1" className="mb-1">API Keys</GradientHeading>
       <p className="text-[#FDFBF8]/60 text-sm mb-6">Manage API keys for AIaaS access</p>
 
@@ -61,7 +61,7 @@ export default function ApiKeysPage() {
 
       <CardSpotlight className="p-6 mb-8">
         <GradientHeading as="h2" className="text-base mb-4">Create New Key</GradientHeading>
-        <div className="flex gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}

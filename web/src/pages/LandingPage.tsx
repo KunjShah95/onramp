@@ -4,7 +4,7 @@ import Spotlight from '../components/ui/spotlight'
 
 export default function LandingPage() {
   return (
-    <div className="text-[#FDFBF8] font-body bg-[#050505] antialiased selection:bg-[#FF8C00]/30 selection:text-[#FF8C00] relative">
+    <div className="text-[#FDFBF8] font-body bg-[#050505] antialiased selection:bg-[#FF8C00]/30 selection:text-[#FF8C00] relative max-w-full overflow-x-hidden">
       {/* Floating Nav */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
         <div className="flex items-center gap-3">

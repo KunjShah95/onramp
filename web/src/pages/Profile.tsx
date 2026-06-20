@@ -38,13 +38,13 @@ export default function Profile() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
       <div className="mb-6">
         <GradientHeading as="h1">Profile</GradientHeading>
         <p className="text-[#FDFBF8]/40 text-sm mt-1">Your account overview</p>
       </div>
 
-      <div className="max-w-xl space-y-5">
+      <div className="w-full max-w-xl space-y-5">
         {/* Identity card */}
         <CardSpotlight className="p-6">
           <div className="flex items-center gap-4">

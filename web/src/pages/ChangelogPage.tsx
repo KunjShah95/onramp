@@ -94,7 +94,7 @@ const itemVariants = {
 export default function ChangelogPage() {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#050505] text-[#FDFBF8] font-body">
+      <div className="min-h-screen bg-[#050505] text-[#FDFBF8] font-body max-w-full overflow-x-hidden">
         {/* Nav */}
         <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
           <Link to="/" className="font-display text-xl font-bold tracking-tight">CodeFlow</Link>

@@ -82,7 +82,7 @@ export default function PRDescriptionPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
       <PageHeader
         title="PR Description Generator"
         subtitle="AI-powered descriptions from GitHub diffs — title, summary, file changes, testing notes, checklist"

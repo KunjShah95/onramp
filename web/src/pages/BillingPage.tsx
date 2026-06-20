@@ -77,7 +77,7 @@ export default function BillingPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
       <PageHeader
         title="Billing & Plans"
         subtitle="Manage your subscription and team quota"
@@ -92,7 +92,7 @@ export default function BillingPage() {
       )}
 
       {/* Team lookup */}
-      <div className="flex gap-2 mb-8">
+      <div className="flex flex-col sm:flex-row gap-2 mb-8">
         <input
           value={teamId}
           onChange={(e) => setTeamId(e.target.value)}

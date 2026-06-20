@@ -26,7 +26,7 @@ export default function PricingPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#110D0A] text-[#FDFBF8] font-body selection:bg-accent-from/30">
+      <div className="min-h-screen bg-[#110D0A] text-[#FDFBF8] font-body selection:bg-accent-from/30 max-w-full overflow-x-hidden">
         {/* Navigation */}
         <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-8">

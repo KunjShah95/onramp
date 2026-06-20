@@ -193,7 +193,7 @@ export default function TasksPage() {
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
         <PageHeader
           title="Tasks"
           subtitle="Senior → Trainee workflow — assign, work, review, approve, unlock"
@@ -423,7 +423,8 @@ export default function TasksPage() {
                 />
               ) : (
                 <>
-                  <div className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 px-5 py-2.5 border-b border-[#FDFBF8]/5">
+                  <div className="overflow-x-auto">
+                    <div className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 px-5 py-2.5 border-b border-[#FDFBF8]/5 min-w-[500px]">
                     {['Status', 'Task', 'Assignee', 'Priority', 'Est.'].map((h) => (
                       <span key={h} className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/25 font-semibold">{h}</span>
                     ))}
@@ -437,7 +438,7 @@ export default function TasksPage() {
                     {filteredTasks.map((task) => (
                       <motion.div key={task.task_id} variants={itemVariants}>
                         <div onClick={() => setSelectedTask(task)}
-                          className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-[#FDFBF8]/[0.015] cursor-pointer transition-colors group">
+                          className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-[#FDFBF8]/[0.015] cursor-pointer transition-colors group min-w-[500px]">
                           <StatusBadge state={task.state} />
                           <div className="min-w-0">
                             <div className="text-sm text-[#FDFBF8]/80 group-hover:text-[#FDFBF8] truncate font-medium transition-colors">{task.title}</div>
@@ -457,8 +458,8 @@ export default function TasksPage() {
                       </motion.div>
                     ))}
                   </motion.div>
-                </>
-              )}
+                </div>
+              </>)}
             </div>
           </CardSpotlight>
         )}

@@ -44,7 +44,7 @@ export default function FirstIssuePage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-full min-h-[calc(100vh-4rem)] p-8 font-mono text-[#FDFBF8]">
+      <div className="w-full h-full min-h-[calc(100vh-4rem)] p-4 sm:p-8 font-mono text-[#FDFBF8] max-w-full overflow-x-hidden">
         
         {/* Header Section */}
         <div className="max-w-5xl mb-12">
@@ -62,7 +62,7 @@ export default function FirstIssuePage() {
             
             <div className="flex flex-col gap-3 w-full lg:w-[400px]">
               <CardSpotlight>
-                <div className="flex gap-2 p-3">
+                <div className="flex flex-col sm:flex-row gap-2 p-3">
                   <input
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}

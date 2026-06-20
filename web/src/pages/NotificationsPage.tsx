@@ -145,7 +145,7 @@ export default function NotificationsPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
       <PageHeader
         title="Notifications"
         subtitle={unreadCount > 0

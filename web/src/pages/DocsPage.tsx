@@ -91,7 +91,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
           </pre>
         </div>
         <p>CodeFlow clones, parses, and builds the graph. Analysis time depends on repo size:</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[['Small', '< 500 files', '~30s'], ['Medium', '< 5k files', '~90s'], ['Large', '5k+ files', '2–4 min']].map(([size, files, time]) => (
             <div key={size} className="bg-[#1A110D]/60 border border-[#FDFBF8]/6 rounded-lg p-3 text-center">
               <p className="text-[#FDFBF8] font-semibold text-sm mb-1">{size}</p>
@@ -284,7 +284,7 @@ export default function DocsPage() {
   const current = content[active] ?? content[defaultSection]
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#FDFBF8] font-body">
+    <div className="min-h-screen bg-[#050505] text-[#FDFBF8] font-body max-w-full overflow-x-hidden">
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 py-4 bg-[#050505]/90 backdrop-blur-xl border-b border-[#FDFBF8]/5">
         <div className="flex items-center gap-8">
@@ -328,7 +328,7 @@ export default function DocsPage() {
 
         {/* Content */}
         <PageTransition>
-          <main className="flex-1 min-w-0 px-8 md:px-12 py-12">
+          <main className="flex-1 min-w-0 px-4 sm:px-8 md:px-12 py-8 sm:py-12">
             <div className="max-w-2xl">
               <h1 className="font-display text-3xl font-bold text-[#FDFBF8] mb-8">{current.title}</h1>
               {current.body}

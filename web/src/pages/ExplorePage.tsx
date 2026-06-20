@@ -34,7 +34,7 @@ export default function ExplorePage() {
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
         <div className="mb-8">
           <GradientHeading as="h1" className="mb-2">Architecture Explorer</GradientHeading>
           <p className="text-[#FDFBF8]/60 text-sm mb-6 max-w-2xl">

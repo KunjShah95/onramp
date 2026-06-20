@@ -354,7 +354,7 @@ export default function Settings() {
 
   return (
     <PageTransition>
-    <div className="w-full max-w-4xl pt-8 pb-12 font-body text-[#FDFBF8]">
+        <div className="w-full max-w-4xl pt-4 sm:pt-8 pb-12 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="mb-8">
         <GradientHeading as="h1" className="mb-2">Settings</GradientHeading>
@@ -362,7 +362,7 @@ export default function Settings() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-8 border-b border-[#FDFBF8]/10 mb-8">
+      <div className="flex items-center gap-8 border-b border-[#FDFBF8]/10 mb-8 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -519,7 +519,7 @@ export default function Settings() {
             {!notifPrefsLoading && notifPrefs && (
               <>
                 {/* Channel column headers */}
-                <div className="grid grid-cols-[1fr_repeat(3,60px)] gap-2 mb-4 px-1">
+                <div className="grid grid-cols-[1fr_repeat(3,44px)] sm:grid-cols-[1fr_repeat(3,60px)] gap-2 mb-4 px-1">
                   <div className="text-[10px] uppercase tracking-wider text-[#FDFBF8]/30 font-semibold">Type</div>
                   {channels.map((ch) => (
                     <div key={ch} className="flex flex-col items-center text-[10px] text-[#FDFBF8]/40">
@@ -1004,7 +1004,7 @@ function ThemeTabContent() {
           <p className="text-sm text-[#FDFBF8]/60">Choose your preferred color scheme.</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {THEMES.map((t) => {
             const isActive = theme === t.id
             return (

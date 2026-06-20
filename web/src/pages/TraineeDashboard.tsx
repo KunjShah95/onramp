@@ -57,7 +57,7 @@ export default function TraineeDashboard() {
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-mono text-[#FDFBF8]">
+      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-mono text-[#FDFBF8] max-w-full overflow-x-hidden">
         <div className="mb-8">
           <GradientHeading as="h1" className="text-3xl md:text-4xl mb-1">My Progress</GradientHeading>
           <p className="text-[#FDFBF8]/40 text-sm">{data.user_name} · {data.user_id.slice(0, 8)}</p>

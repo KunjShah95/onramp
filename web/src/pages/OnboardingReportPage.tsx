@@ -69,7 +69,7 @@ export default function OnboardingReportPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8] max-w-4xl pb-12">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-4xl pb-12 max-w-full overflow-x-hidden mx-auto">
       <GradientHeading as="h1" className="mb-1">Onboarding Report Generator</GradientHeading>
       <p className="text-[#FDFBF8]/60 text-sm mb-6">Create a unified, download-ready developer onboarding guide for any repository</p>
 

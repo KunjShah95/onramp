@@ -178,7 +178,7 @@ export default function TeamPage() {
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8]">
+      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}

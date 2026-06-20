@@ -81,7 +81,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <GradientHeading as="h1">Senior Dashboard</GradientHeading>
@@ -89,7 +89,7 @@ export default function DashboardPage() {
             {total_members} member{total_members !== 1 ? 's' : ''} · {total_trainees} trainee{total_trainees !== 1 ? 's' : ''} · {first_prs_merged} PRs merged
           </p>
         </div>
-        <div className="flex bg-[#1A110D] rounded-xl border border-[#FDFBF8]/5 p-1 gap-0.5">
+        <div className="flex bg-[#1A110D] rounded-xl border border-[#FDFBF8]/5 p-1 gap-0.5 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.key}

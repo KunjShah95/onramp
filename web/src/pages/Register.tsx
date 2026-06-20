@@ -80,7 +80,7 @@ export default function Register() {
 
   return (
     <PageTransition>
-      <div className="bg-[#0A0705] min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-[#FDFBF8]">
+      <div className="bg-[#0A0705] min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-[#FDFBF8] max-w-full overflow-x-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0iI0ZERkJGOCIvPjwvc3ZnPg==')] opacity-[0.03] z-0 pointer-events-none" />
         {/* Background Ambient Glow */}

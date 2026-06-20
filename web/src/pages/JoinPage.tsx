@@ -34,7 +34,7 @@ export default function JoinPage() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen flex items-center justify-center p-8 bg-[#0D0906]">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-[#0D0906] max-w-full overflow-x-hidden">
         <CardSpotlight className="max-w-md w-full p-8 space-y-6 text-center">
           {status === 'loading' && (
             <>

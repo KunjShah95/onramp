@@ -146,7 +146,7 @@ export default function AskPage() {
 
   return (
     <PageTransition>
-      <div className="w-full pt-8 pb-12 font-body flex flex-col h-[calc(100vh-2rem)]">
+      <div className="w-full pt-4 sm:pt-8 pb-12 font-body flex flex-col h-[calc(100vh-2rem)] max-w-full overflow-x-hidden">
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="max-w-4xl px-6">
           <GradientHeading as="h1" className="mb-2">Codebase Context</GradientHeading>
@@ -187,9 +187,9 @@ export default function AskPage() {
         </div>
 
         {/* ── Main content: chat + history sidebar ─────────────────────────── */}
-        <div className="flex-1 flex min-h-0 max-w-[calc(100vw-260px)]">
+        <div className="flex-1 flex min-h-0 max-w-full lg:max-w-[calc(100vw-260px)]">
           {/* Chat area */}
-          <div className="flex-1 min-w-0 px-6 pb-6 relative">
+          <div className="flex-1 min-w-0 px-4 sm:px-6 pb-6 relative">
             {/* History toggle button — always visible on the right edge of the chat area */}
             <div className="absolute right-0 top-4 z-10">
               <CardSpotlight className="rounded-l-md border-r-0">

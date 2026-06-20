@@ -51,7 +51,7 @@ export default function LearnPage() {
 
   return (
     <PageTransition>
-      <div className="w-full h-full min-h-[calc(100vh-4rem)] p-8 font-mono text-[#FDFBF8] relative">
+      <div className="w-full h-full min-h-[calc(100vh-4rem)] p-4 sm:p-8 font-mono text-[#FDFBF8] relative max-w-full overflow-x-hidden">
         
         {/* Background Grid Pattern (Subtle) */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')]"></div>

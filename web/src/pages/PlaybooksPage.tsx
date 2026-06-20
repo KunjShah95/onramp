@@ -58,7 +58,7 @@ export default function PlaybooksPage() {
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-6 font-body text-[#FDFBF8] max-w-4xl">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full lg:max-w-4xl overflow-x-hidden mx-auto">
       <GradientHeading as="h1" className="mb-1">Playbooks</GradientHeading>
       <p className="text-[#FDFBF8]/60 text-sm mb-6">Create and share onboarding playbooks for your team</p>
 
@@ -66,7 +66,7 @@ export default function PlaybooksPage() {
         <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20">{error}</div>
       )}
 
-      <div className="flex gap-3 mb-8">
+      <div className="flex flex-col sm:flex-row gap-3 mb-8">
         <input
           value={teamId}
           onChange={(e) => setTeamId(e.target.value)}
