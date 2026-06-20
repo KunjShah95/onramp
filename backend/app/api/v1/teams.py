@@ -13,6 +13,7 @@ from app.services.access_control_service import (
     get_team_modules,
 )
 from app.api.v1.auth import get_current_user
+from app.middleware.access_guard import require_minimum_role
 
 router = APIRouter(prefix="/teams", tags=["saas"])
 team_service = TeamService()
@@ -94,6 +95,7 @@ async def grant_module(
     team_id: str,
     request: GrantModuleRequest,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Grant a user access to a specific module.
 
@@ -129,6 +131,7 @@ async def revoke_module(
     team_id: str,
     request: RevokeModuleRequest,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Revoke a user's access to a specific module."""
     teams = await team_service.list_teams(user.get("uid", ""))
@@ -225,7 +228,7 @@ async def list_members(team_id: str):
 
 
 @router.post("/{team_id}/members")
-async def add_member(team_id: str, request: AddMemberRequest):
+async def add_member(team_id: str, request: AddMemberRequest, user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
     result = await team_service.add_member(team_id, request.user, request.role)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -233,7 +236,7 @@ async def add_member(team_id: str, request: AddMemberRequest):
 
 
 @router.delete("/{team_id}/members/{user}")
-async def remove_member(team_id: str, user: str):
+async def remove_member(team_id: str, user: str, _user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
     return await team_service.remove_member(team_id, user)
 
 

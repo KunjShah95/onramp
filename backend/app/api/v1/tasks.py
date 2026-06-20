@@ -24,12 +24,14 @@ from app.services.task_service import (
 )
 from app.api.v1.auth import get_current_user
 from app.agents import PRReviewAgent
+from app.middleware.access_guard import require_module_access, require_minimum_role
 from app.services.notification_service import (
     notify_task_assigned,
     notify_task_reviewed,
     notify_task_completed,
 )
 from app.services.slack_service import send_slack_task_notification
+from app.services.audit_service import log_event
 
 logger = logging.getLogger("codeflow.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
@@ -122,11 +124,13 @@ class ReviewFeedbackRequest(BaseModel):
 async def create_task_endpoint(
     request: CreateTaskRequest,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Create a new task (senior creates, optionally assigns to a trainee)."""
+    uid = user.get("uid", "")
     task = await create_task(
         team_id=request.team_id,
-        created_by=user.get("uid", ""),
+        created_by=uid,
         title=request.title,
         description=request.description,
         module=request.module,
@@ -137,6 +141,14 @@ async def create_task_endpoint(
         estimated_hours=request.estimated_hours,
         assigned_to=request.assigned_to,
     )
+    try:
+        await log_event(
+            "task_created", uid, task.get("task_id", ""),
+            team_id=request.team_id,
+            metadata={"title": request.title, "module": request.module},
+        )
+    except Exception:
+        logger.exception("Failed to log task creation audit event")
     return task
 
 
@@ -275,7 +287,17 @@ async def submit_task_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # 2. Fetch full task to get repo_url and other context
+    # 2. Audit log
+    try:
+        await log_event(
+            "task_submitted", user.get("uid", ""), task_id,
+            team_id=task.get("team_id"),
+            metadata={"pr_url": request.pr_url},
+        )
+    except Exception:
+        logger.exception("Failed to log task submission audit event")
+
+    # 3. Fetch full task to get repo_url and other context
     full_task = await get_task(task_id)
     if not full_task:
         return task  # Shouldn't happen, but guard
@@ -283,7 +305,7 @@ async def submit_task_endpoint(
     repo_url = full_task.get("repo_url") or _infer_repo_url(request.pr_url)
     pr_number = _parse_pr_number(request.pr_url)
 
-    # 3. Run AI review if we have the needed data
+    # 4. Run AI review if we have the needed data
     if repo_url and pr_number is not None:
         llm = getattr(req.app.state, "llm", None)
         github_token = os.getenv("GITHUB_TOKEN")
@@ -369,6 +391,16 @@ async def complete_task_endpoint(
     """Mark task as completed — modules unlocked."""
     try:
         task = await complete_task(task_id, user.get("uid", ""))
+        # Audit log which modules were unlocked
+        try:
+            unlocked = task.get("unlock_modules", [])
+            await log_event(
+                "task_completed", user.get("uid", ""), task_id,
+                team_id=task.get("team_id"),
+                metadata={"unlocked_modules": unlocked},
+            )
+        except Exception:
+            logger.exception("Failed to log completion audit event")
         # Notify the assignee (fire-and-forget)
         try:
             if task:

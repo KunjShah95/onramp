@@ -116,12 +116,26 @@ def setup_env(monkeypatch):
     storage = get_storage()
     for coll in list(storage._data.keys()):
         storage._data[coll].clear()
+    from app.services.postgres_db import generate_id
+    storage._data.setdefault("teams", {})[TEAM_ID] = {
+        "id": TEAM_ID,
+        "name": "Test Team",
+        "is_active": True,
+    }
+    member_id = generate_id()
+    storage._data.setdefault("team_members", {})[member_id] = {
+        "id": member_id,
+        "team_id": TEAM_ID,
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "role": "senior",
+        "joined_at": "2024-01-01T00:00:00Z",
+    }
 
 
 def _create_task_via_api(client, team_id: str) -> str:
     """Helper: create a task via the API and return its task_id."""
     resp = client.post(
-        "/api/v1/tasks",
+        f"/api/v1/tasks?team_id={team_id}",
         json={
             "team_id": team_id,
             "title": "Test task for AI review",
@@ -212,7 +226,7 @@ def test_submit_infers_repo_url_from_pr_url(monkeypatch):
     with TestClient(app) as client:
         # Create a task WITHOUT repo_url
         resp = client.post(
-            "/api/v1/tasks",
+            f"/api/v1/tasks?team_id={TEAM_ID}",
             json={
                 "team_id": TEAM_ID,
                 "title": "Task without repo URL",
