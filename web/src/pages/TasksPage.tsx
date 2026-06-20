@@ -567,6 +567,69 @@ export default function TasksPage() {
                       </div>
                     </div>
                   )}
+                  {selectedTask.ai_review && (
+                    <div className="bg-[#0D0906] rounded-lg p-4 border border-[#4DA8DA]/20 md:col-span-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] text-[#4DA8DA] uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.442 2.798H4.24c-1.472 0-2.441-1.798-1.442-2.798L4.8 15.3" />
+                          </svg>
+                          AI Code Review
+                        </div>
+                        <div className={cn(
+                          'text-sm font-bold font-mono px-2.5 py-1 rounded-lg',
+                          selectedTask.ai_review.score >= 80 ? 'bg-green-500/15 text-green-400' :
+                          selectedTask.ai_review.score >= 60 ? 'bg-[#FF8C00]/15 text-[#FF8C00]' :
+                          'bg-red-500/15 text-red-400'
+                        )}>
+                          {selectedTask.ai_review.score}/100
+                        </div>
+                      </div>
+                      <p className="text-xs text-[#FDFBF8]/65 leading-relaxed">{selectedTask.ai_review.summary}</p>
+                      {selectedTask.ai_review.issues.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1.5">Issues ({selectedTask.ai_review.issues.length})</div>
+                          <div className="space-y-1.5">
+                            {selectedTask.ai_review.issues.map((issue, i) => (
+                              <div key={i} className={cn(
+                                'text-[11px] px-2.5 py-2 rounded-lg border flex items-start gap-2',
+                                issue.severity === 'error' ? 'bg-red-500/5 border-red-500/15 text-red-300' :
+                                issue.severity === 'warning' ? 'bg-[#FF8C00]/5 border-[#FF8C00]/15 text-[#FFB347]' :
+                                'bg-[#FDFBF8]/3 border-[#FDFBF8]/8 text-[#FDFBF8]/55'
+                              )}>
+                                <span className="font-mono shrink-0 text-[10px] mt-0.5">{issue.file}:{issue.line}</span>
+                                <span className="flex-1">{issue.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTask.ai_review.positives.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1.5">Positives</div>
+                          <div className="space-y-1">
+                            {selectedTask.ai_review.positives.map((p, i) => (
+                              <div key={i} className="text-[11px] text-green-400/80 flex items-start gap-1.5">
+                                <span className="text-green-500 mt-0.5">✓</span>{p}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTask.ai_review.recommendations.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1.5">Recommendations</div>
+                          <div className="space-y-1">
+                            {selectedTask.ai_review.recommendations.map((r, i) => (
+                              <div key={i} className="text-[11px] text-[#FDFBF8]/55 flex items-start gap-1.5">
+                                <span className="text-[#4DA8DA] mt-0.5">→</span>{r}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-[#FDFBF8]/5 pt-4 space-y-3">

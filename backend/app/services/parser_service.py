@@ -1,6 +1,5 @@
 import os
 import ast
-import re
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
@@ -607,7 +606,7 @@ class ParserService:
                 self._extract_simple_imports(stmt_node, source_bytes, analysis)
         elif lang in ("rust", "php"):
             for stmt_node in cap_map.get("use_stmt", []):
-                self._extract_rust_uses(stmt_node, source_bytes, analysis)
+                self._extract_use_clauses(stmt_node, source_bytes, analysis)
         elif lang in ("c", "cpp"):
             for stmt_node in cap_map.get("include_stmt", []):
                 self._extract_c_include(stmt_node, source_bytes, analysis)
@@ -689,7 +688,7 @@ class ParserService:
                 raw = self._node_text(child, source_bytes)
                 parts.append(raw.strip("\"'"))
             elif t in ("scoped_identifier", "qualified_name", "identifier", "type_identifier",
-                        "simple_identifier", "dotted_identifier"):
+                        "simple_identifier", "dotted_identifier", "qualified_identifier"):
                 raw = self._node_text(child, source_bytes)
                 if raw:
                     parts.append(raw)
@@ -704,11 +703,12 @@ class ParserService:
 
     # ── Helper: Rust / PHP use extraction ──────────────────────────────
 
-    def _extract_rust_uses(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
+    def _extract_use_clauses(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
         """Walk use_declaration children extracting scoped_identifier paths.
         Handles aliased (use X as Y), nested (use X::{A, B}), and PHP use stmts."""
         def walk_uses(node):
-            if node.type in ("scoped_identifier", "namespace_name", "name"):
+            if node.type in ("scoped_identifier", "namespace_name", "name",
+                             "namespace_use_clause"):
                 raw = self._node_text(node, source_bytes)
                 if raw and raw not in analysis.imports:
                     analysis._add_dep(raw)

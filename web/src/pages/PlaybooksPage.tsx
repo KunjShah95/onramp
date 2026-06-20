@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { createPlaybook, listPlaybooks, archivePlaybook } from '../lib/api'
+import { useState, useEffect } from 'react'
+import { createPlaybook, listPlaybooks, archivePlaybook, listTeams } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
@@ -7,9 +7,11 @@ import { useToast } from '../context/ToastContext'
 
 export default function PlaybooksPage() {
   const toast = useToast()
+  const [teams, setTeams] = useState<any[]>([])
   const [teamId, setTeamId] = useState('')
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [teamsLoading, setTeamsLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
@@ -17,12 +19,27 @@ export default function PlaybooksPage() {
   const [stepsStr, setStepsStr] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
 
+  useEffect(() => {
+    listTeams('current-user')
+      .then((data) => {
+        const t = data.teams || []
+        setTeams(t)
+        if (t.length > 0) setTeamId(t[0].team_id)
+      })
+      .catch(() => {})
+      .finally(() => setTeamsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (teamId) fetchPlaybooks()
+  }, [teamId])
+
   async function fetchPlaybooks() {
-    if (!teamId.trim()) return
+    if (!teamId) return
     setLoading(true)
     setError('')
     try {
-      const data = await listPlaybooks(teamId.trim())
+      const data = await listPlaybooks(teamId)
       setPlaybooks(data.playbooks || [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load playbooks')
@@ -31,7 +48,7 @@ export default function PlaybooksPage() {
   }
 
   async function handleCreate() {
-    if (!title.trim() || !stepsStr.trim()) return
+    if (!title.trim() || !stepsStr.trim() || !teamId) return
     const steps = stepsStr.split('\n').filter((s) => s.trim())
     try {
       await createPlaybook({
@@ -57,6 +74,7 @@ export default function PlaybooksPage() {
     try {
       await archivePlaybook(pbId)
       await fetchPlaybooks()
+      toast.success('Playbook archived')
     } catch { /* ignore */ }
   }
 
@@ -67,21 +85,38 @@ export default function PlaybooksPage() {
       <p className="text-[#FDFBF8]/60 text-sm mb-6">Create and share onboarding playbooks for your team</p>
 
       {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20">{error}</div>
+        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchPlaybooks} className="text-xs underline ml-4">Retry</button>
+        </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mb-8">
-        <input
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          placeholder="Team ID"
-          className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 flex-1 outline-none focus:border-[#FF8C00]/40 transition-colors"
-        />
-        <button onClick={fetchPlaybooks} disabled={loading || !teamId.trim()} className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap disabled:opacity-50">
-          {loading ? 'Loading...' : 'Load Playbooks'}
-        </button>
-        <button onClick={() => setShowCreate(!showCreate)} className="bg-[#FDFBF8]/5 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/70 border border-[#FDFBF8]/8 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap">
-          {showCreate ? 'Cancel' : 'New Playbook'}
+        {teamsLoading ? (
+          <div className="flex-1 h-9 bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg animate-pulse" />
+        ) : teams.length > 0 ? (
+          <select
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] flex-1 outline-none focus:border-[#FF8C00]/40 transition-colors"
+          >
+            {teams.map((t: any) => (
+              <option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="Team ID"
+            className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 flex-1 outline-none focus:border-[#FF8C00]/40 transition-colors"
+          />
+        )}
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="bg-[#FDFBF8]/5 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/70 border border-[#FDFBF8]/8 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+        >
+          {showCreate ? 'Cancel' : '+ New Playbook'}
         </button>
       </div>
 
@@ -89,7 +124,7 @@ export default function PlaybooksPage() {
         <CardSpotlight className="p-6 mb-8 space-y-4">
           <GradientHeading as="h2" className="text-base">Create Playbook</GradientHeading>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors" />
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors" />
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors" />
           <textarea
             value={stepsStr}
             onChange={(e) => setStepsStr(e.target.value)}
@@ -104,13 +139,24 @@ export default function PlaybooksPage() {
       )}
 
       <div className="space-y-4">
-        {playbooks.length === 0 && !loading && (
-          <CardSpotlight className="py-8 text-center">
-            <p className="text-[#FDFBF8]/40 text-sm">No playbooks yet. Create one to get started.</p>
+        {loading && (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {!loading && playbooks.length === 0 && (
+          <CardSpotlight className="py-12 text-center">
+            <p className="text-[#FDFBF8]/40 text-sm mb-2">No playbooks yet.</p>
+            <button onClick={() => setShowCreate(true)} className="text-[#FF8C00] text-sm hover:underline">
+              Create your first playbook →
+            </button>
           </CardSpotlight>
         )}
 
-        {playbooks.map((pb: any) => (
+        {!loading && playbooks.map((pb: any) => (
           <CardSpotlight key={pb.playbook_id} className="p-6">
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
@@ -124,7 +170,7 @@ export default function PlaybooksPage() {
                   <p className="text-xs text-[#FDFBF8]/40 mt-1">{pb.description}</p>
                 )}
               </div>
-              <button onClick={() => handleArchive(pb.playbook_id)} className="text-xs text-red-400 hover:underline ml-4">
+              <button onClick={() => handleArchive(pb.playbook_id)} className="text-xs text-red-400/60 hover:text-red-400 hover:underline ml-4 transition-colors">
                 Archive
               </button>
             </div>

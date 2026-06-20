@@ -17,16 +17,31 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
+const POLL_INTERVAL_MS = 30_000
+
 export default function TraineeDashboard() {
   const [data, setData] = useState<TraineeDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchTraineeDashboard()
-      .then(setData)
-      .catch((err) => setError(err.message || 'Failed to load'))
-      .finally(() => setLoading(false))
+    let cancelled = false
+
+    async function load(isInitial: boolean) {
+      if (isInitial) setLoading(true)
+      try {
+        const result = await fetchTraineeDashboard()
+        if (!cancelled) { setData(result); setError('') }
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load')
+      } finally {
+        if (isInitial && !cancelled) setLoading(false)
+      }
+    }
+
+    load(true)
+    const timer = setInterval(() => load(false), POLL_INTERVAL_MS)
+    return () => { cancelled = true; clearInterval(timer) }
   }, [])
 
   if (loading) {

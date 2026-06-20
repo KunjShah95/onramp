@@ -133,7 +133,10 @@ export default function OnboardingReportPage() {
       </CardSpotlight>
 
       {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20">{error}</div>
+        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={handleGenerate} disabled={loading || !repoUrl.trim()} className="text-xs underline ml-4 text-red-300 hover:text-red-200 disabled:opacity-50">Retry</button>
+        </div>
       )}
 
       {loading && (

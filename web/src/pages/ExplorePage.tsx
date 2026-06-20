@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { ExploreResultSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
@@ -69,8 +70,13 @@ export default function ExplorePage() {
         </div>
 
         {error && (
-          <div className="mb-6 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>
+          <div className="mb-6 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()} className="text-xs underline ml-4 text-red-300 hover:text-red-200 disabled:opacity-50">Retry</button>
+          </div>
         )}
+
+        {loading && !result && <ExploreResultSkeleton />}
 
         {/* Metric cards */}
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

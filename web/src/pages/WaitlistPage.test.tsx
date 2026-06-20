@@ -1,87 +1,68 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, userEvent } from '../test/test-utils'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '../test/test-utils'
+import userEvent from '@testing-library/user-event'
 import WaitlistPage from './WaitlistPage'
 
 describe('WaitlistPage', () => {
-  const mockFetch = vi.fn()
-
   beforeEach(() => {
-    vi.stubGlobal('fetch', mockFetch)
-    mockFetch.mockReset()
+    vi.clearAllMocks()
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  const fillForm = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.type(screen.getByPlaceholderText(/full name/i), 'Jane Doe')
-    await user.type(screen.getByPlaceholderText(/work email/i), 'jane@example.com')
-
-    const combos = screen.getAllByRole('combobox')
-    await user.selectOptions(combos[0], 'developer')
-    await user.type(screen.getByPlaceholderText(/company/i), 'Acme Inc')
-    await user.selectOptions(combos[1], '11-50')
-    await user.type(
-      screen.getByPlaceholderText(/what.*biggest onboarding/i),
-      'Too much manual ramp-up time',
-    )
-  }
-
-  it('renders all form fields and Join Waitlist button', async () => {
-    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ count: 99 })))
+  it('renders the waitlist form', () => {
     render(<WaitlistPage />)
-
-    expect(await screen.findByPlaceholderText(/full name/i)).toBeInTheDocument()
-    expect(await screen.findByPlaceholderText(/work email/i)).toBeInTheDocument()
-
-    const combos = await screen.findAllByRole('combobox')
-    expect(combos).toHaveLength(2)
-
-    expect(await screen.findByPlaceholderText(/company/i)).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /join waitlist/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /join the waitlist/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/role/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/company/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/team size/i)).toBeInTheDocument()
   })
 
-  it('shows success state after successful submit', async () => {
-    mockFetch
-      .mockResolvedValueOnce(new Response(JSON.stringify({ count: 99 })))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ position: 42, message: "You're on the list!" }),
-          { status: 200 },
-        ),
-      )
-
+  it('shows validation error for missing fields', async () => {
     const user = userEvent.setup()
     render(<WaitlistPage />)
-
-    await screen.findByText(/already waiting/i)
-
-    await fillForm(user)
+    await user.type(screen.getByLabelText(/name/i), 'Test User')
+    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.type(screen.getByLabelText(/use case/i), 'Testing')
     await user.click(screen.getByRole('button', { name: /join waitlist/i }))
-
-    expect(await screen.findByText("You're on the list!")).toBeInTheDocument()
-
-    const postCall = mockFetch.mock.calls.find(
-      (c) => typeof c[0] === 'string' && (c[0] as string).includes('/join'),
-    )
-    expect(postCall).toBeDefined()
+    await waitFor(() => {
+      expect(screen.getByText(/please fill in all fields/i)).toBeInTheDocument()
+    })
   })
 
-  it('shows validation error when role or team_size is missing', async () => {
-    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ count: 99 })))
+  it('submits the form successfully', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ position: 42, message: 'Welcome!' }),
+    })
     const user = userEvent.setup()
-    const { container } = render(<WaitlistPage />)
+    render(<WaitlistPage />)
+    await user.type(screen.getByLabelText(/name/i), 'Test User')
+    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.selectOptions(screen.getByLabelText(/role/i), 'developer')
+    await user.type(screen.getByLabelText(/company/i), 'Test Corp')
+    await user.selectOptions(screen.getByLabelText(/team size/i), '1-10')
+    await user.type(screen.getByLabelText(/use case/i), 'Testing')
+    await user.click(screen.getByRole('button', { name: /join waitlist/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/position #42/i)).toBeInTheDocument()
+    })
+  })
 
-    await screen.findByPlaceholderText(/full name/i)
-
-    await user.type(screen.getByPlaceholderText(/full name/i), 'Jane Doe')
-    await user.type(screen.getByPlaceholderText(/work email/i), 'jane@example.com')
-    await user.type(screen.getByPlaceholderText(/company/i), 'Acme Inc')
-
-    const form = container.querySelector('form')!
-    fireEvent.submit(form)
-
-    expect(await screen.findByText(/please fill in all fields/i)).toBeInTheDocument()
+  it('shows error on failed submit', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ detail: 'Email already registered' }),
+    })
+    const user = userEvent.setup()
+    render(<WaitlistPage />)
+    await user.type(screen.getByLabelText(/name/i), 'Test User')
+    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.selectOptions(screen.getByLabelText(/role/i), 'developer')
+    await user.selectOptions(screen.getByLabelText(/team size/i), '1-10')
+    await user.click(screen.getByRole('button', { name: /join waitlist/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/email already registered/i)).toBeInTheDocument()
+    })
   })
 })

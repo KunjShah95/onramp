@@ -62,14 +62,33 @@ export async function analyzeArchitecture(
   })
 }
 
+export interface SavedLearningPath {
+  path_id: string
+  user_id: string
+  repo_url: string
+  user_level: string
+  result: LearningPathResult
+  created_at: string
+}
+
 export async function generateLearningPath(
   repoStructure: Record<string, unknown>,
-  userLevel: string
-): Promise<LearningPathResult> {
-  return request<LearningPathResult>(`${API_BASE}/learn/path`, {
+  userLevel: string,
+  repoUrl = ''
+): Promise<LearningPathResult & { path_id?: string }> {
+  return request<LearningPathResult & { path_id?: string }>(`${API_BASE}/learn/path`, {
     repo_structure: repoStructure,
     user_level: userLevel,
+    repo_url: repoUrl,
   })
+}
+
+export async function listLearningPaths(): Promise<{ paths: SavedLearningPath[] }> {
+  return get<{ paths: SavedLearningPath[] }>(`${API_BASE}/learn/paths`)
+}
+
+export async function getLearningPath(pathId: string): Promise<SavedLearningPath> {
+  return get<SavedLearningPath>(`${API_BASE}/learn/paths/${pathId}`)
 }
 
 export async function findIssues(

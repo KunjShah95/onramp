@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { analyzeArchitecture, generateLearningPath, createTask } from '../lib/api'
+import { analyzeArchitecture, generateLearningPath, createTask, listLearningPaths, type SavedLearningPath } from '../lib/api'
 import type { LearningPathResult } from '../lib/types'
 import { cn } from '../lib/utils'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
+import { LearningPathSkeleton } from '../components/ui/Skeleton'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -36,7 +37,14 @@ export default function LearnPage() {
   const [result, setResult] = useState<LearningPathResult | null>(null)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [recentPaths, setRecentPaths] = useState<SavedLearningPath[]>([])
   const toast = useToast()
+
+  useEffect(() => {
+    listLearningPaths()
+      .then((data) => setRecentPaths(data.paths))
+      .catch(() => { /* not logged in or no paths yet */ })
+  }, [])
 
   async function handleGenerate() {
     if (!repoUrl.trim()) return
@@ -44,18 +52,24 @@ export default function LearnPage() {
     setError('')
     setSuccessMsg('')
     try {
-      // First, get the repo structure
       const architecture = await analyzeArchitecture(repoUrl)
-      // Then, generate the learning path
-      const pathResult = await generateLearningPath(architecture.entities, userLevel)
+      const pathResult = await generateLearningPath(architecture.entities, userLevel, repoUrl)
       setResult(pathResult)
       toast.success('Learning path generated', `${pathResult.path.length} modules · ${pathResult.total_estimated_hours} hours`)
+      listLearningPaths().then((data) => setRecentPaths(data.paths)).catch(() => {})
     } catch (err: any) {
       setError(err.message || 'Failed to generate learning path.')
       toast.error('Generation failed', err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleRestorePath(saved: SavedLearningPath) {
+    setRepoUrl(saved.repo_url)
+    setUserLevel(saved.user_level)
+    setResult(saved.result)
+    toast.success('Path restored', `${saved.result.path.length} modules from ${new Date(saved.created_at).toLocaleDateString()}`)
   }
 
   async function handleStartLearning() {
@@ -107,6 +121,27 @@ export default function LearnPage() {
             Your personalized trajectory to mastering the codebase. Enter a repository URL to generate a custom curriculum.
           </p>
 
+          {recentPaths.length > 0 && !result && (
+            <div className="mb-6 max-w-3xl">
+              <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Recent paths</div>
+              <div className="flex flex-wrap gap-2">
+                {recentPaths.map((p) => (
+                  <button
+                    key={p.path_id}
+                    onClick={() => handleRestorePath(p)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1A110D] border border-[#FDFBF8]/10 hover:border-[#FF8C00]/40 text-[13px] text-[#FDFBF8]/70 hover:text-[#FDFBF8] transition-colors"
+                  >
+                    <svg className="w-3 h-3 text-[#FF8C00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="truncate max-w-[160px]">{p.repo_url.split('/').slice(-2).join('/')}</span>
+                    <span className="text-[#FDFBF8]/30 text-[11px]">{p.user_level}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row gap-4 max-w-3xl">
             <input
               value={repoUrl}
@@ -139,8 +174,9 @@ export default function LearnPage() {
           </div>
 
           {error && (
-            <div className="mt-6 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm">
-              {error}
+            <div className="mt-6 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={handleGenerate} disabled={loading || !repoUrl.trim()} className="text-xs underline ml-4 text-red-300 hover:text-red-200 disabled:opacity-50">Retry</button>
             </div>
           )}
 
@@ -167,12 +203,8 @@ export default function LearnPage() {
               )}
               
               {loading && (
-                <motion.div variants={itemVariants} className="flex flex-col items-center justify-center py-12">
-                  <svg className="w-8 h-8 animate-spin text-[#FF8C00] mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p className="text-[#FDFBF8]/60 text-sm font-mono animate-pulse">Analyzing codebase & generating curriculum...</p>
+                <motion.div variants={itemVariants}>
+                  <LearningPathSkeleton />
                 </motion.div>
               )}
 

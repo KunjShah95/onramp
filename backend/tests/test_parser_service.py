@@ -1044,3 +1044,697 @@ class TestEdgeCases:
                 assert fn["lineno"] == 4  # 1-indexed; function is on line 4
                 return
         pytest.fail("myFunc not found")
+
+
+# =========================================================================
+# C — functions, structs, includes, edge cases
+# =========================================================================
+
+
+class TestC:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_function_definition(self):
+        a = await _parse_single(self.ps, "int greet(const char* name) { return 0; }", "test.c")
+        names = {f["name"] for f in a.functions}
+        assert "greet" in names
+
+    @pytest.mark.asyncio
+    async def test_void_function(self):
+        a = await _parse_single(self.ps, "void log(char* msg) { printf(msg); }", "test.c")
+        names = {f["name"] for f in a.functions}
+        assert "log" in names
+
+    @pytest.mark.asyncio
+    async def test_multiple_functions(self):
+        a = await _parse_single(self.ps, "int one() { return 1; }\nint two() { return 2; }", "test.c")
+        assert len(a.functions) >= 2
+
+    # ── Structs ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_struct(self):
+        a = await _parse_single(self.ps, "struct Point { int x; int y; };", "test.c")
+        class_names = {c["name"] for c in a.classes}
+        assert "Point" in class_names
+
+    @pytest.mark.asyncio
+    async def test_typedef_struct(self):
+        a = await _parse_single(self.ps, "typedef struct { int x; } Point;", "test.c")
+        # anonymous structs with typedef may not be captured
+        assert a is not None
+
+    @pytest.mark.asyncio
+    async def test_union(self):
+        a = await _parse_single(self.ps, "union Data { int i; float f; };", "test.c")
+        class_names = {c["name"] for c in a.classes}
+        assert "Data" in class_names
+
+    # ── Includes ───────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_system_include(self):
+        a = await _parse_single(self.ps, '#include <stdio.h>\nint main() { return 0; }', "test.c")
+        assert any("stdio.h" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_local_include(self):
+        a = await _parse_single(self.ps, '#include "mylib.h"', "test.c")
+        assert any("mylib.h" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_multiple_includes(self):
+        a = await _parse_single(self.ps, '#include <stdio.h>\n#include <stdlib.h>\n#include "local.h"', "test.c")
+        assert len(a.imports) >= 2
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.c")
+        assert a.functions == []
+        assert a.classes == []
+        assert a.imports == []
+
+    @pytest.mark.asyncio
+    async def test_only_comment(self):
+        a = await _parse_single(self.ps, "/* just a comment */", "test.c")
+        assert a is not None
+
+
+# =========================================================================
+# C++ — classes, methods, templates, includes, edge cases
+# =========================================================================
+
+
+class TestCpp:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "class MyClass { public: int get() { return 0; } };", "test.cpp")
+        class_names = {c["name"] for c in a.classes}
+        assert "MyClass" in class_names
+
+    @pytest.mark.asyncio
+    async def test_struct(self):
+        a = await _parse_single(self.ps, "struct Config { int port; };", "test.cpp")
+        class_names = {c["name"] for c in a.classes}
+        assert "Config" in class_names
+
+    @pytest.mark.asyncio
+    async def test_template_class(self):
+        a = await _parse_single(self.ps, "template<typename T> class Box { T value; };", "test.cpp")
+        class_names = {c["name"] for c in a.classes}
+        assert "Box" in class_names
+
+    @pytest.mark.asyncio
+    async def test_inherited_class(self):
+        a = await _parse_single(self.ps, "class Dog : public Animal { void bark() {} };", "test.cpp")
+        class_names = {c["name"] for c in a.classes}
+        assert "Dog" in class_names
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_free_function(self):
+        a = await _parse_single(self.ps, "int multiply(int a, int b) { return a * b; }", "test.cpp")
+        names = {f["name"] for f in a.functions}
+        assert "multiply" in names
+
+    @pytest.mark.asyncio
+    async def test_method_in_class(self):
+        a = await _parse_single(self.ps, "class Util { public: void helper(); };", "test.cpp")
+        class_names = {c["name"] for c in a.classes}
+        assert "Util" in class_names
+        # Forward-declared methods may or may not be captured
+        assert a is not None
+
+    # ── Includes ───────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_system_include(self):
+        a = await _parse_single(self.ps, '#include <vector>\nclass Foo {};', "test.cpp")
+        assert any("vector" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_local_include(self):
+        a = await _parse_single(self.ps, '#include "config.hpp"', "test.cpp")
+        assert any("config.hpp" in imp for imp in a.imports)
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.cpp")
+        assert a.functions == []
+        assert a.classes == []
+
+
+# =========================================================================
+# C# — classes, methods, using directives, edge cases
+# =========================================================================
+
+
+class TestCSharp:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "class UserService { }", "Service.cs")
+        class_names = {c["name"] for c in a.classes}
+        assert "UserService" in class_names
+
+    @pytest.mark.asyncio
+    async def test_public_class(self):
+        a = await _parse_single(self.ps, "public class User { private string name; }", "User.cs")
+        class_names = {c["name"] for c in a.classes}
+        assert "User" in class_names
+
+    @pytest.mark.asyncio
+    async def test_struct(self):
+        a = await _parse_single(self.ps, "struct Point { int X; int Y; }", "Point.cs")
+        class_names = {c["name"] for c in a.classes}
+        assert "Point" in class_names
+
+    @pytest.mark.asyncio
+    async def test_interface(self):
+        a = await _parse_single(self.ps, "interface IRepository { Task Save(); }", "IRepo.cs")
+        class_names = {c["name"] for c in a.classes}
+        assert "IRepository" in class_names
+
+    # ── Methods ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_method_declaration(self):
+        a = await _parse_single(self.ps, "class Util { public int Add(int a, int b) { return a+b; } }", "Util.cs")
+        func_names = {f["name"] for f in a.functions}
+        assert "Add" in func_names
+
+    @pytest.mark.asyncio
+    async def test_static_method(self):
+        a = await _parse_single(self.ps, "class Utils { public static void Log(string msg) { } }", "Utils.cs")
+        func_names = {f["name"] for f in a.functions}
+        assert "Log" in func_names
+
+    @pytest.mark.asyncio
+    async def test_multiple_methods(self):
+        a = await _parse_single(self.ps, "class Calc { int Add() { return 0; } int Sub() { return 0; } }", "Calc.cs")
+        assert len(a.functions) >= 2
+
+    # ── Using directives ───────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_using_directive(self):
+        a = await _parse_single(self.ps, "using System;\nclass Foo { }", "Foo.cs")
+        assert "System" in a.imports
+
+    @pytest.mark.asyncio
+    async def test_using_qualified(self):
+        a = await _parse_single(self.ps, "using System.Collections.Generic;\nclass Foo { }", "Foo.cs")
+        assert any("System.Collections.Generic" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_multiple_usings(self):
+        a = await _parse_single(self.ps, "using System;\nusing System.IO;\nusing System.Linq;\nclass Foo { }", "Foo.cs")
+        assert len(a.imports) >= 2
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.cs")
+        assert a.functions == []
+        assert a.classes == []
+        assert a.imports == []
+
+    @pytest.mark.asyncio
+    async def test_namespace_wrapping(self):
+        """Namespace declarations should not break parsing."""
+        a = await _parse_single(self.ps, "namespace App { class Foo { } }", "Foo.cs")
+        class_names = {c["name"] for c in a.classes}
+        assert "Foo" in class_names
+
+
+# =========================================================================
+# PHP — classes, functions, namespaces, use, edge cases
+# =========================================================================
+
+
+class TestPHP:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "<?php class UserService { }\n", "Service.php")
+        class_names = {c["name"] for c in a.classes}
+        assert "UserService" in class_names
+
+    @pytest.mark.asyncio
+    async def test_interface(self):
+        a = await _parse_single(self.ps, "<?php interface Repository { public function find($id); }\n", "Repo.php")
+        class_names = {c["name"] for c in a.classes}
+        assert "Repository" in class_names
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_function_definition(self):
+        a = await _parse_single(self.ps, "<?php function helper() { return null; }\n", "helper.php")
+        names = {f["name"] for f in a.functions}
+        assert "helper" in names
+
+    @pytest.mark.asyncio
+    async def test_method(self):
+        a = await _parse_single(self.ps, "<?php class Foo { public function bar() {} }\n", "Foo.php")
+        func_names = {f["name"] for f in a.functions}
+        assert "bar" in func_names
+
+    @pytest.mark.asyncio
+    async def test_multiple_methods(self):
+        a = await _parse_single(self.ps, "<?php class Calc { function add() {} function sub() {} }\n", "Calc.php")
+        assert len(a.functions) >= 2
+
+    @pytest.mark.asyncio
+    async def test_private_method(self):
+        a = await _parse_single(self.ps, "<?php class Foo { private function validate() {} }\n", "Foo.php")
+        func_names = {f["name"] for f in a.functions}
+        assert "validate" in func_names
+
+    # ── Imports ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_use_statement(self):
+        a = await _parse_single(self.ps, "<?php namespace App;\nuse App\\Models\\User;\n", "User.php")
+        assert any("App\\Models\\User" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_multiple_use_statements(self):
+        a = await _parse_single(self.ps, "<?php\nuse App\\Models\\User;\nuse App\\Models\\Post;\n", "items.php")
+        assert len(a.imports) >= 1
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.php")
+        assert a is not None
+
+
+# =========================================================================
+# Ruby — classes, modules, methods, requires, edge cases
+# =========================================================================
+
+
+class TestRuby:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes / Modules ──────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "class User\n  def initialize\n    @name = 'test'\n  end\nend\n", "user.rb")
+        class_names = {c["name"] for c in a.classes}
+        assert "User" in class_names
+
+    @pytest.mark.asyncio
+    async def test_module(self):
+        a = await _parse_single(self.ps, "module App\n  class Helper\n  end\nend\n", "helper.rb")
+        class_names = {c["name"] for c in a.classes}
+        assert "App" in class_names
+        assert "Helper" in class_names
+
+    @pytest.mark.asyncio
+    async def test_inherited_class(self):
+        a = await _parse_single(self.ps, "class Admin < User\nend\n", "admin.rb")
+        class_names = {c["name"] for c in a.classes}
+        assert "Admin" in class_names
+
+    # ── Methods ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_method(self):
+        a = await _parse_single(self.ps, "class Foo\n  def bar\n    puts 'hi'\n  end\nend\n", "foo.rb")
+        func_names = {f["name"] for f in a.functions}
+        assert "bar" in func_names
+
+    @pytest.mark.asyncio
+    async def test_singleton_method(self):
+        a = await _parse_single(self.ps, "class Foo\n  def self.bar\n  end\nend\n", "foo.rb")
+        func_names = {f["name"] for f in a.functions}
+        assert "bar" in func_names
+
+    @pytest.mark.asyncio
+    async def test_multiple_methods(self):
+        a = await _parse_single(self.ps, "class Calc\n  def add; end\n  def sub; end\nend\n", "calc.rb")
+        assert len(a.functions) >= 2
+
+    # ── Imports ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_require(self):
+        a = await _parse_single(self.ps, "require 'json'\n", "lib.rb")
+        assert "json" in a.imports
+
+    @pytest.mark.asyncio
+    async def test_require_relative(self):
+        a = await _parse_single(self.ps, "require_relative 'config'\n", "lib.rb")
+        assert "config" in a.imports
+
+    @pytest.mark.asyncio
+    async def test_load(self):
+        a = await _parse_single(self.ps, "load 'helpers.rb'\n", "lib.rb")
+        assert "helpers.rb" in a.imports
+
+    @pytest.mark.asyncio
+    async def test_multiple_requires(self):
+        a = await _parse_single(self.ps, "require 'json'\nrequire 'yaml'\nrequire 'erb'\n", "lib.rb")
+        assert len(a.imports) >= 2
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.rb")
+        assert a.functions == []
+        assert a.classes == []
+        assert a.imports == []
+
+
+# =========================================================================
+# Swift — classes, protocols, functions, imports, edge cases
+# =========================================================================
+
+
+class TestSwift:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "class User { var name: String\n  func greet() -> String { return \"Hi\" } }\n", "User.swift")
+        class_names = {c["name"] for c in a.classes}
+        assert "User" in class_names
+
+    @pytest.mark.asyncio
+    async def test_protocol(self):
+        a = await _parse_single(self.ps, "protocol Drawable { func draw() }\n", "Drawable.swift")
+        class_names = {c["name"] for c in a.classes}
+        assert "Drawable" in class_names
+
+    @pytest.mark.asyncio
+    async def test_class_with_protocol(self):
+        a = await _parse_single(self.ps, "class Service: Drawable { func draw() {} }\n", "Service.swift")
+        class_names = {c["name"] for c in a.classes}
+        assert "Service" in class_names
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_free_function(self):
+        a = await _parse_single(self.ps, "func hello() -> String { return \"Hi\" }\n", "hello.swift")
+        names = {f["name"] for f in a.functions}
+        assert "hello" in names
+
+    @pytest.mark.asyncio
+    async def test_method(self):
+        a = await _parse_single(self.ps, "class Calc { func add(a: Int, b: Int) -> Int { return a+b } }\n", "Calc.swift")
+        func_names = {f["name"] for f in a.functions}
+        assert "add" in func_names
+
+    @pytest.mark.asyncio
+    async def test_multiple_functions(self):
+        a = await _parse_single(self.ps, "func one() {}; func two() {}; func three() {}", "many.swift")
+        assert len(a.functions) >= 2
+
+    # ── Imports ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_import_framework(self):
+        a = await _parse_single(self.ps, "import Foundation\n", "main.swift")
+        assert "Foundation" in a.imports
+
+    @pytest.mark.asyncio
+    async def test_import_qualified(self):
+        a = await _parse_single(self.ps, "import UIKit.UIColor\n", "main.swift")
+        # The identifier capture may get the full qualified path or just the first part
+        assert len(a.imports) >= 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_imports(self):
+        a = await _parse_single(self.ps, "import Foundation\nimport UIKit\n", "main.swift")
+        assert len(a.imports) >= 2
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.swift")
+        assert a.functions == []
+        assert a.classes == []
+        assert a.imports == []
+
+
+# =========================================================================
+# Kotlin — classes, objects, functions, imports, edge cases
+# =========================================================================
+
+
+class TestKotlin:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Classes ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_class(self):
+        a = await _parse_single(self.ps, "package com.example\nclass UserService { }\n", "Service.kt")
+        class_names = {c["name"] for c in a.classes}
+        assert "UserService" in class_names
+
+    @pytest.mark.asyncio
+    async def test_data_class(self):
+        a = await _parse_single(self.ps, "data class User(val name: String, val age: Int)\n", "User.kt")
+        class_names = {c["name"] for c in a.classes}
+        assert "User" in class_names
+
+    @pytest.mark.asyncio
+    async def test_object(self):
+        a = await _parse_single(self.ps, "object Singleton { val name = \"test\" }\n", "Singleton.kt")
+        class_names = {c["name"] for c in a.classes}
+        assert "Singleton" in class_names
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_top_level_function(self):
+        a = await _parse_single(self.ps, "fun helper(): String { return \"hi\" }\n", "helper.kt")
+        names = {f["name"] for f in a.functions}
+        assert "helper" in names
+
+    @pytest.mark.asyncio
+    async def test_method(self):
+        a = await _parse_single(self.ps, "class Calc { fun add(a: Int, b: Int): Int { return a + b } }\n", "Calc.kt")
+        func_names = {f["name"] for f in a.functions}
+        assert "add" in func_names
+
+    @pytest.mark.asyncio
+    async def test_private_method(self):
+        a = await _parse_single(self.ps, "class Foo { private fun validate() {} }\n", "Foo.kt")
+        func_names = {f["name"] for f in a.functions}
+        assert "validate" in func_names
+
+    # ── Imports ────────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_single_import(self):
+        a = await _parse_single(self.ps, "import com.example.model.User\nclass Foo { }\n", "Foo.kt")
+        assert any("com.example.model.User" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_multiple_imports(self):
+        a = await _parse_single(self.ps, "import com.example.model.User\nimport com.example.model.Post\n", "models.kt")
+        assert len(a.imports) >= 2
+
+    @pytest.mark.asyncio
+    async def test_package_statement(self):
+        """Package declarations should not interfere with parsing."""
+        a = await _parse_single(self.ps, "package com.example.app\nclass App { }\n", "App.kt")
+        class_names = {c["name"] for c in a.classes}
+        assert "App" in class_names
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.kt")
+        assert a.functions == []
+        assert a.classes == []
+        assert a.imports == []
+
+
+# =========================================================================
+# Bash — functions, source includes, edge cases
+# =========================================================================
+
+
+class TestBash:
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    # ── Functions ──────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_function_keyword(self):
+        a = await _parse_single(self.ps, "function greet() { echo \"Hello\"; }\n", "script.sh")
+        names = {f["name"] for f in a.functions}
+        assert "greet" in names
+
+    @pytest.mark.asyncio
+    async def test_multiple_functions(self):
+        a = await _parse_single(self.ps, "function one() { :; }\nfunction two() { :; }\n", "script.sh")
+        assert len(a.functions) >= 2
+
+    # ── Source includes ────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_source_command(self):
+        a = await _parse_single(self.ps, "source ./utils.sh\n", "script.sh")
+        assert any("./utils.sh" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_dot_command(self):
+        a = await _parse_single(self.ps, ". ./config.sh\n", "script.sh")
+        assert any("./config.sh" in imp for imp in a.imports)
+
+    @pytest.mark.asyncio
+    async def test_multiple_sources(self):
+        a = await _parse_single(self.ps, "source lib.sh\nsource config.sh\n", "script.sh")
+        assert len(a.imports) >= 2
+
+    @pytest.mark.asyncio
+    async def test_func_and_source(self):
+        a = await _parse_single(self.ps, "source utils.sh\nfunction greet() { echo hi; }\n", "script.sh")
+        names = {f["name"] for f in a.functions}
+        assert "greet" in names
+        assert len(a.imports) >= 1
+
+    # ── Edge cases ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_empty_file(self):
+        a = await _parse_single(self.ps, "", "empty.sh")
+        assert a.functions == []
+        assert a.imports == []
+
+    @pytest.mark.asyncio
+    async def test_shebang_only(self):
+        a = await _parse_single(self.ps, "#!/bin/bash\n", "script.sh")
+        assert a is not None
+
+
+# =========================================================================
+# HTML, CSS, JSON, YAML, Markdown, SQL — basic validation
+# These are markup / data / query languages that don't have traditional
+# classes, functions, or imports.  We verify they parse without crashing
+# and return the correct file-level metadata.
+# =========================================================================
+
+
+class TestMarkupLanguages:
+    """Data / markup / query languages — files are counted but have zero entities."""
+
+    @pytest.fixture(autouse=True)
+    def _parser(self):
+        self.ps = ParserService()
+
+    @pytest.mark.asyncio
+    async def test_html(self):
+        a = await _parse_single(self.ps, "<!DOCTYPE html>\n<html><body>Hello</body></html>\n", "page.html")
+        assert a.language == "html"
+        assert a.classes == []
+        assert a.functions == []
+        assert a.imports == []
+
+    @pytest.mark.asyncio
+    async def test_css(self):
+        a = await _parse_single(self.ps, ".class { color: red; }\n#id { margin: 0; }\n", "styles.css")
+        assert a.language == "css"
+        assert a.classes == []
+        assert a.functions == []
+
+    @pytest.mark.asyncio
+    async def test_json(self):
+        a = await _parse_single(self.ps, '{"name": "test", "count": 1}', "data.json")
+        assert a.language == "json"
+        assert a.classes == []
+        assert a.functions == []
+
+    @pytest.mark.asyncio
+    async def test_yaml(self):
+        a = await _parse_single(self.ps, "name: test\nversion: 1.0\n", "config.yaml")
+        assert a.language == "yaml"
+        assert a.classes == []
+        assert a.functions == []
+
+    @pytest.mark.asyncio
+    async def test_markdown(self):
+        a = await _parse_single(self.ps, "# Title\n\nHello world\n", "readme.md")
+        assert a.language == "markdown"
+        assert a.classes == []
+        assert a.functions == []
+
+    @pytest.mark.asyncio
+    async def test_sql(self):
+        a = await _parse_single(self.ps, "SELECT * FROM users WHERE id = 1;\n", "query.sql")
+        assert a.language == "sql"
+        assert a.classes == []
+        assert a.functions == []
+
+    @pytest.mark.asyncio
+    async def test_empty_html(self):
+        a = await _parse_single(self.ps, "", "empty.html")
+        assert a.language == "html"
+        assert a.classes == []
+
+    @pytest.mark.asyncio
+    async def test_empty_json(self):
+        a = await _parse_single(self.ps, "", "empty.json")
+        assert a.language == "json"
+        assert a.classes == []
+
+    @pytest.mark.asyncio
+    async def test_empty_markdown(self):
+        a = await _parse_single(self.ps, "", "empty.md")
+        assert a.language == "markdown"
+        assert a.classes == []
+
+    @pytest.mark.asyncio
+    async def test_invalid_sql(self):
+        """Syntactically invalid SQL should not crash."""
+        a = await _parse_single(self.ps, "SELECT FROM WHERE", "bad.sql")
+        assert a is not None

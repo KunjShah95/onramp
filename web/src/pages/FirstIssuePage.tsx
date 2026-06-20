@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { findIssues, generateGuide, fetchPairWalkthrough } from '../lib/api'
+import { findIssues, generateGuide, fetchPairWalkthrough, createTask } from '../lib/api'
 import type { ScoredIssue, IssueGuide } from '../lib/types'
 import type { PairWalkthroughResult } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -28,8 +28,27 @@ export default function FirstIssuePage() {
   const [selectedGuide, setSelectedGuide] = useState<IssueGuide | null>(null)
   const [walkthroughLoading, setWalkthroughLoading] = useState<string | null>(null)
   const [selectedWalkthrough, setSelectedWalkthrough] = useState<PairWalkthroughResult | null>(null)
+  const [taskCreating, setTaskCreating] = useState(false)
+  const [taskCreatedId, setTaskCreatedId] = useState<string | null>(null)
 
   const toast = useToast()
+
+  async function handleCreateTaskForGuide(guide: IssueGuide) {
+    setTaskCreating(true)
+    try {
+      const task = await createTask({
+        team_id: 'default',
+        title: guide.title || 'First PR Task',
+        description: guide.steps?.join('\n') || '',
+        priority: 'medium',
+      })
+      setTaskCreatedId(task.task_id)
+      toast.success('Task created', 'Linked to /tasks kanban')
+    } catch (e: any) {
+      toast.error('Failed to create task', e.message)
+    }
+    setTaskCreating(false)
+  }
 
   async function handleFindIssues() {
     if (!repoUrl.trim()) return
@@ -257,7 +276,7 @@ export default function FirstIssuePage() {
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-              onClick={() => setSelectedGuide(null)}
+              onClick={() => { setSelectedGuide(null); setTaskCreatedId(null) }}
             >
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }} 
@@ -271,7 +290,7 @@ export default function FirstIssuePage() {
                     <div className="w-2 h-2 rounded-full bg-[#FF8C00]" />
                     <h2 className="font-display text-base font-bold text-[#FDFBF8]">Step-by-Step Guide</h2>
                   </div>
-                  <button onClick={() => setSelectedGuide(null)} className="text-[#FDFBF8]/30 hover:text-[#FDFBF8] transition-colors">
+                  <button onClick={() => { setSelectedGuide(null); setTaskCreatedId(null) }} className="text-[#FDFBF8]/30 hover:text-[#FDFBF8] transition-colors">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -331,6 +350,35 @@ export default function FirstIssuePage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="border-t border-[#FDFBF8]/5 pt-4">
+                    {taskCreatedId ? (
+                      <div className="flex items-center gap-2 text-green-400 text-sm">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Task created — track it in <a href="/tasks" className="underline hover:text-green-300">/tasks</a>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleCreateTaskForGuide(selectedGuide)}
+                        disabled={taskCreating}
+                        className="w-full bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {taskCreating ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                        )}
+                        {taskCreating ? 'Creating Task…' : 'Create Task for This Issue'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

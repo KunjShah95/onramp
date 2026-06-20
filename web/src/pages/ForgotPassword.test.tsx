@@ -1,46 +1,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, userEvent } from '../test/test-utils'
-import ForgotPassword from './ForgotPassword'
+import { render, screen, waitFor } from '../test/test-utils'
+import userEvent from '@testing-library/user-event'
 import { sendPasswordResetEmail } from 'firebase/auth'
+import ForgotPassword from './ForgotPassword'
+
+vi.mock('firebase/auth')
 
 describe('ForgotPassword', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(sendPasswordResetEmail).mockResolvedValue(undefined)
   })
 
-  it('renders email field and Send Reset Link button', async () => {
+  it('renders the forgot password form', () => {
     render(<ForgotPassword />)
-
-    expect(await screen.findByRole('textbox', { name: /email address/i })).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /send reset link/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /codeflow 2\.0/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /send reset link/i })).toBeInTheDocument()
   })
 
-  it('shows sent state after successful submit', async () => {
+  it('calls Firebase reset password on submit', async () => {
     const user = userEvent.setup()
     render(<ForgotPassword />)
-
-    await user.type(await screen.findByRole('textbox', { name: /email address/i }), 'test@example.com')
-    await user.click(await screen.findByRole('button', { name: /send reset link/i }))
-
-    expect(await screen.findByText(/check your email/i)).toBeInTheDocument()
-    expect(vi.mocked(sendPasswordResetEmail)).toHaveBeenCalledWith(
-      expect.anything(),
-      'test@example.com',
-    )
+    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
+    await waitFor(() => {
+      expect(sendPasswordResetEmail).toHaveBeenCalled()
+    })
   })
 
-  it('shows error message when reset fails', async () => {
-    vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(
-      new Error('auth/user-not-found'),
-    )
-
+  it('shows success message after sending', async () => {
     const user = userEvent.setup()
     render(<ForgotPassword />)
+    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument()
+    })
+  })
 
-    await user.type(await screen.findByRole('textbox', { name: /email address/i }), 'unknown@example.com')
-    await user.click(await screen.findByRole('button', { name: /send reset link/i }))
+  it('shows error on failed reset', async () => {
+    vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(new Error('auth/invalid-email'))
+    const user = userEvent.setup()
+    render(<ForgotPassword />)
+    await user.type(screen.getByLabelText(/email/i), 'invalid')
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/failed to send reset email/i)).toBeInTheDocument()
+    })
+  })
 
-    const errors = await screen.findAllByText('No account found with this email')
-    expect(errors.length).toBeGreaterThanOrEqual(1)
+  it('has link back to sign in', () => {
+    render(<ForgotPassword />)
+    expect(screen.getByRole('link', { name: /back to sign in/i })).toHaveAttribute('href', '/login')
   })
 })

@@ -126,9 +126,8 @@ class ReviewFeedbackRequest(BaseModel):
 async def create_task_endpoint(
     request: CreateTaskRequest,
     user: dict = Depends(get_current_user),
-    _: None = require_minimum_role("senior"),
 ):
-    """Create a new task (senior creates, optionally assigns to a trainee)."""
+    """Create a new task. Any authenticated team member can create tasks for themselves or their team."""
     uid = user.get("uid", "")
     task = await create_task(
         team_id=request.team_id,
