@@ -1307,6 +1307,17 @@ export async function deleteIntegration(integrationType: string): Promise<{ dele
   return res.json()
 }
 
+export interface GithubTestResult {
+  valid: boolean
+  username?: string
+  scopes?: string[]
+  error?: string
+}
+
+export async function testGithubToken(token: string): Promise<GithubTestResult> {
+  return request<GithubTestResult>(`${API_BASE}/integrations/github/test`, { token })
+}
+
 export async function listUserIntegrations(): Promise<{ integrations: IntegrationConfig[]; count: number }> {
   return get<{ integrations: IntegrationConfig[]; count: number }>(`${API_BASE}/integrations`)
 }

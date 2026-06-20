@@ -18,16 +18,20 @@ import {
   getIntegration,
   saveIntegration,
   deleteIntegration,
+  testGithubToken,
   type ApiKey,
   type NotificationPreferences,
   type Webhook,
+  type GithubTestResult,
 } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 export default function Settings() {
   const { user } = useAuth()
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState('account')
 
   const [name, setName] = useState('')
@@ -66,6 +70,8 @@ export default function Settings() {
   // GitHub integration
   const [githubConnected, setGithubConnected] = useState(false)
   const [githubToken, setGithubToken] = useState('')
+  const [githubTestResult, setGithubTestResult] = useState<GithubTestResult | null>(null)
+  const [githubTesting, setGithubTesting] = useState(false)
 
   const eventLabels: Record<string, string> = {
     'task.assigned': 'Task Assigned',
@@ -244,6 +250,20 @@ export default function Settings() {
     } catch { /* ignore */ }
   }
 
+  async function handleTestGithub() {
+    const tokenToTest = githubToken || ''
+    if (!tokenToTest.trim() || githubConnected) return
+    setGithubTesting(true)
+    setGithubTestResult(null)
+    try {
+      const result = await testGithubToken(tokenToTest.trim())
+      setGithubTestResult(result)
+    } catch {
+      setGithubTestResult({ valid: false, error: 'Failed to connect to server' })
+    }
+    setGithubTesting(false)
+  }
+
   async function handleSaveProfile() {
     const auth = getFirebaseAuth()
     const current = auth.currentUser
@@ -253,8 +273,10 @@ export default function Settings() {
     try {
       await updateProfile(current, { displayName: name.trim() })
       setSavedMsg('Profile saved')
+      toast.success('Profile saved')
     } catch (e) {
       setSavedMsg(e instanceof Error ? e.message : 'Save failed')
+      toast.error('Failed to save profile', e instanceof Error ? e.message : undefined)
     } finally {
       setSaving(false)
     }
@@ -283,6 +305,7 @@ export default function Settings() {
       setTimeout(() => setNotifPrefsMsg(''), 2000)
     } catch (e) {
       setNotifPrefsMsg('Failed to save')
+      toast.error('Failed to save notification preferences')
     }
     setNotifPrefsSaving(false)
   }
@@ -297,6 +320,7 @@ export default function Settings() {
       setTimeout(() => setNotifPrefsMsg(''), 2000)
     } catch (e) {
       setNotifPrefsMsg('Failed to save')
+      toast.error('Failed to save digest preference')
     }
     setNotifPrefsSaving(false)
   }
@@ -764,13 +788,32 @@ export default function Settings() {
                     className="flex-1 bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF8C00] placeholder:text-[#FDFBF8]/30"
                   />
                   <button
+                    onClick={handleTestGithub}
+                    disabled={!githubToken.trim() || githubTesting}
+                    className="bg-[#FDFBF8]/6 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/60 hover:text-[#FDFBF8] px-3 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-40"
+                  >
+                    {githubTesting ? 'Testing…' : 'Test'}
+                  </button>
+                  <button
                     onClick={handleSaveGithub}
                     disabled={!githubToken.trim()}
-                    className="bg-[#FDFBF8]/10 hover:bg-[#FDFBF8]/20 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                    className="bg-[#FF8C00] hover:bg-[#FF8C00]/90 text-[#3D1C00] px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
                   >
                     Save
                   </button>
                 </div>
+                {githubTestResult && (
+                  <div className={`text-xs flex items-center gap-2 ${
+                    githubTestResult.valid ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    <span className="material-symbols-outlined text-sm">
+                      {githubTestResult.valid ? 'check_circle' : 'error'}
+                    </span>
+                    {githubTestResult.valid
+                      ? `Valid — ${githubTestResult.username} (${(githubTestResult.scopes || []).join(', ')})`
+                      : githubTestResult.error}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-between">
