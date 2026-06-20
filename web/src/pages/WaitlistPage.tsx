@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ShaderBackground from '../components/ui/ShaderBackground'
 import Spotlight from '../components/ui/spotlight'
 
-const WAITLIST_URL = 'http://localhost:3008/api/v1/waitlist'
+const WAITLIST_URL = `${import.meta.env.VITE_WAITLIST_URL ?? 'http://localhost:3008'}/api/v1/waitlist`
 
 type Role = 'developer' | 'manager' | 'cto'
 type TeamSize = '1-10' | '11-50' | '51-200' | '200+'

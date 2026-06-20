@@ -100,7 +100,7 @@ services:
       - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@codeflow.dev}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-kkshah2005@gmail.com}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
 
   # Notification Service
   notification:

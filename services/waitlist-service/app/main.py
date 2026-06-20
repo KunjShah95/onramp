@@ -193,6 +193,7 @@ async def health():
 @app.post("/api/v1/waitlist/join", response_model=WaitlistJoinResponse)
 async def join_waitlist(body: WaitlistJoinRequest, background_tasks: BackgroundTasks):
     sheet = get_sheet()
+    # Non-atomic read-check-write: acceptable for low-volume pre-launch waitlist
     existing_emails = [e.lower() for e in sheet.col_values(3)[1:]]  # col 3 = Email, skip header
     if body.email.lower() in existing_emails:
         raise HTTPException(status_code=409, detail="Already on the list")
