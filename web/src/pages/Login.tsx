@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 
 export default function Login() {
@@ -9,6 +10,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { login, loginWithGoogle, loginWithGithub, error, clearError, user } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -30,9 +32,10 @@ export default function Login() {
     setIsSubmitting(true)
     try {
       await login(email, password)
+      toast.success('Signed in', 'Welcome back!')
       navigate(from, { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -43,9 +46,10 @@ export default function Login() {
     setIsSubmitting(true)
     try {
       await loginWithGoogle()
+      toast.success('Signed in with Google')
       navigate(from, { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -56,9 +60,10 @@ export default function Login() {
     setIsSubmitting(true)
     try {
       await loginWithGithub()
+      toast.success('Signed in with GitHub')
       navigate(from, { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }

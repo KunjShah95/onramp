@@ -7,6 +7,7 @@ import { SectionLabel } from '../components/ui/section-label'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 interface PRDescriptionResult {
   title: string
@@ -31,6 +32,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 }
 
 export default function PRDescriptionPage() {
+  const toast = useToast()
   const [repoUrl, setRepoUrl] = useState('')
   const [prNumber, setPrNumber] = useState('')
   const [prTitle, setPrTitle] = useState('')
@@ -59,8 +61,10 @@ export default function PRDescriptionPage() {
       )
       if (!res.ok) { const text = await res.text(); throw new Error(`API error ${res.status}: ${text}`) }
       setResult(await res.json())
+      toast.success('PR description generated')
     } catch (err: any) {
       setError(err.message || 'Failed to generate PR description.')
+      toast.error('Generation failed', err.message)
     } finally { setLoading(false) }
   }
 

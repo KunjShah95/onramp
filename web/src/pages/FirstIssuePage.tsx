@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { findIssues } from '../lib/api'
-import type { ScoredIssue } from '../lib/types'
+import { findIssues, generateGuide, fetchPairWalkthrough } from '../lib/api'
+import type { ScoredIssue, IssueGuide } from '../lib/types'
+import type { PairWalkthroughResult } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,6 +24,12 @@ export default function FirstIssuePage() {
   const [issues, setIssues] = useState<ScoredIssue[]>([])
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [guideLoading, setGuideLoading] = useState<string | null>(null)
+  const [selectedGuide, setSelectedGuide] = useState<IssueGuide | null>(null)
+  const [walkthroughLoading, setWalkthroughLoading] = useState<string | null>(null)
+  const [selectedWalkthrough, setSelectedWalkthrough] = useState<PairWalkthroughResult | null>(null)
+
+  const toast = useToast()
 
   async function handleFindIssues() {
     if (!repoUrl.trim()) return
@@ -30,8 +38,10 @@ export default function FirstIssuePage() {
     try {
       const result = await findIssues(repoUrl, 'junior')
       setIssues(result.issues)
+      toast.success('Issues found', `${result.issues.length} beginner-friendly issues`)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch issues.')
+      toast.error('Failed to fetch issues', err.message)
     } finally {
       setLoading(false)
     }
@@ -184,26 +194,238 @@ export default function FirstIssuePage() {
                 ))}
               </div>
               
-              <div className="flex gap-3 mt-auto">
-                <button className="flex-1 bg-transparent border border-[#FDFBF8]/20 text-[#FDFBF8]/80 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5 py-2.5 rounded-sm text-[13px] font-medium transition-colors font-body">
-                  View Guide
+              <div className="flex gap-2 mt-auto">
+                <button
+                  onClick={async () => {
+                    setGuideLoading(String(issue.id))
+                    setError('')
+                    try {
+                      const guide = await generateGuide(issue.id, { files: [], classes: [], functions: [], imports: [], exports: [] })
+                      guide.title = issue.title
+                      setSelectedGuide(guide)
+                    } catch (e: any) {
+                      setError(e.message || 'Failed to generate guide')
+                    }
+                    setGuideLoading(null)
+                  }}
+                  disabled={guideLoading === String(issue.id)}
+                  className="flex-1 bg-transparent border border-[#FDFBF8]/20 text-[#FDFBF8]/80 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5 py-2.5 rounded-sm text-[13px] font-medium transition-colors font-body disabled:opacity-40"
+                >
+                  {guideLoading === String(issue.id) ? 'Loading...' : 'View Guide'}
+                </button>
+                <button
+                  onClick={async () => {
+                    setWalkthroughLoading(String(issue.id))
+                    setError('')
+                    try {
+                      const walkthrough = await fetchPairWalkthrough(
+                        issue.title,
+                        issue.body || '',
+                        { files: [], classes: [], functions: [], imports: [], exports: [] }
+                      )
+                      setSelectedWalkthrough(walkthrough)
+                    } catch (e: any) {
+                      setError(e.message || 'Failed to generate walkthrough')
+                    }
+                    setWalkthroughLoading(null)
+                  }}
+                  disabled={walkthroughLoading === String(issue.id)}
+                  className="flex-1 bg-transparent border border-[#4DA8DA]/30 text-[#4DA8DA]/80 hover:text-[#4DA8DA] hover:bg-[#4DA8DA]/5 py-2.5 rounded-sm text-[13px] font-medium transition-colors font-body disabled:opacity-40"
+                >
+                  {walkthroughLoading === String(issue.id) ? 'Loading...' : 'Walkthrough'}
                 </button>
                 <a 
                   href={issue.url} 
                   target="_blank" 
                   rel="noreferrer"
-                  className="flex-1 bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] py-2.5 rounded-sm text-[13px] font-bold transition-colors font-body flex items-center justify-center gap-2"
+                  className="flex-[0.7] bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] py-2.5 rounded-sm text-[13px] font-bold transition-colors font-body flex items-center justify-center gap-2"
                 >
-                  Open on GitHub
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                   </svg>
+                  GitHub
                 </a>
               </div>
             </motion.div>
           ))}
 
         </motion.div>
+
+        {/* ── Guide Modal ─────────────────────────────────────────── */}
+        <AnimatePresence>
+          {selectedGuide && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+              onClick={() => setSelectedGuide(null)}
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-[#120D0A] border border-[#FDFBF8]/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 bg-[#120D0A] border-b border-[#FDFBF8]/5 px-6 py-4 flex items-center justify-between z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#FF8C00]" />
+                    <h2 className="font-display text-base font-bold text-[#FDFBF8]">Step-by-Step Guide</h2>
+                  </div>
+                  <button onClick={() => setSelectedGuide(null)} className="text-[#FDFBF8]/30 hover:text-[#FDFBF8] transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-6 space-y-5">
+                  <h3 className="font-display text-lg font-semibold text-[#FDFBF8]">{selectedGuide.title}</h3>
+
+                  {selectedGuide.files_to_touch && selectedGuide.files_to_touch.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Files to Modify</div>
+                      <div className="space-y-1.5">
+                        {selectedGuide.files_to_touch.map((file, i) => (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#0D0906] rounded-lg border border-[#FDFBF8]/5">
+                            <svg className="w-3.5 h-3.5 text-[#FF8C00]/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                            <span className="text-sm text-[#FDFBF8] font-mono">{file}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedGuide.steps && selectedGuide.steps.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-3">Steps</div>
+                      <ol className="space-y-3">
+                        {selectedGuide.steps.map((step, i) => (
+                          <li key={i} className="flex gap-3">
+                            <span className="w-6 h-6 rounded-full bg-[#FF8C00]/15 border border-[#FF8C00]/30 flex items-center justify-center text-[11px] font-bold text-[#FF8C00] shrink-0 mt-0.5">
+                              {i + 1}
+                            </span>
+                            <span className="text-sm text-[#FDFBF8]/70 leading-relaxed pt-0.5">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {selectedGuide.similar_prs && selectedGuide.similar_prs.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Similar PRs</div>
+                      <div className="space-y-2">
+                        {selectedGuide.similar_prs.map((pr, i) => (
+                          <a key={i} href={pr.url} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 px-3 py-2 bg-[#0D0906] rounded-lg border border-[#FDFBF8]/5 hover:border-[#4DA8DA]/30 transition-colors group">
+                            <svg className="w-3.5 h-3.5 text-[#4DA8DA] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            <span className="text-sm text-[#FDFBF8]/60 group-hover:text-[#FDFBF8] flex-1 truncate">{pr.title}</span>
+                            {pr.merged && (
+                              <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">merged</span>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Walkthrough Modal ────────────────────────────────────── */}
+        <AnimatePresence>
+          {selectedWalkthrough && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+              onClick={() => setSelectedWalkthrough(null)}
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-[#120D0A] border border-[#FDFBF8]/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 bg-[#120D0A] border-b border-[#FDFBF8]/5 px-6 py-4 flex items-center justify-between z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#4DA8DA]" />
+                    <h2 className="font-display text-base font-bold text-[#FDFBF8]">Pair Programming Walkthrough</h2>
+                  </div>
+                  <button onClick={() => setSelectedWalkthrough(null)} className="text-[#FDFBF8]/30 hover:text-[#FDFBF8] transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-6 space-y-5">
+                  {/* Thought Process */}
+                  {selectedWalkthrough.thought_process && (
+                    <div className="bg-[#0D0906] border-l-2 border-[#4DA8DA] rounded-r-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-[#4DA8DA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span className="text-[11px] font-semibold text-[#4DA8DA] uppercase tracking-wider">Thinking Aloud</span>
+                      </div>
+                      <p className="text-sm text-[#FDFBF8]/70 leading-relaxed italic">{selectedWalkthrough.thought_process}</p>
+                    </div>
+                  )}
+
+                  {/* Key Insights */}
+                  {selectedWalkthrough.key_insights && selectedWalkthrough.key_insights.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Key Insights</div>
+                      <div className="space-y-1.5">
+                        {selectedWalkthrough.key_insights.map((insight, i) => (
+                          <div key={i} className="flex items-start gap-2 text-sm text-[#FDFBF8]/65">
+                            <span className="text-[#FF8C00] mt-0.5">→</span>
+                            {insight}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solution Steps */}
+                  {selectedWalkthrough.solution_steps && selectedWalkthrough.solution_steps.length > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Solution Steps</div>
+                      <ol className="space-y-2">
+                        {selectedWalkthrough.solution_steps.map((step, i) => (
+                          <li key={i} className="flex gap-3">
+                            <span className="w-6 h-6 rounded-full bg-[#4DA8DA]/15 border border-[#4DA8DA]/30 flex items-center justify-center text-[11px] font-bold text-[#4DA8DA] shrink-0 mt-0.5">
+                              {i + 1}
+                            </span>
+                            <span className="text-sm text-[#FDFBF8]/70 leading-relaxed pt-0.5">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Testing Approach */}
+                  {selectedWalkthrough.testing_approach && (
+                    <div className="bg-[#0D0906] border border-green-500/15 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-[11px] font-semibold text-green-400 uppercase tracking-wider">Testing Approach</span>
+                      </div>
+                      <p className="text-sm text-[#FDFBF8]/65 leading-relaxed">{selectedWalkthrough.testing_approach}</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   )

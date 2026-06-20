@@ -3,8 +3,10 @@ import { createApiKey, listApiKeys, revokeApiKey } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 export default function ApiKeysPage() {
+  const toast = useToast()
   const [orgName, setOrgName] = useState('')
   const [tier, setTier] = useState('free')
   const [keys, setKeys] = useState<any[]>([])
@@ -21,8 +23,10 @@ export default function ApiKeysPage() {
       const data = await createApiKey(orgName.trim(), tier)
       setNewKey(data.raw_key)
       await fetchKeys()
+      toast.success('API key created', `${tier} tier`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create API key')
+      toast.error('Failed to create key', e instanceof Error ? e.message : undefined)
     }
     setLoading(false)
   }

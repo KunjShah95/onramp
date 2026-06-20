@@ -312,6 +312,175 @@ export function ProfileSkeleton() {
   )
 }
 
+// ─── Additional page-specific skeletons ──────────────────────────────
+
+export function TasksPageSkeleton() {
+  return (
+    <div className="animate-in space-y-4">
+      <div className="flex items-center justify-between">
+        <SkeletonHeading />
+        <SkeletonButton />
+      </div>
+      <div className="grid grid-cols-5 gap-3">
+        {[...Array(5)].map((_, i) => <SkeletonStatCard key={i} />)}
+      </div>
+      <SkeletonInput className="w-full" />
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="w-60 shrink-0 space-y-2">
+            <SkeletonText className="w-20 h-4" />
+            {[...Array(2)].map((_, j) => (
+              <SkeletonCard key={j} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function FirstIssueSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex-1">
+          <SkeletonHeading />
+          <SkeletonText className="w-3/4" />
+        </div>
+        <div className="w-full lg:w-[400px]">
+          <SkeletonCard />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-8">
+        <IssueListSkeleton count={2} />
+        <IssueListSkeleton count={2} />
+      </div>
+    </div>
+  )
+}
+
+export function ReportSkeleton() {
+  return (
+    <div className="animate-in space-y-4">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <SkeletonCard />
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function TeamSettingsSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {[...Array(2)].map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+      <SkeletonCard />
+    </div>
+  )
+}
+
+export function BillingSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <div className="flex gap-2">
+        <SkeletonInput className="flex-1" />
+        <SkeletonButton />
+      </div>
+      <SkeletonCard />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function NotificationsSkeleton() {
+  return (
+    <div className="animate-in space-y-4">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/3" />
+      <div className="flex gap-2 flex-wrap">
+        {[...Array(5)].map((_, i) => (
+          <SkeletonButton key={i} className="w-20" />
+        ))}
+      </div>
+      <ListPanelSkeleton rows={5} />
+    </div>
+  )
+}
+
+export function ApiKeysSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <SkeletonCard />
+      <ListPanelSkeleton rows={3} />
+    </div>
+  )
+}
+
+export function PlaybooksSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <div className="flex gap-3">
+        <SkeletonInput className="flex-1" />
+        <SkeletonButton />
+        <SkeletonButton />
+      </div>
+      {[...Array(2)].map((_, i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+  )
+}
+
+export function PRDescriptionSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/2" />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
+}
+
+export function TraineeDashboardSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <SkeletonHeading />
+      <SkeletonText className="w-1/3" />
+      <StatsGridSkeleton count={4} />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2">
+          <ListPanelSkeleton rows={3} />
+        </div>
+        <div className="lg:col-span-3">
+          <ListPanelSkeleton rows={4} />
+        </div>
+      </div>
+      <SkeletonCard />
+    </div>
+  )
+}
+
 export function LandingSkeleton() {
   return (
     <div className="animate-in">

@@ -25,12 +25,13 @@ from app.services.task_service import (
 from app.api.v1.auth import get_current_user
 from app.agents import PRReviewAgent
 from app.middleware.access_guard import require_module_access, require_minimum_role
-from app.services.notification_service import (
-    notify_task_assigned,
-    notify_task_reviewed,
-    notify_task_completed,
+from app.services.notification_helpers import (
+    notify_task_assigned_all_channels,
+    notify_task_submitted_all_channels,
+    notify_task_reviewed_all_channels,
+    notify_task_approved_all_channels,
+    notify_task_completed_all_channels,
 )
-from app.services.slack_service import send_slack_task_notification
 from app.services.audit_service import log_event
 from app.services.cache_service import cached, invalidate_prefix
 
@@ -250,24 +251,7 @@ async def assign_task_endpoint(
         try:
             created_by_name = user.get("name") or user.get("email", "A senior")
             if task:
-                await notify_task_assigned(task, request.assignee_id, assigned_by_name=created_by_name)
-                await send_slack_task_notification(request.assignee_id, "task_assigned", task, actor_name=created_by_name)
-                # Send email notification
-                try:
-                    from app.services.email_service import send_task_assigned_email as _send_task_email
-                    assignee_email = None
-                    try:
-                        from app.services.postgres_db import get_storage
-                        users = await get_storage().query_documents("users", [("id", "==", request.assignee_id)])
-                        if users:
-                            assignee_email = users[0].get("email")
-                    except Exception:
-                        pass
-                    if assignee_email:
-                        team_name = task.get("team_name", "")
-                        await _send_task_email(assignee_email, task.get("title", ""), team_name, created_by_name)
-                except Exception:
-                    logger.exception("Failed to send task assignment email")
+                await notify_task_assigned_all_channels(task, request.assignee_id, created_by_name)
         except Exception:
             logger.exception("Failed to send assignment notification")
         return task
@@ -353,7 +337,15 @@ async def submit_task_endpoint(
             # AI review failure must never block the submission
             logger.exception("AI review failed for task %s: %s", task_id, e)
 
-    # 4. Return the updated task (re-fetch to include ai_review if stored)
+    # 5. Notify the task creator (senior) that work was submitted (fire-and-forget)
+    try:
+        submitter_name = user.get("name") or user.get("email", "A trainee")
+        if full_task:
+            await notify_task_submitted_all_channels(full_task, user.get("uid", ""), submitter_name)
+    except Exception:
+        logger.exception("Failed to send submission notifications")
+
+    # 6. Return the updated task (re-fetch to include ai_review if stored)
     updated = await get_task(task_id)
     return updated or task
 
@@ -373,15 +365,11 @@ async def review_task_endpoint(
             approve=request.approve,
             needs_product=request.needs_product,
         )
-        # Notify the assignee about review results (fire-and-forget)
+        # Notify the assignee via all channels (fire-and-forget)
         try:
             reviewer_name = user.get("name") or user.get("email", "A senior")
             if task:
-                await notify_task_reviewed(task, reviewer_name=reviewer_name, approved=request.approve)
-                notif_type = "task_approved" if request.approve else "task_needs_changes"
-                assignee_id = task.get("assigned_to", "")
-                if assignee_id:
-                    await send_slack_task_notification(assignee_id, notif_type, task, actor_name=reviewer_name)
+                await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
         except Exception:
             logger.exception("Failed to send review notification")
         return task
@@ -398,6 +386,13 @@ async def approve_task_endpoint(
     """Approve a task (senior or product sign-off)."""
     try:
         task = await approve_task(task_id, user.get("uid", ""), feedback=request.feedback)
+        # Notify the assignee via all channels (fire-and-forget)
+        try:
+            approver_name = user.get("name") or user.get("email", "A senior")
+            if task:
+                await notify_task_approved_all_channels(task, approver_name)
+        except Exception:
+            logger.exception("Failed to send approval notification")
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -421,28 +416,10 @@ async def complete_task_endpoint(
             )
         except Exception:
             logger.exception("Failed to log completion audit event")
-        # Notify the assignee (fire-and-forget)
+        # Notify the assignee via all channels (fire-and-forget)
         try:
             if task:
-                await notify_task_completed(task)
-                assignee_id = task.get("assigned_to", "")
-                if assignee_id:
-                    await send_slack_task_notification(assignee_id, "task_completed", task)
-                    # Send email notification
-                    try:
-                        from app.services.email_service import send_task_completed_email as _send_complete_email
-                        try:
-                            from app.services.postgres_db import get_storage
-                            users = await get_storage().query_documents("users", [("id", "==", assignee_id)])
-                            if users:
-                                assignee_email = users[0].get("email")
-                                if assignee_email:
-                                    team_name = task.get("team_name", "")
-                                    await _send_complete_email(assignee_email, task.get("title", ""), team_name)
-                        except Exception:
-                            pass
-                    except Exception:
-                        logger.exception("Failed to send completion email")
+                await notify_task_completed_all_channels(task)
         except Exception:
             logger.exception("Failed to send completion notification")
         return task

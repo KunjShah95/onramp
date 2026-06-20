@@ -6,6 +6,7 @@ import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 const TIERS = [
   {
@@ -36,6 +37,7 @@ const TIERS = [
 ]
 
 export default function BillingPage() {
+  const toast = useToast()
   const [teamId, setTeamId] = useState('')
   const [subscription, setSubscription] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -73,6 +75,7 @@ export default function BillingPage() {
         await createSubscription({ team_id: teamId.trim(), tier, billing_cycle: 'monthly' })
         setSelectedTier(tier)
         await fetchSubscription()
+        toast.success('Subscribed', `${tier} plan activated`)
       } else {
         const successUrl = `${window.location.origin}/billing?checkout=success&team_id=${teamId.trim()}`
         const cancelUrl = `${window.location.origin}/billing`
@@ -104,8 +107,13 @@ export default function BillingPage() {
 
   async function handleCancel() {
     if (!teamId.trim() || !subscription) return
-    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel') }
+    try {
+      await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null)
+      toast.info('Plan cancelled', 'Your subscription has been ended')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to cancel')
+      toast.error('Failed to cancel plan')
+    }
   }
 
   return (

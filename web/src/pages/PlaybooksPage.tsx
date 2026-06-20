@@ -3,8 +3,10 @@ import { createPlaybook, listPlaybooks, archivePlaybook } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 export default function PlaybooksPage() {
+  const toast = useToast()
   const [teamId, setTeamId] = useState('')
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -44,8 +46,10 @@ export default function PlaybooksPage() {
       setStepsStr('')
       setShowCreate(false)
       await fetchPlaybooks()
+      toast.success('Playbook created', title.trim())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create playbook')
+      toast.error('Failed to create playbook')
     }
   }
 

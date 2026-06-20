@@ -301,13 +301,19 @@ async def notify_task_assigned(
     )
 
 
-async def notify_task_submitted(task: dict, submitter_id: str) -> Optional[dict]:
-    """Notify team/seniors that a task has been submitted for review."""
+async def notify_task_submitted(task: dict, senior_id: str, submitter_name: str = "A trainee") -> Optional[dict]:
+    """Notify the task creator (senior/team lead) that a task has been submitted for review.
+
+    Args:
+        task: The task dict
+        senior_id: The user ID of the senior/team lead to notify
+        submitter_name: Display name of the trainee who submitted
+    """
     return await create_notification(
-        user_id=submitter_id,  # Will be overridden per team member
+        user_id=senior_id,
         type="task_submitted",
         title="Task Submitted for Review",
-        message=f"Task \"{task.get('title', '')}\" submitted for review",
+        message=f"{submitter_name} submitted \"{task.get('title', '')}\" for review",
         metadata={
             "task_id": task.get("task_id"),
             "team_id": task.get("team_id"),

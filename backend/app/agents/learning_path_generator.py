@@ -214,24 +214,74 @@ Format as JSON:
 
     def _find_files_for_module(self, template: Dict, files: List[Dict], used: set) -> List[str]:
         keywords = template["name"].lower().split()
-        matched = []
-        for f in files:
-            path = f.get("path", "").lower()
-            if path in used:
-                continue
-            if any(kw in path for kw in keywords):
-                matched.append(f.get("path", ""))
-        return matched[:5]
+        all_paths_lower = " ".join(f.get("path", "").lower() for f in files)
 
-    def _fill_remaining_files(self, files: List[Dict], used: set) -> List[str]:
-        result = []
+        # Expanded keyword map for each module type
+        keyword_map = {
+            "project": ["readme", "setup", "config", ".env", "docker-compose", "dockerfile", "package.json", "pyproject.toml", "requirements.txt", "go.mod"],
+            "architecture": ["readme", "docs", "architecture", "structure", "overview", "diagram", "src/", "app/"],
+            "data": ["model", "schema", "type", "interface", "entity", "dto", "migration", "alembic", "database", "db/"],
+            "model": ["model", "schema", "type", "interface", "entity", "dto", "migration", "alembic", "database", "db/"],
+            "api": ["api", "route", "endpoint", "controller", "handler", "router", "middleware"],
+            "route": ["api", "route", "endpoint", "controller", "handler", "router", "middleware"],
+            "business": ["service", "logic", "core", "business", "util", "helper", "lib/"],
+            "logic": ["service", "logic", "core", "business", "util", "helper", "lib/"],
+            "service": ["service", "logic", "core", "business", "util", "helper", "lib/"],
+            "database": ["db", "database", "sql", "migration", "alembic", "schema", "query", "repository", "store", "postgres"],
+            "storage": ["db", "database", "sql", "migration", "alembic", "schema", "query", "repository", "store", "postgres"],
+            "testing": ["test", "spec", "__tests__", "cypress", "jest", "pytest", "vitest"],
+            "test": ["test", "spec", "__tests__", "cypress", "jest", "pytest", "vitest"],
+            "authentication": ["auth", "jwt", "login", "session", "token", "password", "oauth", "permission"],
+            "authorization": ["auth", "jwt", "login", "session", "token", "password", "oauth", "permission"],
+            "auth": ["auth", "jwt", "login", "session", "token", "password", "oauth", "permission"],
+            "deployment": ["deploy", "ci", "cd", "docker", "kubernetes", "helm", "terraform", "cloud", "pipeline", "github", "action"],
+            "devops": ["deploy", "ci", "cd", "docker", "kubernetes", "helm", "terraform", "cloud", "pipeline", "github", "action"],
+        }
+
+        # Collect all relevant keywords for this module
+        search_keywords = set()
+        for kw in keywords:
+            if kw in keyword_map:
+                search_keywords.update(keyword_map[kw])
+            else:
+                search_keywords.add(kw)
+
+        # Score each file by how many keywords match
+        scored = []
         for f in files:
             path = f.get("path", "")
-            if path not in used:
-                result.append(path)
-                if len(result) >= 3:
-                    break
-        return result
+            if path in used:
+                continue
+            path_lower = path.lower()
+            score = sum(1 for kw in search_keywords if kw in path_lower)
+            if score > 0:
+                scored.append((score, path))
+
+        # Sort by score descending, return top 5
+        scored.sort(key=lambda x: -x[0])
+        return [p for _, p in scored[:5]]
+
+    def _fill_remaining_files(self, files: List[Dict], used: set) -> List[str]:
+        # Prioritize files with common extensions and names
+        priority_exts = {".py": 3, ".js": 3, ".ts": 3, ".tsx": 2, ".jsx": 2, ".go": 3, ".rs": 3, ".java": 3}
+        priority_names = ["main", "index", "app", "server", "cli", "config", "utils", "helpers"]
+        
+        scored = []
+        for f in files:
+            path = f.get("path", "")
+            if path in used:
+                continue
+            score = 0
+            name = path.split("/")[-1].lower()
+            ext = "".join(name[name.rfind("."):]) if "." in name else ""
+            score += priority_exts.get(ext, 1)
+            for pn in priority_names:
+                if pn in name or pn in path.lower():
+                    score += 2
+            scored.append((score, path))
+        
+        scored.sort(key=lambda x: -x[0])
+        return [p for _, p in scored[:3]]
 
     def _has_unused_files(self, files: List[Dict], used: set) -> bool:
         return any(f.get("path", "") not in used for f in files)

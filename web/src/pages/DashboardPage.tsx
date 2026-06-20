@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
@@ -6,6 +6,12 @@ import { fetchCTODashboard, type CTODashboardResponse } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
+import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, SkeletonCard } from '../components/ui/Skeleton'
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area,
+} from 'recharts'
 
 const container = {
   hidden: { opacity: 0 },
@@ -36,13 +42,22 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-5">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border-2 border-[#FF8C00]/20 animate-ping" />
-            <div className="absolute inset-1 rounded-full border-2 border-t-[#FF8C00] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+      <div className="animate-in w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <SkeletonHeading />
+            <SkeletonText className="w-48" />
           </div>
-          <p className="text-[#FDFBF8]/30 text-sm font-mono animate-pulse">Loading metrics...</p>
+          <SkeletonBase className="h-9 w-48 rounded-xl" />
+        </div>
+        <StatsGridSkeleton count={6} />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-2"><SkeletonCard /></div>
+          <div className="lg:col-span-3"><SkeletonCard /></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3"><SkeletonCard /></div>
+          <div className="lg:col-span-2"><SkeletonCard /></div>
         </div>
       </div>
     )
@@ -72,6 +87,38 @@ export default function DashboardPage() {
     completion_rate, total_members, total_trainees, first_prs_merged,
     member_progress = [], pending_reviews = [], recent_activity = [], actions = [],
   } = dashboard
+
+  // ── Derived chart data ────────────────────────────────────────
+
+  const taskDistribution = useMemo(() => [
+    { name: 'Completed', value: completed_tasks, color: '#22c55e' },
+    { name: 'In Progress', value: in_progress_tasks, color: '#FF8C00' },
+    { name: 'Pending Review', value: pending_review_tasks, color: '#eab308' },
+    { name: 'Blocked', value: blocked_tasks, color: '#ef4444' },
+  ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks])
+
+  const memberBarData = useMemo(() =>
+    member_progress.map(m => ({
+      name: m.name.length > 10 ? m.name.slice(0, 10) + '…' : m.name,
+      completed: m.completed,
+      inProgress: m.in_progress,
+      pending: m.pending_review,
+      completionRate: m.completion_rate,
+    })).reverse(),
+    [member_progress]
+  )
+
+  const activityTrendData = useMemo(() => {
+    const grouped: Record<string, { date: string; completed: number; submitted: number; started: number }> = {}
+    for (const act of recent_activity) {
+      const day = act.updated_at ? `${new Date(act.updated_at).getMonth()}-${new Date(act.updated_at).getDate()}` : 'Today'
+      if (!grouped[day]) grouped[day] = { date: day, completed: 0, submitted: 0, started: 0 }
+      if (act.state === 'completed') grouped[day].completed++
+      else if (act.state === 'submitted' || act.state === 'under_review') grouped[day].submitted++
+      else grouped[day].started++
+    }
+    return Object.values(grouped).reverse()
+  }, [recent_activity])
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', count: null },
@@ -144,94 +191,159 @@ export default function DashboardPage() {
           </motion.div>
 
           <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-            <CardSpotlight className="lg:col-span-3 p-0 overflow-hidden" color="rgba(255,140,0,0.05)">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[#FDFBF8]/5">
+            {/* ── Task Distribution (Donut Chart) ── */}
+            <CardSpotlight className="lg:col-span-2 p-5" color="rgba(255,140,0,0.05)">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-[#4DA8DA]/10 border border-[#4DA8DA]/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-[#4DA8DA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                  </svg>
+                </div>
+                <h2 className="font-display text-sm font-bold text-[#FDFBF8]">Task Distribution</h2>
+              </div>
+              {total_tasks === 0 ? (
+                <div className="text-center py-8 text-[#FDFBF8]/20 text-sm italic">No tasks yet.</div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="w-36 h-36 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={taskDistribution}
+                          cx="50%" cy="50%"
+                          innerRadius={38}
+                          outerRadius={62}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {taskDistribution.map((d) => (
+                            <Cell key={d.name} fill={d.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: '#1A110D',
+                            border: '1px solid rgba(253,251,248,0.1)',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            color: '#FDFBF8',
+                          }}
+                          formatter={(value) => [value]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {taskDistribution.map((d) => (
+                      <div key={d.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                          <span className="text-[#FDFBF8]/60">{d.name}</span>
+                        </div>
+                        <span className="text-[#FDFBF8] font-mono tabular-nums">{d.value}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 mt-2 border-t border-[#FDFBF8]/5 flex items-center justify-between text-xs">
+                      <span className="text-[#FDFBF8]/40">Total</span>
+                      <span className="text-[#FDFBF8] font-mono font-bold tabular-nums">{total_tasks}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardSpotlight>
+
+            {/* ── Activity Trend (Area Chart) ── */}
+            <CardSpotlight className="lg:col-span-3 p-5" color="rgba(255,140,0,0.05)">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                  </svg>
+                </div>
+                <h2 className="font-display text-sm font-bold text-[#FDFBF8]">Activity Trend</h2>
+              </div>
+              {activityTrendData.length === 0 ? (
+                <div className="text-center py-8 text-[#FDFBF8]/20 text-sm italic">No activity yet.</div>
+              ) : (
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorSubmitted" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#eab308" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(253,251,248,0.06)" />
+                      <XAxis dataKey="date" tick={{ fill: 'rgba(253,251,248,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'rgba(253,251,248,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#1A110D',
+                          border: '1px solid rgba(253,251,248,0.1)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          color: '#FDFBF8',
+                        }}
+                      />
+                      <Area type="monotone" dataKey="completed" stroke="#22c55e" fill="url(#colorCompleted)" strokeWidth={2} dot={false} />
+                      <Area type="monotone" dataKey="submitted" stroke="#eab308" fill="url(#colorSubmitted)" strokeWidth={2} dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardSpotlight>
+          </motion.div>
+
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+            {/* ── Member Completion (Bar Chart) ── */}
+            <CardSpotlight className="lg:col-span-3 p-5" color="rgba(255,140,0,0.05)">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[#FF8C00]/10 border border-[#FF8C00]/20 flex items-center justify-center">
                     <svg className="w-4 h-4 text-[#FF8C00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                     </svg>
                   </div>
-                  <h2 className="font-display text-sm font-bold text-[#FDFBF8]">Trainee Leaderboard</h2>
+                  <h2 className="font-display text-sm font-bold text-[#FDFBF8]">Member Completion Rates</h2>
                 </div>
                 <button onClick={() => setActiveTab('trainees')} className="text-[10px] text-[#FF8C00]/70 hover:text-[#FF8C00] transition-colors font-medium">
                   View all →
                 </button>
               </div>
-              {member_progress.length === 0 ? (
-                <div className="p-10 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-[#FDFBF8]/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-[#FDFBF8]/20 text-sm italic">No team members yet</p>
-                </div>
+              {memberBarData.length === 0 ? (
+                <div className="text-center py-8 text-[#FDFBF8]/20 text-sm italic">No members yet.</div>
               ) : (
-                <div className="divide-y divide-[#FDFBF8]/5">
-                  {member_progress.slice(0, 8).map((member, i) => (
-                    <motion.div
-                      key={member.user_id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FDFBF8]/[0.02] transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn(
-                          'w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 border',
-                          i === 0 ? 'bg-[#FF8C00]/15 text-[#FF8C00] border-[#FF8C00]/20' :
-                          i === 1 ? 'bg-[#FDFBF8]/8 text-[#FDFBF8]/60 border-[#FDFBF8]/10' :
-                          i === 2 ? 'bg-[#FFB347]/10 text-[#FFB347] border-[#FFB347]/20' :
-                          'bg-[#FDFBF8]/5 text-[#FDFBF8]/40 border-[#FDFBF8]/10'
-                        )}>
-                          {i + 1}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-sm text-[#FDFBF8] truncate block font-medium">{member.name}</span>
-                          <span className="text-[10px] text-[#FDFBF8]/30">{member.role}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs shrink-0">
-                        <div className="text-right">
-                          <div className="text-[#FDFBF8] font-medium tabular-nums">{member.completed}/{member.total}</div>
-                          <div className="text-[10px] text-[#FDFBF8]/25">tasks</div>
-                        </div>
-                        <div className="w-20">
-                          <div className="h-1.5 rounded-full bg-[#0D0906] overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${member.completion_rate}%` }}
-                              transition={{ duration: 0.8, delay: i * 0.04, ease: 'easeOut' }}
-                              className={cn(
-                                'h-full rounded-full',
-                                member.completion_rate >= 80 ? 'bg-green-500' :
-                                member.completion_rate >= 50 ? 'bg-[#FF8C00]' :
-                                'bg-red-400'
-                              )}
-                            />
-                          </div>
-                        </div>
-                        {member.modules_unlocked.length > 0 && (
-                          <div className="flex -space-x-1">
-                            {member.modules_unlocked.slice(0, 3).map((_m, mi) => (
-                              <div key={mi} className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-                                <svg className="w-2.5 h-2.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
-                              </div>
-                            ))}
-                            {member.modules_unlocked.length > 3 && (
-                              <div className="w-5 h-5 rounded-full bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 flex items-center justify-center">
-                                <span className="text-[8px] text-[#FDFBF8]/40 font-mono">+{member.modules_unlocked.length - 3}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={memberBarData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(253,251,248,0.06)" horizontal={false} />
+                      <XAxis type="number" tick={{ fill: 'rgba(253,251,248,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.2), 10)]} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(253,251,248,0.5)', fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#1A110D',
+                          border: '1px solid rgba(253,251,248,0.1)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          color: '#FDFBF8',
+                        }}
+                        formatter={(value, name) => {
+                          const labels: Record<string, string> = { completed: 'Completed', inProgress: 'In Progress', pending: 'Pending Review', completionRate: 'Rate' }
+                          return [`${value}`, labels[String(name)] || String(name)]
+                        }}
+                      />
+                      <Bar dataKey="completed" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="inProgress" stackId="a" fill="#FF8C00" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="pending" stackId="a" fill="#eab308" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </CardSpotlight>

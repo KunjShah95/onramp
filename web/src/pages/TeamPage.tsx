@@ -12,6 +12,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -54,6 +55,7 @@ const itemVariants = {
 }
 
 export default function TeamPage() {
+  const toast = useToast()
   const [teamName, setTeamName] = useState('')
   const [teamId, setTeamId] = useState<string | null>(null)
   const [teams, setTeams] = useState<any[]>([])
@@ -110,26 +112,42 @@ export default function TeamPage() {
     try {
       const data = await createTeam(teamName.trim(), 'current-user', tier)
       setTeamId(data.team_id); setTeamName(''); await fetchTeams()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create team') }
+      toast.success('Team created', teamName.trim())
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create team'); toast.error('Failed to create team') }
     setLoading(false)
   }
 
   async function handleAddMember() {
     if (!teamId || !memberEmail.trim()) return
-    try { await addTeamMember(teamId, memberEmail.trim(), 'member'); setMemberEmail(''); await fetchTeams() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to add member') }
+    try {
+      await addTeamMember(teamId, memberEmail.trim(), 'member'); setMemberEmail(''); await fetchTeams()
+      toast.success('Member added', memberEmail.trim())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add member')
+      toast.error('Failed to add member')
+    }
   }
 
   async function handleChangeTier(newTier: string) {
     if (!teamId) return
-    try { await changeTeamTier(teamId, newTier); setTier(newTier); await fetchTeams() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to change tier') }
+    try {
+      await changeTeamTier(teamId, newTier); setTier(newTier); await fetchTeams()
+      toast.success('Tier updated', newTier)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to change tier')
+      toast.error('Failed to update tier')
+    }
   }
 
   async function handleGrantModule() {
     if (!teamId || !selectedUserId || !newModuleName.trim()) return
-    try { await grantModuleAccess(teamId, selectedUserId, newModuleName.trim()); setNewModuleName(''); await fetchPermissions() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to grant module access') }
+    try {
+      await grantModuleAccess(teamId, selectedUserId, newModuleName.trim()); setNewModuleName(''); await fetchPermissions()
+      toast.success('Module granted', newModuleName.trim())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to grant module access')
+      toast.error('Failed to grant module')
+    }
   }
 
   async function handleRevokeModule(userId: string, module: string) {
@@ -152,8 +170,10 @@ export default function TeamPage() {
       await createTeamInvite(teamId, inviteEmail.trim())
       setInviteEmail('')
       await loadInvites(teamId)
+      toast.success('Invite sent', inviteEmail.trim())
     } catch (e: any) {
       setInviteError(e.message || 'Failed to create invite')
+      toast.error('Invite failed', e.message)
     } finally {
       setInviteLoading(false)
     }

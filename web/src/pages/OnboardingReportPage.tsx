@@ -6,6 +6,7 @@ import { cn } from '../lib/utils'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 const LEVELS = [
   { value: 'junior', label: 'Junior', duration: '0-2 years' },
@@ -14,6 +15,7 @@ const LEVELS = [
 ]
 
 export default function OnboardingReportPage() {
+  const toast = useToast()
   const [repoUrl, setRepoUrl] = useState('')
   const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
@@ -29,8 +31,10 @@ export default function OnboardingReportPage() {
     try {
       const data = await generateReport(repoUrl.trim(), userLevel)
       setReport(data.report)
+      toast.success('Report generated', `${data.report.length} sections for ${userLevel} level`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
+      toast.error('Report generation failed', e instanceof Error ? e.message : undefined)
     }
     setLoading(false)
   }
@@ -52,8 +56,10 @@ export default function OnboardingReportPage() {
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
+      toast.success('HTML downloaded', 'Report saved as ' + a.download)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'HTML download failed')
+      toast.error('Download failed', e instanceof Error ? e.message : undefined)
     }
     setHtmlLoading(false)
   }

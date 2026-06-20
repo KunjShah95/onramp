@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { fetchRepos } from '../lib/api'
 import { StatCard } from '../components/ui/stat-card'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -9,6 +10,7 @@ import PageTransition from '../components/ui/page-transition'
 
 export default function Profile() {
   const { user } = useAuth()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [repoCount, setRepoCount] = useState<number | null>(null)
 
@@ -20,6 +22,7 @@ export default function Profile() {
         if (active) setRepoCount(repos.length)
       } catch {
         if (active) setRepoCount(null)
+        if (active) toast.error('Failed to load repositories')
       } finally {
         if (active) setLoading(false)
       }

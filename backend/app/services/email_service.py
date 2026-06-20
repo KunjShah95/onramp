@@ -114,3 +114,82 @@ A task in <strong style="color:#FF8C00">{team_name}</strong> has been completed:
 <p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Well done! 🎉</p>
 </div></body></html>"""
     return await send_email(email, f"Task completed: {task_title}", html)
+
+
+async def send_task_approved_email(email: str, task_title: str, team_name: str, approver_name: str) -> bool:
+    """Send a task approved notification email (final sign-off)."""
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
+<div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
+<div style="text-align:center;margin-bottom:24px">
+<div style="font-size:40px;margin-bottom:8px">✅</div>
+<h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Approved</h1>
+</div>
+<p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
+<strong style="color:#FDFBF8">{approver_name}</strong> approved a task in <strong style="color:#FF8C00">{team_name}</strong>:
+</p>
+<div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+</div>
+<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Great work — your task has been approved! Modules will be unlocked upon completion.</p>
+</div></body></html>"""
+    return await send_email(email, f"Task approved: {task_title}", html)
+
+
+async def send_task_reviewed_email(email: str, task_title: str, team_name: str, reviewer_name: str, action: str) -> bool:
+    """Send a task reviewed notification email (initial review — may route to product or request changes).
+
+    Args:
+        email: Recipient email address.
+        task_title: Title of the reviewed task.
+        team_name: Team the task belongs to.
+        reviewer_name: Name of the reviewer.
+        action: Either "approved" (routed to product review) or "requested changes".
+    """
+    if action == "approved":
+        emoji = "✅"
+        heading = "Task Reviewed — Route to Product"
+        subtext = "Your task has been reviewed and routed to product review. The product team will take it from here."
+    else:
+        emoji = "🔄"
+        heading = "Changes Requested"
+        subtext = "Your senior has requested changes. Check the feedback in CodeFlow and revise your submission."
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
+<div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
+<div style="text-align:center;margin-bottom:24px">
+<div style="font-size:40px;margin-bottom:8px">{emoji}</div>
+<h1 style="color:#FDFBF8;font-size:20px;margin:0">{heading}</h1>
+</div>
+<p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
+<strong style="color:#FDFBF8">{reviewer_name}</strong> reviewed a task in <strong style="color:#FF8C00">{team_name}</strong>:
+</p>
+<div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+</div>
+<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">{subtext}</p>
+</div></body></html>"""
+    return await send_email(email, f"{heading}: {task_title}", html)
+
+
+async def send_task_submitted_email(email: str, task_title: str, team_name: str, submitter_name: str) -> bool:
+    """Send a notification to the senior that a task was submitted for review."""
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
+<div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
+<div style="text-align:center;margin-bottom:24px">
+<div style="font-size:40px;margin-bottom:8px">📋</div>
+<h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Submitted for Review</h1>
+</div>
+<p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
+<strong style="color:#FDFBF8">{submitter_name}</strong> submitted a task in <strong style="color:#FF8C00">{team_name}</strong> for your review:
+</p>
+<div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+</div>
+<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Log in to CodeFlow to review the submission.</p>
+</div></body></html>"""
+    return await send_email(email, f"Task submitted for review: {task_title}", html)

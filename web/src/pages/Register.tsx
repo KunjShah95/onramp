@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 
 export default function Register() {
@@ -12,6 +13,7 @@ export default function Register() {
   const [localError, setLocalError] = useState('')
 
   const { register, registerWithGoogle, registerWithGithub, error, clearError, user } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -42,9 +44,10 @@ export default function Register() {
     setIsSubmitting(true)
     try {
       await register(email, password, name)
+      toast.success('Account created', `Welcome, ${name}!`)
       navigate('/dashboard', { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -55,9 +58,10 @@ export default function Register() {
     setIsSubmitting(true)
     try {
       await registerWithGoogle()
+      toast.success('Account created with Google')
       navigate('/dashboard', { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -68,9 +72,10 @@ export default function Register() {
     setIsSubmitting(true)
     try {
       await registerWithGithub()
+      toast.success('Account created with GitHub')
       navigate('/dashboard', { replace: true })
     } catch {
-      // error is set in context
+      // Error is displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }

@@ -4,8 +4,10 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { acceptInvite } from '../lib/api'
+import { useToast } from '../context/ToastContext'
 
 export default function JoinPage() {
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token')
@@ -24,11 +26,13 @@ export default function JoinPage() {
       .then(res => {
         setTeamName(res.team_name)
         setStatus('success')
+        toast.success('Joined team', `You've joined ${res.team_name}`)
         setTimeout(() => navigate('/my-progress', { replace: true }), 3000)
       })
       .catch(err => {
         setStatus('error')
         setErrorMsg(err.message || 'Failed to accept invite')
+        toast.error('Invite failed', err.message || 'Failed to accept invite')
       })
   }, [token, navigate])
 

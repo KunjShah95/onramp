@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 
 type PageState = 'idle' | 'sending' | 'sent' | 'error'
@@ -11,6 +12,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState('')
 
   const { resetPassword, clearError } = useAuth()
+  const toast = useToast()
 
   useEffect(() => {
     return () => clearError()
@@ -24,11 +26,13 @@ export default function ForgotPassword() {
     setError('')
     try {
       await resetPassword(email.trim())
+      toast.success('Reset link sent', `Check your inbox for ${email.trim()}`)
       setPageState('sent')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to send reset email'
       setError(msg)
       setPageState('error')
+      toast.error('Failed to send reset email', msg)
     }
   }
 

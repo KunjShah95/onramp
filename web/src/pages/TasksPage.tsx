@@ -14,6 +14,8 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
+import { TasksPageSkeleton } from '../components/ui/Skeleton'
 
 const PRIORITY_COLORS: Record<string, string> = {
   low:    'border-green-500/30 text-green-400',
@@ -71,6 +73,7 @@ const BOARD_COLUMNS = [
 ]
 
 export default function TasksPage() {
+  const toast = useToast()
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeam, setSelectedTeam] = useState('')
@@ -153,7 +156,8 @@ export default function TasksPage() {
       })
       setShowCreate(false); resetForm()
       await fetchTasks(); await fetchProgress()
-    } catch (e: any) { setError(e.message || 'Failed to create task') }
+      toast.success('Task created', formTitle.trim())
+    } catch (e: any) { setError(e.message || 'Failed to create task'); toast.error('Failed to create task') }
     setCreating(false)
   }
 
@@ -162,26 +166,41 @@ export default function TasksPage() {
     setFormAssignee(''); setFormRepoUrl(''); setFormBranch(''); setFormUnlockModules(''); setFormEstHours('')
   }
 
-  async function handleAssign(taskId: string, id: string) { try { await assignTask(taskId, id); await fetchTasks() } catch (e: any) { setError(e.message) } }
-  async function handleStart(taskId: string) { try { await startTask(taskId); await fetchTasks() } catch (e: any) { setError(e.message) } }
+  async function handleAssign(taskId: string, id: string) {
+    try { await assignTask(taskId, id); await fetchTasks(); toast.success('Task assigned') }
+    catch (e: any) { setError(e.message); toast.error('Failed to assign task') }
+  }
+  async function handleStart(taskId: string) {
+    try { await startTask(taskId); await fetchTasks(); toast.info('Task started') }
+    catch (e: any) { setError(e.message); toast.error('Failed to start task') }
+  }
   async function handleSubmit(taskId: string, url: string) {
     if (!url.trim()) return
-    try { await submitTask(taskId, url.trim()); setPrUrlInput(''); await fetchTasks() } catch (e: any) { setError(e.message) }
+    try { await submitTask(taskId, url.trim()); setPrUrlInput(''); await fetchTasks(); toast.success('Task submitted for review') }
+    catch (e: any) { setError(e.message); toast.error('Failed to submit task') }
   }
   async function handleReview(taskId: string, approve: boolean) {
     try {
       await reviewTask(taskId, { approve, feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined })
       setReviewFeedback(''); setSelectedTask(null); await fetchTasks(); await fetchProgress()
-    } catch (e: any) { setError(e.message) }
+      toast.success('Task reviewed', approve ? 'Approved' : 'Changes requested')
+    } catch (e: any) { setError(e.message); toast.error('Failed to review task') }
   }
   async function handleApprove(taskId: string) {
     try {
       await approveTask(taskId, reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined)
       setReviewFeedback(''); setSelectedTask(null); await fetchTasks(); await fetchProgress()
-    } catch (e: any) { setError(e.message) }
+      toast.success('Task approved')
+    } catch (e: any) { setError(e.message); toast.error('Failed to approve task') }
   }
-  async function handleComplete(taskId: string) { try { await completeTask(taskId); await fetchTasks(); await fetchProgress() } catch (e: any) { setError(e.message) } }
-  async function handleCancel(taskId: string) { try { await cancelTask(taskId); setSelectedTask(null); await fetchTasks(); await fetchProgress() } catch (e: any) { setError(e.message) } }
+  async function handleComplete(taskId: string) {
+    try { await completeTask(taskId); await fetchTasks(); await fetchProgress(); toast.success('Task completed') }
+    catch (e: any) { setError(e.message); toast.error('Failed to complete task') }
+  }
+  async function handleCancel(taskId: string) {
+    try { await cancelTask(taskId); setSelectedTask(null); await fetchTasks(); await fetchProgress(); toast.info('Task cancelled') }
+    catch (e: any) { setError(e.message); toast.error('Failed to cancel task') }
+  }
 
   const filteredTasks = tasks.filter((t) => {
     if (!filter) return true
@@ -330,18 +349,7 @@ export default function TasksPage() {
           />
         </div>
 
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="relative w-8 h-8">
-              <div className="absolute inset-0 rounded-full border-2 border-[#FF8C00]/10" />
-              <svg className="w-8 h-8 animate-spin text-[#FF8C00] relative" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </div>
-            <span className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/20 font-semibold">Loading tasks…</span>
-          </div>
-        )}
+        {loading && <TasksPageSkeleton />}
 
         {!loading && view === 'board' && (
           <div className="overflow-x-auto pb-4">
@@ -637,9 +645,12 @@ export default function TasksPage() {
                   )}
                   {(selectedTask.state === 'completed' || selectedTask.state === 'cancelled') && (
                     <button onClick={() => {
-                      if (confirm('Delete this task permanently?')) {
-                        deleteTask(selectedTask.task_id).then(() => { setSelectedTask(null); fetchTasks() })
-                      }
+                    if (confirm('Delete this task permanently?')) {
+                      deleteTask(selectedTask.task_id).then(() => {
+                        setSelectedTask(null); fetchTasks()
+                        toast.info('Task deleted')
+                      })
+                    }
                     }} className="text-red-400/40 hover:text-red-400 text-xs transition-colors flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />

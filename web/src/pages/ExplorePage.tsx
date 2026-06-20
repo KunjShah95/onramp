@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -24,11 +25,17 @@ export default function ExplorePage() {
   const [result, setResult] = useState<ArchitectureResult | null>(null)
   const [error, setError] = useState('')
 
+  const toast = useToast()
+
   async function handleAnalyze() {
     if (!repoUrl.trim()) return
     setLoading(true); setError('')
-    try { setResult(await analyzeArchitecture(repoUrl)) }
-    catch (err: any) { setError(err.message || 'Failed to analyze repository.') }
+    try {
+      const data = await analyzeArchitecture(repoUrl)
+      setResult(data)
+      toast.success('Analysis complete', `${repoUrl.split('/').pop()} — ${data.entities.files.length} files mapped`)
+    }
+    catch (err: any) { setError(err.message || 'Failed to analyze repository.'); toast.error('Analysis failed', err.message) }
     finally { setLoading(false) }
   }
 

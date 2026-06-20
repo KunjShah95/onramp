@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { analyzeArchitecture, generateLearningPath } from '../lib/api'
+import { analyzeArchitecture, generateLearningPath, createTask } from '../lib/api'
 import type { LearningPathResult } from '../lib/types'
 import { cn } from '../lib/utils'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,26 +28,61 @@ const fileItemVariants = {
 }
 
 export default function LearnPage() {
+  const navigate = useNavigate()
   const [repoUrl, setRepoUrl] = useState('')
   const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
+  const [creatingTasks, setCreatingTasks] = useState(false)
   const [result, setResult] = useState<LearningPathResult | null>(null)
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+  const toast = useToast()
 
   async function handleGenerate() {
     if (!repoUrl.trim()) return
     setLoading(true)
     setError('')
+    setSuccessMsg('')
     try {
       // First, get the repo structure
       const architecture = await analyzeArchitecture(repoUrl)
       // Then, generate the learning path
       const pathResult = await generateLearningPath(architecture.entities, userLevel)
       setResult(pathResult)
+      toast.success('Learning path generated', `${pathResult.path.length} modules · ${pathResult.total_estimated_hours} hours`)
     } catch (err: any) {
       setError(err.message || 'Failed to generate learning path.')
+      toast.error('Generation failed', err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleStartLearning() {
+    if (!result || !result.path.length) return
+    setCreatingTasks(true)
+    setError('')
+    setSuccessMsg('')
+    try {
+      // Create one task per learning module
+      for (const module of result.path) {
+        await createTask({
+          team_id: 'default',
+          title: module.name,
+          description: `${module.description}\n\nObjectives:\n${module.objectives?.map((o: string) => `- ${o}`).join('\n') || ''}`,
+          module: module.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+          priority: 'medium',
+          estimated_hours: module.time_hours,
+        })
+      }
+      toast.success('Tasks created', `${result.path.length} onboarding tasks created! Redirecting...`)
+      setSuccessMsg(`Created ${result.path.length} onboarding tasks! Redirecting to tasks page...`)
+      setTimeout(() => navigate('/tasks'), 1500)
+    } catch (err: any) {
+      setError(err.message || 'Failed to create tasks.')
+      toast.error('Failed to create tasks', err.message)
+    } finally {
+      setCreatingTasks(false)
     }
   }
 
@@ -104,6 +141,12 @@ export default function LearnPage() {
           {error && (
             <div className="mt-6 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm">
               {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mt-6 p-4 rounded-lg bg-green-900/20 border border-green-500/50 text-green-400 font-mono text-sm animate-pulse">
+              ✓ {successMsg}
             </div>
           )}
         </div>
@@ -191,9 +234,22 @@ export default function LearnPage() {
 
                       {idx === 0 && (
                         <div className="flex items-center gap-6">
-                          <button className="bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] px-6 py-2.5 rounded text-[13px] font-bold transition-colors">
-                            Start Learning
+                          <button
+                            onClick={handleStartLearning}
+                            disabled={creatingTasks}
+                            className="bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] px-6 py-2.5 rounded text-[13px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {creatingTasks ? (
+                              <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Creating Tasks...
+                              </>
+                            ) : 'Start Learning →'}
                           </button>
+                          <span className="text-[11px] text-[#FDFBF8]/30">Creates {result.path.length} onboarding tasks in /tasks</span>
                         </div>
                       )}
                     </div>

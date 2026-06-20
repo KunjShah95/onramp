@@ -12,6 +12,8 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
+import { NotificationsSkeleton } from '../components/ui/Skeleton'
 
 const TYPE_ICONS: Record<string, string> = {
   task_assigned: 'assignment', task_started: 'play_arrow', task_submitted: 'rate_review',
@@ -37,6 +39,7 @@ const TYPE_ICON_COLORS: Record<string, string> = {
 }
 
 export default function NotificationsPage() {
+  const toast = useToast()
   const [notifications, setNotifications] = useState<CodeFlowNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -80,17 +83,24 @@ export default function NotificationsPage() {
       await markAllNotificationsRead()
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() })))
       setUnreadCount(0)
+      toast.success('All marked as read')
     } catch { /* ignore */ }
   }
 
   async function handleDelete(id: string) {
-    try { await deleteNotification(id); setNotifications((prev) => prev.filter((n) => n.notification_id !== id)) }
-    catch { /* ignore */ }
+    try {
+      await deleteNotification(id)
+      setNotifications((prev) => prev.filter((n) => n.notification_id !== id))
+      toast.info('Notification removed')
+    } catch { /* ignore */ }
   }
 
   async function handleClearRead() {
-    try { await clearReadNotifications(); setNotifications((prev) => prev.filter((n) => !n.read)) }
-    catch { /* ignore */ }
+    try {
+      await clearReadNotifications()
+      setNotifications((prev) => prev.filter((n) => !n.read))
+      toast.info('Read notifications cleared')
+    } catch { /* ignore */ }
   }
 
   function toggleSelect(id: string) {
@@ -202,14 +212,7 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <svg className="w-6 h-6 animate-spin text-[#FF8C00]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-        </div>
-      )}
+      {loading && <NotificationsSkeleton />}
 
       {!loading && notifications.length === 0 && (
         <div className="bg-[#120D0A] border border-[#FDFBF8]/5 rounded-xl">
