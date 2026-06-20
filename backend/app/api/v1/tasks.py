@@ -32,6 +32,7 @@ from app.services.notification_service import (
 )
 from app.services.slack_service import send_slack_task_notification
 from app.services.audit_service import log_event
+from app.services.cache_service import cached, invalidate_prefix
 
 logger = logging.getLogger("codeflow.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
@@ -248,6 +249,22 @@ async def assign_task_endpoint(
             if task:
                 await notify_task_assigned(task, request.assignee_id, assigned_by_name=created_by_name)
                 await send_slack_task_notification(request.assignee_id, "task_assigned", task, actor_name=created_by_name)
+                # Send email notification
+                try:
+                    from app.services.email_service import send_task_assigned_email as _send_task_email
+                    assignee_email = None
+                    try:
+                        from app.services.postgres_db import get_storage
+                        users = await get_storage().query_documents("users", [("id", "==", request.assignee_id)])
+                        if users:
+                            assignee_email = users[0].get("email")
+                    except Exception:
+                        pass
+                    if assignee_email:
+                        team_name = task.get("team_name", "")
+                        await _send_task_email(assignee_email, task.get("title", ""), team_name, created_by_name)
+                except Exception:
+                    logger.exception("Failed to send task assignment email")
         except Exception:
             logger.exception("Failed to send assignment notification")
         return task
@@ -408,6 +425,21 @@ async def complete_task_endpoint(
                 assignee_id = task.get("assigned_to", "")
                 if assignee_id:
                     await send_slack_task_notification(assignee_id, "task_completed", task)
+                    # Send email notification
+                    try:
+                        from app.services.email_service import send_task_completed_email as _send_complete_email
+                        try:
+                            from app.services.postgres_db import get_storage
+                            users = await get_storage().query_documents("users", [("id", "==", assignee_id)])
+                            if users:
+                                assignee_email = users[0].get("email")
+                                if assignee_email:
+                                    team_name = task.get("team_name", "")
+                                    await _send_complete_email(assignee_email, task.get("title", ""), team_name)
+                        except Exception:
+                            pass
+                    except Exception:
+                        logger.exception("Failed to send completion email")
         except Exception:
             logger.exception("Failed to send completion notification")
         return task

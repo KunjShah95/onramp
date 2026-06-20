@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+import os
+import logging
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
@@ -13,6 +15,7 @@ from app.services.invite_service import (
 )
 from app.services.user_service import get_user_by_email
 
+logger = logging.getLogger("codeflow.invites")
 router = APIRouter(prefix="/invites", tags=["team-invites"])
 
 
@@ -37,13 +40,15 @@ async def create_team_invite(
         role=body.role,
         message=body.message,
     )
+    # Fetch team name for notifications
+    from app.services.postgres_db import get_storage as _storage
+    team_doc = await _storage().get_document("teams", team_id)
+    team_name = team_doc.get("name", "") if team_doc else ""
+
     # If user with this email already exists, send in-app notification
     existing_user = await get_user_by_email(body.email)
     if existing_user:
         from app.services.notification_service import create_notification
-        from app.services.postgres_db import get_storage as _storage
-        team_doc = await _storage().get_document("teams", team_id)
-        team_name = team_doc.get("name", "") if team_doc else ""
         await create_notification(
             user_id=existing_user.get("uid", existing_user.get("id", "")),
             type="team_invite",
@@ -56,6 +61,14 @@ async def create_team_invite(
             },
             team_id=team_id,
         )
+    # Send email notification
+    try:
+        from app.services.email_service import send_invite_email
+        invite_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/join?token={invite.get('token')}"
+        invited_by_name = user.get("name") or user.get("email", "A team member")
+        await send_invite_email(body.email, invite_link, team_name, invited_by_name)
+    except Exception:
+        logger.exception("Failed to send invite email")
     return {
         "invite_id": invite.get("id"),
         "token": invite.get("token"),

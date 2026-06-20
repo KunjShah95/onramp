@@ -20,4 +20,5 @@ google-genai>=0.3.0
 groq>=0.11.0
 # Optional infra
 redis>=5.0.0          # distributed rate limiting (REDIS_URL)
+sendgrid>=6.11.0    # transactional email delivery
 stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
