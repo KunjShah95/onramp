@@ -18,146 +18,308 @@ def _get_ts_languages():
 
     from tree_sitter import Language, Parser, Query, QueryCursor
 
+    # ── Core languages (existing) ─────────────────────────────────────────
     import tree_sitter_javascript as _tspkg_js
     import tree_sitter_typescript as _tspkg_ts
     import tree_sitter_go as _tspkg_go
     import tree_sitter_rust as _tspkg_rust
     import tree_sitter_java as _tspkg_java
 
+    # ── New languages (14) ──────────────────────────────────────────────
+    import tree_sitter_c as _tspkg_c
+    import tree_sitter_cpp as _tspkg_cpp
+    import tree_sitter_c_sharp as _tspkg_cs
+    import tree_sitter_php as _tspkg_php
+    import tree_sitter_ruby as _tspkg_rb
+    import tree_sitter_swift as _tspkg_swift
+    import tree_sitter_kotlin as _tspkg_kt
+    import tree_sitter_bash as _tspkg_sh
+    import tree_sitter_markdown as _tspkg_md
+    import tree_sitter_yaml as _tspkg_yml
+    import tree_sitter_json as _tspkg_json
+    import tree_sitter_html as _tspkg_html
+    import tree_sitter_css as _tspkg_css
+    import tree_sitter_sql as _tspkg_sql
+
     langs = {
+        # Existing
         "javascript": Language(_tspkg_js.language()),
         "typescript": Language(_tspkg_ts.language_typescript()),
         "tsx": Language(_tspkg_ts.language_tsx()),
         "go": Language(_tspkg_go.language()),
         "rust": Language(_tspkg_rust.language()),
         "java": Language(_tspkg_java.language()),
+        # New
+        "c": Language(_tspkg_c.language()),
+        "cpp": Language(_tspkg_cpp.language()),
+        "c_sharp": Language(_tspkg_cs.language()),
+        "php": Language(_tspkg_php.language_php()),
+        "ruby": Language(_tspkg_rb.language()),
+        "swift": Language(_tspkg_swift.language()),
+        "kotlin": Language(_tspkg_kt.language()),
+        "bash": Language(_tspkg_sh.language()),
+        "markdown": Language(_tspkg_md.language()),
+        "yaml": Language(_tspkg_yml.language()),
+        "json": Language(_tspkg_json.language()),
+        "html": Language(_tspkg_html.language()),
+        "css": Language(_tspkg_css.language()),
+        "sql": Language(_tspkg_sql.language()),
     }
     parsers = {name: Parser(lang) for name, lang in langs.items()}
 
     # ── Queries ──────────────────────────────────────────────────────────
-    #   Each language gets a Query object + a dedicated QueryCursor
-    #   that is re-used across parse calls.
-    queries = {
-        "javascript": Query(
-            langs["javascript"],
-            """
-            (class_declaration name: (identifier) @class.name)
-            (function_declaration name: (identifier) @func.name)
-            (method_definition name: (property_identifier) @method.name)
-            (import_statement source: (string) @import.source)
-            (export_statement) @export
-            """,
-        ),
-        "typescript": Query(
-            langs["typescript"],
-            """
-            (class_declaration name: (type_identifier) @class.name)
-            (function_declaration name: (identifier) @func.name)
-            (method_definition name: (property_identifier) @method.name)
-            (interface_declaration name: (type_identifier) @interface.name)
-            (type_alias_declaration name: (type_identifier) @alias.name)
-            (enum_declaration name: (identifier) @enum.name)
-            (import_statement source: (string) @import.source)
-            (export_statement) @export
-            """,
-        ),
-        "tsx": Query(
-            langs["tsx"],
-            """
-            (class_declaration name: (type_identifier) @class.name)
-            (function_declaration name: (identifier) @func.name)
-            (method_definition name: (property_identifier) @method.name)
-            (interface_declaration name: (type_identifier) @interface.name)
-            (type_alias_declaration name: (type_identifier) @alias.name)
-            (enum_declaration name: (identifier) @enum.name)
-            (import_statement source: (string) @import.source)
-            (export_statement) @export
-            """,
-        ),
-        "go": Query(
-            langs["go"],
-            """
-            (function_declaration name: (identifier) @func.name)
-            (method_declaration name: (field_identifier) @method.name)
-            (type_declaration (type_spec name: (type_identifier) @type.name))
-            (import_declaration
-              (import_spec_list (import_spec name: (package_identifier) @import.name))) @import_stmt
-            """,
-        ),
-        "rust": Query(
-            langs["rust"],
-            """
-            (function_item name: (identifier) @func.name)
-            (struct_item name: (type_identifier) @struct.name)
-            (enum_item name: (type_identifier) @enum.name)
-            (trait_item name: (type_identifier) @trait.name)
-            (impl_item) @impl
-            (use_declaration (scoped_identifier) @import.use)
-            """,
-        ),
-        "java": Query(
-            langs["java"],
-            """
-            (class_declaration name: (identifier) @class.name)
-            (interface_declaration name: (identifier) @interface.name)
-            (method_declaration name: (identifier) @method.name)
-            (import_declaration (scoped_identifier) @import.path)
-            """,
-        ),
-    }
+    queries: Dict[str, Query] = {}
+
+    # --- JavaScript ---
+    queries["javascript"] = Query(
+        langs["javascript"],
+        """
+        (class_declaration name: (identifier) @class.name)
+        (function_declaration name: (identifier) @func.name)
+        (generator_function_declaration name: (identifier) @func.name)
+        (method_definition name: (property_identifier) @method.name)
+        (import_statement source: (string) @import.source)
+        (export_statement) @export
+        """,
+    )
+
+    # --- TypeScript ---
+    queries["typescript"] = Query(
+        langs["typescript"],
+        """
+        (class_declaration name: (type_identifier) @class.name)
+        (abstract_class_declaration name: (type_identifier) @class.name)
+        (function_declaration name: (identifier) @func.name)
+        (generator_function_declaration name: (identifier) @func.name)
+        (method_definition name: (property_identifier) @method.name)
+        (interface_declaration name: (type_identifier) @interface.name)
+        (type_alias_declaration name: (type_identifier) @alias.name)
+        (enum_declaration name: (identifier) @enum.name)
+        (import_statement source: (string) @import.source)
+        (export_statement) @export
+        """,
+    )
+
+    # --- TSX ---
+    queries["tsx"] = Query(
+        langs["tsx"],
+        """
+        (class_declaration name: (type_identifier) @class.name)
+        (abstract_class_declaration name: (type_identifier) @class.name)
+        (function_declaration name: (identifier) @func.name)
+        (generator_function_declaration name: (identifier) @func.name)
+        (method_definition name: (property_identifier) @method.name)
+        (interface_declaration name: (type_identifier) @interface.name)
+        (type_alias_declaration name: (type_identifier) @alias.name)
+        (enum_declaration name: (identifier) @enum.name)
+        (import_statement source: (string) @import.source)
+        (export_statement) @export
+        """,
+    )
+
+    # --- Go ---
+    queries["go"] = Query(
+        langs["go"],
+        """
+        (function_declaration name: (identifier) @func.name)
+        (method_declaration name: (field_identifier) @method.name)
+        (type_declaration (type_spec name: (type_identifier) @type.name))
+        (import_declaration) @import_stmt
+        """,
+    )
+
+    # --- Rust ---
+    queries["rust"] = Query(
+        langs["rust"],
+        """
+        (function_item name: (identifier) @func.name)
+        (struct_item name: (type_identifier) @struct.name)
+        (enum_item name: (type_identifier) @enum.name)
+        (trait_item name: (type_identifier) @trait.name)
+        (impl_item) @impl
+        (use_declaration) @use_stmt
+        """,
+    )
+
+    # --- Java ---
+    queries["java"] = Query(
+        langs["java"],
+        """
+        (class_declaration name: (identifier) @class.name)
+        (interface_declaration name: (identifier) @interface.name)
+        (method_declaration name: (identifier) @method.name)
+        (constructor_declaration name: (identifier) @method.name)
+        (import_declaration) @import_stmt
+        """,
+    )
+
+    # --- C ---
+    queries["c"] = Query(
+        langs["c"],
+        """
+        (function_definition
+          declarator: (function_declarator
+            declarator: (identifier) @func.name))
+        (struct_specifier name: (type_identifier) @struct.name)
+        (union_specifier name: (type_identifier) @struct.name)
+        (preproc_include) @include_stmt
+        """,
+    )
+
+    # --- C++ ---
+    queries["cpp"] = Query(
+        langs["cpp"],
+        """
+        (function_definition
+          declarator: (function_declarator
+            declarator: (identifier) @func.name))
+        (function_definition
+          declarator: (function_declarator
+            declarator: (qualified_identifier
+              (identifier) @func.name)))
+        (class_specifier name: (type_identifier) @class.name)
+        (struct_specifier name: (type_identifier) @struct.name)
+        (preproc_include) @include_stmt
+        """,
+    )
+
+    # --- C# ---
+    queries["c_sharp"] = Query(
+        langs["c_sharp"],
+        """
+        (class_declaration name: (identifier) @class.name)
+        (struct_declaration name: (identifier) @class.name)
+        (interface_declaration name: (identifier) @interface.name)
+        (method_declaration name: (identifier) @method.name)
+        (using_directive) @using_stmt
+        """,
+    )
+
+    # --- PHP ---
+    queries["php"] = Query(
+        langs["php"],
+        """
+        (class_declaration name: (name) @class.name)
+        (interface_declaration name: (name) @interface.name)
+        (function_definition name: (name) @func.name)
+        (method_declaration name: (name) @method.name)
+        (namespace_use_declaration) @use_stmt
+        """,
+    )
+
+    # --- Ruby ---
+    queries["ruby"] = Query(
+        langs["ruby"],
+        """
+        (class name: (constant) @class.name)
+        (module name: (constant) @module.name)
+        (method name: (identifier) @method.name)
+        (singleton_method name: (identifier) @method.name)
+        """,
+    )
+
+    # --- Swift ---
+    queries["swift"] = Query(
+        langs["swift"],
+        """
+        (class_declaration name: (type_identifier) @class.name)
+        (protocol_declaration name: (type_identifier) @interface.name)
+        (function_declaration name: (simple_identifier) @func.name)
+        (import_declaration) @import_stmt
+        """,
+    )
+
+    # --- Kotlin ---
+    queries["kotlin"] = Query(
+        langs["kotlin"],
+        """
+        (class_declaration name: (identifier) @class.name)
+        (object_declaration name: (identifier) @class.name)
+        (function_declaration name: (identifier) @func.name)
+        (import) @import_stmt
+        """,
+    )
+
+    # --- Bash ---
+    queries["bash"] = Query(
+        langs["bash"],
+        """
+        (function_definition name: (word) @func.name)
+        """,
+    )
+
+    # ── Markup / data / query languages (minimal — file is recorded but
+    #    these have no traditional "classes" or "functions"). ─────────────
+    #    We still create empty queries so the file is recognised & counted.
+    for _lang in ("markdown", "yaml", "json", "html", "css", "sql"):
+        queries[_lang] = Query(langs[_lang], "")
 
     # ── Export sub-queries per language ──────────────────────────────────
-    export_queries = {
-        "javascript": Query(
-            langs["javascript"],
-            """
-            (export_statement
-              declaration: (function_declaration name: (identifier) @export.func))
-            (export_statement
-              declaration: (class_declaration name: (identifier) @export.class))
-            (export_statement
-              declaration: (variable_declaration
-                (variable_declarator name: (identifier) @export.var)))
-            (export_statement
-              value: (identifier) @export.default)
-            """,
-        ),
-        "typescript": Query(
-            langs["typescript"],
-            """
-            (export_statement
-              declaration: (function_declaration name: (identifier) @export.func))
-            (export_statement
-              declaration: (class_declaration name: (type_identifier) @export.class))
-            (export_statement
-              declaration: (variable_declaration
-                (variable_declarator name: (identifier) @export.var)))
-            (export_statement
-              value: (identifier) @export.default)
-            """,
-        ),
-        "tsx": Query(
-            langs["tsx"],
-            """
-            (export_statement
-              declaration: (function_declaration name: (identifier) @export.func))
-            (export_statement
-              declaration: (class_declaration name: (type_identifier) @export.class))
-            (export_statement
-              declaration: (variable_declaration
-                (variable_declarator name: (identifier) @export.var)))
-            (export_statement
-              value: (identifier) @export.default)
-            """,
-        ),
-    }
+    export_queries: Dict[str, Query] = {}
+
+    # --- JavaScript ---
+    export_queries["javascript"] = Query(
+        langs["javascript"],
+        """
+        (export_statement
+          declaration: (function_declaration name: (identifier) @export.func))
+        (export_statement
+          declaration: (class_declaration name: (identifier) @export.class))
+        (export_statement
+          declaration: (variable_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          declaration: (lexical_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          value: (identifier) @export.default)
+        """,
+    )
+
+    # --- TypeScript ---
+    export_queries["typescript"] = Query(
+        langs["typescript"],
+        """
+        (export_statement
+          declaration: (function_declaration name: (identifier) @export.func))
+        (export_statement
+          declaration: (class_declaration name: (type_identifier) @export.class))
+        (export_statement
+          declaration: (variable_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          declaration: (lexical_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          value: (identifier) @export.default)
+        """,
+    )
+
+    # --- TSX ---
+    export_queries["tsx"] = Query(
+        langs["tsx"],
+        """
+        (export_statement
+          declaration: (function_declaration name: (identifier) @export.func))
+        (export_statement
+          declaration: (class_declaration name: (type_identifier) @export.class))
+        (export_statement
+          declaration: (variable_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          declaration: (lexical_declaration
+            (variable_declarator name: (identifier) @export.var)))
+        (export_statement
+          value: (identifier) @export.default)
+        """,
+    )
 
     _TS_CACHE = {
         "parsers": parsers,
         "queries": queries,
         "export_queries": export_queries,
         "langs": langs,
-        "QueryCursor": QueryCursor,  # stored for use in _parse_with_tree_sitter
+        "QueryCursor": QueryCursor,
     }
     return _TS_CACHE
 
@@ -179,13 +341,26 @@ class FileAnalysis:
         ext = Path(self.path).suffix.lower()
         mapping = {
             ".py": "python",
-            ".js": "javascript",
-            ".jsx": "javascript",
-            ".ts": "typescript",
-            ".tsx": "typescript",  # TSX uses the tsx tree-sitter parser internally
+            ".js": "javascript", ".jsx": "javascript",
+            ".ts": "typescript", ".tsx": "typescript",
             ".go": "go",
             ".rs": "rust",
             ".java": "java",
+            # 14 new languages
+            ".c": "c", ".h": "c",
+            ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp", ".hpp": "cpp", ".hh": "cpp", ".hxx": "cpp",
+            ".cs": "c_sharp",
+            ".php": "php", ".phtml": "php",
+            ".rb": "ruby",
+            ".swift": "swift",
+            ".kt": "kotlin", ".kts": "kotlin",
+            ".sh": "bash", ".bash": "bash",
+            ".md": "markdown", ".mdx": "markdown",
+            ".yml": "yaml", ".yaml": "yaml",
+            ".json": "json",
+            ".html": "html", ".htm": "html",
+            ".css": "css",
+            ".sql": "sql",
         }
         return mapping.get(ext, "unknown")
 
@@ -212,10 +387,29 @@ class FileAnalysis:
 # Main ParserService
 # ---------------------------------------------------------------------------
 class ParserService:
-    SUPPORTED_EXTS = {".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java"}
+    SUPPORTED_EXTS = {
+        # Python + original 5
+        ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java",
+        # 14 new languages
+        ".c", ".h",
+        ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx",
+        ".cs",
+        ".php", ".phtml",
+        ".rb",
+        ".swift",
+        ".kt", ".kts",
+        ".sh", ".bash",
+        ".md", ".mdx",
+        ".yml", ".yaml",
+        ".json",
+        ".html", ".htm",
+        ".css",
+        ".sql",
+    }
     IGNORE_DIRS = {
         "node_modules", "__pycache__", ".git", "venv", "dist", "build",
         ".next", "vendor", ".tox", "target", "egg-info", ".eggs",
+        ".cargo", "Cargo.lock",
     }
 
     # ── Public API ───────────────────────────────────────────────────────
@@ -275,21 +469,27 @@ class ParserService:
             content = f.read()
 
         lang = analysis.language
-        # Map language label → internal parser key
-        ts_lang_map = {
-            "python": None,
-            "javascript": "javascript",
-            "typescript": "tsx" if Path(file_path).suffix.lower() == ".tsx" else "typescript",
-            "go": "go",
-            "rust": "rust",
-            "java": "java",
-        }
-        ts_key = ts_lang_map.get(lang)
+        ts_key = self._ts_language_key(file_path, lang)
         if lang == "python":
             self._parse_python(content, analysis)
         elif ts_key:
             self._parse_with_tree_sitter(content, ts_key, analysis)
         return analysis
+
+    @staticmethod
+    def _ts_language_key(file_path: str, lang: str) -> Optional[str]:
+        """Map language label from FileAnalysis → internal tree-sitter parser key."""
+        if lang == "python":
+            return None
+        if lang == "typescript":
+            return "tsx" if Path(file_path).suffix.lower() == ".tsx" else "typescript"
+        # All other languages use their label as the parser key
+        parser_keys = {
+            "javascript", "go", "rust", "java",
+            "c", "cpp", "c_sharp", "php", "ruby", "swift", "kotlin",
+            "bash", "markdown", "yaml", "json", "html", "css", "sql",
+        }
+        return lang if lang in parser_keys else None
 
     # ── Python (built-in ast module) ─────────────────────────────────────
 
@@ -333,7 +533,7 @@ class ParserService:
                     full = f"{module}.{alias.name}" if module else alias.name
                     analysis._add_dep(full)
 
-    # ── Tree-sitter parsers (JS, TS, TSX, Go, Rust, Java) ────────────────
+    # ── Tree-sitter parsers ─────────────────────────────────────────────
 
     def _parse_with_tree_sitter(self, content: str, lang: str, analysis: FileAnalysis):
         """Parse a file using tree-sitter, populating the FileAnalysis object."""
@@ -350,7 +550,6 @@ class ParserService:
         # ── First pass: collect all captured nodes ───────────────────────
         cursor = ts["QueryCursor"](query)
         cap_map: Dict[str, List] = cursor.captures(root)
-        # cap_map is e.g. {"func.name": [node1, node2], "class.name": [node3], ...}
 
         # ── Classes ──────────────────────────────────────────────────────
         class_nodes = (
@@ -361,6 +560,7 @@ class ParserService:
             + cap_map.get("struct.name", [])
             + cap_map.get("trait.name", [])
             + cap_map.get("type.name", [])
+            + cap_map.get("module.name", [])
         )
         seen_class_names = set()
         for node in class_nodes:
@@ -400,19 +600,24 @@ class ParserService:
                 if raw:
                     analysis._add_dep(raw.strip("\"'"))
         elif lang == "go":
-            # Go: import_spec_list has child import_spec nodes with package_identifier
             for stmt_node in cap_map.get("import_stmt", []):
                 self._extract_go_imports(stmt_node, source_bytes, analysis)
-        elif lang == "rust":
-            for node in cap_map.get("import.use", []):
-                raw = self._node_text(node, source_bytes)
-                if raw:
-                    analysis._add_dep(raw)
-        elif lang == "java":
-            for node in cap_map.get("import.path", []):
-                raw = self._node_text(node, source_bytes)
-                if raw:
-                    analysis._add_dep(raw)
+        elif lang in ("java", "kotlin", "swift"):
+            for stmt_node in cap_map.get("import_stmt", []):
+                self._extract_simple_imports(stmt_node, source_bytes, analysis)
+        elif lang in ("rust", "php"):
+            for stmt_node in cap_map.get("use_stmt", []):
+                self._extract_rust_uses(stmt_node, source_bytes, analysis)
+        elif lang in ("c", "cpp"):
+            for stmt_node in cap_map.get("include_stmt", []):
+                self._extract_c_include(stmt_node, source_bytes, analysis)
+        elif lang == "c_sharp":
+            for stmt_node in cap_map.get("using_stmt", []):
+                self._extract_csharp_using(stmt_node, source_bytes, analysis)
+
+        # ── Ruby imports (require / require_relative calls) ──────────────
+        if lang == "ruby":
+            self._extract_ruby_requires(root, source_bytes, analysis)
 
         # ── Exports (JS/TS/TSX) ─────────────────────────────────────────
         if lang in ("javascript", "typescript", "tsx"):
@@ -425,8 +630,11 @@ class ParserService:
                         name = self._node_text(enode, source_bytes)
                         if name and name not in analysis.exports:
                             analysis.exports.append(name)
-                # Also handle named re-exports like `export { foo }`
                 self._extract_named_re_exports(root, source_bytes, analysis)
+
+        # ── Bash source / . includes ────────────────────────────────────
+        if lang == "bash":
+            self._extract_bash_sources(root, source_bytes, analysis)
 
     # ── Helper: extract text from tree-sitter node ───────────────────────
 
@@ -437,23 +645,21 @@ class ParserService:
         except Exception:
             return ""
 
-    # ── Helper: variable-declarator → arrow_function / function ----------
+    # ── Helper: variable-declarator → arrow / function expression ---------
 
     def _extract_variable_funcs(self, root, source_bytes: bytes, analysis: FileAnalysis):
         """Detect `const foo = () => ...` or `const foo = function() ...`."""
-        cursor = root.walk()
         visited = set()
 
         def walk(node):
             if id(node) in visited:
                 return
             visited.add(id(node))
-
             if node.type == "variable_declarator":
                 name_node = node.child_by_field_name("name")
                 value_node = node.child_by_field_name("value")
                 if name_node and value_node and value_node.type in (
-                    "arrow_function", "function"
+                    "arrow_function", "function_expression"
                 ):
                     name = self._node_text(name_node, source_bytes)
                     all_func_names = {f["name"] for f in analysis.functions}
@@ -469,10 +675,125 @@ class ParserService:
 
         walk(root)
 
+    # ── Helper: Go / Java / Kotlin / Swift import extraction ────────────
+
+    def _extract_simple_imports(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
+        """Extract imports by finding string/identifier children.
+        Works for Go (interpreted_string_literal), Java (scoped_identifier + asterisk),
+        Kotlin (identifier + dots), Swift (scoped_identifier or dotted identifiers)."""
+        parts: List[str] = []
+        has_star = False
+        for child in stmt_node.children:
+            t = child.type
+            if t in ("interpreted_string_literal", "string_literal", "string", "string_content"):
+                raw = self._node_text(child, source_bytes)
+                parts.append(raw.strip("\"'"))
+            elif t in ("scoped_identifier", "qualified_name", "identifier", "type_identifier",
+                        "simple_identifier", "dotted_identifier"):
+                raw = self._node_text(child, source_bytes)
+                if raw:
+                    parts.append(raw)
+            elif t == "asterisk":
+                has_star = True
+        if parts:
+            path = ".".join(parts) if not parts[0].startswith(('"', "'")) else parts[0]
+            if has_star:
+                path += ".*"
+            if path not in analysis.imports:
+                analysis._add_dep(path)
+
+    # ── Helper: Rust / PHP use extraction ──────────────────────────────
+
+    def _extract_rust_uses(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
+        """Walk use_declaration children extracting scoped_identifier paths.
+        Handles aliased (use X as Y), nested (use X::{A, B}), and PHP use stmts."""
+        def walk_uses(node):
+            if node.type in ("scoped_identifier", "namespace_name", "name"):
+                raw = self._node_text(node, source_bytes)
+                if raw and raw not in analysis.imports:
+                    analysis._add_dep(raw)
+            for child in node.children:
+                walk_uses(child)
+        walk_uses(stmt_node)
+
+    # ── Helper: C / C++ preproc_include extraction ────────────────────
+
+    def _extract_c_include(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
+        """Extract #include path (string_literal or system_lib_string) from
+        a preproc_include node."""
+        for child in stmt_node.children:
+            if child.type in ("string_literal", "system_lib_string"):
+                raw = self._node_text(child, source_bytes)
+                if raw:
+                    analysis._add_dep(raw.strip("\"'<>"))
+
+    # ── Helper: C# using directive extraction ─────────────────────────
+
+    def _extract_csharp_using(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
+        """Extract the namespace from a C# using directive."""
+        # using X.Y.Z;  → the identifier part, not the keywords
+        for child in stmt_node.children:
+            if child.type in ("identifier", "qualified_name",
+                               "global_keyword", "name"):
+                raw = self._node_text(child, source_bytes)
+                if raw:
+                    analysis._add_dep(raw)
+
+    # ── Helper: Ruby require extraction ──────────────────────────────
+
+    def _extract_ruby_requires(self, root, source_bytes: bytes, analysis: FileAnalysis):
+        """Detect `require`, `require_relative`, `load`, `autoload` calls."""
+        visited = set()
+
+        def walk(node):
+            if id(node) in visited:
+                return
+            visited.add(id(node))
+            if node.type == "call":
+                method_node = node.child_by_field_name("method")
+                args_node = node.child_by_field_name("arguments")
+                if method_node and args_node:
+                    method = self._node_text(method_node, source_bytes)
+                    if method in ("require", "require_relative", "load", "autoload"):
+                        for arg in args_node.children:
+                            if arg.type == "string":
+                                raw = self._node_text(arg, source_bytes)
+                                if raw:
+                                    analysis._add_dep(raw.strip("\"'"))
+            for child in node.children:
+                walk(child)
+
+        walk(root)
+
+    # ── Helper: Bash source detection ─────────────────────────────────
+
+    def _extract_bash_sources(self, root, source_bytes: bytes, analysis: FileAnalysis):
+        """Detect `source file.sh` and `. file.sh` commands."""
+        visited = set()
+
+        def walk(node):
+            if id(node) in visited:
+                return
+            visited.add(id(node))
+            if node.type == "command":
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    cmd = self._node_text(name_node, source_bytes)
+                    if cmd in ("source", "."):
+                        for arg in node.children:
+                            if arg.type == "word":
+                                raw = self._node_text(arg, source_bytes)
+                                if raw and raw not in analysis.imports:
+                                    analysis._add_dep(raw)
+            for child in node.children:
+                walk(child)
+
+        walk(root)
+
     # ── Helper: Go import extraction ─────────────────────────────────────
 
     def _extract_go_imports(self, stmt_node, source_bytes: bytes, analysis: FileAnalysis):
-        """Walk import_spec_list children and extract package paths."""
+        """Walk import_declaration children and extract package paths."""
         def walk_imports(node):
             if node.type == "import_spec":
                 path_node = node.child_by_field_name("path")
@@ -482,30 +803,25 @@ class ParserService:
                         analysis._add_dep(raw.strip("\"'"))
             for child in node.children:
                 walk_imports(child)
-
         walk_imports(stmt_node)
 
-    # ── Helper: named re-exports `export { foo }` ────────────────────────
+    # ── Helper: named re-exports `export { foo }` ────────────────────
 
     def _extract_named_re_exports(self, root, source_bytes: bytes, analysis: FileAnalysis):
         """Extract names from `export { foo, bar }` statements."""
-        cursor = root.walk()
         visited = set()
 
         def walk(node):
             if id(node) in visited:
                 return
             visited.add(id(node))
-
             if node.type == "export_statement":
-                # Check for export_clause child: `export { foo, bar }`
                 for child in node.children:
                     if child.type == "export_clause":
                         for spec in child.children:
                             if spec.type == "export_specifier":
                                 alias_node = spec.child_by_field_name("alias")
                                 if alias_node:
-                                    # export { foo as bar } → export name is "bar"
                                     alias = self._node_text(alias_node, source_bytes)
                                     if alias and alias not in analysis.exports:
                                         analysis.exports.append(alias)
@@ -520,7 +836,7 @@ class ParserService:
 
         walk(root)
 
-    # ── Helper: resolve AST names (Python) ──────────────────────────────
+    # ── Helper: resolve AST names (Python) ──────────────────────────
 
     @staticmethod
     def _get_name(node) -> str:
