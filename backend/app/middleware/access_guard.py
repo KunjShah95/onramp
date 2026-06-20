@@ -28,6 +28,8 @@ Usage:
 
 from fastapi import Request, HTTPException, Depends
 
+ROLE_HIERARCHY = {"owner": 3, "senior": 2, "member": 1}
+
 
 def _get_user_or_401(request: Request) -> dict:
     """Read the authenticated user from request state (set by AuthMiddleware).
@@ -178,6 +180,65 @@ def require_team_role(
                     "code": "INSUFFICIENT_ROLE",
                     "required_role": required_role,
                     "user_role": user_role,
+                    "team_id": team_id,
+                },
+            )
+
+    return Depends(_guard)
+
+
+def require_minimum_role(
+    min_role: str = "member",
+    team_id_param: str = "team_id",
+) -> Depends:
+    """FastAPI dependency: require user's team role >= min_role (owner > senior > member)."""
+
+    async def _guard(request: Request) -> None:
+        from app.services.team_service import get_user_teams
+
+        user = _get_user_or_401(request)
+        team_id = await _extract_team_id(request, team_id_param)
+
+        if not team_id:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Could not determine team context. "
+                    f"Provide '{team_id_param}' as a path or query parameter."
+                ),
+            )
+
+        uid = user.get("uid", "")
+        teams = await get_user_teams(uid)
+
+        user_role: str | None = None
+        for team in teams:
+            tid = team.get("team_id") or team.get("id", "")
+            if tid == team_id:
+                user_role = team.get("role")
+                break
+
+        if user_role is None:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "Not a member of this team",
+                    "code": "NOT_A_MEMBER",
+                    "team_id": team_id,
+                },
+            )
+
+        min_level = ROLE_HIERARCHY.get(min_role, 0)
+        user_level = ROLE_HIERARCHY.get(user_role, 0)
+
+        if user_level < min_level:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": f"Requires role >= '{min_role}'",
+                    "code": "INSUFFICIENT_ROLE",
+                    "user_role": user_role,
+                    "required_min_role": min_role,
                     "team_id": team_id,
                 },
             )

@@ -9,11 +9,11 @@ All team membership and module grants must use this UID.
 """
 
 import pytest
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.testclient import TestClient
-from app.middleware.auth import AuthMiddleware
-from app.middleware.access_guard import require_module_access, require_team_role
-from app.api.v1.auth import get_current_user
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from app.middleware.access_guard import require_module_access, require_team_role, require_minimum_role, ROLE_HIERARCHY
 from app.services.access_control_service import grant_module_access
 from app.services.team_service import add_member
 from app.services.postgres_db import get_storage
@@ -38,23 +38,35 @@ def setup_env(monkeypatch):
         storage._data[coll].clear()
 
 
+class TestAuthMiddleware(BaseHTTPMiddleware):
+    """Rejects requests without a valid auth header, then sets DEV_USER."""
+    async def dispatch(self, request: Request, call_next):
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer ") or len(auth) <= 20:
+            return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+        request.state.user = {
+            "uid": DEV_USER,
+            "email": "dev@test.com",
+            "name": "Dev User",
+        }
+        return await call_next(request)
+
+
 def _make_app():
-    """Build a minimal FastAPI app with auth bypass and guarded endpoints."""
+    """Build a minimal FastAPI app with test auth and guarded endpoints."""
     app = FastAPI()
-    app.add_middleware(AuthMiddleware)
+    app.add_middleware(TestAuthMiddleware)
 
     @app.get("/guarded")
     async def guarded_endpoint(
         team_id: str,
-        user: dict = Depends(get_current_user),
         _: None = require_module_access(MODULE),
     ):
-        return {"ok": True, "user": user.get("uid")}
+        return {"ok": True, "user": DEV_USER}
 
     @app.get("/guarded-path/{team_id}")
     async def guarded_path_endpoint(
         team_id: str,
-        user: dict = Depends(get_current_user),
         _: None = require_module_access(MODULE),
     ):
         return {"ok": True}
@@ -62,7 +74,6 @@ def _make_app():
     @app.get("/owner-only")
     async def owner_endpoint(
         team_id: str,
-        user: dict = Depends(get_current_user),
         _: None = require_team_role("owner"),
     ):
         return {"ok": True, "role": "owner"}
@@ -234,3 +245,98 @@ async def test_owner_endpoint_missing_team_id():
 
     assert resp.status_code == 400
     assert "team context" in resp.text
+
+
+# ── require_minimum_role tests ──────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_minimum_role_owner_allowed():
+    """Owner passes require_minimum_role('senior')."""
+    await _create_team()
+    await add_member(TEAM_ID, DEV_USER, role="owner")
+
+    app = FastAPI()
+    app.add_middleware(TestAuthMiddleware)
+
+    @app.get("/min-senior")
+    async def min_senior_endpoint(
+        team_id: str,
+        _: None = require_minimum_role("senior"),
+    ):
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        resp = client.get(f"/min-senior?team_id={TEAM_ID}", headers=_headers())
+
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_minimum_role_senior_allowed():
+    """Senior passes require_minimum_role('senior')."""
+    await _create_team()
+    await add_member(TEAM_ID, DEV_USER, role="senior")
+
+    app = FastAPI()
+    app.add_middleware(TestAuthMiddleware)
+
+    @app.get("/min-senior")
+    async def min_senior_endpoint(
+        team_id: str,
+        _: None = require_minimum_role("senior"),
+    ):
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        resp = client.get(f"/min-senior?team_id={TEAM_ID}", headers=_headers())
+
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_minimum_role_member_denied():
+    """Member fails require_minimum_role('senior')."""
+    await _create_team()
+    await add_member(TEAM_ID, DEV_USER, role="member")
+
+    app = FastAPI()
+    app.add_middleware(TestAuthMiddleware)
+
+    @app.get("/min-senior")
+    async def min_senior_endpoint(
+        team_id: str,
+        _: None = require_minimum_role("senior"),
+    ):
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        resp = client.get(f"/min-senior?team_id={TEAM_ID}", headers=_headers())
+
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["code"] == "INSUFFICIENT_ROLE"
+    assert detail["user_role"] == "member"
+    assert detail["required_min_role"] == "senior"
+
+
+@pytest.mark.asyncio
+async def test_minimum_role_not_a_member():
+    """Non-member gets 403 NOT_A_MEMBER."""
+    await _create_team()
+    # DON'T add DEV_USER to the team
+
+    app = FastAPI()
+    app.add_middleware(TestAuthMiddleware)
+
+    @app.get("/min-senior")
+    async def min_senior_endpoint(
+        team_id: str,
+        _: None = require_minimum_role("senior"),
+    ):
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        resp = client.get(f"/min-senior?team_id={TEAM_ID}", headers=_headers())
+
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "NOT_A_MEMBER"
