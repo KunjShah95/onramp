@@ -49,7 +49,9 @@ export default function BillingPage() {
       if (tid) {
         setTeamId(tid)
         window.history.replaceState({}, '', window.location.pathname)
-        getSubscription(tid).then(setSubscription).catch(() => {})
+        getSubscription(tid).then(setSubscription).catch(() => {
+          setError('Subscription loaded but status may be delayed. Refresh to check.')
+        })
       }
     }
   }, [])
@@ -82,6 +84,8 @@ export default function BillingPage() {
         })
         if (result.url) {
           window.location.href = result.url
+        } else {
+          setError('Payment system is not configured. Please try again later.')
         }
       }
     } catch (e) {
