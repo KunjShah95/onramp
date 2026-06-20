@@ -29,7 +29,9 @@ const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 const DocsPage = lazy(() => import('./pages/DocsPage'))
 const TasksPage = lazy(() => import('./pages/TasksPage'))
+const TraineeDashboard = lazy(() => import('./pages/TraineeDashboard'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const JoinPage = lazy(() => import('./pages/JoinPage'))
 
 export default function App() {
   return (
@@ -47,6 +49,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/join" element={<JoinPage />} />
 
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
@@ -64,6 +67,7 @@ export default function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/pr-describe" element={<PRDescriptionPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/my-progress" element={<TraineeDashboard />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/profile" element={<Profile />} />
                 </Route>
