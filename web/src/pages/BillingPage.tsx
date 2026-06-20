@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createSubscription, getSubscription, cancelSubscription } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession } from '../lib/api'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -42,6 +42,18 @@ export default function BillingPage() {
   const [error, setError] = useState('')
   const [selectedTier, setSelectedTier] = useState<string | null>(null)
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      const tid = params.get('team_id')
+      if (tid) {
+        setTeamId(tid)
+        window.history.replaceState({}, '', window.location.pathname)
+        getSubscription(tid).then(setSubscription).catch(() => {})
+      }
+    }
+  }, [])
+
   async function fetchSubscription() {
     if (!teamId.trim()) return
     setLoading(true); setError('')
@@ -55,9 +67,26 @@ export default function BillingPage() {
   async function handleCreateSubscription(tier: string) {
     if (!teamId.trim()) return
     try {
-      await createSubscription({ team_id: teamId.trim(), tier, billing_cycle: 'monthly' })
-      setSelectedTier(tier); await fetchSubscription()
-    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create subscription') }
+      if (tier === 'free') {
+        await createSubscription({ team_id: teamId.trim(), tier, billing_cycle: 'monthly' })
+        setSelectedTier(tier)
+        await fetchSubscription()
+      } else {
+        const successUrl = `${window.location.origin}/billing?checkout=success&team_id=${teamId.trim()}`
+        const cancelUrl = `${window.location.origin}/billing`
+        const result = await createCheckoutSession({
+          team_id: teamId.trim(),
+          tier,
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+        })
+        if (result.url) {
+          window.location.href = result.url
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create subscription')
+    }
   }
 
   const containerVariants = {
