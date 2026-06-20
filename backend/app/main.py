@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
-from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router
+from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
 # Configure basic logging
@@ -37,7 +37,7 @@ app = FastAPI(
 # (comma-separated). Defaults to the local dev frontend.
 _cors_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000").split(",")
     if origin.strip()
 ]
 
@@ -80,6 +80,8 @@ app.include_router(pr_review.router, prefix="/api/v1")
 app.include_router(tasks_router.router, prefix="/api/v1")
 app.include_router(notifications_router.router, prefix="/api/v1")
 app.include_router(integrations_router.router, prefix="/api/v1")
+app.include_router(audit_router.router, prefix="/api/v1")
+app.include_router(invites_router.router, prefix="/api/v1")
 
 
 @app.get("/")
