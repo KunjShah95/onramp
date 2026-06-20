@@ -8,9 +8,35 @@ certain events occur (task assigned, PR submitted, etc.).
 import hashlib
 import hmac
 import json
+import os
+from cryptography.fernet import Fernet
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
+
+
+def _get_fernet() -> Optional[Fernet]:
+    key = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY")
+    if not key:
+        return None
+    try:
+        return Fernet(key.encode() if isinstance(key, str) else key)
+    except Exception:
+        return None
+
+
+def encrypt_token(plaintext: str) -> str:
+    f = _get_fernet()
+    if f is None:
+        return plaintext
+    return f.encrypt(plaintext.encode()).decode()
+
+
+def decrypt_token(ciphertext: str) -> str:
+    f = _get_fernet()
+    if f is None:
+        return ciphertext
+    return f.decrypt(ciphertext.encode()).decode()
 
 COLLECTION = "codeflow_webhooks"
 DELIVERIES_COLLECTION = "codeflow_webhook_deliveries"
@@ -209,7 +235,14 @@ async def get_integration_config(user_id: str, integration: str) -> Optional[dic
         INTEGRATION_CONFIG_COLLECTION,
         [("user_id", "==", user_id), ("integration", "==", integration)],
     )
-    return results[0] if results else None
+    if not results:
+        return None
+    result = results[0]
+    config = result.get("config", {})
+    if integration == "github" and config.get("token"):
+        config["token"] = decrypt_token(config["token"])
+        result["config"] = config
+    return result
 
 
 async def save_integration_config(
@@ -223,6 +256,10 @@ async def save_integration_config(
         INTEGRATION_CONFIG_COLLECTION,
         [("user_id", "==", user_id), ("integration", "==", integration)],
     )
+
+    # Encrypt GitHub token at rest
+    if integration == "github" and config.get("token"):
+        config["token"] = encrypt_token(config["token"])
 
     now = _utcnow()
     entry = {

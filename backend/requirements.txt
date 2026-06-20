@@ -22,3 +22,4 @@ groq>=0.11.0
 redis>=5.0.0          # distributed rate limiting (REDIS_URL)
 sendgrid>=6.11.0    # transactional email delivery
 stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
+cryptography>=42.0.0  # token encryption at rest

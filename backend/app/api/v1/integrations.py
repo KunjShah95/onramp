@@ -7,6 +7,7 @@ Endpoints:
   Events: GET /events (list supported webhook event types)
 """
 
+import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
@@ -164,6 +165,43 @@ async def rotate_webhook_secret(
 
 
 # ── Integration Config Endpoints ─────────────────────────────
+
+
+class TestGithubTokenRequest(BaseModel):
+    token: str
+
+
+@router.post("/github/test")
+async def test_github_token(
+    request: TestGithubTokenRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Validate a GitHub personal access token by calling the GitHub API."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {request.token}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "CodeFlow/2.0",
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "valid": True,
+                    "username": data.get("login"),
+                    "scopes": resp.headers.get("X-OAuth-Scopes", "").split(", "),
+                }
+            elif resp.status_code == 401:
+                return {"valid": False, "error": "Token is invalid or expired"}
+            elif resp.status_code == 403:
+                return {"valid": False, "error": "Token is valid but lacks permissions"}
+            else:
+                return {"valid": False, "error": f"GitHub API returned {resp.status_code}"}
+    except httpx.RequestError as e:
+        return {"valid": False, "error": f"Connection error: {str(e)}"}
 
 
 @router.get("/{integration_type}")
