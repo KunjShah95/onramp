@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.api.v1.auth import get_current_user
+from app.middleware.access_guard import require_minimum_role
 from app.services.invite_service import (
     create_invite,
     get_team_invites,
@@ -26,6 +27,7 @@ async def create_team_invite(
     team_id: str,
     body: CreateInviteRequest,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Create a pending invite for a new team member. Senior+ only."""
     invite = await create_invite(
@@ -77,6 +79,7 @@ async def cancel_team_invite(
     team_id: str,
     invite_id: str,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Cancel a pending invite."""
     success = await cancel_invite(invite_id)
@@ -91,6 +94,17 @@ async def accept_team_invite(
     user: dict = Depends(get_current_user),
 ):
     """Accept an invite using its token. Requires authentication."""
+    # Verify the invite belongs to the authenticated user's email
+    from app.services.invite_service import get_invite_by_token as _lookup
+    invite = await _lookup(token)
+    if invite:
+        user_email = (user.get("email") or "").lower()
+        invite_email = (invite.get("email") or "").lower()
+        if user_email and invite_email and user_email != invite_email:
+            raise HTTPException(
+                status_code=403,
+                detail="This invite was sent to a different email address",
+            )
     try:
         result = await accept_invite(token, user.get("uid", ""))
         return result

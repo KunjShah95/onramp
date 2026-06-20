@@ -14,10 +14,11 @@ GET /api/v1/dashboard/cto via TestClient and verifies every metric:
 """
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from app.middleware.auth import AuthMiddleware
+from app.api.v1.auth import get_current_user
 from app.api.v1.dashboard import router as dashboard_router
 from app.services.postgres_db import get_storage, generate_id
 from app.services.team_service import add_member
@@ -39,6 +40,10 @@ def _make_app():
     app = FastAPI()
     app.add_middleware(AuthMiddleware)
     app.include_router(dashboard_router, prefix="/api/v1")
+
+    async def _test_user(request: Request = None):
+        return {"uid": DEV_USER, "email": "senior@test.com", "name": "Senior Dev"}
+    app.dependency_overrides[get_current_user] = _test_user
     return app
 
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { updateProfile } from 'firebase/auth'
 import { getFirebaseAuth } from '../lib/firebase'
 import { useAuth } from '../context/AuthContext'
@@ -21,6 +22,9 @@ import {
   type NotificationPreferences,
   type Webhook,
 } from '../lib/api'
+import CardSpotlight from '../components/ui/card-spotlight'
+import GradientHeading from '../components/ui/gradient-heading'
+import PageTransition from '../components/ui/page-transition'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -332,6 +336,15 @@ export default function Settings() {
 
   const initial = (name || email || 'U').charAt(0).toUpperCase()
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  }
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+  }
+
   const tabs = [
     { id: 'account', label: 'ACCOUNT' },
     { id: 'notifications', label: 'NOTIFICATIONS' },
@@ -340,10 +353,11 @@ export default function Settings() {
   ]
 
   return (
+    <PageTransition>
     <div className="w-full max-w-4xl pt-8 pb-12 font-body text-[#FDFBF8]">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold mb-2 text-white">Settings</h1>
+        <GradientHeading as="h1" className="mb-2">Settings</GradientHeading>
         <p className="text-[#FDFBF8]/60 text-sm">Manage your account settings and preferences.</p>
       </div>
 
@@ -369,9 +383,9 @@ export default function Settings() {
       {activeTab === 'account' && (
         <div className="space-y-8">
           {/* Profile Information */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="mb-6">
-              <h3 className="font-display text-lg font-bold text-white mb-1">Profile Information</h3>
+              <GradientHeading as="h3" className="mb-1">Profile Information</GradientHeading>
               <p className="text-sm text-[#FDFBF8]/60">Update your photo and personal details here.</p>
             </div>
 
@@ -418,13 +432,13 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-          </div>
+          </CardSpotlight>
 
           {/* API Keys */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h3 className="font-display text-lg font-bold text-white mb-1">API Keys</h3>
+                <GradientHeading as="h3" className="mb-1">API Keys</GradientHeading>
                 <p className="text-sm text-[#FDFBF8]/60">Manage your secret keys for programmatic access.</p>
               </div>
               <button
@@ -450,9 +464,9 @@ export default function Settings() {
             {keys.length === 0 ? (
               <p className="text-sm text-[#FDFBF8]/40">No API keys yet.</p>
             ) : (
-              <div className="space-y-3">
+              <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
                 {keys.map(k => (
-                  <div key={k.key_id} className="flex items-center justify-between bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-3">
+                  <motion.div key={k.key_id} variants={itemVariants} className="flex items-center justify-between bg-[#110D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-[#FDFBF8]/40 text-lg">key</span>
                       <div>
@@ -473,11 +487,11 @@ export default function Settings() {
                         <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
-          </div>
+          </CardSpotlight>
         </div>
       )}
 
@@ -485,9 +499,9 @@ export default function Settings() {
       {activeTab === 'notifications' && (
         <div className="space-y-8">
           {/* Notification Channels Grid */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="mb-6">
-              <h3 className="font-display text-lg font-bold text-white mb-1">Notification Channels</h3>
+              <GradientHeading as="h3" className="mb-1">Notification Channels</GradientHeading>
               <p className="text-sm text-[#FDFBF8]/60">
                 Choose which types of notifications you receive and through which channels.
               </p>
@@ -516,9 +530,9 @@ export default function Settings() {
                 </div>
 
                 {/* Toggle rows */}
-                <div className="divide-y divide-[#FDFBF8]/5">
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-[#FDFBF8]/5">
                   {Object.entries(notificationTypes).map(([type, label]) => (
-                    <div key={type} className="grid grid-cols-[1fr_repeat(3,60px)] gap-2 py-2.5 px-1 items-center hover:bg-[#FDFBF8]/[0.02] rounded-lg transition-colors">
+                    <motion.div key={type} variants={itemVariants} className="grid grid-cols-[1fr_repeat(3,60px)] gap-2 py-2.5 px-1 items-center hover:bg-[#FDFBF8]/[0.02] rounded-lg transition-colors">
                       <span className="text-sm text-[#FDFBF8]/80 truncate">{label}</span>
                       {channels.map((ch) => {
                         const enabled = notifPrefs.channels[ch]?.[type] ?? false
@@ -543,9 +557,9 @@ export default function Settings() {
                           </div>
                         )
                       })}
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
 
                 <div className="flex items-center justify-end mt-4">
                   {notifPrefsMsg && (
@@ -557,13 +571,13 @@ export default function Settings() {
                 </div>
               </>
             )}
-          </div>
+          </CardSpotlight>
 
           {/* Digest & Quiet Hours */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Digest Frequency */}
-            <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
-              <h3 className="font-display text-base font-bold text-white mb-4">Email Digest</h3>
+            <CardSpotlight className="p-8">
+              <GradientHeading as="h4" className="mb-4">Email Digest</GradientHeading>
               <p className="text-xs text-[#FDFBF8]/50 mb-4">
                 Receive a summary of unread notifications via email.
               </p>
@@ -590,12 +604,12 @@ export default function Settings() {
                   ))}
                 </div>
               )}
-            </div>
+            </CardSpotlight>
 
             {/* Quiet Hours */}
-            <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+            <CardSpotlight className="p-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display text-base font-bold text-white">Quiet Hours</h3>
+                <GradientHeading as="h4">Quiet Hours</GradientHeading>
                 {notifPrefs && (
                   <button
                     onClick={() => handleToggleQuietHours(!notifPrefs.quiet_hours_enabled)}
@@ -632,7 +646,7 @@ export default function Settings() {
               {notifPrefs && !notifPrefs.quiet_hours_enabled && (
                 <p className="text-xs text-[#FDFBF8]/30 italic">All hours unmuted.</p>
               )}
-            </div>
+            </CardSpotlight>
           </div>
 
           {/* Info box */}
@@ -657,14 +671,14 @@ export default function Settings() {
       {activeTab === 'integrations' && (
         <div className="space-y-6">
           {/* Slack Integration */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[#E01E5A] text-xl">chat</span>
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-white">Slack</h3>
+                  <GradientHeading as="h4">Slack</GradientHeading>
                   <p className="text-xs text-[#FDFBF8]/50">Send notifications and digests to Slack</p>
                 </div>
               </div>
@@ -714,17 +728,17 @@ export default function Settings() {
                 </button>
               </div>
             )}
-          </div>
+          </CardSpotlight>
 
           {/* GitHub Integration */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[#FDFBF8]/5 border border-[#FDFBF8]/10 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[#FDFBF8] text-xl">code</span>
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-white">GitHub</h3>
+                  <GradientHeading as="h4">GitHub</GradientHeading>
                   <p className="text-xs text-[#FDFBF8]/50">Authenticate to analyze private repositories</p>
                 </div>
               </div>
@@ -769,17 +783,17 @@ export default function Settings() {
                 </button>
               </div>
             )}
-          </div>
+          </CardSpotlight>
 
           {/* Webhooks */}
-          <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
+          <CardSpotlight className="p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[#FF8C00]/10 border border-[#FF8C00]/20 flex items-center justify-center">
                   <span className="material-symbols-outlined text-[#FF8C00] text-xl">webhook</span>
                 </div>
                 <div>
-                  <h3 className="font-display text-base font-bold text-white">Webhooks</h3>
+                  <GradientHeading as="h4">Webhooks</GradientHeading>
                   <p className="text-xs text-[#FDFBF8]/50">Send real-time events to external services</p>
                 </div>
               </div>
@@ -893,9 +907,9 @@ export default function Settings() {
             )}
 
             {webhooks.length > 0 && (
-              <div className="space-y-3">
+              <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
                 {webhooks.map((wh) => (
-                  <div key={wh.webhook_id} className="flex items-center gap-4 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl p-4">
+                  <motion.div key={wh.webhook_id} variants={itemVariants} className="flex items-center gap-4 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl p-4">
                     <div className={cn(
                       'w-2.5 h-2.5 rounded-full shrink-0',
                       wh.active ? 'bg-green-500' : 'bg-[#FDFBF8]/20'
@@ -942,9 +956,9 @@ export default function Settings() {
                         <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
             )}
 
             {webhookTestResult && (
@@ -957,7 +971,7 @@ export default function Settings() {
                 {webhookTestResult}
               </div>
             )}
-          </div>
+          </CardSpotlight>
 
           {/* Webhook Signature Info */}
           <div className="bg-[#FF8C00]/5 border border-[#FF8C00]/15 rounded-xl p-5">
@@ -973,6 +987,7 @@ export default function Settings() {
         </div>
       )}
     </div>
+    </PageTransition>
   )
 }
 
@@ -980,6 +995,7 @@ function ThemeTabContent() {
   const { theme, accentColor, setTheme, setAccentColor, resetAccentColor } = useTheme()
 
   return (
+    <PageTransition>
     <div className="space-y-8">
       {/* Theme Picker */}
       <div className="bg-[#1A1512] rounded-2xl border border-[#FDFBF8]/5 p-8">
@@ -1207,5 +1223,6 @@ function ThemeTabContent() {
         </div>
       </div>
     </div>
+    </PageTransition>
   )
 }

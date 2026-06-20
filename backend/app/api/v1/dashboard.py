@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, List
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
 from app.api.v1.auth import get_current_user
@@ -10,6 +10,7 @@ from app.services.task_service import (
     get_team_progress,
     get_user_progress,
 )
+from app.services.access_control_service import get_user_modules
 from app.services.contributor_tracker import ContributorTracker
 
 router = APIRouter(tags=["dashboard"])
@@ -234,6 +235,49 @@ async def repo_sections(owner: str, repo: str):
         ],
         "owner": owner,
         "repo": repo,
+    }
+
+
+@router.get("/dashboard/trainee")
+async def trainee_dashboard(
+    team_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    uid = user.get("uid", "")
+    if not team_id:
+        teams = await get_user_teams(uid)
+        team_id = teams[0].get("team_id") if teams else uid
+
+    progress = await get_user_progress(uid, team_id=team_id)
+    my_tasks = await list_tasks(team_id=team_id, assigned_to=uid)
+    modules = await get_user_modules(team_id, uid)
+
+    recent = sorted(my_tasks, key=lambda t: t.get("updated_at", ""), reverse=True)[:10]
+
+    return {
+        "user_id": uid,
+        "user_name": user.get("name", "") or user.get("email", ""),
+        "team_id": team_id,
+        "progress": progress,
+        "modules": [
+            {
+                "module": m.get("module", ""),
+                "granted_at": m.get("granted_at", ""),
+                "source": m.get("source", ""),
+            }
+            for m in modules
+        ],
+        "recent_tasks": [
+            {
+                "task_id": t.get("task_id"),
+                "title": t.get("title"),
+                "state": t.get("state"),
+                "module": t.get("module"),
+                "priority": t.get("priority"),
+                "updated_at": t.get("updated_at"),
+            }
+            for t in recent
+        ],
     }
 
 

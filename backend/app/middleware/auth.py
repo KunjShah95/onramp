@@ -76,7 +76,7 @@ async def verify_firebase_token(token: str) -> dict | None:
                 )
                 _dev_bypass_warned = True
             if token and len(token) > 20:
-                return {"uid": "dev-user-id", "email": "dev@codeflow.ai", "firebase": {"sign_in_provider": "dev"}}
+                return {"uid": "00000000-0000-0000-0000-000000000001", "email": "dev@codeflow.ai", "firebase": {"sign_in_provider": "dev"}}
             return None
         logger.error(
             "Firebase Admin is not configured and AUTH_DEV_BYPASS is not enabled; "

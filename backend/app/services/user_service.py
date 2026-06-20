@@ -32,9 +32,8 @@ async def create_user(
             )
         return existing
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.utcnow()
     record = {
-        "uid": uid,
         "email": email,
         "name": name,
         "provider": provider,
@@ -42,13 +41,20 @@ async def create_user(
         "updated_at": now,
     }
 
-    await storage.create_document(STORAGE_COLLECTION, uid, record)
+    doc = await storage.create_document(STORAGE_COLLECTION, uid, record)
+    return _normalize(doc)
+
+
+def _normalize(record: dict | None) -> dict | None:
+    """Map `id` -> `uid` for Firestore-compatible key access."""
+    if record is not None and "id" in record and "uid" not in record:
+        record["uid"] = record.pop("id")
     return record
 
 
 async def get_user_by_uid(uid: str) -> dict | None:
     storage = get_storage()
-    return await storage.get_document(STORAGE_COLLECTION, uid)
+    return _normalize(await storage.get_document(STORAGE_COLLECTION, uid))
 
 
 async def get_user_by_email(email: str) -> dict | None:
@@ -56,7 +62,7 @@ async def get_user_by_email(email: str) -> dict | None:
     results = await storage.query_documents(
         STORAGE_COLLECTION, [("email", "==", email)]
     )
-    return results[0] if results else None
+    return _normalize(results[0]) if results else None
 
 
 async def get_user_by_email_fast(email: str) -> dict | None:
@@ -65,4 +71,4 @@ async def get_user_by_email_fast(email: str) -> dict | None:
 
 async def list_users() -> list[dict]:
     storage = get_storage()
-    return await storage.list_documents(STORAGE_COLLECTION)
+    return [_normalize(u) for u in await storage.list_documents(STORAGE_COLLECTION)]

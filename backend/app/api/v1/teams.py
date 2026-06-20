@@ -240,11 +240,6 @@ async def remove_member(team_id: str, user: str, _user: dict = Depends(get_curre
     return await team_service.remove_member(team_id, user)
 
 
-@router.post("/{team_id}/invites")
-async def create_invite(team_id: str, request: InviteRequest):
-    return await team_service.create_invite(team_id, request.email, request.invited_by)
-
-
 @router.get("/{team_id}/invites")
 async def list_invites(team_id: str):
     invites = await team_service.get_invites(team_id)

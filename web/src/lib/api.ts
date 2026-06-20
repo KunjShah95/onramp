@@ -1385,25 +1385,25 @@ export interface TeamInvite {
 
 export function createTeamInvite(teamId: string, email: string, role = 'member', message?: string) {
   return request<{ invite_id: string; token: string; email: string; status: string }>(
-    `/api/v1/invites/teams/${teamId}`,
+    `${API_BASE}/invites/teams/${teamId}`,
     { email, role, message }
   )
 }
 
 export function listTeamInvites(teamId: string) {
-  return get<{ invites: TeamInvite[]; count: number }>(`/api/v1/invites/teams/${teamId}`)
+  return get<{ invites: TeamInvite[]; count: number }>(`${API_BASE}/invites/teams/${teamId}`)
 }
 
 export function cancelTeamInvite(teamId: string, inviteId: string) {
-  return request<{ cancelled: boolean }>(`/api/v1/invites/teams/${teamId}/invites/${inviteId}`, {}, 'DELETE')
+  return request<{ cancelled: boolean }>(`${API_BASE}/invites/teams/${teamId}/invites/${inviteId}`, {}, 'DELETE')
 }
 
 export function acceptInvite(token: string) {
   return request<{ success: boolean; team_id: string; team_name: string; role: string }>(
-    `/api/v1/invites/accept?token=${encodeURIComponent(token)}`
+    `${API_BASE}/invites/accept?token=${encodeURIComponent(token)}`
   )
 }
 
 export function myPendingInvites() {
-  return get<{ invites: TeamInvite[]; count: number }>('/api/v1/invites/me')
+  return get<{ invites: TeamInvite[]; count: number }>(`${API_BASE}/invites/me`)
 }

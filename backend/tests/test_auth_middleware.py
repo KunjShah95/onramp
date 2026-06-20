@@ -47,9 +47,12 @@ def test_protected_routes_accept_valid_token(client, monkeypatch):
     assert resp.status_code == 404
 
 
-def test_dev_bypass_rejected_without_env(client):
+def test_dev_bypass_rejected_without_env(client, monkeypatch):
     # Without AUTH_DEV_BYPASS/ENV set, an unverified token must be rejected (401),
     # closing the production auth-bypass hole.
+    # .env loads AUTH_DEV_BYPASS=true in dev; explicitly unset for this test.
+    monkeypatch.delenv("AUTH_DEV_BYPASS", raising=False)
+    monkeypatch.setenv("ENV", "production")
     dev_token = "a" * 25
     headers = {"Authorization": f"Bearer {dev_token}"}
     resp = client.get("/api/v1/teams/some-team-id", headers=headers)

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import PageTransition from '../components/ui/page-transition'
 
 const sections = [
   {
@@ -268,6 +270,15 @@ GITHUB_TOKEN=ghp_...`}
 
 const defaultSection = 'overview'
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+}
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+}
+
 export default function DocsPage() {
   const [active, setActive] = useState(defaultSection)
   const current = content[active] ?? content[defaultSection]
@@ -293,43 +304,47 @@ export default function DocsPage() {
       <div className="flex pt-16 max-w-6xl mx-auto">
         {/* Sidebar */}
         <aside className="hidden md:block w-56 shrink-0 sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto py-8 pr-4 border-r border-[#FDFBF8]/5">
-          {sections.map((sec) => (
-            <div key={sec.id} className="mb-6">
-              <p className="font-mono text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-2 px-3">{sec.title}</p>
-              {sec.items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActive(item.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    active === item.id
-                      ? 'bg-[#1A110D] text-[#FF8C00] font-medium'
-                      : 'text-[#FDFBF8]/50 hover:text-[#FDFBF8] hover:bg-[#1A110D]/40'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
+          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+            {sections.map((sec) => (
+              <motion.div key={sec.id} variants={itemVariants} className="mb-6">
+                <p className="font-mono text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-2 px-3">{sec.title}</p>
+                {sec.items.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActive(item.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      active === item.id
+                        ? 'bg-[#1A110D] text-[#FF8C00] font-medium'
+                        : 'text-[#FDFBF8]/50 hover:text-[#FDFBF8] hover:bg-[#1A110D]/40'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </motion.div>
+            ))}
+          </motion.div>
         </aside>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 px-8 md:px-12 py-12">
-          <div className="max-w-2xl">
-            <h1 className="font-display text-3xl font-bold text-[#FDFBF8] mb-8">{current.title}</h1>
-            {current.body}
+        <PageTransition>
+          <main className="flex-1 min-w-0 px-8 md:px-12 py-12">
+            <div className="max-w-2xl">
+              <h1 className="font-display text-3xl font-bold text-[#FDFBF8] mb-8">{current.title}</h1>
+              {current.body}
 
-            {/* Bottom nav */}
-            <div className="mt-16 pt-8 border-t border-[#FDFBF8]/5 flex items-center justify-between text-sm">
-              <Link to="/changelog" className="text-[#FDFBF8]/40 hover:text-[#FDFBF8] transition-colors font-mono text-xs">
-                ← Changelog
-              </Link>
-              <a href="https://github.com" className="text-[#FDFBF8]/40 hover:text-[#FDFBF8] transition-colors font-mono text-xs">
-                Edit on GitHub →
-              </a>
+              {/* Bottom nav */}
+              <div className="mt-16 pt-8 border-t border-[#FDFBF8]/5 flex items-center justify-between text-sm">
+                <Link to="/changelog" className="text-[#FDFBF8]/40 hover:text-[#FDFBF8] transition-colors font-mono text-xs">
+                  ← Changelog
+                </Link>
+                <a href="https://github.com" className="text-[#FDFBF8]/40 hover:text-[#FDFBF8] transition-colors font-mono text-xs">
+                  Edit on GitHub →
+                </a>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </PageTransition>
       </div>
     </div>
   )

@@ -35,10 +35,12 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
                 }
                 new_body = json.dumps(wrapped_data).encode("utf-8")
                 
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
             return JSONResponse(
                 content=json.loads(new_body),
                 status_code=response.status_code,
-                headers=dict(response.headers)
+                headers=headers
             )
         except json.JSONDecodeError:
             # If not valid JSON, just return as is
