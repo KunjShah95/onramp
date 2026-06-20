@@ -166,11 +166,10 @@ class BillingService:
                     tier = t
                     break
             cancel_at_period_end = data_obj.get("cancel_at_period_end", False)
-            await self._update_subscription_by_stripe_id(
-                subscription_id,
-                {"status": "canceled" if cancel_at_period_end and status == "active" else status,
-                 "tier": tier} if tier else {},
-            )
+            updates = {"status": "canceled" if cancel_at_period_end and status == "active" else status}
+            if tier:
+                updates["tier"] = tier
+            await self._update_subscription_by_stripe_id(subscription_id, updates)
 
         elif event_type == "customer.subscription.deleted":
             subscription_id = data_obj.get("id")
@@ -183,10 +182,9 @@ class BillingService:
             subscription_id = data_obj.get("subscription")
             period_end = data_obj.get("period_end")
             if subscription_id and period_end:
-                import datetime
                 await self._update_subscription_by_stripe_id(
                     subscription_id,
-                    {"current_period_end": datetime.datetime.fromtimestamp(period_end).isoformat()},
+                    {"current_period_end": datetime.fromtimestamp(period_end).isoformat()},
                 )
 
         elif event_type == "invoice.payment_failed":
