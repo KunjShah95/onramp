@@ -194,11 +194,13 @@ class TeamService:
         await remove_member(team_id, user)
         return {"removed": True, "user": user}
 
-    async def create_invite(self, team_id: str, email: str, invited_by: str) -> dict:
-        return {"email": email, "status": "pending", "invited_by": invited_by}
+    async def create_invite(self, team_id: str, email: str, invited_by: str, role: str = "member", message: str = "") -> dict:
+        from app.services.invite_service import create_invite as _create
+        return await _create(team_id, email, invited_by, role=role, message=message)
 
     async def get_invites(self, team_id: str) -> List[dict]:
-        return []
+        from app.services.invite_service import get_team_invites
+        return await get_team_invites(team_id)
 
     async def change_tier(self, team_id: str, tier: str) -> dict:
         max_members = 5 if tier == "startup" else (20 if tier == "professional" else 1)
