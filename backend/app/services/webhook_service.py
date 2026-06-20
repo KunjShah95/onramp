@@ -28,6 +28,7 @@ def _get_fernet() -> Optional[Fernet]:
 def encrypt_token(plaintext: str) -> str:
     f = _get_fernet()
     if f is None:
+        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — storing token in plaintext")
         return plaintext
     return f.encrypt(plaintext.encode()).decode()
 
@@ -35,8 +36,13 @@ def encrypt_token(plaintext: str) -> str:
 def decrypt_token(ciphertext: str) -> str:
     f = _get_fernet()
     if f is None:
+        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — reading token in plaintext")
         return ciphertext
-    return f.decrypt(ciphertext.encode()).decode()
+    try:
+        return f.decrypt(ciphertext.encode()).decode()
+    except Exception:
+        logger.error("Failed to decrypt GitHub token — key may have changed")
+        return ciphertext
 
 COLLECTION = "codeflow_webhooks"
 DELIVERIES_COLLECTION = "codeflow_webhook_deliveries"
