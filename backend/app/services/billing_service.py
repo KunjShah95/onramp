@@ -157,9 +157,17 @@ class BillingService:
 
         elif event_type == "customer.subscription.updated":
             subscription_id = data_obj.get("id")
+            if not subscription_id:
+                logger.warning("customer.subscription.updated event missing subscription id")
+                return {"received": True, "type": event_type, "warning": "missing subscription id"}
             status = data_obj.get("status")
+            if not status:
+                logger.warning(f"customer.subscription.updated event missing status for {subscription_id}")
+                return {"received": True, "type": event_type, "warning": "missing status"}
             items = data_obj.get("items", {}).get("data", [])
-            price_id = items[0]["price"]["id"] if items else None
+            price_id = None
+            if items:
+                price_id = items[0].get("price", {}).get("id")
             tier = None
             for t, pid in STRIPE_PRICE_IDS.items():
                 if pid == price_id:
@@ -173,10 +181,11 @@ class BillingService:
 
         elif event_type == "customer.subscription.deleted":
             subscription_id = data_obj.get("id")
-            await self._update_subscription_by_stripe_id(
-                subscription_id,
-                {"status": "canceled"},
-            )
+            if subscription_id:
+                await self._update_subscription_by_stripe_id(
+                    subscription_id,
+                    {"status": "canceled"},
+                )
 
         elif event_type == "invoice.payment_succeeded":
             subscription_id = data_obj.get("subscription")
@@ -205,6 +214,8 @@ class BillingService:
         if not subs:
             logger.warning(f"No local subscription for Stripe ID {stripe_subscription_id}")
             return False
+        if len(subs) > 1:
+            logger.warning(f"Found {len(subs)} subscriptions for Stripe ID {stripe_subscription_id}, using first")
         sub = subs[0]
         sub_id = sub.get("subscription_id", sub.get("id", ""))
         updates["updated_at"] = datetime.now().isoformat()
