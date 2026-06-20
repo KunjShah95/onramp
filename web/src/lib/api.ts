@@ -24,11 +24,11 @@ export function authHeaders(): Record<string, string> {
   return headers
 }
 
-async function request<T>(url: string, body: unknown): Promise<T> {
+async function request<T>(url: string, body?: Record<string, unknown>, method?: string): Promise<T> {
   const res = await fetch(url, {
-    method: 'POST',
+    method: method || 'POST',
     headers: authHeaders(),
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   })
   if (res.status === 401) {
     throw new Error('Authentication required. Please sign in again.')
@@ -298,6 +298,46 @@ export interface RepoSectionsResponse {
 
 export async function fetchRepos(): Promise<ReposResponse> {
   return get<ReposResponse>(`${API_BASE}/repos`)
+}
+
+export interface TraineeDashboardProgress {
+  total: number
+  completed: number
+  in_progress: number
+  pending_review: number
+  modules_unlocked: string[]
+  completion_rate: number
+}
+
+export interface TraineeModule {
+  module: string
+  granted_at: string
+  source: string
+}
+
+export interface TraineeTask {
+  task_id: string
+  title: string
+  state: string
+  module: string
+  priority: string
+  updated_at: string
+}
+
+export interface TraineeDashboardResponse {
+  user_id: string
+  user_name: string
+  team_id: string
+  progress: TraineeDashboardProgress
+  modules: TraineeModule[]
+  recent_tasks: TraineeTask[]
+}
+
+export async function fetchTraineeDashboard(
+  team_id?: string
+): Promise<TraineeDashboardResponse> {
+  const params = team_id ? `?team_id=${team_id}` : ''
+  return get<TraineeDashboardResponse>(`${API_BASE}/dashboard/trainee${params}`)
 }
 
 export async function fetchCTODashboard(): Promise<CTODashboardResponse> {
@@ -1325,4 +1365,45 @@ export async function checkProvider(
   return get<ProviderCheckResponse>(
     `${API_BASE}/auth/check-provider?email=${encodeURIComponent(email)}`
   )
+}
+
+// ── Invites ────────────────────────────────────────────────────
+
+export interface TeamInvite {
+  id: string
+  team_id: string
+  email: string
+  invited_by: string
+  token: string
+  role: string
+  status: string
+  message: string
+  expires_at: string
+  created_at: string
+  team_name?: string
+}
+
+export function createTeamInvite(teamId: string, email: string, role = 'member', message?: string) {
+  return request<{ invite_id: string; token: string; email: string; status: string }>(
+    `/api/v1/invites/teams/${teamId}`,
+    { email, role, message }
+  )
+}
+
+export function listTeamInvites(teamId: string) {
+  return get<{ invites: TeamInvite[]; count: number }>(`/api/v1/invites/teams/${teamId}`)
+}
+
+export function cancelTeamInvite(teamId: string, inviteId: string) {
+  return request<{ cancelled: boolean }>(`/api/v1/invites/teams/${teamId}/invites/${inviteId}`, {}, 'DELETE')
+}
+
+export function acceptInvite(token: string) {
+  return request<{ success: boolean; team_id: string; team_name: string; role: string }>(
+    `/api/v1/invites/accept?token=${encodeURIComponent(token)}`
+  )
+}
+
+export function myPendingInvites() {
+  return get<{ invites: TeamInvite[]; count: number }>('/api/v1/invites/me')
 }
