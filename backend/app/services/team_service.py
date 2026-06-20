@@ -93,7 +93,14 @@ async def get_team_members(team_id: str) -> List[dict]:
                 "role": member["role"],
                 "joined_at": member["joined_at"],
             })
-    
+        else:
+            result.append({
+                "id": member["user_id"],
+                "user_id": member["user_id"],
+                "role": member["role"],
+                "joined_at": member["joined_at"],
+            })
+
     return result
 
 
