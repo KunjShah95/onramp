@@ -136,7 +136,6 @@ class BillingService:
             if secret and sig_header:
                 event = stripe.Webhook.construct_event(payload, sig_header, secret)
             else:
-                # No signing secret configured — parse without verification (dev only).
                 import json
                 event = json.loads(payload)
                 logger.warning("Stripe webhook processed WITHOUT signature verification.")
@@ -155,7 +154,64 @@ class BillingService:
                     data_obj.get("customer"),
                     data_obj.get("subscription"),
                 )
+
+        elif event_type == "customer.subscription.updated":
+            subscription_id = data_obj.get("id")
+            status = data_obj.get("status")
+            items = data_obj.get("items", {}).get("data", [])
+            price_id = items[0]["price"]["id"] if items else None
+            tier = None
+            for t, pid in STRIPE_PRICE_IDS.items():
+                if pid == price_id:
+                    tier = t
+                    break
+            cancel_at_period_end = data_obj.get("cancel_at_period_end", False)
+            await self._update_subscription_by_stripe_id(
+                subscription_id,
+                {"status": "canceled" if cancel_at_period_end and status == "active" else status,
+                 "tier": tier} if tier else {},
+            )
+
+        elif event_type == "customer.subscription.deleted":
+            subscription_id = data_obj.get("id")
+            await self._update_subscription_by_stripe_id(
+                subscription_id,
+                {"status": "canceled"},
+            )
+
+        elif event_type == "invoice.payment_succeeded":
+            subscription_id = data_obj.get("subscription")
+            period_end = data_obj.get("period_end")
+            if subscription_id and period_end:
+                import datetime
+                await self._update_subscription_by_stripe_id(
+                    subscription_id,
+                    {"current_period_end": datetime.datetime.fromtimestamp(period_end).isoformat()},
+                )
+
+        elif event_type == "invoice.payment_failed":
+            subscription_id = data_obj.get("subscription")
+            if subscription_id:
+                await self._update_subscription_by_stripe_id(
+                    subscription_id,
+                    {"status": "past_due"},
+                )
+
         return {"received": True, "type": event_type}
+
+    async def _update_subscription_by_stripe_id(self, stripe_subscription_id: str, updates: dict) -> bool:
+        subs = await self.storage.query_documents(
+            self.COLLECTION,
+            [("stripe_subscription_id", "==", stripe_subscription_id)],
+        )
+        if not subs:
+            logger.warning(f"No local subscription for Stripe ID {stripe_subscription_id}")
+            return False
+        sub = subs[0]
+        sub_id = sub.get("subscription_id", sub.get("id", ""))
+        updates["updated_at"] = datetime.now().isoformat()
+        await self.storage.update_document(self.COLLECTION, sub_id, updates)
+        return True
 
     @staticmethod
     def get_pricing():
