@@ -15,6 +15,7 @@ services:
       - TEAM_ANALYTICS_URL=http://team-analytics:3005
       - NOTIFICATION_URL=http://notification:3006
       - KNOWLEDGE_COMPILER_URL=http://knowledge-compiler:3007
+      - WAITLIST_URL=http://waitlist-service:3008
       - REDIS_URL=redis://redis:6379
     depends_on:
       - user-service
@@ -24,6 +25,7 @@ services:
       - team-analytics
       - notification
       - knowledge-compiler
+      - waitlist-service
       - redis
 
   # User Service
@@ -86,6 +88,19 @@ services:
     volumes:
       - ./services/knowledge-compiler/wiki:/app/wiki
       - ./services/knowledge-compiler/repos:/app/repos
+
+  # Waitlist Service
+  waitlist-service:
+    build: ./services/waitlist-service
+    ports:
+      - "3008:3008"
+    environment:
+      - PORT=3008
+      - GOOGLE_CREDENTIALS_JSON=${GOOGLE_CREDENTIALS_JSON}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@codeflow.dev}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-kkshah2005@gmail.com}
 
   # Notification Service
   notification:
