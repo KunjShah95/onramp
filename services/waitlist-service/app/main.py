@@ -4,7 +4,7 @@ Writes to Google Sheets, sends SendGrid emails.
 Port: 3008
 """
 
-import asyncio
+import html as html_lib
 import json
 import os
 import time
@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 import gspread
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from google.oauth2.service_account import Credentials
@@ -21,6 +21,11 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from starlette.middleware.base import BaseHTTPMiddleware
+
+
+def _e(s: str) -> str:
+    return html_lib.escape(str(s))
+
 
 app = FastAPI(
     title="Waitlist Service",
@@ -31,7 +36,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -71,8 +76,13 @@ app.add_middleware(RateLimitMiddleware, requests_per_hour=5)
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+_worksheet: gspread.Worksheet | None = None
+
 
 def get_sheet() -> gspread.Worksheet:
+    global _worksheet
+    if _worksheet is not None:
+        return _worksheet
     creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
     sheet_id = os.environ["GOOGLE_SHEET_ID"]
     creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
@@ -84,7 +94,8 @@ def get_sheet() -> gspread.Worksheet:
             "Timestamp", "Name", "Email", "Role",
             "Company", "Team Size", "Use Case", "Position",
         ])
-    return worksheet
+    _worksheet = worksheet
+    return _worksheet
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────
@@ -104,35 +115,38 @@ def send_emails(name: str, email: str, role: str, company: str,
         to_emails=email,
         subject="You're on the CodeFlow waitlist!",
         html_content=(
-            f"<p>Hi {name},</p>"
+            f"<p>Hi {_e(name)},</p>"
             f"<p>You're <strong>#{position}</strong> on the CodeFlow early access list.</p>"
             f"<p>We'll email you the moment we launch. Reply to tell us more about your team — we read every message.</p>"
             f"<p>— The CodeFlow Team</p>"
         ),
     )
 
-    alert = Mail(
-        from_email=from_email,
-        to_emails=admin_email,
-        subject=f"New waitlist signup — {name} from {company}",
-        html_content=(
-            f"<p><strong>Position:</strong> #{position}</p>"
-            f"<p><strong>Name:</strong> {name}</p>"
-            f"<p><strong>Email:</strong> {email}</p>"
-            f"<p><strong>Role:</strong> {role}</p>"
-            f"<p><strong>Company:</strong> {company}</p>"
-            f"<p><strong>Team Size:</strong> {team_size}</p>"
-            f"<p><strong>Use Case:</strong> {use_case}</p>"
-            f"<p><strong>Timestamp:</strong> {datetime.now(timezone.utc).isoformat()}</p>"
-        ),
-    )
-
     try:
         sg.send(confirmation)
-        if admin_email:
-            sg.send(alert)
     except Exception:
         pass
+
+    if admin_email:
+        alert = Mail(
+            from_email=from_email,
+            to_emails=admin_email,
+            subject=f"New waitlist signup — {_e(name)} from {_e(company)}",
+            html_content=(
+                f"<p><strong>Position:</strong> #{position}</p>"
+                f"<p><strong>Name:</strong> {_e(name)}</p>"
+                f"<p><strong>Email:</strong> {_e(email)}</p>"
+                f"<p><strong>Role:</strong> {_e(role)}</p>"
+                f"<p><strong>Company:</strong> {_e(company)}</p>"
+                f"<p><strong>Team Size:</strong> {_e(team_size)}</p>"
+                f"<p><strong>Use Case:</strong> {_e(use_case)}</p>"
+                f"<p><strong>Timestamp:</strong> {datetime.now(timezone.utc).isoformat()}</p>"
+            ),
+        )
+        try:
+            sg.send(alert)
+        except Exception:
+            pass
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -155,9 +169,12 @@ class WaitlistJoinRequest(BaseModel):
     @field_validator("name", "company")
     @classmethod
     def not_empty(cls, v: str) -> str:
-        if not v.strip():
+        v = v.strip()
+        if not v:
             raise ValueError("Field cannot be empty")
-        return v.strip()
+        if len(v) > 200:
+            raise ValueError("Field must be 200 characters or fewer")
+        return v
 
 
 class WaitlistJoinResponse(BaseModel):
@@ -174,7 +191,7 @@ async def health():
 
 
 @app.post("/api/v1/waitlist/join", response_model=WaitlistJoinResponse)
-async def join_waitlist(body: WaitlistJoinRequest):
+async def join_waitlist(body: WaitlistJoinRequest, background_tasks: BackgroundTasks):
     sheet = get_sheet()
     existing_emails = [e.lower() for e in sheet.col_values(3)[1:]]  # col 3 = Email, skip header
     if body.email.lower() in existing_emails:
@@ -192,11 +209,11 @@ async def join_waitlist(body: WaitlistJoinRequest):
         position,
     ])
 
-    asyncio.create_task(asyncio.to_thread(
+    background_tasks.add_task(
         send_emails,
         body.name, body.email, body.role,
         body.company, body.team_size, body.use_case, position,
-    ))
+    )
 
     return WaitlistJoinResponse(
         success=True,
