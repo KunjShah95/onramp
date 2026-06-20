@@ -43,3 +43,4 @@ yarn-debug.log*
 *.md
 !Readme.md
 !README.md
+!docs/*.md
