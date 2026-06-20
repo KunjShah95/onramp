@@ -54,8 +54,9 @@ async def close():
 
 
 def _cache_key(prefix: str, request: Request) -> str:
-    """Generate a cache key from request path and query params."""
-    raw = f"{prefix}:{request.url.path}:{sorted(request.query_params.items())}"
+    """Generate a cache key from request path, query params, and user identity."""
+    uid = getattr(getattr(request, "state", None), "user", {}).get("uid", "")
+    raw = f"{prefix}:{uid}:{request.url.path}:{sorted(request.query_params.items())}"
     return hashlib.md5(raw.encode()).hexdigest()
 
 
