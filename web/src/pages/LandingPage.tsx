@@ -14,10 +14,11 @@ export default function LandingPage() {
           <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#features">Product</a>
           <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#how">How it works</a>
           <a className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors" href="#pricing">Pricing</a>
+          <Link to="/waitlist" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Waitlist</Link>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/login" className="hidden md:block text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Log in</Link>
-          <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Get Started Free</Link>
+          <Link to="/waitlist" className="bg-[#FFB347] text-[#3D1C00] px-5 py-2.5 rounded-full font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors">Join Waitlist</Link>
         </div>
       </nav>
 
@@ -51,10 +52,10 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
             <Link
-              to="/register"
+              to="/waitlist"
               className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center"
             >
-              Analyze Your First Repo →
+              Join the Waitlist →
             </Link>
             <Link
               to="/docs"
@@ -344,8 +345,8 @@ export default function LandingPage() {
             Stop losing senior engineers to onboarding. Let CodeFlow handle it.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/register" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">
-              Analyze Your First Repo →
+            <Link to="/waitlist" className="bg-[#FFB347] text-[#3D1C00] px-8 py-3.5 rounded text-sm font-bold hover:bg-[#FF8C00] transition-colors w-full sm:w-auto text-center">
+              Join the Waitlist →
             </Link>
             <Link to="/login" className="px-8 py-3.5 rounded text-sm text-[#FDFBF8] bg-[#1A110D] border border-[#FDFBF8]/10 hover:bg-[#2A1D16] transition-colors w-full sm:w-auto text-center font-medium">
               Talk to Sales
