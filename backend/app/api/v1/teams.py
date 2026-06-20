@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List, Optional
 from app.services.team_service import TeamService
@@ -14,6 +14,7 @@ from app.services.access_control_service import (
 )
 from app.api.v1.auth import get_current_user
 from app.middleware.access_guard import require_minimum_role
+from app.services.cache_service import cached, invalidate_prefix
 
 router = APIRouter(prefix="/teams", tags=["saas"])
 team_service = TeamService()
@@ -193,17 +194,20 @@ async def create_team(request: CreateTeamRequest):
         tier=request.tier,
     )
     sub = await billing.create_subscription(team["team_id"], request.tier)
+    await invalidate_prefix("teams")
     return {**team, "subscription": sub}
 
 
 @router.get("")
-async def list_teams(user: Optional[str] = None):
+@cached("teams", ttl=120)
+async def list_teams(request: Request, user: Optional[str] = None):
     teams = await team_service.list_teams(user)
     return {"teams": teams, "count": len(teams)}
 
 
 @router.get("/{team_id}")
-async def get_team(team_id: str):
+@cached("teams", ttl=120)
+async def get_team(request: Request, team_id: str):
     team = await team_service.get_team(team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
@@ -232,12 +236,15 @@ async def add_member(team_id: str, request: AddMemberRequest, user: dict = Depen
     result = await team_service.add_member(team_id, request.user, request.role)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    await invalidate_prefix("teams")
     return result
 
 
 @router.delete("/{team_id}/members/{user}")
 async def remove_member(team_id: str, user: str, _user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
-    return await team_service.remove_member(team_id, user)
+    result = await team_service.remove_member(team_id, user)
+    await invalidate_prefix("teams")
+    return result
 
 
 @router.get("/{team_id}/invites")

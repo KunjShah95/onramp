@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from app.services.usage_tracker import UsageTracker
@@ -12,6 +12,7 @@ from app.services.task_service import (
 )
 from app.services.access_control_service import get_user_modules
 from app.services.contributor_tracker import ContributorTracker
+from app.services.cache_service import cached
 
 router = APIRouter(tags=["dashboard"])
 
@@ -29,7 +30,8 @@ async def _get_user_team(user: dict) -> str:
 
 
 @router.get("/dashboard/cto")
-async def cto_dashboard(user: dict = Depends(get_current_user)):
+@cached("dashboard", ttl=120)
+async def cto_dashboard(request: Request, user: dict = Depends(get_current_user)):
     """Return aggregated senior/team-lead dashboard metrics from real data."""
     team_id = await _get_user_team(user)
 

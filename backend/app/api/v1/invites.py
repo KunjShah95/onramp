@@ -14,6 +14,7 @@ from app.services.invite_service import (
     cancel_invite,
 )
 from app.services.user_service import get_user_by_email
+from app.services.cache_service import cached, invalidate_prefix
 
 logger = logging.getLogger("codeflow.invites")
 router = APIRouter(prefix="/invites", tags=["team-invites"])
@@ -45,6 +46,7 @@ async def create_team_invite(
     team_doc = await _storage().get_document("teams", team_id)
     team_name = team_doc.get("name", "") if team_doc else ""
 
+    await invalidate_prefix("invites")
     # If user with this email already exists, send in-app notification
     existing_user = await get_user_by_email(body.email)
     if existing_user:
@@ -78,7 +80,9 @@ async def create_team_invite(
 
 
 @router.get("/teams/{team_id}")
+@cached("invites", ttl=60)
 async def list_team_invites(
+    request: Request,
     team_id: str,
     user: dict = Depends(get_current_user),
 ):
@@ -98,6 +102,7 @@ async def cancel_team_invite(
     success = await cancel_invite(invite_id)
     if not success:
         raise HTTPException(status_code=404, detail="Invite not found or already resolved")
+    await invalidate_prefix("invites")
     return {"cancelled": True}
 
 
@@ -126,7 +131,8 @@ async def accept_team_invite(
 
 
 @router.get("/me")
-async def my_invites(user: dict = Depends(get_current_user)):
+@cached("invites", ttl=60)
+async def my_invites(request: Request, user: dict = Depends(get_current_user)):
     """Get all pending invites for the current user."""
     email = user.get("email", "")
     if not email:

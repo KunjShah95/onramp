@@ -21,7 +21,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 async def lifespan(app: FastAPI):
     from app.services.postgres_db import initialize_db
     await initialize_db()
+    if os.getenv("REDIS_URL"):
+        from app.services.cache_service import get_client
+        await get_client()
     yield
+    from app.services.cache_service import close as close_cache
+    await close_cache()
 
 
 app = FastAPI(

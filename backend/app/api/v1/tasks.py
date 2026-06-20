@@ -150,11 +150,14 @@ async def create_task_endpoint(
         )
     except Exception:
         logger.exception("Failed to log task creation audit event")
+    await invalidate_prefix("tasks")
     return task
 
 
 @router.get("")
+@cached("tasks", ttl=60)
 async def list_tasks_endpoint(
+    request: Request,
     team_id: Optional[str] = None,
     assigned_to: Optional[str] = None,
     created_by: Optional[str] = None,
