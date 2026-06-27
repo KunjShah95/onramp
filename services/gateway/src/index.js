@@ -2,7 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import axios from 'dotenv/config'
+import axios from 'axios'
+import 'dotenv/config'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -16,6 +17,7 @@ const SERVICES = {
   teamAnalytics: process.env.TEAM_ANALYTICS_URL || 'http://localhost:3005',
   notification: process.env.NOTIFICATION_URL || 'http://localhost:3006',
   knowledgeCompiler: process.env.KNOWLEDGE_COMPILER_URL || 'http://localhost:3007',
+  waitlist: process.env.WAITLIST_URL || 'http://localhost:3008',
 }
 
 // Middleware
@@ -51,8 +53,9 @@ const authMiddleware = async (req, res, next) => {
 // Proxy routes to user service
 app.use('/api/v1/auth', authMiddleware, async (req, res) => {
   try {
-    const response = await axios proxy(`${SERVICES.userService}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.userService}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -65,8 +68,9 @@ app.use('/api/v1/auth', authMiddleware, async (req, res) => {
 // Proxy routes to repository analysis
 app.use('/api/v1/repos', async (req, res) => {
   try {
-    const response = await axios.get(`${SERVICES.repoAnalysis}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.repoAnalysis}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -79,7 +83,10 @@ app.use('/api/v1/repos', async (req, res) => {
 // Proxy routes to knowledge compiler (LLM Wiki)
 app.use('/api/v1/analyze', async (req, res) => {
   try {
-    const response = await axios.post(`${SERVICES.knowledgeCompiler}/api/v1/analyze`, req.body, {
+    const response = await axios({
+      method: req.method,
+      url: `${SERVICES.knowledgeCompiler}${req.originalUrl}`,
+      data: req.body,
       headers: req.headers
     })
     res.status(response.status).json(response.data)
@@ -104,8 +111,9 @@ app.use('/api/v1/files', async (req, res) => {
 
 app.use('/api/v1/analysis', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.repoAnalysis}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.repoAnalysis}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -118,8 +126,9 @@ app.use('/api/v1/analysis', async (req, res) => {
 // Proxy routes to learning path
 app.use('/api/v1/roadmaps', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.learningPath}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.learningPath}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -131,8 +140,9 @@ app.use('/api/v1/roadmaps', async (req, res) => {
 
 app.use('/api/v1/tasks', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.learningPath}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.learningPath}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -144,8 +154,9 @@ app.use('/api/v1/tasks', async (req, res) => {
 
 app.use('/api/v1/progress', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.learningPath}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.learningPath}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -158,8 +169,9 @@ app.use('/api/v1/progress', async (req, res) => {
 // Proxy routes to AI tutor
 app.use('/api/v1/tutor', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.aiTutor}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.aiTutor}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })
@@ -172,8 +184,9 @@ app.use('/api/v1/tutor', async (req, res) => {
 // Proxy routes to team analytics
 app.use('/api/v1/team', async (req, res) => {
   try {
-    const response = await axios(`${SERVICES.teamAnalytics}${req.originalUrl}`, {
+    const response = await axios({
       method: req.method,
+      url: `${SERVICES.teamAnalytics}${req.originalUrl}`,
       data: req.body,
       headers: req.headers
     })

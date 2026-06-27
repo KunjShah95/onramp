@@ -77,6 +77,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     
     # Logging
     logging:
@@ -138,6 +140,57 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+    
+    # Networks
+    networks:
+      - backend-network
+  
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: codeflow-postgres
+    restart: unless-stopped
+    
+    # Environment
+    environment:
+      POSTGRES_DB: codeflow
+      POSTGRES_USER: codeflow
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?err}
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "codeflow", "-d", "codeflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Volumes
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    
+    # Expose port internally only
+    expose:
+      - "5432"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     
     # Networks
     networks:
@@ -206,6 +259,8 @@ volumes:
   nginx-cache:
     driver: local
   nginx-logs:
+    driver: local
+  pgdata:
     driver: local
 
 # =============================================================================

@@ -1,5 +1,0 @@
-Scene: Learning Path
-Duration: 1:00 - 1:10
-Prompt: Animated learning path visualization, modules appearing step by step with time estimates, clean modern UI, dark theme with blue accents
-Model: google/veo-3-1-fast
-Status: Placeholder (API key required for actual generation)

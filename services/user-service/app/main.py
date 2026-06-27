@@ -7,7 +7,7 @@ Port: 3001
 import os
 import time
 import uuid
-import hashlib
+import bcrypt
 from datetime import datetime
 from collections import defaultdict
 from typing import Optional, List
@@ -148,7 +148,10 @@ sessions_db: dict = {}
 
 
 def _hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def _generate_token() -> str:
@@ -235,7 +238,7 @@ async def login(request: LoginRequest):
         raise HTTPException(status_code=400, detail="Email and password are required")
 
     for user in users_db.values():
-        if user["email"] == request.email and user["password_hash"] == _hash_password(request.password):
+        if user["email"] == request.email and _verify_password(request.password, user["password_hash"]):
             token = _generate_token()
             sessions_db[token] = {
                 "user_id": user["id"],
@@ -292,7 +295,7 @@ async def change_password(request: Request, body: ChangePasswordRequest):
     """Change the current user's password"""
     user = require_auth(request)
 
-    if user["password_hash"] != _hash_password(body.current_password):
+    if not _verify_password(body.current_password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     if len(body.new_password) < 6:

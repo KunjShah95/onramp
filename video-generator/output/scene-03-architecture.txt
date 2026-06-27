@@ -1,5 +1,0 @@
-Scene: Architecture Explorer
-Duration: 0:50 - 1:00
-Prompt: Screen recording style interface showing modern web application, clean UI with dark theme, neon accent colors, smooth animations, professional software demo
-Model: google/veo-3-1-fast
-Status: Placeholder (API key required for actual generation)

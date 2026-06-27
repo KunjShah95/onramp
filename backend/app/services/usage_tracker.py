@@ -31,7 +31,7 @@ async def track_usage(
         "response_time_ms": response_time_ms,
         "tokens_used": tokens_used,
         "cost_usd": cost_usd,
-        "metadata": metadata or {},
+        "usage_metadata": metadata or {},
     }
 
     record = await storage.create_document("usage_records", generate_id(), data)

@@ -4,6 +4,17 @@ from dotenv import load_dotenv
 # Load environment variables BEFORE importing any modules that read them.
 load_dotenv()
 
+# Sentry error monitoring (initializes only if SENTRY_DSN is set)
+import sentry_sdk
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        environment=os.getenv("ENV", "development"),
+        traces_sample_rate=0.1 if os.getenv("ENV") == "production" else 0.0,
+        send_default_pii=False,
+    )
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging

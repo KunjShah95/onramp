@@ -23,6 +23,7 @@ redis>=5.0.0          # distributed rate limiting (REDIS_URL)
 sendgrid>=6.11.0    # transactional email delivery
 stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
 cryptography>=42.0.0  # token encryption at rest
+sentry-sdk>=2.0.0     # error monitoring
 # AST parsing (tree-sitter ecosystem)
 tree-sitter>=0.23.0              # core parsing library
 tree-sitter-javascript>=0.23.0  # JS/JSX parser

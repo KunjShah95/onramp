@@ -1,5 +1,0 @@
-Scene: CTA
-Duration: 2:25 - 2:40
-Prompt: CodeFlow logo centered on dark background, professional tech branding, clean minimal design
-Model: google/veo-3-1-fast
-Status: Placeholder (API key required for actual generation)
