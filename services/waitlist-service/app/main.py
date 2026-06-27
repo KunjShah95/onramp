@@ -10,9 +10,11 @@ import os
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 import gspread
+from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,6 +28,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 def _e(s: str) -> str:
     return html_lib.escape(str(s))
 
+
+env_path = Path(__file__).resolve().parents[3] / "backend" / ".env"
+load_dotenv(env_path)
 
 app = FastAPI(
     title="Waitlist Service",
@@ -79,13 +84,33 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _worksheet: gspread.Worksheet | None = None
 
 
+def _fix_env_json(s: str) -> str:
+    result = []
+    in_string = False
+    i = 0
+    while i < len(s):
+        if s[i] == '"':
+            in_string = not in_string
+            result.append(s[i])
+        elif s[i:i+2] == '\\n' and not in_string:
+            result.append('\n')
+            i += 2
+            continue
+        else:
+            result.append(s[i])
+        i += 1
+    return ''.join(result)
+
+
 def get_sheet() -> gspread.Worksheet:
     global _worksheet
     if _worksheet is not None:
         return _worksheet
-    creds_json = os.environ["GOOGLE_CREDENTIALS_JSON"]
-    sheet_id = os.environ["GOOGLE_SHEET_ID"]
-    creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=SCOPES)
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    sheet_id = os.environ.get("GOOGLE_SHEET_ID")
+    if not creds_json or not sheet_id:
+        raise HTTPException(status_code=503, detail="Google Sheets not configured")
+    creds = Credentials.from_service_account_info(json.loads(_fix_env_json(creds_json)), scopes=SCOPES)
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(sheet_id)
     worksheet = spreadsheet.sheet1

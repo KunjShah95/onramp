@@ -8,6 +8,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,12 +33,13 @@ export default function FirstIssuePage() {
   const [taskCreatedId, setTaskCreatedId] = useState<string | null>(null)
 
   const toast = useToast()
+  const { activeTeamId } = useAuth()
 
   async function handleCreateTaskForGuide(guide: IssueGuide) {
     setTaskCreating(true)
     try {
       const task = await createTask({
-        team_id: 'default',
+        team_id: activeTeamId || 'default',
         title: guide.title || 'First PR Task',
         description: guide.steps?.join('\n') || '',
         priority: 'medium',

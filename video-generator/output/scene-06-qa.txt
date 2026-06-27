@@ -1,0 +1,5 @@
+Scene: Q&A Demo
+Duration: 1:20 - 1:30
+Prompt: AI chat interface answering code questions, streaming text response, file references highlighted, modern dark UI
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)

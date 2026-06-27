@@ -7,8 +7,13 @@ __pycache__/
 
 # Environment Variables
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!*.env.example
+
+# Temp scripts that may contain secrets
+*.temp.*
+*_temp.*
 
 # OS Generated
 .DS_Store

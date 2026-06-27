@@ -1,0 +1,5 @@
+Scene: The Solution
+Duration: 0:25 - 0:50
+Prompt: Futuristic holographic interface showing code analysis, glowing blue nodes connecting in a network graph, dark background with particle effects, tech aesthetic, 4K
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)

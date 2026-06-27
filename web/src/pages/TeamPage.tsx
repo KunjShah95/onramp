@@ -13,6 +13,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
+import { TeamSettingsSkeleton } from '../components/ui/Skeleton'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -75,6 +76,7 @@ export default function TeamPage() {
   const [invites, setInvites] = useState<TeamInvite[]>([])
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [teamsLoading, setTeamsLoading] = useState(true)
 
   const fetchTeamMembers = useCallback(async () => {
     if (!teamId) { setTeamMembers([]); return }
@@ -90,6 +92,7 @@ export default function TeamPage() {
 
   const fetchTeams = useCallback(async () => {
     try { const data = await listTeams('current-user'); setTeams(data.teams || []) } catch { /* ignore */ }
+    finally { setTeamsLoading(false) }
   }, [])
 
   const fetchPermissions = useCallback(async () => {
@@ -195,6 +198,16 @@ export default function TeamPage() {
   }, {})
 
   const currentTeam = teams.find(t => t.team_id === teamId)
+
+  if (teamsLoading) {
+    return (
+      <PageTransition>
+        <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+          <TeamSettingsSkeleton />
+        </div>
+      </PageTransition>
+    )
+  }
 
   return (
     <PageTransition>

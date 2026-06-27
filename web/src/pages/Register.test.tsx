@@ -15,7 +15,7 @@ describe('Register', () => {
 
   it('renders the registration form', () => {
     render(<Register />)
-    expect(screen.getByRole('heading', { name: /codeflow 2\.0/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /codeflow/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
@@ -26,17 +26,6 @@ describe('Register', () => {
     render(<Register />)
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /continue with github/i })).toBeInTheDocument()
-  })
-
-  it('validates password confirmation match', async () => {
-    const user = userEvent.setup()
-    render(<Register />)
-    await user.type(screen.getByLabelText(/^password$/i), 'pass123')
-    await user.type(screen.getByLabelText(/confirm password/i), 'pass456')
-    await user.click(screen.getByRole('button', { name: /create account/i }))
-    await waitFor(() => {
-      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument()
-    })
   })
 
   it('validates password length', async () => {

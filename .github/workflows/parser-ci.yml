@@ -1,0 +1,62 @@
+name: Parser CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/app/services/parser_service.py'
+      - 'backend/tests/test_parser_service.py'
+      - 'backend/tests/test_architecture_explorer.py'
+      - 'backend/tests/integration_multi_lang.py'
+      - 'backend/tests/benchmark_parser.py'
+      - 'backend/app/agents/architecture_explorer.py'
+      - 'backend/app/graph.py'
+      - 'backend/requirements.txt'
+      - '.github/workflows/parser-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/services/parser_service.py'
+      - 'backend/tests/test_parser_service.py'
+      - 'backend/tests/test_architecture_explorer.py'
+      - 'backend/tests/integration_multi_lang.py'
+      - 'backend/tests/benchmark_parser.py'
+      - 'backend/app/agents/architecture_explorer.py'
+      - 'backend/app/graph.py'
+      - 'backend/requirements.txt'
+      - '.github/workflows/parser-ci.yml'
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run parser unit tests
+        run: |
+          cd backend && python -m pytest tests/test_parser_service.py tests/test_architecture_explorer.py -v
+
+      - name: Run multi-language parser integration test
+        run: |
+          cd backend && PYTHONPATH=. python tests/integration_multi_lang.py
+
+      - name: Run parser benchmark (3.11 only, non-blocking)
+        if: matrix.python-version == '3.11'
+        continue-on-error: true
+        run: |
+          cd backend && PYTHONPATH=. python tests/benchmark_parser.py --json benchmark_results.json --baseline tests/.parser_benchmark_baseline.json --real-dir ../backend/app --real-dir ../web/src

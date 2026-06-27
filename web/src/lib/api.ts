@@ -808,6 +808,168 @@ export async function listTiers(): Promise<{ tiers: any[] }> {
   return get<{ tiers: any[] }>(`${API_BASE}/ai/tiers`)
 }
 
+// ─── Admin ────────────────────────────────────────────────────────────────
+
+export interface AdminApiKey {
+  key_id: string
+  name: string
+  team_id: string | null
+  user_id: string | null
+  tier: string
+  org_name: string
+  is_active: boolean
+  created_at: string
+  last_used_at: string | null
+  expires_at: string | null
+}
+
+export interface AdminApiKeysResponse {
+  keys: AdminApiKey[]
+  count: number
+}
+
+export interface AdminUsageResponse {
+  period: string
+  total_requests: number
+  total_credits: number
+  team_breakdown: Record<string, { requests: number; credits: number }>
+  endpoint_breakdown: Record<string, number>
+}
+
+export interface AdminTeamUsage {
+  team_id: string
+  team_name: string
+  tier: string
+  member_count: number
+  total_requests: number
+  total_credits: number
+}
+
+export interface AdminTeamUsageResponse {
+  teams: AdminTeamUsage[]
+  count: number
+}
+
+export interface AdminAuditEvent {
+  event_id?: string
+  event_type: string
+  actor_id: string
+  target_id: string
+  team_id: string
+  metadata: Record<string, any>
+  timestamp: string
+}
+
+export interface AdminAuditResponse {
+  events: AdminAuditEvent[]
+  count: number
+}
+
+export async function adminListApiKeys(includeRevoked = false): Promise<AdminApiKeysResponse> {
+  return get<AdminApiKeysResponse>(`${API_BASE}/admin/keys?include_revoked=${includeRevoked}`)
+}
+
+export async function adminGetUsage(period?: string): Promise<AdminUsageResponse> {
+  const qs = period ? `?period=${period}` : ''
+  return get<AdminUsageResponse>(`${API_BASE}/admin/usage${qs}`)
+}
+
+export async function adminGetTeamUsage(): Promise<AdminTeamUsageResponse> {
+  return get<AdminTeamUsageResponse>(`${API_BASE}/admin/usage/teams`)
+}
+
+export async function adminListAuditEvents(params?: {
+  event_type?: string
+  actor_id?: string
+  limit?: number
+}): Promise<AdminAuditResponse> {
+  const query = new URLSearchParams()
+  if (params?.event_type) query.set('event_type', params.event_type)
+  if (params?.actor_id) query.set('actor_id', params.actor_id)
+  if (params?.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return get<AdminAuditResponse>(`${API_BASE}/admin/audit${qs ? '?' + qs : ''}`)
+}
+
+// ─── Admin Webhooks ────────────────────────────────────────────
+
+export interface AdminWebhook {
+  webhook_id: string
+  user_id: string
+  url: string
+  events: string[]
+  secret: string
+  description: string
+  active: boolean
+  team_id: string
+  created_at: string
+  updated_at: string
+  last_success_at: string | null
+  last_failure_at: string | null
+  delivery_count: number
+  failure_count: number
+}
+
+export interface AdminWebhooksResponse {
+  webhooks: AdminWebhook[]
+  count: number
+}
+
+export interface AdminWebhookDelivery {
+  id?: string
+  webhook_id: string
+  event: string
+  url: string
+  status_code: number | null
+  success: boolean
+  error: string | null
+  duration_ms: number
+  created_at: string
+}
+
+export interface AdminWebhookDeliveriesResponse {
+  deliveries: AdminWebhookDelivery[]
+  count: number
+}
+
+export interface AdminWebhookTestResult {
+  success: boolean
+  status_code?: number | null
+  error?: string | null
+}
+
+export async function adminListWebhooks(activeOnly = false): Promise<AdminWebhooksResponse> {
+  return get<AdminWebhooksResponse>(`${API_BASE}/admin/webhooks?active_only=${activeOnly}`)
+}
+
+export async function adminGetWebhook(webhookId: string): Promise<AdminWebhook> {
+  return get<AdminWebhook>(`${API_BASE}/admin/webhooks/${webhookId}`)
+}
+
+export async function adminTestWebhook(webhookId: string): Promise<AdminWebhookTestResult> {
+  return request<AdminWebhookTestResult>(`${API_BASE}/admin/webhooks/${webhookId}/test`, {})
+}
+
+export async function adminDeleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/admin/webhooks/${webhookId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+export async function adminGetWebhookDeliveries(webhookId: string, limit = 50): Promise<AdminWebhookDeliveriesResponse> {
+  return get<AdminWebhookDeliveriesResponse>(`${API_BASE}/admin/webhooks/${webhookId}/deliveries?limit=${limit}`)
+}
+
+export async function adminRotateWebhookSecret(webhookId: string): Promise<AdminWebhook> {
+  return request<AdminWebhook>(`${API_BASE}/admin/webhooks/${webhookId}/rotate-secret`, {})
+}
+
 // ─── Ask / Q&A History ─────────────────────────────────────────────────────
 
 export async function getAskHistory(

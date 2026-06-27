@@ -1,0 +1,5 @@
+Scene: First PR
+Duration: 1:10 - 1:20
+Prompt: Developer creating first pull request, GitHub interface, green checkmarks appearing, success celebration, modern office environment
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)

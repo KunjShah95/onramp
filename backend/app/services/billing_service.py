@@ -219,6 +219,15 @@ class BillingService:
         sub = subs[0]
         sub_id = sub.get("subscription_id", sub.get("id", ""))
         updates["updated_at"] = datetime.now().isoformat()
+        
+        # Automatically update price when tier is updated
+        if "tier" in updates:
+            tier = updates["tier"]
+            billing_cycle = sub.get("billing_cycle", "monthly")
+            pricing = TIER_PRICING.get(tier, TIER_PRICING["free"])
+            price = pricing["price_monthly"] if billing_cycle == "monthly" else pricing["price_yearly"]
+            updates["price"] = price
+
         await self.storage.update_document(self.COLLECTION, sub_id, updates)
         return True
 

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: waitlist-service
+    runtime: docker
+    repo: https://github.com/YOUR_USER/YOUR_REPO
+    branch: main
+    dockerfilePath: ./services/waitlist-service/Dockerfile
+    dockerContext: ./services/waitlist-service
+    envVars:
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        value: noreply@codeflow.dev
+      - key: ADMIN_EMAIL
+        sync: false

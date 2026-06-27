@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { analyzeArchitecture, generateLearningPath, createTask, listLearningPaths, type SavedLearningPath } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import type { LearningPathResult } from '../lib/types'
 import { cn } from '../lib/utils'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -30,6 +31,7 @@ const fileItemVariants = {
 
 export default function LearnPage() {
   const navigate = useNavigate()
+  const { activeTeamId } = useAuth()
   const [repoUrl, setRepoUrl] = useState('')
   const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
@@ -81,7 +83,7 @@ export default function LearnPage() {
       // Create one task per learning module
       for (const module of result.path) {
         await createTask({
-          team_id: 'default',
+          team_id: activeTeamId || 'default',
           title: module.name,
           description: `${module.description}\n\nObjectives:\n${module.objectives?.map((o: string) => `- ${o}`).join('\n') || ''}`,
           module: module.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),

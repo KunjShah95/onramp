@@ -20,7 +20,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { getFirebaseAuth } from '../lib/firebase'
-import { authRegister, authMe, setAuthToken } from '../lib/api'
+import { authRegister, authMe, setAuthToken, listTeams } from '../lib/api'
 
 interface AuthState {
   user: User | null
@@ -28,6 +28,8 @@ interface AuthState {
   error: string | null
   /** The auth provider used by this account (from backend) */
   authMethod: 'password' | 'google.com' | 'github.com' | null
+  role: 'owner' | 'senior' | 'member' | null
+  activeTeamId: string | null
 }
 
 interface AuthContextValue extends AuthState {
@@ -41,6 +43,8 @@ interface AuthContextValue extends AuthState {
   resetPassword: (email: string) => Promise<void>
   clearError: () => void
   getIdToken: () => Promise<string | null>
+  switchTeam: (teamId: string) => Promise<void>
+  refreshRole: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -53,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
     error: null,
     authMethod: null,
+    role: null,
+    activeTeamId: null,
   })
 
   /** Register the Firebase user in the backend storage */
@@ -91,25 +97,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const idToken = await user.getIdToken()
           setAuthToken(idToken)
 
-          setState({ user, loading: false, error: null, authMethod: null })
+          setState((prev) => ({
+            ...prev,
+            user,
+            loading: true,
+            error: null,
+            authMethod: null,
+            role: null,
+            activeTeamId: null,
+          }))
 
           // Silently sync to backend in background
           try {
             const me = await authMe(idToken)
+            let resolvedRole: 'owner' | 'senior' | 'member' | null = null
+            let resolvedTeamId: string | null = null
+
+            try {
+              const teamsData = await listTeams('current-user')
+              if (teamsData && teamsData.teams && teamsData.teams.length > 0) {
+                 const activeTeam = teamsData.teams[0]
+                 resolvedTeamId = activeTeam.team_id
+                 resolvedRole = ((activeTeam as any).role as 'owner' | 'senior' | 'member') || 'member'
+              }
+            } catch {
+              // Failed to load teams, fallback to member
+              resolvedRole = 'member'
+            }
+
             setState((prev) => ({
               ...prev,
+              loading: false,
               authMethod: me.provider as 'google.com' | 'github.com' | 'password',
+              role: resolvedRole,
+              activeTeamId: resolvedTeamId,
             }))
           } catch {
             // Backend may not be reachable — that's OK for offline dev
+            setState((prev) => ({
+              ...prev,
+              loading: false,
+              role: 'member',
+            }))
           }
         } else {
           setAuthToken(null)
-          setState({ user: null, loading: false, error: null, authMethod: null })
+          setState({
+            user: null,
+            loading: false,
+            error: null,
+            authMethod: null,
+            role: null,
+            activeTeamId: null,
+          })
         }
       },
       (error) => {
-        setState({ user: null, loading: false, error: error.message, authMethod: null })
+        setState({
+          user: null,
+          loading: false,
+          error: error.message,
+          authMethod: null,
+          role: null,
+          activeTeamId: null,
+        })
       }
     )
     return unsubscribe
@@ -259,6 +310,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     const auth = getFirebaseAuth()
     await signOut(auth)
+    setState({
+      user: null,
+      loading: false,
+      error: null,
+      authMethod: null,
+      role: null,
+      activeTeamId: null,
+    })
+  }, [])
+
+  const switchTeam = useCallback(async (teamId: string) => {
+    setState((prev) => ({ ...prev, loading: true }))
+    try {
+      const teamsData = await listTeams('current-user')
+      const targetTeam = teamsData.teams.find(
+        (t) => t.team_id === teamId
+      )
+      if (targetTeam) {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          activeTeamId: teamId,
+          role: ((targetTeam as any).role as 'owner' | 'senior' | 'member') || 'member',
+        }))
+      } else {
+        setState((prev) => ({ ...prev, loading: false }))
+      }
+    } catch (err: any) {
+      setState((prev) => ({ ...prev, loading: false, error: err.message || 'Failed to switch team' }))
+    }
+  }, [])
+
+  const refreshRole = useCallback(async () => {
+    try {
+      const teamsData = await listTeams('current-user')
+      setState((prev) => {
+        if (prev.activeTeamId) {
+          const targetTeam = teamsData.teams.find(
+            (t) => t.team_id === prev.activeTeamId
+          )
+          if (targetTeam) {
+            return {
+              ...prev,
+              role: ((targetTeam as any).role as 'owner' | 'senior' | 'member') || 'member',
+            }
+          }
+        }
+        if (teamsData && teamsData.teams && teamsData.teams.length > 0) {
+          const activeTeam = teamsData.teams[0]
+          return {
+            ...prev,
+            activeTeamId: activeTeam.team_id,
+            role: ((activeTeam as any).role as 'owner' | 'senior' | 'member') || 'member',
+          }
+        }
+        return {
+          ...prev,
+          role: null,
+          activeTeamId: null,
+        }
+      })
+    } catch {
+      // Ignore
+    }
   }, [])
 
   // ─── Password Reset ─────────────────────────────────────────────────────
@@ -306,6 +421,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetPassword,
         clearError,
         getIdToken,
+        switchTeam,
+        refreshRole,
       }}
     >
       {children}

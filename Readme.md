@@ -1,25 +1,53 @@
-# CodeGenome — AI-Native Code Intelligence Platform
+# CodeFlow — AI-Native Developer Onboarding Platform
 
-> Transform any GitHub repository into an interactive knowledge wiki. Compile once, maintain persistently, query efficiently.
+> Transform any GitHub repository into an interactive knowledge wiki. Not just documentation—compile once, maintain persistently, query efficiently.
 
 ---
 
 ## Table of Contents
 
+- [The Problem](#the-problem)
+- [Our Solution](#our-solution)
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [System Components](#system-components)
-- [Backend Architecture](#backend-architecture)
-- [Frontend Architecture](#frontend-architecture)
-- [Microservices](#microservices)
 - [API Reference](#api-reference)
 - [Data Layer](#data-layer)
 - [LLM Strategy](#llm-strategy)
 - [Deployment](#deployment)
-- [Infrastructure](#infrastructure)
 - [Testing](#testing)
+- [Roadmap](#roadmap)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
+
+---
+
+## The Problem
+
+Developer onboarding is broken:
+
+- **New hires take 3-6 months** to become productive
+- **Documentation is always stale** — written once, never maintained
+- **Knowledge is siloed** in senior developers' heads
+- **No structured learning paths** exist for complex codebases
+- **First PR takes weeks** because beginners don't know where to start
+
+**The result:** Teams lose 40%+ of engineering time to onboarding inefficiency.
+
+---
+
+## Our Solution
+
+CodeFlow is an **AI-powered developer onboarding platform** that:
+
+1. **Analyzes any GitHub repo** — Architecture, dependencies, learning paths
+2. **Generates personalized learning paths** — Based on developer experience level
+3. **Accelerates first PRs** — Beginner-friendly issues with step-by-step guides
+4. **Enables Q&A** — Ask questions about codebase, get answers from AI agents
+5. **Tracks progress** — Per-developer onboarding metrics and dashboards
+6. **Captures institutional knowledge** — Playbooks and team-specific guides
+
+**The result:** Reduce onboarding time from months to weeks.
 
 ---
 
@@ -52,7 +80,7 @@
           └────────────────────┬──────────────────────────┘
                                │
           ┌────────────────────▼──────────────────────────┐
-          │            20+ API ROUTERS (v1)               │
+          │            21 API ROUTERS (v1)                │
           ├───────────────────────────────────────────────┤
           │ explore  learn   first-pr  ask     reports    │
           │ dashboard teams  playbooks billing  ai-gateway│
@@ -296,25 +324,6 @@ src/
 
 ---
 
-## Microservices
-
-8 microservice stubs for decomposed deployment (optional — monolith is primary):
-
-| Service | Port | Tech | Purpose |
-|---------|------|------|---------|
-| **gateway** | 3000 | Node.js/Express | API Gateway / Load Balancer |
-| **user-service** | 3001 | Node.js | Authentication & Users |
-| **repo-analysis** | 3002 | Python | Basic repo analysis |
-| **learning-path** | 3003 | Python | Learning path generation |
-| **ai-tutor** | 3004 | Python | AI-powered tutoring |
-| **team-analytics** | 3005 | Python | Team metrics |
-| **notification** | 3006 | Node.js | Notifications |
-| **knowledge-compiler** | 3007 | Python | LLM Wiki pattern engine |
-
-Run with: `docker-compose -f docker-compose.microservices.yml up`
-
----
-
 ## API Reference
 
 ### Core Features (12 endpoints)
@@ -412,7 +421,7 @@ GET    /api/v1/auth/users               — List users
 GET    /health                          — Health check
 ```
 
-**Total: ~55+ API endpoints across 20 routers**
+**Total: 55+ API endpoints across 21 routers**
 
 ---
 
@@ -586,7 +595,7 @@ Serverless deployment config in `infrastructure/cloudrun/`.
 
 ## Testing
 
-**85 tests, all passing.**
+**222 tests, all passing.**
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
@@ -599,14 +608,68 @@ Serverless deployment config in `infrastructure/cloudrun/`.
 | Phase 4 | 12 | API Keys, Usage, Quota |
 | Phase 5 | 16 | Teams, Playbooks, Billing |
 | RepoQA | 10 | Index + Query |
-| Auth Middleware | 1 | JWT validation |
-| Access Control | 1 | Permission checks |
-| Audit Service | 1 | Activity logging |
-| Invite Service | 1 | Token management |
-| Streaming | 1 | SSE streaming |
-| Trainee Dashboard | 1 | Progress metrics |
+| Task Service | 44 | Task state machine, AI review |
+| Access Control | 26 | Permission checks |
+| Task Submit AI Review | 16 | AI review submission |
+| Access Guard | 14 | Role-based access |
+| Invite Service | 9 | Token management |
+| Audit Service | 6 | Activity logging |
+| Trainee Dashboard | 6 | Progress metrics |
+| Notifications + other | ~18 | All systems |
 
 **Run:** `cd backend && python -m pytest tests/ -v`
+
+---
+
+## Roadmap
+
+### Completed (MVP)
+
+- [x] Multi-language AST parsing (Python, JS, TS, Go, Rust, Java)
+- [x] Entity graph construction
+- [x] LLM Wiki pattern implementation
+- [x] Multi-agent system (Security, Refactoring, Architecture, Docs)
+- [x] Architecture drift detection
+- [x] Tech debt financial model
+- [x] Intent layer (WHY, ASSUMPTIONS, TRADEOFFS)
+- [x] LLM integration (OpenAI, Azure, Ollama, Anthropic)
+- [x] Task management system
+- [x] Notification system
+- [x] PR description generator
+- [x] CTO dashboard
+- [x] Trainee dashboard
+- [x] Theme system (4 themes)
+- [x] Integration system
+- [x] Role-based access control
+- [x] Email invitations
+- [x] Responsive design
+
+### In Progress (Post-MVP)
+
+- [ ] React Query integration (performance optimization)
+- [ ] Integration tests (full onboarding flow)
+- [ ] Production deployment (Vercel + Render)
+
+### Planned (Q3 2026)
+
+- [ ] **Interactive Repo Visualization** — Force-directed graph with search, filter, drill-down
+- [ ] **"Senior Dev Roast" Mode** — Sarcastic codebase critique for Q&A agent
+- [ ] **Knowledge Quizzes** — AI-generated multiple-choice questions from codebase
+- [ ] **Gamification System** — XP points, badges, streaks for onboarding progress
+- [ ] **Weekly Digest** — Auto-generated team learning summary email
+
+### Future (Q4 2026+)
+
+- [ ] SSO/SAML (Okta, Azure AD)
+- [ ] SOC 2 compliance reporting
+- [ ] Custom onboarding templates
+- [ ] Playbook marketplace (community-contributed templates)
+- [ ] Certified training programs
+- [ ] Industry-specific solutions (FinTech, HealthTech)
+- [ ] Mobile companion app
+- [ ] VS Code extension
+- [ ] Cross-repo intelligence
+- [ ] Team knowledge mapping
 
 ---
 
@@ -614,8 +677,8 @@ Serverless deployment config in `infrastructure/cloudrun/`.
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/KunjShah95/codegenome.git
-cd codegenome
+git clone https://github.com/KunjShah95/codeflow.git
+cd codeflow
 
 # 2. Backend
 cd backend
@@ -709,10 +772,10 @@ MIT — see [LICENSE](LICENSE)
 Line Counts:
   Backend agents/     ~1,200 lines (11 agents)
   Backend services/   ~1,000 lines (28 services)
-  Backend api/v1/     ~500 lines  (20 routers, 55+ endpoints)
+  Backend api/v1/     ~500 lines  (21 routers, 55+ endpoints)
   Backend middleware/  ~150 lines  (6 middleware)
   Backend core        ~600 lines  (main, llm, graph, db)
-  Backend tests/      ~1,500 lines (85 tests)
+  Backend tests/      ~1,500 lines (222 tests)
   Total Backend:      ~4,950 lines
 
   Frontend pages/     ~1,500 lines (24 pages)
@@ -725,6 +788,6 @@ Line Counts:
   Documentation:      ~4,500 lines
 
   Grand Total:        ~14,300 lines
-  Tests:              85/85 passing
-  Completion:         70% (Phases 0-5 complete)
+  Tests:              222/222 passing
+  Completion:         85% (All 5 phases + post-MVP features)
 ```

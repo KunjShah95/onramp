@@ -1,0 +1,5 @@
+Scene: Dashboard
+Duration: 1:30 - 1:50
+Prompt: CTO dashboard with charts and graphs updating, team analytics, completion rates, modern data visualization, dark theme
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)

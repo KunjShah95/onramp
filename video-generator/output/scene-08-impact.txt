@@ -1,0 +1,5 @@
+Scene: Impact
+Duration: 2:10 - 2:25
+Prompt: Before and after comparison, developer celebration, team high-fiving, bright modern office, confetti falling, photorealistic
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)

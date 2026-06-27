@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams } from '../lib/api'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 
 const TIERS = [
   {
@@ -38,12 +39,45 @@ const TIERS = [
 
 export default function BillingPage() {
   const toast = useToast()
-  const [teamId, setTeamId] = useState('')
+  const { activeTeamId, role, switchTeam } = useAuth()
+  const [teams, setTeams] = useState<any[]>([])
+  const [teamId, setTeamId] = useState(activeTeamId || '')
   const [subscription, setSubscription] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedTier, setSelectedTier] = useState<string | null>(null)
 
+  // Fetch all user's teams on mount
+  useEffect(() => {
+    async function loadTeams() {
+      try {
+        const data = await listTeams('current-user')
+        setTeams(data.teams || [])
+      } catch (err: any) {
+        setError(err.message || 'Failed to load teams')
+      }
+    }
+    loadTeams()
+  }, [])
+
+  // Sync teamId state with activeTeamId from context
+  useEffect(() => {
+    if (activeTeamId) {
+      setTeamId(activeTeamId)
+    }
+  }, [activeTeamId])
+
+  // Fetch subscription details when teamId changes
+  useEffect(() => {
+    if (teamId) {
+      fetchSubscription(teamId)
+    } else {
+      setSubscription(null)
+      setSelectedTier(null)
+    }
+  }, [teamId])
+
+  // Handles redirect from checkout session success
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
@@ -51,20 +85,17 @@ export default function BillingPage() {
       if (tid) {
         setTeamId(tid)
         window.history.replaceState({}, '', window.location.pathname)
-        getSubscription(tid).then(setSubscription).catch(() => {
-          setError('Subscription loaded but status may be delayed. Refresh to check.')
-        })
       }
     }
   }, [])
 
-  async function fetchSubscription() {
-    if (!teamId.trim()) return
+  async function fetchSubscription(id: string = teamId) {
+    if (!id.trim()) return
     setLoading(true); setError('')
     try {
-      const data = await getSubscription(teamId.trim())
+      const data = await getSubscription(id.trim())
       setSubscription(data); setSelectedTier(data.tier)
-    } catch { setSubscription(null) }
+    } catch { setSubscription(null); setSelectedTier(null) }
     setLoading(false)
   }
 
@@ -132,23 +163,40 @@ export default function BillingPage() {
         <div className="mb-5 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>
       )}
 
-      {/* Team lookup */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-8">
-        <input
-          value={teamId}
-          onChange={(e) => setTeamId(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchSubscription()}
-          placeholder="Enter Team ID to load subscription…"
-          className="flex-1 bg-[#120D0A] border border-[#FDFBF8]/8 rounded-lg px-4 py-2.5 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 outline-none focus:border-[#FF8C00]/40 transition-colors"
-        />
-        <button onClick={fetchSubscription} disabled={loading || !teamId.trim()}
-          className="bg-[#FDFBF8]/8 hover:bg-[#FDFBF8]/12 text-[#FDFBF8]/70 hover:text-[#FDFBF8] px-4 py-2.5 rounded-lg text-sm font-medium border border-[#FDFBF8]/8 transition-colors disabled:opacity-40">
-          {loading ? 'Loading…' : 'Load'}
-        </button>
+      {/* Team Selection */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-[#0D0906] p-4 rounded-xl border border-[#FDFBF8]/5">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold">Active Team Workspace</label>
+          <div className="flex items-center gap-2">
+            {teams.length > 0 ? (
+              <select
+                value={teamId}
+                disabled={loading}
+                onChange={async (e) => {
+                  const newTeamId = e.target.value
+                  setTeamId(newTeamId)
+                  await switchTeam(newTeamId)
+                }}
+                className="bg-[#120D0A] border border-[#FDFBF8]/10 rounded-lg px-4 py-2.5 text-sm text-[#FDFBF8] focus:border-[#FF8C00]/40 outline-none min-w-[200px]"
+              >
+                {teams.map((t) => (
+                  <option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-[#FDFBF8]/40">No teams found. Create one in <a href="/team" className="underline text-[#FF8C00] hover:text-[#FFB347]">Teams page</a>.</div>
+            )}
+          </div>
+        </div>
+
         {subscription && (
-          <button onClick={handleCancel}
-            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium border border-red-500/20 transition-colors">
-            Cancel Plan
+          <button 
+            onClick={handleCancel}
+            disabled={role !== 'owner'}
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium border border-red-500/20 transition-colors disabled:opacity-40"
+            title={role !== 'owner' ? 'Only the team owner can cancel the subscription' : ''}
+          >
+            Cancel Subscription
           </button>
         )}
       </div>
@@ -225,7 +273,8 @@ export default function BillingPage() {
 
               <button
                 onClick={() => handleCreateSubscription(tier.id)}
-                disabled={!teamId.trim() || isCurrent}
+                disabled={!teamId.trim() || isCurrent || role !== 'owner'}
+                title={role !== 'owner' ? 'Only the team owner can change subscription plans' : ''}
                 className={cn(
                   'w-full py-2 rounded-lg text-xs font-bold transition-all',
                   isCurrent

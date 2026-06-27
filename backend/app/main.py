@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
-from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router
+from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router, admin as admin_router
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
 # Configure basic logging
@@ -87,6 +87,7 @@ app.include_router(notifications_router.router, prefix="/api/v1")
 app.include_router(integrations_router.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(invites_router.router, prefix="/api/v1")
+app.include_router(admin_router.router, prefix="/api/v1")
 
 
 @app.get("/")

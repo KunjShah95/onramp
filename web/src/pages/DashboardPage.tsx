@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { fetchCTODashboard, type CTODashboardResponse } from '../lib/api'
+import { fetchCTODashboard, fetchHealthScore, fetchRepos, type CTODashboardResponse } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
@@ -32,12 +32,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'overview' | 'trainees' | 'reviews' | 'activity'>('overview')
+  const [codeHealth, setCodeHealth] = useState<number | null>(null)
 
   useEffect(() => {
     fetchCTODashboard()
       .then(setDashboard)
       .catch((err) => setError(err.message || 'Failed to load dashboard'))
       .finally(() => setLoading(false))
+
+    // Fetch code health score
+    fetchRepos().then(r => {
+      if (r.repos?.length > 0) {
+        fetchHealthScore(r.repos[0].owner, r.repos[0].name, {})
+          .then(d => setCodeHealth(d.overall_score))
+          .catch(() => {})
+      }
+    }).catch(() => {})
   }, [])
 
   if (loading) {
@@ -177,17 +187,22 @@ export default function DashboardPage() {
               { label: 'Pending Review', value: pending_review_tasks, color: 'text-yellow-400', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
               { label: 'Blocked', value: blocked_tasks, color: 'text-red-400', icon: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z' },
               { label: 'Completion', value: `${completion_rate}%`, color: 'text-[#4DA8DA]', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
-            ].map((m) => (
-              <CardSpotlight key={m.label} className="p-4" color="rgba(255,140,0,0.05)">
-                <div className="flex items-start justify-between mb-2">
-                  <svg className="w-4 h-4 text-[#FDFBF8]/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={m.icon} />
-                  </svg>
-                </div>
-                <div className={cn('font-display text-2xl font-bold tracking-tight', m.color)}>{m.value}</div>
-                <div className="text-[10px] text-[#FDFBF8]/35 uppercase tracking-wider mt-1">{m.label}</div>
-              </CardSpotlight>
-            ))}
+              { label: 'Code Health', value: codeHealth !== null ? `${codeHealth}%` : '—', color: codeHealth !== null && codeHealth >= 70 ? 'text-green-400' : codeHealth !== null && codeHealth >= 50 ? 'text-[#FF8C00]' : 'text-[#FDFBF8]', icon: 'M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15' },
+            ].map((m) => {
+              const isCodeHealth = m.label === 'Code Health'
+              const card = (
+                <CardSpotlight className="p-4" color="rgba(255,140,0,0.05)">
+                  <div className="flex items-start justify-between mb-2">
+                    <svg className="w-4 h-4 text-[#FDFBF8]/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={m.icon} />
+                    </svg>
+                  </div>
+                  <div className={cn('font-display text-2xl font-bold tracking-tight', m.color)}>{m.value}</div>
+                  <div className="text-[10px] text-[#FDFBF8]/35 uppercase tracking-wider mt-1">{m.label}</div>
+                </CardSpotlight>
+              )
+              return isCodeHealth ? <Link key={m.label} to="/code-health" className="block cursor-pointer hover:opacity-80 transition-opacity">{card}</Link> : <div key={m.label}>{card}</div>
+            })}
           </motion.div>
 
           <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
@@ -463,8 +478,8 @@ export default function DashboardPage() {
                     )}
                   </h2>
                 </div>
-                <button onClick={() => setActiveTab('reviews')} className="text-[10px] text-[#FF8C00]/70 hover:text-[#FF8C00] transition-colors font-medium">
-                  View all →
+                <button onClick={() => navigate('/reviews')} className="text-[10px] text-[#FF8C00]/70 hover:text-[#FF8C00] transition-colors font-medium">
+                  Review Queue →
                 </button>
               </div>
               {pending_reviews.length === 0 ? (
@@ -477,7 +492,7 @@ export default function DashboardPage() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      onClick={() => navigate('/tasks')}
+                      onClick={() => navigate('/reviews')}
                       className="flex items-start gap-3 p-3 rounded-xl bg-[#0D0906] border border-[#FDFBF8]/5 cursor-pointer hover:border-yellow-500/20 transition-all"
                     >
                       <div className="w-2 h-2 rounded-full bg-yellow-400 mt-1.5 shrink-0" />
@@ -485,7 +500,7 @@ export default function DashboardPage() {
                         <div className="text-xs text-[#FDFBF8] font-medium truncate">{pr.title}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <StatusBadge state={pr.state} />
-                          {pr.module && <span className="text-[10px] text-[#FDFBF8]/25 font-mono">{pr.module}</span>}
+                          {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-[10px] text-[#FF8C00]/70 hover:text-[#FF8C00] font-mono transition-colors">{pr.module}</Link>}
                           {pr.assigned_to && <span className="text-[10px] text-[#FDFBF8]/25">by {pr.assigned_to.slice(0, 8)}</span>}
                         </div>
                       </div>
@@ -531,7 +546,7 @@ export default function DashboardPage() {
                               {member.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <span className="text-sm text-[#FDFBF8] font-medium">{member.name}</span>
+                              <Link to={`/member/${member.user_id}`} className="text-sm text-[#FDFBF8] font-medium hover:text-[#FF8C00] transition-colors">{member.name}</Link>
                               <span className="text-[10px] text-[#FDFBF8]/25 bg-[#FDFBF8]/5 px-1.5 py-0.5 rounded ml-2">{member.role}</span>
                             </div>
                           </div>
@@ -569,13 +584,13 @@ export default function DashboardPage() {
                           <div className="flex flex-wrap gap-1">
                             {member.modules_unlocked.length > 0 ? (
                               member.modules_unlocked.map((mod, mi) => (
-                                <span key={mi} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/15">
+                                <Link key={mi} to={`/module/${encodeURIComponent(mod)}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/15 hover:bg-green-500/20 transition-colors">
                                   <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                   </svg>
                                   {mod}
-                                </span>
+                                </Link>
                               ))
                             ) : (
                               <span className="text-[#FDFBF8]/15 text-[10px] italic">—</span>

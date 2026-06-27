@@ -30,6 +30,7 @@ import {
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
 import GlobalNatureBackground from './components/ui/GlobalNatureBackground'
+import RoleGuard from './components/auth/RoleGuard'
 
 // Route-level code splitting: each page is its own lazily-loaded chunk so the
 // initial bundle stays small. Each route gets its own Suspense boundary with
@@ -59,6 +60,15 @@ const TraineeDashboard = lazy(() => import('./pages/TraineeDashboard'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const JoinPage = lazy(() => import('./pages/JoinPage'))
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
+
+// New Phase 2-5 pages
+const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
+const CodeHealthPage = lazy(() => import('./pages/CodeHealthPage'))
+const MemberDetailPage = lazy(() => import('./pages/MemberDetailPage'))
+const ModuleHealthPage = lazy(() => import('./pages/ModuleHealthPage'))
+
+// Admin/Owner pages
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
 
 export default function App() {
   return (
@@ -118,6 +128,7 @@ export default function App() {
               {/* ── Protected routes (authed + layout) ──────────── */}
               <Route element={<ProtectedRoute />}>
                 <Route element={<Layout />}>
+                  {/* Common Workspace Pages */}
                   <Route path="/explore" element={
                     <Suspense fallback={<ExploreResultSkeleton />}>
                       <ErrorBoundary><ExplorePage /></ErrorBoundary>
@@ -138,41 +149,6 @@ export default function App() {
                       <ErrorBoundary><AskPage /></ErrorBoundary>
                     </Suspense>
                   } />
-                  <Route path="/reports" element={
-                    <Suspense fallback={<ReportSkeleton />}>
-                      <ErrorBoundary><OnboardingReportPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/dashboard" element={
-                    <Suspense fallback={<DashboardSkeleton />}>
-                      <ErrorBoundary><DashboardPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/team" element={
-                    <Suspense fallback={<TeamSettingsSkeleton />}>
-                      <ErrorBoundary><TeamPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/playbooks" element={
-                    <Suspense fallback={<PlaybooksSkeleton />}>
-                      <ErrorBoundary><PlaybooksPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/billing" element={
-                    <Suspense fallback={<BillingSkeleton />}>
-                      <ErrorBoundary><BillingPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/api-keys" element={
-                    <Suspense fallback={<ApiKeysSkeleton />}>
-                      <ErrorBoundary><ApiKeysPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/settings" element={
-                    <Suspense fallback={<SettingsSkeleton />}>
-                      <ErrorBoundary><Settings /></ErrorBoundary>
-                    </Suspense>
-                  } />
                   <Route path="/pr-describe" element={
                     <Suspense fallback={<PRDescriptionSkeleton />}>
                       <ErrorBoundary><PRDescriptionPage /></ErrorBoundary>
@@ -181,11 +157,6 @@ export default function App() {
                   <Route path="/tasks" element={
                     <Suspense fallback={<TasksPageSkeleton />}>
                       <ErrorBoundary><TasksPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/my-progress" element={
-                    <Suspense fallback={<TraineeDashboardSkeleton />}>
-                      <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
                     </Suspense>
                   } />
                   <Route path="/notifications" element={
@@ -198,6 +169,89 @@ export default function App() {
                       <ErrorBoundary><Profile /></ErrorBoundary>
                     </Suspense>
                   } />
+                  <Route path="/settings" element={
+                    <Suspense fallback={<SettingsSkeleton />}>
+                      <ErrorBoundary><Settings /></ErrorBoundary>
+                    </Suspense>
+                  } />
+
+                  {/* Trainee / Junior Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['member']} />}>
+                    <Route path="/my-progress" element={
+                      <Suspense fallback={<TraineeDashboardSkeleton />}>
+                        <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Senior / CTO / Lead Only Pages */}
+                  <Route element={<RoleGuard minRole="senior" />}>
+                    <Route path="/dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><DashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/team" element={
+                      <Suspense fallback={<TeamSettingsSkeleton />}>
+                        <ErrorBoundary><TeamPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/playbooks" element={
+                      <Suspense fallback={<PlaybooksSkeleton />}>
+                        <ErrorBoundary><PlaybooksPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/billing" element={
+                      <Suspense fallback={<BillingSkeleton />}>
+                        <ErrorBoundary><BillingPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/api-keys" element={
+                      <Suspense fallback={<ApiKeysSkeleton />}>
+                        <ErrorBoundary><ApiKeysPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/reports" element={
+                      <Suspense fallback={<ReportSkeleton />}>
+                        <ErrorBoundary><OnboardingReportPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    {/* Phase 2: Review Queue */}
+                    <Route path="/reviews" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><ReviewQueuePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    {/* Phase 3: Code Health Dashboard */}
+                    <Route path="/code-health" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><CodeHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    {/* Phase 5: Drill-Down Views */}
+                    <Route path="/member/:userId" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><MemberDetailPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/module/:moduleName" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><ModuleHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Owner / Admin Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['owner']} />}>
+                    <Route path="/admin" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><AdminDashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
                 </Route>
               </Route>
             </Routes>

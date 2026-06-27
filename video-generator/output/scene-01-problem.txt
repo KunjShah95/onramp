@@ -1,0 +1,5 @@
+Scene: The Problem
+Duration: 0:00 - 0:25
+Prompt: Cinematic shot of frustrated software developer staring at multiple monitors filled with complex code, dark office lighting, rain on windows, photorealistic, 4K, slow motion
+Model: google/veo-3-1-fast
+Status: Placeholder (API key required for actual generation)
