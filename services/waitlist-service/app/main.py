@@ -38,14 +38,6 @@ app = FastAPI(
     description="Pre-launch waitlist for CodeFlow",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 
@@ -75,6 +67,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RateLimitMiddleware, requests_per_hour=5)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────

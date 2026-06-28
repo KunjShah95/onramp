@@ -25,23 +25,23 @@ stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
 cryptography>=42.0.0  # token encryption at rest
 sentry-sdk>=2.0.0     # error monitoring
 # AST parsing (tree-sitter ecosystem)
-tree-sitter>=0.23.0              # core parsing library
-tree-sitter-javascript>=0.23.0  # JS/JSX parser
-tree-sitter-typescript>=0.23.0  # TS/TSX parser
-tree-sitter-go>=0.23.0          # Go parser
-tree-sitter-rust>=0.23.0        # Rust parser
-tree-sitter-java>=0.23.0        # Java parser
-tree-sitter-c>=0.23.0           # C parser
-tree-sitter-cpp>=0.23.0         # C++ parser
-tree-sitter-c-sharp>=0.23.0     # C# parser
-tree-sitter-php>=0.23.0         # PHP parser
-tree-sitter-ruby>=0.23.0        # Ruby parser
-tree-sitter-swift>=0.23.0       # Swift parser
-tree-sitter-kotlin>=0.23.0      # Kotlin parser
-tree-sitter-bash>=0.23.0        # Shell/Bash parser
-tree-sitter-markdown>=0.23.0    # Markdown parser
-tree-sitter-yaml>=0.23.0        # YAML parser
-tree-sitter-json>=0.23.0        # JSON parser
-tree-sitter-html>=0.23.0        # HTML parser
-tree-sitter-css>=0.23.0         # CSS parser
-tree-sitter-sql>=0.23.0         # SQL parser
+tree-sitter>=0.23.0              # core parsing library (v0.23+)
+tree-sitter-javascript          # JS/JSX parser
+tree-sitter-typescript          # TS/TSX parser
+tree-sitter-go                  # Go parser
+tree-sitter-rust                # Rust parser
+tree-sitter-java                # Java parser
+tree-sitter-c                   # C parser
+tree-sitter-cpp                 # C++ parser
+tree-sitter-c-sharp             # C# parser
+tree-sitter-php                 # PHP parser
+tree-sitter-ruby                # Ruby parser
+tree-sitter-swift               # Swift parser
+tree-sitter-kotlin              # Kotlin parser
+tree-sitter-bash                # Shell/Bash parser
+tree-sitter-markdown            # Markdown parser
+tree-sitter-yaml                # YAML parser
+tree-sitter-json                # JSON parser
+tree-sitter-html                # HTML parser
+tree-sitter-css                 # CSS parser
+tree-sitter-sql                 # SQL parser
