@@ -8,7 +8,16 @@ import type {
   HistoryTurn,
 } from './types'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+function getApiBaseUrl(): string {
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+  url = url.replace(/\/+$/, '') // strip trailing slashes
+  if (!url.endsWith('/api/v1')) {
+    url = `${url}/api/v1`
+  }
+  return url
+}
+export const API_BASE = getApiBaseUrl()
+
 
 let _idToken: string | null = null
 

@@ -5,11 +5,15 @@ import ShaderBackground from '../components/ui/ShaderBackground'
 import Spotlight from '../components/ui/spotlight'
 import { useToast } from '../context/ToastContext'
 
-const WAITLIST_URL = `${
-  import.meta.env.VITE_WAITLIST_URL ?? 
-  import.meta.env.VITE_API_URL?.replace(/\/api\/v1\/?$/, '') ?? 
-  'http://localhost:8000'
-}/api/v1/waitlist`
+import { API_BASE } from '../lib/api'
+
+const getWaitlistUrl = () => {
+  const base = (import.meta.env.VITE_WAITLIST_URL ?? API_BASE).replace(/\/+$/, '')
+  const root = base.replace(/\/api\/v1\/?$/, '')
+  return `${root}/api/v1/waitlist`
+}
+const WAITLIST_URL = getWaitlistUrl()
+
 
 type Role = 'developer' | 'manager' | 'cto'
 type TeamSize = '1-10' | '11-50' | '51-200' | '200+'

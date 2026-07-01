@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '../lib/utils'
-import { authHeaders } from '../lib/api'
+import { authHeaders, API_BASE } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { SectionLabel } from '../components/ui/section-label'
@@ -47,7 +47,7 @@ export default function PRDescriptionPage() {
     setLoading(true); setError(''); setResult(null)
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/pr-review/describe`,
+        `${API_BASE}/pr-review/describe`,
         {
           method: 'POST',
           headers: authHeaders(),
