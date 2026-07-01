@@ -31,6 +31,27 @@ def get_url():
     is_production = env == "production"
 
     url = os.getenv("DATABASE_URL")
+    
+    # Secure logging of env configuration to help debug deployment issues
+    print(f"DEBUG: env={env}, is_production={is_production}, DATABASE_URL is {'set' if url else 'NOT set'}", flush=True)
+    if url:
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            # Mask password in log output
+            netloc = parsed.netloc
+            if "@" in netloc:
+                credentials, host = netloc.split("@", 1)
+                if ":" in credentials:
+                    user, _ = credentials.split(":", 1)
+                    netloc = f"{user}:***@{host}"
+                else:
+                    netloc = f"{credentials}:***@{host}"
+            masked = f"{parsed.scheme}://{netloc}{parsed.path}"
+            print(f"DEBUG: resolved DATABASE_URL={masked}", flush=True)
+        except Exception as e:
+            print(f"DEBUG: resolved DATABASE_URL could not be parsed safely: {e}", flush=True)
+
     if not url:
         if is_production:
             raise RuntimeError(
