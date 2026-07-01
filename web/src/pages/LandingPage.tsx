@@ -64,56 +64,17 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Hero graph mockup — the product IS the graph */}
-          <div className="w-full max-w-3xl mt-8 rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] p-6 relative overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjI1Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-[0.04]" />
-            {/* Browser chrome */}
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
-              <div className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
-              <div className="w-3 h-3 rounded-full bg-[#28C840]" />
-              <div className="ml-4 flex-1 h-6 bg-[#1A110D] rounded border border-[#FDFBF8]/5 flex items-center px-3">
-                <span className="font-mono text-[11px] text-[#FDFBF8]/30">codeflow.dev/explore/vercel/next.js</span>
-              </div>
-            </div>
-            {/* Architecture graph viz */}
-            <div className="relative h-40 flex items-center justify-center">
-              {/* Center node */}
-              <div className="absolute w-14 h-14 rounded-lg border border-[#FF8C00]/50 bg-[#FF8C00]/10 flex items-center justify-center z-10">
-                <span className="text-[#FF8C00] font-mono text-[10px] font-bold">App</span>
-              </div>
-              {/* Connecting lines */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <line x1="300" y1="80" x2="120" y2="40" stroke="rgba(255,140,0,0.25)" strokeWidth="1" />
-                <line x1="300" y1="80" x2="480" y2="40" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
-                <line x1="300" y1="80" x2="80"  y2="120" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
-                <line x1="300" y1="80" x2="520" y2="120" stroke="rgba(253,251,248,0.12)" strokeWidth="1" />
-                <line x1="300" y1="80" x2="200" y2="135" stroke="rgba(253,251,248,0.08)" strokeWidth="1" />
-                <line x1="300" y1="80" x2="400" y2="135" stroke="rgba(253,251,248,0.08)" strokeWidth="1" />
-              </svg>
-              {/* Satellite nodes */}
-              <div className="absolute left-[13%] top-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">Auth</span>
-              </div>
-              <div className="absolute right-[13%] top-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">API</span>
-              </div>
-              <div className="absolute left-[5%] bottom-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">DB</span>
-              </div>
-              <div className="absolute right-[5%] bottom-[10%] w-12 h-12 rounded-lg border border-[#FDFBF8]/20 bg-[#1A110D] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/60 font-mono text-[9px]">Queue</span>
-              </div>
-              <div className="absolute left-[27%] bottom-[5%] w-10 h-10 rounded-lg border border-[#FDFBF8]/10 bg-[#0A0705] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/40 font-mono text-[8px]">Cache</span>
-              </div>
-              <div className="absolute right-[27%] bottom-[5%] w-10 h-10 rounded-lg border border-[#FDFBF8]/10 bg-[#0A0705] flex items-center justify-center">
-                <span className="text-[#FDFBF8]/40 font-mono text-[8px]">CDN</span>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-[#FDFBF8]/5 flex items-center justify-between">
-              <span className="font-mono text-[10px] text-[#FDFBF8]/30">6 services · 24 dependencies · 3 critical paths</span>
-              <span className="font-mono text-[10px] text-[#FF8C00]">● live</span>
+          {/* Hero — Embedded YouTube Demo Video */}
+          <div className="w-full max-w-3xl mt-8 rounded-xl border border-[#FDFBF8]/10 bg-[#0A0705] overflow-hidden shadow-2xl">
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/l4i3FqeqidU?rel=0&modestbranding=1"
+                title="CodeFlow Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ border: 'none' }}
+              />
             </div>
           </div>
         </div>
