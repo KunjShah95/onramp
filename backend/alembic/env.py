@@ -27,13 +27,12 @@ target_metadata = Base.metadata
 
 def get_url():
     """Get database URL from environment or config"""
-    env = os.getenv("ENV", os.getenv("ENVIRONMENT", "production")).lower()
-    is_production = env == "production"
-
-    url = os.getenv("DATABASE_URL")
+    from app.database.config import DatabaseConfig
+    db_config = DatabaseConfig()
     
+    url = db_config.database_url
     # Secure logging of env configuration to help debug deployment issues
-    print(f"DEBUG: env={env}, is_production={is_production}, DATABASE_URL is {'set' if url else 'NOT set'}", flush=True)
+    print(f"DEBUG: env={db_config.env}, is_production={db_config.is_production}, DATABASE_URL is {'set' if url else 'NOT set'}", flush=True)
     if url:
         from urllib.parse import urlparse
         try:
@@ -51,18 +50,6 @@ def get_url():
             print(f"DEBUG: resolved DATABASE_URL={masked}", flush=True)
         except Exception as e:
             print(f"DEBUG: resolved DATABASE_URL could not be parsed safely: {e}", flush=True)
-
-    if not url:
-        if is_production:
-            raise RuntimeError(
-                "DATABASE_URL environment variable is required in production. "
-                "Refusing to start with insecure default credentials "
-                "(postgres:postgres@localhost). Set DATABASE_URL explicitly."
-            )
-        url = "postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow"
-
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     return url
 
@@ -98,19 +85,25 @@ def do_run_migrations(connection) -> None:
 
 async def run_async_migrations() -> None:
     from sqlalchemy.ext.asyncio import create_async_engine
+    from app.database.config import DatabaseConfig
 
+    db_config = DatabaseConfig()
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
+
+    connect_args = db_config._build_connect_args()
 
     connectable = create_async_engine(
         configuration["sqlalchemy.url"],
         poolclass=pool.NullPool,
+        connect_args=connect_args if connect_args else {},
     )
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
 
 
 def run_migrations_online() -> None:

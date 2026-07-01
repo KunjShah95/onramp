@@ -50,6 +50,23 @@ class DatabaseConfig:
             "DB_SSL_MODE", "require" if self.is_production else "prefer"
         )
 
+        # Remove sslmode from query parameters since asyncpg doesn't support it
+        # as a query param and throws TypeError. We handle SSL via connect_args instead.
+        if self.database_url and "?" in self.database_url:
+            base_url, query = self.database_url.split("?", 1)
+            from urllib.parse import parse_qs, urlencode
+            params = parse_qs(query)
+            if "sslmode" in params:
+                # If sslmode was set in URL, we respect it and override ssl_mode config
+                url_ssl_mode = params["sslmode"][0]
+                self.ssl_mode = url_ssl_mode
+                del params["sslmode"]
+            if params:
+                self.database_url = f"{base_url}?{urlencode(params, doseq=True)}"
+            else:
+                self.database_url = base_url
+
+
         self._engine: Optional[AsyncEngine] = None
         self._session_factory: Optional[async_sessionmaker[AsyncSession]] = None
         self._engine_loop: Optional[asyncio.AbstractEventLoop] = None
