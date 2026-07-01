@@ -30,9 +30,9 @@ read BACKEND_URL
 
 echo ""
 echo -e "${BLUE}Step 4: Set Environment Variables in Vercel${NC}"
-echo "Adding VITE_API_BASE_URL=$BACKEND_URL"
+echo "Adding VITE_API_URL=$BACKEND_URL"
 
-vercel env add VITE_API_BASE_URL
+vercel env add VITE_API_URL
 # User will be prompted to enter the value
 
 echo ""

@@ -27,12 +27,13 @@ Write-Host ""
 
 # Step 4: Set Environment Variables
 Write-Host "Step 4: Setting Environment Variables in Vercel" -ForegroundColor Blue
-Write-Host "Adding VITE_API_BASE_URL = $backendUrl" -ForegroundColor Green
+Write-Host "Adding VITE_API_URL = $backendUrl" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "Run the following commands in Vercel dashboard or CLI:" -ForegroundColor Yellow
-Write-Host "vercel env add VITE_API_BASE_URL" -ForegroundColor Cyan
+Write-Host "vercel env add VITE_API_URL" -ForegroundColor Cyan
 Write-Host "(Then paste the backend URL when prompted)" -ForegroundColor Gray
+
 
 Write-Host ""
 
