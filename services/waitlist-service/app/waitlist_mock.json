@@ -1,0 +1,22 @@
+[
+  [
+    "Timestamp",
+    "Name",
+    "Email",
+    "Role",
+    "Company",
+    "Team Size",
+    "Use Case",
+    "Position"
+  ],
+  [
+    "2026-07-01T07:13:53.212064+00:00",
+    "John Doe",
+    "new_user@example.com",
+    "developer",
+    "Cool Corp",
+    "1-10",
+    "Onboarding",
+    "1"
+  ]
+]

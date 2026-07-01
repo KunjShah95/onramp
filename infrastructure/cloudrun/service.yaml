@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: codeflow-api
+  name: onramp-api
   labels:
     cloud.googleapis.com/location: us-central1
   annotations:
@@ -18,9 +18,9 @@ spec:
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
-      serviceAccountName: codeflow-sa@PROJECT_ID.iam.gserviceaccount.com
+      serviceAccountName: onramp-sa@PROJECT_ID.iam.gserviceaccount.com
       containers:
-        - image: gcr.io/PROJECT_ID/codeflow/backend:latest
+        - image: gcr.io/PROJECT_ID/onramp/backend:latest
           ports:
             - containerPort: 8080
           env:

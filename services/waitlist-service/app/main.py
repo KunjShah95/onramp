@@ -81,6 +81,42 @@ app.add_middleware(
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+
+class MockWorksheet:
+    def __init__(self, filepath: Path):
+        self.filepath = filepath
+        self._load()
+
+    def _load(self):
+        if self.filepath.exists():
+            try:
+                with open(self.filepath, "r", encoding="utf-8") as f:
+                    self.rows = json.load(f)
+                    return
+            except Exception:
+                pass
+        self.rows = [
+            ["Timestamp", "Name", "Email", "Role", "Company", "Team Size", "Use Case", "Position"]
+        ]
+        self._save()
+
+    def _save(self):
+        try:
+            self.filepath.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.filepath, "w", encoding="utf-8") as f:
+                json.dump(self.rows, f, indent=2)
+        except Exception:
+            pass
+
+    def col_values(self, col: int) -> list[str]:
+        idx = col - 1
+        return [row[idx] for row in self.rows if len(row) > idx]
+
+    def append_row(self, row: list):
+        self.rows.append([str(item) for item in row])
+        self._save()
+
+
 _worksheet: gspread.Worksheet | None = None
 
 
@@ -102,25 +138,41 @@ def _fix_env_json(s: str) -> str:
     return ''.join(result)
 
 
-def get_sheet() -> gspread.Worksheet:
+def is_placeholder(val: str | None) -> bool:
+    if not val:
+        return True
+    val_stripped = val.strip()
+    return (
+        val_stripped.startswith("<") and val_stripped.endswith(">")
+    ) or val_stripped in ("your-firebase-project-id", "your-google-sheet-id", "sheet-id-123")
+
+
+def get_sheet():
     global _worksheet
     if _worksheet is not None:
         return _worksheet
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     sheet_id = os.environ.get("GOOGLE_SHEET_ID")
-    if not creds_json or not sheet_id:
-        raise HTTPException(status_code=503, detail="Google Sheets not configured")
-    creds = Credentials.from_service_account_info(json.loads(_fix_env_json(creds_json)), scopes=SCOPES)
-    client = gspread.authorize(creds)
-    spreadsheet = client.open_by_key(sheet_id)
-    worksheet = spreadsheet.sheet1
-    if worksheet.row_count == 0 or worksheet.cell(1, 1).value != "Timestamp":
-        worksheet.append_row([
-            "Timestamp", "Name", "Email", "Role",
-            "Company", "Team Size", "Use Case", "Position",
-        ])
-    _worksheet = worksheet
-    return _worksheet
+    if is_placeholder(creds_json) or is_placeholder(sheet_id):
+        print("Google Sheets credentials not fully configured. Using local JSON mock database.")
+        _worksheet = MockWorksheet(Path(__file__).resolve().parent / "waitlist_mock.json")
+        return _worksheet
+    try:
+        creds = Credentials.from_service_account_info(json.loads(_fix_env_json(creds_json)), scopes=SCOPES)
+        client = gspread.authorize(creds)
+        spreadsheet = client.open_by_key(sheet_id)
+        worksheet = spreadsheet.sheet1
+        if worksheet.row_count == 0 or worksheet.cell(1, 1).value != "Timestamp":
+            worksheet.append_row([
+                "Timestamp", "Name", "Email", "Role",
+                "Company", "Team Size", "Use Case", "Position",
+            ])
+        _worksheet = worksheet
+        return _worksheet
+    except Exception as e:
+        print(f"Error connecting to Google Sheets: {e}. Falling back to local JSON mock database.")
+        _worksheet = MockWorksheet(Path(__file__).resolve().parent / "waitlist_mock.json")
+        return _worksheet
 
 
 # ── Email ─────────────────────────────────────────────────────────────────────

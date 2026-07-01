@@ -30,7 +30,13 @@ class ArchitectureExplorer(BaseAgent):
         self.github = GitHubService(token=github_token)
         self.parser = ParserService()
 
-    async def execute(self, repo_url: str, branch: str = "main") -> Dict[str, Any]:
+    async def execute(
+        self,
+        repo_url: str,
+        branch: str = "main",
+        max_files: int = 1000,
+        max_nodes: int = 150,
+    ) -> Dict[str, Any]:
         """Analyze repository and return complete architecture analysis.
 
         Step 1: Clone repo to temporary directory
@@ -42,6 +48,8 @@ class ArchitectureExplorer(BaseAgent):
         Args:
             repo_url: GitHub repository URL (e.g., "https://github.com/owner/repo")
             branch: Git branch to analyze (default: "main")
+            max_files: Maximum number of files to parse
+            max_nodes: Maximum number of nodes in graph summary
 
         Returns:
             Dict containing:
@@ -60,11 +68,11 @@ class ArchitectureExplorer(BaseAgent):
         repo_path = await self.github.clone_repo(repo_url, branch)
 
         # Step 2: Parse entities from the repository
-        entities = await self.parser.parse_directory(repo_path)
+        entities = await self.parser.parse_directory(repo_path, max_files=max_files)
 
         # Step 3: Build dependency graph
         graph = self._build_graph(entities)
-        result = graph.to_dict()
+        result = graph.to_dict(max_nodes=max_nodes)
 
         # Step 4: Use Claude to analyze structure and identify services
         services = result.get("services", [])
@@ -89,7 +97,8 @@ class ArchitectureExplorer(BaseAgent):
                     f"Classes ({len(entities['classes'])} total):\n{classes_summary}\n\n"
                     f"Functions: {functions_count} total\n\n"
                     f"Current detected pattern: {result.get('architecture_pattern', 'unknown')}\n"
-                    f"Circular dependencies: {len(result.get('circular_dependencies', []))}\n\n"
+                    f"Circular dependencies: {len(result.get('circular_dependencies', []))}\n"
+                    f"Dependency graph collapsed/clustered to folder level: {result.get('is_collapsed', False)}\n\n"
                     f"Return a JSON object with:\n"
                     f'{{"services": [{{"name": "service-name", "files": ["path"], "description": "..."}}], '
                     f'"main_services": ["..."], "data_flows": ["..."], '

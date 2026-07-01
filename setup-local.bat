@@ -51,7 +51,7 @@ cd ..
 REM Frontend Setup
 echo.
 echo ▶ Setting up Frontend...
-cd ai-onboarding-engineer
+cd web
 
 echo Installing Node dependencies...
 call npm install -q
@@ -87,13 +87,18 @@ echo   venv\Scripts\activate.bat
 echo   uvicorn app.main:app --reload
 echo.
 echo Terminal 2 - Frontend:
-echo   cd ai-onboarding-engineer
+echo   cd web
 echo   npm run dev
+echo.
+echo Terminal 3 - Waitlist Service:
+echo   cd services\waitlist-service
+echo   python run.py
 echo.
 echo ======================================
 echo Then open in browser:
 echo   Frontend: http://localhost:5173
 echo   Backend API: http://localhost:8000
+echo   Waitlist Service: http://localhost:3008
 echo   API Docs: http://localhost:8000/docs
 echo.
 echo 📝 Don't forget to update credentials in .env and .env.local

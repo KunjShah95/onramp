@@ -413,7 +413,7 @@ class ParserService:
 
     # ── Public API ───────────────────────────────────────────────────────
 
-    async def parse_directory(self, repo_path: str) -> Dict[str, Any]:
+    async def parse_directory(self, repo_path: str, max_files: int = 1000) -> Dict[str, Any]:
         entities = {
             "files": [],
             "classes": [],
@@ -423,6 +423,7 @@ class ParserService:
             "module_map": {},
         }
         module_map = {}
+        parsed_count = 0
 
         for root, dirs, files in os.walk(repo_path):
             dirs[:] = [d for d in dirs if d not in self.IGNORE_DIRS]
@@ -431,6 +432,16 @@ class ParserService:
                 ext = Path(fname).suffix.lower()
                 if ext not in self.SUPPORTED_EXTS:
                     continue
+                
+                if parsed_count >= max_files:
+                    if parsed_count == max_files:
+                        import logging
+                        logging.getLogger("codeflow.parser").warning(
+                            f"AST parsing limit hit: exceeded {max_files} files. Skipping remaining files for performance."
+                        )
+                        parsed_count += 1
+                    continue
+
                 try:
                     analysis = await self._parse_file(fpath)
                     rel_path = os.path.relpath(fpath, repo_path).replace("\\", "/")
@@ -456,6 +467,7 @@ class ParserService:
                     stem = Path(fname).stem
                     module_map[stem] = rel_path
                     module_map[rel_path] = rel_path
+                    parsed_count += 1
                 except Exception:
                     pass
 

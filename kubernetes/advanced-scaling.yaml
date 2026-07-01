@@ -4,13 +4,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: codeflow-backend-hpa
-  namespace: codeflow
+  name: onramp-backend-hpa
+  namespace: onramp
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: codeflow-backend
+    name: onramp-backend
   minReplicas: 3  # Increased from 2 for better availability
   maxReplicas: 20  # Increased for high traffic scenarios
   behavior:
@@ -72,13 +72,13 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: codeflow-celery-worker-hpa
-  namespace: codeflow
+  name: onramp-celery-worker-hpa
+  namespace: onramp
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: codeflow-celery-worker
+    name: onramp-celery-worker
   minReplicas: 2
   maxReplicas: 15  # More workers for heavy async processing
   behavior:
@@ -132,7 +132,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: redis-sentinel-config
-  namespace: codeflow
+  namespace: onramp
 data:
   sentinel.conf: |
     port 26379
@@ -145,7 +145,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis-sentinel
-  namespace: codeflow
+  namespace: onramp
 spec:
   serviceName: redis-sentinel
   replicas: 3  # Quorum of 3 sentinels
@@ -184,7 +184,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-sentinel
-  namespace: codeflow
+  namespace: onramp
 spec:
   ports:
     - port: 26379
@@ -200,7 +200,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis-master
-  namespace: codeflow
+  namespace: onramp
 spec:
   serviceName: redis-master
   replicas: 1
@@ -250,7 +250,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-master
-  namespace: codeflow
+  namespace: onramp
 spec:
   ports:
     - port: 6379
@@ -263,7 +263,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis-replica
-  namespace: codeflow
+  namespace: onramp
 spec:
   serviceName: redis-replica
   replicas: 2  # 2 read replicas
@@ -303,7 +303,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-replica
-  namespace: codeflow
+  namespace: onramp
 spec:
   ports:
     - port: 6379
@@ -318,25 +318,25 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: codeflow-backend-pdb
-  namespace: codeflow
+  name: onramp-backend-pdb
+  namespace: onramp
 spec:
   minAvailable: 2  # Always keep at least 2 pods running
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       tier: backend
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: codeflow-worker-pdb
-  namespace: codeflow
+  name: onramp-worker-pdb
+  namespace: onramp
 spec:
   minAvailable: 1  # Always keep at least 1 worker running
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       tier: worker
 ---
 # ==========================================
@@ -346,7 +346,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: backend-network-policy
-  namespace: codeflow
+  namespace: onramp
 spec:
   podSelector:
     matchLabels:
@@ -396,8 +396,8 @@ spec:
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: codeflow-quota
-  namespace: codeflow
+  name: onramp-quota
+  namespace: onramp
 spec:
   hard:
     requests.cpu: "50"  # Max 50 CPU cores across namespace
@@ -413,23 +413,23 @@ spec:
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: codeflow-critical
+  name: onramp-critical
 value: 1000000
 globalDefault: false
-description: "Critical CodeFlow application components"
+description: "Critical onramp application components"
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: codeflow-high
+  name: onramp-high
 value: 100000
 globalDefault: false
-description: "High priority CodeFlow components"
+description: "High priority onramp components"
 ---
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
-  name: codeflow-normal
+  name: onramp-normal
 value: 10000
 globalDefault: true
-description: "Normal priority CodeFlow components"
+description: "Normal priority onramp components"

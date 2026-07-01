@@ -9,7 +9,7 @@ terraform {
   }
   
   backend "gcs" {
-    bucket = "codeflow-tf-state"
+    bucket = "onramp-tf-state"
     prefix = "prod"
   }
 }
@@ -51,7 +51,7 @@ resource "google_project_service" "services" {
 }
 
 resource "google_container_cluster" "primary" {
-  name     = "codeflow-${var.environment}"
+  name     = "onramp-${var.environment}"
   location = var.gcp_region
   
   remove_default_node_pool = true
@@ -71,7 +71,7 @@ resource "google_container_cluster" "primary" {
 }
 
 resource "google_container_node_pool" "primary_nodes" {
-  name       = "codeflow-nodes"
+  name       = "onramp-nodes"
   location   = var.gcp_region
   cluster    = google_container_cluster.primary.name
   node_count = 3
@@ -98,8 +98,8 @@ resource "google_firestore_database" "default" {
   location_id = var.gcp_region
 }
 
-resource "google_storage_bucket" "codeflow_bucket" {
-  name          = "${var.gcp_project}-codeflow"
+resource "google_storage_bucket" "onramp_bucket" {
+  name          = "${var.gcp_project}-onramp"
   location      = var.gcp_region
   storage_class = "STANDARD"
   
@@ -142,9 +142,9 @@ resource "google_secret_manager_secret" "secrets" {
 
 resource "google_artifact_registry_repository" "docker_repo" {
   location      = var.gcp_region
-  name          = "codeflow-docker"
+  name          = "onramp-docker"
   repository_id = "docker"
-  description   = "Docker repository for CodeFlow"
+  description   = "Docker repository for onramp"
   format        = "DOCKER"
   
   docker_config {
@@ -153,12 +153,12 @@ resource "google_artifact_registry_repository" "docker_repo" {
 }
 
 resource "google_cloudbuild_trigger" "deploy_trigger" {
-  name        = "codeflow-deploy-${var.environment}"
+  name        = "onramp-deploy-${var.environment}"
   description = "Deploy to GKE on main branch push"
   
   github {
     owner = "your-org"
-    name  = "codeflow"
+    name  = "onramp"
     pull_request {
       branch = "^main$"
       comment_control = "COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS"
@@ -168,7 +168,7 @@ resource "google_cloudbuild_trigger" "deploy_trigger" {
   build {
     step {
       name = "gcr.io/google.com/cloudsdktool/cloud-sdk"
-      args = ["run", "deploy", "codeflow-${var.environment}", "--image", "gcr.io/$PROJECT_ID/${var.environment}/app:latest"]
+      args = ["run", "deploy", "onramp-${var.environment}", "--image", "gcr.io/$PROJECT_ID/${var.environment}/app:latest"]
     }
   }
 }

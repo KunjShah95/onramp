@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: codeflow-frontend
+  name: onramp-frontend
   labels:
-    app: codeflow
+    app: onramp
     tier: frontend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       tier: frontend
   template:
     metadata:
       labels:
-        app: codeflow
+        app: onramp
         tier: frontend
     spec:
       containers:
         - name: frontend
-          image: codeflow/frontend:latest
+          image: onramp/frontend:latest
           ports:
             - containerPort: 80
           resources:
@@ -36,7 +36,7 @@ metadata:
   name: frontend-service
 spec:
   selector:
-    app: codeflow
+    app: onramp
     tier: frontend
   ports:
     - protocol: TCP
