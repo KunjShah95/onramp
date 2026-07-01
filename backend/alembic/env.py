@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app.database.config import Base
 from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord
 
+from dotenv import load_dotenv
+load_dotenv()
+
 config = context.config
 
 if config.config_file_name is not None:
@@ -24,10 +27,23 @@ target_metadata = Base.metadata
 
 def get_url():
     """Get database URL from environment or config"""
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow"
-    )
+    env = os.getenv("ENV", os.getenv("ENVIRONMENT", "production")).lower()
+    is_production = env == "production"
+
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        if is_production:
+            raise RuntimeError(
+                "DATABASE_URL environment variable is required in production. "
+                "Refusing to start with insecure default credentials "
+                "(postgres:postgres@localhost). Set DATABASE_URL explicitly."
+            )
+        url = "postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow"
+
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    return url
 
 
 def run_migrations_offline() -> None:
