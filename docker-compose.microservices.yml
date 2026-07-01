@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # API Gateway
   gateway:
-    build: ./services/gateway
+    build: ./backend/services/gateway
     ports:
       - "3000:3000"
     environment:
@@ -30,7 +30,7 @@ services:
 
   # User Service
   user-service:
-    build: ./services/user-service
+    build: ./backend/services/user-service
     ports:
       - "3001:3001"
     environment:
@@ -46,7 +46,7 @@ services:
 
   # Repository Analysis Service
   repo-analysis:
-    build: ./services/repo-analysis
+    build: ./backend/services/repo-analysis
     ports:
       - "3002:3002"
     environment:
@@ -55,7 +55,7 @@ services:
 
   # Learning Path Service
   learning-path:
-    build: ./services/learning-path
+    build: ./backend/services/learning-path
     ports:
       - "3003:3003"
     environment:
@@ -63,7 +63,7 @@ services:
 
   # AI Tutor Service
   ai-tutor:
-    build: ./services/ai-tutor
+    build: ./backend/services/ai-tutor
     ports:
       - "3004:3004"
     environment:
@@ -71,7 +71,7 @@ services:
 
   # Team Analytics Service
   team-analytics:
-    build: ./services/team-analytics
+    build: ./backend/services/team-analytics
     ports:
       - "3005:3005"
     environment:
@@ -79,19 +79,19 @@ services:
 
   # Knowledge Compiler Service (LLM Wiki Pattern)
   knowledge-compiler:
-    build: ./services/knowledge-compiler
+    build: ./backend/services/knowledge-compiler
     ports:
       - "3007:3007"
     environment:
       - PORT=3007
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     volumes:
-      - ./services/knowledge-compiler/wiki:/app/wiki
-      - ./services/knowledge-compiler/repos:/app/repos
+      - ./backend/services/knowledge-compiler/wiki:/app/wiki
+      - ./backend/services/knowledge-compiler/repos:/app/repos
 
   # Waitlist Service
   waitlist-service:
-    build: ./services/waitlist-service
+    build: ./backend/services/waitlist-service
     ports:
       - "3008:3008"
     environment:
@@ -104,7 +104,7 @@ services:
 
   # Notification Service
   notification:
-    build: ./services/notification
+    build: ./backend/services/notification
     ports:
       - "3006:3006"
     environment:

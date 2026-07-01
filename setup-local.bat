@@ -81,7 +81,7 @@ echo ======================================
 echo.
 echo To start development:
 echo.
-echo Terminal 1 - Backend:
+echo Terminal 1 - Backend (includes Waitlist):
 echo   cd backend
 echo   venv\Scripts\activate.bat
 echo   uvicorn app.main:app --reload
@@ -90,15 +90,11 @@ echo Terminal 2 - Frontend:
 echo   cd web
 echo   npm run dev
 echo.
-echo Terminal 3 - Waitlist Service:
-echo   cd services\waitlist-service
-echo   python run.py
-echo.
 echo ======================================
 echo Then open in browser:
 echo   Frontend: http://localhost:5173
 echo   Backend API: http://localhost:8000
-echo   Waitlist Service: http://localhost:3008
+echo   Waitlist API: http://localhost:8000/api/v1/waitlist/count
 echo   API Docs: http://localhost:8000/docs
 echo.
 echo 📝 Don't forget to update credentials in .env and .env.local

@@ -45,3 +45,5 @@ tree-sitter-json                # JSON parser
 tree-sitter-html                # HTML parser
 tree-sitter-css                 # CSS parser
 tree-sitter-sql                 # SQL parser
+gspread>=6.1.0
+email-validator>=2.0.0

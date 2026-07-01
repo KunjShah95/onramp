@@ -35,21 +35,9 @@ services:
         sync: false
       - key: SENDGRID_API_KEY
         sync: false
-
-  # 2. Waitlist Service
-  - type: web
-    name: waitlist-service
-    runtime: docker
-    dockerfilePath: ./services/waitlist-service/Dockerfile
-    dockerContext: ./services/waitlist-service
-    plan: free
-    envVars:
-      # Required Secrets / Custom Configs (User must fill in Render Dashboard)
       - key: GOOGLE_CREDENTIALS_JSON
         sync: false
       - key: GOOGLE_SHEET_ID
-        sync: false
-      - key: SENDGRID_API_KEY
         sync: false
       - key: SENDGRID_FROM_EMAIL
         value: noreply@codeflow.dev

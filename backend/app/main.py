@@ -21,7 +21,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
-from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router, admin as admin_router, quiz as quiz_router, digest as digest_router
+from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router, admin as admin_router, quiz as quiz_router, digest as digest_router, waitlist
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
 # Configure basic logging
@@ -57,6 +57,17 @@ _cors_origins = [
     if origin.strip()
 ]
 
+app.add_middleware(AuthMiddleware, public_paths=[
+    "/", "/docs", "/openapi.json", "/health",
+    "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
+    "/api/v1/billing/pricing",   # public pricing config
+    "/api/v1/ai/tiers",          # public tier config
+    "/api/v1/waitlist/join",     # public waitlist join
+    "/api/v1/waitlist/count",    # public waitlist count
+])
+app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
+app.add_middleware(ResponseWrapperMiddleware)
+app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -64,15 +75,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/docs", "/openapi.json", "/health",
-    "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
-    "/api/v1/billing/pricing",   # public pricing config
-    "/api/v1/ai/tiers",          # public tier config
-])
-app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
-app.add_middleware(ResponseWrapperMiddleware)
-app.add_middleware(LoggingMiddleware)
 
 llm_client = LLMClient()
 app.state.llm = llm_client
@@ -101,6 +103,7 @@ app.include_router(invites_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
+app.include_router(waitlist.router, prefix="/api/v1")
 
 
 @app.get("/")
