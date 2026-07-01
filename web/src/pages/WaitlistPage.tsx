@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ShaderBackground from '../components/ui/ShaderBackground'
 import Spotlight from '../components/ui/spotlight'
+import { useToast } from '../context/ToastContext'
 
 const WAITLIST_URL = `${import.meta.env.VITE_WAITLIST_URL ?? 'http://localhost:3008'}/api/v1/waitlist`
 
@@ -34,11 +35,13 @@ export default function WaitlistPage() {
   const [success, setSuccess] = useState<{ position: number; message: string } | null>(null)
   const [count, setCount] = useState<number | null>(null)
 
+  const toast = useToast()
+
   useEffect(() => {
     fetch(`${WAITLIST_URL}/count`)
       .then(r => r.json())
       .then(d => setCount(d.count))
-      .catch(() => {})
+      .catch(() => toast.error('Failed to load waitlist count'))
   }, [])
 
   const handleChange = (
@@ -70,6 +73,7 @@ export default function WaitlistPage() {
       setSuccess({ position: data.position, message: data.message })
     } catch {
       setError('Could not connect. Please try again.')
+      toast.error('Failed to join waitlist', 'Could not connect. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -135,10 +135,12 @@ async def stripe_webhook(request: Request):
     """Stripe webhook receiver. Public, but signature-verified.
 
     Must be in AuthMiddleware public_paths so Stripe (unauthenticated) can call it.
+    Passes the Idempotency-Key header through for duplicate detection.
     """
     payload = await request.body()
     sig = request.headers.get("Stripe-Signature")
-    result = await billing.handle_webhook(payload, sig)
+    idempotency_key = request.headers.get("Idempotency-Key")
+    result = await billing.handle_webhook(payload, sig, idempotency_key)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result

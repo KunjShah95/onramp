@@ -44,6 +44,7 @@ DEFAULT_PREFERENCES = {
         "system_alert": True,
         "pr_merged": True,
         "milestone_reached": True,
+        "quiz_graded": True,
     },
     "email": {
         "task_assigned": True,
@@ -59,6 +60,7 @@ DEFAULT_PREFERENCES = {
         "system_alert": True,
         "pr_merged": True,
         "milestone_reached": True,
+        "quiz_graded": True,
     },
     "slack": {
         "task_assigned": False,
@@ -137,6 +139,7 @@ NOTIFICATION_TYPE_LABELS = {
     "system_alert": "System Alert",
     "pr_merged": "PR Merged",
     "milestone_reached": "Milestone Reached",
+    "quiz_graded": "Quiz Graded",
 }
 
 CHANNEL_LABELS = {

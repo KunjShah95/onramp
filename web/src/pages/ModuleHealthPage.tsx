@@ -4,10 +4,15 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { listTasks, getTeamMembers, listTeams, type WorkflowTask } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import PageTransition from '../components/ui/page-transition'
+import {
+  SkeletonHeading,
+  StatsGridSkeleton,
+} from '../components/ui/Skeleton'
 import {
   ResponsiveContainer, Tooltip,
   PieChart, Pie, Cell,
@@ -22,6 +27,7 @@ export default function ModuleHealthPage() {
   const { moduleName } = useParams()
   const navigate = useNavigate()
   const { activeTeamId } = useAuth()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [members, setMembers] = useState<{ user_id: string; name: string; role: string }[]>([])
@@ -38,10 +44,14 @@ export default function ModuleHealthPage() {
       }
 
       await Promise.all([
-        listTasks({ team_id: teamId || undefined }).then((r: any) => {
-          setTasks((r.tasks || []).filter((t: WorkflowTask) => t.module === moduleName))
-        }).catch(() => {}),
-        teamId ? getTeamMembers(teamId).then(setMembers).catch(() => {}) : Promise.resolve(),
+        listTasks({ team_id: teamId || undefined })
+          .then((r: any) => {
+            setTasks((r.tasks || []).filter((t: WorkflowTask) => t.module === moduleName))
+          })
+          .catch(() => toast.error('Failed to load tasks')),
+        teamId
+          ? getTeamMembers(teamId).then(setMembers).catch(() => toast.error('Failed to load team members'))
+          : Promise.resolve(),
       ])
       setLoading(false)
     }
@@ -85,11 +95,9 @@ export default function ModuleHealthPage() {
         </button>
 
         {loading ? (
-          <div className="space-y-4">
-            <div className="h-8 w-48 bg-[#0D0906] rounded animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[1,2,3,4].map(i => <div key={i} className="h-24 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />)}
-            </div>
+          <div className="space-y-4 animate-in">
+            <SkeletonHeading className="w-48 h-8" />
+            <StatsGridSkeleton count={4} />
           </div>
         ) : (
           <>

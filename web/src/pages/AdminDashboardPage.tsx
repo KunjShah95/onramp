@@ -24,6 +24,11 @@ import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import Pagination from '../components/ui/Pagination'
 import SearchInput from '../components/ui/SearchInput'
+import {
+  SkeletonBase,
+  SkeletonHeading,
+  StatsGridSkeleton,
+} from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -134,11 +139,11 @@ export default function AdminDashboardPage() {
   // ── Fetch on mount ──────────────────────────────────────────
   useEffect(() => {
     Promise.all([
-      adminGetUsage('month').then(setUsage).catch(() => {}),
-      adminGetTeamUsage().then(d => setTeamUsage(d.teams)).catch(() => {}),
-      adminListApiKeys().then(d => setAllKeys(d.keys)).catch(() => {}),
-      adminListAuditEvents({ limit: 100 }).then(d => setAuditEvents(d.events)).catch(() => {}),
-      adminListWebhooks(!showActiveOnly).then(d => setAllWebhooks(d.webhooks)).catch(() => {}),
+      adminGetUsage('month').then(setUsage).catch(() => toast.error('Failed to load usage data')),
+      adminGetTeamUsage().then(d => setTeamUsage(d.teams)).catch(() => toast.error('Failed to load team usage')),
+      adminListApiKeys().then(d => setAllKeys(d.keys)).catch(() => toast.error('Failed to load API keys')),
+      adminListAuditEvents({ limit: 100 }).then(d => setAuditEvents(d.events)).catch(() => toast.error('Failed to load audit events')),
+      adminListWebhooks(!showActiveOnly).then(d => setAllWebhooks(d.webhooks)).catch(() => toast.error('Failed to load webhooks')),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -151,7 +156,9 @@ export default function AdminDashboardPage() {
         limit: 100,
       })
       setAuditEvents(data.events)
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to filter audit events')
+    }
     setAuditLoading(false)
   }
 
@@ -162,7 +169,9 @@ export default function AdminDashboardPage() {
       if (auditFilterEvent) params.event_type = auditFilterEvent
       const data = await adminListAuditEvents(params)
       setAuditEvents(data.events)
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to refresh audit events')
+    }
     setAuditLoading(false)
   }
 
@@ -172,7 +181,9 @@ export default function AdminDashboardPage() {
     try {
       const data = await adminListAuditEvents({ limit: 100 })
       setAuditEvents(data.events)
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to clear audit filter')
+    }
     setAuditLoading(false)
   }
 
@@ -298,15 +309,11 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6 animate-pulse">
-          <div className="h-8 w-64 bg-[#FDFBF8]/5 rounded" />
-          <div className="h-4 w-48 bg-[#FDFBF8]/5 rounded" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 bg-[#FDFBF8]/5 rounded-xl" />
-            ))}
-          </div>
-          <div className="h-64 bg-[#FDFBF8]/5 rounded-xl" />
+        <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
+          <SkeletonHeading className="w-64" />
+          <SkeletonBase className="h-4 w-48" />
+          <StatsGridSkeleton count={4} />
+          <SkeletonBase className="h-64 w-full rounded-xl" />
         </div>
       </PageTransition>
     )
@@ -714,7 +721,9 @@ export default function AdminDashboardPage() {
                   try {
                     const data = await adminListApiKeys(showRevoked)
                     setAllKeys(data.keys)
-                  } catch { /* ignore */ }
+                  } catch {
+                    toast.error('Failed to refresh API keys')
+                  }
                   setKeysLoading(false)
                 }}
                 disabled={keysLoading}
@@ -871,8 +880,10 @@ export default function AdminDashboardPage() {
                   try {
                     const data = await adminListWebhooks(!showActiveOnly)
                     setAllWebhooks(data.webhooks)
-                  } catch { /* ignore */ }
-                  setWebhooksLoading(false)
+              } catch {
+                  toast.error('Failed to refresh webhooks')
+                }
+              setWebhooksLoading(false)
                 }}
                 disabled={webhooksLoading}
                 className="bg-[#FDFBF8]/5 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/70 border border-[#FDFBF8]/8 px-3 py-2 rounded-lg text-xs transition-colors disabled:opacity-50 shrink-0"
@@ -957,7 +968,9 @@ export default function AdminDashboardPage() {
                                     ok: result.success,
                                   })
                                   setTimeout(() => setWebhookTestResult(null), 3000)
-                                } catch { /* ignore */ }
+                              } catch {
+                                  toast.error('Failed to rotate webhook secret')
+                                }
                                 setTestingWebhookId(null)
                               }}
                               disabled={testingWebhookId === wh.webhook_id || !wh.active}
@@ -974,6 +987,7 @@ export default function AdminDashboardPage() {
                                   const data = await adminGetWebhookDeliveries(wh.webhook_id)
                                   setDeliveriesModal({ webhookId: wh.webhook_id, deliveries: data.deliveries, loading: false })
                                 } catch {
+                                  toast.error('Failed to load webhook deliveries')
                                   setDeliveriesModal({ webhookId: wh.webhook_id, deliveries: [], loading: false })
                                 }
                               }}
@@ -989,7 +1003,9 @@ export default function AdminDashboardPage() {
                                   await adminRotateWebhookSecret(wh.webhook_id)
                                   setWebhookTestResult({ id: wh.webhook_id, msg: '✓ Secret rotated', ok: true })
                                   setTimeout(() => setWebhookTestResult(null), 3000)
-                                } catch { /* ignore */ }
+                              } catch {
+                                  toast.error('Failed to rotate webhook secret')
+                                }
                               }}
                               className="text-[10px] text-yellow-400/50 hover:text-yellow-400 px-2 py-1 rounded border border-[#FDFBF8]/10 transition-colors"
                               title="Rotate signing secret"
@@ -1003,7 +1019,9 @@ export default function AdminDashboardPage() {
                                 try {
                                   await adminDeleteWebhook(wh.webhook_id)
                                   setAllWebhooks(prev => prev.filter(w => w.webhook_id !== wh.webhook_id))
-                                } catch { /* ignore */ }
+                              } catch {
+                                  toast.error('Failed to delete webhook')
+                                }
                               }}
                               className="text-[10px] text-red-400/40 hover:text-red-400 px-2 py-1 rounded border border-[#FDFBF8]/10 transition-colors"
                               title="Delete webhook"

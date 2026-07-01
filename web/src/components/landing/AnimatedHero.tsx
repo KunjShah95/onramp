@@ -4,21 +4,7 @@ export default function AnimatedHero() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      <iframe
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'max(100vw, 56.25vh)',
-          height: 'max(177.78vw, 100vh)',
-          pointerEvents: 'none',
-        }}
-        src="https://www.youtube.com/embed/nD4TQtF1baM?autoplay=1&mute=1&controls=0&loop=1&playlist=nD4TQtF1baM&playsinline=1&modestbranding=1&disablekb=1"
-        allow="autoplay; encrypted-media"
-        frameBorder="0"
-        tabIndex={-1}
-      ></iframe>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#020617] z-0"></div>
       <div className="absolute inset-0 bg-slate-900/40 z-0 pointer-events-none"></div>
 
       {/* Navigation Bar */}

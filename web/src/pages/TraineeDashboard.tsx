@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { fetchTraineeDashboard, type TraineeDashboardResponse } from '../lib/api'
+import { fetchTraineeDashboard } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
@@ -17,34 +17,15 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
-const POLL_INTERVAL_MS = 30_000
-
 export default function TraineeDashboard() {
-  const [data, setData] = useState<TraineeDashboardResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['traineeDashboard'],
+    queryFn: () => fetchTraineeDashboard(),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load(isInitial: boolean) {
-      if (isInitial) setLoading(true)
-      try {
-        const result = await fetchTraineeDashboard()
-        if (!cancelled) { setData(result); setError('') }
-      } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load')
-      } finally {
-        if (isInitial && !cancelled) setLoading(false)
-      }
-    }
-
-    load(true)
-    const timer = setInterval(() => load(false), POLL_INTERVAL_MS)
-    return () => { cancelled = true; clearInterval(timer) }
-  }, [])
-
-  if (loading) {
+  if (isLoading) {
     return <TraineeDashboardSkeleton />
   }
 
@@ -52,13 +33,13 @@ export default function TraineeDashboard() {
     return (
       <div className="animate-in w-full min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <div className="text-center max-w-md">
-          <p className="text-red-400 font-mono text-sm mb-2">{error || 'Failed to load dashboard'}</p>
+          <p className="text-red-400 font-mono text-sm mb-2">{(error as Error)?.message || 'Failed to load dashboard'}</p>
         </div>
       </div>
     )
   }
 
-  const { progress, modules, recent_tasks } = data
+  const { progress, modules, recent_tasks } = data!
   const modulesBySource = {
     task: modules.filter((m) => m.source === 'task_completion').length,
     manual: modules.filter((m) => m.source === 'manual').length,

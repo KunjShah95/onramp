@@ -9,6 +9,10 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import PageTransition from '../components/ui/page-transition'
+import {
+  SkeletonBase,
+  StatsGridSkeleton,
+} from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
@@ -53,7 +57,9 @@ export default function ReviewQueuePage() {
       const data = await listTeams('current-user')
       setTeams(data.teams || [])
       if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id)
-    } catch { /* ignore */ }
+    } catch (e) {
+      toast.error('Failed to load teams', e instanceof Error ? e.message : undefined)
+    }
   }, [])
 
   const fetchTasks = useCallback(async () => {
@@ -64,8 +70,10 @@ export default function ReviewQueuePage() {
       // Only show review-eligible states
       setTasks(tasks.filter(t =>
         ['submitted', 'under_review', 'needs_changes', 'product_review', 'approved'].includes(t.state)
-      ))
-    } catch (e: any) { setError(e.message || 'Failed to load') }
+      ))      } catch (e: any) {
+        setError(e.message || 'Failed to load')
+        toast.error('Failed to load review tasks', e.message)
+      }
     setLoading(false)
   }, [selectedTeam])
 
@@ -204,10 +212,13 @@ export default function ReviewQueuePage() {
 
         {/* Review list */}
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />
-            ))}
+          <div className="space-y-6">
+            <StatsGridSkeleton count={5} />
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <SkeletonBase key={i} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
           </div>
         ) : filteredTasks.length === 0 ? (
           <CardSpotlight className="py-12 text-center">

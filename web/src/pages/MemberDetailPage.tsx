@@ -4,9 +4,16 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { listTasks, getTeamMembers, getUserModulePermissions, getUserProgress, listTeams, type WorkflowTask } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import CardSpotlight from '../components/ui/card-spotlight'
 import StatusBadge from '../components/ui/status-badge'
 import PageTransition from '../components/ui/page-transition'
+import {
+  SkeletonHeading,
+  SkeletonText,
+  SkeletonBase,
+  StatsGridSkeleton,
+} from '../components/ui/Skeleton'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from 'recharts'
@@ -20,6 +27,7 @@ export default function MemberDetailPage() {
   const { userId } = useParams()
   const navigate = useNavigate()
   const { activeTeamId } = useAuth()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [member, setMember] = useState<{ user_id: string; name: string; role: string } | null>(null)
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
@@ -39,12 +47,16 @@ export default function MemberDetailPage() {
       if (!teamId) { setLoading(false); return }
 
       await Promise.all([
-        listTasks({ assigned_to: userId }).then((r: any) => setTasks(r.tasks || [])).catch(() => {}),
+        listTasks({ assigned_to: userId })
+          .then((r: any) => setTasks(r.tasks || []))
+          .catch(() => toast.error('Failed to load tasks')),
         getTeamMembers(teamId).then(members => {
           const m = members.find(m => m.user_id === userId)
           if (m) setMember(m)
-        }).catch(() => {}),
-        getUserModulePermissions(teamId, userId).then(r => setModules(r.modules || [])).catch(() => {}),
+        }).catch(() => toast.error('Failed to load member details')),
+        getUserModulePermissions(teamId, userId)
+          .then(r => setModules(r.modules || []))
+          .catch(() => {}),
         getUserProgress(userId, teamId).catch(() => {}),
       ])
       setLoading(false)
@@ -81,17 +93,15 @@ export default function MemberDetailPage() {
         </button>
 
         {loading ? (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#0D0906] border border-[#FDFBF8]/5 animate-pulse" />
+              <SkeletonBase className="h-12 w-12 rounded-xl" />
               <div className="space-y-2">
-                <div className="h-6 w-32 bg-[#0D0906] rounded animate-pulse" />
-                <div className="h-3 w-20 bg-[#0D0906] rounded animate-pulse" />
+                <SkeletonHeading className="w-32 h-6" />
+                <SkeletonText className="w-20 h-3" />
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[1,2,3,4].map(i => <div key={i} className="h-24 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />)}
-            </div>
+            <StatsGridSkeleton count={4} />
           </div>
         ) : (
           <>

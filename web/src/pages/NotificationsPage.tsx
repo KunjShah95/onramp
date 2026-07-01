@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
   listNotifications, getUnreadCount, markNotificationsRead,
   markAllNotificationsRead, deleteNotification, clearReadNotifications,
-  type CodeFlowNotification,
 } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
@@ -40,67 +40,70 @@ const TYPE_ICON_COLORS: Record<string, string> = {
 
 export default function NotificationsPage() {
   const toast = useToast()
-  const [notifications, setNotifications] = useState<CodeFlowNotification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const fetchData = useCallback(async () => {
-    setLoading(true); setError('')
-    try {
-      const data = await listNotifications({ type_filter: filter || undefined, limit: 100 })
-      setNotifications(data.notifications)
-      const { unread_count } = await getUnreadCount()
-      setUnreadCount(unread_count)
-    } catch (e: any) { setError(e.message || 'Failed to load notifications') }
-    setLoading(false)
-  }, [filter])
+  const { data: notifData, isLoading: loading, error } = useQuery({
+    queryKey: ['notifications', filter],
+    queryFn: () => listNotifications({ type_filter: filter || undefined, limit: 100 }),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  })
 
-  useEffect(() => { fetchData() }, [fetchData])
+  const { data: unreadData } = useQuery({
+    queryKey: ['unreadCount'],
+    queryFn: getUnreadCount,
+    refetchInterval: 30_000,
+    staleTime: 5_000,
+  })
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try { const { unread_count } = await getUnreadCount(); setUnreadCount(unread_count) } catch { /* ignore */ }
-    }, 30_000)
-    return () => clearInterval(interval)
-  }, [])
+  const notifications = notifData?.notifications ?? []
+  const unreadCount = unreadData?.unread_count ?? 0
 
-  async function handleMarkRead(ids: string[]) {
-    try {
-      await markNotificationsRead(ids)
-      setNotifications((prev) => prev.map((n) =>
-        ids.includes(n.notification_id) ? { ...n, read: true, read_at: new Date().toISOString() } : n
-      ))
-      setUnreadCount((prev) => Math.max(0, prev - ids.length))
-      setSelectedIds(new Set())
-    } catch { /* ignore */ }
-  }
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    queryClient.invalidateQueries({ queryKey: ['unreadCount'] })
+  }, [queryClient])
 
-  async function handleMarkAllRead() {
-    try {
-      await markAllNotificationsRead()
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() })))
-      setUnreadCount(0)
-      toast.success('All marked as read')
-    } catch { /* ignore */ }
-  }
+  const markReadMutation = useMutation({
+    mutationFn: (ids: string[]) => markNotificationsRead(ids),
+    onSuccess: () => { invalidate(); setSelectedIds(new Set()) },
+  })
 
-  async function handleDelete(id: string) {
-    try {
-      await deleteNotification(id)
-      setNotifications((prev) => prev.filter((n) => n.notification_id !== id))
+  const markAllReadMutation = useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: () => { invalidate(); toast.success('All marked as read') },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteNotification(id),
+    onSuccess: () => {
+      invalidate()
       toast.info('Notification removed')
-    } catch { /* ignore */ }
+      setSelectedIds(new Set())
+    },
+  })
+
+  const clearReadMutation = useMutation({
+    mutationFn: clearReadNotifications,
+    onSuccess: () => { invalidate(); toast.info('Read notifications cleared') },
+  })
+
+  function handleMarkRead(ids: string[]) {
+    markReadMutation.mutate(ids)
   }
 
-  async function handleClearRead() {
-    try {
-      await clearReadNotifications()
-      setNotifications((prev) => prev.filter((n) => !n.read))
-      toast.info('Read notifications cleared')
-    } catch { /* ignore */ }
+  function handleMarkAllRead() {
+    markAllReadMutation.mutate()
+  }
+
+  function handleDelete(id: string) {
+    deleteMutation.mutate(id)
+  }
+
+  function handleClearRead() {
+    clearReadMutation.mutate()
   }
 
   function toggleSelect(id: string) {
@@ -185,7 +188,7 @@ export default function NotificationsPage() {
       />
 
       {error && (
-        <div className="mb-5 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>
+        <div className="mb-5 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{(error as Error)?.message}</div>
       )}
 
       {/* Filter chips */}

@@ -10,6 +10,7 @@ from app.agents.pattern_recognition import PatternRecognition
 from app.agents.regression_test_generator import RegressionTestGenerator
 from app.agents.pr_review import PRReviewAgent
 from app.agents.task_qa import TaskQA
+from app.agents.quiz_generator import QuizGenerator
 
 __all__ = [
     "BaseAgent",
@@ -24,4 +25,5 @@ __all__ = [
     "RegressionTestGenerator",
     "PRReviewAgent",
     "TaskQA",
+    "QuizGenerator",
 ]

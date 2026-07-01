@@ -41,6 +41,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
+const LandingPageV2 = lazy(() => import('./pages/LandingPageV2'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
@@ -82,6 +83,11 @@ export default function App() {
               <Route path="/" element={
                 <Suspense fallback={<LandingLoadingFallback />}>
                   <ErrorBoundary><LandingPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/test-landing" element={
+                <Suspense fallback={<LandingLoadingFallback />}>
+                  <ErrorBoundary><LandingPageV2 /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/pricing" element={

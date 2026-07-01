@@ -5,6 +5,11 @@ import { listTasks, listTeams, fetchRepos, type WorkflowTask } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
+import {
+  SkeletonBase,
+  StatsGridSkeleton,
+} from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -21,6 +26,7 @@ const itemVariants = {
 }
 
 export default function CodeHealthPage() {
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [repos, setRepos] = useState<any[]>([])
   const [selectedRepo, setSelectedRepo] = useState('')
@@ -29,12 +35,16 @@ export default function CodeHealthPage() {
 
   useEffect(() => {
     Promise.all([
-      fetchRepos().then(d => { setRepos(d.repos || []); if (d.repos?.length > 0) setSelectedRepo(`${d.repos[0].owner}/${d.repos[0].name}`) }).catch(() => {}),
+      fetchRepos()
+        .then(d => { setRepos(d.repos || []); if (d.repos?.length > 0) setSelectedRepo(`${d.repos[0].owner}/${d.repos[0].name}`) })
+        .catch(() => toast.error('Failed to load repositories')),
       listTeams('current-user').then(d => {
         if (d.teams?.length > 0) {
-          return listTasks({ team_id: d.teams[0].team_id }).then((r: any) => setTasks(r.tasks || [])).catch(() => {})
+          return listTasks({ team_id: d.teams[0].team_id })
+            .then((r: any) => setTasks(r.tasks || []))
+            .catch(() => toast.error('Failed to load tasks'))
         }
-      }).catch(() => {}),
+      }).catch(() => toast.error('Failed to load teams')),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -103,11 +113,9 @@ export default function CodeHealthPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[1,2,3,4].map(i => <div key={i} className="h-28 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />)}
-            </div>
-            <div className="h-64 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />
+          <div className="space-y-6 animate-in">
+            <StatsGridSkeleton count={4} />
+            <SkeletonBase className="h-64 w-full rounded-xl" />
           </div>
         ) : (
           <>

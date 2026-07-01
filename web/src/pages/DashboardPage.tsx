@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { fetchCTODashboard, fetchHealthScore, fetchRepos, type CTODashboardResponse } from '../lib/api'
+import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
@@ -28,29 +29,34 @@ const item = {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [dashboard, setDashboard] = useState<CTODashboardResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'overview' | 'trainees' | 'reviews' | 'activity'>('overview')
-  const [codeHealth, setCodeHealth] = useState<number | null>(null)
 
-  useEffect(() => {
-    fetchCTODashboard()
-      .then(setDashboard)
-      .catch((err) => setError(err.message || 'Failed to load dashboard'))
-      .finally(() => setLoading(false))
+  const { data: dashboard, isLoading, error } = useQuery({
+    queryKey: ['ctoDashboard'],
+    queryFn: fetchCTODashboard,
+    staleTime: 30_000,
+  })
 
-    // Fetch code health score
-    fetchRepos().then(r => {
-      if (r.repos?.length > 0) {
-        fetchHealthScore(r.repos[0].owner, r.repos[0].name, {})
-          .then(d => setCodeHealth(d.overall_score))
-          .catch(() => {})
-      }
-    }).catch(() => {})
-  }, [])
+  const { data: reposData } = useQuery({
+    queryKey: ['repos'],
+    queryFn: fetchRepos,
+    staleTime: 60_000,
+  })
 
-  if (loading) {
+  const { data: healthData } = useQuery({
+    queryKey: ['healthScore', reposData?.repos?.[0]?.owner, reposData?.repos?.[0]?.name],
+    queryFn: () => {
+      const repo = reposData?.repos?.[0]
+      if (!repo) return null
+      return fetchHealthScore(repo.owner, repo.name, {})
+    },
+    enabled: !!reposData?.repos?.length,
+    staleTime: 60_000,
+  })
+
+  const codeHealth = healthData?.overall_score ?? null
+
+  if (isLoading) {
     return (
       <div className="animate-in w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between">
@@ -82,7 +88,7 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           </div>
-          <p className="text-red-400/80 font-mono text-sm mb-1">{error || 'Failed to load dashboard metrics.'}</p>
+          <p className="text-red-400/80 font-mono text-sm mb-1">{(error as Error)?.message || 'Failed to load dashboard metrics.'}</p>
           <p className="text-[#FDFBF8]/20 text-xs font-mono mb-5">Check that the backend is running.</p>
           <button onClick={() => window.location.reload()} className="bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:shadow-[0_0_30px_-8px_#FF8C00]">
             Retry
