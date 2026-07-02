@@ -23,9 +23,7 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      - key: NEON_AUTH_URL
         sync: false
       - key: GITHUB_TOKEN
         sync: false

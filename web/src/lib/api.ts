@@ -8,9 +8,11 @@ import type {
   HistoryTurn,
 } from './types'
 
+// Expected VITE_API_URL format: "http://localhost:8000" or "http://localhost:8000/api/v1"
+// If it already includes /api/v1, the path is not appended again.
 function getApiBaseUrl(): string {
   let url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-  url = url.replace(/\/+$/, '') // strip trailing slashes
+  url = url.replace(/\/+$/, '')
   if (!url.endsWith('/api/v1')) {
     url = `${url}/api/v1`
   }
@@ -279,18 +281,6 @@ export interface TeamAnalyticsResponse {
   members: TeamMemberProgress[]
 }
 
-export interface RepoItem {
-  id: string
-  name: string
-  owner: string
-  status: 'analyzing' | 'ready' | 'error'
-  last_analyzed: string
-}
-
-export interface ReposResponse {
-  repos: RepoItem[]
-}
-
 export interface Milestone {
   id: string
   title: string
@@ -305,9 +295,9 @@ export interface RoadmapResponse {
 
 export interface AnalysisData {
   graph: { nodes: number; edges: number }
-  wiki: { pages: number }
-  drift: { issues: number }
-  tech_debt: { total: number }
+  learning_paths: number
+  first_issues_identified: number
+  health_score: number
   owner: string
   repo: string
 }
@@ -648,7 +638,7 @@ export async function updatePlaybook(
     tags: string[]
   }>
 ): Promise<Playbook> {
-  return request<Playbook>(`${API_BASE}/playbooks/${playbookId}`, data)
+  return request<Playbook>(`${API_BASE}/playbooks/${playbookId}`, data, 'PATCH')
 }
 
 export async function archivePlaybook(
@@ -698,7 +688,8 @@ export async function updateSubscription(
 ): Promise<Subscription> {
   return request<Subscription>(
     `${API_BASE}/billing/subscriptions/${teamId}`,
-    data
+    data,
+    'PATCH'
   )
 }
 
@@ -747,7 +738,7 @@ export interface ApiKey {
   tier: string
   created_at: string
   usage_count: number
-  revoked: boolean
+  is_active: boolean
 }
 
 export interface ApiKeysResponse {
@@ -790,9 +781,11 @@ export async function validateApiKey(
 // ─── Usage ────────────────────────────────────────────────────────────────
 
 export interface UsageRecord {
+  org_name: string
   period: string
   total_credits: number
-  endpoints: Record<string, number>
+  total_requests: number
+  endpoint_breakdown: Record<string, number>
 }
 
 export async function getUsage(
@@ -1227,7 +1220,7 @@ export async function updateTask(taskId: string, data: Partial<{
   unlock_modules: string[]
   estimated_hours: number
 }>): Promise<WorkflowTask> {
-  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}`, data)
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}`, data, 'PATCH')
 }
 
 export async function transitionTask(taskId: string, newState: string, extra?: {
@@ -1385,7 +1378,7 @@ export async function updateNotificationPreferences(data: Partial<{
   quiet_hours_end: string
   email_digest_time: string
 }>): Promise<NotificationPreferences> {
-  return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, data)
+  return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, data, 'PUT')
 }
 
 export async function getNotificationDefaults(): Promise<NotificationPreferencesDefaults> {
@@ -1452,7 +1445,7 @@ export async function updateWebhook(webhookId: string, data: {
   active?: boolean
   description?: string
 }): Promise<Webhook> {
-  return request<Webhook>(`${API_BASE}/integrations/webhooks/${webhookId}`, data)
+  return request<Webhook>(`${API_BASE}/integrations/webhooks/${webhookId}`, data, 'PUT')
 }
 
 export async function deleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
@@ -1482,7 +1475,7 @@ export async function getIntegration(integrationType: string): Promise<Integrati
 }
 
 export async function saveIntegration(integrationType: string, config: Record<string, any>): Promise<IntegrationConfig> {
-  return request<IntegrationConfig>(`${API_BASE}/integrations/${integrationType}`, { config })
+  return request<IntegrationConfig>(`${API_BASE}/integrations/${integrationType}`, { config }, 'PUT')
 }
 
 export async function deleteIntegration(integrationType: string): Promise<{ deleted: boolean }> {

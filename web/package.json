@@ -16,6 +16,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@neondatabase/neon-js": "^0.6.2-beta",
     "@tanstack/react-query": "^5.101.2",
     "@types/d3-drag": "^3.0.7",
     "@types/d3-force": "^3.0.10",
@@ -27,7 +28,6 @@
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
-    "firebase": "^11.1.0",
     "framer-motion": "^11.18.2",
     "hls.js": "^1.6.16",
     "react": "^19.0.0",
