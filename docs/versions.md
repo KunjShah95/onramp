@@ -29,11 +29,11 @@ Shipped: learning path generation, repo Q&A (streaming + memory), architecture e
 ### Tier-1 self-healing (reactive)
 - [x] **LLM provider circuit breaker** — router already has a fallback chain; add per-provider failure-rate tracking, auto-eject a failing provider for N minutes, auto-restore on half-open probe success
 - [x] **Retry with backoff on transient errors** — `tenacity` already in requirements; apply to transient LLM/network errors before falling through the chain
-- [ ] **Dead-letter queue for failed jobs** (digests, emails) — persist failures, auto-replay with backoff
+- [x] **Dead-letter queue for failed jobs** (digests, emails) — persist failures, auto-replay with backoff
 - [x] **Watchdog deep health check** — `/health/deep` verifies DB, Redis, and LLM provider/breaker state (compose already has `restart: unless-stopped`)
 
 ### Feedback capture (cheapest highest-value addition)
-- [ ] Thumbs up/down on every AI output (ask, explore, learn, PR review) — one table, one endpoint, one frontend component
+- [x] Thumbs up/down on every AI output (ask, explore, learn, PR review) — one table, one endpoint (`POST /api/v1/feedback`); frontend widget pending
 
 ---
 
@@ -80,8 +80,8 @@ Shipped: learning path generation, repo Q&A (streaming + memory), architecture e
 | Golden eval harness | v1.1 | ✅ harness + scorer + seed set; CI gating pending |
 | LLM circuit breaker + retry | v1.1 | ✅ implemented |
 | Deep health check | v1.1 | ✅ implemented |
-| Dead-letter queue | v1.1 | 🟢 not started |
-| Feedback capture | v1.1 | 🟢 not started |
+| Dead-letter queue | v1.1 | ✅ implemented (email jobs; replay via `POST /api/v1/admin/dead-letters/replay`) |
+| Feedback capture | v1.1 | ✅ backend implemented; frontend thumbs widget pending |
 | Self-diagnosis agent | v1.2 | 🟢 not started |
 | Schema drift detector | v1.2 | 🟢 not started |
 | Router learning | v1.2 | 🔴 blocked on eval harness CI + feedback data |

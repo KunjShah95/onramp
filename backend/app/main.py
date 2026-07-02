@@ -24,7 +24,8 @@ from app.llm import LLMClient
 from app.api.v1 import (
     admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
-    explore, first_pr, health, integrations as integrations_router,
+    explore, feedback as feedback_router, first_pr, health,
+    integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
     playbooks, pr_review, quiz as quiz_router, reports, slack,
     system_health, tasks as tasks_router, teams, unique, waitlist
@@ -144,6 +145,7 @@ app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
 app.include_router(waitlist.router, prefix="/api/v1")
+app.include_router(feedback_router.router, prefix="/api/v1")
 # Deep health check lives at root (/health/deep) so watchdogs hit it unprefixed
 app.include_router(system_health.router)
 

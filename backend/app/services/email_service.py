@@ -20,16 +20,21 @@ async def send_email(
     subject: str,
     html_body: str,
     from_email: Optional[str] = None,
+    enqueue_on_failure: bool = True,
 ) -> bool:
     """Send an email via SendGrid. Returns True if sent, False if disabled or failed.
 
     Gracefully no-ops if SENDGRID_API_KEY is not set (dev mode).
+    Real delivery failures are dead-lettered for replay unless
+    enqueue_on_failure is False (the DLQ replay path sets it to avoid
+    re-enqueueing its own retries).
     """
     api_key = os.getenv(SENDGRID_API_KEY_ENV)
     if not api_key:
         logger.debug("SendGrid not configured — skipping email to %s", to)
         return False
 
+    error: str
     try:
         import sendgrid
         from sendgrid.helpers.mail import Mail, Email, To, Content
@@ -43,10 +48,30 @@ async def send_email(
         )
         response = sg.client.mail.send.post(request_body=mail.get())
         logger.info("Email sent to %s: %s (status=%s)", to, subject, response.status_code)
-        return 200 <= response.status_code < 300
-    except Exception:
+        if 200 <= response.status_code < 300:
+            return True
+        error = f"SendGrid returned status {response.status_code}"
+    except Exception as exc:
         logger.exception("Failed to send email to %s", to)
-        return False
+        error = str(exc)
+
+    if enqueue_on_failure:
+        try:
+            from app.services.dead_letter_service import DeadLetterService
+
+            await DeadLetterService().record_failure(
+                job_type="email",
+                payload={
+                    "to": to,
+                    "subject": subject,
+                    "html_body": html_body,
+                    "from_email": from_email,
+                },
+                error=error,
+            )
+        except Exception:
+            logger.exception("Failed to dead-letter email to %s", to)
+    return False
 
 
 async def send_invite_email(email: str, invite_link: str, team_name: str, invited_by_name: str) -> bool:

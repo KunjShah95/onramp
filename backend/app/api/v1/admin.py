@@ -189,6 +189,38 @@ async def list_all_audit_events(
     return {"events": events, "count": len(events)}
 
 
+# ── Dead-Letter Queue ───────────────────────────────────────
+
+
+@router.get("/dead-letters")
+async def list_dead_letters(
+    status: Optional[str] = Query(None, pattern="^(pending|resolved|dead)$"),
+    limit: int = Query(100, ge=1, le=500),
+    uid: str = Depends(_require_owner),
+):
+    """Inspect failed background jobs awaiting replay (or buried)."""
+    from app.services.dead_letter_service import DeadLetterService
+
+    service = DeadLetterService()
+    return {
+        "entries": await service.list_entries(status=status, limit=limit),
+        "stats": await service.stats(),
+    }
+
+
+@router.post("/dead-letters/replay")
+async def replay_dead_letters(
+    limit: int = Query(50, ge=1, le=200),
+    uid: str = Depends(_require_owner),
+):
+    """Replay due pending jobs with backoff. Safe to call from an external cron."""
+    from app.services.dead_letter_service import DeadLetterService, email_replay_handler
+
+    service = DeadLetterService()
+    result = await service.replay_due({"email": email_replay_handler()}, limit=limit)
+    return result
+
+
 # ── Admin Webhook Endpoints ─────────────────────────────────
 
 
