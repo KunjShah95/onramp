@@ -1,8 +1,11 @@
 import os
 import hashlib
+import logging
 from typing import Dict, List, Optional
 from pathlib import Path
 from app.services.postgres_db import get_storage, generate_id
+
+logger = logging.getLogger(__name__)
 
 
 class Document:
@@ -78,7 +81,7 @@ class EmbeddingsService:
                     )
                     documents.append(doc)
                 except Exception:
-                    pass
+                    logger.exception("Failed to process file %s", fpath)
 
         # Persist index metadata
         await self.storage.create_document(

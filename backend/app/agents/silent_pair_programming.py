@@ -1,6 +1,8 @@
+import logging
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
 
+logger = logging.getLogger(__name__)
 
 class SilentPairProgramming(BaseAgent):
     async def execute(self, issue_title: str, issue_body: str, repo_structure: Dict) -> Dict[str, Any]:
@@ -33,7 +35,7 @@ class SilentPairProgramming(BaseAgent):
                 if result.get("thought_process"):
                     return result
             except Exception:
-                pass
+                logger.exception("LLM json_chat failed for silent pair programming, using fallback")
 
         return {
             "thought_process": (

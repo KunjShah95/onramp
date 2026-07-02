@@ -29,7 +29,16 @@ def _coerce_aware_datetime(value: Any) -> Optional[datetime]:
 
 
 def hash_api_key(key: str) -> str:
-    """Hash an API key using SHA-256"""
+    """Hash an API key using HMAC-SHA256 with a server-side pepper.
+    
+    The pepper (API_KEY_HMAC_SECRET) adds defense-in-depth: even if the
+    hash column is leaked, keys cannot be brute-forced without the pepper.
+    Falls back to raw SHA-256 if no pepper is configured (acceptable given
+    the high entropy of the key format: cf_ + token_urlsafe(32)).
+    """
+    pepper = os.getenv("API_KEY_HMAC_SECRET", "")
+    if pepper:
+        return hmac.new(pepper.encode(), key.encode(), hashlib.sha256).hexdigest()
     return hashlib.sha256(key.encode()).hexdigest()
 
 

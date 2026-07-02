@@ -210,7 +210,7 @@ class GitHubService:
                 try:
                     os.unlink(askpass_path)
                 except OSError:
-                    pass
+                    logger.warning("Failed to remove askpass file %s", askpass_path)
 
     @retry(
         stop=stop_after_attempt(3),

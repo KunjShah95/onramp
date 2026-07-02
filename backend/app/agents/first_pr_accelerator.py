@@ -194,7 +194,7 @@ class FirstPRAccelerator(BaseAgent):
                 if result.get("steps") and len(result["steps"]) >= 3:
                     return result
             except Exception:
-                pass
+                logger.exception("LLM json_chat failed for first PR accelerator, using fallback")
 
         # Fallback default implementation
         files_to_touch = []

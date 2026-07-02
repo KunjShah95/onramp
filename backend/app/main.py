@@ -21,15 +21,51 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
-from app.api.v1 import explore, learn, first_pr, ask, reports, health, slack, contributor, unique, dashboard, ai_gateway, teams, playbooks, billing, auth, pr_review, tasks as tasks_router, notifications as notifications_router, integrations as integrations_router, audit as audit_router, invites as invites_router, admin as admin_router, quiz as quiz_router, digest as digest_router, waitlist
+from app.api.v1 import (
+    admin as admin_router, ai_gateway, ask, audit as audit_router,
+    auth, billing, contributor, dashboard, digest as digest_router,
+    explore, first_pr, health, integrations as integrations_router,
+    invites as invites_router, learn, notifications as notifications_router,
+    playbooks, pr_review, quiz as quiz_router, reports, slack,
+    tasks as tasks_router, teams, unique, waitlist
+)
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 
+_LLM_KEY_VARS = (
+    "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
+    "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+)
+
+
+def _validate_production_env() -> None:
+    """Fail fast on boot if production is missing config it needs at runtime.
+
+    Each of these already hard-fails at call time (Stripe webhook, GitHub
+    token encryption, rate limiter), but discovering that on the first
+    request is worse than refusing to start.
+    """
+    if os.getenv("ENV") != "production":
+        return
+    missing = [
+        var for var in ("DATABASE_URL", "STRIPE_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL")
+        if not os.getenv(var)
+    ]
+    if not any(os.getenv(var) for var in _LLM_KEY_VARS):
+        missing.append("at least one of " + "/".join(_LLM_KEY_VARS))
+    if missing:
+        raise RuntimeError(
+            "Refusing to start with ENV=production — missing required config: "
+            + ", ".join(missing)
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _validate_production_env()
     from app.services.postgres_db import initialize_db
     await initialize_db()
     if os.getenv("REDIS_URL"):
@@ -59,7 +95,7 @@ _cors_origins = [
 
 app.add_middleware(AuthMiddleware, public_paths=[
     "/", "/docs", "/openapi.json", "/health",
-    "/api/v1/auth/register",     # verifies Firebase token in request body
+    "/api/v1/auth/register",     # verifies Neon Auth session token in request body
     "/api/v1/auth/check-provider", # public provider lookup by email
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
@@ -73,7 +109,7 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"^https://(codeflow|codeflow-[a-z0-9]+)\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

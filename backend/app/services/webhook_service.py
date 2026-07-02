@@ -28,7 +28,13 @@ def _get_fernet() -> Optional[Fernet]:
 def encrypt_token(plaintext: str) -> str:
     f = _get_fernet()
     if f is None:
-        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — storing token in plaintext")
+        env = os.getenv("ENV", "development").lower()
+        if env == "production":
+            raise RuntimeError(
+                "GITHUB_TOKEN_ENCRYPTION_KEY must be set in production — "
+                "refusing to store secrets in plaintext."
+            )
+        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — storing token in plaintext (dev only)")
         return plaintext
     return f.encrypt(plaintext.encode()).decode()
 
@@ -36,7 +42,13 @@ def encrypt_token(plaintext: str) -> str:
 def decrypt_token(ciphertext: str) -> str:
     f = _get_fernet()
     if f is None:
-        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — reading token in plaintext")
+        env = os.getenv("ENV", "development").lower()
+        if env == "production":
+            raise RuntimeError(
+                "GITHUB_TOKEN_ENCRYPTION_KEY must be set in production — "
+                "refusing to read secrets in plaintext."
+            )
+        logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — reading token in plaintext (dev only)")
         return ciphertext
     try:
         return f.decrypt(ciphertext.encode()).decode()

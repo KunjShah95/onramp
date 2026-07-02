@@ -133,7 +133,7 @@ def cached(prefix: str, ttl: int = DEFAULT_TTL):
                     serialized = json.dumps(result, default=str)
                     await set_cached(prefix, request, serialized, ttl=ttl)
                 except Exception:
-                    pass
+                    logger.exception("Failed to cache response")
                 return result
             return await func(*args, **kwargs)
         return wrapper

@@ -1,8 +1,10 @@
+import logging
 import hashlib
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
 from app.services.embeddings_service import EmbeddingsService
 
+logger = logging.getLogger(__name__)
 
 class TaskQA(BaseAgent):
     """Specialized QA agent for reviewing agent 1's task completion."""
@@ -44,7 +46,7 @@ class TaskQA(BaseAgent):
                 result = await self._call_claude(prompt)
                 return self._parse_review_result(result)
             except Exception:
-                pass
+                logger.exception("LLM call failed for task QA review, using fallback")
 
         # Fallback review
         return self._fallback_review(agent_work, requirements)
@@ -108,7 +110,7 @@ class TaskQA(BaseAgent):
                         if 1 <= score <= 10:
                             review_data["overall_score"] = score
                     except ValueError:
-                        pass
+                        logger.warning("Failed to parse score from line: %s", line.strip())
             elif "recommend" in line_lower or "suggest" in line_lower:
                 review_data["recommendations"].append(line.strip())
             elif "missing" in line_lower:
@@ -187,7 +189,7 @@ class TaskQA(BaseAgent):
                 result = await self._call_claude(prompt)
                 return result.strip()
             except Exception:
-                pass
+                logger.exception("LLM call failed for task QA text review, using fallback")
 
         # Return formatted text review
         return self._format_review_text(review_result)

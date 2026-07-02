@@ -38,7 +38,7 @@ def _sentry_report(exc: Exception, context: dict) -> None:
         import sentry_sdk
         sentry_sdk.capture_exception(exc, extras=context)
     except Exception:
-        pass
+        logger.exception("Failed to report exception to Sentry")
 
 
 class BillingService:
@@ -193,8 +193,18 @@ class BillingService:
         stripe = self._stripe()
 
         if not secret and not sig_header:
-            # Dev/stub mode: parse without verification
-            logger.warning("Stripe webhook processed WITHOUT signature verification (dev mode).")
+            env = os.getenv("ENV", "development").lower()
+            allow_unverified = os.getenv("ALLOW_UNVERIFIED_STRIPE", "false").lower() == "true"
+            if env == "production":
+                logger.error("STRIPE_WEBHOOK_SECRET is required in production — refusing unverified webhook.")
+                return None
+            if not allow_unverified:
+                logger.error(
+                    "Stripe webhook secret not set and ALLOW_UNVERIFIED_STRIPE is not true. "
+                    "Set ALLOW_UNVERIFIED_STRIPE=true to process without verification (dev only)."
+                )
+                return None
+            logger.warning("Stripe webhook processed WITHOUT signature verification (ALLOW_UNVERIFIED_STRIPE=true, dev mode).")
             return json.loads(payload)
 
         if not secret:

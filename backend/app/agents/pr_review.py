@@ -2,10 +2,12 @@
 PR Review Agent - analyzes pull requests and provides code review feedback.
 """
 
+import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 from app.services.github_service import GitHubService
 
+logger = logging.getLogger(__name__)
 
 class PRReviewAgent(BaseAgent):
     """Agent that reviews GitHub pull requests and provides feedback."""
@@ -99,7 +101,7 @@ Only include the JSON response, no extra text."""
                 parsed["diff_stats"] = self._get_diff_stats(diff)
                 return parsed
         except Exception:
-            pass
+            logger.exception("Failed to parse LLM review result, using fallback analysis")
         return self._fallback_analysis(diff)
 
     def _fallback_analysis(self, diff: str) -> Dict[str, Any]:
@@ -182,7 +184,7 @@ Only output the JSON, no extra text."""
                 parsed["diff_stats"] = stats
                 return parsed
         except Exception:
-            pass
+            logger.exception("Failed to get LLM review, using fallback")
 
         # Fallback
         return {

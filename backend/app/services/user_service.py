@@ -8,7 +8,7 @@ dedicated error message instead of creating a duplicate.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.postgres_db import get_storage, generate_id
 
 STORAGE_COLLECTION = "users"
@@ -32,7 +32,7 @@ async def create_user(
             )
         return existing
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     record = {
         "email": email,
         "name": name,
@@ -46,7 +46,6 @@ async def create_user(
 
 
 def _normalize(record: dict | None) -> dict | None:
-    """Map `id` -> `uid` for Firestore-compatible key access."""
     if record is not None and "id" in record and "uid" not in record:
         record["uid"] = record.pop("id")
     return record

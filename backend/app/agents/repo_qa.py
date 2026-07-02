@@ -1,8 +1,10 @@
+import logging
 import hashlib
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
 from app.services.embeddings_service import EmbeddingsService
 
+logger = logging.getLogger(__name__)
 
 class RepoQA(BaseAgent):
     def __init__(self, llm_client):
@@ -59,7 +61,7 @@ class RepoQA(BaseAgent):
                 result = await self._call_claude(prompt)
                 return result.strip()
             except Exception:
-                pass
+                logger.exception("LLM call failed for repo QA, using fallback")
 
         best_doc = documents[0]
         return (
@@ -89,7 +91,7 @@ class RepoQA(BaseAgent):
                     yield token
                 return
             except Exception:
-                pass
+                logger.exception("LLM stream failed for repo QA, using fallback")
 
         best_doc = documents[0]
         yield (

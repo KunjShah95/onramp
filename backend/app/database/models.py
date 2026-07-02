@@ -5,10 +5,15 @@ Follows security and backend best practices:
 - UUID primary keys for security
 - Timestamps for audit trails
 - Constraints for data integrity
+
+Note: Each __table_args__ includes {"extend_existing": True} because models
+are re-imported through Base's registry when app.database.config is loaded.
+Root cause is the shared Base instance — consolidation to a single import
+path would eliminate the need. Investigate if time permits.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     String,
     Text,
@@ -48,10 +53,10 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     
@@ -68,7 +73,7 @@ class User(Base):
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
         CheckConstraint(
-            "provider IN ('google.com', 'password', 'github', 'microsoft')",
+            "provider IN ('google.com', 'password', 'github.com')",
             name="ck_users_provider"
         ),
         Index("ix_users_created_at", "created_at"),
@@ -101,10 +106,10 @@ class Team(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
     )
     
     members: Mapped[list["User"]] = relationship(
@@ -124,22 +129,13 @@ class Team(Base):
     )
     
     def to_dict(self) -> dict:
-        try:
-            from sqlalchemy.exc import MissingGreenlet
-            try:
-                member_count = len(self.members)
-            except MissingGreenlet:
-                member_count = 0
-        except ImportError:
-            member_count = 0
-
         return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat(),
-            "member_count": member_count,
+            "member_count": len(self.members),
         }
 
 
@@ -157,7 +153,7 @@ class TeamMember(Base):
     )
     role: Mapped[str] = mapped_column(String(50), default="member")
     joined_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     
     __table_args__ = (
@@ -190,7 +186,7 @@ class ApiKey(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     permissions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     
@@ -242,7 +238,7 @@ class UsageRecord(Base):
     cost_usd: Mapped[float] = mapped_column(default=0.0)
     usage_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False, index=True
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
     )
     
     user: Mapped["User | None"] = relationship("User", back_populates="usage_records")
@@ -276,8 +272,8 @@ class DynamicDocument(Base):
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     collection: Mapped[str] = mapped_column(String(255), primary_key=True)
     data: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     
     __table_args__ = (
         Index("ix_dynamic_documents_collection", "collection"),

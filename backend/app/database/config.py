@@ -143,6 +143,8 @@ class DatabaseConfig:
         if "asyncpg" not in (self.database_url or ""):
             return {}
         mode = (self.ssl_mode or "prefer").lower()
+        if mode == "prefer" and self.env == "production":
+            mode = "verify-full"
         if mode in ("disable", "allow", "prefer"):
             return {}
         import ssl as _ssl

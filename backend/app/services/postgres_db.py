@@ -1,6 +1,7 @@
 """
 PostgreSQL Database Service
-Replaces Firestore with PostgreSQL while maintaining the same interface
+Provides a unified storage interface (get_storage, query_documents, etc.)
+backed by PostgreSQL. The InMemoryStorage class is available for tests.
 """
 
 import os
@@ -358,8 +359,7 @@ class PostgresStorage:
                             else:
                                 query = query.where(DynamicDocument.data[key].astext == str(value))
                         elif op == "in":
-                            # Simplistic fallback for IN
-                            pass
+                            query = query.where(DynamicDocument.data[key].astext.in_([str(v) for v in (value or [])]))
                 result = await session.execute(query)
                 return [doc.to_dict() for doc in result.scalars().all()]
 

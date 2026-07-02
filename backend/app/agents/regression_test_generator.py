@@ -1,6 +1,8 @@
+import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 
+logger = logging.getLogger(__name__)
 
 class RegressionTestGenerator(BaseAgent):
     async def execute(self, pr_diff: str, repo_structure: Dict) -> Dict[str, Any]:
@@ -31,7 +33,7 @@ class RegressionTestGenerator(BaseAgent):
                 if result.get("must_test"):
                     return result
             except Exception:
-                pass
+                logger.exception("LLM json_chat failed for regression test generation, using fallback")
 
         must_test = []
         for f in files_changed:

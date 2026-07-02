@@ -17,20 +17,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     in-memory sliding window when Redis is unavailable.
     """
 
-    def __init__(self, app, requests_per_minute: int = 100):
+    LLM_ROUTE_LIMIT: int = 20
+    DEFAULT_LIMIT: int = 200
+
+    def __init__(self, app, requests_per_minute: int = 200):
         super().__init__(app)
         self.limit = requests_per_minute
         self.window_size = 60  # seconds
         self.clients = {}
-        # Trust X-Forwarded-For only when explicitly enabled (i.e. when the
-        # app sits behind a trusted reverse proxy / load balancer).
         self.trust_proxy = os.getenv("TRUST_PROXY", "false").lower() == "true"
-        # Throttle how often we sweep stale entries to bound memory growth.
         self._last_sweep_window = 0
-        # Optional distributed backend.
         self.redis_url = os.getenv("REDIS_URL") or None
         self._redis = None
         self._redis_init = False
+        self.llm_route_prefixes = ("/api/v1/ask/", "/api/v1/ai/", "/api/v1/explore/")
+
+        # In-memory limiting is per-process; with multiple uvicorn workers
+        # (WORKERS=4 in prod) each worker enforces the limit independently,
+        # silently multiplying the effective rate. Require Redis in prod.
+        if os.getenv("ENV") == "production" and not self.redis_url:
+            raise RuntimeError(
+                "REDIS_URL is required when ENV=production — in-memory rate "
+                "limiting is per-worker and does not enforce a global limit."
+            )
 
     async def _get_redis(self):
         """Lazily create a Redis client (best-effort; None if unavailable)."""
@@ -86,6 +95,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         current_time = time.time()
         current_window = int(current_time // self.window_size)
 
+        # Per-route limit: LLM endpoints are expensive, apply stricter cap
+        is_llm_route = request.url.path.startswith(self.llm_route_prefixes)
+        effective_limit = self.LLM_ROUTE_LIMIT if is_llm_route else self.limit
+
         # Distributed path: use Redis when configured/available.
         redis = await self._get_redis()
         if redis is not None:
@@ -131,7 +144,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         weight = (self.window_size - window_elapsed) / self.window_size
         estimated_count = (client["previous_count"] * weight) + client["current_count"]
 
-        if estimated_count >= self.limit:
+        if estimated_count >= effective_limit:
             return JSONResponse(
                 status_code=429,
                 content={"success": False, "error": "Rate limit exceeded. Try again later.", "code": "RATE_LIMIT_EXCEEDED"}

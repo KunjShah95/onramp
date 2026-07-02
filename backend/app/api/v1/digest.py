@@ -5,13 +5,18 @@ Uses the DigestService to collect data across notifications, tasks, modules,
 and quiz results, then sends the digest via email.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from sqlalchemy import text
 from typing import Optional
 
 from app.api.v1.auth import get_current_user
+from app.database.config import db_config
 from app.services.digest_service import generate_and_send_digest, build_digest_sections
 from app.services.postgres_db import get_storage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/digest", tags=["digest"])
 
@@ -121,7 +126,7 @@ async def trigger_batch_digest(
     """
     uid = user.get("uid", "")
     # Only admins/owners can trigger batch digests
-    if not _is_admin(uid):
+    if not await _is_admin(uid):
         raise HTTPException(status_code=403, detail="Only admins can trigger batch digests")
 
     if request.period not in ("daily", "weekly"):
@@ -184,9 +189,18 @@ async def trigger_batch_digest(
     }
 
 
-def _is_admin(user_id: str) -> bool:
-    """Simple admin check — users whose ID starts with 'admin-' or known dev UID."""
-    if user_id.startswith("admin-"):
-        return True
-    # TODO: replace with proper RBAC check against team membership roles
-    return False
+async def _is_admin(user_id: str) -> bool:
+    """Check if the user has admin privileges via the users.is_admin column."""
+    try:
+        await db_config.ensure_engine()
+        factory = db_config.get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                text("SELECT is_admin FROM users WHERE id = :user_id"),
+                {"user_id": user_id}
+            )
+            row = result.fetchone()
+            return row is not None and row[0]
+    except Exception:
+        logger.exception("Failed to check admin status for user %s", user_id)
+        return False

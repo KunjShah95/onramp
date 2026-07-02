@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from app.services.user_service import create_user, get_user_by_uid, get_user_by_email
-from app.middleware.auth import verify_firebase_token
+from app.middleware.auth import verify_session_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,14 +40,14 @@ async def get_current_user(request: Request) -> dict:
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(body: TokenPayload):
-    """Register or login a user with a Firebase ID token.
+    """Register or login a user with a Neon Auth session token.
 
     If the user already exists with the same provider, returns the existing record.
     If the user exists with a *different* provider, raises 409 Conflict.
     """
     _ALLOWED_PROVIDERS = ("google.com", "github.com", "password")
 
-    decoded = await verify_firebase_token(body.id_token)
+    decoded = await verify_session_token(body.id_token)
     if decoded is None:
         raise HTTPException(status_code=401, detail="Invalid or expired ID token")
 
@@ -58,10 +58,7 @@ async def register(body: TokenPayload):
     if not email:
         raise HTTPException(status_code=400, detail="No email in token")
 
-    # Trust the provider from the verified token, NOT the client-supplied body.
-    # body.provider is only a hint; the token is authoritative.
-    token_provider = decoded.get("firebase", {}).get("sign_in_provider", "")
-    # Firebase dev-bypass reports "dev"; map it to password for storage.
+    token_provider = decoded.get("provider", "")
     if token_provider == "dev":
         token_provider = "password"
     provider = token_provider or body.provider

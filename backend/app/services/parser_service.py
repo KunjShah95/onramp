@@ -1,7 +1,10 @@
 import os
 import ast
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Lazy tree-sitter initialisation – only imported when needed (non-Python files)
@@ -469,7 +472,7 @@ class ParserService:
                     module_map[rel_path] = rel_path
                     parsed_count += 1
                 except Exception:
-                    pass
+                    logger.exception("Failed to parse file %s", fname)
 
         entities["module_map"] = module_map
         return entities

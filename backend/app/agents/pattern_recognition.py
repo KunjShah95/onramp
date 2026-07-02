@@ -1,6 +1,8 @@
+import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 
+logger = logging.getLogger(__name__)
 
 PATTERN_TEMPLATES = {
     "authentication": {
@@ -71,7 +73,7 @@ class PatternRecognition(BaseAgent):
                 if result.get("pattern"):
                     return result
             except Exception:
-                pass
+                logger.exception("LLM json_chat failed for pattern recognition, using fallback")
 
         result = {
             "pattern": selected,

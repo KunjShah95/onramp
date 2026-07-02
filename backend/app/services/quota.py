@@ -6,10 +6,13 @@ Charges credits per AI action against the caller's monthly quota and blocks
 the usage dashboard reflects real consumption.
 """
 
+import logging
 from fastapi import Request, HTTPException, Depends
 from app.services.api_key_service import APIKeyService
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
+
+logger = logging.getLogger(__name__)
 
 _usage = UsageTracker()
 _billing = BillingService()
@@ -22,7 +25,7 @@ async def _resolve_tier(scope: str) -> str:
         if sub and sub.get("tier"):
             return sub["tier"]
     except Exception:
-        pass
+        logger.warning("Failed to resolve tier for scope %s, defaulting to free", scope)
     return "free"
 
 
