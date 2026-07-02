@@ -40,10 +40,12 @@ export default function ApiKeysPage() {
   }
 
   async function handleRevoke(keyId: string) {
+    if (!confirm('Revoke this API key? Any services using it will lose access immediately.')) return
     try {
       await revokeApiKey(keyId)
       await fetchKeys()
-    } catch { /* ignore */ }
+      toast.success('API key revoked')
+    } catch { toast.error('Failed to revoke key') }
   }
 
   return (
@@ -87,7 +89,7 @@ export default function ApiKeysPage() {
         </button>
       </CardSpotlight>
 
-      {keys.length > 0 && (
+      {keys.length > 0 ? (
         <CardSpotlight className="p-6">
           <GradientHeading as="h2" className="text-base mb-4">Active Keys</GradientHeading>
           <div className="space-y-3">
@@ -113,6 +115,10 @@ export default function ApiKeysPage() {
             ))}
           </div>
         </CardSpotlight>
+      ) : (
+        <div className="text-center py-12 text-[#FDFBF8]/30">
+          <p className="text-sm">No API keys yet. Create one above.</p>
+        </div>
       )}
     </div>
     </PageTransition>

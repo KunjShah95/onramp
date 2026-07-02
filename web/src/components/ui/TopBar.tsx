@@ -5,8 +5,10 @@ export default function TopBar() {
   const { user } = useAuth()
 
   return (
-    <header className="h-14 border-b border-white/10 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6">
-      <div className="text-sm text-text-secondary" />
+    <header role="banner" className="h-14 border-b border-white/10 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6">
+      <div className="text-sm text-text-secondary">
+        <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-white/30 font-mono text-[10px]" aria-label="Press question mark for keyboard shortcuts">?</kbd>
+      </div>
       <div className="flex items-center gap-2">
         {user && (
           <>

@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
-import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth'
+import { authClient } from '../lib/neon-auth'
 import Register from './Register'
-
-vi.mock('firebase/auth')
 
 describe('Register', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchSignInMethodsForEmail).mockResolvedValue([])
-    vi.mocked(createUserWithEmailAndPassword).mockResolvedValue({ user: { uid: '1', email: 'test@test.com' } } as any)
+    vi.mocked(authClient.signUp.email).mockResolvedValue({ data: { user: { id: '1', email: 'test@test.com' } } } as any)
   })
 
   it('renders the registration form', () => {
@@ -41,7 +38,7 @@ describe('Register', () => {
     })
   })
 
-  it('calls Firebase register on valid submit', async () => {
+  it('calls Neon Auth register on valid submit', async () => {
     const user = userEvent.setup()
     render(<Register />)
     await user.type(screen.getByLabelText(/name/i), 'Test User')
@@ -50,7 +47,7 @@ describe('Register', () => {
     await user.type(screen.getByLabelText(/confirm password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /create account/i }))
     await waitFor(() => {
-      expect(createUserWithEmailAndPassword).toHaveBeenCalled()
+      expect(authClient.signUp.email).toHaveBeenCalledWith({ email: 'test@test.com', password: 'password123', name: 'Test User' })
     })
   })
 

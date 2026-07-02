@@ -138,6 +138,7 @@ export default function BillingPage() {
 
   async function handleCancel() {
     if (!teamId.trim() || !subscription) return
+    if (!confirm('Cancel your current subscription? This will downgrade your plan at the end of the billing period.')) return
     try {
       await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null)
       toast.info('Plan cancelled', 'Your subscription has been ended')

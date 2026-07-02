@@ -148,7 +148,9 @@ export default function NotificationBell() {
             ? 'bg-[#FF8C00]/10 text-[#FF8C00]'
             : 'text-[#FDFBF8]/50 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5'
         )}
-        title="Notifications"
+        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <span className="material-symbols-outlined text-lg">
           {unreadCount > 0 ? 'notifications_active' : 'notifications'}
@@ -162,7 +164,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[380px] max-h-[520px] bg-[#1A1512] border border-[#FDFBF8]/10 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-[380px] max-h-[520px] bg-[#1A1512] border border-[#FDFBF8]/10 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50" role="menu" aria-label="Notifications list">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#FDFBF8]/5">
             <h3 className="text-sm font-semibold text-[#FDFBF8]">Notifications</h3>

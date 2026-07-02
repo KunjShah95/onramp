@@ -168,7 +168,7 @@ export default function Sidebar() {
   })
 
   return (
-    <aside className="w-[260px] min-h-screen bg-[#110B08] border-r border-[#FDFBF8]/5 flex flex-col shrink-0 font-mono">
+    <aside aria-label="Primary navigation" className="w-[260px] min-h-screen bg-[#110B08] border-r border-[#FDFBF8]/5 flex flex-col shrink-0 font-mono">
       {/* Brand */}
       <div className="px-6 py-7 flex flex-col gap-1">
         <h2 className="text-[#FF8C00] font-bold text-sm tracking-tight">CodeFlow Console</h2>
@@ -181,7 +181,7 @@ export default function Sidebar() {
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 px-4 space-y-0.5">
+      <nav aria-label="Main workspace" className="flex-1 px-4 space-y-0.5">
         {filteredItems.map((item) => (
           <NavLink
             key={item.to}
@@ -211,9 +211,9 @@ export default function Sidebar() {
           to="/explore"
           className="w-full bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium"
         >
-          <span className="text-lg leading-none">+</span> New Analysis
+          <span className="text-lg leading-none" aria-hidden="true">+</span> New Analysis
         </NavLink>
-        <nav className="space-y-0.5">
+        <nav aria-label="Help and resources" className="space-y-0.5">
           {bottomItems.map((item) => (
             <NavLink
               key={item.to}

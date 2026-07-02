@@ -1,93 +1,103 @@
 # CodeFlow 2.0 — Quick Start Guide
 
-Get the platform running locally in 5 minutes. For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
-
-## What is CodeFlow?
-
-CodeFlow is an AI-powered developer onboarding platform. Paste any GitHub repository URL and get:
-- **Architecture analysis** — dependency graph, module overview, tech stack
-- **Learning paths** — personalized roadmap from beginner to contributor
-- **First PR suggestions** — beginner-friendly issues with step-by-step guides
-- **Q&A** — ask questions about the codebase, get answers from AI agents
+Get the platform running locally with PostgreSQL, Redis, the FastAPI backend, and the Vite frontend. For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Prerequisites
 
 - Python 3.11+
 - Node.js 20+
-- Docker & Docker Compose
+- Docker Desktop with Docker Compose
 - Git
 
-## Quick Start
+## One-command local setup
+
+From the repository root:
 
 ```bash
-git clone https://github.com/your-org/codeflow.git
-cd codeflow
-cp .env.example .env   # Edit with your keys (see below)
-docker compose up -d
+# macOS/Linux/Git Bash
+./setup-local.sh
+
+# Windows Command Prompt
+setup-local.bat
 ```
 
-Open http://localhost:3000 in your browser.
+The setup scripts will:
 
-To stop: `docker compose down`
+1. Create `backend/venv` if needed.
+2. Install backend dependencies from `backend/requirements.txt`.
+3. Copy `backend/.env.example` to `backend/.env` if missing.
+4. Start local PostgreSQL and Redis with Docker Compose.
+5. Run `alembic upgrade head` to create/update the PostgreSQL schema.
+6. Install frontend dependencies and create `web/.env.local` if missing.
 
-## Environment Variables
+## Manual local setup
 
-Copy `.env.example` to `.env` and configure:
+```bash
+# 1) Start data services
+docker compose up -d postgres redis
 
-### Required
+# 2) Backend
+cd backend
+python -m venv venv
+venv\Scripts\activate   # Windows
+# source venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
+cp .env.example .env     # Windows cmd: copy .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+
+# 3) Frontend, in a second terminal
+cd web
+npm install
+npm run dev
+```
+
+Open:
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API docs: http://localhost:8000/docs
+
+## Local database defaults
+
+Docker Compose creates this PostgreSQL database:
+
+| Setting | Value |
+|---------|-------|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `codeflow` |
+| User | `codeflow` |
+| Password | `postgres_password` |
+| Backend URL | `postgresql+asyncpg://codeflow:postgres_password@localhost:5432/codeflow` |
+
+For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deployments should set a provider-specific `DATABASE_URL` and usually `DB_SSL_MODE=require` or stronger.
+
+## Environment variables
+
+### Required for database startup
+
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
+| `DATABASE_URL` | Async SQLAlchemy PostgreSQL URL. The local default is already in `backend/.env.example`. |
+| `DB_SSL_MODE` | `disable` for local Docker Postgres; `require`/`verify-full` for production. |
 
-### Authentication (Firebase)
+### Optional services
+
 | Variable | Description |
 |----------|-------------|
-| `FIREBASE_API_KEY` | Firebase Web API key |
-| `FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
-| `FIREBASE_PROJECT_ID` | Firebase project ID |
-| `FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
-| `FIREBASE_MESSAGING_SENDER_ID` | Firebase sender ID |
-| `FIREBASE_APP_ID` | Firebase app ID |
-| `FIREBASE_SERVICE_ACCOUNT_PATH` | Path to service account JSON |
+| `REDIS_URL` | Optional distributed cache/rate limit URL. If unset, the app falls back where supported. |
+| `GITHUB_TOKEN` | Optional GitHub token for higher repo-analysis rate limits. |
+| `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Configure any one or more AI providers. |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Optional billing integration. |
 
-### AI Providers
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | OpenAI API key (required for AI features) |
-| `ANTHROPIC_API_KEY` | Anthropic API key (optional, Claude agent) |
-
-### GitHub
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_TOKEN` | GitHub personal access token for repo analysis |
-
-### Stripe (optional)
-| Variable | Description |
-|----------|-------------|
-| `STRIPE_SECRET_KEY` | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `STRIPE_PRICE_STARTUP` | Stripe Price ID for Startup tier |
-| `STRIPE_PRICE_PROFESSIONAL` | Stripe Price ID for Professional tier |
-
-## First Walkthrough
-
-1. Open the app at http://localhost:3000
-2. Sign in (create an account or use Google/GitHub OAuth)
-3. Go to the **Explore** tab
-4. Paste a GitHub URL: `https://github.com/facebook/react`
-5. Click **Analyze**
-6. Wait 30-60 seconds for analysis to complete
-7. View the **architecture graph**, **learning path**, and **beginner issues**
-8. Use the **Ask** tab to query the codebase: "How does the virtual DOM work?"
-
-## Common Issues
+## Common issues
 
 | Problem | Solution |
 |---------|----------|
-| Port 3000 already in use | Change `GATEWAY_PORT` in `.env` or stop the conflicting service |
-| Docker not found | Install Docker Desktop from https://docker.com |
-| Firebase auth fails | Ensure `FIREBASE_*` env vars are set correctly in `.env` |
-| Redis connection refused | Ensure `redis` service is running (`docker compose up redis -d`) |
-| AI responses empty | Set `OPENAI_API_KEY` in `.env` and restart |
-| CORS errors | Ensure `VITE_API_URL` matches the backend URL |
+| PostgreSQL connection refused | Run `docker compose up -d postgres` and wait for the health check. |
+| Password authentication failed | Ensure `backend/.env` uses `codeflow:postgres_password`, or set `DB_PASSWORD` before creating the container volume. |
+| Tables missing | Run `cd backend && alembic upgrade head`. |
+| Redis connection refused | Start Redis with `docker compose up -d redis`, or leave `REDIS_URL` unset for local fallback behavior. |
+| AI responses empty | Add at least one AI provider key to `backend/.env` and restart the backend. |
+| CORS errors | Ensure the frontend points to `http://localhost:8000/api/v1` and the backend allows `http://localhost:5173`. |

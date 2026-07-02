@@ -71,11 +71,12 @@ export default function PlaybooksPage() {
   }
 
   async function handleArchive(pbId: string) {
+    if (!confirm('Archive this playbook? It can be restored later.')) return
     try {
       await archivePlaybook(pbId)
       await fetchPlaybooks()
       toast.success('Playbook archived')
-    } catch { /* ignore */ }
+    } catch { toast.error('Failed to archive playbook') }
   }
 
   return (

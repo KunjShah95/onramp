@@ -155,13 +155,15 @@ export default function TeamPage() {
 
   async function handleRevokeModule(userId: string, module: string) {
     if (!teamId) return
-    try { await revokeModuleAccess(teamId, userId, module); await fetchPermissions() }
+    if (!confirm(`Revoke access to module "${module}" for this user?`)) return
+    try { await revokeModuleAccess(teamId, userId, module); await fetchPermissions(); toast.success('Module access revoked') }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to revoke module access') }
   }
 
   async function handleRevokeAll(userId: string) {
     if (!teamId) return
-    try { await revokeAllModuleAccess(teamId, userId); await fetchPermissions() }
+    if (!confirm('Revoke ALL module access for this user? This action cannot be undone.')) return
+    try { await revokeAllModuleAccess(teamId, userId); await fetchPermissions(); toast.success('All module access revoked') }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to revoke all access') }
   }
 
@@ -184,10 +186,12 @@ export default function TeamPage() {
 
   const handleCancelInvite = async (inviteId: string) => {
     if (!teamId) return
+    if (!confirm('Cancel this pending invite?')) return
     try {
       await cancelTeamInvite(teamId, inviteId)
       await loadInvites(teamId)
-    } catch { /* ignore */ }
+      toast.success('Invite cancelled')
+    } catch { toast.error('Failed to cancel invite') }
   }
 
   const membersWithModules = permissions.reduce<Record<string, { name: string; modules: string[]; sources: string[] }>>((acc, p) => {

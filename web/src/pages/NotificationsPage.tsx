@@ -99,6 +99,7 @@ export default function NotificationsPage() {
   }
 
   function handleDelete(id: string) {
+    if (!confirm('Delete this notification?')) return
     deleteMutation.mutate(id)
   }
 

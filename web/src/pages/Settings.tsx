@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { updateProfile } from 'firebase/auth'
-import { getFirebaseAuth } from '../lib/firebase'
 import { useAuth } from '../context/AuthContext'
+import { authClient } from '../lib/neon-auth'
 import { cn } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
@@ -200,10 +199,12 @@ export default function Settings() {
   }
 
   async function handleDeleteWebhook(id: string) {
+    if (!confirm('Delete this webhook? This action cannot be undone.')) return
     try {
       await deleteWebhook(id)
       setWebhooks((prev) => prev.filter((w) => w.webhook_id !== id))
-    } catch { /* ignore */ }
+      toast.success('Webhook deleted')
+    } catch { toast.error('Failed to delete webhook') }
   }
 
   async function handleTestWebhook(id: string) {
@@ -265,13 +266,15 @@ export default function Settings() {
   }
 
   async function handleSaveProfile() {
-    const auth = getFirebaseAuth()
-    const current = auth.currentUser
-    if (!current) return
+    const session = await authClient.getSession()
+    if (!session.data?.user) return
     setSaving(true)
     setSavedMsg('')
     try {
-      await updateProfile(current, { displayName: name.trim() })
+      const res = await authClient.updateUser({ name: name.trim() })
+      if (res.error) {
+        throw new Error(res.error.message || 'Save failed')
+      }
       setSavedMsg('Profile saved')
       toast.success('Profile saved')
     } catch (e) {
@@ -350,11 +353,14 @@ export default function Settings() {
   }
 
   async function handleRevoke(keyId: string) {
+    if (!confirm('Revoke this API key? Any services using it will lose access immediately.')) return
     try {
       await revokeApiKey(keyId)
       await fetchKeys()
+      toast.success('API key revoked')
     } catch (e) {
       setKeyError(e instanceof Error ? e.message : 'Failed to revoke key')
+      toast.error('Failed to revoke key')
     }
   }
 
@@ -498,11 +504,11 @@ export default function Settings() {
                         <p className="text-xs text-[#FDFBF8]/40 mt-0.5">
                           <span className="capitalize">{k.tier}</span>
                           {' · '}Used {k.usage_count}x
-                          {k.revoked && <span className="text-red-400"> · revoked</span>}
+                          {!k.is_active && <span className="text-red-400"> · revoked</span>}
                         </p>
                       </div>
                     </div>
-                    {!k.revoked && (
+                    {k.is_active && (
                       <button
                         onClick={() => handleRevoke(k.key_id)}
                         className="p-1.5 text-red-400/70 hover:text-red-400 transition-colors"

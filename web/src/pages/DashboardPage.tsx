@@ -11,7 +11,7 @@ import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, Skeleto
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  AreaChart, Area,
+  AreaChart, Area, Line,
 } from 'recharts'
 
 const container = {
@@ -133,7 +133,12 @@ export default function DashboardPage() {
       else if (act.state === 'submitted' || act.state === 'under_review') grouped[day].submitted++
       else grouped[day].started++
     }
-    return Object.values(grouped).reverse()
+    const sorted = Object.values(grouped).reverse()
+    return sorted.map((d, i) => {
+      const prev = sorted.slice(Math.max(0, i - 2), i + 1)
+      const velocity = prev.length > 0 ? Math.round((prev.reduce((s, p) => s + p.completed, 0) / prev.length) * 10) / 10 : 0
+      return { ...d, velocity }
+    })
   }, [recent_activity])
 
   const tabs = [
@@ -192,11 +197,29 @@ export default function DashboardPage() {
               { label: 'In Progress', value: in_progress_tasks, color: 'text-[#FF8C00]', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
               { label: 'Pending Review', value: pending_review_tasks, color: 'text-yellow-400', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
               { label: 'Blocked', value: blocked_tasks, color: 'text-red-400', icon: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z' },
-              { label: 'Completion', value: `${completion_rate}%`, color: 'text-[#4DA8DA]', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
+              { label: 'Completion', value: completion_rate, color: 'text-[#4DA8DA]', icon: 'gauge' },
               { label: 'Code Health', value: codeHealth !== null ? `${codeHealth}%` : '—', color: codeHealth !== null && codeHealth >= 70 ? 'text-green-400' : codeHealth !== null && codeHealth >= 50 ? 'text-[#FF8C00]' : 'text-[#FDFBF8]', icon: 'M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15' },
             ].map((m) => {
               const isCodeHealth = m.label === 'Code Health'
-              const card = (
+              const isGauge = m.icon === 'gauge'
+              const card = isGauge ? (
+                <CardSpotlight className="p-4 flex flex-col items-center justify-center" color="rgba(77,168,218,0.05)">
+                  <div className="relative w-16 h-16 mb-1">
+                    <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(253,251,248,0.06)" strokeWidth="3" />
+                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="#4DA8DA" strokeWidth="3"
+                        strokeDasharray={`${(m.value as number) * 0.97} 97`}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center font-display text-lg font-bold text-[#4DA8DA]">
+                      {m.value}%
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[#FDFBF8]/35 uppercase tracking-wider">{m.label}</div>
+                </CardSpotlight>
+              ) : (
                 <CardSpotlight className="p-4" color="rgba(255,140,0,0.05)">
                   <div className="flex items-start justify-between mb-2">
                     <svg className="w-4 h-4 text-[#FDFBF8]/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -315,6 +338,7 @@ export default function DashboardPage() {
                       />
                       <Area type="monotone" dataKey="completed" stroke="#22c55e" fill="url(#colorCompleted)" strokeWidth={2} dot={false} />
                       <Area type="monotone" dataKey="submitted" stroke="#eab308" fill="url(#colorSubmitted)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="velocity" stroke="#4DA8DA" strokeWidth={2} dot={false} strokeDasharray="4 3" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
