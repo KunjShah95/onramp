@@ -3,6 +3,9 @@ import os
 # Must be set before any app module reads them at import time.
 os.environ.setdefault("STORAGE_BACKEND", "memory")
 os.environ.setdefault("ENV", "test")
+# app.main instantiates LLMClient() at import; without at least one provider
+# key it raises RuntimeError during test collection (see llm.py).
+os.environ.setdefault("GROQ_API_KEY", "test-llm-key")
 
 import pytest
 
