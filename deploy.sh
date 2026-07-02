@@ -36,17 +36,9 @@ vercel env add VITE_API_URL
 # User will be prompted to enter the value
 
 echo ""
-echo -e "${YELLOW}Step 5: Add Firebase Environment Variables${NC}"
-echo "You need to add these to Vercel:"
-echo "  - VITE_FIREBASE_API_KEY"
-echo "  - VITE_FIREBASE_AUTH_DOMAIN"
-echo "  - VITE_FIREBASE_PROJECT_ID"
-echo "  - VITE_FIREBASE_STORAGE_BUCKET"
-echo "  - VITE_FIREBASE_MESSAGING_SENDER_ID"
-echo "  - VITE_FIREBASE_APP_ID"
-echo "  - VITE_FIREBASE_MEASUREMENT_ID"
-echo ""
-echo "Run: vercel env add [VARIABLE_NAME]"
+echo -e "${YELLOW}Step 5: Environment Variables${NC}"
+echo "No Firebase vars needed — auth is handled via neon_auth tables in PostgreSQL."
+echo "Optional: vercel env add VITE_NEON_AUTH_URL (for custom auth endpoint)"
 
 echo ""
 echo -e "${BLUE}Step 6: Deploy Frontend${NC}"

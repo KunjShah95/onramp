@@ -3,19 +3,21 @@ version: '3.8'
 services:
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: codeflow
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_password}
@@ -44,14 +46,14 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
       - CORS_ORIGINS=http://localhost:3000
       - LOG_LEVEL=DEBUG
-      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - ENV=${ENV:-development}
     volumes:
       - ./backend:/app
       - ./backend/requirements.txt:/app/requirements.txt
@@ -60,7 +62,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   celery-worker:
     build:
@@ -72,7 +74,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
@@ -97,7 +100,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DB_SSL_MODE=disable
     volumes:
       - ./backend:/app
     depends_on:

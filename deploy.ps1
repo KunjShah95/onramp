@@ -37,37 +37,10 @@ Write-Host "(Then paste the backend URL when prompted)" -ForegroundColor Gray
 
 Write-Host ""
 
-# Step 5: Firebase vars
-Write-Host "Step 5: Add Firebase Environment Variables" -ForegroundColor Yellow
-Write-Host "You need to add these environment variables to Vercel:" -ForegroundColor Green
-Write-Host ""
-$vars = @(
-    "VITE_FIREBASE_API_KEY",
-    "VITE_FIREBASE_AUTH_DOMAIN",
-    "VITE_FIREBASE_PROJECT_ID",
-    "VITE_FIREBASE_STORAGE_BUCKET",
-    "VITE_FIREBASE_MESSAGING_SENDER_ID",
-    "VITE_FIREBASE_APP_ID",
-    "VITE_FIREBASE_MEASUREMENT_ID"
-)
-
-foreach ($var in $vars) {
-    Write-Host "  ✓ $var" -ForegroundColor Cyan
-}
-
-Write-Host ""
-Write-Host "Option A: Use Vercel Dashboard" -ForegroundColor Blue
-Write-Host "  1. Go to https://vercel.com/dashboard" -ForegroundColor Gray
-Write-Host "  2. Select your project" -ForegroundColor Gray
-Write-Host "  3. Settings → Environment Variables" -ForegroundColor Gray
-Write-Host "  4. Add each variable" -ForegroundColor Gray
-
-Write-Host ""
-Write-Host "Option B: Use Vercel CLI" -ForegroundColor Blue
-Write-Host "  vercel env add VITE_FIREBASE_API_KEY" -ForegroundColor Cyan
-Write-Host "  (Repeat for each variable)" -ForegroundColor Gray
-
-Write-Host ""
+# Step 5: Neon Auth env vars (optional)
+Write-Host "Step 5: Neon Auth Environment Variables" -ForegroundColor Yellow
+Write-Host "No Firebase vars needed — auth is handled via neon_auth tables in PostgreSQL." -ForegroundColor Green
+Write-Host "Optional: set VITE_NEON_AUTH_URL in Vercel if using a custom auth endpoint." -ForegroundColor Cyan
 
 # Step 6: Deploy
 Write-Host "Step 6: Deploy Frontend" -ForegroundColor Blue
