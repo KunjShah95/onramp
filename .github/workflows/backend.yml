@@ -1,0 +1,61 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: codeflow_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "backend/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Check code compiles
+        run: python -m compileall backend/app
+
+      - name: Run Alembic migrations
+        run: |
+          cp backend/.env.example backend/.env
+          echo "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test" >> backend/.env
+          cd backend && alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test
+
+      - name: Run tests
+        run: |
+          cd backend && python -m pytest tests/ -v --timeout=30
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test
+          ENV: test
+          STORAGE_BACKEND: memory
