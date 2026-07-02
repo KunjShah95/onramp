@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import type { LearningPathResult } from '../lib/types'
 import { cn } from '../lib/utils'
 import CardSpotlight from '../components/ui/card-spotlight'
+import FeedbackWidget from '../components/ui/FeedbackWidget'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
@@ -290,6 +291,20 @@ export default function LearnPage() {
                   </CardSpotlight>
                 </motion.div>
               ))}
+
+              {result && result.path.length > 0 && !loading && (
+                <motion.div variants={itemVariants} className="pl-12 flex items-center gap-3">
+                  <span className="text-[11px] text-[#FDFBF8]/30">Was this learning path useful?</span>
+                  <FeedbackWidget
+                    feature="learn"
+                    context={{
+                      modules: result.path.length,
+                      total_hours: result.total_estimated_hours,
+                      first_module: result.path[0]?.name,
+                    }}
+                  />
+                </motion.div>
+              )}
             </motion.div>
           </div>
 

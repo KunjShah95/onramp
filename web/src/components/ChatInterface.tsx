@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import FeedbackWidget from './ui/FeedbackWidget'
+import type { FeedbackFeature } from '../lib/api'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -22,6 +24,10 @@ interface Props {
   appendKey?: number
   /** When appendKey changes, these messages are appended to the existing ones */
   appendMessages?: { question: string; answer: string }[]
+  /** When set, each completed answer gets a thumbs up/down feedback widget */
+  feedbackFeature?: FeedbackFeature
+  /** Extra context attached to submitted feedback (e.g. index_id) */
+  feedbackContext?: Record<string, unknown>
 }
 
 const EMPTY_MESSAGES: Message[] = []
@@ -36,7 +42,7 @@ const EXAMPLE_MESSAGES: Message[] = [
   },
 ]
 
-export default function ChatInterface({ onSend, mode, placeholder = 'Ask a question...', restoreKey, restoreMessages, appendKey, appendMessages }: Props) {
+export default function ChatInterface({ onSend, mode, placeholder = 'Ask a question...', restoreKey, restoreMessages, appendKey, appendMessages, feedbackFeature, feedbackContext }: Props) {
   const [messages, setMessages] = useState<Message[]>(EXAMPLE_MESSAGES)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -207,6 +213,16 @@ export default function ChatInterface({ onSend, mode, placeholder = 'Ask a quest
                       return <span key={index} className="whitespace-pre-wrap">{part}</span>
                     })}
                   </div>
+                  {feedbackFeature && msg.content && !(loading && i === messages.length - 1) && (
+                    <FeedbackWidget
+                      feature={feedbackFeature}
+                      context={{
+                        ...feedbackContext,
+                        question: messages[i - 1]?.role === 'user' ? messages[i - 1].content.slice(0, 500) : undefined,
+                        answer_preview: msg.content.slice(0, 300),
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}

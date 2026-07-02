@@ -33,7 +33,7 @@ Shipped: learning path generation, repo Q&A (streaming + memory), architecture e
 - [x] **Watchdog deep health check** — `/health/deep` verifies DB, Redis, and LLM provider/breaker state (compose already has `restart: unless-stopped`)
 
 ### Feedback capture (cheapest highest-value addition)
-- [x] Thumbs up/down on every AI output (ask, explore, learn, PR review) — one table, one endpoint (`POST /api/v1/feedback`); frontend widget pending
+- [x] Thumbs up/down on every AI output — one table, one endpoint (`POST /api/v1/feedback`), one component (`FeedbackWidget`, mounted on ask/explore/learn)
 
 ---
 
@@ -81,7 +81,7 @@ Shipped: learning path generation, repo Q&A (streaming + memory), architecture e
 | LLM circuit breaker + retry | v1.1 | ✅ implemented |
 | Deep health check | v1.1 | ✅ implemented |
 | Dead-letter queue | v1.1 | ✅ implemented (email jobs; replay via `POST /api/v1/admin/dead-letters/replay`) |
-| Feedback capture | v1.1 | ✅ backend implemented; frontend thumbs widget pending |
+| Feedback capture | v1.1 | ✅ implemented end-to-end (widget on ask/explore/learn) |
 | Self-diagnosis agent | v1.2 | 🟢 not started |
 | Schema drift detector | v1.2 | 🟢 not started |
 | Router learning | v1.2 | 🔴 blocked on eval harness CI + feedback data |

@@ -1601,3 +1601,36 @@ export function acceptInvite(token: string) {
 export function myPendingInvites() {
   return get<{ invites: TeamInvite[]; count: number }>(`${API_BASE}/invites/me`)
 }
+
+// ── Feedback (thumbs on AI outputs — feeds the self-learning loop) ──
+
+export type FeedbackFeature =
+  | 'ask'
+  | 'explore'
+  | 'learn'
+  | 'pr_review'
+  | 'quiz'
+  | 'digest'
+  | 'first_pr'
+  | 'report'
+  | 'playbook'
+
+export async function submitFeedback(
+  feature: FeedbackFeature,
+  rating: 1 | -1,
+  context?: Record<string, unknown>,
+  comment?: string
+): Promise<{ id?: string; recorded: boolean }> {
+  const raw = await request<Record<string, unknown>>(`${API_BASE}/feedback`, {
+    feature,
+    rating,
+    context,
+    comment,
+  })
+  // Backend may wrap responses as { success, data }; unwrap defensively.
+  const data = (raw && typeof raw === 'object' && 'data' in raw ? raw.data : raw) as {
+    id?: string
+    recorded: boolean
+  }
+  return data
+}

@@ -9,6 +9,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import PageTransition from '../components/ui/page-transition'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
+import FeedbackWidget from '../components/ui/FeedbackWidget'
 import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
@@ -77,6 +78,20 @@ export default function ExplorePage() {
         )}
 
         {loading && !result && <ExploreResultSkeleton />}
+
+        {result && !loading && (
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[11px] text-[#FDFBF8]/30">Was this analysis accurate?</span>
+            <FeedbackWidget
+              feature="explore"
+              context={{
+                repo: repoUrl,
+                files: result.entities.files.length,
+                circular_dependencies: result.circular_dependencies.length,
+              }}
+            />
+          </div>
+        )}
 
         {/* Metric cards */}
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

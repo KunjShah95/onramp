@@ -239,6 +239,8 @@ export default function AskPage() {
                     restoreMessages={restoreMessages}
                     appendKey={appendKey}
                     appendMessages={appendMessages}
+                    feedbackFeature="ask"
+                    feedbackContext={indexId ? { index_id: indexId, mode: roastMode ? 'roast' : 'normal' } : undefined}
                   />
                 </div>
               </CardSpotlight>
