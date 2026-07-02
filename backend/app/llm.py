@@ -4,7 +4,31 @@ import logging
 from typing import Dict, Any
 from enum import Enum
 
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from app.circuit_breaker import CircuitBreaker
+
 logger = logging.getLogger("codeflow.llm")
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """Errors worth retrying on the same provider before falling through the chain."""
+    status = getattr(exc, "status_code", None)
+    if status in (408, 429, 500, 502, 503, 504):
+        return True
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in (
+            "timeout", "timed out", "connection", "temporarily",
+            "overloaded", "rate limit", "too many requests", "service unavailable",
+        )
+    )
 
 
 class ModelProvider(Enum):
@@ -84,6 +108,13 @@ class LLMRouter:
         }
 
         self.current_provider = None
+        # Self-healing: eject a provider after repeated failures, probe it back
+        # in after a cooldown instead of paying its latency on every request.
+        self.breaker = CircuitBreaker(
+            failure_threshold=int(os.getenv("LLM_BREAKER_THRESHOLD", "3")),
+            window_seconds=float(os.getenv("LLM_BREAKER_WINDOW_SECONDS", "120")),
+            cooldown_seconds=float(os.getenv("LLM_BREAKER_COOLDOWN_SECONDS", "300")),
+        )
         self._initialize_providers()
 
     def _initialize_providers(self):
@@ -103,25 +134,65 @@ class LLMRouter:
         )
 
     async def chat(self, prompt: str, system: str = None, max_tokens: int = 2000) -> str:
-        """Call LLM with automatic fallback on error. Free providers tried first."""
+        """Call LLM with automatic fallback on error. Free providers tried first.
+
+        Each provider gets a short retry-with-backoff on transient errors, and
+        is skipped entirely while its circuit breaker is open.
+        """
         errors = []
         for provider in self.fallback_chain:
             config = self.providers[provider]
             if not config["api_key"]:
                 continue
+            if not self.breaker.allow(provider.value):
+                errors.append(f"{provider.value} skipped: circuit open")
+                continue
 
             try:
-                response = await self._call_provider(provider, prompt, system, max_tokens)
+                response = await self._call_with_retry(provider, prompt, system, max_tokens)
+                self.breaker.record_success(provider.value)
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider: {provider.value}")
                     self.current_provider = provider
                 return response
             except Exception as e:
+                self.breaker.record_failure(provider.value)
                 err_msg = f"{provider.value} failed: {str(e)}"
                 logger.warning(err_msg)
                 errors.append(err_msg)
 
         raise RuntimeError(f"All LLM providers exhausted. Errors: {'; '.join(errors)}")
+
+    async def _call_with_retry(
+        self,
+        provider: ModelProvider,
+        prompt: str,
+        system: str,
+        max_tokens: int,
+    ) -> str:
+        """Retry a provider once with backoff on transient errors before giving up on it."""
+        async for attempt in AsyncRetrying(
+            stop=stop_after_attempt(2),
+            wait=wait_exponential(multiplier=0.5, max=4),
+            retry=retry_if_exception(_is_transient),
+            reraise=True,
+        ):
+            with attempt:
+                return await self._call_provider(provider, prompt, system, max_tokens)
+
+    def provider_status(self) -> dict:
+        """Per-provider view (configured, breaker state) for health endpoints."""
+        breaker_status = self.breaker.status()
+        return {
+            provider.value: {
+                "configured": bool(config["api_key"]),
+                "free": config["free"],
+                "model": config["model"],
+                "current": provider == self.current_provider,
+                "circuit": breaker_status.get(provider.value, {"state": "closed", "recent_failures": 0, "retry_in_seconds": 0}),
+            }
+            for provider, config in self.providers.items()
+        }
 
     async def json_chat(self, prompt: str, system: str = None) -> dict:
         """Call LLM expecting JSON response with automatic fallback."""
@@ -257,16 +328,21 @@ class LLMRouter:
             config = self.providers[provider]
             if not config["api_key"]:
                 continue
+            if not self.breaker.allow(provider.value):
+                errors.append(f"{provider.value} skipped: circuit open")
+                continue
             yielded = False
             try:
                 async for token in self._stream_provider(provider, prompt, system, max_tokens):
                     yielded = True
                     yield token
+                self.breaker.record_success(provider.value)
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider (stream): {provider.value}")
                     self.current_provider = provider
                 return
             except Exception as e:
+                self.breaker.record_failure(provider.value)
                 if yielded:
                     raise
                 err_msg = f"{provider.value} failed: {str(e)}"

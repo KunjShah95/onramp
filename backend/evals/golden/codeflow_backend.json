@@ -1,0 +1,91 @@
+{
+  "suite": "codeflow-backend",
+  "description": "Golden Q&A over the CodeFlow backend itself. Checks are intentionally tolerant (must_contain_any) so provider/model changes don't flake, while still catching prompt regressions that lose grounding in the codebase.",
+  "repo_path": "backend/app",
+  "cases": [
+    {
+      "id": "llm-fallback-chain",
+      "question": "How does the LLM provider fallback work in this codebase?",
+      "must_contain_any": ["fallback", "provider", "chain"],
+      "must_not_contain": ["i don't have access", "no relevant documents"],
+      "min_length": 100
+    },
+    {
+      "id": "free-providers-first",
+      "question": "Which LLM providers are tried first, free ones or paid ones?",
+      "must_contain_any": ["free", "openrouter", "gemini", "groq"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "database-engine",
+      "question": "What database does the backend use and how is the schema managed?",
+      "must_contain_any": ["postgres", "postgresql", "sqlalchemy"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "auth-mechanism",
+      "question": "How is API authentication handled for incoming requests?",
+      "must_contain_any": ["middleware", "bearer", "token", "auth"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "rate-limiting",
+      "question": "Is there rate limiting on the API? How does it work?",
+      "must_contain_any": ["rate", "limit", "429"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "teams-users-relation",
+      "question": "How are users and teams related in the data model?",
+      "must_contain_any": ["team_members", "many-to-many", "association", "membership"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "agents-inventory",
+      "question": "What AI agents exist in this codebase and what do they do?",
+      "must_contain_any": ["pr review", "quiz", "learning path", "repo", "agent"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 100
+    },
+    {
+      "id": "billing-provider",
+      "question": "How is billing implemented and which payment provider is used?",
+      "must_contain_any": ["stripe", "billing"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "caching-layer",
+      "question": "What caching infrastructure does the backend use?",
+      "must_contain_any": ["redis", "cache"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "usage-tracking",
+      "question": "What data is stored in the usage records table?",
+      "must_contain_any": ["tokens", "cost", "endpoint", "usage"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "circuit-breaker",
+      "question": "What happens when an LLM provider keeps failing repeatedly?",
+      "must_contain_any": ["circuit", "breaker", "eject", "fallback", "skip"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 50
+    },
+    {
+      "id": "health-checks",
+      "question": "What health check endpoints does the API expose?",
+      "must_contain_any": ["/health", "health"],
+      "must_not_contain": ["no relevant documents"],
+      "min_length": 40
+    }
+  ]
+}

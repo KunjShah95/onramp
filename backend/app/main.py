@@ -27,7 +27,7 @@ from app.api.v1 import (
     explore, first_pr, health, integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
     playbooks, pr_review, quiz as quiz_router, reports, slack,
-    tasks as tasks_router, teams, unique, waitlist
+    system_health, tasks as tasks_router, teams, unique, waitlist
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
@@ -94,7 +94,7 @@ _cors_origins = [
 ]
 
 app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/docs", "/openapi.json", "/health",
+    "/", "/docs", "/openapi.json", "/health", "/health/deep",
     "/api/v1/auth/register",     # verifies Neon Auth session token in request body
     "/api/v1/auth/check-provider", # public provider lookup by email
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
@@ -144,6 +144,8 @@ app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
 app.include_router(waitlist.router, prefix="/api/v1")
+# Deep health check lives at root (/health/deep) so watchdogs hit it unprefixed
+app.include_router(system_health.router)
 
 
 @app.get("/")
