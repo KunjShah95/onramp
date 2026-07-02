@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.lock.txt
-          pip install pytest pytest-asyncio httpx
+          pip install pytest pytest-asyncio pytest-timeout httpx
 
       - name: Check code compiles
         run: python -m compileall backend/app
