@@ -59,6 +59,8 @@ _cors_origins = [
 
 app.add_middleware(AuthMiddleware, public_paths=[
     "/", "/docs", "/openapi.json", "/health",
+    "/api/v1/auth/register",     # verifies Firebase token in request body
+    "/api/v1/auth/check-provider", # public provider lookup by email
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
