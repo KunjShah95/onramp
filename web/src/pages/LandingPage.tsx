@@ -338,6 +338,8 @@ export default function LandingPage() {
             <h3 className="font-mono text-[10px] text-[#FDFBF8]/40 uppercase tracking-widest font-bold mb-4">Company</h3>
             <ul className="flex flex-col gap-3">
               <li><Link to="/waitlist" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Join Waitlist</Link></li>
+              <li><Link to="/privacy" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="text-[#FDFBF8]/60 font-body text-sm hover:text-[#FDFBF8] transition-colors">Terms of Service</Link></li>
             </ul>
           </div>
         </div>

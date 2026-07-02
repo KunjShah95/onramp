@@ -61,6 +61,8 @@ const TraineeDashboard = lazy(() => import('./pages/TraineeDashboard'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const JoinPage = lazy(() => import('./pages/JoinPage'))
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
 
 // New Phase 2-5 pages
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
@@ -128,6 +130,16 @@ export default function App() {
               <Route path="/waitlist" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><WaitlistPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/privacy" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><PrivacyPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/terms" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><TermsPage /></ErrorBoundary>
                 </Suspense>
               } />
 
