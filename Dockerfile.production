@@ -24,11 +24,11 @@ RUN --mount=type=cache,target=/var/cache/apt \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies with caching
-COPY backend/requirements.txt .
+COPY backend/requirements.lock.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --prefix=/install \
     --no-warn-script-location \
-    -r requirements.txt
+    -r requirements.lock.txt
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production Runtime
