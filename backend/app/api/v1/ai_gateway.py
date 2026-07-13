@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from typing import Optional
 from app.services.api_key_service import APIKeyService, TIER_LIMITS, CREDIT_COSTS

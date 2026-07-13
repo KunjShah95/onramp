@@ -13,7 +13,7 @@ Built-in patterns:
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
+from typing import List
 from app.services.postgres_db import get_storage, generate_id
 
 COLLECTION = "member_modules"

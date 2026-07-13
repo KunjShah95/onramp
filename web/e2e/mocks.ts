@@ -1,111 +1,86 @@
 import type { Page } from '@playwright/test'
 
 /* ------------------------------------------------------------------ */
-/*  Firebase Auth mocking — intercepts Identity Toolkit REST calls      */
+/*  Neon Auth mocking — intercepts Better Auth REST API calls          */
 /* ------------------------------------------------------------------ */
 
 const FAKE_UID = 'test-user-001'
-const FAKE_ID_TOKEN = 'fake-id-token-abc123'
-const FAKE_REFRESH_TOKEN = 'fake-refresh-token-xyz789'
+const FAKE_SESSION_TOKEN = 'fake-session-token-abc123'
 const FAKE_EMAIL = 'admin@codeflow.dev'
 const FAKE_NAME = 'Admin User'
 
+const FAKE_USER = {
+  id: FAKE_UID,
+  email: FAKE_EMAIL,
+  name: FAKE_NAME,
+  image: null,
+  emailVerified: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+/** Shared mock user, session, and team data used across all tests. */
+export { FAKE_UID, FAKE_SESSION_TOKEN, FAKE_EMAIL, FAKE_NAME, FAKE_USER }
+
 /**
- * Install route interceptors that mock Firebase Auth REST endpoints
- * plus all backend API endpoints the tests rely on.
+ * Inject a mock Neon Auth client via window.__TEST_AUTH_CLIENT before the
+ * app bundle loads.  This makes the E2E test fully self-contained — no real
+ * auth server or HTTP mocking needed.
+ *
+ * The mock tracks state: `getSession` returns `{data: null}` until a
+ * sign-in/sign-up call is made, after which it switches to the fake
+ * user/session payload.  This lets tests start on the login page as an
+ * unauthenticated user and then observe the post-login redirect.
  */
-export async function mockFirebaseAuth(page: Page) {
-  await page.route('**/identitytoolkit.googleapis.com/**', async (route) => {
-    const url = route.request().url()
+export async function mockNeonAuth(page: Page) {
+  const mockUser = FAKE_USER
+  const mockSessionToken = FAKE_SESSION_TOKEN
 
-    // signInWithPassword
-    if (url.includes('signInWithPassword')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          kind: 'identitytoolkit#VerifyPasswordResponse',
-          localId: FAKE_UID,
-          email: FAKE_EMAIL,
-          displayName: FAKE_NAME,
-          idToken: FAKE_ID_TOKEN,
-          registered: true,
-          refreshToken: FAKE_REFRESH_TOKEN,
-          expiresIn: '3600',
-        }),
-      })
-    }
+  await page.addInitScript(`
+    (() => {
+      let loggedIn = false;
+      const FAKE_USER = ${JSON.stringify(mockUser)};
+      const FAKE_TOKEN = ${JSON.stringify(mockSessionToken)};
 
-    // getAccountInfo (lookup)
-    if (url.includes('lookup')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          kind: 'identitytoolkit#GetAccountInfoResponse',
-          users: [
-            {
-              localId: FAKE_UID,
-              email: FAKE_EMAIL,
-              displayName: FAKE_NAME,
-              providerUserInfo: [
-                { providerId: 'password', federatedId: FAKE_EMAIL },
-              ],
-            },
-          ],
-        }),
-      })
-    }
-
-    // signUp (createUserWithEmailAndPassword)
-    if (url.includes('signUp')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          kind: 'identitytoolkit#SignupNewUserResponse',
-          localId: FAKE_UID,
-          email: FAKE_EMAIL,
-          idToken: FAKE_ID_TOKEN,
-          refreshToken: FAKE_REFRESH_TOKEN,
-          expiresIn: '3600',
-        }),
-      })
-    }
-
-    // Default: pass through (or return 200 for unhandled)
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({}),
-    })
-  })
-
-  // Secure Token API (token refresh)
-  await page.route('**/securetoken.googleapis.com/**', async (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        access_token: FAKE_ID_TOKEN,
-        expires_in: '3600',
-        token_type: 'Bearer',
-        refresh_token: FAKE_REFRESH_TOKEN,
-        id_token: FAKE_ID_TOKEN,
-        user_id: FAKE_UID,
-        project_id: 'test-project',
-      }),
-    })
-  })
-
-  // Allow Firebase Auth emulator calls through if VITE_USE_FIREBASE_EMULATORS=true
-  await page.route('**://localhost:9099/**', async (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({}),
-    })
-  })
+      window.__TEST_AUTH_CLIENT = {
+        signIn: {
+          email: async () => {
+            loggedIn = true;
+            return { data: { user: FAKE_USER, session: { token: FAKE_TOKEN } } };
+          },
+          social: async () => {
+            loggedIn = true;
+            return { data: { user: FAKE_USER, session: { token: FAKE_TOKEN } } };
+          },
+        },
+        signUp: {
+          email: async () => {
+            loggedIn = true;
+            return { data: { user: FAKE_USER, session: { token: FAKE_TOKEN } } };
+          },
+        },
+        getSession: async () => {
+          if (loggedIn) {
+            return {
+              data: {
+                session: { token: FAKE_TOKEN },
+                user: FAKE_USER,
+              },
+            };
+          }
+          return { data: null };
+        },
+        signOut: async () => {
+          loggedIn = false;
+          return { data: {} };
+        },
+        forgetPassword: {
+          emailOtp: async () => ({ data: {} }),
+        },
+        updateUser: async () => ({ data: { user: FAKE_USER } }),
+      };
+    })();
+  `)
 }
 
 /* ------------------------------------------------------------------ */
@@ -115,6 +90,19 @@ export async function mockFirebaseAuth(page: Page) {
 const MOCK_TEAM_ID = 'team-42'
 
 export async function mockBackendAPIs(page: Page) {
+  await page.route('**/api/v1/auth/register', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        uid: FAKE_UID,
+        email: FAKE_EMAIL,
+        name: FAKE_NAME,
+        provider: 'password',
+      }),
+    })
+  })
+
   await page.route('**/api/v1/auth/me', async (route) => {
     return route.fulfill({
       status: 200,
@@ -128,7 +116,16 @@ export async function mockBackendAPIs(page: Page) {
     })
   })
 
-  await page.route('**/api/v1/teams?user=current-user', async (route) => {
+  await page.route('**/api/v1/auth/check-provider*', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ email: FAKE_EMAIL, registered: true, provider: 'password' }),
+    })
+  })
+
+  // Teams listing — uses regex to match any query params
+  await page.route(/\/api\/v1\/teams(\?|$)/, async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -145,14 +142,6 @@ export async function mockBackendAPIs(page: Page) {
           },
         ],
       }),
-    })
-  })
-
-  await page.route('**/api/v1/auth/check-provider*', async (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ email: FAKE_EMAIL, registered: true, provider: 'password' }),
     })
   })
 }
@@ -254,13 +243,7 @@ export async function mockDashboardAPI(page: Page) {
 }
 
 export async function mockReviewQueueAPI(page: Page) {
-  await page.route('**/api/v1/tasks*', async (route) => {
-    const url = route.request().url()
-    // Don't intercept non-review API calls like progress
-    if (url.includes('/progress/')) {
-      return route.continue()
-    }
-
+  await page.route('**/api/v1/tasks', async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -338,5 +321,3 @@ export async function mockReviewQueueAPI(page: Page) {
     })
   })
 }
-
-

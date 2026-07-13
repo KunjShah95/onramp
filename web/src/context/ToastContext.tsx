@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading'
@@ -31,13 +30,25 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
-let toastCounter = 0
+let toastCounter = 0  // Exit animation duration (must match CSS animation-duration for toast-exit)
+  const EXIT_DURATION = 200
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [exiting, setExiting] = useState<Set<string>>(new Set())
 
   const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
+    // Start exit animation
+    setExiting((prev) => new Set(prev).add(id))
+    // Remove from state after animation completes
+    setTimeout(() => {
+      setExiting((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, EXIT_DURATION)
   }, [])
 
   const addToast = useCallback((type: ToastType, title: string, message?: string, duration = 4000) => {
@@ -121,7 +132,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, toast, dismissToast, success, error, info, warning, promise }}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} exiting={exiting} onDismiss={dismissToast} />
     </ToastContext.Provider>
   )
 }
@@ -172,53 +183,57 @@ const TYPE_STYLES: Record<ToastType, { bg: string; border: string; icon: string;
   },
 }
 
-function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+function ToastContainer({
+  toasts,
+  exiting,
+  onDismiss,
+}: {
+  toasts: Toast[]
+  exiting: Set<string>
+  onDismiss: (id: string) => void
+}) {
   return (
     <div className="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse gap-2 max-w-sm w-full pointer-events-none">
-      <AnimatePresence mode="popLayout">
-        {toasts.map((t) => {
-          const style = TYPE_STYLES[t.type]
-          return (
-            <motion.div
-              key={t.id}
-              layout
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 100, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className={cn(
-                'pointer-events-auto rounded-xl border p-4 shadow-2xl backdrop-blur-xl',
-                style.bg, style.border
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', style.iconBg)}>
-                  {t.type === 'loading' ? (
-                    <svg className="w-4 h-4 animate-spin text-[#FF8C00]" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                  ) : (
-                    <span className={cn('material-symbols-outlined text-sm', style.iconColor)}>{style.icon}</span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <p className="text-sm font-semibold text-[#FDFBF8]">{t.title}</p>
-                  {t.message && (
-                    <p className="text-xs text-[#FDFBF8]/50 mt-0.5 leading-relaxed">{t.message}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => onDismiss(t.id)}
-                  className="text-[#FDFBF8]/20 hover:text-[#FDFBF8]/60 transition-colors shrink-0"
-                >
-                  <span className="material-symbols-outlined text-sm">close</span>
-                </button>
+      {toasts.map((t) => {
+        const style = TYPE_STYLES[t.type]
+        const isExiting = exiting.has(t.id)
+        return (
+          <div
+            key={t.id}
+            className={cn(
+              'pointer-events-auto rounded-xl border p-4 shadow-2xl backdrop-blur-xl',
+              style.bg,
+              style.border,
+              isExiting ? 'toast-exit' : 'toast-enter'
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', style.iconBg)}>
+                {t.type === 'loading' ? (
+                  <svg className="w-4 h-4 animate-spin text-[#FF8C00]" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : (
+                  <span className={cn('material-symbols-outlined text-sm', style.iconColor)}>{style.icon}</span>
+                )}
               </div>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
+              <div className="flex-1 min-w-0 pt-0.5">
+                <p className="text-sm font-semibold text-[#FDFBF8]">{t.title}</p>
+                {t.message && (
+                  <p className="text-xs text-[#FDFBF8]/50 mt-0.5 leading-relaxed">{t.message}</p>
+                )}
+              </div>
+              <button
+                onClick={() => onDismiss(t.id)}
+                className="text-[#FDFBF8]/20 hover:text-[#FDFBF8]/60 transition-colors shrink-0"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

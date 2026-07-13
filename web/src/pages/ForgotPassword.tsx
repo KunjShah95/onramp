@@ -1,10 +1,17 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import { EnvelopeSimple, ArrowRight, Mailbox } from '@phosphor-icons/react'
 
 type PageState = 'idle' | 'sending' | 'sent' | 'error'
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+}
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -38,69 +45,74 @@ export default function ForgotPassword() {
 
   return (
     <PageTransition>
-      <div className="bg-[#0A0705] min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-[#FDFBF8] max-w-full overflow-x-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0iI0ZERkJGOCIvPjwvc3ZnPg==')] opacity-[0.03] z-0 pointer-events-none" />
-        {/* Background Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FF8C00]/5 rounded-full blur-[100px] pointer-events-none z-0" />
+      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
 
-        <main className="w-full max-w-[420px] z-10">
+        <motion.main
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-[400px] z-10"
+        >
           {/* Brand Header */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center w-12 h-12 bg-[#1A110D] border border-[#FDFBF8]/10 rounded-xl mb-4 shadow-[0_0_15px_rgba(255,140,0,0.1)]">
-              <span className="material-symbols-outlined text-[#FF8C00]" style={{ fontVariationSettings: "'FILL' 1" }}>terminal</span>
+          <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
+            <div className="w-12 h-12 rounded-xl bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-4">
+              <span className="text-xl font-display font-bold text-[hsl(var(--accent))]">✦</span>
             </div>
-            <h1 className="font-display text-2xl font-bold text-[#FF8C00] tracking-tight">CodeFlow 2.0</h1>
-            <p className="font-body text-sm text-[#FDFBF8]/50 mt-2 text-center">Reset your password</p>
-          </div>
+            <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
+              Nexora
+            </h1>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Reset your password</p>
+          </motion.div>
 
           {pageState === 'sent' ? (
-            <div className="bg-[#120D0A]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-xl p-8 shadow-2xl text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#FF8C00]/50 to-transparent" />
-              <span className="material-symbols-outlined text-[#FF8C00] text-4xl mb-3">mark_email_read</span>
-              <h2 className="font-display text-2xl font-bold text-[#FDFBF8] mb-2">Check your email</h2>
-              <p className="font-body text-sm text-[#FDFBF8]/50 mb-6">
-                If an account exists for <strong className="text-[#FDFBF8]">{email}</strong>,
+            <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
+              <Mailbox size={40} className="text-[hsl(var(--accent))] mx-auto mb-3" weight="fill" />
+              <h2 className="font-display text-xl text-[hsl(var(--foreground))] mb-2">Check your email</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 font-body">
+                If an account exists for <strong className="text-[hsl(var(--foreground))]">{email}</strong>,
                 we've sent a password reset link.
               </p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#FDFBF8]/50 mb-4">
+              <p className="text-xs text-[hsl(var(--muted-foreground))]/60 mb-4 font-body">
                 Didn't receive it? Check your spam folder or{' '}
                 <button
                   onClick={() => { setPageState('idle'); setError('') }}
-                  className="text-[#FF8C00] hover:text-[#FF8C00] transition-colors underline"
+                  className="text-[hsl(var(--accent))] hover:opacity-80 transition-colors underline font-medium"
                 >
                   try again
                 </button>
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 bg-[#FF8C00] text-[#3D1C00] font-mono text-[10px] uppercase tracking-widest font-semibold py-3 px-6 rounded-lg hover:bg-[#FF8C00]/90 active:scale-[0.98] transition-all shadow-[0_4px_14px_rgba(255,140,0,0.15)]"
+                className="inline-flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 px-5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all font-body"
               >
                 Back to Sign In
               </Link>
-            </div>
+            </motion.div>
           ) : (
             <>
               {error && (
-                <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/30 backdrop-blur-md">
+                <motion.div variants={fadeUp} className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-5 text-sm border border-red-200">
                   {error}
-                </div>
+                </motion.div>
               )}
 
-              <div className="bg-[#120D0A]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-xl p-8 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#FF8C00]/50 to-transparent" />
+              <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
-                <p className="font-body text-sm text-[#FDFBF8]/50 mb-5">
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5 font-body">
                   Enter your email address and we'll send you a link to reset your password.
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="group">
-                    <label htmlFor="email" className="block font-mono text-[10px] uppercase tracking-widest font-semibold text-[#FDFBF8]/50 mb-1 group-focus-within:text-[#FF8C00] transition-colors">Email Address</label>
+                  <div className="space-y-1.5">
+                    <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Email Address</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="material-symbols-outlined text-[#FDFBF8]/30 group-focus-within:text-[#FF8C00] transition-colors text-[18px]">mail</span>
-                      </div>
+                      <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                       <input
                         id="email"
                         type="email"
@@ -110,35 +122,33 @@ export default function ForgotPassword() {
                         required
                         autoComplete="email"
                         autoFocus
-                        className="w-full bg-[#1A110D] border border-[#FDFBF8]/15 rounded-lg pl-10 pr-4 py-2.5 font-mono text-xs text-[#FDFBF8] placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/30 transition-all"
+                        className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                       />
                     </div>
                   </div>
 
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      disabled={pageState === 'sending' || !email.trim()}
-                      className="w-full bg-[#FF8C00] text-[#3D1C00] font-mono text-[10px] uppercase tracking-widest font-semibold py-3 rounded-lg hover:bg-[#FF8C00]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(255,140,0,0.15)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {pageState === 'sending' ? 'Sending...' : 'Send Reset Link'}
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={pageState === 'sending' || !email.trim()}
+                    className="w-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-body"
+                  >
+                    {pageState === 'sending' ? 'Sending...' : 'Send Reset Link'}
+                    <ArrowRight size={16} weight="bold" />
+                  </button>
                 </form>
-              </div>
+              </motion.div>
 
-              <div className="mt-8 text-center">
-                <p className="font-body text-xs text-[#FDFBF8]/50">
+              <motion.div variants={fadeUp} className="mt-6 text-center">
+                <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body">
                   Remember your password?{' '}
-                  <Link to="/login" className="text-[#FF8C00] hover:brightness-110 underline decoration-[#FF8C00]/30 underline-offset-4 transition-colors">
+                  <Link to="/login" className="text-[hsl(var(--accent))] font-medium hover:opacity-80 transition-colors font-body">
                     Sign In
                   </Link>
                 </p>
-              </div>
+              </motion.div>
             </>
           )}
-        </main>
+        </motion.main>
       </div>
     </PageTransition>
   )

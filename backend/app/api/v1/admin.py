@@ -14,8 +14,7 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 from app.api.v1.auth import get_current_user
 from app.services.team_service import get_user_teams
-from app.services.api_key_service import list_api_keys as _list_api_keys
-from app.services.usage_tracker import get_usage_by_team, get_total_usage
+
 from app.services.audit_service import query_events
 from app.services.webhook_service import get_webhook as _get_webhook
 
@@ -236,7 +235,7 @@ async def test_admin_webhook(
     uid: str = Depends(_require_owner),
 ):
     """Test/send a ping to any webhook (bypasses user ownership check)."""
-    from app.services.webhook_service import test_webhook as _test_webhook
+
 
     webhook = await _get_webhook(webhook_id)
     if not webhook:

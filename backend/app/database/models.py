@@ -264,6 +264,53 @@ class UsageRecord(Base):
             "created_at": self.created_at.isoformat(),
         }
 
+class Repository(Base):
+    """Repository model - tracks repositories registered for analysis"""
+
+    __tablename__ = "repositories"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=generate_uuid
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner: Mapped[str] = mapped_column(String(255), nullable=False)
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True
+    )
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    last_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("owner", "name", name="uq_repositories_owner_name"),
+        Index("ix_repositories_team_id", "team_id"),
+        Index("ix_repositories_created_at", "created_at"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "owner": self.owner,
+            "language": self.language,
+            "description": self.description,
+            "status": self.status,
+            "last_analyzed": self.last_analyzed_at.isoformat() if self.last_analyzed_at else None,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
 class DynamicDocument(Base):
     """Fallback model for generic or unmigrated Firestore collections"""
     

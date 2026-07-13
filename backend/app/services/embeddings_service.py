@@ -3,7 +3,7 @@ import hashlib
 import logging
 from typing import Dict, List, Optional
 from pathlib import Path
-from app.services.postgres_db import get_storage, generate_id
+from app.services.postgres_db import get_storage
 
 logger = logging.getLogger(__name__)
 

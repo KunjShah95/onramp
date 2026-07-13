@@ -3,6 +3,7 @@ PR Review Agent - analyzes pull requests and provides code review feedback.
 """
 
 import logging
+import random
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 from app.services.github_service import GitHubService
@@ -85,7 +86,8 @@ Provide your response as JSON with this exact structure:
     }}
   ],
   "positives": ["Good practice 1", "Good practice 2"],
-  "recommendations": ["Recommendation 1", "Recommendation 2"]
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "hot_take": "A witty, personality-driven one-liner summarizing this PR — humorous but relevant. E.g. 'This is the cleanest code I've seen all week. Have a cookie. 🍪' or 'This looks like it was written at 3 AM after three energy drinks.'"
 }}
 
 Only include the JSON response, no extra text."""
@@ -107,6 +109,13 @@ Only include the JSON response, no extra text."""
     def _fallback_analysis(self, diff: str) -> Dict[str, Any]:
         """Fallback analysis when LLM is not available."""
         stats = self._get_diff_stats(diff)
+        hot_take_options = [
+        "This code is so clean I could eat off it. Still needs tests though.",
+        "Like a fine wine, this PR gets better with age. And also some test coverage.",
+        "I've seen worse. Actually, I wrote worse last week. Ship it.",
+        "The variable names suggest you actually care about your future self. Respect.",
+        "Solid logic. The commit messages could use some work though.",
+    ]
         return {
             "summary": f"PR modifies {stats['files_changed']} files (+{stats['additions']}/-{stats['deletions']} lines). Manual review recommended.",
             "score": 70,
@@ -117,6 +126,7 @@ Only include the JSON response, no extra text."""
                 "Ensure CI passes before merging",
                 "Consider adding documentation for API changes"
             ],
+            "hot_take": random.choice(hot_take_options),
             "diff_stats": stats,
         }
 

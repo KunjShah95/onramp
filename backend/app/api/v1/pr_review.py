@@ -42,6 +42,14 @@ async def review_pr(
         )
         if "error" in result:
             raise HTTPException(status_code=404, detail=result["error"])
+
+        # Award XP for completing a PR review (fire-and-forget)
+        try:
+            from app.services.gamification_service import award_xp as _award_xp
+            await _award_xp(user_id=user.get("uid", ""), source="pr_review_completed")
+        except Exception:
+            pass  # XP award is non-critical
+
         return result
     except HTTPException:
         raise

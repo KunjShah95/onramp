@@ -24,7 +24,6 @@ from app.services.task_service import (
 )
 from app.api.v1.auth import get_current_user
 from app.agents import PRReviewAgent
-from app.middleware.access_guard import require_module_access, require_minimum_role
 from app.services.notification_helpers import (
     notify_task_assigned_all_channels,
     notify_task_submitted_all_channels,
@@ -421,6 +420,14 @@ async def complete_task_endpoint(
                 await notify_task_completed_all_channels(task)
         except Exception:
             logger.exception("Failed to send completion notification")
+        # Award XP to the task assignee (fire-and-forget — never block on gamification)
+        try:
+            from app.services.gamification_service import award_xp as _award_xp
+            assignee = task.get("assigned_to") or user.get("uid", "")
+            team_id = task.get("team_id")
+            await _award_xp(user_id=assignee, source="task_completed", team_id=team_id)
+        except Exception:
+            logger.exception("Failed to award XP for task completion")
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

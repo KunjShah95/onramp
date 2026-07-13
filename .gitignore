@@ -47,6 +47,9 @@ yarn-debug.log*
 # Build artifacts
 *.tsbuildinfo
 
+# Playwright test output
+web/test-results/
+
 # Documentation
 *.md
 !Readme.md

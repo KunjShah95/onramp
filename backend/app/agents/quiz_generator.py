@@ -9,7 +9,7 @@ Supports:
 """
 
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
 from app.llm import LLMRouter
 

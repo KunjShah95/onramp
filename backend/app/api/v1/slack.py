@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from app.services.slack_service import SlackService
-from app.agents import FirstPRAccelerator, HealthScorer
+from app.agents import FirstPRAccelerator
 
 router = APIRouter(prefix="/slack", tags=["integration"])
 

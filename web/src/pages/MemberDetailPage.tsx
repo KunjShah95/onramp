@@ -1,236 +1,149 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '../lib/utils'
-import { listTasks, getTeamMembers, getUserModulePermissions, getUserProgress, listTeams, type WorkflowTask } from '../lib/api'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import CardSpotlight from '../components/ui/card-spotlight'
-import StatusBadge from '../components/ui/status-badge'
+import {
+  CalendarBlank,
+  GitPullRequest,
+  CheckCircle,
+  Star,
+  ChartBar,
+  ArrowLeft,
+  ShieldCheck,
+  Code,
+  Bug,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import {
-  SkeletonHeading,
-  SkeletonText,
-  SkeletonBase,
-  StatsGridSkeleton,
-} from '../components/ui/Skeleton'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
-} from 'recharts'
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-}
+import CardSpotlight from '../components/ui/card-spotlight'
+import { MemberListSkeleton } from '../components/ui/Skeleton'
+import { EmptyState } from '../components/ui/empty-state'
+import { useAuth } from '../context/AuthContext'
+import { fetchTeamAnalytics } from '../lib/api'
+import type { TeamMemberProgress } from '../lib/api'
 
 export default function MemberDetailPage() {
-  const { userId } = useParams()
-  const navigate = useNavigate()
-  const { activeTeamId } = useAuth()
-  const toast = useToast()
+  const [members, setMembers] = useState<TeamMemberProgress[]>([])
   const [loading, setLoading] = useState(true)
-  const [member, setMember] = useState<{ user_id: string; name: string; role: string } | null>(null)
-  const [tasks, setTasks] = useState<WorkflowTask[]>([])
-  const [modules, setModules] = useState<string[]>([])
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!userId) return
-    const load = async () => {
-      // Resolve team_id from auth context or first available team
-      let teamId = activeTeamId
-      if (!teamId) {
-        try {
-          const teamsData = await listTeams('current-user')
-          if (teamsData.teams?.length > 0) teamId = teamsData.teams[0].team_id
-        } catch {}
-      }
-      if (!teamId) { setLoading(false); return }
+  const { activeTeamId } = useAuth()
 
-      await Promise.all([
-        listTasks({ assigned_to: userId })
-          .then((r: any) => setTasks(r.tasks || []))
-          .catch(() => toast.error('Failed to load tasks')),
-        getTeamMembers(teamId).then(members => {
-          const m = members.find(m => m.user_id === userId)
-          if (m) setMember(m)
-        }).catch(() => toast.error('Failed to load member details')),
-        getUserModulePermissions(teamId, userId)
-          .then(r => setModules(r.modules || []))
-          .catch(() => {}),
-        getUserProgress(userId, teamId).catch(() => {}),
-      ])
+  async function fetchMembers() {
+    if (!activeTeamId) {
+      setLoading(false)
+      setError('Join a team to view member progress.')
+      return
+    }
+    setLoading(true); setError('')
+    try {
+      const res = await fetchTeamAnalytics()
+      setMembers(res.members ?? [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load members.')
+    } finally {
       setLoading(false)
     }
-    load()
-  }, [userId, activeTeamId])
+  }
 
-  const taskStats = useMemo(() => {
-    const states: Record<string, number> = {}
-    for (const t of tasks) { states[t.state] = (states[t.state] || 0) + 1 }
-    return {
-      total: tasks.length,
-      completed: tasks.filter(t => t.state === 'completed').length,
-      inProgress: tasks.filter(t => t.state === 'in_progress').length,
-      pendingReview: tasks.filter(t => ['submitted', 'under_review', 'product_review', 'approved'].includes(t.state)).length,
-      completionRate: tasks.length > 0 ? Math.round((tasks.filter(t => t.state === 'completed').length / tasks.length) * 100) : 0,
-    }
-  }, [tasks])
-
-  const byModule = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const t of tasks) { const mod = t.module || 'uncategorized'; map[mod] = (map[mod] || 0) + 1 }
-    return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
-  }, [tasks])
+  useEffect(() => {
+    fetchMembers()
+  }, [activeTeamId])
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-[11px] text-[#FDFBF8]/40 hover:text-[#FDFBF8] mb-4 transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Back
+      <div className="max-w-4xl mx-auto space-y-8">
+        <button className="flex items-center gap-1.5 text-caption text-text-tertiary hover:text-text-primary transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Team
         </button>
 
-        {loading ? (
-          <div className="space-y-4 animate-in">
-            <div className="flex items-center gap-4">
-              <SkeletonBase className="h-12 w-12 rounded-xl" />
-              <div className="space-y-2">
-                <SkeletonHeading className="w-32 h-6" />
-                <SkeletonText className="w-20 h-3" />
-              </div>
-            </div>
-            <StatsGridSkeleton count={4} />
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+            <Star className="w-5 h-5 text-accent-primary" weight="duotone" />
           </div>
+          <div>
+            <h1 className="text-display-sm font-display font-medium text-text-primary">
+              Team Members
+            </h1>
+            <p className="text-body-sm text-text-tertiary">
+              Per-member onboarding progress and contribution stats.
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={fetchMembers} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="py-8"><MemberListSkeleton /></div>
+        ) : members.length === 0 ? (
+          <CardSpotlight className="border border-accent-primary/10">
+            <EmptyState icon={<Star className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No members yet" description="Invite teammates to see their progress here." />
+          </CardSpotlight>
         ) : (
-          <>
-            {/* Header */}
-            {member && (
-              <motion.div variants={itemVariants} initial="hidden" animate="visible" className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF8C00]/15 to-[#FFB347]/10 border border-[#FF8C00]/20 flex items-center justify-center text-lg font-bold text-[#FF8C00]">
-                  {member.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h1 className="font-display text-xl font-bold text-[#FDFBF8]">{member.name}</h1>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] text-[#FDFBF8]/40 font-mono">{member.user_id.slice(0, 12)}</span>
-                    <span className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded font-medium',
-                      member.role === 'owner' ? 'bg-yellow-500/10 text-yellow-400' :
-                      member.role === 'senior' ? 'bg-[#FF8C00]/10 text-[#FF8C00]' :
-                      'bg-[#FDFBF8]/5 text-[#FDFBF8]/40'
-                    )}>{member.role}</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Stats */}
-            <motion.div variants={itemVariants} initial="hidden" animate="visible"
-              className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {[
-                { label: 'Total Tasks', value: taskStats.total, color: 'text-[#FDFBF8]' },
-                { label: 'Completed', value: taskStats.completed, color: 'text-green-400' },
-                { label: 'In Progress', value: taskStats.inProgress, color: 'text-[#FF8C00]' },
-                { label: 'Completion Rate', value: `${taskStats.completionRate}%`, color: taskStats.completionRate >= 70 ? 'text-green-400' : 'text-[#FF8C00]' },
-              ].map(s => (
-                <CardSpotlight key={s.label} className="p-4" color="rgba(255,140,0,0.03)">
-                  <div className={cn('font-display text-2xl font-bold tracking-tight', s.color)}>{s.value}</div>
-                  <div className="text-[10px] text-[#FDFBF8]/35 uppercase tracking-wider mt-1">{s.label}</div>
-                </CardSpotlight>
-              ))}
-            </motion.div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-              {/* Modules */}
-              <CardSpotlight className="p-5 lg:col-span-2" color="rgba(255,140,0,0.03)">
-                <h2 className="font-display text-sm font-bold text-[#FDFBF8] mb-3 flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  Module Access ({modules.length})
-                </h2>
-                {modules.length === 0 ? (
-                  <div className="text-center py-6 text-[#FDFBF8]/20 text-sm italic">No modules unlocked</div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {modules.map(m => (
-                      <span key={m} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-500/10 text-green-400 text-[11px] font-mono border border-green-500/15">
-                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                          <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </CardSpotlight>
-
-              {/* Activity by module */}
-              <CardSpotlight className="p-5 lg:col-span-3" color="rgba(255,140,0,0.03)">
-                <h2 className="font-display text-sm font-bold text-[#FDFBF8] mb-3">Tasks by Module</h2>
-                {byModule.length === 0 ? (
-                  <div className="text-center py-6 text-[#FDFBF8]/20 text-sm italic">No tasks</div>
-                ) : (
-                  <div className="h-40">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={byModule} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(253,251,248,0.06)" horizontal={false} />
-                        <XAxis type="number" tick={{ fill: 'rgba(253,251,248,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(253,251,248,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
-                        <Tooltip contentStyle={{ background: '#1A110D', border: '1px solid rgba(253,251,248,0.1)', borderRadius: '8px', fontSize: '12px', color: '#FDFBF8' }} />
-                        <Bar dataKey="count" fill="#FF8C00" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </CardSpotlight>
-            </div>
-
-            {/* Recent tasks */}
-            <CardSpotlight className="p-0 overflow-hidden" color="rgba(255,140,0,0.03)">
-              <div className="px-5 py-4 border-b border-[#FDFBF8]/5">
-                <h2 className="font-display text-sm font-bold text-[#FDFBF8]">
-                  Recent Tasks <span className="ml-2 text-[10px] text-[#FDFBF8]/25 font-mono">{tasks.length}</span>
-                </h2>
-              </div>
-              {tasks.length === 0 ? (
-                <div className="px-5 py-8 text-center text-[#FDFBF8]/20 text-sm italic">No tasks found</div>
-              ) : (
-                <div className="divide-y divide-[#FDFBF8]/5">
-                  {tasks.slice(0, 20).map((t, i) => (
-                    <motion.div
-                      key={t.task_id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#FDFBF8]/[0.015] transition-colors"
-                    >
-                      <div className={cn(
-                        'w-2 h-2 rounded-full shrink-0',
-                        t.state === 'completed' ? 'bg-green-500' :
-                        t.state === 'in_progress' ? 'bg-[#FF8C00]' :
-                        ['submitted', 'under_review', 'product_review', 'approved'].includes(t.state) ? 'bg-yellow-400' :
-                        'bg-[#FDFBF8]/20'
-                      )} />
+          <div className="space-y-3">
+            {members.map((m, i) => {
+              const initials = (m.name || m.user_id || '?').slice(0, 2).toUpperCase()
+              return (
+                <motion.div
+                  key={m.user_id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                >
+                  <CardSpotlight className="p-5">
+                    <div className="flex items-start gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                        <span className="text-body font-semibold font-display text-blue-400">{initials}</span>
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-[#FDFBF8] truncate font-medium">{t.title}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <StatusBadge state={t.state} />
-                          {t.module && <span className="text-[10px] text-[#FDFBF8]/30 font-mono">{t.module}</span>}
+                        <h2 className="text-display-xs font-display font-medium text-text-primary mb-1">
+                          {m.name || m.user_id}
+                        </h2>
+                        <p className="text-body-sm text-text-secondary mb-0.5 capitalize">{m.role}</p>
+                        <div className="flex items-center gap-3 text-caption text-text-tertiary">
+                          <span className="flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            {m.modules_unlocked.length} modules unlocked
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <CalendarBlank className="w-3.5 h-3.5" />
+                            {Math.round((m.completion_rate ?? 0) * 100)}% complete
+                          </span>
                         </div>
                       </div>
-                      <span className="text-[11px] text-[#FDFBF8]/25 font-mono shrink-0">
-                        {new Date(t.updated_at).toLocaleDateString()}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </CardSpotlight>
-          </>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                      {[
+                        { label: 'Tasks Done', value: m.completed_tasks, icon: CheckCircle, color: 'text-emerald-400' },
+                        { label: 'In Progress', value: m.in_progress_tasks, icon: GitPullRequest, color: 'text-blue-400' },
+                        { label: 'Pending Review', value: m.pending_review, icon: Bug, color: 'text-amber-400' },
+                        { label: 'Total Tasks', value: m.total_tasks, icon: Code, color: 'text-purple-400' },
+                      ].map((stat) => (
+                        <div key={stat.label} className="card p-3 text-center">
+                          <stat.icon className={`w-4 h-4 ${stat.color} mx-auto mb-1.5`} weight="duotone" />
+                          <p className="text-body font-medium text-text-primary">{stat.value}</p>
+                          <p className="text-caption text-text-tertiary">{stat.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {m.modules_unlocked.length > 0 && (
+                      <div className="flex items-center gap-2 mt-4 flex-wrap">
+                        <ChartBar className="w-3.5 h-3.5 text-text-tertiary" />
+                        {m.modules_unlocked.map((mod) => (
+                          <span key={mod} className="px-2 py-0.5 rounded text-[10px] bg-bg-tertiary/30 text-text-tertiary font-code">{mod}</span>
+                        ))}
+                      </div>
+                    )}
+                  </CardSpotlight>
+                </motion.div>
+              )
+            })}
+          </div>
         )}
       </div>
     </PageTransition>

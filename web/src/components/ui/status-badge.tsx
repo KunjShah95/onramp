@@ -6,16 +6,16 @@ interface StatusBadgeProps {
 }
 
 const COLORS: Record<string, string> = {
-  pending: 'text-[#FDFBF8]/50 bg-[#FDFBF8]/5 border-[#FDFBF8]/10',
-  assigned: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  in_progress: 'text-[#FF8C00] bg-[#FF8C00]/10 border-[#FF8C00]/20',
+  pending: 'text-text-muted/60 bg-bg-tertiary border-border',
+  assigned: 'text-info bg-info-muted border-info/20',
+  in_progress: 'text-accent-from bg-accent-muted border-accent/20',
   submitted: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-  under_review: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-  needs_changes: 'text-red-400 bg-red-500/10 border-red-500/20',
+  under_review: 'text-warning bg-warning-muted border-warning/20',
+  needs_changes: 'text-error bg-error-muted border-error/20',
   product_review: 'text-pink-400 bg-pink-500/10 border-pink-500/20',
-  approved: 'text-green-400 bg-green-500/10 border-green-500/20',
-  completed: 'text-green-400 bg-green-500/10 border-green-500/20',
-  cancelled: 'text-[#FDFBF8]/30 bg-[#FDFBF8]/5 border-[#FDFBF8]/10',
+  approved: 'text-success bg-success-muted border-success/20',
+  completed: 'text-success bg-success-muted border-success/20',
+  cancelled: 'text-text-disabled bg-bg-tertiary border-border',
 }
 
 const LABELS: Record<string, string> = {
@@ -40,11 +40,11 @@ export default function StatusBadge({ state, className }: StatusBadgeProps) {
     )}>
       <span className={cn(
         'w-1.5 h-1.5 rounded-full',
-        state === 'completed' ? 'bg-green-400' :
-        state === 'in_progress' ? 'bg-[#FF8C00]' :
-        state === 'submitted' || state === 'under_review' ? 'bg-yellow-400' :
-        state === 'needs_changes' ? 'bg-red-400' :
-        state === 'approved' ? 'bg-green-400' :
+        state === 'completed' || state === 'approved' ? 'bg-success' :
+        state === 'in_progress' ? 'bg-accent-from' :
+        state === 'submitted' || state === 'under_review' ? 'bg-warning' :
+        state === 'needs_changes' ? 'bg-error' :
+        state === 'assigned' ? 'bg-info' :
         'bg-current'
       )} />
       {LABELS[state] || state}

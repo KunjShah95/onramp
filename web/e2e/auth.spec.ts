@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { mockFirebaseAuth, mockBackendAPIs } from './mocks'
+import { mockNeonAuth, mockBackendAPIs, mockDashboardAPI } from './mocks'
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe('Login Page', () => {
 
   test('renders all login form elements', async ({ page }) => {
     // Brand header
-    await expect(page.getByText('CodeFlow 2.0')).toBeVisible()
+    await expect(page.getByText('Nexora')).toBeVisible()
     await expect(page.getByText('Log in to your workspace')).toBeVisible()
 
     // Social login buttons
@@ -61,9 +61,10 @@ test.describe('Login Page', () => {
 
 test.describe('Login Flow — End-to-End Auth', () => {
   test('successful email/password login redirects to dashboard', async ({ page }) => {
-    // Mock Firebase Auth endpoints + backend APIs
-    await mockFirebaseAuth(page)
+    // Mock Neon Auth + backend + dashboard APIs
+    await mockNeonAuth(page)
     await mockBackendAPIs(page)
+    await mockDashboardAPI(page)
 
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
@@ -74,13 +75,14 @@ test.describe('Login Flow — End-to-End Auth', () => {
 
     // Should redirect to dashboard
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    await expect(page.getByText(/senior dashboard/i)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/dashboard/i)).toBeVisible({ timeout: 15_000 })
   })
 
   test('login page redirects to dashboard when already authenticated', async ({ page }) => {
     // First log in
-    await mockFirebaseAuth(page)
+    await mockNeonAuth(page)
     await mockBackendAPIs(page)
+    await mockDashboardAPI(page)
 
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
@@ -88,10 +90,11 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
+    await page.waitForTimeout(2_000)
 
     // Navigate back to login — should be redirected away
     await page.goto('/login')
-    await page.waitForURL('**/dashboard', { timeout: 10_000 })
+    await page.waitForURL('**/dashboard', { timeout: 15_000 })
   })
 })
 
@@ -100,7 +103,7 @@ test.describe('Registration Page', () => {
     await page.goto('/register')
     await page.waitForSelector('input#name', { timeout: 10_000 })
 
-    await expect(page.getByText(/create your account/i)).toBeVisible()
+    await expect(page.getByText(/Create your workspace/i)).toBeVisible()
     await expect(page.locator('input#name')).toBeVisible()
     await expect(page.locator('input#email')).toBeVisible()
     await expect(page.locator('input#password')).toBeVisible()

@@ -1,203 +1,307 @@
 import { useState, useEffect } from 'react'
-import { createPlaybook, listPlaybooks, archivePlaybook, listTeams } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import { motion } from 'framer-motion'
+import {
+  BookOpenText,
+  Plus,
+  Play,
+  Clock,
+  CheckCircle,
+  MagnifyingGlass,
+  Trash,
+  Spinner,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import { EmptyState } from '../components/ui/empty-state'
+import CardSpotlight from '../components/ui/card-spotlight'
+import { PlaybooksSkeleton } from '../components/ui/Skeleton'
+import { Modal } from '../components/ui/modal'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { listPlaybooks, createPlaybook, archivePlaybook } from '../lib/api'
+import type { Playbook } from '../lib/api'
 
 export default function PlaybooksPage() {
-  const toast = useToast()
-  const [teams, setTeams] = useState<any[]>([])
-  const [teamId, setTeamId] = useState('')
-  const [playbooks, setPlaybooks] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [teamsLoading, setTeamsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('All')
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
   const [showCreate, setShowCreate] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [stepsStr, setStepsStr] = useState('')
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [newTitle, setNewTitle] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newSteps, setNewSteps] = useState('')
+  const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
-    listTeams('current-user')
-      .then((data) => {
-        const t = data.teams || []
-        setTeams(t)
-        if (t.length > 0) setTeamId(t[0].team_id)
-      })
-      .catch(() => {})
-      .finally(() => setTeamsLoading(false))
-  }, [])
+  const [openBook, setOpenBook] = useState<Playbook | null>(null)
+  const [archiving, setArchiving] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (teamId) fetchPlaybooks()
-  }, [teamId])
+  const toast = useToast()
+  const { activeTeamId, user } = useAuth()
 
   async function fetchPlaybooks() {
-    if (!teamId) return
-    setLoading(true)
-    setError('')
-    try {
-      const data = await listPlaybooks(teamId)
-      setPlaybooks(data.playbooks || [])
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load playbooks')
+    if (!activeTeamId) {
+      setLoading(false)
+      setError('Join or create a team to manage playbooks.')
+      return
     }
-    setLoading(false)
+    setLoading(true); setError('')
+    try {
+      const data = await listPlaybooks(activeTeamId)
+      setPlaybooks(data.playbooks ?? [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load playbooks.')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => {
+    fetchPlaybooks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTeamId])
+
+  const categories = ['All', ...Array.from(new Set(playbooks.flatMap((p) => p.tags.length ? p.tags : ['General'])))]
+  const filtered = playbooks.filter((p) => {
+    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase()) ||
+      p.description.toLowerCase().includes(search.toLowerCase())
+    const tagCat = p.tags.length ? p.tags : ['General']
+    const matchCategory = category === 'All' || tagCat.includes(category)
+    return matchSearch && matchCategory
+  })
 
   async function handleCreate() {
-    if (!title.trim() || !stepsStr.trim() || !teamId) return
-    const steps = stepsStr.split('\n').filter((s) => s.trim())
+    if (!newTitle.trim() || !activeTeamId) return
+    setCreating(true)
     try {
       await createPlaybook({
-        team_id: teamId,
-        title: title.trim(),
-        description: description.trim(),
-        steps,
-        created_by: 'current-user',
+        team_id: activeTeamId,
+        title: newTitle.trim(),
+        description: newDesc.trim() || undefined,
+        steps: newSteps.split('\n').map((s) => s.trim()).filter(Boolean),
+        created_by: user?.id || 'unknown',
       })
-      setTitle('')
-      setDescription('')
-      setStepsStr('')
       setShowCreate(false)
+      setNewTitle(''); setNewDesc(''); setNewSteps('')
+      toast.success('Playbook created')
       await fetchPlaybooks()
-      toast.success('Playbook created', title.trim())
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create playbook')
-      toast.error('Failed to create playbook')
+    } catch (err: any) {
+      toast.error('Could not create playbook', err.message)
+    } finally {
+      setCreating(false)
     }
   }
 
-  async function handleArchive(pbId: string) {
-    if (!confirm('Archive this playbook? It can be restored later.')) return
+  async function handleArchive(id: string) {
+    setArchiving(id)
     try {
-      await archivePlaybook(pbId)
-      await fetchPlaybooks()
+      await archivePlaybook(id)
+      setPlaybooks((prev) => prev.filter((p) => p.playbook_id !== id))
+      if (openBook?.playbook_id === id) setOpenBook(null)
       toast.success('Playbook archived')
-    } catch { toast.error('Failed to archive playbook') }
+    } catch (err: any) {
+      toast.error('Could not archive', err.message)
+    } finally {
+      setArchiving(null)
+    }
   }
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full lg:max-w-4xl overflow-x-hidden mx-auto">
-      <GradientHeading as="h1" className="mb-1">Playbooks</GradientHeading>
-      <p className="text-[#FDFBF8]/60 text-sm mb-6">Create and share onboarding playbooks for your team</p>
-
-      {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchPlaybooks} className="text-xs underline ml-4">Retry</button>
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-3 mb-8">
-        {teamsLoading ? (
-          <div className="flex-1 h-9 bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg animate-pulse" />
-        ) : teams.length > 0 ? (
-          <select
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-            className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] flex-1 outline-none focus:border-[#FF8C00]/40 transition-colors"
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
+              </div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Playbooks
+              </h1>
+            </div>
+            <p className="text-body-sm text-text-tertiary max-w-xl">
+              Automated workflows and guided processes to standardize engineering operations.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            disabled={!activeTeamId}
+            className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
           >
-            {teams.map((t: any) => (
-              <option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>
-            ))}
-          </select>
-        ) : (
-          <input
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-            placeholder="Team ID"
-            className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 flex-1 outline-none focus:border-[#FF8C00]/40 transition-colors"
-          />
-        )}
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="bg-[#FDFBF8]/5 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/70 border border-[#FDFBF8]/8 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
-        >
-          {showCreate ? 'Cancel' : '+ New Playbook'}
-        </button>
-      </div>
-
-      {showCreate && (
-        <CardSpotlight className="p-6 mb-8 space-y-4">
-          <GradientHeading as="h2" className="text-base">Create Playbook</GradientHeading>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors" />
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors" />
-          <textarea
-            value={stepsStr}
-            onChange={(e) => setStepsStr(e.target.value)}
-            placeholder="One step per line:"
-            rows={5}
-            className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors font-mono"
-          />
-          <button onClick={handleCreate} disabled={!title.trim() || !stepsStr.trim()} className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50">
-            Create Playbook
+            <Plus className="w-4 h-4" weight="bold" />
+            New Playbook
           </button>
-        </CardSpotlight>
-      )}
+        </div>
 
-      <div className="space-y-4">
-        {loading && (
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-20 bg-[#0D0906] border border-[#FDFBF8]/5 rounded-xl animate-pulse" />
-            ))}
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
           </div>
         )}
 
-        {!loading && playbooks.length === 0 && (
-          <CardSpotlight className="py-12 text-center">
-            <p className="text-[#FDFBF8]/40 text-sm mb-2">No playbooks yet.</p>
-            <button onClick={() => setShowCreate(true)} className="text-[#FF8C00] text-sm hover:underline">
-              Create your first playbook →
-            </button>
-          </CardSpotlight>
+        {loading && <PlaybooksSkeleton />}
+
+        {!loading && playbooks.length === 0 && !error && (
+          <EmptyState
+            icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            title="No playbooks yet"
+            description="Create a reusable onboarding or review playbook for your team."
+            action={
+              <button onClick={() => setShowCreate(true)} disabled={!activeTeamId} className="btn btn-primary text-caption px-4 py-1.5 disabled:opacity-40">
+                New Playbook
+              </button>
+            }
+          />
         )}
 
-        {!loading && playbooks.map((pb: any) => (
-          <CardSpotlight key={pb.playbook_id} className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex-1">
-                <h3
-                  className="font-display text-base font-semibold text-[#FDFBF8] cursor-pointer hover:text-[#FF8C00]"
-                  onClick={() => setExpanded(expanded === pb.playbook_id ? null : pb.playbook_id)}
-                >
-                  {pb.title}
-                </h3>
-                {pb.description && (
-                  <p className="text-xs text-[#FDFBF8]/40 mt-1">{pb.description}</p>
-                )}
+        {!loading && (
+          <>
+            {/* Search & Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search playbooks..."
+                  className="input w-full pl-10"
+                />
               </div>
-              <button onClick={() => handleArchive(pb.playbook_id)} className="text-xs text-red-400/60 hover:text-red-400 hover:underline ml-4 transition-colors">
-                Archive
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 text-[10px] text-[#FDFBF8]/40 mb-3">
-              <span>v{pb.version || 1}</span>
-              <span>Used {pb.use_count || 0}x</span>
-              {pb.tags?.length > 0 && pb.tags.map((t: string) => (
-                <span key={t} className="bg-[#1A110D] px-2 py-0.5 rounded-full">{t}</span>
-              ))}
-            </div>
-
-            {expanded === pb.playbook_id && pb.steps && (
-              <ol className="space-y-2 mt-3 border-t border-[#FDFBF8]/5 pt-3">
-                {pb.steps.map((step: string, i: number) => (
-                  <li key={i} className="text-sm text-[#FDFBF8]/60 flex items-start gap-2">
-                    <span className="text-[#FF8C00] font-mono font-semibold shrink-0 w-5">{i + 1}.</span>
-                    <span>{step}</span>
-                  </li>
+              <div className="flex gap-1.5 flex-wrap">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                      category === cat
+                        ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
+                        : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:border-border-hover'
+                    }`}
+                  >
+                    {cat}
+                  </button>
                 ))}
-              </ol>
+              </div>
+            </div>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+                title="No playbooks found"
+                description={search ? 'Try a different search term' : 'No playbooks available in this category'}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((playbook, i) => (
+                  <motion.div
+                    key={playbook.playbook_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <CardSpotlight className="p-5 h-full flex flex-col">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-accent-primary/10 text-accent-primary">
+                          {playbook.tags[0] || 'General'}
+                        </span>
+                        <button
+                          onClick={() => handleArchive(playbook.playbook_id)}
+                          disabled={archiving === playbook.playbook_id}
+                          className="text-text-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
+                          title="Archive"
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <h3 className="text-body font-medium text-text-primary mb-1.5">{playbook.title}</h3>
+                      <p className="text-caption text-text-tertiary leading-relaxed mb-5 flex-1">
+                        {playbook.description || 'No description.'}
+                      </p>
+                      <div className="flex items-center gap-4 text-caption text-text-tertiary mb-4">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          {playbook.steps.length} steps
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {playbook.use_count} uses
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setOpenBook(playbook)}
+                        className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-all"
+                      >
+                        <Play className="w-3.5 h-3.5" weight="fill" />
+                        Open
+                      </button>
+                    </CardSpotlight>
+                  </motion.div>
+                ))}
+              </div>
             )}
-          </CardSpotlight>
-        ))}
+          </>
+        )}
+
+        {/* Create Modal */}
+        <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Playbook">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-caption font-medium text-text-secondary mb-1.5">Title</label>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. New Hire Onboarding"
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-caption font-medium text-text-secondary mb-1.5">Description</label>
+              <input
+                type="text"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Optional"
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-caption font-medium text-text-secondary mb-1.5">Steps (one per line)</label>
+              <textarea
+                value={newSteps}
+                onChange={(e) => setNewSteps(e.target.value)}
+                rows={5}
+                placeholder={'Step one\nStep two'}
+                className="input w-full font-code text-caption"
+              />
+            </div>
+            <button onClick={handleCreate} disabled={!newTitle.trim() || creating} className="btn btn-primary w-full flex items-center justify-center gap-2">
+              {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
+              {creating ? 'Creating...' : 'Create Playbook'}
+            </button>
+          </div>
+        </Modal>
+
+        {/* Detail Modal */}
+        <Modal open={openBook !== null} onClose={() => setOpenBook(null)} title={openBook?.title} maxWidth="max-w-xl">
+          {openBook && (
+            <div className="space-y-4">
+              <p className="text-caption text-text-tertiary">{openBook.description}</p>
+              <div>
+                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Steps</div>
+                <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
+                  {openBook.steps.map((s, idx) => (
+                    <li key={idx} className="leading-relaxed">{s}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
-    </div>
     </PageTransition>
   )
 }

@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import GradientHeading from './gradient-heading'
 
 interface StatPill {
   label: string
@@ -14,22 +15,20 @@ interface PageHeaderProps {
   mono?: boolean
 }
 
-export function PageHeader({ title, subtitle, pills, actions, mono }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, pills, actions }: PageHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
       <div>
-        <h1 className={`font-display text-2xl font-bold text-[#FDFBF8] tracking-tight mb-1 ${mono ? 'font-mono' : ''}`}>
-          {title}
-        </h1>
+        <GradientHeading as="h1">{title}</GradientHeading>
         {subtitle && (
-          <p className="text-[#FDFBF8]/45 text-sm leading-relaxed">{subtitle}</p>
+          <p className="text-body-sm text-text-muted mt-1.5 max-w-xl">{subtitle}</p>
         )}
         {pills && pills.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
             {pills.map((p, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 text-xs">
-                <span className={`font-mono font-bold ${p.color ?? 'text-[#FDFBF8]'}`}>{p.value}</span>
-                <span className="text-[#FDFBF8]/30">{p.label}</span>
+              <span key={i} className="inline-flex items-center gap-1.5 text-caption">
+                <span className={`font-code font-bold ${p.color ?? 'text-text-primary'}`}>{p.value}</span>
+                <span className="text-text-muted/50">{p.label}</span>
               </span>
             ))}
           </div>

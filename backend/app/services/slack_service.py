@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict
 import httpx
 
 from app.services.webhook_service import get_integration_config

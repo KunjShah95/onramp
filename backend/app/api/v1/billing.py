@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
-from typing import Optional
 from app.services.billing_service import BillingService
 from app.services.team_service import get_team_members
 from app.api.v1.auth import get_current_user

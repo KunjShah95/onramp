@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import { ToastProvider } from './context/ToastContext'
+import { ThemeProvider } from './context/ThemeContext'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import {
   PageLoadingFallback,
@@ -29,7 +30,7 @@ import {
 } from './components/ui/Skeleton'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
-import GlobalNatureBackground from './components/ui/GlobalNatureBackground'
+import GlobalBackground from './components/ui/GlobalBackground'
 import RoleGuard from './components/auth/RoleGuard'
 
 // Route-level code splitting: each page is its own lazily-loaded chunk so the
@@ -40,8 +41,7 @@ const Profile = lazy(() => import('./pages/Profile'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const LandingPage = lazy(() => import('./pages/LandingPage'))
-const LandingPageV2 = lazy(() => import('./pages/LandingPageV2'))
+const LandingPageV3 = lazy(() => import('./pages/LandingPageV3'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
@@ -72,6 +72,13 @@ const ModuleHealthPage = lazy(() => import('./pages/ModuleHealthPage'))
 
 // Admin/Owner pages
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+
+// Role-based portal pages
+const DevSpacePage = lazy(() => import('./pages/DevSpacePage'))
+const ExecutivePage = lazy(() => import('./pages/ExecutivePage'))
+const SeniorSpacePage = lazy(() => import('./pages/SeniorSpacePage'))
+const OnboardingHubPage = lazy(() => import('./pages/OnboardingHubPage'))
 
 export default function App() {
   return (
@@ -79,17 +86,13 @@ export default function App() {
       <AuthProvider>
         <TransitionProvider>
           <ToastProvider>
-          <GlobalNatureBackground>
+          <ThemeProvider>
+          <GlobalBackground>
             <Routes>
               {/* ── Public routes ────────────────────────────────── */}
               <Route path="/" element={
                 <Suspense fallback={<LandingLoadingFallback />}>
-                  <ErrorBoundary><LandingPage /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/test-landing" element={
-                <Suspense fallback={<LandingLoadingFallback />}>
-                  <ErrorBoundary><LandingPageV2 /></ErrorBoundary>
+                  <ErrorBoundary><LandingPageV3 /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/pricing" element={
@@ -200,10 +203,29 @@ export default function App() {
                         <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
                       </Suspense>
                     } />
+                    <Route path="/onboarding-hub" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><OnboardingHubPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Developer / Owner Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['developer', 'owner']} />}>
+                    <Route path="/dev-space" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><DevSpacePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
                   </Route>
 
                   {/* Senior / CTO / Lead Only Pages */}
                   <Route element={<RoleGuard minRole="senior" />}>
+                    <Route path="/senior-space" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><SeniorSpacePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
                     <Route path="/dashboard" element={
                       <Suspense fallback={<DashboardSkeleton />}>
                         <ErrorBoundary><DashboardPage /></ErrorBoundary>
@@ -264,6 +286,11 @@ export default function App() {
 
                   {/* Owner / Admin Only Pages */}
                   <Route element={<RoleGuard allowedRoles={['owner']} />}>
+                    <Route path="/executive" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><ExecutivePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
                     <Route path="/admin" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><AdminDashboardPage /></ErrorBoundary>
@@ -272,8 +299,15 @@ export default function App() {
                   </Route>
                 </Route>
               </Route>
+              {/* ── Catch-all 404 ─────────────────────────────── */}
+              <Route path="*" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><NotFoundPage /></ErrorBoundary>
+                </Suspense>
+              } />
             </Routes>
-          </GlobalNatureBackground>
+          </GlobalBackground>
+          </ThemeProvider>
           </ToastProvider>
         </TransitionProvider>
       </AuthProvider>

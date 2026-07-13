@@ -1,251 +1,207 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { generateReport, generateHtmlReport } from '../lib/api'
-import type { ReportSection } from '../lib/api'
-import { cn } from '../lib/utils'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import {
+  FileText,
+  Download,
+  Spinner,
+  GitBranch,
+  BookOpenText,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import CardSpotlight from '../components/ui/card-spotlight'
+import { EmptyState } from '../components/ui/empty-state'
+import { ReportSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { generateReport, generateHtmlReport } from '../lib/api'
+import type { ReportResult, ReportSection } from '../lib/api'
 
 const LEVELS = [
-  { value: 'junior', label: 'Junior', duration: '0-2 years' },
-  { value: 'mid', label: 'Mid-Level', duration: '2-5 years' },
-  { value: 'senior', label: 'Senior', duration: '5+ years' },
+  { key: 'junior', label: 'Junior' },
+  { key: 'mid', label: 'Mid' },
+  { key: 'senior', label: 'Senior' },
 ]
 
+function renderContent(content: any) {
+  if (content == null) return null
+  if (typeof content === 'string') {
+    return <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-line">{content}</p>
+  }
+  if (Array.isArray(content)) {
+    return (
+      <ul className="space-y-1 list-disc list-inside text-body-sm text-text-secondary">
+        {content.map((item: any, i: number) => (
+          <li key={i}>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</li>
+        ))}
+      </ul>
+    )
+  }
+  if (typeof content === 'object') {
+    return (
+      <div className="space-y-1 text-body-sm text-text-secondary">
+        {Object.entries(content).map(([k, v]) => (
+          <div key={k} className="flex gap-2">
+            <span className="text-text-tertiary capitalize min-w-[120px]">{k.replace(/_/g, ' ')}:</span>
+            <span className="flex-1">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return <p className="text-body-sm text-text-secondary">{String(content)}</p>
+}
+
 export default function OnboardingReportPage() {
-  const toast = useToast()
   const [repoUrl, setRepoUrl] = useState('')
   const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
-  const [htmlLoading, setHtmlLoading] = useState(false)
-  const [report, setReport] = useState<ReportSection[] | null>(null)
+  const [result, setResult] = useState<ReportResult | null>(null)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState(false)
+
+  const toast = useToast()
 
   async function handleGenerate() {
     if (!repoUrl.trim()) return
-    setLoading(true)
-    setError('')
-    setReport(null)
+    setLoading(true); setError(''); setResult(null)
     try {
-      const data = await generateReport(repoUrl.trim(), userLevel)
-      setReport(data.report)
-      toast.success('Report generated', `${data.report.length} sections for ${userLevel} level`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Generation failed')
-      toast.error('Report generation failed', e instanceof Error ? e.message : undefined)
+      const data = await generateReport(repoUrl, userLevel)
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate report.')
+      toast.error('Report failed', err.message)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
-  async function handleDownloadHtml() {
+  async function handleDownload() {
     if (!repoUrl.trim()) return
-    setHtmlLoading(true)
-    setError('')
+    setDownloading(true)
     try {
-      const data = await generateHtmlReport(repoUrl.trim(), userLevel)
-      
-      // Trigger download
+      const data = await generateHtmlReport(repoUrl, userLevel)
       const blob = new Blob([data.html], { type: 'text/html' })
-      const url = window.URL.createObjectURL(blob)
+      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${repoUrl.split('/').pop()}-onboarding-report.html`
-      document.body.appendChild(a)
+      a.download = 'onboarding-report.html'
       a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-      toast.success('HTML downloaded', 'Report saved as ' + a.download)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'HTML download failed')
-      toast.error('Download failed', e instanceof Error ? e.message : undefined)
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error('Download failed', err.message)
+    } finally {
+      setDownloading(false)
     }
-    setHtmlLoading(false)
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-  }
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0 },
   }
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-4xl pb-12 max-w-full overflow-x-hidden mx-auto">
-      <GradientHeading as="h1" className="mb-1">Onboarding Report Generator</GradientHeading>
-      <p className="text-[#FDFBF8]/60 text-sm mb-6">Create a unified, download-ready developer onboarding guide for any repository</p>
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-accent-primary" weight="duotone" />
+            </div>
+            <div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Onboarding Report
+              </h1>
+              <p className="text-body-sm text-text-tertiary">
+                Generate a professional onboarding report for any repository.
+              </p>
+            </div>
+          </div>
+          {result && (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="btn btn-secondary flex items-center gap-2 shrink-0"
+            >
+              {downloading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              HTML
+            </button>
+          )}
+        </div>
 
-      <CardSpotlight className="p-6 space-y-6 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-sm text-[#FDFBF8]/40 mb-2 block font-medium">Repository URL</label>
+        {/* Controls */}
+        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+          <div className="relative flex items-center w-full md:flex-1">
+            <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
             <input
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/facebook/react"
-              className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 w-full outline-none focus:border-[#FF8C00]/40 transition-colors"
               onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+              placeholder="github.com/owner/repo"
+              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
             />
           </div>
-          <div>
-            <label className="text-sm text-[#FDFBF8]/40 mb-2 block font-medium">Target Developer Level</label>
-            <div className="flex gap-2">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.value}
-                  onClick={() => setUserLevel(l.value)}
-                  className={cn(
-                    'flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200 border',
-                    userLevel === l.value
-                      ? 'bg-[#FF8C00] text-white shadow-lg border-transparent'
-                      : 'bg-[#1A110D] text-[#FDFBF8]/60 border-[#FDFBF8]/5 hover:bg-[#1A110D]/80 hover:text-[#FDFBF8]'
-                  )}
-                >
-                  <span className="block font-semibold">{l.label}</span>
-                  <span className="block text-[10px] opacity-75 mt-0.5">{l.duration}</span>
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+            {LEVELS.map((l) => (
+              <button
+                key={l.key}
+                onClick={() => setUserLevel(l.key)}
+                className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                  userLevel === l.key
+                    ? 'bg-bg-primary text-text-primary shadow-sm'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
           </div>
-        </div>
-
-        <div className="flex gap-3 pt-2">
           <button
             onClick={handleGenerate}
             disabled={loading || !repoUrl.trim()}
-            className="bg-[#FF8C00] hover:bg-[#FFB347] text-[#3D1C00] px-4 py-2 rounded-lg text-sm font-bold transition-colors flex-1 md:flex-none md:px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
           >
-            {loading ? 'Generating Report...' : 'Generate Interactive Report'}
-          </button>
-          
-          <button
-            onClick={handleDownloadHtml}
-            disabled={htmlLoading || !repoUrl.trim()}
-            className="bg-[#FDFBF8]/5 hover:bg-[#FDFBF8]/10 text-[#FDFBF8]/70 border border-[#FDFBF8]/8 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap disabled:opacity-50"
-          >
-            {htmlLoading ? 'Preparing HTML...' : 'Download HTML Version'}
+            <BookOpenText className="w-3.5 h-3.5" weight="fill" />
+            {loading ? 'Generating…' : 'Generate'}
           </button>
         </div>
-      </CardSpotlight>
 
-      {error && (
-        <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={handleGenerate} disabled={loading || !repoUrl.trim()} className="text-xs underline ml-4 text-red-300 hover:text-red-200 disabled:opacity-50">Retry</button>
-        </div>
-      )}
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          </div>
+        )}
 
-      {loading && (
-        <CardSpotlight className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="loader"></div>
-          <p className="text-[#FDFBF8]/60 text-sm">Analyzing repository files, structural graphs, and compiling objectives...</p>
-        </CardSpotlight>
-      )}
+        {loading && <ReportSkeleton />}
 
-      {report && (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-6"
-        >
-          {report.map((sec, index) => (
-            <motion.div key={index} variants={itemVariants}>
-              <CardSpotlight className="p-6">
-                <GradientHeading as="h2" className="text-lg pb-3 mb-4 flex items-center justify-between border-b border-[#FDFBF8]/5">
-                  <span>{sec.title}</span>
-                  <span className="text-xs text-[#FDFBF8]/40 font-normal uppercase tracking-wider">Section 0{index + 1}</span>
-                </GradientHeading>
+        {!loading && !result && (
+          <CardSpotlight className="border border-accent-primary/10">
+            <EmptyState
+              icon={<FileText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+              title="Enter a GitHub repository above"
+              description="We'll compile a repository overview, architecture, learning path, and good-first-issues into a report."
+              action={
+                <button onClick={handleGenerate} disabled={!repoUrl.trim()} className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40">
+                  Generate
+                </button>
+              }
+            />
+          </CardSpotlight>
+        )}
 
-                {sec.type === 'overview' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                    <div>
-                      <span className="text-[#FDFBF8]/40 block text-xs mb-1">Repository</span>
-                      <a href={sec.content.repo} target="_blank" rel="noreferrer" className="text-[#FF8C00] hover:underline font-semibold font-code truncate block">
-                        {sec.content.name}
-                      </a>
-                    </div>
-                    <div>
-                      <span className="text-[#FDFBF8]/40 block text-xs mb-1">Level</span>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border bg-green-500/10 text-green-400 border-green-500/20 capitalize">{sec.content.user_level}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#FDFBF8]/40 block text-xs mb-1">Generated At</span>
-                      <span className="text-[#FDFBF8]/60 font-mono">{new Date(sec.content.generated_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                {sec.type === 'modules' && (
-                  <div className="space-y-6">
-                    <div className="text-sm text-[#FDFBF8]/60 flex items-center gap-2 mb-2">
-                      <span>Total Estimated Path Duration:</span>
-                      <span className="text-[#FF8C00] font-bold text-base font-mono">{sec.content.total_estimated_hours} hours</span>
-                    </div>
-                    <div className="relative border-l border-[#FDFBF8]/5 pl-6 ml-3 space-y-6">
-                      {sec.content.modules.map((m: any, mIdx: number) => (
-                        <div key={mIdx} className="relative">
-                          <div className="absolute -left-[31px] top-1.5 w-2 h-2 rounded-full bg-[#FF8C00] ring-4 ring-[#0D0906]"></div>
-                          <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-                            <h3 className="font-semibold text-[#FDFBF8] text-sm font-display">{m.name}</h3>
-                            <span className="text-xs text-[#FF8C00] font-mono bg-[#FF8C00]/10 px-2 py-0.5 rounded-full mt-1 md:mt-0 w-max">{m.time}h estimation</span>
-                          </div>
-                          <p className="text-xs text-[#FDFBF8]/40 mb-3 leading-relaxed">{m.description}</p>
-                          <ul className="space-y-1.5 pl-4 list-disc">
-                            {m.items.map((item: string, iIdx: number) => (
-                              <li key={iIdx} className="text-xs text-[#FDFBF8]/60 leading-relaxed">{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {sec.type === 'faq' && (
-                  <div className="space-y-6">
-                    {sec.content.questions.map((q: any, qIdx: number) => (
-                      <div key={qIdx} className="border-b border-[#FDFBF8]/5 pb-4 last:border-b-0 last:pb-0">
-                        <h3 className="font-semibold text-[#FDFBF8] text-sm mb-1.5">Q: {q.q}</h3>
-                        <p className="text-xs text-[#FDFBF8]/60 leading-relaxed pl-4 border-l border-[#FF8C00]/30">A: {q.a}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {sec.type === 'summary' && (
-                  <div className="flex flex-col md:flex-row md:items-center justify-between bg-[#1A110D] p-4 rounded-lg border border-[#FDFBF8]/8">
-                    <div className="mb-4 md:mb-0">
-                      <p className="text-sm font-medium text-[#FDFBF8]">Onboarding Readiness Score</p>
-                      <p className="text-xs text-[#FDFBF8]/40 mt-1">{sec.content.note}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[#FDFBF8]/40 text-xs block">Estimated Duration</span>
-                      <span className="font-display font-bold text-2xl text-[#FF8C00] font-mono">{sec.content.total_hours} Hours</span>
-                    </div>
-                  </div>
-                )}
-
-                {sec.type === 'placeholder' && (
-                  <div className="text-center py-6 text-[#FDFBF8]/40 text-xs space-y-2">
-                    <p>{sec.content.note}</p>
-                    {sec.content.files_to_analyze && (
-                      <div className="font-code text-[11px] text-[#FDFBF8]/60 bg-[#1A110D]/60 p-2 rounded max-w-md mx-auto">
-                        {sec.content.files_to_analyze.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardSpotlight>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
-    </div>
+        {!loading && result && (
+          <div className="space-y-4">
+            {result.report.map((section: ReportSection, i) => (
+              <motion.div
+                key={`${section.title}-${i}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <CardSpotlight className="p-6">
+                  <h3 className="text-body font-medium text-text-primary mb-3">{section.title}</h3>
+                  {renderContent(section.content)}
+                </CardSpotlight>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
     </PageTransition>
   )
 }
