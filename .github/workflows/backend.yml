@@ -59,3 +59,5 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test
           ENV: test
           STORAGE_BACKEND: memory
+          GROQ_API_KEY: sk-test-placeholder
+          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=

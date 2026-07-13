@@ -7,7 +7,7 @@ is transparent to callers.
 """
 
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Set
+from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
 COLLECTION = "codeflow_notifications"

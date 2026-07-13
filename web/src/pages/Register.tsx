@@ -1,8 +1,20 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import { EnvelopeSimple, Lock, User, ArrowRight, GoogleLogo, GithubLogo } from '@phosphor-icons/react'
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+}
 
 export default function Register() {
   const [name, setName] = useState('')
@@ -17,9 +29,7 @@ export default function Register() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true })
-    }
+    if (user) navigate('/dashboard', { replace: true })
   }, [user, navigate])
 
   useEffect(() => {
@@ -47,7 +57,7 @@ export default function Register() {
       toast.success('Account created', `Welcome, ${name}!`)
       navigate('/dashboard', { replace: true })
     } catch {
-      // Error is displayed inline via AuthContext
+      // Error displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -61,7 +71,7 @@ export default function Register() {
       toast.success('Account created with Google')
       navigate('/dashboard', { replace: true })
     } catch {
-      // Error is displayed inline via AuthContext
+      // Error displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -75,7 +85,7 @@ export default function Register() {
       toast.success('Account created with GitHub')
       navigate('/dashboard', { replace: true })
     } catch {
-      // Error is displayed inline via AuthContext
+      // Error displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -85,74 +95,73 @@ export default function Register() {
 
   return (
     <PageTransition>
-      <div className="bg-[#0A0705] min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-[#FDFBF8] max-w-full overflow-x-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0iI0ZERkJGOCIvPjwvc3ZnPg==')] opacity-[0.03] z-0 pointer-events-none" />
-        {/* Background Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#FF8C00]/5 rounded-full blur-[100px] pointer-events-none z-0" />
+      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
 
-        <main className="w-full max-w-[420px] z-10">
+        <motion.main
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-[400px] z-10"
+        >
           {/* Brand Header */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center w-12 h-12 bg-[#1A110D] border border-[#FDFBF8]/10 rounded-xl mb-4 shadow-[0_0_15px_rgba(255,140,0,0.1)]">
-              <span className="material-symbols-outlined text-[#FF8C00]" style={{ fontVariationSettings: "'FILL' 1" }}>terminal</span>
+          <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
+            <div className="w-12 h-12 rounded-xl bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-4">
+              <span className="text-xl font-display font-bold text-[hsl(var(--accent))]">✦</span>
             </div>
-            <h1 className="font-display text-2xl font-bold text-[#FF8C00] tracking-tight">CodeFlow 2.0</h1>
-            <p className="font-body text-sm text-[#FDFBF8]/50 mt-2 text-center">Create your workspace</p>
-          </div>
+            <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
+              Nexora
+            </h1>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Create your workspace</p>
+          </motion.div>
 
           {displayError && (
-            <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/30 backdrop-blur-md">
+            <motion.div variants={fadeUp} className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-5 text-sm border border-red-200">
               {displayError}
-            </div>
+            </motion.div>
           )}
 
           {/* Auth Card */}
-          <div className="bg-[#120D0A]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-xl p-8 shadow-2xl relative overflow-hidden">
-            {/* Top decorative hairline */}
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#FF8C00]/50 to-transparent" />
+          <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
-            <div className="flex flex-col gap-3 mb-6">
+            {/* Social Buttons */}
+            <div className="flex flex-col gap-2.5 mb-5">
               <button
                 onClick={handleGoogleSignUp}
                 disabled={isSubmitting}
-                className="flex items-center justify-center gap-3 w-full bg-[#1A110D] border border-[#FDFBF8]/15 text-[#FDFBF8] font-mono text-[10px] uppercase tracking-widest font-semibold py-3 rounded-lg hover:bg-[#2A1D16]/60 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center justify-center gap-2.5 w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))]/80 active:scale-[0.98] transition-all disabled:opacity-50 font-body"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
+                <GoogleLogo size={18} weight="bold" />
                 Continue with Google
               </button>
               <button
                 onClick={handleGithubSignUp}
                 disabled={isSubmitting}
-                className="flex items-center justify-center gap-3 w-full bg-[#1A110D] border border-[#FDFBF8]/15 text-[#FDFBF8] font-mono text-[10px] uppercase tracking-widest font-semibold py-3 rounded-lg hover:bg-[#2A1D16]/60 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center justify-center gap-2.5 w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))]/80 active:scale-[0.98] transition-all disabled:opacity-50 font-body"
               >
-                <svg className="w-5 h-5 text-[#FDFBF8]/50 group-hover:text-[#FDFBF8] transition-colors" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                </svg>
+                <GithubLogo size={18} weight="fill" />
                 Continue with GitHub
               </button>
             </div>
 
             {/* Divider */}
-            <div className="relative flex items-center py-5">
-              <div className="flex-grow border-t border-[#FDFBF8]/10" />
-              <span className="flex-shrink-0 mx-4 text-[#FDFBF8]/50 font-mono text-[10px] uppercase tracking-widest font-semibold">OR CONTINUE WITH EMAIL</span>
-              <div className="flex-grow border-t border-[#FDFBF8]/10" />
+            <div className="relative flex items-center py-4">
+              <div className="flex-grow border-t border-[hsl(var(--border))]" />
+              <span className="flex-shrink-0 mx-4 text-xs text-[hsl(var(--muted-foreground))]/50 font-medium font-body">OR WITH EMAIL</span>
+              <div className="flex-grow border-t border-[hsl(var(--border))]" />
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="group">
-                <label htmlFor="name" className="block font-mono text-[10px] uppercase tracking-widest font-semibold text-[#FDFBF8]/50 mb-1 group-focus-within:text-[#FF8C00] transition-colors">Name</label>
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <label htmlFor="name" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Name</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-[#FDFBF8]/30 group-focus-within:text-[#FF8C00] transition-colors text-[18px]">person</span>
-                  </div>
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                   <input
                     id="name"
                     type="text"
@@ -161,17 +170,15 @@ export default function Register() {
                     onChange={(e) => setName(e.target.value)}
                     required
                     autoComplete="name"
-                    className="w-full bg-[#1A110D] border border-[#FDFBF8]/15 rounded-lg pl-10 pr-4 py-2.5 font-mono text-xs text-[#FDFBF8] placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/30 transition-all"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
 
-              <div className="group">
-                <label htmlFor="email" className="block font-mono text-[10px] uppercase tracking-widest font-semibold text-[#FDFBF8]/50 mb-1 group-focus-within:text-[#FF8C00] transition-colors">Email Address</label>
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Email Address</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-[#FDFBF8]/30 group-focus-within:text-[#FF8C00] transition-colors text-[18px]">mail</span>
-                  </div>
+                  <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                   <input
                     id="email"
                     type="email"
@@ -180,17 +187,15 @@ export default function Register() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    className="w-full bg-[#1A110D] border border-[#FDFBF8]/15 rounded-lg pl-10 pr-4 py-2.5 font-mono text-xs text-[#FDFBF8] placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/30 transition-all"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
 
-              <div className="group">
-                <label htmlFor="password" className="block font-mono text-[10px] uppercase tracking-widest font-semibold text-[#FDFBF8]/50 mb-1 group-focus-within:text-[#FF8C00] transition-colors">Password</label>
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Password</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-[#FDFBF8]/30 group-focus-within:text-[#FF8C00] transition-colors text-[18px]">lock</span>
-                  </div>
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                   <input
                     id="password"
                     type="password"
@@ -200,17 +205,15 @@ export default function Register() {
                     required
                     autoComplete="new-password"
                     minLength={6}
-                    className="w-full bg-[#1A110D] border border-[#FDFBF8]/15 rounded-lg pl-10 pr-4 py-2.5 font-mono text-xs text-[#FDFBF8] placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/30 transition-all"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
 
-              <div className="group">
-                <label htmlFor="confirmPassword" className="block font-mono text-[10px] uppercase tracking-widest font-semibold text-[#FDFBF8]/50 mb-1 group-focus-within:text-[#FF8C00] transition-colors">Confirm Password</label>
+              <div className="space-y-1.5">
+                <label htmlFor="confirmPassword" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Confirm Password</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-[#FDFBF8]/30 group-focus-within:text-[#FF8C00] transition-colors text-[18px]">lock</span>
-                  </div>
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                   <input
                     id="confirmPassword"
                     type="password"
@@ -219,34 +222,32 @@ export default function Register() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    className="w-full bg-[#1A110D] border border-[#FDFBF8]/15 rounded-lg pl-10 pr-4 py-2.5 font-mono text-xs text-[#FDFBF8] placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00] focus:ring-1 focus:ring-[#FF8C00]/30 transition-all"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !name || !email || !password || !confirmPassword}
-                  className="w-full bg-[#FF8C00] text-[#3D1C00] font-mono text-[10px] uppercase tracking-widest font-semibold py-3 rounded-lg hover:bg-[#FF8C00]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(255,140,0,0.15)] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Creating account...' : 'Create Account'}
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting || !name || !email || !password || !confirmPassword}
+                className="w-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-body"
+              >
+                {isSubmitting ? 'Creating account...' : 'Create Account'}
+                <ArrowRight size={16} weight="bold" />
+              </button>
             </form>
-          </div>
+          </motion.div>
 
-          {/* Footer Links */}
-          <div className="mt-8 text-center">
-            <p className="font-body text-xs text-[#FDFBF8]/50">
+          {/* Footer */}
+          <motion.div variants={fadeUp} className="mt-6 text-center">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#FF8C00] hover:brightness-110 underline decoration-[#FF8C00]/30 underline-offset-4 transition-colors">
+              <Link to="/login" className="text-[hsl(var(--accent))] font-medium hover:opacity-80 transition-colors font-body">
                 Sign In
               </Link>
             </p>
-          </div>
-        </main>
+          </motion.div>
+        </motion.main>
       </div>
     </PageTransition>
   )

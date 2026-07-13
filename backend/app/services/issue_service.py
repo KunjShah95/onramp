@@ -2,7 +2,7 @@ import logging
 import datetime
 from typing import List, Dict, Any, Optional
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from tenacity import retry, stop_after_attempt, retry_if_exception
 
 from app.services.cache import github_cache
 

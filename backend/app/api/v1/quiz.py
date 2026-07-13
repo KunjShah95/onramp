@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from app.agents import QuizGenerator
 from app.api.v1.auth import get_current_user
@@ -175,7 +175,7 @@ async def submit_quiz_answers(
         "submitted_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    # Notify if passed or if important milestone
+    # Award XP for passing quiz
     if result.get("passed"):
         try:
             await quiz_graded(
@@ -188,6 +188,16 @@ async def submit_quiz_answers(
             )
         except Exception:
             pass  # Notification is non-critical
+
+        # Award XP (fire-and-forget — never block on gamification)
+        try:
+            from app.services.gamification_service import award_xp as _award_xp
+            await _award_xp(user_id=uid, source="quiz_passed")
+            # Bonus XP for perfect score
+            if result.get("score", 0) == result.get("total", 0):
+                await _award_xp(user_id=uid, source="quiz_perfect_score")
+        except Exception:
+            pass  # XP award is non-critical
 
     return {
         "result_id": result_id,

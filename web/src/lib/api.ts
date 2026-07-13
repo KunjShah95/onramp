@@ -386,6 +386,21 @@ export async function fetchRepoSections(
   )
 }
 
+// ── Seed Data ─────────────────────────────────────────────────
+export interface SeedRoleData {
+  role: string
+  portal: string
+  data: Record<string, any>
+}
+
+export async function fetchSeedRoleData(): Promise<SeedRoleData> {
+  const res = await fetch(`${API_BASE}/seed/role-data`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`API error ${res.status}: Failed to fetch seed data`)
+  return res.json()
+}
+
 // ─── Health Score ─────────────────────────────────────────────────────────
 
 export interface HealthScoreResult {
@@ -502,6 +517,133 @@ export async function generateHtmlReport(
     repo_url: repoUrl,
     user_level: userLevel,
   })
+}
+
+// ─── Gamification ────────────────────────────────────────────────────────
+
+export interface BadgeInfo {
+  badge_key: string
+  badge_name: string
+  icon: string
+  description: string
+  xp_bonus: number
+  earned_at: string
+}
+
+export interface BadgeDefinition {
+  badge_key: string
+  name: string
+  icon: string
+  description: string
+  requirement_type: string
+  requirement_value: number
+  xp_bonus: number
+}
+
+export interface StreakInfo {
+  current_streak: number
+  longest_streak: number
+  last_active: string | null
+  streak_frozen: boolean
+}
+
+export interface GamificationSummary {
+  user_id: string
+  total_xp: number
+  level: number
+  xp_progress: number
+  xp_needed: number
+  xp_breakdown: Record<string, number>
+  badges: BadgeInfo[]
+  badges_count: number
+  streak: StreakInfo
+}
+
+export interface LeaderboardEntry {
+  rank: number
+  user_id: string
+  name: string
+  xp: number
+  badges_count: number
+  current_streak: number
+}
+
+export interface LeaderboardResponse {
+  team_id: string
+  period: string
+  entries: LeaderboardEntry[]
+  total_entries: number
+}
+
+export interface AwardXpResponse {
+  awarded: boolean
+  xp_id?: string
+  source?: string
+  amount?: number
+  total_xp?: number
+  new_badges?: BadgeInfo[]
+  reason?: string
+}
+
+export interface LoginStreakResponse {
+  streak: StreakInfo
+  xp_awarded: boolean
+  xp_amount: number
+}
+
+export interface XpSource {
+  source: string
+  default_amount: number
+}
+
+export interface XpSourcesResponse {
+  sources: XpSource[]
+}
+
+export async function fetchGamificationSummary(
+  teamId?: string
+): Promise<GamificationSummary> {
+  const params = teamId ? `?team_id=${teamId}` : ''
+  return get<GamificationSummary>(`${API_BASE}/gamification/summary${params}`)
+}
+
+export async function awardXp(data: {
+  source: string
+  amount?: number
+  team_id?: string
+  metadata?: Record<string, unknown>
+}): Promise<AwardXpResponse> {
+  return request<AwardXpResponse>(`${API_BASE}/gamification/xp`, data)
+}
+
+export async function recordLogin(): Promise<LoginStreakResponse> {
+  return request<LoginStreakResponse>(`${API_BASE}/gamification/login`, {})
+}
+
+export async function fetchStreak(): Promise<StreakInfo> {
+  return get<StreakInfo>(`${API_BASE}/gamification/streak`)
+}
+
+export async function fetchBadges(): Promise<{ badges: BadgeInfo[]; count: number }> {
+  return get<{ badges: BadgeInfo[]; count: number }>(`${API_BASE}/gamification/badges`)
+}
+
+export async function fetchBadgeDefinitions(): Promise<{ badge_definitions: BadgeDefinition[]; count: number }> {
+  return get<{ badge_definitions: BadgeDefinition[]; count: number }>(`${API_BASE}/gamification/badges/definitions`)
+}
+
+export async function fetchLeaderboard(
+  teamId: string,
+  period: 'all_time' | 'monthly' | 'weekly' = 'all_time',
+  limit = 20
+): Promise<LeaderboardResponse> {
+  return get<LeaderboardResponse>(
+    `${API_BASE}/gamification/leaderboard?team_id=${teamId}&period=${period}&limit=${limit}`
+  )
+}
+
+export async function fetchXpSources(): Promise<XpSourcesResponse> {
+  return get<XpSourcesResponse>(`${API_BASE}/gamification/sources`)
 }
 
 // ─── Teams ────────────────────────────────────────────────────────────────
@@ -878,6 +1020,28 @@ export async function adminGetUsage(period?: string): Promise<AdminUsageResponse
 
 export async function adminGetTeamUsage(): Promise<AdminTeamUsageResponse> {
   return get<AdminTeamUsageResponse>(`${API_BASE}/admin/usage/teams`)
+}
+
+// ─── PR Description ────────────────────────────────────────────────────────
+
+export interface PRDescriptionResult {
+  description: string
+  title?: string
+  branch?: string
+}
+
+export async function describePR(
+  repoUrl: string,
+  prNumber: number,
+  title = '',
+  branch = ''
+): Promise<PRDescriptionResult> {
+  return request<PRDescriptionResult>(`${API_BASE}/pr-review/describe`, {
+    repo_url: repoUrl,
+    pr_number: prNumber,
+    title,
+    branch,
+  })
 }
 
 export async function adminListAuditEvents(params?: {
@@ -1600,4 +1764,124 @@ export function acceptInvite(token: string) {
 
 export function myPendingInvites() {
   return get<{ invites: TeamInvite[]; count: number }>(`${API_BASE}/invites/me`)
+}
+
+// ─── Quizzes ────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  question_id: string
+  question_type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'code_review' | 'matching'
+  question_text: string
+  options: string[]
+  correct_answer?: string
+  explanation?: string
+  difficulty: string
+  related_files: string[]
+}
+
+export interface GenerateQuizResponse {
+  quiz_id: string
+  mode: string
+  module: string
+  total_questions: number
+  questions: QuizQuestion[]
+}
+
+export interface SubmitAnswerResult {
+  question_id: string
+  correct: boolean
+  correct_answer: string
+  user_answer: string
+  feedback: string
+}
+
+export interface SubmitQuizResponse {
+  result_id: string
+  quiz_id: string
+  score: number
+  total: number
+  percentage: number
+  passed: boolean
+  results: SubmitAnswerResult[]
+  summary: string
+}
+
+export interface QuizSummary {
+  quiz_id: string
+  mode: string
+  module: string
+  difficulty: string
+  total_questions: number
+  created_at: string
+}
+
+export async function generateQuiz(data: {
+  mode: 'module' | 'repo'
+  module_name?: string
+  repo_structure: Record<string, unknown>
+  num_questions?: number
+  difficulty?: string
+}): Promise<GenerateQuizResponse> {
+  return request<GenerateQuizResponse>(`${API_BASE}/quiz/generate`, {
+    mode: data.mode,
+    module_name: data.module_name,
+    repo_structure: data.repo_structure,
+    num_questions: data.num_questions ?? 5,
+    difficulty: data.difficulty ?? 'mixed',
+  })
+}
+
+export async function getQuiz(quizId: string): Promise<GenerateQuizResponse> {
+  return get<GenerateQuizResponse>(`${API_BASE}/quiz/${quizId}`)
+}
+
+export async function getQuizWithAnswers(quizId: string): Promise<GenerateQuizResponse> {
+  return get<GenerateQuizResponse>(`${API_BASE}/quiz/${quizId}/answers`)
+}
+
+export async function submitQuizAnswers(
+  quizId: string,
+  answers: Record<string, string>
+): Promise<SubmitQuizResponse> {
+  return request<SubmitQuizResponse>(`${API_BASE}/quiz/${quizId}/submit`, { answers })
+}
+
+export async function listQuizzes(params?: {
+  module?: string
+  limit?: number
+}): Promise<{ quizzes: QuizSummary[] }> {
+  const query = new URLSearchParams()
+  if (params?.module) query.set('module', params.module)
+  if (params?.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return get<{ quizzes: QuizSummary[] }>(`${API_BASE}/quiz${qs ? '?' + qs : ''}`)
+}
+
+export interface QuizResultEntry {
+  result_id: string
+  quiz_id: string
+  user_id: string
+  module: string
+  answers: Record<string, string>
+  score: number
+  total: number
+  percentage: number
+  passed: boolean
+  results: SubmitAnswerResult[]
+  summary: string
+  submitted_at: string
+}
+
+export async function getQuizResults(quizId: string): Promise<{
+  quiz_id: string
+  results: QuizResultEntry[]
+  attempts: number
+  best_score: number
+}> {
+  return get<{
+    quiz_id: string
+    results: QuizResultEntry[]
+    attempts: number
+    best_score: number
+  }>(`${API_BASE}/quiz/${quizId}/results`)
 }

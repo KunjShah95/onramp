@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 from app.services.team_service import TeamService
 from app.services.billing_service import BillingService
 from app.services.access_control_service import (

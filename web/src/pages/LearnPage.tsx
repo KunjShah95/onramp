@@ -1,64 +1,65 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { analyzeArchitecture, generateLearningPath, createTask, listLearningPaths, type SavedLearningPath } from '../lib/api'
-import { useAuth } from '../context/AuthContext'
-import type { LearningPathResult } from '../lib/types'
-import { cn } from '../lib/utils'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  BookOpenText,
+  Clock,
+  FileText,
+  Play,
+  Lightning,
+  Target,
+  GitBranch,
+  ClipboardText,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  ArrowRight,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import { useToast } from '../context/ToastContext'
+import CardSpotlight from '../components/ui/card-spotlight'
+import { EmptyState } from '../components/ui/empty-state'
 import { LearningPathSkeleton } from '../components/ui/Skeleton'
+import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
+import { generateLearningPath, createTask, generateQuiz, submitQuizAnswers } from '../lib/api'
+import type { LearningPathResult, LearningPathModule } from '../lib/types'
+import type { QuizQuestion, SubmitQuizResponse } from '../lib/api'
+import { cn } from '../lib/utils'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-}
-
-const fileListVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.03 } },
-}
-const fileItemVariants = {
-  hidden: { opacity: 0, x: -8 },
-  visible: { opacity: 1, x: 0 },
-}
+const LEVELS = [
+  { key: 'junior', label: 'Junior' },
+  { key: 'mid', label: 'Mid' },
+  { key: 'senior', label: 'Senior' },
+]
 
 export default function LearnPage() {
-  const navigate = useNavigate()
-  const { activeTeamId } = useAuth()
   const [repoUrl, setRepoUrl] = useState('')
   const [userLevel, setUserLevel] = useState('junior')
   const [loading, setLoading] = useState(false)
-  const [creatingTasks, setCreatingTasks] = useState(false)
-  const [result, setResult] = useState<LearningPathResult | null>(null)
+  const [path, setPath] = useState<LearningPathResult | null>(null)
   const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
-  const [recentPaths, setRecentPaths] = useState<SavedLearningPath[]>([])
-  const toast = useToast()
+  const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
-    listLearningPaths()
-      .then((data) => setRecentPaths(data.paths))
-      .catch(() => { /* not logged in or no paths yet */ })
-  }, [])
+  // Quiz state
+  const [quizModule, setQuizModule] = useState<string | null>(null)
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([])
+  const [quizId, setQuizId] = useState<string | null>(null)
+  const [quizLoading, setQuizLoading] = useState(false)
+  const [quizStep, setQuizStep] = useState<'intro' | 'questions' | 'results'>('intro')
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({})
+  const [quizResult, setQuizResult] = useState<SubmitQuizResponse | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const toast = useToast()
+  const { activeTeamId, user } = useAuth()
 
   async function handleGenerate() {
     if (!repoUrl.trim()) return
-    setLoading(true)
-    setError('')
-    setSuccessMsg('')
+    setLoading(true); setError(''); setPath(null)
     try {
-      const architecture = await analyzeArchitecture(repoUrl)
-      const pathResult = await generateLearningPath(architecture.entities, userLevel, repoUrl)
-      setResult(pathResult)
-      toast.success('Learning path generated', `${pathResult.path.length} modules · ${pathResult.total_estimated_hours} hours`)
-      listLearningPaths().then((data) => setRecentPaths(data.paths)).catch(() => {})
+      const data = await generateLearningPath({}, userLevel, repoUrl)
+      setPath(data)
+      toast.success('Learning path ready', `${data.path.length} personalized modules · ~${data.total_estimated_hours}h`)
     } catch (err: any) {
       setError(err.message || 'Failed to generate learning path.')
       toast.error('Generation failed', err.message)
@@ -67,280 +68,566 @@ export default function LearnPage() {
     }
   }
 
-  function handleRestorePath(saved: SavedLearningPath) {
-    setRepoUrl(saved.repo_url)
-    setUserLevel(saved.user_level)
-    setResult(saved.result)
-    toast.success('Path restored', `${saved.result.path.length} modules from ${new Date(saved.created_at).toLocaleDateString()}`)
+  async function handleStartLearning() {
+    if (!path || !activeTeamId) return
+    setCreating(true)
+    try {
+      let created = 0
+      for (const mod of path.path) {
+        try {
+          await createTask({
+            team_id: activeTeamId,
+            title: mod.name,
+            description: mod.description,
+            module: mod.name,
+            priority: 'medium',
+            estimated_hours: mod.time_hours,
+            repo_url: repoUrl.trim() || undefined,
+            assigned_to: user?.id,
+          })
+          created++
+        } catch { /* continue */ }
+      }
+      toast.success('Tasks created', `${created} learning tasks added to /tasks`)
+    } catch (err: any) {
+      toast.error('Could not create tasks', err.message)
+    } finally {
+      setCreating(false)
+    }
   }
 
-  async function handleStartLearning() {
-    if (!result || !result.path.length) return
-    setCreatingTasks(true)
-    setError('')
-    setSuccessMsg('')
-    try {
-      // Create one task per learning module
-      for (const module of result.path) {
-        await createTask({
-          team_id: activeTeamId || 'default',
-          title: module.name,
-          description: `${module.description}\n\nObjectives:\n${module.objectives?.map((o: string) => `- ${o}`).join('\n') || ''}`,
-          module: module.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-          priority: 'medium',
-          estimated_hours: module.time_hours,
-        })
-      }
-      toast.success('Tasks created', `${result.path.length} onboarding tasks created! Redirecting...`)
-      setSuccessMsg(`Created ${result.path.length} onboarding tasks! Redirecting to tasks page...`)
-      setTimeout(() => navigate('/tasks'), 1500)
-    } catch (err: any) {
-      setError(err.message || 'Failed to create tasks.')
-      toast.error('Failed to create tasks', err.message)
-    } finally {
-      setCreatingTasks(false)
+  // ── Quiz flow ──────────────────────────────────────────────
+
+  const closeQuiz = useCallback(() => {
+    setQuizModule(null)
+    setQuizQuestions([])
+    setQuizId(null)
+    setQuizStep('intro')
+    setCurrentQuestion(0)
+    setQuizAnswers({})
+    setQuizResult(null)
+  }, [])
+
+  useEffect(() => {
+    if (!quizModule) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeQuiz()
     }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [quizModule, closeQuiz])
+
+  async function openQuiz(moduleName: string) {
+    setQuizLoading(true)
+    setQuizStep('intro')
+    setCurrentQuestion(0)
+    setQuizAnswers({})
+    setQuizResult(null)
+    try {
+      const data = await generateQuiz({
+        mode: 'module',
+        module_name: moduleName,
+        repo_structure: {},
+        num_questions: 5,
+        difficulty: 'mixed',
+      })
+      setQuizQuestions(data.questions)
+      setQuizId(data.quiz_id)
+      setQuizModule(moduleName) // open modal only after data ready
+    } catch (err: any) {
+      toast.error('Failed to generate quiz', err.message)
+    } finally {
+      setQuizLoading(false)
+    }
+  }
+
+  function selectAnswer(questionId: string, answer: string) {
+    setQuizAnswers((prev) => ({ ...prev, [questionId]: answer }))
+  }
+
+  function nextQuestion() {
+    if (currentQuestion < quizQuestions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+    }
+  }
+
+  function prevQuestion() {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1)
+    }
+  }
+
+  async function handleSubmitQuiz() {
+    if (!quizId) return
+    setSubmitting(true)
+    try {
+      const result = await submitQuizAnswers(quizId, quizAnswers)
+      setQuizResult(result)
+      setQuizStep('results')
+    } catch (err: any) {
+      toast.error('Failed to submit quiz', err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const startQuiz = () => {
+    if (quizQuestions.length === 0) {
+      toast.error('No questions generated')
+      return
+    }
+    setQuizStep('questions')
+    setCurrentQuestion(0)
   }
 
   return (
     <PageTransition>
-      <div className="w-full h-full min-h-[calc(100vh-4rem)] p-4 sm:p-8 font-mono text-[#FDFBF8] relative max-w-full overflow-x-hidden">
-        
-        {/* Background Grid Pattern (Subtle) */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')]"></div>
-
-        {/* Header Section */}
-        <div className="max-w-4xl mb-12 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#FF8C00]/30 bg-[#FF8C00]/5 text-[#FF8C00] text-xs font-bold mb-6">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            DEVELOPER ONBOARDING
-          </div>
-          
-          <GradientHeading as="h1" className="mb-4">Learning Paths</GradientHeading>
-          <p className="text-[#FDFBF8]/70 text-lg leading-relaxed max-w-2xl font-body mb-8">
-            Your personalized trajectory to mastering the codebase. Enter a repository URL to generate a custom curriculum.
-          </p>
-
-          {recentPaths.length > 0 && !result && (
-            <div className="mb-6 max-w-3xl">
-              <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/30 font-semibold mb-2">Recent paths</div>
-              <div className="flex flex-wrap gap-2">
-                {recentPaths.map((p) => (
-                  <button
-                    key={p.path_id}
-                    onClick={() => handleRestorePath(p)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1A110D] border border-[#FDFBF8]/10 hover:border-[#FF8C00]/40 text-[13px] text-[#FDFBF8]/70 hover:text-[#FDFBF8] transition-colors"
-                  >
-                    <svg className="w-3 h-3 text-[#FF8C00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="truncate max-w-[160px]">{p.repo_url.split('/').slice(-2).join('/')}</span>
-                    <span className="text-[#FDFBF8]/30 text-[11px]">{p.user_level}</span>
-                  </button>
-                ))}
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
               </div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Learn
+              </h1>
             </div>
-          )}
+            <p className="text-body-sm text-text-tertiary max-w-xl">
+              Generate a personalized learning path from any repository, then turn each module into a tracked task.
+            </p>
+          </div>
+        </div>
 
-          <div className="flex flex-col md:flex-row gap-4 max-w-3xl">
+        {/* Controls */}
+        <div className="flex flex-col md:flex-row gap-3 md:items-center">
+          <div className="relative flex items-center w-full md:flex-1">
+            <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
             <input
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-              placeholder="Enter GitHub repository URL..."
-              className="flex-1 bg-[#1A110D] border border-[#FDFBF8]/10 text-[#FDFBF8] text-[15px] rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF8C00]/50 transition-colors placeholder:text-[#FDFBF8]/30"
+              placeholder="github.com/owner/repo"
+              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
             />
-            <select 
-              value={userLevel}
-              onChange={(e) => setUserLevel(e.target.value)}
-              className="bg-[#1A110D] border border-[#FDFBF8]/10 text-[#FDFBF8] text-[15px] rounded-lg px-4 py-3 focus:outline-none focus:border-[#FF8C00]/50 transition-colors"
-            >
-              <option value="junior">Junior</option>
-              <option value="mid">Mid-Level</option>
-              <option value="senior">Senior</option>
-            </select>
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className={cn(
-                "px-6 py-3 rounded-lg font-bold text-[15px] transition-all",
-                loading 
-                  ? "bg-[#FF8C00]/50 text-[#3D1C00] cursor-not-allowed" 
-                  : "bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00]"
-              )}
-            >
-              {loading ? 'Generating...' : 'Generate Path'}
-            </button>
           </div>
-
-          {error && (
-            <div className="mt-6 p-4 rounded-lg bg-red-900/20 border border-red-500/50 text-red-400 font-mono text-sm flex items-center justify-between">
-              <span>{error}</span>
-              <button onClick={handleGenerate} disabled={loading || !repoUrl.trim()} className="text-xs underline ml-4 text-red-300 hover:text-red-200 disabled:opacity-50">Retry</button>
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="mt-6 p-4 rounded-lg bg-green-900/20 border border-green-500/50 text-green-400 font-mono text-sm animate-pulse">
-              ✓ {successMsg}
-            </div>
-          )}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+            {LEVELS.map((l) => (
+              <button
+                key={l.key}
+                onClick={() => setUserLevel(l.key)}
+                className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                  userLevel === l.key
+                    ? 'bg-bg-primary text-text-primary shadow-sm'
+                    : 'text-text-tertiary hover:text-text-secondary'
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={loading || !repoUrl.trim()}
+            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
+          >
+            <Play className="w-3.5 h-3.5" weight="fill" />
+            {loading ? 'Generating…' : 'Generate Path'}
+          </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-12 relative z-10">
-          
-          {/* Left Side: Timeline & Modules */}
-          <div className="flex-1 relative">
-            
-            {/* Timeline Line */}
-            <div className="absolute left-2.5 top-8 bottom-0 w-px bg-[#FDFBF8]/10"></div>
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+          </div>
+        )}
 
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-12">
-              {!result && !loading && (
-                <motion.div variants={itemVariants} className="text-[#FDFBF8]/40 font-mono text-sm italic">
-                  No learning path generated yet. Enter a repository URL to begin.
-                </motion.div>
+        {loading && <LearningPathSkeleton />}
+
+        {!loading && !path && (
+          <CardSpotlight className="border border-accent-primary/10">
+            <EmptyState
+              icon={<BookOpenText size={40} />}
+              title="Enter a GitHub repository above"
+              description="We'll analyze its structure and build a personalized 5–8 module learning path for your skill level."
+              action={
+                <button onClick={handleGenerate} disabled={!repoUrl.trim()} className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40">
+                  Generate Path
+                </button>
+              }
+            />
+          </CardSpotlight>
+        )}
+
+        {!loading && path && (
+          <>
+            <CardSpotlight className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Lightning className="w-4 h-4 text-amber-400" weight="fill" />
+                  <span className="text-body-sm font-medium text-text-primary">
+                    {path.path.length} modules · ~{path.total_estimated_hours}h · {userLevel} level
+                  </span>
+                </div>
+                <button
+                  onClick={handleStartLearning}
+                  disabled={creating || !activeTeamId}
+                  title={activeTeamId ? 'Create a task per module' : 'Join a team first'}
+                  className="px-4 py-2 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2"
+                >
+                  <Target className="w-3.5 h-3.5" weight="fill" />
+                  {creating ? 'Creating tasks…' : 'Start Learning'}
+                </button>
+              </div>
+              {!activeTeamId && (
+                <p className="text-caption text-text-tertiary mt-2">Join or create a team to turn modules into tracked tasks.</p>
               )}
-              
-              {loading && (
-                <motion.div variants={itemVariants}>
-                  <LearningPathSkeleton />
-                </motion.div>
-              )}
+            </CardSpotlight>
 
-              {result && result.path.map((module, idx) => (
-                <motion.div variants={itemVariants} key={idx} className={cn("relative pl-12", idx > 0 ? "opacity-70 hover:opacity-100 transition-opacity" : "")}>
-                  {/* Timeline Dot */}
-                  <div className={cn(
-                    "absolute left-0 top-6 w-5 h-5 rounded-full border-4 border-[#0A0705] z-10",
-                    idx === 0 
-                      ? "bg-[#FF8C00] shadow-[0_0_0_1px_rgba(255,140,0,0.3)]" 
-                      : "bg-[#3D332D] left-1 w-3 h-3 border-none"
-                  )}></div>
-                  
-                  <CardSpotlight>
-                    <div className={cn("border border-[#FDFBF8]/5 rounded-2xl p-8", idx === 0 ? "bg-[#1A110D]" : "bg-[#1A110D]/50")}>
-                      <div className="flex items-start justify-between mb-4">
-                        <h2 className="text-2xl font-bold text-[#FDFBF8] font-display flex items-baseline gap-3">
-                          <span className={idx === 0 ? "text-[#FF8C00] text-lg font-mono" : "text-[#FDFBF8]/30 text-lg font-mono"}>
-                            {String(idx + 1).padStart(2, '0')}
-                          </span> {module.name}
-                        </h2>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#2A1D16] text-[#FDFBF8]/60 text-xs font-medium">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          {module.time_hours} HRS
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {path.path.map((mod: LearningPathModule, i) => (
+                <motion.div
+                  key={`${mod.order}-${mod.name}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <CardSpotlight className="p-5 h-full flex flex-col">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-caption font-mono text-accent-primary/70">Module {mod.order}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-caption text-text-tertiary">
+                          <Clock className="w-3 h-3" />{mod.time_hours}h
+                        </span>
                       </div>
-                      
-                      <p className="text-[#FDFBF8]/60 text-sm leading-relaxed mb-6 font-body">
-                        {module.description}
-                      </p>
-
-                      <div className="mb-8">
-                        <div className="flex items-center gap-2 text-[#FDFBF8]/80 text-sm mb-4 font-body font-medium">
-                          <svg className="w-4 h-4 text-[#FDFBF8]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-                          </svg>
-                          Target Files
-                        </div>
-                        
-                        {module.files && module.files.length > 0 && (
-                          <div className="bg-[#0A0705] rounded-xl border border-[#FDFBF8]/5 overflow-hidden">
-                            <motion.div variants={fileListVariants} initial="hidden" animate="visible">
-                              {module.files.map((file, fIdx) => (
-                                <motion.div key={fIdx} variants={fileItemVariants} className="flex items-center justify-between px-4 py-3 border-b border-[#FDFBF8]/5 group hover:bg-[#1A110D]/50 transition-colors">
-                                  <div className="flex items-center gap-3 overflow-hidden">
-                                    <svg className="w-4 h-4 text-[#FF8C00]/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                    </svg>
-                                    <span className="text-[13px] text-[#FDFBF8] truncate">{file}</span>
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </motion.div>
-                          </div>
-                        )}
-                      </div>
-
-                      {idx === 0 && (
-                        <div className="flex items-center gap-6">
-                          <button
-                            onClick={handleStartLearning}
-                            disabled={creatingTasks}
-                            className="bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] px-6 py-2.5 rounded text-[13px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            {creatingTasks ? (
-                              <>
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                Creating Tasks...
-                              </>
-                            ) : 'Start Learning →'}
-                          </button>
-                          <span className="text-[11px] text-[#FDFBF8]/30">Creates {result.path.length} onboarding tasks in /tasks</span>
-                        </div>
-                      )}
                     </div>
+                    <h3 className="text-body font-medium text-text-primary mb-1.5">{mod.name}</h3>
+                    <p className="text-caption text-text-tertiary leading-relaxed mb-4 flex-1">
+                      {mod.description}
+                    </p>
+                    {mod.objectives.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-overline text-text-tertiary/50 font-semibold mb-1.5">Objectives</div>
+                        <ul className="space-y-1 list-disc list-inside text-caption text-text-secondary">
+                          {mod.objectives.map((o, idx) => (
+                            <li key={idx}>{o}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {mod.files.length > 0 && (
+                      <div className="flex items-start gap-2 text-caption text-text-tertiary mb-3">
+                        <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                        <div className="flex flex-wrap gap-1.5">
+                          {mod.files.slice(0, 6).map((f) => (
+                            <span key={f} className="px-1.5 py-0.5 rounded text-[10px] bg-bg-tertiary/30 text-text-tertiary font-mono">{f}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => openQuiz(mod.name)}
+                      className="flex items-center justify-center gap-1.5 w-full mt-auto px-3 py-2 rounded-lg border border-accent-primary/20 text-caption text-accent-primary font-medium hover:bg-accent-primary/5 transition-colors"
+                    >
+                      <ClipboardText className="w-3.5 h-3.5" weight="duotone" />
+                      Take Quiz
+                    </button>
                   </CardSpotlight>
                 </motion.div>
               ))}
-            </motion.div>
-          </div>
+            </div>
+          </>
+        )}
+      </div>
 
-          {/* Right Side: Path Summary Widget */}
-          <div className="w-full lg:w-80 shrink-0">
-            <CardSpotlight className="border-[#FF8C00]/20 shadow-xl shadow-[#FF8C00]/5">
-              <div className="p-6">
-                <GradientHeading as="h3" className="mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-[#FF8C00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Path Summary
-                </GradientHeading>
-
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="bg-[#0A0705] border border-[#FDFBF8]/5 rounded-xl p-4">
-                    <div className="text-[11px] font-medium text-[#FDFBF8]/40 mb-2">Total Time</div>
-                    <div className="text-2xl font-bold text-[#FDFBF8] mb-1">{result ? result.total_estimated_hours : 0}</div>
-                    <div className="text-xs text-[#FF8C00]">Hours Est.</div>
+      {/* ── Quiz Modal ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {quizModule && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={closeQuiz}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-bg-primary border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="sticky top-0 z-10 bg-bg-primary border-b border-border px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center">
+                    <ClipboardText className="w-4 h-4 text-accent-primary" weight="duotone" />
                   </div>
-                  
-                  <div className="bg-[#0A0705] border border-[#FDFBF8]/5 rounded-xl p-4">
-                    <div className="text-[11px] font-medium text-[#FDFBF8]/40 mb-2">Progress</div>
-                    <div className="text-2xl font-bold text-[#FDFBF8] mb-1">0<span className="text-[#FDFBF8]/30">/{result ? result.path.length : 0}</span></div>
-                    <div className="text-xs text-[#FDFBF8]/40">Modules</div>
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <div className="flex items-center justify-between text-[11px] font-medium mb-3">
-                    <span className="text-[#FDFBF8]/60">Completion Status</span>
-                    <span className="text-[#FDFBF8]">0%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-[#0A0705] border border-[#FDFBF8]/5 overflow-hidden">
-                    <div className="h-full bg-[#FF8C00] w-0"></div>
+                  <div>
+                    <h2 className="text-body-sm font-semibold text-text-primary">Knowledge Check</h2>
+                    <p className="text-caption text-text-tertiary">{quizModule}</p>
                   </div>
                 </div>
-
-                <button className="w-full bg-[#2A1D16] hover:bg-[#3D291F] text-[#FDFBF8] border border-[#FDFBF8]/10 py-3 rounded-lg text-[13px] font-bold transition-colors flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Resume Path
+                <button onClick={closeQuiz} className="w-7 h-7 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors">
+                  <XCircle className="w-3.5 h-3.5" weight="bold" />
                 </button>
               </div>
-            </CardSpotlight>
-          </div>
 
-        </div>
-      </div>
+              <div className="p-6">
+                {/* Loading */}
+                {quizLoading && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <svg className="w-6 h-6 animate-spin text-accent-primary mb-3" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <p className="text-caption text-text-tertiary">Generating quiz questions…</p>
+                  </div>
+                )}
+
+                {/* Intro screen */}
+                {!quizLoading && quizStep === 'intro' && (
+                  <div className="flex flex-col items-center text-center py-8">
+                    <div className="w-14 h-14 rounded-2xl bg-accent-primary/10 flex items-center justify-center mb-4">
+                      <ClipboardText className="w-7 h-7 text-accent-primary" weight="duotone" />
+                    </div>
+                    <h3 className="text-body font-semibold text-text-primary mb-2">Test Your Knowledge</h3>
+                    <p className="text-caption text-text-tertiary max-w-sm mb-1">
+                      Answer {quizQuestions.length} questions about <strong>{quizModule}</strong> to check your understanding.
+                    </p>
+                    <p className="text-caption text-text-tertiary/50 mb-6">
+                      You need <strong className="text-accent-primary">70%</strong> to pass.
+                    </p>
+                    <button
+                      onClick={startQuiz}
+                      className="px-6 py-2.5 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 transition-all"
+                    >
+                      Start Quiz
+                    </button>
+                  </div>
+                )}
+
+                {/* Questions */}
+                {!quizLoading && quizStep === 'questions' && quizQuestions.length > 0 && (
+                  <div>
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-accent-primary rounded-full transition-all duration-300"
+                          style={{ width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-caption text-text-tertiary font-mono shrink-0">
+                        {currentQuestion + 1}/{quizQuestions.length}
+                      </span>
+                    </div>
+
+                    {/* Question */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentQuestion}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-4"
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-accent-primary/10 flex items-center justify-center text-[11px] font-mono text-accent-primary shrink-0 mt-0.5">
+                            {currentQuestion + 1}
+                          </span>
+                          <div>
+                            <p className="text-body-sm font-medium text-text-primary mb-1">
+                              {quizQuestions[currentQuestion].question_text}
+                            </p>
+                            <span className="text-[10px] text-text-tertiary/50 uppercase tracking-wider">
+                              {quizQuestions[currentQuestion].difficulty} · {quizQuestions[currentQuestion].question_type.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Answer options */}
+                        <div className="space-y-2 pl-8">
+                          {quizQuestions[currentQuestion].question_type === 'true_false' ? (
+                            ['True', 'False'].map((opt) => (
+                              <button
+                                key={opt}
+                                onClick={() => selectAnswer(quizQuestions[currentQuestion].question_id, opt)}
+                                className={cn(
+                                  'w-full text-left px-4 py-3 rounded-xl border text-caption transition-all',
+                                  quizAnswers[quizQuestions[currentQuestion].question_id] === opt
+                                    ? 'border-accent-primary/50 bg-accent-primary/10 text-accent-primary'
+                                    : 'border-border bg-bg-secondary text-text-secondary hover:border-border-hover'
+                                )}
+                              >
+                                {opt}
+                              </button>
+                            ))
+                          ) : (
+                            quizQuestions[currentQuestion].options.map((opt, oi) => (
+                              <button
+                                key={oi}
+                                onClick={() => selectAnswer(quizQuestions[currentQuestion].question_id, opt)}
+                                className={cn(
+                                  'w-full text-left px-4 py-3 rounded-xl border text-caption transition-all',
+                                  quizAnswers[quizQuestions[currentQuestion].question_id] === opt
+                                    ? 'border-accent-primary/50 bg-accent-primary/10 text-accent-primary'
+                                    : 'border-border bg-bg-secondary text-text-secondary hover:border-border-hover'
+                                )}
+                              >
+                                <span className="text-text-tertiary/50 mr-2 font-mono">
+                                  {String.fromCharCode(65 + oi)}.
+                                </span>
+                                {opt}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Navigation */}
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+                      <button
+                        onClick={prevQuestion}
+                        disabled={currentQuestion === 0}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-caption text-text-tertiary hover:text-text-primary disabled:opacity-30 transition-all"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" weight="bold" />
+                        Previous
+                      </button>
+
+                      <div className="flex gap-1.5">
+                        {quizQuestions.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentQuestion(i)}
+                            className={cn(
+                              'w-2 h-2 rounded-full transition-all',
+                              i === currentQuestion
+                                ? 'bg-accent-primary w-5'
+                                : quizAnswers[quizQuestions[i].question_id]
+                                  ? 'bg-accent-primary/40'
+                                  : 'bg-bg-tertiary'
+                            )}
+                          />
+                        ))}
+                      </div>
+
+                      {currentQuestion < quizQuestions.length - 1 ? (
+                        <button
+                          onClick={nextQuestion}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-caption text-text-tertiary hover:text-text-primary transition-all"
+                        >
+                          Next
+                          <ArrowRight className="w-3.5 h-3.5" weight="bold" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleSubmitQuiz}
+                          disabled={submitting || Object.keys(quizAnswers).length < quizQuestions.length}
+                          className="px-5 py-2 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 disabled:opacity-40 transition-all"
+                        >
+                          {submitting ? 'Submitting…' : 'Submit Quiz'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Results */}
+                {!quizLoading && quizStep === 'results' && quizResult && (
+                  <div className="space-y-6">
+                    {/* Score card */}
+                    <div className="flex flex-col items-center py-6">
+                      <div className={cn(
+                        'w-20 h-20 rounded-full flex items-center justify-center mb-4',
+                        quizResult.passed ? 'bg-green-500/15' : 'bg-red-500/15'
+                      )}>
+                        {quizResult.passed ? (
+                          <CheckCircle className="w-9 h-9 text-green-400" weight="fill" />
+                        ) : (
+                          <XCircle className="w-9 h-9 text-red-400" weight="fill" />
+                        )}
+                      </div>
+                      <h3 className="text-display-sm font-display font-bold text-text-primary mb-1">
+                        {quizResult.percentage}%
+                      </h3>
+                      <p className={cn(
+                        'text-body-sm font-medium mb-1',
+                        quizResult.passed ? 'text-green-400' : 'text-red-400'
+                      )}>
+                        {quizResult.passed ? 'Passed!' : 'Needs Improvement'}
+                      </p>
+                      <p className="text-caption text-text-tertiary">
+                        {quizResult.score} / {quizResult.total} correct
+                      </p>
+                      <p className="text-caption text-text-tertiary/50 mt-1">
+                        {quizResult.summary}
+                      </p>
+                    </div>
+
+                    {/* Detailed results */}
+                    <div className="space-y-3">
+                      {quizResult.results.map((r, i) => (
+                        <div
+                          key={r.question_id}
+                          className={cn(
+                            'rounded-xl border p-4',
+                            r.correct
+                              ? 'border-green-500/20 bg-green-500/5'
+                              : 'border-red-500/20 bg-red-500/5'
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {r.correct ? (
+                                <CheckCircle className="w-4 h-4 text-green-400" weight="fill" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400" weight="fill" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-caption text-text-primary font-medium mb-1">
+                                Question {i + 1}
+                              </p>
+                              {!r.correct && (
+                                <p className="text-[11px] text-text-secondary">
+                                  <span className="text-text-tertiary">Correct answer: </span>
+                                  <span className="text-green-400 font-mono">{r.correct_answer}</span>
+                                </p>
+                              )}
+                              <p className="text-[11px] text-text-tertiary mt-1">{r.feedback}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Retry / Close */}
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={() => openQuiz(quizModule!)}
+                        className="px-5 py-2 rounded-xl border border-accent-primary/30 text-caption text-accent-primary font-medium hover:bg-accent-primary/5 transition-all"
+                      >
+                        Retry Quiz
+                      </button>
+                      <button
+                        onClick={closeQuiz}
+                        className="px-5 py-2 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 transition-all"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   )
 }

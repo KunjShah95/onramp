@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)

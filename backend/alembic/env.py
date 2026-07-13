@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.database.config import Base
-from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord
+from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, Repository
 
 from dotenv import load_dotenv
 load_dotenv()

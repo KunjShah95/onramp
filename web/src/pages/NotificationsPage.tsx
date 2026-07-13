@@ -1,327 +1,279 @@
-import { useState, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
-import { cn } from '../lib/utils'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  listNotifications, getUnreadCount, markNotificationsRead,
-  markAllNotificationsRead, deleteNotification, clearReadNotifications,
-} from '../lib/api'
-import { PageHeader } from '../components/ui/page-header'
-import { EmptyState } from '../components/ui/empty-state'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
-import StatusBadge from '../components/ui/status-badge'
+  Bell,
+  Check,
+  X,
+  GitPullRequest,
+  UserCircle,
+  ShieldCheck,
+  Bug,
+  ChartBar,
+  CheckCircle,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import { useToast } from '../context/ToastContext'
+import { EmptyState } from '../components/ui/empty-state'
 import { NotificationsSkeleton } from '../components/ui/Skeleton'
+import { useToast } from '../context/ToastContext'
+import {
+  listNotifications,
+  markNotificationsRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  clearReadNotifications,
+} from '../lib/api'
+import type { CodeFlowNotification } from '../lib/api'
+import Pagination from '../components/ui/Pagination'
 
-const TYPE_ICONS: Record<string, string> = {
-  task_assigned: 'assignment', task_started: 'play_arrow', task_submitted: 'rate_review',
-  task_reviewed: 'visibility', task_approved: 'check_circle', task_needs_changes: 'edit_note',
-  task_completed: 'celebration', task_cancelled: 'cancel', module_granted: 'lock_open',
-  team_invite: 'person_add', system_alert: 'warning', pr_merged: 'merge', milestone_reached: 'flag',
+const ICON_MAP: Record<string, React.ElementType> = {
+  review: GitPullRequest,
+  mention: UserCircle,
+  alert: Bug,
+  pr: GitPullRequest,
+  report: ChartBar,
+  approval: ShieldCheck,
+  task: CheckCircle,
+  module: ShieldCheck,
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  task_assigned: 'Task Assigned', task_started: 'Task Started', task_submitted: 'Submitted',
-  task_reviewed: 'Reviewed', task_approved: 'Approved', task_needs_changes: 'Changes Needed',
-  task_completed: 'Completed', task_cancelled: 'Cancelled', module_granted: 'Module Access',
-  team_invite: 'Team Invite', system_alert: 'System Alert', pr_merged: 'PR Merged',
-  milestone_reached: 'Milestone',
+const COLOR_MAP: Record<string, string> = {
+  review: 'text-blue-400',
+  mention: 'text-purple-400',
+  alert: 'text-red-400',
+  pr: 'text-emerald-400',
+  report: 'text-amber-400',
+  approval: 'text-cyan-400',
+  task: 'text-accent-primary',
+  module: 'text-cyan-400',
 }
 
-const TYPE_ICON_COLORS: Record<string, string> = {
-  task_assigned: 'text-blue-400', task_started: 'text-[#FF8C00]', task_submitted: 'text-purple-400',
-  task_reviewed: 'text-yellow-400', task_approved: 'text-green-400', task_needs_changes: 'text-red-400',
-  task_completed: 'text-green-400', task_cancelled: 'text-[#FDFBF8]/25', module_granted: 'text-emerald-400',
-  team_invite: 'text-pink-400', system_alert: 'text-red-400', pr_merged: 'text-[#4DA8DA]',
-  milestone_reached: 'text-[#FF8C00]',
+const BG_MAP: Record<string, string> = {
+  review: 'bg-blue-500/10',
+  mention: 'bg-purple-500/10',
+  alert: 'bg-red-500/10',
+  pr: 'bg-emerald-500/10',
+  report: 'bg-amber-500/10',
+  approval: 'bg-cyan-500/10',
+  task: 'bg-accent-primary/10',
+  module: 'bg-cyan-500/10',
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  return `${d}d ago`
 }
 
 export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState<CodeFlowNotification[]>([])
+  const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 20
+
   const toast = useToast()
-  const queryClient = useQueryClient()
-  const [filter, setFilter] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const { data: notifData, isLoading: loading, error } = useQuery({
-    queryKey: ['notifications', filter],
-    queryFn: () => listNotifications({ type_filter: filter || undefined, limit: 100 }),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-  })
-
-  const { data: unreadData } = useQuery({
-    queryKey: ['unreadCount'],
-    queryFn: getUnreadCount,
-    refetchInterval: 30_000,
-    staleTime: 5_000,
-  })
-
-  const notifications = notifData?.notifications ?? []
-  const unreadCount = unreadData?.unread_count ?? 0
-
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    queryClient.invalidateQueries({ queryKey: ['unreadCount'] })
-  }, [queryClient])
-
-  const markReadMutation = useMutation({
-    mutationFn: (ids: string[]) => markNotificationsRead(ids),
-    onSuccess: () => { invalidate(); setSelectedIds(new Set()) },
-  })
-
-  const markAllReadMutation = useMutation({
-    mutationFn: markAllNotificationsRead,
-    onSuccess: () => { invalidate(); toast.success('All marked as read') },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteNotification(id),
-    onSuccess: () => {
-      invalidate()
-      toast.info('Notification removed')
-      setSelectedIds(new Set())
-    },
-  })
-
-  const clearReadMutation = useMutation({
-    mutationFn: clearReadNotifications,
-    onSuccess: () => { invalidate(); toast.info('Read notifications cleared') },
-  })
-
-  function handleMarkRead(ids: string[]) {
-    markReadMutation.mutate(ids)
-  }
-
-  function handleMarkAllRead() {
-    markAllReadMutation.mutate()
-  }
-
-  function handleDelete(id: string) {
-    if (!confirm('Delete this notification?')) return
-    deleteMutation.mutate(id)
-  }
-
-  function handleClearRead() {
-    clearReadMutation.mutate()
-  }
-
-  function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
-  }
-
-  function getUniqueTypes() {
-    const types = new Set(notifications.map((n) => n.type))
-    const unreadTypes = new Set(notifications.filter((n) => !n.read).map((n) => n.type))
-    return Array.from(types).sort((a, b) => {
-      const diff = (unreadTypes.has(a) ? 0 : 1) - (unreadTypes.has(b) ? 0 : 1)
-      return diff !== 0 ? diff : a.localeCompare(b)
-    })
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.03 } },
-  }
-  const itemVariants = {
-    hidden: { opacity: 0, y: 8 },
-    visible: { opacity: 1, y: 0 },
-  }
-
-  function notifTypeToBadge(type: string): string {
-    const map: Record<string, string> = {
-      task_assigned: 'assigned',
-      task_started: 'in_progress',
-      task_submitted: 'submitted',
-      task_reviewed: 'under_review',
-      task_approved: 'approved',
-      task_needs_changes: 'needs_changes',
-      task_completed: 'completed',
-      task_cancelled: 'cancelled',
+  async function fetchNotifications() {
+    setLoading(true); setError('')
+    try {
+      const data = await listNotifications(filter === 'unread' ? { unread_only: true } : {})
+      setNotifications(data.notifications ?? [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load notifications.')
+    } finally {
+      setLoading(false)
     }
-    return map[type] || 'pending'
   }
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    const diff = Date.now() - d.getTime()
-    const days = Math.floor(diff / 86_400_000)
-    if (days === 0) return `Today ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-    if (days === 1) return 'Yesterday'
-    if (days < 7) return `${days}d ago`
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  useEffect(() => {
+    fetchNotifications()
+  }, [filter])
+
+  useEffect(() => { setPage(0) }, [filter])
+
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  async function markRead(id: string) {
+    setNotifications((prev) => prev.map((n) => (n.notification_id === id ? { ...n, read: true } : n)))
+    try {
+      await markNotificationsRead([id])
+    } catch (err: any) {
+      toast.error('Could not mark read', err.message)
+    }
+  }
+
+  async function markAllRead() {
+    const ids = notifications.filter((n) => !n.read).map((n) => n.notification_id)
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    try {
+      await markAllNotificationsRead()
+      toast.success('Marked all as read', `${ids.length} notifications`)
+    } catch (err: any) {
+      toast.error('Could not mark all read', err.message)
+    }
+  }
+
+  async function dismiss(id: string) {
+    const prev = notifications
+    setNotifications((cur) => cur.filter((n) => n.notification_id !== id))
+    try {
+      await deleteNotification(id)
+    } catch (err: any) {
+      setNotifications(prev)
+      toast.error('Could not dismiss', err.message)
+    }
+  }
+
+  async function clearRead() {
+    setNotifications((prev) => prev.filter((n) => !n.read))
+    try {
+      await clearReadNotifications()
+      toast.success('Cleared read notifications')
+    } catch (err: any) {
+      toast.error('Could not clear', err.message)
+    }
   }
 
   return (
     <PageTransition>
-    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
-      <PageHeader
-        title="Notifications"
-        subtitle={unreadCount > 0
-          ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
-          : 'All caught up'}
-        pills={unreadCount > 0 ? [{ label: 'unread', value: unreadCount, color: 'text-[#FF8C00]' }] : undefined}
-        actions={
-          <div className="flex items-center gap-2">
-            {selectedIds.size > 0 && (
-              <button onClick={() => handleMarkRead(Array.from(selectedIds))}
-                className="bg-[#FF8C00]/15 text-[#FF8C00] hover:bg-[#FF8C00]/25 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                Mark {selectedIds.size} read
-              </button>
-            )}
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-accent-primary" weight="duotone" />
+              </div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Notifications
+              </h1>
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-accent-primary/15 text-accent-primary text-caption font-medium">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             {unreadCount > 0 && (
-              <button onClick={handleMarkAllRead}
-                className="bg-[#FFB347] hover:bg-[#FF8C00] text-[#3D1C00] px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+              <button onClick={markAllRead} className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" weight="bold" />
                 Mark all read
               </button>
             )}
-            <button onClick={handleClearRead} disabled={!notifications.some((n) => n.read)}
-              className="bg-[#120D0A] border border-[#FDFBF8]/8 text-[#FDFBF8]/50 hover:text-[#FDFBF8] px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-30">
-              Clear read
-            </button>
+            {notifications.some((n) => n.read) && (
+              <button onClick={clearRead} className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5">
+                <X className="w-3.5 h-3.5" weight="bold" />
+                Clear read
+              </button>
+            )}
           </div>
-        }
-      />
+        </div>
 
-      {error && (
-        <div className="mb-5 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{(error as Error)?.message}</div>
-      )}
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+          {(['all', 'unread'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                filter === f
+                  ? 'bg-bg-primary text-text-primary shadow-sm'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
 
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        <button onClick={() => setFilter(null)}
-          className={cn(
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-            filter === null
-              ? 'bg-[#FF8C00]/15 text-[#FF8C00] border-[#FF8C00]/25'
-              : 'bg-[#120D0A] text-[#FDFBF8]/40 border-[#FDFBF8]/8 hover:text-[#FDFBF8]/70'
-          )}>
-          All
-        </button>
-        {getUniqueTypes().map((type) => (
-          <button key={type} onClick={() => setFilter(type === filter ? null : type)}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
-              filter === type
-                ? 'bg-[#FF8C00]/15 text-[#FF8C00] border-[#FF8C00]/25'
-                : 'bg-[#120D0A] text-[#FDFBF8]/40 border-[#FDFBF8]/8 hover:text-[#FDFBF8]/70'
-            )}>
-            {TYPE_LABELS[type] || type}
-          </button>
-        ))}
-      </div>
+        {error && (
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={fetchNotifications} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          </div>
+        )}
 
-      {loading && <NotificationsSkeleton />}
+        {loading && <NotificationsSkeleton />}
 
-      {!loading && notifications.length === 0 && (
-        <div className="bg-[#120D0A] border border-[#FDFBF8]/5 rounded-xl">
+        {!loading && notifications.length === 0 && (
           <EmptyState
-            title={filter ? 'No matching notifications' : 'No notifications yet'}
-            description={filter
-              ? 'Try a different filter or clear it to see all'
-              : 'Task assignments, reviews, and module unlocks will appear here'}
-            icon={<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>}
+            icon={<Bell className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            title={filter === 'unread' ? 'No unread notifications' : 'All caught up'}
+            description={filter === 'unread' ? 'You have read everything.' : 'No notifications yet.'}
           />
-        </div>
-      )}
+        )}
 
-      {!loading && notifications.length > 0 && (
-        <CardSpotlight className="overflow-hidden">
-          <GradientHeading as="h2" className="text-sm px-5 pt-4 pb-0">Notifications</GradientHeading>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="divide-y divide-[#FDFBF8]/4"
-          >
-            {notifications.map((n) => (
-              <motion.div key={n.notification_id} variants={itemVariants}
-                className={cn(
-                  'flex items-start gap-4 px-5 py-4 transition-colors group',
-                  !n.read ? 'bg-[#FF8C00]/[0.015]' : '',
-                  'hover:bg-[#FDFBF8]/[0.015]'
-                )}>
-                {/* Checkbox */}
-                <div className="pt-0.5 shrink-0">
-                  <input type="checkbox" checked={selectedIds.has(n.notification_id)}
-                    onChange={() => toggleSelect(n.notification_id)}
-                    className="w-3.5 h-3.5 rounded border-[#FDFBF8]/20 bg-transparent accent-[#FF8C00] cursor-pointer" />
-                </div>
-
-                {/* Unread dot */}
-                <div className="pt-2 shrink-0">
-                  {!n.read
-                    ? <span className="w-1.5 h-1.5 rounded-full bg-[#FF8C00] block" />
-                    : <span className="w-1.5 h-1.5 block" />
-                  }
-                </div>
-
-                {/* Icon */}
-                <span className={cn(
-                  'material-symbols-outlined text-lg mt-0.5 shrink-0',
-                  TYPE_ICON_COLORS[n.type] || 'text-[#FDFBF8]/30'
-                )}>
-                  {TYPE_ICONS[n.type] || 'notifications'}
-                </span>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className={cn('text-sm font-medium truncate', !n.read ? 'text-[#FDFBF8]' : 'text-[#FDFBF8]/55')}>
-                        {n.title}
-                      </span>
-                      <StatusBadge state={notifTypeToBadge(n.type)} />
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-[#FDFBF8]/25 font-mono whitespace-nowrap">
-                        {formatDate(n.created_at)}
-                      </span>
-                      <button onClick={() => handleDelete(n.notification_id)}
-                        className="text-[#FDFBF8]/15 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <p className={cn('text-xs mt-1 leading-relaxed', !n.read ? 'text-[#FDFBF8]/55' : 'text-[#FDFBF8]/30')}>
-                    {n.message}
-                  </p>
-                  {n.metadata?.module && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-[#FF8C00]/50 font-mono">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-                      </svg>
-                      {n.metadata.module}
-                      {n.metadata?.source && (
-                        <span className="text-[#FDFBF8]/20 ml-1">
-                          · {n.metadata.source === 'task_completion' ? 'auto' : 'manual'}
-                        </span>
+        {/* List */}
+        {!loading && notifications.length > 0 && (
+          <>
+            <div className="space-y-1">
+              <AnimatePresence mode="popLayout">
+                {notifications.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((notification) => {
+                  const Icon = ICON_MAP[notification.type] ?? Bell
+                  const key = notification.type ?? 'default'
+                  return (
+                    <motion.div
+                      key={notification.notification_id}
+                      layout
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                      className={`group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer hover:bg-bg-tertiary/20 ${
+                        !notification.read ? 'bg-accent-primary/[0.03]' : ''
+                      }`}
+                      onClick={() => !notification.read && markRead(notification.notification_id)}
+                    >
+                      {!notification.read && (
+                        <span className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-accent-primary" />
                       )}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </CardSpotlight>
-      )}
-
-      {!loading && notifications.length > 5 && (
-        <div className="flex items-center justify-between mt-4 text-xs text-[#FDFBF8]/25">
-          <span>{notifications.length} notification{notifications.length !== 1 ? 's' : ''}</span>
-          <button onClick={handleClearRead} className="hover:text-[#FDFBF8]/60 transition-colors">
-            Clear all read
-          </button>
-        </div>
-      )}
-    </div>
+                      <div className={`w-9 h-9 rounded-lg ${BG_MAP[key] ?? 'bg-bg-tertiary/40'} flex items-center justify-center shrink-0`}>
+                        <Icon className={`w-4.5 h-4.5 ${COLOR_MAP[key] ?? 'text-text-tertiary'}`} weight="fill" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-body-sm ${!notification.read ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>
+                          {notification.title}
+                        </p>
+                        <p className="text-caption text-text-tertiary mt-0.5">{notification.message}</p>
+                        <p className="text-[11px] text-text-tertiary/60 mt-1">{relativeTime(notification.created_at)}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!notification.read && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); markRead(notification.notification_id) }}
+                            className="w-7 h-7 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary"
+                            title="Mark read"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); dismiss(notification.notification_id) }}
+                          className="w-7 h-7 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-red-400"
+                          title="Dismiss"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            </div>
+            {Math.ceil(notifications.length / PAGE_SIZE) > 1 && (
+              <div className="flex justify-end pt-4">
+                <Pagination page={page} totalPages={Math.ceil(notifications.length / PAGE_SIZE)} onPageChange={setPage} />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </PageTransition>
   )
 }

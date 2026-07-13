@@ -2,14 +2,15 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 interface RoleGuardProps {
-  allowedRoles?: Array<'owner' | 'senior' | 'member'>
-  minRole?: 'owner' | 'senior' | 'member'
+  allowedRoles?: Array<'owner' | 'developer' | 'senior' | 'member'>
+  minRole?: 'owner' | 'developer' | 'senior' | 'member'
 }
 
 const ROLE_LEVELS = {
-  owner: 3,
-  senior: 2,
   member: 1,
+  senior: 2,
+  developer: 3,
+  owner: 4,
 }
 
 export default function RoleGuard({ allowedRoles, minRole }: RoleGuardProps) {

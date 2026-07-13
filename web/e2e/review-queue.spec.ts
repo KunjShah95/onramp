@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
-  mockFirebaseAuth,
+  mockNeonAuth,
   mockBackendAPIs,
   mockReviewQueueAPI,
 } from './mocks'
@@ -8,7 +8,7 @@ import {
 test.describe('Review Queue', () => {
   test.beforeEach(async ({ page }) => {
     // Set up all mocks and authenticate
-    await mockFirebaseAuth(page)
+    await mockNeonAuth(page)
     await mockBackendAPIs(page)
     await mockReviewQueueAPI(page)
 

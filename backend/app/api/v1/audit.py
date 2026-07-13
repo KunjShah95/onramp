@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from typing import Optional
 from app.services.audit_service import query_events
 from app.api.v1.auth import get_current_user

@@ -3,7 +3,6 @@ Team Service - PostgreSQL backend
 Manages team creation, membership, and permissions
 """
 
-from datetime import datetime
 from typing import Optional, List
 from app.services.postgres_db import get_storage, generate_id
 
@@ -169,12 +168,10 @@ class TeamService:
             team["team_id"] = team["id"]
         return team
 
-    async def list_teams(self, user: Optional[str] = None) -> List[dict]:
-        if user:
-            teams = await get_user_teams(user)
-        else:
-            storage = get_storage()
-            teams = await storage.list_documents("teams")
+    async def list_teams(self, user: str) -> List[dict]:
+        if not user:
+            return []
+        teams = await get_user_teams(user)
         for t in teams:
             t["team_id"] = t.get("id")
         return teams

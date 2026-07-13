@@ -69,10 +69,10 @@ CodeFlow is an **AI-powered developer onboarding platform** that:
           ├─────────────────────────────────────────────────┤
           │  Middleware Stack:                               │
           │  ┌─────────┐ ┌──────────┐ ┌──────────┐        │
-          │  │  CORS   │ │   Auth   │ │  Rate    │        │
-          │  │         │ │ (Firebase│ │  Limit   │        │
-          │  │         │ │   JWT)   │ │ 200/min  │        │
-          │  └─────────┘ └──────────┘ └──────────┘        │
+           │  │  CORS   │ │   Auth   │ │  Rate    │        │
+           │  │         │ │ (Neon    │ │  Limit   │        │
+           │  │         │ │   Auth)  │ │ 200/min  │        │
+           │  └─────────┘ └──────────┘ └──────────┘        │
           │  ┌─────────┐ ┌──────────┐ ┌──────────┐        │
           │  │Response │ │ Logging  │ │Access    │        │
           │  │Wrapper  │ │ (Sentry) │ │Guard     │        │
@@ -130,9 +130,9 @@ CodeFlow is an **AI-powered developer onboarding platform** that:
           ┌────────────────────▼──────────────────────────┐
           │              DATA LAYER                       │
           ├───────────────────────────────────────────────┤
-          │  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-          │  │PostgreSQL│ │  Redis   │ │   Firebase   │ │
-          │  │(Alembic) │ │ (Cache)  │ │ (Auth+Store) │ │
+           │  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
+           │  │PostgreSQL│ │  Redis   │ │   Neon Auth  │ │
+           │  │(Alembic) │ │ (Cache)  │ │ (Sessions)   │ │
           │  ├──────────┤ ├──────────┤ ├──────────────┤ │
           │  │ GitHub   │ │   LLM    │ │   Sentry     │ │
           │  │ (REST)   │ │  (6 API) │ │  (Error)     │ │
@@ -155,7 +155,7 @@ CodeFlow is an **AI-powered developer onboarding platform** that:
 | Graph Engine | **NetworkX 3.1** | Dependency graph analysis |
 | Cache | **Redis 7** | Session + rate limiting |
 | Task Queue | **Celery** | Background async jobs |
-| Auth | **Firebase Admin SDK** | JWT validation |
+| Auth | **Neon Auth (Better Auth)** | Session verification |
 | AI SDKs | **openai**, **anthropic**, **google-genai**, **groq** | Multi-provider LLM |
 | Payments | **Stripe** | Subscription billing |
 | Email | **SendGrid** | Transactional email |
@@ -171,7 +171,7 @@ CodeFlow is an **AI-powered developer onboarding platform** that:
 | Styling | **Tailwind CSS 3.4** + **clsx** | Utility-first CSS |
 | Animation | **Framer Motion 11** | Page transitions |
 | Visualization | **d3-force** | Force-directed graphs |
-| Auth | **Firebase 11** | Client-side auth |
+| Auth | **Neon Auth SDK** | Session tokens |
 | Video | **react-youtube**, **hls.js** | Media playback |
 
 ### Infrastructure
@@ -183,7 +183,7 @@ CodeFlow is an **AI-powered developer onboarding platform** that:
 | IaC | Terraform (GCP) |
 | CI/CD | GitHub Actions |
 | Reverse Proxy | Nginx (dev + prod) |
-| Cloud | Vercel (frontend) / Render (backend) / Firebase |
+| Cloud | Vercel (frontend) / Azure Container Apps (backend) / Neon |
 
 ---
 
@@ -235,7 +235,7 @@ All agents inherit from `BaseAgent` (abstract class with `execute(**kwargs)` met
 | **QuotaService** | LLM token quota management |
 | **Cache** (PostgreSQL helper) | SQLAlchemy-level caching |
 | **PostgresDB** | Connection pool, session management |
-| **FirestoreDB** | Firebase Firestore operations |
+| **PostgreSQL** | SQLAlchemy ORM + asyncpg |
 | **Parser** (standalone) | Language detection + file analysis |
 | **GraphBuilder** | NetworkX dependency graph construction |
 
@@ -244,7 +244,7 @@ All agents inherit from `BaseAgent` (abstract class with `execute(**kwargs)` met
 | Middleware | Function |
 |-----------|----------|
 | **CORSMiddleware** | Whitelist origins from `CORS_ALLOWED_ORIGINS` env |
-| **AuthMiddleware** | Firebase JWT validation, public path exemptions |
+| **AuthMiddleware** | Neon Auth session verification, public path exemptions |
 | **RateLimitMiddleware** | Token bucket (200 req/min default, Redis-backed) |
 | **ResponseWrapperMiddleware** | Standardize `{success, data, error}` response format |
 | **LoggingMiddleware** | Structured request/response logging to Sentry |
@@ -262,7 +262,7 @@ All agents inherit from `BaseAgent` (abstract class with `execute(**kwargs)` met
 | `/pricing` | PricingPage | Pricing tiers + comparison |
 | `/changelog` | ChangelogPage | Release notes |
 | `/docs` | DocsPage | Documentation |
-| `/login` | Login | Firebase auth login |
+| `/login` | Login | Neon Auth login |
 | `/register` | Register | New user registration |
 | `/forgot-password` | ForgotPassword | Password reset |
 | `/join` | JoinPage | Accept team invite |
@@ -304,12 +304,12 @@ src/
 │   ├── IssueCard.tsx       # GitHub issue card
 │   └── LearningPathTimeline.tsx  # Learning path visualization
 ├── context/
-│   ├── AuthContext.tsx      # Firebase auth state
+│   ├── AuthContext.tsx      # Neon Auth state
 │   ├── ThemeContext.tsx     # Dark/light theme
 │   └── TransitionContext.tsx # Page transitions
 └── lib/
     ├── api.ts              # Axios HTTP client
-    ├── firebase.ts         # Firebase initialization
+    ├── neon-auth.ts        # Neon Auth client
     ├── types.ts            # Shared TypeScript interfaces
     ├── utils.ts            # Utility functions
     └── motion.ts           # Framer Motion variants
@@ -415,7 +415,7 @@ GET    /api/v1/audit/logs               — Audit log
 ### Auth & System (4 endpoints)
 
 ```
-POST   /api/v1/auth/refresh-token       — Refresh Firebase token
+POST   /api/v1/auth/register            — Register/login via Neon Auth session
 POST   /api/v1/auth/update-profile      — Update user profile
 GET    /api/v1/auth/users               — List users
 GET    /health                          — Health check
@@ -723,10 +723,9 @@ ANTHROPIC_API_KEY=sk-ant-...        # Paid fallback
 DATABASE_URL=postgresql://user:pass@localhost:5432/codeflow
 REDIS_URL=redis://localhost:6379/0  # Optional
 
-# Auth
-FIREBASE_PROJECT_ID=...
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
-JWT_SECRET_KEY=...
+# Auth (Neon Auth / Better Auth)
+NEON_AUTH_URL=https://your-project.neon-auth.app
+AUTH_DB_URL=
 AUTH_DEV_BYPASS=true
 
 # GitHub
@@ -750,12 +749,7 @@ SENDGRID_API_KEY=...
 
 ```bash
 VITE_API_URL=http://localhost:8000
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
+VITE_NEON_AUTH_URL=             # defaults to window.origin + /api/v1/auth
 ```
 
 ---

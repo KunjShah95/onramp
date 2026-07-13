@@ -1,208 +1,229 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '../lib/utils'
-import { fetchTraineeDashboard } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
-import StatusBadge from '../components/ui/status-badge'
+import {
+  GraduationCap,
+  CheckCircle,
+  ArrowRight,
+  Lightning,
+  BookOpenText,
+  GitPullRequest,
+  Trophy,
+  Target,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import CardSpotlight from '../components/ui/card-spotlight'
+import { EmptyState } from '../components/ui/empty-state'
 import { TraineeDashboardSkeleton } from '../components/ui/Skeleton'
+import GamificationPanel from '../components/gamification/GamificationPanel'
+import { useAuth } from '../context/AuthContext'
+import { fetchTraineeDashboard } from '../lib/api'
+import type { TraineeDashboardResponse, TraineeTask } from '../lib/api'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+const STATE_COLORS: Record<string, string> = {
+  completed: 'text-emerald-400 bg-emerald-500/10',
+  approved: 'text-emerald-400 bg-emerald-500/10',
+  in_progress: 'text-amber-400 bg-amber-500/10',
+  submitted: 'text-blue-400 bg-blue-500/10',
+  under_review: 'text-blue-400 bg-blue-500/10',
+  pending: 'text-text-tertiary bg-bg-tertiary/30',
+  assigned: 'text-purple-400 bg-purple-500/10',
+  needs_changes: 'text-red-400 bg-red-500/10',
 }
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const d = Math.floor(diff / 86400000)
+  if (d < 1) return 'today'
+  if (d === 1) return 'yesterday'
+  return `${d}d ago`
 }
 
 export default function TraineeDashboard() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['traineeDashboard'],
-    queryFn: () => fetchTraineeDashboard(),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-  })
+  const [data, setData] = useState<TraineeDashboardResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [selectedModule, setSelectedModule] = useState<string | null>(null)
 
-  if (isLoading) {
-    return <TraineeDashboardSkeleton />
+  const { activeTeamId } = useAuth()
+
+  async function fetchDashboard() {
+    if (!activeTeamId) {
+      setLoading(false)
+      setError('Join a team to view your onboarding progress.')
+      return
+    }
+    setLoading(true); setError('')
+    try {
+      const res = await fetchTraineeDashboard(activeTeamId)
+      setData(res)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load dashboard.')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => {
+    fetchDashboard()
+    const interval = setInterval(fetchDashboard, 15000)
+    return () => clearInterval(interval)
+  }, [activeTeamId])
+
+  if (loading) return <PageTransition><TraineeDashboardSkeleton /></PageTransition>
 
   if (error || !data) {
     return (
-      <div className="animate-in w-full min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-red-400 font-mono text-sm mb-2">{(error as Error)?.message || 'Failed to load dashboard'}</p>
+      <PageTransition>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-start gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-accent-primary" weight="duotone" />
+                </div>
+                <h1 className="text-display-sm font-display font-medium text-text-primary">Trainee Dashboard</h1>
+              </div>
+              {error ? (
+                <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+                  <span>{error}</span>
+                  <button onClick={fetchDashboard} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+                </div>
+              ) : (
+                <CardSpotlight className="border border-accent-primary/10">
+                  <EmptyState icon={<GraduationCap className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No data yet" description="Your onboarding progress will appear here." />
+                </CardSpotlight>
+              )}
+            </div>
+            <div className="w-80 shrink-0 hidden lg:block">
+              <GamificationPanel />
+            </div>
+          </div>
         </div>
-      </div>
+      </PageTransition>
     )
   }
 
-  const { progress, modules, recent_tasks } = data!
-  const modulesBySource = {
-    task: modules.filter((m) => m.source === 'task_completion').length,
-    manual: modules.filter((m) => m.source === 'manual').length,
-  }
+  const { progress, modules, recent_tasks } = data
+  const completionPct = Math.round((progress.completion_rate ?? 0) * 100)
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-mono text-[#FDFBF8] max-w-full overflow-x-hidden">
-        <div className="mb-8">
-          <GradientHeading as="h1" className="text-3xl md:text-4xl mb-1">My Progress</GradientHeading>
-          <p className="text-[#FDFBF8]/40 text-sm">{data.user_name} · {data.user_id.slice(0, 8)}</p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8"
-        >
-          {[
-            { label: 'Completed', value: progress.completed, color: 'text-green-400' },
-            { label: 'In Progress', value: progress.in_progress, color: 'text-[#FF8C00]' },
-            { label: 'Pending Review', value: progress.pending_review, color: 'text-yellow-400' },
-            { label: 'Completion', value: `${progress.completion_rate}%`, color: 'text-[#4DA8DA]' },
-          ].map((m) => (
-            <motion.div key={m.label} variants={itemVariants}>
-              <CardSpotlight className="p-4">
-                <div className={cn('font-display text-2xl font-bold', m.color)}>{m.value}</div>
-                <div className="text-[10px] text-[#FDFBF8]/40 uppercase tracking-wider mt-1">{m.label}</div>
-              </CardSpotlight>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-          <CardSpotlight className="p-5 lg:col-span-2">
-            <GradientHeading as="h2" className="text-sm font-bold mb-4 flex items-center gap-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              Modules Unlocked ({modules.length})
-            </GradientHeading>
-            {modules.length === 0 ? (
-              <div className="text-center py-8 text-[#FDFBF8]/20 text-sm italic">
-                Complete tasks to unlock modules
+      <div className="max-w-6xl mx-auto flex items-start gap-6">
+        {/* Main content */}
+        <div className="flex-1 min-w-0 space-y-8">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-accent-primary" weight="duotone" />
               </div>
-            ) : (
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-2"
-              >
-                {modules.map((m, i) => (
-                  <motion.div key={i} variants={itemVariants} className="flex items-center justify-between bg-[#0D0906] rounded-lg px-3 py-2.5 text-sm border border-green-500/10">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      <span className="text-[#FDFBF8] font-mono">{m.module}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded',
-                        m.source === 'task_completion' ? 'bg-green-500/10 text-green-400' : 'bg-[#FF8C00]/10 text-[#FF8C00]'
-                      )}>
-                        {m.source === 'task_completion' ? 'Task' : 'Granted'}
-                      </span>
-                      <span className="text-[10px] text-[#FDFBF8]/30">
-                        {new Date(m.granted_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-                <div className="flex gap-2 pt-2 text-[11px] text-[#FDFBF8]/30">
-                  <span>{modulesBySource.task} from tasks completed</span>
-                  <span>·</span>
-                  <span>{modulesBySource.manual} granted by lead</span>
-                </div>
-              </motion.div>
-            )}
-          </CardSpotlight>
-
-          <CardSpotlight className="p-5 lg:col-span-3">
-            <GradientHeading as="h2" className="text-sm font-bold mb-4">Recent Tasks</GradientHeading>
-            {recent_tasks.length === 0 ? (
-              <div className="text-center py-8 text-[#FDFBF8]/20 text-sm italic">No tasks assigned yet</div>
-            ) : (
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="divide-y divide-[#FDFBF8]/5"
-              >
-                {recent_tasks.map((t) => (
-                  <motion.div key={t.task_id} variants={itemVariants} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <span className={cn(
-                        'w-2 h-2 rounded-full shrink-0',
-                        t.state === 'completed' ? 'bg-green-500' :
-                        t.state === 'in_progress' ? 'bg-[#FF8C00]' :
-                        t.state === 'submitted' || t.state === 'under_review' ? 'bg-yellow-400' :
-                        t.state === 'needs_changes' ? 'bg-red-400' :
-                        'bg-[#FDFBF8]/20'
-                      )} />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm text-[#FDFBF8] truncate block">{t.title}</span>
-                        {t.module && (
-                          <span className="text-[10px] text-[#FDFBF8]/30">{t.module}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <StatusBadge state={t.state} />
-                      <span className="text-[10px] text-[#FDFBF8]/30">
-                        {new Date(t.updated_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </CardSpotlight>
-        </div>
-
-        <CardSpotlight className="p-5">
-          <GradientHeading as="h2" className="text-sm font-bold mb-3">Progress Breakdown</GradientHeading>
-          <div className="flex items-center gap-6 text-sm">
-            <div className="flex-1">
-              <div className="flex justify-between text-xs text-[#FDFBF8]/40 mb-1">
-                <span>Total: {progress.total} tasks</span>
-                <span>{progress.completion_rate}% complete</span>
-              </div>
-              <div className="h-2.5 rounded-full bg-[#0D0906] overflow-hidden flex">
-                {progress.completed > 0 && (
-                  <div
-                    className="h-full bg-green-500 transition-all"
-                    style={{ width: `${(progress.completed / Math.max(progress.total, 1)) * 100}%` }}
-                  />
-                )}
-                {progress.in_progress > 0 && (
-                  <div
-                    className="h-full bg-[#FF8C00] transition-all"
-                    style={{ width: `${(progress.in_progress / Math.max(progress.total, 1)) * 100}%` }}
-                  />
-                )}
-                {progress.pending_review > 0 && (
-                  <div
-                    className="h-full bg-yellow-400 transition-all"
-                    style={{ width: `${(progress.pending_review / Math.max(progress.total, 1)) * 100}%` }}
-                  />
-                )}
-              </div>
-              <div className="flex gap-4 mt-2 text-[10px] text-[#FDFBF8]/30">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Completed</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF8C00] inline-block" /> In Progress</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" /> Pending Review</span>
+              <div>
+                <h1 className="text-display-sm font-display font-medium text-text-primary">
+                  {data.user_name ? `${data.user_name}'s Progress` : 'Trainee Dashboard'}
+                </h1>
+                <p className="text-body-sm text-text-tertiary">
+                  Track your learning journey and skill development.
+                </p>
               </div>
             </div>
+            <button onClick={fetchDashboard} disabled={loading} className="text-caption text-accent-primary/70 hover:text-accent-primary transition-colors shrink-0">Refresh</button>
           </div>
-        </CardSpotlight>
+
+          {/* Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'Completion', value: `${completionPct}%`, icon: Lightning, color: 'text-amber-400', subtitle: `${progress.completed}/${progress.total} tasks` },
+              { label: 'Modules Unlocked', value: progress.modules_unlocked?.length ?? 0, icon: BookOpenText, color: 'text-blue-400', subtitle: 'via grants' },
+              { label: 'In Progress', value: progress.in_progress, icon: Target, color: 'text-purple-400', subtitle: 'active tasks' },
+              { label: 'Pending Review', value: progress.pending_review, icon: Trophy, color: 'text-emerald-400', subtitle: 'awaiting feedback' },
+            ].map((metric, i) => (
+              <motion.div key={metric.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                <CardSpotlight className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <metric.icon className={`w-4 h-4 ${metric.color}`} weight="duotone" />
+                    <span className="text-caption text-text-tertiary">{metric.label}</span>
+                  </div>
+                  <p className="text-display-2xs font-display font-medium text-text-primary">{metric.value}</p>
+                  <p className="text-caption text-text-tertiary/60">{metric.subtitle}</p>
+                </CardSpotlight>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Learning Path */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-body font-medium text-text-primary">Unlocked Modules</h2>
+              <span className="text-caption text-text-tertiary">{modules.length} granted</span>
+            </div>
+            {modules.length === 0 ? (
+              <CardSpotlight className="border border-accent-primary/10">
+                <EmptyState icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No modules unlocked yet" description="Modules unlock as you complete onboarding tasks." />
+              </CardSpotlight>
+            ) : (
+              <div className="space-y-2">
+                {modules.map((mod, i) => (
+                  <motion.div
+                    key={`${mod.module}-${i}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className={`card p-4 cursor-pointer transition-all ${selectedModule === mod.module ? 'border-accent-primary/40' : 'hover:border-accent-primary/20'}`}
+                    onClick={() => setSelectedModule(selectedModule === mod.module ? null : mod.module)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400">
+                        <CheckCircle className="w-4.5 h-4.5" weight="fill" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body-sm font-medium text-text-primary font-code">{mod.module}</p>
+                        <p className="text-caption text-text-tertiary/60">Granted {new Date(mod.granted_at).toLocaleDateString()} · {mod.source}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-text-tertiary shrink-0" />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Tasks */}
+          <div>
+            <h2 className="text-body font-medium text-text-primary mb-4">Recent Tasks</h2>
+            {recent_tasks.length === 0 ? (
+              <CardSpotlight className="border border-accent-primary/10">
+                <EmptyState icon={<GitPullRequest className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No tasks yet" description="Tasks from your learning path will appear here." />
+              </CardSpotlight>
+            ) : (
+              <div className="space-y-2">
+                {recent_tasks.map((task: TraineeTask, i) => (
+                  <motion.div
+                    key={task.task_id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="card p-4 flex items-center gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-sm font-medium text-text-primary">{task.title}</p>
+                      <p className="text-caption text-text-tertiary/60">{task.module} · updated {relativeTime(task.updated_at)}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${STATE_COLORS[task.state] ?? 'text-text-tertiary bg-bg-tertiary/30'}`}>
+                      {task.state.replace('_', ' ')}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar — Gamification */}
+        <div className="w-80 shrink-0 hidden lg:block">
+          <div className="sticky top-24">
+            <GamificationPanel />
+          </div>
+        </div>
       </div>
     </PageTransition>
   )

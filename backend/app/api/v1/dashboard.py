@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
 from app.api.v1.auth import get_current_user
@@ -170,74 +170,6 @@ async def team_analytics(user: dict = Depends(get_current_user)):
     member_list.sort(key=lambda m: m.get("completion_rate", 0), reverse=True)
 
     return {"members": member_list}
-
-
-@router.get("/repos")
-async def list_repos():
-    """Return the list of tracked repositories for the team."""
-    return {
-        "repos": [
-            {
-                "id": "1",
-                "name": "codeflow-core",
-                "owner": "engineering-team",
-                "status": "ready",
-                "last_analyzed": "2026-06-15T10:00:00Z",
-                "description": "Core backend engine for CodeFlow.",
-                "language": "Python",
-            },
-            {
-                "id": "2",
-                "name": "frontend-app",
-                "owner": "engineering-team",
-                "status": "analyzing",
-                "last_analyzed": "2026-06-14T08:30:00Z",
-                "description": "Main React application.",
-                "language": "TypeScript",
-            }
-        ]
-    }
-
-
-@router.get("/roadmap")
-async def list_roadmap():
-    """Return the CodeFlow 2.0 project roadmap milestones."""
-    return {
-        "milestones": [
-            {"id": "1", "title": "Phase 1: Agent Layer", "phase": "Phase 1", "status": "completed", "progress": 100},
-            {"id": "2", "title": "Phase 2 & 3: Enhancers & Differentiators", "phase": "Phase 2", "status": "completed", "progress": 100},
-            {"id": "3", "title": "Phase 4: AIaaS Launch", "phase": "Phase 4", "status": "active", "progress": 60},
-            {"id": "4", "title": "Phase 5: SaaS Dashboard", "phase": "Phase 5", "status": "active", "progress": 30},
-        ]
-    }
-
-
-@router.get("/repos/{owner}/{repo}/analysis")
-async def repo_analysis(owner: str, repo: str):
-    """Return CodeFlow analysis summary for a specific repository."""
-    return {
-        "graph": {"nodes": 1247, "edges": 3892},
-        "learning_paths": 4,
-        "first_issues_identified": 12,
-        "health_score": 85,
-        "owner": owner,
-        "repo": repo,
-    }
-
-
-@router.get("/repos/{owner}/{repo}/sections")
-async def repo_sections(owner: str, repo: str):
-    """Return the CodeFlow sections overview for a specific repository."""
-    return {
-        "sections": [
-            {"title": "Architecture Explorer", "description": "Interactive graph of the codebase", "detail": "1,247 nodes · 3,892 edges"},
-            {"title": "Learning Paths", "description": "Generated curriculum for onboarding", "detail": "4 active paths"},
-            {"title": "First PR Accelerator", "description": "Curated starter issues", "detail": "12 issues ready"},
-            {"title": "Repository Health", "description": "Codebase maintainability score", "detail": "85/100 score"},
-        ],
-        "owner": owner,
-        "repo": repo,
-    }
 
 
 @router.get("/dashboard/trainee")

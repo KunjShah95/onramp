@@ -1,47 +1,51 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { type ReactNode, type MouseEvent, useRef } from 'react'
 import { cn } from '../../lib/utils'
 
 interface CardSpotlightProps {
   children: ReactNode
   className?: string
-  radius?: number
   color?: string
 }
 
-export default function CardSpotlight({
-  children,
-  className,
-  radius = 350,
-  color = 'rgba(255,140,0,0.08)',
-}: CardSpotlightProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [x, setX] = useState(0)
-  const [y, setY] = useState(0)
+/**
+ * Premium card component with subtle spotlight hover effect.
+ * Uses a radial-gradient that follows the mouse cursor for an elegant
+ * illuminated surface feel without being overly flashy.
+ */
+export default function CardSpotlight({ children, className, color = 'rgba(245,158,11,0.04)' }: CardSpotlightProps) {
+  const cardRef = useRef<HTMLDivElement>(null)
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!ref.current) return
-    const rect = ref.current.getBoundingClientRect()
-    setX(e.clientX - rect.left)
-    setY(e.clientY - rect.top)
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const card = cardRef.current
+    if (!card) return
+    const rect = card.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    card.style.setProperty('--mouse-x', `${x}px`)
+    card.style.setProperty('--mouse-y', `${y}px`)
   }
 
   return (
     <div
-      ref={ref}
+      ref={cardRef}
       onMouseMove={handleMouseMove}
       className={cn(
-        'group relative overflow-hidden rounded-2xl border border-[#FDFBF8]/5 bg-[#1A110D] transition-all duration-300',
-        'hover:border-[#FF8C00]/20 hover:shadow-[0_0_40px_-12px_rgba(255,140,0,0.12)]',
+        'relative rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden',
+        'transition-all duration-300 hover:border-border-hover hover:shadow-elevated',
+        'before:pointer-events-none before:absolute before:inset-0 before:opacity-0 before:transition-opacity before:duration-500',
+        'hover:before:opacity-100',
         className
       )}
+      style={{
+        backgroundImage: `radial-gradient(300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${color}, transparent 70%)`,
+      }}
     >
-      <div
-        className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{
-          background: `radial-gradient(${radius}px circle at ${x}px ${y}px, ${color}, transparent 80%)`,
-        }}
-      />
-      <div className="relative z-10">{children}</div>
+      {/* Inner border glow */}
+      <div className="absolute inset-0 rounded-card pointer-events-none shadow-inner-glow" />
+      {/* Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
     </div>
   )
 }

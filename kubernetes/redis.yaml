@@ -1,67 +1,87 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: onramp
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: onramp-prod
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: monitoring
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redis-config
-  namespace: onramp
-data:
-  redis.conf: |
-    maxmemory 512mb
-    maxmemory-policy allkeys-lru
-    appendonly yes
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis
-  namespace: onramp
+  name: codeflow-redis
+  labels:
+    app: codeflow
+    component: redis
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redis
+      app: codeflow
+      component: redis
   template:
     metadata:
       labels:
-        app: redis
+        app: codeflow
+        component: redis
     spec:
       containers:
         - name: redis
           image: redis:7-alpine
-          ports:
-            - containerPort: 6379
           command:
             - redis-server
-            - /etc/redis/redis.conf
-          volumeMounts:
-            - name: redis-data
-              mountPath: /data
-            - name: redis-config
-              mountPath: /etc/redis
+            - --appendonly
+            - "yes"
+            - --requirepass
+            - "$(REDIS_PASSWORD)"
+          ports:
+            - containerPort: 6379
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: REDIS_PASSWORD
           resources:
             requests:
               memory: "256Mi"
               cpu: "100m"
             limits:
-              memory: "1Gi"
+              memory: "512Mi"
               cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -a
+                - "$(REDIS_PASSWORD)"
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
       volumes:
         - name: redis-data
-          emptyDir: {}
-        - name: redis-config
-          configMap:
-            name: redis-config
+          persistentVolumeClaim:
+            claimName: codeflow-redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: codeflow-redis
+  labels:
+    app: codeflow
+    component: redis
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: codeflow
+    component: redis
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: codeflow-redis-pvc
+  labels:
+    app: codeflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

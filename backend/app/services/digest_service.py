@@ -13,7 +13,7 @@ Then sends the digest as a formatted email via the existing email service.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Optional
 
 from app.services.postgres_db import get_storage
 from app.services.email_service import send_digest_email

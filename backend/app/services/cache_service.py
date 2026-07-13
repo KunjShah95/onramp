@@ -4,7 +4,7 @@ import os
 import json
 import hashlib
 import logging
-from typing import Optional, Any, Callable
+from typing import Optional, Callable
 from functools import wraps
 from fastapi import Request, Response
 

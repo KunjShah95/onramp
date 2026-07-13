@@ -1,5 +1,4 @@
 import logging
-import hashlib
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
 from app.services.embeddings_service import EmbeddingsService

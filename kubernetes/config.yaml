@@ -1,25 +1,40 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: onramp-config
+  name: codeflow-config
+  labels:
+    app: codeflow
 data:
   ENVIRONMENT: "production"
-  GOOGLE_CLOUD_PROJECT: "your-gcp-project"
-  GOOGLE_CLOUD_LOCATION: "us-central1"
-  REDIS_HOST: "redis-service"
-  REDIS_PORT: "6379"
-  DATABASE_URL: "postgresql://user:pass@postgres-service:5432/onramp"
-  CORS_ORIGINS: "https://app.onramp.ai"
+  ENV: "production"
   LOG_LEVEL: "INFO"
+  REDIS_HOST: "codeflow-redis"
+  REDIS_PORT: "6379"
+  DB_SSL_MODE: "require"
+  CORS_ORIGINS: "https://codeflow.app"
+  LLM_PROVIDER: "openrouter"
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: onramp-secrets
+  name: codeflow-secrets
+  labels:
+    app: codeflow
 type: Opaque
 stringData:
-  GEMINI_API_KEY: "your-gemini-api-key"
-  JWT_SECRET_KEY: "your-jwt-secret-key-min-32-chars"
-  API_KEY_ENCRYPTION_KEY: "your-encryption-key-32-chars"
-  REDIS_PASSWORD: "your-redis-password"
-  DATABASE_PASSWORD: "your-database-password"
+  REDIS_PASSWORD: ""
+  DB_PASSWORD: ""
+  DATABASE_URL: ""
+  OPENROUTER_API_KEY: ""
+  GEMINI_API_KEY: ""
+  OPENAI_API_KEY: ""
+  ANTHROPIC_API_KEY: ""
+  GROQ_API_KEY: ""
+  NEON_AUTH_URL: ""
+  AUTH_DB_URL: ""
+  STRIPE_SECRET_KEY: ""
+  STRIPE_WEBHOOK_SECRET: ""
+  SENDGRID_API_KEY: ""
+  JWT_SECRET_KEY: ""
+  API_KEY_ENCRYPTION_KEY: ""
+  SENTRY_DSN: ""

@@ -1,24 +1,19 @@
-import { type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
 interface GradientHeadingProps {
-  children: ReactNode
-  className?: string
+  children: React.ReactNode
   as?: 'h1' | 'h2' | 'h3' | 'h4'
+  className?: string
 }
 
-const sizes = {
-  h1: 'text-3xl md:text-4xl',
-  h2: 'text-2xl md:text-3xl',
-  h3: 'text-xl md:text-2xl',
-  h4: 'text-lg md:text-xl',
-}
-
-export default function GradientHeading({ children, className, as: Tag = 'h2' }: GradientHeadingProps) {
+export default function GradientHeading({ children, as: Tag = 'h2', className }: GradientHeadingProps) {
   return (
     <Tag className={cn(
-      'font-display font-bold bg-gradient-to-r from-[#FF8C00] via-[#FF6B35] to-[#FFB347] bg-clip-text text-transparent',
-      sizes[Tag],
+      'font-display font-bold text-text-primary tracking-tight',
+      Tag === 'h1' && 'text-display-md md:text-display-lg',
+      Tag === 'h2' && 'text-display-sm md:text-display-md',
+      Tag === 'h3' && 'text-display-xs',
+      Tag === 'h4' && 'text-display-xs',
       className
     )}>
       {children}

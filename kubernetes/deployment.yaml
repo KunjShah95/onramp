@@ -1,120 +1,139 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: onramp-backend
+  name: codeflow-backend
   labels:
-    app: onramp
-    tier: backend
+    app: codeflow
+    component: backend
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
-      app: onramp
-      tier: backend
+      app: codeflow
+      component: backend
   template:
     metadata:
       labels:
-        app: onramp
-        tier: backend
+        app: codeflow
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: backend
-          image: onramp/backend:latest
+          image: codeflow-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
-            - secretRef:
-                name: onramp-secrets
             - configMapRef:
-                name: onramp-config
+                name: codeflow-config
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: REDIS_PASSWORD
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: DATABASE_URL
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: OPENROUTER_API_KEY
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: GEMINI_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: OPENAI_API_KEY
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: GROQ_API_KEY
+            - name: NEON_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: NEON_AUTH_URL
+            - name: AUTH_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: AUTH_DB_URL
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+            - name: SENDGRID_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: SENDGRID_API_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: JWT_SECRET_KEY
+            - name: API_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: API_KEY_ENCRYPTION_KEY
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: codeflow-secrets
+                  key: SENTRY_DSN
           resources:
             requests:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "250m"
             limits:
               memory: "2Gi"
-              cpu: "2000m"
-          livenessProbe:
+              cpu: "1"
+          startupProbe:
             httpGet:
-              path: /api/v1/observability/health
-              port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /api/v1/observability/ready
+              path: /api/v1/observability/health/live
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: onramp-celery-worker
-  labels:
-    app: onramp
-    tier: worker
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: onramp
-      tier: worker
-  template:
-    metadata:
-      labels:
-        app: onramp
-        tier: worker
-    spec:
-      containers:
-        - name: celery-worker
-          image: onramp/backend:latest
-          command: ["celery", "-A", "app.tasks.celery_app", "worker", "-l", "info", "-Q", "agent-tasks,analytics-tasks,notification-tasks,default"]
-          envFrom:
-            - secretRef:
-                name: onramp-secrets
-            - configMapRef:
-                name: onramp-config
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "500m"
-            limits:
-              memory: "4Gi"
-              cpu: "3000m"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: onramp-celery-beat
-  labels:
-    app: onramp
-    tier: scheduler
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: onramp
-      tier: scheduler
-  template:
-    metadata:
-      labels:
-        app: onramp
-        tier: scheduler
-    spec:
-      containers:
-        - name: celery-beat
-          image: onramp/backend:latest
-          command: ["celery", "-A", "app.tasks.celery_app", "beat", "-l", "info"]
-          envFrom:
-            - secretRef:
-                name: onramp-secrets
-            - configMapRef:
-                name: onramp-config
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "250m"
-            limits:
-              memory: "1Gi"
-              cpu: "1000m"
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/v1/observability/health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/v1/observability/health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10

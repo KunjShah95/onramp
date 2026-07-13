@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@neondatabase/neon-js": "^0.6.2-beta",
+    "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-query": "^5.101.2",
     "@types/d3-drag": "^3.0.7",
     "@types/d3-force": "^3.0.10",
@@ -48,6 +49,7 @@
     "autoprefixer": "^10.5.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
+    "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",

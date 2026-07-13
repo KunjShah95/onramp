@@ -24,10 +24,10 @@ from app.llm import LLMClient
 from app.api.v1 import (
     admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
-    explore, first_pr, health, integrations as integrations_router,
+    explore, first_pr, gamification, health, integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
-    playbooks, pr_review, quiz as quiz_router, reports, slack,
-    tasks as tasks_router, teams, unique, waitlist
+    playbooks, pr_review, quiz as quiz_router, reports, repositories,
+    seed as seed_router, slack, tasks as tasks_router, teams, unique, waitlist
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
@@ -100,6 +100,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
+    "/api/v1/explore/health",    # public health check for explore service
     "/api/v1/waitlist/join",     # public waitlist join
     "/api/v1/waitlist/count",    # public waitlist count
 ])
@@ -123,6 +124,7 @@ app.include_router(explore.router, prefix="/api/v1")
 app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")
 app.include_router(ask.router, prefix="/api/v1")
+app.include_router(repositories.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(slack.router, prefix="/api/v1")
@@ -144,6 +146,8 @@ app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
 app.include_router(waitlist.router, prefix="/api/v1")
+app.include_router(seed_router.router, prefix="/api/v1")
+app.include_router(gamification.router, prefix="/api/v1")
 
 
 @app.get("/")

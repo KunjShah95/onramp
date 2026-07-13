@@ -25,6 +25,14 @@ vi.mock('@neondatabase/neon-js/auth', () => ({
   })),
 }))
 
+Element.prototype.scrollIntoView = vi.fn()
+globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn(),
+}))
+globalThis.IntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn(),
+}))
+
 vi.mock('../lib/neon-auth', () => ({
   authClient: {
     signUp: {

@@ -1,259 +1,330 @@
-import { useState, useCallback, useEffect } from 'react'
-import { indexRepo, askQuestionStream, getAskHistory, clearAskHistory } from '../lib/api'
-import type { HistoryTurn } from '../lib/types'
-import ChatInterface from '../components/ChatInterface'
-import HistorySidebar from '../components/HistorySidebar'
-import { cn } from '../lib/utils'
-import { ChatAreaSkeleton } from '../components/ui/Skeleton'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  ChatCircleDots,
+  PaperPlaneRight,
+  Spinner,
+  Robot,
+  User,
+  Copy,
+  Check,
+  Trash,
+  GitBranch,
+  Fire,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import { useToast } from '../context/ToastContext'
+import { cn } from '../lib/utils'
+import { indexRepo, askQuestionStream } from '../lib/api'
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
+
+const SUGGESTIONS = [
+  'How does the query pipeline work?',
+  'Explain the code health scoring algorithm',
+  'What modules have the highest tech debt?',
+  'Show me recent PRs that need review',
+]
+
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: "Hello! I'm your AI coding assistant. I can help you understand the codebase, answer questions about modules, review PRs, and more. What would you like to know?",
+  timestamp: new Date(),
+}
 
 export default function AskPage() {
-  const [repoPath, setRepoPath] = useState('')
+  const [repoUrl, setRepoUrl] = useState('')
   const [indexId, setIndexId] = useState<string | null>(null)
   const [indexing, setIndexing] = useState(false)
-  const [error, setError] = useState('')
-
-  // History state
-  const [history, setHistory] = useState<HistoryTurn[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyVisible, setHistoryVisible] = useState(false)
-
-  // Restore state — changes to this key trigger ChatInterface to reload messages
-  const [restoreKey, setRestoreKey] = useState(0)
-  const [restoreMessages, setRestoreMessages] = useState<
-    { question: string; answer: string }[] | undefined
-  >(undefined)
-
-  // Append state — adds history turns to the existing chat
-  const [appendKey, setAppendKey] = useState(0)
-  const [appendMessages, setAppendMessages] = useState<
-    { question: string; answer: string }[] | undefined
-  >(undefined)
-
-  // Roast mode toggle
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [roastMode, setRoastMode] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
-  // ── Load history when indexId changes ─────────────────────────────────
+  const toast = useToast()
+
   useEffect(() => {
-    if (!indexId) {
-      setHistory([])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!input.trim() || loading) return
+    if (!repoUrl.trim()) {
+      toast.error('Repository required', 'Enter a GitHub repo URL to index first.')
       return
     }
-    let active = true
-    setHistoryLoading(true)
-    getAskHistory(indexId, 20)
-      .then((res) => {
-        if (active) setHistory(res.history)
-      })
-      .catch(() => {
-        if (active) setHistory([])
-      })
-      .finally(() => {
-        if (active) setHistoryLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [indexId])
 
-  // ── Refresh history list ──────────────────────────────────────────────
-  const refreshHistory = useCallback(async () => {
-    if (!indexId) return
-    try {
-      const res = await getAskHistory(indexId, 20)
-      setHistory(res.history)
-    } catch {
-      // silently fail — user can still use the chat
+    const question = input.trim()
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: question,
+      timestamp: new Date(),
     }
-  }, [indexId])
+    const assistantId = `ai-${Date.now()}`
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      { id: assistantId, role: 'assistant', content: '', timestamp: new Date() },
+    ])
+    setInput('')
+    setLoading(true)
 
-  // ── Index repo ────────────────────────────────────────────────────────
-  async function handleIndex() {
-    if (!repoPath.trim()) return
-    setIndexing(true)
-    setError('')
     try {
-      const result = await indexRepo(repoPath.trim())
-      setIndexId(result.index_id)
-      // Auto-show history sidebar when a repo is indexed
-      setHistoryVisible(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Indexing failed')
+      let idx = indexId
+      if (!idx) {
+        setIndexing(true)
+        const res = await indexRepo(repoUrl)
+        idx = res.index_id
+        setIndexId(idx)
+        setIndexing(false)
+      }
+      const controller = new AbortController()
+      abortRef.current = controller
+      await askQuestionStream(
+        idx,
+        question,
+        (token) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + token } : m
+            )
+          )
+        },
+        controller.signal,
+        roastMode ? 'roast' : 'normal'
+      )
+    } catch (err: any) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: m.content || `Error: ${err.message || 'Failed to get an answer.'}` }
+            : m
+        )
+      )
+      toast.error('Ask failed', err.message)
+    } finally {
+      setLoading(false)
+      setIndexing(false)
+      abortRef.current = null
     }
-    setIndexing(false)
   }
 
-  // ── Ask a question ────────────────────────────────────────────────────
-  const handleAsk = useCallback(
-    async (
-      question: string,
-      onToken: (token: string) => void,
-      signal?: AbortSignal,
-      mode?: string
-    ): Promise<void> => {
-      if (!indexId) {
-        onToken('Please index a repository first.')
-        return
-      }
-      await askQuestionStream(indexId, question, onToken, signal, mode ?? 'normal')
-      // Refresh history after a successful answer (fire-and-forget)
-      refreshHistory()
-    },
-    [indexId, refreshHistory]
-  )
+  const handleCopy = (id: string, content: string) => {
+    navigator.clipboard.writeText(content)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
 
-  // ── Shared: build turns up to the selected one ────────────────────────
-  const turnsUpTo = useCallback(
-    (turn: HistoryTurn): { question: string; answer: string }[] => {
-      const idx = history.findIndex((t) => t.id === turn.id)
-      return idx >= 0
-        ? history.slice(0, idx + 1).map((t) => ({ question: t.question, answer: t.answer }))
-        : [{ question: turn.question, answer: turn.answer }]
-    },
-    [history]
-  )
-
-  // ── Restore the full conversation up to the selected turn ─────────────
-  const handleHistorySelect = useCallback(
-    (turn: HistoryTurn) => {
-      setRestoreMessages(turnsUpTo(turn))
-      setRestoreKey((prev) => prev + 1)
-    },
-    [turnsUpTo]
-  )
-
-  // ── Append history turns to the current chat ──────────────────────────
-  const handleHistoryContinue = useCallback(
-    (turn: HistoryTurn) => {
-      setAppendMessages(turnsUpTo(turn))
-      setAppendKey((prev) => prev + 1)
-    },
-    [turnsUpTo]
-  )
-
-  // ── Clear all history ─────────────────────────────────────────────────
-  const handleClearHistory = useCallback(async () => {
-    if (!indexId) return
-    try {
-      await clearAskHistory(indexId)
-      setHistory([])
-    } catch {
-      // silently fail
-    }
-  }, [indexId])
+  const handleClear = () => {
+    setMessages([WELCOME_MESSAGE])
+  }
 
   return (
     <PageTransition>
-      <div className="w-full pt-4 sm:pt-8 pb-12 font-body flex flex-col h-[calc(100vh-2rem)] max-w-full overflow-x-hidden">
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="max-w-4xl px-6">
-          <GradientHeading as="h1" className="mb-2">Codebase Context</GradientHeading>
-          <p className="text-[#FDFBF8]/60 text-sm mb-6">
-            Query your architecture, locate dependencies, and retrieve code references across the repository.
-          </p>
-
-          {/* Indexing bar */}
-          <CardSpotlight>
-            <div className="flex gap-3 p-2">
-              <input
-                value={repoPath}
-                onChange={(e) => setRepoPath(e.target.value)}
-                placeholder="Local path to repository (e.g., C:\projects\my-app)"
-                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/30"
-                onKeyDown={(e) => e.key === 'Enter' && handleIndex()}
-              />
+      <div className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+              <ChatCircleDots className="w-5 h-5 text-accent-primary" weight="duotone" />
+            </div>
+            <div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Ask the Codebase
+              </h1>
+              <p className="text-body-xs text-text-tertiary">
+                Ask questions about your codebase, PRs, and modules.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Roast Mode Toggle */}
+            <button
+              onClick={() => setRoastMode(!roastMode)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-all duration-200',
+                roastMode
+                  ? 'bg-red-500/15 text-red-400 border border-red-500/25 shadow-sm'
+                  : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:text-text-secondary'
+              )}
+            >
+              <Fire className={cn('w-3.5 h-3.5', roastMode && 'animate-pulse')} weight={roastMode ? 'fill' : 'regular'} />
+              {roastMode ? 'Roast Mode ON' : 'Roast Mode'}
+            </button>
+            {messages.length > 1 && (
               <button
-                onClick={handleIndex}
-                disabled={indexing || !repoPath.trim()}
-                className={cn(
-                  'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-                  indexId
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'bg-[#FF8C00] text-[#3D1C00] hover:bg-[#FFB347]'
-                )}
+                onClick={handleClear}
+                className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5"
               >
-                {indexing ? 'Indexing...' : indexId ? 'Re-index' : 'Index'}
+                <Trash className="w-3.5 h-3.5" />
+                Clear
               </button>
-            </div>
-          </CardSpotlight>
+            )}
+          </div>
+        </div>
 
-          {error && (
-            <div className="bg-red-500/10 text-red-400 rounded-lg p-4 mb-6 text-sm border border-red-500/20">
-              {error}
-            </div>
+        {/* Repo input */}
+        <div className="relative flex items-center w-full md:w-[440px] mb-4 shrink-0">
+          <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
+          <input
+            value={repoUrl}
+            onChange={(e) => { setRepoUrl(e.target.value); setIndexId(null) }}
+            placeholder="github.com/owner/repo (indexed on first question)"
+            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+          />
+          {indexId && (
+            <span className="absolute right-3 flex items-center gap-1 text-[10px] text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />indexed
+            </span>
           )}
         </div>
 
-        {/* ── Main content: chat + history sidebar ─────────────────────────── */}
-        <div className="flex-1 flex min-h-0 max-w-full lg:max-w-[calc(100vw-260px)]">
-          {/* Chat area */}
-          <div className="flex-1 min-w-0 px-4 sm:px-6 pb-6 relative">
-            {/* History toggle button — always visible on the right edge of the chat area */}
-            <div className="absolute right-0 top-4 z-10">
-              <CardSpotlight className="rounded-l-md border-r-0">
-                <button
-                  onClick={() => setHistoryVisible((v) => !v)}
-                  className="w-7 h-7 flex items-center justify-center text-[#FDFBF8]/50 hover:text-[#FDFBF8] transition-colors"
-                  title={historyVisible ? 'Hide history' : 'Show history'}
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {historyVisible ? 'chevron_right' : 'history'}
-                  </span>
-                </button>
-              </CardSpotlight>
-            </div>
-
-            {/* Roast mode toggle */}
-            <div className="absolute right-8 top-4 z-10 flex items-center gap-2">
-              <button
-                onClick={() => setRoastMode((v) => !v)}
-                className={`
-                  flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wider
-                  transition-all duration-200
-                  ${roastMode
-                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_12px_rgba(255,140,0,0.15)]'
-                    : 'bg-[#1A1512] text-[#FDFBF8]/40 border border-[#FDFBF8]/10 hover:bg-[#241912] hover:text-[#FDFBF8]/70'
-                  }
-                `}
-                title={roastMode ? 'Disable Roast Mode' : 'Enable Roast Mode'}
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
               >
-                <span className="material-symbols-outlined text-[13px]">
-                  {roastMode ? 'local_fire_department' : 'sentiment_satisfied'}
-                </span>
-                {roastMode ? 'ROAST ACTIVE' : 'ROAST'}
-              </button>
-            </div>
-
-            {indexing ? (
-              <ChatAreaSkeleton />
-            ) : (
-              <CardSpotlight className="h-full min-h-[400px]">
-                <div className="h-full">
-                  <ChatInterface
-                    onSend={handleAsk}
-                    mode={roastMode ? 'roast' : 'normal'}
-                    placeholder="Ask a question..."
-                    restoreKey={restoreKey}
-                    restoreMessages={restoreMessages}
-                    appendKey={appendKey}
-                    appendMessages={appendMessages}
-                  />
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-xl bg-accent-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Robot className="w-4 h-4 text-accent-primary" weight="fill" />
+                  </div>
+                )}
+                <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-1' : ''}`}>
+                  <div className={`rounded-2xl p-4 ${
+                    msg.role === 'user'
+                      ? 'bg-accent-primary/10 text-text-primary'
+                      : 'card'
+                  }`}>
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        {msg.content.split('\n').map((line, i) => {
+                          if (line.startsWith('|')) return null // skip table rendering
+                          if (line.startsWith('**')) {
+                            return <p key={i} className="text-body-sm font-medium text-text-primary mb-1">{line.replace(/\*\*/g, '')}</p>
+                          }
+                          if (line.startsWith('-') || line.startsWith('•')) {
+                            return <p key={i} className="text-caption text-text-secondary pl-3 mb-0.5">{line}</p>
+                          }
+                          if (line.match(/^\d+\./)) {
+                            return <p key={i} className="text-caption text-text-secondary ml-2 mb-1">{line}</p>
+                          }
+                          if (line.startsWith('```') || line.startsWith('``')) {
+                            return null
+                          }
+                          if (line.trim()) {
+                            return <p key={i} className="text-caption text-text-secondary mb-1">{line}</p>
+                          }
+                          return <br key={i} />
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-body-sm text-text-primary">{msg.content}</p>
+                    )}
+                  </div>
+                  <div className={`flex items-center gap-2 mt-1 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                    <span className="text-[11px] text-text-tertiary/40">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {msg.role === 'assistant' && msg.id !== 'welcome' && (
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="text-text-tertiary/40 hover:text-text-tertiary transition-colors"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check className="w-3 h-3 text-emerald-400" weight="bold" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </CardSpotlight>
-            )}
-          </div>
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-4 h-4 text-blue-400" weight="fill" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
-          {/* History sidebar */}
-          <HistorySidebar
-            history={history}
-            loading={historyLoading}
-            onSelect={handleHistorySelect}
-            onContinue={handleHistoryContinue}
-            onClear={handleClearHistory}
-            visible={historyVisible}
-          />
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3"
+            >
+              <div className="w-8 h-8 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <Robot className="w-4 h-4 text-accent-primary" weight="fill" />
+              </div>
+              <div className="card rounded-2xl p-4">
+                <div className="flex items-center gap-2">
+                  <Spinner className="w-4 h-4 text-accent-primary animate-spin" />
+                  <span className="text-caption text-text-tertiary">{indexing ? 'Indexing repository…' : 'Thinking…'}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Suggestions */}
+        {messages.length === 1 && (
+          <div className="flex flex-wrap gap-2 mt-4 shrink-0">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setInput(s); handleSend() }}
+                className="px-3 py-1.5 rounded-xl bg-bg-tertiary/30 text-caption text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/50 border border-border transition-all"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="mt-4 shrink-0">
+          <div className="flex items-center gap-2 card p-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask a question about the codebase..."
+              className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-tertiary/40 outline-none px-2"
+              disabled={loading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center text-accent-primary hover:bg-accent-primary/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              {loading ? (
+                <Spinner className="w-4 h-4 animate-spin" />
+              ) : (
+                <PaperPlaneRight className="w-4 h-4" weight="fill" />
+              )}
+            </button>
+          </div>
+          <p className="text-caption text-text-tertiary/40 mt-1.5 text-center">
+            AI responses are generated based on codebase analysis
+          </p>
         </div>
       </div>
     </PageTransition>

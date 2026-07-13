@@ -1,29 +1,51 @@
 import { useAuth } from '../../context/AuthContext'
+import { UserCircle } from '@phosphor-icons/react'
 import NotificationBell from './NotificationBell'
 
 export default function TopBar() {
   const { user } = useAuth()
 
   return (
-    <header role="banner" className="h-14 border-b border-white/10 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6">
-      <div className="text-sm text-text-secondary">
-        <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-white/30 font-mono text-[10px]" aria-label="Press question mark for keyboard shortcuts">?</kbd>
+    <header
+      role="banner"
+      className="h-12 border-b border-border bg-bg-primary/60 backdrop-blur-md flex items-center justify-between px-5"
+    >
+      {/* Left: shortcut hint */}
+      <div className="flex items-center gap-3">
+        <span className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border text-text-muted font-code text-[10px]">
+          ?
+        </span>
+        <span className="text-caption text-text-muted hidden sm:block">
+          Keyboard shortcuts
+        </span>
       </div>
-      <div className="flex items-center gap-2">
-        {user && (
+
+      {/* Right: user area */}
+      <div className="flex items-center gap-2.5">
+        {user ? (
           <>
             <NotificationBell />
-            <span className="text-xs text-text-muted hidden sm:block mr-1">
-              {user.displayName || user.email}
-            </span>
-            <div className="w-7 h-7 rounded-full bg-accent-from/20 flex items-center justify-center text-xs text-accent-from font-medium">
-              {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+            <div className="hidden sm:flex items-center gap-2.5">
+              <span className="text-body-xs text-text-muted">
+                {user.displayName || user.email}
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
+                <span className="text-caption font-semibold text-accent-from">
+                  {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+            <div className="sm:hidden">
+              <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
+                <span className="text-caption font-semibold text-accent-from">
+                  {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                </span>
+              </div>
             </div>
           </>
-        )}
-        {!user && (
-          <div className="w-7 h-7 rounded-full bg-accent-from/20 flex items-center justify-center text-xs text-accent-from font-medium">
-            U
+        ) : (
+          <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
+            <UserCircle size={16} className="text-accent-from" />
           </div>
         )}
       </div>

@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir --prefix=/install \
     -r requirements.txt \
     && rm -rf /root/.cache
@@ -60,8 +60,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application
-COPY --chown=appuser:appgroup . /codeflow
+# Copy application (backend only)
+COPY --chown=appuser:appgroup backend/ /codeflow
 
 WORKDIR /codeflow
 
@@ -88,7 +88,7 @@ FROM python:3.11-slim-bookworm AS development
 WORKDIR /codeflow
 
 # Install development dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install dev tools
@@ -100,8 +100,8 @@ RUN pip install --no-cache-dir \
     pytest-cov \
     httpx
 
-# Copy source code
-COPY . .
+# Copy source code (backend only)
+COPY backend/ .
 
 # Expose port
 EXPOSE 8000
@@ -132,7 +132,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /install /usr/local
 
-COPY --chown=appuser:appgroup . /codeflow
+COPY --chown=appuser:appgroup backend/ /codeflow
 
 WORKDIR /codeflow
 
@@ -147,26 +147,4 @@ ENTRYPOINT ["celery", "-A", "app.tasks.celery_app"]
 CMD ["worker", "-Q", "agent-tasks,analytics-tasks,notification-tasks,default", "-l", "info"]
 
 
-# =============================================================================
-# Frontend Dockerfile
-# =============================================================================
-# Build stage
-FROM node:20-alpine AS frontend-build
 
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine AS frontend-production
-
-COPY --from=frontend-build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]

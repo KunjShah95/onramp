@@ -530,3 +530,103 @@ export function LandingSkeleton() {
     </div>
   )
 }
+
+export function AdminDashboardSkeleton() {
+  return (
+    <div className="animate-in space-y-8">
+      <div className="flex items-center gap-3 mb-2">
+        <SkeletonBase className="w-10 h-10 rounded-xl" />
+        <div>
+          <SkeletonHeading />
+          <SkeletonText className="w-56" />
+        </div>
+      </div>
+      <StatsGridSkeleton count={4} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    </div>
+  )
+}
+
+export function MemberListSkeleton() {
+  return (
+    <div className="animate-in space-y-8">
+      <div className="flex items-center gap-3 mb-2">
+        <SkeletonBase className="w-10 h-10 rounded-xl" />
+        <div>
+          <SkeletonHeading />
+          <SkeletonText className="w-64" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-4 p-3 bg-bg-tertiary rounded-btn">
+            <SkeletonAvatar className="w-12 h-12" />
+            <div className="space-y-1.5 flex-1 mr-4">
+              <SkeletonText className="w-3/5" />
+              <SkeletonText className="w-2/5 h-3" />
+            </div>
+            <SkeletonBadge />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function ModuleAccessSkeleton() {
+  return (
+    <div className="animate-in space-y-8">
+      <div className="flex items-center gap-3 mb-2">
+        <SkeletonBase className="w-10 h-10 rounded-xl" />
+        <div>
+          <SkeletonHeading />
+          <SkeletonText className="w-56" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="card p-4 flex items-center justify-between">
+            <SkeletonText className="w-20" />
+            <SkeletonBadge />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function ReviewQueueSkeleton() {
+  return (
+    <div className="animate-in space-y-6">
+      <div className="flex items-center gap-3 mb-2">
+        <SkeletonBase className="w-10 h-10 rounded-xl" />
+        <div>
+          <SkeletonHeading />
+          <SkeletonText className="w-72" />
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        {[...Array(5)].map((_, i) => (
+          <SkeletonButton key={i} className="w-20" />
+        ))}
+      </div>
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 bg-bg-tertiary rounded-btn border-l-2 border-l-border/30">
+            <div className="space-y-1.5 flex-1 mr-4">
+              <SkeletonText className="w-3/5" />
+              <SkeletonText className="w-2/5 h-3" />
+            </div>
+            <div className="flex items-center gap-2">
+              <SkeletonBadge />
+              <SkeletonBadge className="w-12" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

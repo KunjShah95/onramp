@@ -15,7 +15,7 @@ interface StatCardProps {
 export function StatCard({
   label,
   value,
-  color = 'text-[#FDFBF8]',
+  color = 'text-text-primary',
   accentColor,
   icon,
   sub,
@@ -26,11 +26,11 @@ export function StatCard({
     <div
       onClick={onClick}
       className={cn(
-        'relative bg-[#1A110D] border border-[#FDFBF8]/5 rounded-xl p-5 overflow-hidden',
+        'relative rounded-card border border-border bg-bg-secondary p-5 overflow-hidden',
         'transition-all duration-300',
         onClick
-          ? 'cursor-pointer hover:border-[#FDFBF8]/12 hover:bg-[#1A110D]/80'
-          : 'hover:border-[#FDFBF8]/8',
+          ? 'cursor-pointer hover:border-border-hover'
+          : '',
         className
       )}
     >
@@ -44,16 +44,16 @@ export function StatCard({
       )}
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <div className={cn('font-display text-3xl font-bold tracking-tight leading-none', color)}>
+          <div className={cn('font-display text-2xl md:text-3xl font-bold tracking-tight leading-none', color)}>
             {value}
           </div>
-          <div className="text-[10px] uppercase tracking-widest text-[#FDFBF8]/35 font-semibold mt-2">
+          <div className="text-overline text-text-muted/60 mt-2">
             {label}
           </div>
-          {sub && <div className="text-[11px] text-[#FDFBF8]/25 mt-1">{sub}</div>}
+          {sub && <div className="text-caption text-text-muted/40 mt-1">{sub}</div>}
         </div>
         {icon && (
-          <div className="ml-3 shrink-0 opacity-30">{icon}</div>
+          <div className="ml-3 shrink-0 text-text-muted/30">{icon}</div>
         )}
       </div>
     </div>

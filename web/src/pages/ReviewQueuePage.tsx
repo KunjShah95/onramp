@@ -1,372 +1,249 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '../lib/utils'
 import {
-  listTasks, reviewTask, approveTask, listTeams,
-  type WorkflowTask,
-} from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
-import StatusBadge from '../components/ui/status-badge'
+  GitPullRequest,
+  Clock,
+  CheckCircle,
+  Eye,
+  ArrowRight,
+  UserCircle,
+  ChatCircleDots,
+  Code,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import {
-  SkeletonBase,
-  StatsGridSkeleton,
-} from '../components/ui/Skeleton'
-import { useToast } from '../context/ToastContext'
+import { ReviewQueueSkeleton } from '../components/ui/Skeleton'
+import { EmptyState } from '../components/ui/empty-state'
+import { useAuth } from '../context/AuthContext'
+import { listTeams, listTasks } from '../lib/api'
+import type { WorkflowTask, TeamsResponse } from '../lib/api'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-}
-
-function hoursSince(dateStr: string): number {
-  return (Date.now() - new Date(dateStr).getTime()) / 3_600_000
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  submitted: { label: 'Pending', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+  under_review: { label: 'In Review', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+  product_review: { label: 'In Review', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+  approved: { label: 'Approved', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  completed: { label: 'Approved', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  needs_changes: { label: 'Changes Requested', color: 'text-red-400', bg: 'bg-red-500/10' },
+  pending: { label: 'Pending', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+  in_progress: { label: 'In Progress', color: 'text-blue-400', bg: 'bg-blue-500/10' },
 }
 
-function slaStatus(hours: number): { label: string; color: string; dot: string } {
-  if (hours < 4) return { label: 'On track', color: 'text-green-400', dot: 'bg-green-500' }
-  if (hours < 24) return { label: 'Reviewing', color: 'text-yellow-400', dot: 'bg-yellow-400' }
-  return { label: 'Overdue!', color: 'text-red-400', dot: 'bg-red-500' }
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; border: string }> = {
+  high: { label: 'High', color: 'text-red-400', border: 'border-l-red-500/50' },
+  medium: { label: 'Medium', color: 'text-amber-400', border: 'border-l-amber-500/50' },
+  low: { label: 'Low', color: 'text-text-tertiary', border: 'border-l-text-tertiary/30' },
+}
+
+function tabForState(state: string): string {
+  if (state === 'submitted' || state === 'under_review' || state === 'product_review' || state === 'pending') return 'pending'
+  if (state === 'in_progress') return 'in-progress'
+  if (state === 'approved' || state === 'completed') return 'approved'
+  if (state === 'needs_changes') return 'changes'
+  return 'pending'
 }
 
 export default function ReviewQueuePage() {
-  const toast = useToast()
-  const [teams, setTeams] = useState<any[]>([])
-  const [selectedTeam, setSelectedTeam] = useState('')
+  const [teamId, setTeamId] = useState('')
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
+  const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Filters
-  const [filterModule, setFilterModule] = useState('')
-  const [filterAssignee, setFilterAssignee] = useState('')
-  const [filterPriority, setFilterPriority] = useState('')
-  const [sortBy, setSortBy] = useState<'oldest' | 'newest' | 'priority'>('oldest')
+  const { activeTeamId } = useAuth()
 
-  // Detail modal
-  const [selectedTask, setSelectedTask] = useState<WorkflowTask | null>(null)
-  const [reviewFeedback, setReviewFeedback] = useState('')
+  useEffect(() => {
+    listTeams('current-user')
+      .then((data: TeamsResponse) => {
+        const tid = activeTeamId || data.teams?.[0]?.team_id || ''
+        if (tid) setTeamId(tid)
+        else { setLoading(false); setError('Join a team to view the review queue.') }
+      })
+      .catch(() => { setLoading(false); setError('Failed to load teams.') })
+  }, [activeTeamId])
 
-  const fetchTeams = useCallback(async () => {
-    try {
-      const data = await listTeams('current-user')
-      setTeams(data.teams || [])
-      if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id)
-    } catch (e) {
-      toast.error('Failed to load teams', e instanceof Error ? e.message : undefined)
-    }
-  }, [])
-
-  const fetchTasks = useCallback(async () => {
-    if (!selectedTeam) return
+  async function fetchTasks() {
+    if (!teamId) return
     setLoading(true); setError('')
     try {
-      const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
-      // Only show review-eligible states
-      setTasks(tasks.filter(t =>
-        ['submitted', 'under_review', 'needs_changes', 'product_review', 'approved'].includes(t.state)
-      ))      } catch (e: any) {
-        setError(e.message || 'Failed to load')
-        toast.error('Failed to load review tasks', e.message)
-      }
-    setLoading(false)
-  }, [selectedTeam])
-
-  useEffect(() => { fetchTeams() }, [])
-  useEffect(() => { fetchTasks() }, [fetchTasks])
-
-  // Derived analytics
-  const analytics = useMemo(() => {
-    const total = tasks.length
-    const overdue = tasks.filter(t => hoursSince(t.updated_at) > 24 && t.state !== 'completed').length
-    const avgReviewHrs = tasks.length > 0
-      ? (tasks.reduce((sum, t) => sum + hoursSince(t.created_at), 0) / tasks.length).toFixed(1)
-      : '0'
-    const byModule = tasks.reduce<Record<string, number>>((acc, t) => {
-      if (t.module) { acc[t.module] = (acc[t.module] || 0) + 1 }
-      return acc
-    }, {})
-    const topModule = Object.entries(byModule).sort((a, b) => b[1] - a[1])[0]
-    const byPriority = { high: tasks.filter(t => t.priority === 'high').length, medium: tasks.filter(t => t.priority === 'medium').length, low: tasks.filter(t => t.priority === 'low').length }
-    return { total, overdue, avgReviewHrs, topModule: topModule?.[0] || '—', byPriority }
-  }, [tasks])
-
-  const filteredTasks = useMemo(() => {
-    let result = [...tasks]
-    if (filterModule) result = result.filter(t => t.module === filterModule)
-    if (filterAssignee) result = result.filter(t => t.assigned_to === filterAssignee)
-    if (filterPriority) result = result.filter(t => t.priority === filterPriority)
-    result.sort((a, b) => {
-      if (sortBy === 'oldest') return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
-      if (sortBy === 'newest') return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      const pri: Record<string, number> = { high: 0, medium: 1, low: 2 }
-      return (pri[a.priority] ?? 1) - (pri[b.priority] ?? 1)
-    })
-    return result
-  }, [tasks, filterModule, filterAssignee, filterPriority, sortBy])
-
-  const uniqueModules = useMemo(() => [...new Set(tasks.map(t => t.module).filter((t): t is string => !!t))], [tasks])
-  const uniqueAssignees = useMemo(() => [...new Set(tasks.map(t => t.assigned_to).filter((t): t is string => !!t))], [tasks])
-
-  async function handleReview(taskId: string, approve: boolean) {
-    try {
-      await reviewTask(taskId, { approve, feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined })
-      setReviewFeedback(''); setSelectedTask(null); await fetchTasks()
-      toast.success(approve ? 'Approved' : 'Changes requested')
-    } catch (e: any) { toast.error('Review failed', e.message) }
+      const res = await listTasks({ team_id: teamId })
+      setTasks(res.tasks ?? [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load tasks.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function handleApprove(taskId: string) {
-    try {
-      await approveTask(taskId, reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined)
-      setReviewFeedback(''); setSelectedTask(null); await fetchTasks()
-      toast.success('Approved')
-    } catch (e: any) { toast.error('Approve failed', e.message) }
+  useEffect(() => {
+    fetchTasks()
+  }, [teamId])
+
+  const reviewItems = tasks.map((t) => {
+    const status = tabForState(t.state)
+    return { task: t, status }
+  })
+  const filtered = filter === 'all' ? reviewItems : reviewItems.filter((r) => r.status === filter)
+
+  const counts = {
+    pending: reviewItems.filter((r) => r.status === 'pending').length,
+    'in-progress': reviewItems.filter((r) => r.status === 'in-progress').length,
+    approved: reviewItems.filter((r) => r.status === 'approved').length,
+    changes: reviewItems.filter((r) => r.status === 'changes').length,
   }
 
   return (
     <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-[#FDFBF8] max-w-full overflow-x-hidden">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-6">
           <div>
-            <GradientHeading as="h1">Review Queue</GradientHeading>
-            <p className="text-[#FDFBF8]/40 text-sm mt-1">Review, approve, and manage submissions from your team</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <GitPullRequest className="w-5 h-5 text-accent-primary" weight="duotone" />
+              </div>
+              <h1 className="text-display-sm font-display font-medium text-text-primary">
+                Review Queue
+              </h1>
+            </div>
+            <p className="text-body-sm text-text-tertiary max-w-xl">
+              Review pending pull requests and provide feedback.
+            </p>
           </div>
-          <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}
-            className="bg-[#120D0A] border border-[#FDFBF8]/8 text-[#FDFBF8]/70 text-sm rounded-lg px-3 py-2 outline-none focus:border-[#FF8C00]/40">
-            {teams.map((t: any) => <option key={t.team_id} value={t.team_id}>{t.name}</option>)}
-          </select>
+          {teamId && (
+            <select
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              className="bg-bg-secondary border border-border text-text-primary text-caption rounded-lg px-3 py-2"
+            >
+              {/* team options would require stored list; keep current selection */}
+              <option value={teamId}>{teamId}</option>
+            </select>
+          )}
         </div>
 
-        {/* Analytics bar */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible"
-          className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {[
-            { label: 'Pending Reviews', value: analytics.total, color: 'text-yellow-400', sub: 'Awaiting action' },
-            { label: 'Overdue (>24h)', value: analytics.overdue, color: 'text-red-400', sub: 'SLA breached' },
-            { label: 'Avg Review Time', value: `${analytics.avgReviewHrs}h`, color: 'text-[#4DA8DA]', sub: 'Mean turnaround' },
-            { label: 'Top Module', value: analytics.topModule, color: 'text-[#FF8C00]', sub: 'Most submissions' },
-            { label: 'High Priority', value: analytics.byPriority.high, color: 'text-red-400', sub: 'Needs immediate attention' },
-          ].map((s) => (
-            <motion.div key={s.label} variants={itemVariants}>
-              <CardSpotlight className="p-4" color="rgba(255,140,0,0.03)">
-                <div className={cn('font-display text-2xl font-bold tracking-tight', s.color)}>{s.value}</div>
-                <div className="text-[10px] text-[#FDFBF8]/35 uppercase tracking-wider mt-1">{s.label}</div>
-                <div className="text-[10px] text-[#FDFBF8]/20 mt-0.5">{s.sub}</div>
-              </CardSpotlight>
-            </motion.div>
-          ))}
-        </motion.div>
-
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>
+          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={fetchTasks} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+          </div>
         )}
 
-        {/* Filters */}
-        <CardSpotlight className="p-4 mb-5" color="rgba(255,140,0,0.02)">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-wider font-semibold">Module</span>
-              <select value={filterModule} onChange={(e) => setFilterModule(e.target.value)}
-                className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-2.5 py-1.5 text-xs text-[#FDFBF8] outline-none focus:border-[#FF8C00]/40">
-                <option value="">All</option>
-                {uniqueModules.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-wider font-semibold">Assignee</span>
-              <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)}
-                className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-2.5 py-1.5 text-xs text-[#FDFBF8] outline-none focus:border-[#FF8C00]/40">
-                <option value="">All</option>
-                {uniqueAssignees.map(a => <option key={a} value={a}>{a.slice(0, 12)}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-wider font-semibold">Priority</span>
-              <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}
-                className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-2.5 py-1.5 text-xs text-[#FDFBF8] outline-none focus:border-[#FF8C00]/40">
-                <option value="">All</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-wider font-semibold">Sort</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-2.5 py-1.5 text-xs text-[#FDFBF8] outline-none focus:border-[#FF8C00]/40">
-                <option value="oldest">Oldest First (SLA)</option>
-                <option value="newest">Newest First</option>
-                <option value="priority">Priority</option>
-              </select>
-            </div>
-            <span className="text-[10px] text-[#FDFBF8]/25 ml-auto">{filteredTasks.length} item{filteredTasks.length !== 1 ? 's' : ''}</span>
-          </div>
-        </CardSpotlight>
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit flex-wrap">
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'pending', label: 'Pending' },
+            { key: 'in-progress', label: 'In Review' },
+            { key: 'approved', label: 'Approved' },
+            { key: 'changes', label: 'Changes' },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                filter === f.key
+                  ? 'bg-bg-primary text-text-primary shadow-sm'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Review list */}
+        {/* Queue */}
         {loading ? (
-          <div className="space-y-6">
-            <StatsGridSkeleton count={5} />
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <SkeletonBase key={i} className="h-24 w-full rounded-xl" />
-              ))}
-            </div>
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <CardSpotlight className="py-12 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-[#FDFBF8]/40 text-sm">All caught up! No pending reviews.</p>
-            <p className="text-[#FDFBF8]/20 text-xs mt-1">New submissions will appear here automatically</p>
-          </CardSpotlight>
+          <div className="py-8"><ReviewQueueSkeleton /></div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<GitPullRequest className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            title="Queue is clear"
+            description="No pull requests match this filter."
+          />
         ) : (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-2">
-            {filteredTasks.map((task) => {
-              const hrs = hoursSince(task.updated_at)
-              const sla = slaStatus(hrs)
+          <div className="space-y-2">
+            {filtered.map(({ task, status }, i) => {
+              const statusStyle = STATUS_CONFIG[status]
+              const priorityStyle = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.low
               return (
-                <motion.div key={task.task_id} variants={itemVariants}>
-                  <div onClick={() => setSelectedTask(task)} className="cursor-pointer">
-                    <CardSpotlight
-                      className={cn(
-                        'p-4 transition-all hover:border-[#FDFBF8]/12',
-                        task.state === 'approved' && 'border-green-500/20',
-                        hrs > 24 && 'border-red-500/15',
-                      )}
-                    >
-                      <div className="flex items-start gap-4">
-                      {/* SLA indicator */}
-                      <div className="flex flex-col items-center gap-1 min-w-[48px] pt-0.5">
-                        <span className={cn('w-2.5 h-2.5 rounded-full', sla.dot)} />
-                        <span className={cn('text-[9px] font-mono font-bold', sla.color)}>
-                          {hrs > 24 ? `${Math.floor(hrs / 24)}d` : `${Math.floor(hrs)}h`}
+                <motion.div
+                  key={task.task_id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className={`card p-4 border-l-2 ${priorityStyle.border} hover:border-l-accent-primary transition-all cursor-pointer group`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <h3 className="text-body font-medium text-text-primary group-hover:text-accent-primary transition-colors">
+                          {task.title}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${statusStyle.bg} ${statusStyle.color}`}>
+                          {statusStyle.label}
                         </span>
-                        <span className={cn('text-[8px] uppercase tracking-wider', sla.color)}>{sla.label}</span>
+                        <span className="text-caption text-text-tertiary/60">{priorityStyle.label}</span>
                       </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <StatusBadge state={task.state} />
-                          <span className={cn(
-                            'text-[10px] px-1.5 py-0.5 rounded border font-medium capitalize',
-                            task.priority === 'high' ? 'border-red-500/30 text-red-400' :
-                            task.priority === 'medium' ? 'border-[#FF8C00]/30 text-[#FF8C00]' :
-                            'border-green-500/30 text-green-400'
-                          )}>{task.priority}</span>
-                        </div>
-                        <h3 className="text-sm font-medium text-[#FDFBF8] truncate">{task.title}</h3>
-                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[#FDFBF8]/40">
-                          {task.module && <span className="font-mono">Module: {task.module}</span>}
-                          {task.assigned_to && <span>by {task.assigned_to.slice(0, 10)}</span>}
-                          {task.pr_url && (
-                            <a href={task.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                              className="text-[#4DA8DA] hover:underline">View PR →</a>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Quick actions */}
-                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => { setSelectedTask(task); handleReview(task.task_id, true) }}
-                          className="px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 text-[10px] font-bold transition-colors"
-                          title="Approve">
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => { setSelectedTask(task); setReviewFeedback(''); handleApprove(task.task_id) }}
-                          className="px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-[10px] font-bold transition-colors"
-                          title="Full Approve">
-                          ✓✓
-                        </button>
+                      <div className="flex items-center gap-3 text-caption text-text-tertiary flex-wrap">
+                        {task.assigned_to && (
+                          <span className="flex items-center gap-1.5">
+                            <UserCircle className="w-3.5 h-3.5" weight="fill" />
+                            {task.assigned_to}
+                          </span>
+                        )}
+                        {task.module && (
+                          <span className="flex items-center gap-1">
+                            <Code className="w-3 h-3" />
+                            {task.module}
+                          </span>
+                        )}
+                        {task.ai_review && (
+                          <span className="flex items-center gap-1">
+                            <ChatCircleDots className="w-3 h-3" />
+                            AI score {task.ai_review.score}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(task.updated_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                  </CardSpotlight>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {status === 'pending' && (
+                        <button className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center text-accent-primary hover:bg-accent-primary/20 transition-all">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button className="w-8 h-8 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-all opacity-0 group-hover:opacity-100">
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )
             })}
-          </motion.div>
-        )}
-
-        {/* Detail modal */}
-        {selectedTask && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedTask(null)}>
-            <div className="bg-[#120D0A] border border-[#FDFBF8]/10 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto mx-4 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-5 border-b border-[#FDFBF8]/5">
-                <div className="flex items-center gap-2">
-                  <StatusBadge state={selectedTask.state} />
-                  <span className={cn('text-[10px] px-2 py-0.5 rounded border font-medium capitalize',
-                    selectedTask.priority === 'high' ? 'border-red-500/30 text-red-400' :
-                    selectedTask.priority === 'medium' ? 'border-[#FF8C00]/30 text-[#FF8C00]' :
-                    'border-green-500/30 text-green-400')}>{selectedTask.priority}</span>
-                </div>
-                <button onClick={() => setSelectedTask(null)} className="text-[#FDFBF8]/30 hover:text-[#FDFBF8]">✕</button>
-              </div>
-              <div className="p-5 space-y-4">
-                <h2 className="font-display text-base font-bold text-[#FDFBF8]">{selectedTask.title}</h2>
-                {selectedTask.description && (
-                  <p className="text-sm text-[#FDFBF8]/50 leading-relaxed">{selectedTask.description}</p>
-                )}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  {selectedTask.module && (
-                    <div className="bg-[#0D0906] rounded-lg p-3 border border-[#FDFBF8]/5">
-                      <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1">Module</div>
-                      <div className="text-[#FF8C00] font-mono">{selectedTask.module}</div>
-                    </div>
-                  )}
-                  {selectedTask.assigned_to && (
-                    <div className="bg-[#0D0906] rounded-lg p-3 border border-[#FDFBF8]/5">
-                      <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1">Assignee</div>
-                      <div className="text-[#FDFBF8]/80">{selectedTask.assigned_to}</div>
-                    </div>
-                  )}
-                  {selectedTask.pr_url && (
-                    <div className="bg-[#0D0906] rounded-lg p-3 border border-[#FDFBF8]/5 col-span-2">
-                      <div className="text-[10px] text-[#FDFBF8]/30 uppercase tracking-widest mb-1">PR URL</div>
-                      <a href={selectedTask.pr_url} target="_blank" rel="noreferrer"
-                        className="text-[#4DA8DA] font-mono text-[11px] break-all hover:underline">{selectedTask.pr_url}</a>
-                    </div>
-                  )}
-                </div>
-
-                {/* Review actions */}
-                <div className="border-t border-[#FDFBF8]/5 pt-4 space-y-3">
-                  <textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)}
-                    placeholder="Add review feedback…" rows={3}
-                    className="w-full bg-[#0D0906] border border-[#FDFBF8]/8 rounded-lg px-3 py-2 text-sm text-[#FDFBF8] placeholder:text-[#FDFBF8]/25 outline-none focus:border-[#FF8C00]/40 resize-none" />
-                  <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => handleReview(selectedTask.task_id, false)}
-                      className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Request Changes
-                    </button>
-                    <button onClick={() => handleReview(selectedTask.task_id, true)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-[#3D1C00] px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Route to Product
-                    </button>
-                    <button onClick={() => handleApprove(selectedTask.task_id)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                      ✓ Approve
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Pending', value: counts.pending, icon: Clock, color: 'text-amber-400' },
+            { label: 'In Review', value: counts['in-progress'], icon: Eye, color: 'text-blue-400' },
+            { label: 'Approved', value: counts.approved, icon: CheckCircle, color: 'text-emerald-400' },
+            { label: 'Changes', value: counts.changes, icon: WarningCircle, color: 'text-red-400' },
+          ].map((StatIcon, idx) => (
+            <div key={idx} className="card p-3 flex items-center gap-3">
+              <StatIcon.icon className={`w-4 h-4 ${StatIcon.color}`} weight="fill" />
+              <div>
+                <p className="text-body font-medium text-text-primary">{StatIcon.value}</p>
+                <p className="text-caption text-text-tertiary">{StatIcon.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </PageTransition>
   )

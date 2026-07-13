@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test'
 import {
-  mockFirebaseAuth,
+  mockNeonAuth,
   mockBackendAPIs,
   mockDashboardAPI,
 } from './mocks'
 
-test.describe('Senior Dashboard', () => {
+test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     // Set up all mocks and authenticate
-    await mockFirebaseAuth(page)
+    await mockNeonAuth(page)
     await mockBackendAPIs(page)
     await mockDashboardAPI(page)
 
@@ -23,7 +23,7 @@ test.describe('Senior Dashboard', () => {
 
   test('renders dashboard header with team metrics', async ({ page }) => {
     // Header
-    await expect(page.getByText('Senior Dashboard')).toBeVisible()
+    await expect(page.getByText('Dashboard')).toBeVisible()
     await expect(page.getByText(/8 members?/i)).toBeVisible()
     await expect(page.getByText(/5 trainees?/i)).toBeVisible()
 
@@ -111,6 +111,6 @@ test.describe('Senior Dashboard', () => {
     // Navigating to dashboard should redirect away
     await page.goto('/dashboard')
     // Should NOT show the dashboard
-    await expect(page.getByText('Senior Dashboard')).not.toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Dashboard')).not.toBeVisible({ timeout: 5_000 })
   })
 })

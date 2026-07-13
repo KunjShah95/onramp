@@ -42,8 +42,9 @@ echo "Optional: vercel env add VITE_NEON_AUTH_URL (for custom auth endpoint)"
 
 echo ""
 echo -e "${BLUE}Step 6: Deploy Frontend${NC}"
-echo "Current directory should be: ai-onboarding-engineer"
-cd ai-onboarding-engineer
+echo "Current directory should be: web/"
+cd web
+npm run build
 vercel deploy --prod
 
 echo ""

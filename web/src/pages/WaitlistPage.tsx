@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import ShaderBackground from '../components/ui/ShaderBackground'
-import Spotlight from '../components/ui/spotlight'
+import { Check, ArrowRight, Spinner, Terminal, Users, EnvelopeSimple, User } from '@phosphor-icons/react'
 import { useToast } from '../context/ToastContext'
-
 import { API_BASE } from '../lib/api'
 
 const getWaitlistUrl = () => {
@@ -13,7 +11,6 @@ const getWaitlistUrl = () => {
   return `${root}/api/v1/waitlist`
 }
 const WAITLIST_URL = getWaitlistUrl()
-
 
 type Role = 'developer' | 'manager' | 'cto'
 type TeamSize = '1-10' | '11-50' | '51-200' | '200+'
@@ -88,60 +85,71 @@ export default function WaitlistPage() {
   }
 
   const inputClass =
-    'w-full bg-[#0D0905] border border-[#FDFBF8]/10 rounded px-4 py-3 text-[#FDFBF8] text-sm placeholder:text-[#FDFBF8]/30 focus:outline-none focus:border-[#FF8C00]/50 transition-colors'
+    'w-full bg-bg-primary border border-border rounded-xl px-4 py-3 text-text-primary text-sm placeholder:text-text-tertiary/50 focus:outline-none focus:border-accent-primary/50 transition-colors'
 
   return (
-    <div className="text-[#FDFBF8] font-body bg-[#050505] antialiased selection:bg-[#FF8C00]/30 selection:text-[#FF8C00] relative min-h-screen overflow-x-hidden">
+    <div className="text-text-primary font-body bg-bg-primary antialiased">
       {/* Nav */}
-      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
-        <Link to="/" className="font-display text-xl font-bold tracking-tight">CodeFlow</Link>
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3.5 bg-bg-primary/80 backdrop-blur-xl border-b border-border">
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-accent-primary/15 flex items-center justify-center">
+            <Terminal className="w-4 h-4 text-accent-primary" weight="fill" />
+          </div>
+          <span className="font-display font-bold text-lg tracking-tight">CodeFlow</span>
+        </Link>
       </nav>
 
-      {/* Background */}
-      <ShaderBackground />
-      <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="#FF8C00" />
+      <div className="min-h-screen flex flex-col items-center justify-center pt-20 pb-20 px-6">
+        {/* Background decoration */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent-primary/3 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent-primary/2 rounded-full blur-3xl" />
+        </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center pt-40 pb-20 px-6">
         {/* Hero */}
-        <div className="flex flex-col items-center text-center gap-6 mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#1A110D] border border-[#FF8C00]/20 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-[#FF8C00] animate-pulse" />
-            <span className="font-mono text-[11px] text-[#FF8C00] uppercase tracking-wider font-bold">Coming Soon</span>
+        <div className="relative z-10 flex flex-col items-center text-center gap-6 mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-accent-primary/10 border border-accent-primary/20 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
+            <span className="font-mono text-[11px] text-accent-primary uppercase tracking-wider font-bold">Coming Soon</span>
           </div>
           <h1 className="font-display text-4xl md:text-6xl font-bold leading-[1.1] tracking-tight max-w-3xl">
             Be first to transform<br />
-            <span className="text-[#FDFBF8]/55">how your team onboards.</span>
+            <span className="text-text-tertiary">how your team onboards.</span>
           </h1>
-          <p className="font-body text-lg text-[#FDFBF8]/65 max-w-xl leading-relaxed">
+          <p className="text-text-secondary text-base max-w-xl leading-relaxed">
             CodeFlow maps your codebase, builds guided learning paths, and gets new engineers shipping PRs on day 5 — not day 45.
           </p>
           {count !== null && (
-            <p className="font-mono text-sm text-[#FF8C00]/80">
-              {count} developer{count !== 1 ? 's' : ''} already waiting
-            </p>
+            <div className="flex items-center gap-2 text-sm text-accent-primary/80">
+              <Users className="w-4 h-4" weight="fill" />
+              <span className="font-mono">{count} developer{count !== 1 ? 's' : ''} already waiting</span>
+            </div>
           )}
         </div>
 
         {/* Form / Success card */}
-        <div className="w-full max-w-lg">
+        <div className="relative z-10 w-full max-w-lg">
           <AnimatePresence mode="wait">
             {success ? (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-[#0D0905] border border-[#FF8C00]/20 rounded-xl p-10 flex flex-col items-center gap-4 text-center"
+                className="bg-bg-secondary border border-accent-primary/20 rounded-2xl p-10 flex flex-col items-center gap-4 text-center"
               >
                 <motion.div
-                  animate={{ scale: [1, 1.15, 1] }}
+                  animate={{ scale: [1, 1.12, 1] }}
                   transition={{ repeat: Infinity, duration: 2 }}
-                  className="w-16 h-16 rounded-full bg-[#FF8C00]/10 border border-[#FF8C00]/30 flex items-center justify-center text-3xl"
+                  className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center"
                 >
-                  🎉
+                  <Check className="w-7 h-7 text-green-400" weight="bold" />
                 </motion.div>
                 <h2 className="font-display text-2xl font-bold">{success.message}</h2>
-                <p className="text-[#FDFBF8]/60 text-sm">Check your email for confirmation. We'll reach out when we launch.</p>
-                <Link to="/" className="mt-2 text-[#FF8C00] text-sm hover:underline">← Back to home</Link>
+                <p className="text-text-secondary text-sm">Check your email for confirmation. We'll reach out when we launch.</p>
+                <Link to="/" className="mt-2 text-accent-primary text-sm hover:underline flex items-center gap-1">
+                  <ArrowRight className="w-4 h-4" weight="bold" />
+                  Back to home
+                </Link>
               </motion.div>
             ) : (
               <motion.form
@@ -149,26 +157,32 @@ export default function WaitlistPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 onSubmit={handleSubmit}
-                className="bg-[#0D0905] border border-[#FDFBF8]/10 rounded-xl p-8 flex flex-col gap-4"
+                className="bg-bg-secondary border border-border rounded-2xl p-8 flex flex-col gap-4"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Full name"
-                    required
-                    className={inputClass}
-                  />
-                  <input
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="Work email"
-                    required
-                    className={inputClass}
-                  />
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary/50 pointer-events-none" />
+                    <input
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      placeholder="Full name"
+                      required
+                      className={`${inputClass} pl-10`}
+                    />
+                  </div>
+                  <div className="relative">
+                    <EnvelopeSimple className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary/50 pointer-events-none" />
+                    <input
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      placeholder="Work email"
+                      required
+                      className={`${inputClass} pl-10`}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -177,7 +191,7 @@ export default function WaitlistPage() {
                     value={form.role}
                     onChange={handleChange}
                     required
-                    className={`${inputClass} ${!form.role ? 'text-[#FDFBF8]/30' : ''}`}
+                    className={`${inputClass} ${!form.role ? 'text-text-tertiary/50' : ''}`}
                   >
                     <option value="" disabled>Your role</option>
                     <option value="developer">Developer</option>
@@ -199,7 +213,7 @@ export default function WaitlistPage() {
                   value={form.team_size}
                   onChange={handleChange}
                   required
-                  className={`${inputClass} ${!form.team_size ? 'text-[#FDFBF8]/30' : ''}`}
+                  className={`${inputClass} ${!form.team_size ? 'text-text-tertiary/50' : ''}`}
                 >
                   <option value="" disabled>Team size</option>
                   <option value="1-10">1–10 people</option>
@@ -219,15 +233,27 @@ export default function WaitlistPage() {
                 />
 
                 {error && (
-                  <p className="text-red-400 text-sm">{error}</p>
+                  <p className="text-red-400 text-sm flex items-center gap-1.5">
+                    <span>⚠</span> {error}
+                  </p>
                 )}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#FFB347] text-[#3D1C00] py-3.5 rounded font-body text-sm font-bold hover:bg-[#FF8C00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                  className="w-full bg-accent-primary text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Joining...' : 'Join Waitlist →'}
+                  {loading ? (
+                    <>
+                      <Spinner className="w-4 h-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : (
+                    <>
+                      Join Waitlist
+                      <ArrowRight className="w-4 h-4" weight="bold" />
+                    </>
+                  )}
                 </button>
               </motion.form>
             )}

@@ -14,7 +14,7 @@
 **How it works:**
 
 1. User connects GitHub repo → Backend clones & analyzes → Stores in graph + embeddings
-2. Claude agents process analysis (architecture, learning paths, issues, Q&A)
+2. AI agents (multi-provider LLM) process analysis (architecture, learning paths, issues, Q&A)
 3. Results served via REST API (AIaaS) and React UI (SaaS)
 4. Single source of truth: Backend agents + data store
 
@@ -47,7 +47,7 @@
 ├────────────────────────────────────────────────────────────────┤
 │  Middleware Layer:                                              │
 │  • CORS (whitelist origins)                                    │
-│  • Auth (Firebase JWT validation)                              │
+│  • Auth (Neon Auth session verification)                      │
 │  • Rate Limiting (token bucket per user/org)                   │
 │  • Request Logging (Sentry)                                    │
 │  • Request Validation (Pydantic)                               │
@@ -69,7 +69,7 @@
      │ Router Responsibility:  │      │ Agent Respons:    │
      │ • Validate input        │      │ • Execute logic   │
      │ • Call agent method     │      │ • Call services   │
-     │ • Format response       │      │ • Use Claude      │
+     │ • Format response       │      │ • Use LLM          │
      │ • Handle errors         │      │ • Cache results   │
      └───────────┬─────────────┘      └─────────┬─────────┘
                  │                              │
@@ -80,7 +80,7 @@
      │ Parser Service:  AST extraction (Py/JS/TS/Go)    │
      │ Embeddings Svc:  Index & vector search (RAG)     │
      │ Cache Service:   In-memory (Redis-like)          │
-     │ LLM Client:      Claude API (async, retry)       │
+     │ LLM Client:      Multi-provider (OpenRouter, Gemini, Groq,  │
      │ Graph Builder:   NetworkX dependency graphs      │
      │ Report Gen:      PDF/HTML onboarding reports      │
      └─────────────┬────────────────────────────────────┘
@@ -89,8 +89,8 @@
      │        DATA LAYER (External)                 │
      ├────────────────────────────────────────────┤
      │ GitHub:  Public repo access (read-only)     │
-     │ Claude:  LLM API (Anthropic)                 │
-     │ Firebase: Auth + Firestore (user data)       │
+     │ OpenRouter:  Primary LLM gateway                │
+     │ PostgreSQL:  Auth + dynamic documents (Neon)    │
      │ Temp:     Cloned repos (cleaned up)          │
      │ Memory:   Embeddings index (ephemeral)       │
      └────────────────────────────────────────────┘
@@ -113,7 +113,7 @@ app = FastAPI(title="CodeFlow 2.0 API")
 # Middleware Stack (order matters)
 1. CORSMiddleware → Allow web/IDE/actions
 2. LoggingMiddleware → Sentry integration
-3. AuthMiddleware → Firebase JWT validation
+3. AuthMiddleware → Neon Auth session verification
 4. RateLimitMiddleware → Token bucket per user
 5. RequestValidation → Pydantic models
 
@@ -128,7 +128,7 @@ include_router(admin.router, prefix="/api/v1/admin")  # Health, metrics
 
 # Health checks
 GET / → API status
-GET /health → Dependencies (Claude, GitHub, Firebase)
+GET /health → Dependencies (LLM, GitHub, Database)
 ```
 
 **Endpoints (9 routers, 20+ endpoints):**
@@ -195,7 +195,7 @@ async def analyze_repo(request: AnalyzeRequest, req: Request) -> Dict:
 
 ### Layer 3: Agent Layer (Core Logic)
 
-**Responsibility:** Implement feature logic, coordinate services, call Claude
+**Responsibility:** Implement feature logic, coordinate services, call LLM
 
 **Design:**
 
@@ -217,8 +217,8 @@ class BaseAgent(ABC):
         """Main entry point. Override in subclass."""
         pass
     
-    async def _call_claude(self, prompt: str, system: str = "") -> str:
-        """Helper: Call Claude with retry logic."""
+    async def _call_llm(self, prompt: str, system: str = "") -> str:
+        """Helper: Call LLM with retry logic (fallback chain)."""
         # Retry 3 times on transient errors
         pass
 ```
@@ -227,13 +227,13 @@ class BaseAgent(ABC):
 
 1. **ArchitectureExplorer**
    - Input: `repo_url`, `branch`
-   - Process: Clone → Parse → Build graph → Analyze with Claude
+   - Process: Clone → Parse → Build graph → Analyze with LLM
    - Output: Entities, services, dependencies, architecture pattern
    - Calls: GitHubService, ParserService, GraphBuilder, LLMClient
 
 2. **LearningPathGenerator**
    - Input: `repo_structure`, `user_level` (junior/mid/senior)
-   - Process: Analyze structure → Call Claude with level-aware prompt → Generate 5-8 modules
+   - Process: Analyze structure → Call LLM with level-aware prompt → Generate 5-8 modules
    - Output: Modules with files, time, objectives
    - Calls: LLMClient (primary), ParserService (fallback)
 
@@ -245,7 +245,7 @@ class BaseAgent(ABC):
 
 4. **RepoQA**
    - Input: `repo_path` (index) or `question` (ask)
-   - Process: Index: Scan files → Store in embeddings | Ask: Search → Build context → Call Claude
+   - Process: Index: Scan files → Store in embeddings | Ask: Search → Build context → Call LLM
    - Output: Index ID or answer with file references
    - Calls: ParserService, EmbeddingsService, LLMClient
 
@@ -303,12 +303,12 @@ class BaseAgent(ABC):
    - Use: Cache repo analyses (1 hour TTL)
    - Eviction: LRU when size > 100MB
 
-5. **LLMClient** (Claude API)
+5. **LLMClient** (Multi-provider router with fallback)
    - `chat(prompt, system, max_tokens)` → response
    - `json_chat(prompt, system)` → parsed_dict
-   - Model: claude-opus-4-1 (or configurable)
-   - Retry: 3 attempts on transient errors
-   - Auth: ANTHROPIC_API_KEY (env var)
+   - Providers: OpenRouter (primary), Gemini, Groq, NVIDIA, OpenAI, Anthropic (fallback chain)
+   - Model: configurable per provider (default: google/gemini-2.0-flash-001 via OpenRouter)
+   - Retry: 3 attempts per provider, falls through to next on failure
 
 6. **GraphBuilder** (NetworkX)
    - `add_module(name, metadata)` → None
@@ -332,12 +332,12 @@ class BaseAgent(ABC):
 | Source | Access | Data | Lifecycle |
 |--------|--------|------|-----------|
 | GitHub | Public API (read-only) | Repos, issues, PRs, commits | Real-time |
-| Claude | HTTPS API | LLM responses, analysis | Ephemeral |
-| Firebase Auth | SDK | User identity, tokens | Session-based |
-| Firebase Firestore | SDK | User preferences, saved analyses | Persistent |
+| LLM Router | Multi-provider HTTPS API | LLM responses, analysis | Ephemeral |
+| Neon Auth | SDK | User identity, session tokens | Session-based |
+| PostgreSQL | asyncpg / SQLAlchemy | User prefs, analyses, teams, repos | Persistent |
+| Redis | Optional (cache/rate-limit) | Rate limit counters, cached analyses | TTL-based |
 | Temp filesystem | Local | Cloned repos | Cleaned up (24h max) |
 | Memory (embeddings) | In-process | Vector indexes | Per-deployment, lost on restart |
-| Memory (cache) | In-process | Recent analyses | LRU eviction (100MB max) |
 
 ---
 
@@ -355,7 +355,7 @@ GitHubService.clone_repo()
 ParserService.parse_directory()
   ↓ Build graph
 GraphBuilder.add_module/dependency()
-  ↓ Analyze with Claude
+  ↓ Analyze with LLM
 LLMClient.json_chat("Based on files..., suggest architecture")
   ↓ Format
 Response → {"entities": {...}, "services": [...], "graph": {...}, "analysis": "..."}
@@ -393,7 +393,7 @@ EmbeddingsService.search(index_id, "auth", top_k=5)
   → Returns: auth.py, auth_test.py, docs/auth.md, ...
   ↓ Build context
 context = "File: auth.py\nContent: {...}"
-  ↓ Call Claude
+  ↓ Call LLM
 LLMClient.chat("Based on this codebase, answer: How does auth work?")
   ↓ Format with file references
 return {
@@ -405,69 +405,61 @@ return {
 
 ---
 
-## Database Schema (Firestore)
+## Database Schema (PostgreSQL + SQLAlchemy)
 
-**Collections:**
+**Tables (SQLAlchemy ORM models in `backend/app/database/`):**
 
-### users/
+### users
 
-```
-{
-  id: string (Firebase UID),
-  email: string,
-  created_at: timestamp,
-  preferences: {
-    theme: "dark|light",
-    notification_level: "all|important|none"
-  },
-  tier: "free|startup|professional|enterprise"
-}
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK, indexed |
+| email | VARCHAR(255) | Unique, indexed |
+| created_at | TIMESTAMPTZ | auto-generated |
+| preferences | JSONB | {theme, notification_level, ...} |
+| tier | VARCHAR(50) | free/startup/professional/enterprise |
+| neon_user_id | VARCHAR(255) | Neon Auth user reference |
 
-### repos/
+### repos
 
-```
-{
-  id: string (user_id + repo_name),
-  user_id: string,
-  name: string,
-  url: string,
-  last_analyzed: timestamp,
-  analysis_cache: {
-    entities: {...},
-    services: [...],
-    graph: {...}
-  },
-  status: "indexed|analyzing|error"
-}
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → users.id |
+| name | VARCHAR(255) | |
+| url | TEXT | |
+| last_analyzed | TIMESTAMPTZ | nullable |
+| analysis_cache | JSONB | {entities, services, graph} |
+| status | VARCHAR(50) | indexed/analyzing/error |
 
-### analyses/
+### analyses
 
-```
-{
-  id: string,
-  user_id: string,
-  repo_id: string,
-  type: "architecture|learning_path|issues|qa",
-  input: {...},
-  output: {...},
-  created_at: timestamp,
-  ttl: 86400 (1 day) — auto-delete for cost savings
-}
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → users.id |
+| repo_id | UUID | FK → repos.id |
+| type | VARCHAR(50) | architecture/learning_path/issues/qa |
+| input | JSONB | |
+| output | JSONB | |
+| created_at | TIMESTAMPTZ | auto-generated |
 
-### team_settings/ (SaaS future)
+### teams (SaaS future)
 
-```
-{
-  id: string (team_id),
-  name: string,
-  members: [user_id, ...],
-  custom_learning_paths: [...],
-  playbooks: [...]
-}
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| name | VARCHAR(255) | |
+| created_at | TIMESTAMPTZ | auto-generated |
+
+### team_members
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| team_id | UUID | FK → teams.id |
+| user_id | UUID | FK → users.id |
+| role | VARCHAR(50) | admin/member
 
 ---
 
@@ -478,8 +470,8 @@ return {
 ```
 Backend: uvicorn on localhost:8000
 Frontend: vite on localhost:5173
-Database: Firebase (shared dev project)
-LLM: Claude API (dev key)
+Database: PostgreSQL (local or Neon dev instance)
+LLM: Multi-provider router (dev key for any supported provider)
 ```
 
 ### Production
@@ -492,23 +484,23 @@ LLM: Claude API (dev key)
 └──────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────┐
-│                  RENDER (Backend)                        │
-│  backend/ → Python 3.11 + FastAPI                       │
-│  Port: 3007 (internal)                                   │
-│  Environment: ANTHROPIC_API_KEY, GITHUB_TOKEN, etc       │
+│                  CONTAINER APPS / DOCKER (Backend)       │
+│  backend/ → Python 3.11 + FastAPI (2 replicas min)      │
+│  Port: 8000                                              │
+│  Health: GET /health                                     │
 └──────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────┐
-│                  FIREBASE (Data + Auth)                  │
-│  Firestore: users/, repos/, analyses/, team_settings/   │
-│  Auth: JWT token validation                              │
-│  Storage: PDFs for onboarding reports                    │
+│                  POSTGRES (Neon / Managed)               │
+│  Tables: users, repos, analyses, teams, team_members    │
+│  Auth: Neon Auth (Better Auth) session verification      │
+│  Migrations: Alembic                                     │
 └──────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────┐
 │                  EXTERNAL APIs                           │
 │  GitHub: repo cloning, issues, PRs (read-only)          │
-│  Anthropic: Claude API (LLM)                            │
+│  OpenRouter/Gemini/Groq/NVIDIA/OpenAI/Anthropic: LLM    │
 │  Sentry: error tracking                                  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -517,15 +509,16 @@ LLM: Claude API (dev key)
 
 ```
 Backend:
-  ANTHROPIC_API_KEY=sk_live_...
+  DATABASE_URL=postgresql+asyncpg://user:pass@host/db
+  LLM_API_KEY=sk-or-...         (primary OpenRouter key, or any provider)
   GITHUB_TOKEN=ghp_...
-  FIREBASE_PROJECT_ID=codeflow-prod
   ENVIRONMENT=production
   SENTRY_DSN=https://...
+  REDIS_URL=redis://...          (optional, for cache/rate-limit)
 
 Frontend:
   VITE_API_URL=https://api.codeflow.dev
-  VITE_FIREBASE_CONFIG={"apiKey": "..."}
+  VITE_NEON_AUTH_CONFIG={"tenantId": "..."}
 ```
 
 ---
@@ -545,14 +538,14 @@ Frontend:
 **Agent Layer:**
 
 - Each agent catches its own exceptions
-- Fallback to default behavior (e.g., LearningPathGenerator has default path if Claude fails)
+- Fallback to default behavior (e.g., LearningPathGenerator has default path if LLM fails)
 - Return error in response: `{"error": "...", "fallback_data": {...}}`
 
 **Service Layer:**
 
 - GitHub: Retry on transient errors (timeout, 429), fail fast on auth (401)
-- Claude: Retry 3x on transient, fail on auth/quota
-- Firebase: Retry on transient, fail on auth/permission
+- LLM: Retry per-provider with fallback chain, fail if all providers exhausted
+- Database: Retry on transient (connection pool), fail on constraint/permission
 - Cleanup: Always cleanup temp files (try/finally)
 
 **Client Layer (Web):**
@@ -567,9 +560,9 @@ Frontend:
 
 ### Authentication
 
-- Firebase JWT token validation on every request
+- Neon Auth (Better Auth) session verification on every request
 - Tokens extracted from Authorization header: `Bearer <token>`
-- Invalid token → 401 Unauthorized
+- Invalid/expired session → 401 Unauthorized
 
 ### Authorization
 
@@ -586,7 +579,7 @@ Frontend:
 ### Data Privacy
 
 - Cloned repos never persisted (cleaned up immediately)
-- Analyses deleted after 24h (Firestore TTL)
+- Analyses cleaned up by scheduled task (optional TTL-based retention)
 - User can delete their data on-demand
 - No selling user data (privacy-first)
 
@@ -604,7 +597,7 @@ Frontend:
 
 - **Stateless APIs:** Each instance independent, can add/remove freely
 - **Load balancing:** Render handles auto-scaling (0-10 instances)
-- **Database:** Firebase Firestore auto-scales (no provisioning)
+- **Database:** Neon PostgreSQL (serverless, auto-scaling connections)
 
 ### Caching Strategy
 
@@ -623,8 +616,8 @@ Frontend:
 | Bottleneck | Risk | Mitigation |
 |-----------|------|-----------|
 | GitHub API rate limit | 5k/hr per token | Use authenticated requests, cache clones |
-| Claude API quota | $ per token | Monitor token usage, rate limit users |
-| Firestore read/write | Cost + latency | Batch writes, TTL cleanup, read caching |
+| LLM API quota | $ per token | Monitor token usage, rate limit users, provider fallback |
+| Database connections | Pool exhaustion | Connection pooling (asyncpg), Neon auto-scaling |
 | Large repos | Timeout (repo-qa indexing) | Limit to < 50k files, warn user |
 | Temp disk space | Cleanup failure | Use Docker tmpfs, auto-delete > 24h |
 
@@ -646,7 +639,7 @@ tests/
     └── test_embeddings_service.py
 ```
 
-**Approach:** Mock external dependencies (GitHub, Claude, Firebase), test agent logic in isolation
+**Approach:** Mock external dependencies (GitHub, LLM, Database), test agent logic in isolation
 
 ### Integration Tests
 
@@ -679,7 +672,7 @@ tests/
 
 - Request count, latency (p50, p95, p99)
 - Error rate (4xx, 5xx)
-- External API latency (GitHub, Claude, Firebase)
+- External API latency (GitHub, LLM providers, Database)
 - Cache hit rate
 - Concurrent users
 
@@ -687,12 +680,12 @@ tests/
 
 - Error rate > 5% → Slack
 - P99 latency > 10s → Slack
-- Claude API quota exceeded → Slack + immediate rate limit
+- LLM API quota exceeded → Slack + switch to fallback provider
 
 ### Health Checks
 
 - `GET /health` → {"status": "healthy", "dependencies": {...}}
-- Dependencies: Claude, GitHub, Firebase
+- Dependencies: LLM (any provider), GitHub, Database
 - Called every 60s by Render
 
 ---
@@ -731,12 +724,12 @@ tests/
 | Decision | Option A | Option B | Chosen | Why |
 |----------|----------|----------|--------|-----|
 | Framework | Django | FastAPI | FastAPI | Async-first, simpler, modern |
-| LLM | OpenAI | Claude (Anthropic) | Claude | Better for code, cheaper |
-| Database | PostgreSQL | Firebase | Firebase | Auth + Firestore + no ops |
+| LLM | OpenAI | Claude (Anthropic) | Multi-provider | No vendor lock-in, fallback, cost optimization |
+| Database | PostgreSQL | Firebase | PostgreSQL+Neon Auth | Scalability, Neon Auth integration, SQL |
 | Frontend | Vue | React | React | Ecosystem, team familiarity |
 | Design System | Shadcn | Aceternity | Aceternity | Premium feel, minimal |
 | Deployment | AWS | Render + Vercel | R+V | Lower ops burden |
-| Auth | Custom JWT | Firebase | Firebase | BaaS, passwordless support |
+| Auth | Custom JWT | Firebase | Neon Auth | Database-native auth, Better Auth SDK |
 | Caching | Redis | In-memory | In-mem | No infrastructure, good enough |
 | Embeddings | Vector DB | Keyword | Keyword | Phase 1: simple, upgrade Phase 2 |
 

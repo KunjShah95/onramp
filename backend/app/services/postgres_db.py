@@ -13,8 +13,8 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import class_mapper, selectinload
-from app.database.config import db_config, get_db
-from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, DynamicDocument
+from app.database.config import db_config
+from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, DynamicDocument, Repository
 
 logger = logging.getLogger("codeflow.db")
 
@@ -110,6 +110,12 @@ class PostgresStorage:
                 await session.flush()
                 return record.to_dict()
 
+            elif collection == "repositories":
+                repo = Repository(id=doc_id, **data)
+                session.add(repo)
+                await session.flush()
+                return repo.to_dict()
+
             else:
                 doc = DynamicDocument(id=doc_id, collection=collection, data=data)
                 session.add(doc)
@@ -126,6 +132,7 @@ class PostgresStorage:
             "team_members": TeamMember,
             "api_keys": ApiKey,
             "usage_records": UsageRecord,
+            "repositories": Repository,
         }
         model = model_map.get(collection)
         if model is not None and _model_uses_uuid_pk(model) and not _is_valid_uuid(doc_id):
@@ -159,6 +166,10 @@ class PostgresStorage:
 
             elif collection == "usage_records":
                 result = await session.get(UsageRecord, doc_id)
+                return result.to_dict() if result else None
+
+            elif collection == "repositories":
+                result = await session.get(Repository, doc_id)
                 return result.to_dict() if result else None
 
             else:
@@ -209,6 +220,12 @@ class PostgresStorage:
                 result = await session.get(UsageRecord, doc_id)
                 return result.to_dict() if result else None
 
+            elif collection == "repositories":
+                stmt = update(Repository).where(Repository.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
+                await session.execute(stmt)
+                result = await session.get(Repository, doc_id)
+                return result.to_dict() if result else None
+
             else:
                 stmt = update(DynamicDocument).where(
                     DynamicDocument.id == doc_id, 
@@ -237,6 +254,9 @@ class PostgresStorage:
 
             elif collection == "usage_records":
                 await session.execute(delete(UsageRecord).where(UsageRecord.id == doc_id))
+
+            elif collection == "repositories":
+                await session.execute(delete(Repository).where(Repository.id == doc_id))
 
             else:
                 await session.execute(delete(DynamicDocument).where(
@@ -274,6 +294,10 @@ class PostgresStorage:
             elif collection == "usage_records":
                 result = await session.execute(select(UsageRecord))
                 return [record.to_dict() for record in result.scalars().all()]
+
+            elif collection == "repositories":
+                result = await session.execute(select(Repository))
+                return [repo.to_dict() for repo in result.scalars().all()]
 
             else:
                 result = await session.execute(select(DynamicDocument).where(DynamicDocument.collection == collection))
@@ -346,6 +370,17 @@ class PostgresStorage:
                             query = query.where(getattr(UsageRecord, key).in_(value or []))
                 result = await session.execute(query)
                 return [record.to_dict() for record in result.scalars().all()]
+
+            elif collection == "repositories":
+                query = select(Repository)
+                if filters:
+                    for key, op, value in filters:
+                        if op == "==":
+                            query = query.where(getattr(Repository, key) == value)
+                        elif op == "in":
+                            query = query.where(getattr(Repository, key).in_(value or []))
+                result = await session.execute(query)
+                return [repo.to_dict() for repo in result.scalars().all()]
 
             else:
                 query = select(DynamicDocument).where(DynamicDocument.collection == collection)
