@@ -6,6 +6,8 @@ os.environ.setdefault("ENV", "test")
 # app.main instantiates LLMClient() at import; without at least one provider
 # key it raises RuntimeError during test collection (see llm.py).
 os.environ.setdefault("GROQ_API_KEY", "test-llm-key")
+# Fernet key for field_encryption PII tests (32-byte base64-urlsafe key)
+os.environ.setdefault("PII_ENCRYPTION_KEY", "Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=")
 
 import pytest
 

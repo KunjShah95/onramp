@@ -113,7 +113,7 @@ async def list_tasks(
             COLLECTION, [("team_id", "==", team_id)]
         )
     else:
-        tasks = await storage.list_documents(COLLECTION)
+        tasks = []
 
     # Client-side filtering for additional filters
     if assigned_to:
@@ -336,7 +336,7 @@ async def get_user_progress(user_id: str, team_id: Optional[str] = None) -> Dict
             COLLECTION, [("team_id", "==", team_id)]
         )
     else:
-        all_tasks = await storage.list_documents(COLLECTION)
+        all_tasks = []
 
     user_tasks = [t for t in all_tasks if t.get("assigned_to") == user_id]
 

@@ -46,10 +46,12 @@ async def query_events(
     limit: int = 50,
 ) -> List[dict]:
     storage = get_storage()
-    events = await storage.list_documents(COLLECTION)
-
     if team_id:
-        events = [e for e in events if e.get("team_id") == team_id]
+        events = await storage.query_documents(
+            COLLECTION, [("team_id", "==", team_id)]
+        )
+    else:
+        events = await storage.list_documents(COLLECTION)
     if actor_id:
         events = [e for e in events if e.get("actor_id") == actor_id]
     if target_id:

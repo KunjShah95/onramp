@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
-from app.services.user_service import create_user, get_user_by_uid, get_user_by_email
+from pydantic import BaseModel
+from app.services.user_service import create_user, get_user_by_uid, get_user_by_email, deactivate_user
 from app.middleware.auth import verify_session_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -91,3 +91,19 @@ async def check_provider(email: str):
     if record is None:
         return ProviderCheckResponse(email=email, registered=False, provider=None)
     return ProviderCheckResponse(email=email, registered=True, provider=record.get("provider"))
+
+
+@router.post("/deactivate")
+async def deactivate(user: dict = Depends(get_current_user)):
+    """Deactivate the current user's account — removes teams, webhooks, and anonymizes PII.
+
+    This is a GDPR right-to-erasure action. After deactivation:
+    - User is removed from all teams
+    - Webhooks and integration configs (including GitHub tokens) are deleted
+    - Notifications are deleted
+    - PII (email, name) is anonymized
+    - The account is marked inactive and cannot be used to authenticate
+    """
+    uid = user.get("uid", "")
+    record = await deactivate_user(uid)
+    return {"ok": True, "uid": record.get("uid")}
