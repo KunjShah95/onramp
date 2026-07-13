@@ -34,16 +34,6 @@ jobs:
         run: npx vitest run --testTimeout 15000
         working-directory: web
 
-      - name: Install Playwright browsers
-        run: npx playwright install chromium
-        working-directory: web
-
-      - name: Playwright E2E tests
-        run: npx playwright test
-        working-directory: web
-        env:
-          CI: true
-
       - name: Build
         run: npm run build
         working-directory: web

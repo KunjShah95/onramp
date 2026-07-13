@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authClient.signOut()
         throw new Error(msg)
       }
+      setState((prev) => ({ ...prev, loading: false }))
+      throw err
     }
   }, [mapUser])
 
