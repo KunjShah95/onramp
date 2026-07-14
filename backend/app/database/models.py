@@ -47,6 +47,7 @@ class User(Base):
         default=generate_uuid
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -86,8 +87,12 @@ class User(Base):
             "email": self.email,
             "name": self.name,
             "provider": self.provider,
+            "email_hash": self.email_hash,
+            "password_hash": self.password_hash,
             "is_active": self.is_active,
+            "is_admin": self.is_admin,
             "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
         }
 

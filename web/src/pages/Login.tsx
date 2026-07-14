@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
-import { EnvelopeSimple, Lock, ArrowRight, GoogleLogo, GithubLogo } from '@phosphor-icons/react'
+import { EnvelopeSimple, Lock, ArrowRight } from '@phosphor-icons/react'
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -21,7 +21,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { login, loginWithGoogle, loginWithGithub, error, clearError, user } = useAuth()
+  const { login, error, clearError, user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -43,34 +43,6 @@ export default function Login() {
     try {
       await login(email, password)
       toast.success('Signed in', 'Welcome back!')
-      navigate(from, { replace: true })
-    } catch {
-      // Error displayed inline via AuthContext
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleGoogleSignIn = async () => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    try {
-      await loginWithGoogle()
-      toast.success('Signed in with Google')
-      navigate(from, { replace: true })
-    } catch {
-      // Error displayed inline via AuthContext
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleGithubSignIn = async () => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    try {
-      await loginWithGithub()
-      toast.success('Signed in with GitHub')
       navigate(from, { replace: true })
     } catch {
       // Error displayed inline via AuthContext
@@ -115,33 +87,6 @@ export default function Login() {
           <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
-
-            {/* Social Buttons */}
-            <div className="flex flex-col gap-2.5 mb-5">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-2.5 w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))]/80 active:scale-[0.98] transition-all disabled:opacity-50 font-body"
-              >
-                <GoogleLogo size={18} weight="bold" />
-                Continue with Google
-              </button>
-              <button
-                onClick={handleGithubSignIn}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-2.5 w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm py-2.5 rounded-xl hover:bg-[hsl(var(--secondary))]/80 active:scale-[0.98] transition-all disabled:opacity-50 font-body"
-              >
-                <GithubLogo size={18} weight="fill" />
-                Continue with GitHub
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-[hsl(var(--border))]" />
-              <span className="flex-shrink-0 mx-4 text-xs text-[hsl(var(--muted-foreground))]/50 font-medium font-body">OR WITH EMAIL</span>
-              <div className="flex-grow border-t border-[hsl(var(--border))]" />
-            </div>
 
             {/* Email/Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">

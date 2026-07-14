@@ -1,4 +1,8 @@
-FROM python:3.11-slim
+# ── Multi-stage Dockerfile ──────────────────────────────────────────────────
+# development:  full image with requirements installed (used by docker-compose)
+# production:    same base, used for standalone deployment
+
+FROM python:3.11-slim as development
 
 WORKDIR /app
 
@@ -13,6 +17,9 @@ COPY ./alembic.ini ./alembic.ini
 
 # Expose port 8000
 EXPOSE 8000
+
+
+FROM development as production
 
 # Start FastAPI server, running migrations first
 CMD sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"

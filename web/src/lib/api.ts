@@ -1675,11 +1675,12 @@ export async function getSupportedEvents(): Promise<SupportedEventsResponse> {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
-export interface AuthRegisterResponse {
+export interface AuthResponse {
   uid: string
   email: string
   name: string
   provider: string
+  token: string
 }
 
 export interface AuthMeResponse {
@@ -1695,26 +1696,27 @@ export interface ProviderCheckResponse {
   provider: string | null
 }
 
+export async function authLogin(
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  return request<AuthResponse>(`${API_BASE}/auth/login`, { email, password })
+}
+
 export async function authRegister(
-  idToken: string,
-  provider: string
-): Promise<AuthRegisterResponse> {
-  return request<AuthRegisterResponse>(`${API_BASE}/auth/register`, {
-    id_token: idToken,
-    provider,
+  email: string,
+  password: string,
+  name: string
+): Promise<AuthResponse> {
+  return request<AuthResponse>(`${API_BASE}/auth/register`, {
+    email,
+    password,
+    name,
   })
 }
 
-export async function authMe(
-  idToken: string
-): Promise<AuthMeResponse> {
-  const saved = _idToken
-  _idToken = idToken
-  try {
-    return await get<AuthMeResponse>(`${API_BASE}/auth/me`)
-  } finally {
-    _idToken = saved
-  }
+export async function authMe(): Promise<AuthMeResponse> {
+  return get<AuthMeResponse>(`${API_BASE}/auth/me`)
 }
 
 export async function checkProvider(

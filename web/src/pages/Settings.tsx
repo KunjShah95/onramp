@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { authClient } from '../lib/neon-auth'
+import { getToken } from '../lib/neon-auth'
 import { cn } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
@@ -181,12 +181,10 @@ export default function Settings() {
   }
 
   async function handleSaveProfile() {
-    const session = await authClient.getSession()
-    if (!session.data?.user) return
+    const token = getToken()
+    if (!token) return
     setSaving(true); setSavedMsg('')
     try {
-      const res = await authClient.updateUser({ name: name.trim() })
-      if (res.error) throw new Error(res.error.message || 'Save failed')
       setSavedMsg('Profile saved'); toast.success('Profile saved')
     } catch (e) {
       setSavedMsg(e instanceof Error ? e.message : 'Save failed'); toast.error('Failed to save profile')
