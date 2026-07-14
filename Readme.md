@@ -4,8 +4,8 @@
 
 Onramp helps engineering teams onboard new developers faster, automate code reviews, track skill progression, and give leadership visibility into team health — all powered by multi-provider AI agents.
 
-[![Backend CI](https://github.com/your-org/onramp/actions/workflows/backend.yml/badge.svg)](https://github.com/your-org/onramp/actions/workflows/backend.yml)
-[![Frontend CI](https://github.com/your-org/onramp/actions/workflows/frontend.yml/badge.svg)](https://github.com/your-org/onramp/actions/workflows/frontend.yml)
+[![Backend CI](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml)
+[![Frontend CI](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml)
 
 ---
 
@@ -121,7 +121,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/onramp.git
+git clone https://github.com/KunjShah95/onramp.git
 cd onramp
 
 # Backend
