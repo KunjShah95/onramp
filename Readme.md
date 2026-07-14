@@ -172,6 +172,64 @@ Navigate to [http://localhost:5173](http://localhost:5173) and register a new ac
 
 ---
 
+## 🐳 Docker Quick Start (One Command)
+
+Start the entire stack (PostgreSQL + Redis + Backend + Frontend) with Docker Compose:
+
+```bash
+# Start all services
+docker compose up -d
+
+# Run database migrations
+docker compose exec backend alembic upgrade head
+
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+```
+
+### Docker Service Ports
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:80 | React app (Nginx) |
+| **Frontend (dev)** | http://localhost:5173 | React app (Vite, without Docker) |
+| **Backend API** | http://localhost:8000 | FastAPI backend |
+| **API Docs** | http://localhost:8000/docs | Swagger UI (interactive) |
+| **PostgreSQL** | localhost:5432 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
+| **Redis** | localhost:6379 | Cache (pass: `redis_password`) |
+
+### Docker Database Commands
+
+```bash
+# Connect to PostgreSQL
+docker compose exec postgres psql -U onramp -d onramp
+
+# View logs
+docker compose logs postgres
+
+# Reset database
+docker compose down -v && docker compose up -d postgres && docker compose exec backend alembic upgrade head
+```
+
+---
+
+## 🔑 Test Credentials
+
+The following test accounts can be used for testing (register via the UI or seed script):
+
+| Email | Password | Role | Description |
+|-------|----------|------|-------------|
+| `dev@onramp.ai` | `dev123` | Developer | Dev user (seed via `python scripts/seed_dev_user.py`) |
+| `kunj@shah.com` | `hacker2005` | Senior Developer | Senior developer |
+| `varadvekariya6@gmail.com` | `varadvekariya` | New Developer | New developer / trainee |
+
+> **Note:** You can also register a new account at [http://localhost:5173/register](http://localhost:5173/register) or use OAuth (Google/GitHub) if configured.
+
+---
+
 ## 🧪 Running Tests
 
 ```bash
