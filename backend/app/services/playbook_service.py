@@ -4,7 +4,7 @@ from app.services.postgres_db import get_storage, generate_id
 
 
 class PlaybookService:
-    COLLECTION = "codeflow_playbooks"
+    COLLECTION = "onramp_playbooks"
 
     def __init__(self):
         self.storage = get_storage()

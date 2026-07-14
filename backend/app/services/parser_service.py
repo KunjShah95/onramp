@@ -439,7 +439,7 @@ class ParserService:
                 if parsed_count >= max_files:
                     if parsed_count == max_files:
                         import logging
-                        logging.getLogger("codeflow.parser").warning(
+                        logging.getLogger("onramp.parser").warning(
                             f"AST parsing limit hit: exceeded {max_files} files. Skipping remaining files for performance."
                         )
                         parsed_count += 1

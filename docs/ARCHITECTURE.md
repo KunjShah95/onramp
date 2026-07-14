@@ -1,4 +1,4 @@
-# CodeFlow 2.0 — Final Architecture
+# Onramp 2.0 — Final Architecture
 
 **Status:** LOCKED (Final)  
 **Date:** 2026-06-14  
@@ -108,7 +108,7 @@
 
 ```python
 # main.py
-app = FastAPI(title="CodeFlow 2.0 API")
+app = FastAPI(title="Onramp 2.0 API")
 
 # Middleware Stack (order matters)
 1. CORSMiddleware → Allow web/IDE/actions
@@ -480,7 +480,7 @@ LLM: Multi-provider router (dev key for any supported provider)
 ┌──────────────────────────────────────────────────────────┐
 │                  VERCEL (Frontend)                       │
 │  web/ → npm build → dist/ → CDN                         │
-│  Environment: VITE_API_URL = https://api.codeflow.dev   │
+│  Environment: VITE_API_URL = https://api.onramp.dev   │
 └──────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────┐
@@ -517,7 +517,7 @@ Backend:
   REDIS_URL=redis://...          (optional, for cache/rate-limit)
 
 Frontend:
-  VITE_API_URL=https://api.codeflow.dev
+  VITE_API_URL=https://api.onramp.dev
   VITE_NEON_AUTH_CONFIG={"tenantId": "..."}
 ```
 

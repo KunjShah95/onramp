@@ -1,16 +1,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: codeflow-backend-advanced
+  name: onramp-backend-advanced
   labels:
-    app: codeflow
+    app: onramp
     component: backend
     scaling: advanced
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: codeflow-backend
+    name: onramp-backend
   minReplicas: 2
   maxReplicas: 20
   metrics:
@@ -54,25 +54,25 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: codeflow-backend-pdb
+  name: onramp-backend-pdb
   labels:
-    app: codeflow
+    app: onramp
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       component: backend
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: codeflow-frontend-pdb
+  name: onramp-frontend-pdb
   labels:
-    app: codeflow
+    app: onramp
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       component: frontend

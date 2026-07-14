@@ -4,13 +4,13 @@ const sections: LegalSection[] = [
   {
     heading: 'The service',
     paragraphs: [
-      'CodeFlow provides AI-powered developer onboarding: codebase exploration, learning path generation, repository Q&A, first-PR guidance, task management, and related team features. By creating an account or using the service you agree to these terms. If you use CodeFlow on behalf of an organization, you represent that you have authority to bind that organization.',
+      'Onramp provides AI-powered developer onboarding: codebase exploration, learning path generation, repository Q&A, first-PR guidance, task management, and related team features. By creating an account or using the service you agree to these terms. If you use Onramp on behalf of an organization, you represent that you have authority to bind that organization.',
     ],
   },
   {
     heading: 'Accounts',
     paragraphs: [
-      'You must provide accurate registration information and keep your credentials secure. You are responsible for all activity under your account and API keys. Notify us immediately at security@codeflow.ai if you suspect unauthorized access.',
+      'You must provide accurate registration information and keep your credentials secure. You are responsible for all activity under your account and API keys. Notify us immediately at security@onramp.ai if you suspect unauthorized access.',
     ],
   },
   {
@@ -69,7 +69,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Contact',
     paragraphs: [
-      'Questions about these terms: legal@codeflow.ai.',
+      'Questions about these terms: legal@onramp.ai.',
     ],
   },
 ]
@@ -80,7 +80,7 @@ export default function TermsPage() {
       label="Legal"
       title="Terms of Service"
       lastUpdated="July 2, 2026"
-      intro="These terms govern your use of CodeFlow. Please read them carefully — they include limits on our liability and your responsibilities when using AI-generated output."
+      intro="These terms govern your use of Onramp. Please read them carefully — they include limits on our liability and your responsibilities when using AI-generated output."
       sections={sections}
     />
   )

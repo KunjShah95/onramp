@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
-COLLECTION = "codeflow_audit_log"
+COLLECTION = "onramp_audit_log"
 
 EVENT_CODES = {
     "code_access", "pr_viewed", "module_granted", "module_revoked",

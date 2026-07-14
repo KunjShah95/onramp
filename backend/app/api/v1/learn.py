@@ -7,7 +7,7 @@ from app.services.postgres_db import get_storage, generate_id
 
 router = APIRouter(prefix="/learn", tags=["learning"])
 
-COLLECTION = "codeflow_learning_paths"
+COLLECTION = "onramp_learning_paths"
 
 
 class LearnRequest(BaseModel):

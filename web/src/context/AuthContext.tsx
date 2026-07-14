@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { setToken, getToken } from '../lib/neon-auth'
-import { authLogin, authRegister, authMe, listTeams } from '../lib/api'
+import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword } from '../lib/api'
 
 interface User {
   id: string
@@ -42,7 +42,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
-  resetPassword: (email: string) => Promise<void>
+  resetPassword: (email: string) => Promise<{ ok: boolean; message: string }>
   clearError: () => void
   getIdToken: () => string | null
   switchTeam: (teamId: string) => Promise<void>
@@ -72,9 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     activeTeamId: null,
   })
 
-  const syncRoleFromTeams = useCallback(async () => {
+  const syncRoleFromTeams = useCallback(async (uid?: string) => {
     try {
-      const teamsData = await listTeams('current-user')
+      const teamsData = await listTeams(uid || 'current-user')
       if (teamsData?.teams?.length > 0) {
         const activeTeam = teamsData.teams[0]
         setState((prev) => ({
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loading: true,
         }))
 
-        await syncRoleFromTeams()
+        await syncRoleFromTeams(me?.uid)
 
         if (active) {
           setState((prev) => ({ ...prev, loading: false }))
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authMethod: 'password',
         loading: true,
       }))
-      await syncRoleFromTeams()
+      await syncRoleFromTeams(resp.uid)
       setState((prev) => ({ ...prev, loading: false }))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed'
@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authMethod: 'password',
           loading: true,
         }))
-        await syncRoleFromTeams()
+        await syncRoleFromTeams(resp.uid)
         setState((prev) => ({ ...prev, loading: false }))
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Registration failed'
@@ -249,8 +249,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return getToken()
   }, [])
 
-  const resetPassword = useCallback(async (_email: string) => {
-    throw new Error('Password reset is not available. Contact your administrator.')
+  const resetPassword = useCallback(async (email: string) => {
+    setState((prev) => ({ ...prev, error: null }))
+    try {
+      const resp = await apiForgotPassword(email)
+      return resp
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to send reset email'
+      setState((prev) => ({ ...prev, error: message }))
+      throw new Error(message)
+    }
   }, [])
 
   return (

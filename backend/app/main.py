@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="CodeFlow 2.0 API",
+    title="Onramp 2.0 API",
     version="1.0.0",
     description="AI-powered developer onboarding platform",
     lifespan=lifespan
@@ -95,9 +95,15 @@ _cors_origins = [
 
 app.add_middleware(AuthMiddleware, public_paths=[
     "/", "/docs", "/openapi.json", "/health",
-    "/api/v1/auth/register",     # email/password registration
-    "/api/v1/auth/login",        # email/password login
-    "/api/v1/auth/check-provider", # public provider lookup by email
+    "/api/v1/auth/register",        # email/password registration
+    "/api/v1/auth/login",           # email/password login
+    "/api/v1/auth/check-provider",  # public provider lookup by email
+    "/api/v1/auth/oauth/google/login",   # Google OAuth initiation
+    "/api/v1/auth/oauth/google/callback", # Google OAuth callback
+    "/api/v1/auth/oauth/github/login",    # GitHub OAuth initiation
+    "/api/v1/auth/oauth/github/callback",  # GitHub OAuth callback
+    "/api/v1/auth/forgot-password",       # password reset request
+    "/api/v1/auth/reset-password",        # password reset submission
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
@@ -111,7 +117,7 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_origin_regex=r"^https://(codeflow|codeflow-[a-z0-9]+)\.vercel\.app$",
+    allow_origin_regex=r"^https://(onramp|onramp-[a-z0-9]+)\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -154,7 +160,7 @@ app.include_router(gamification.router, prefix="/api/v1")
 @app.get("/")
 async def root():
     return {
-        "message": "CodeFlow 2.0 API",
+        "message": "Onramp 2.0 API",
         "version": "1.0.0",
         "status": "running",
         "docs": "/docs"

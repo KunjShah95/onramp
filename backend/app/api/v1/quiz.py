@@ -10,8 +10,8 @@ from app.services.postgres_db import get_storage, generate_id
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
-QUIZZES_COLLECTION = "codeflow_quizzes"
-RESULTS_COLLECTION = "codeflow_quiz_results"
+QUIZZES_COLLECTION = "onramp_quizzes"
+RESULTS_COLLECTION = "onramp_quiz_results"
 
 
 class GenerateQuizRequest(BaseModel):

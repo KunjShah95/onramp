@@ -93,7 +93,7 @@ export default function Sidebar() {
             <span className="text-[10px] font-bold text-[#09090B] font-display">CF</span>
           </div>
           <span className="font-display text-sm font-semibold text-text-primary tracking-tight">
-            CodeFlow
+            Onramp
           </span>
         </NavLink>
       </div>

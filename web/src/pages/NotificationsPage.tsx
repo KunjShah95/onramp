@@ -22,7 +22,7 @@ import {
   deleteNotification,
   clearReadNotifications,
 } from '../lib/api'
-import type { CodeFlowNotification } from '../lib/api'
+import type { OnrampNotification } from '../lib/api'
 import Pagination from '../components/ui/Pagination'
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -70,7 +70,7 @@ function relativeTime(iso: string): string {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<CodeFlowNotification[]>([])
+  const [notifications, setNotifications] = useState<OnrampNotification[]>([])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

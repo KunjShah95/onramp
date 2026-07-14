@@ -44,8 +44,8 @@ class Document:
 
 
 class EmbeddingsService:
-    COLLECTION_INDEXES = "codeflow_embeddings"
-    COLLECTION_DOCS = "codeflow_documents"
+    COLLECTION_INDEXES = "onramp_embeddings"
+    COLLECTION_DOCS = "onramp_documents"
 
     SUPPORTED_EXTS = {
         ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java",
@@ -94,7 +94,7 @@ class EmbeddingsService:
             },
         )
 
-        # Persist each document in a subcollection pattern: codeflow_embeddings/{index_id}/docs/{doc_id}
+        # Persist each document in a subcollection pattern: onramp_embeddings/{index_id}/docs/{doc_id}
         doc_collection = f"{self.COLLECTION_INDEXES}/{index_id}/docs"
         for doc in documents:
             await self.storage.create_document(

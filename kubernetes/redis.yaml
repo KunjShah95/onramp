@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: codeflow-redis
+  name: onramp-redis
   labels:
-    app: codeflow
+    app: onramp
     component: redis
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       component: redis
   template:
     metadata:
       labels:
-        app: codeflow
+        app: onramp
         component: redis
     spec:
       containers:
@@ -32,7 +32,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: REDIS_PASSWORD
           resources:
             requests:
@@ -56,29 +56,29 @@ spec:
       volumes:
         - name: redis-data
           persistentVolumeClaim:
-            claimName: codeflow-redis-pvc
+            claimName: onramp-redis-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: codeflow-redis
+  name: onramp-redis
   labels:
-    app: codeflow
+    app: onramp
     component: redis
 spec:
   ports:
     - port: 6379
       targetPort: 6379
   selector:
-    app: codeflow
+    app: onramp
     component: redis
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: codeflow-redis-pvc
+  name: onramp-redis-pvc
   labels:
-    app: codeflow
+    app: onramp
 spec:
   accessModes:
     - ReadWriteOnce

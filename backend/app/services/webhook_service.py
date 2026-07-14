@@ -56,8 +56,8 @@ def decrypt_token(ciphertext: str) -> str:
         logger.error("Failed to decrypt GitHub token — key may have changed")
         return ciphertext
 
-COLLECTION = "codeflow_webhooks"
-DELIVERIES_COLLECTION = "codeflow_webhook_deliveries"
+COLLECTION = "onramp_webhooks"
+DELIVERIES_COLLECTION = "onramp_webhook_deliveries"
 
 
 def _utcnow() -> str:
@@ -207,7 +207,7 @@ async def test_webhook(webhook_id: str, user_id: str) -> dict:
         "webhook_id": webhook_id,
         "timestamp": _utcnow(),
         "data": {
-            "message": "This is a test ping from CodeFlow.",
+            "message": "This is a test ping from Onramp.",
         },
     }
 
@@ -226,9 +226,9 @@ async def test_webhook(webhook_id: str, user_id: str) -> dict:
                 content=body,
                 headers={
                     "Content-Type": "application/json",
-                    "X-CodeFlow-Event": "test.ping",
-                    "X-CodeFlow-Signature": f"sha256={signature}",
-                    "X-CodeFlow-Delivery": webhook_id,
+                    "X-Onramp-Event": "test.ping",
+                    "X-Onramp-Signature": f"sha256={signature}",
+                    "X-Onramp-Delivery": webhook_id,
                 },
             )
 
@@ -243,7 +243,7 @@ async def test_webhook(webhook_id: str, user_id: str) -> dict:
 
 # ── Integration configs (Slack, GitHub) ─────────────────────
 
-INTEGRATION_CONFIG_COLLECTION = "codeflow_integrations"
+INTEGRATION_CONFIG_COLLECTION = "onramp_integrations"
 
 
 async def get_integration_config(user_id: str, integration: str) -> Optional[dict]:

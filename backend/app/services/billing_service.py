@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 from app.services.postgres_db import get_storage, generate_id
 
-logger = logging.getLogger("codeflow.billing")
+logger = logging.getLogger("onramp.billing")
 
 # Stripe Price IDs per tier (set in env when using real Stripe billing).
 STRIPE_PRICE_IDS = {
@@ -24,8 +24,8 @@ TIER_PRICING = {
 
 
 # ── Idempotency ───────────────────────────────────────────────────────────────
-IDEMPOTENCY_COLLECTION = "codeflow_webhook_idempotency"
-EVENT_LOG_COLLECTION = "codeflow_webhook_events"
+IDEMPOTENCY_COLLECTION = "onramp_webhook_idempotency"
+EVENT_LOG_COLLECTION = "onramp_webhook_events"
 
 
 def _utcnow() -> str:
@@ -42,7 +42,7 @@ def _sentry_report(exc: Exception, context: dict) -> None:
 
 
 class BillingService:
-    COLLECTION = "codeflow_subscriptions"
+    COLLECTION = "onramp_subscriptions"
 
     def __init__(self):
         self.storage = get_storage()

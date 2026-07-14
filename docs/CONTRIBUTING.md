@@ -1,12 +1,12 @@
-# CodeFlow 2.0 — Contributing Guide
+# Onramp 2.0 — Contributing Guide
 
-Welcome! This guide covers how to contribute to CodeFlow.
+Welcome! This guide covers how to contribute to Onramp.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/your-org/codeflow.git
-cd codeflow
+git clone https://github.com/your-org/onramp.git
+cd onramp
 
 # Backend
 cd backend

@@ -184,7 +184,7 @@ async def test_github_token(
                 headers={
                     "Authorization": f"Bearer {request.token}",
                     "Accept": "application/vnd.github.v3+json",
-                    "User-Agent": "CodeFlow/2.0",
+                    "User-Agent": "Onramp/2.0",
                 },
             )
             if resp.status_code == 200:

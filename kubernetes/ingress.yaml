@@ -1,9 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: codeflow-ingress
+  name: onramp-ingress
   labels:
-    app: codeflow
+    app: onramp
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
@@ -15,30 +15,30 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - codeflow.app
-      secretName: codeflow-tls
+        - onramp.app
+      secretName: onramp-tls
   rules:
-    - host: codeflow.app
+    - host: onramp.app
       http:
         paths:
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: codeflow-backend
+                name: onramp-backend
                 port:
                   number: 8000
           - path: /adk
             pathType: Prefix
             backend:
               service:
-                name: codeflow-backend
+                name: onramp-backend
                 port:
                   number: 8000
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: codeflow-frontend
+                name: onramp-frontend
                 port:
                   number: 80

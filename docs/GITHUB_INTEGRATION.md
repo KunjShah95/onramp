@@ -77,7 +77,7 @@ clone_url = repo_url.replace("https://", f"https://{self.github_token}@")
 If `git clone` failed, the token appeared in `result.stderr`. On Windows, process command lines are visible to all processes.
 
 **Fix:** Replaced URL interpolation with `GIT_ASKPASS`:
-1. Write a temporary Python script that reads the token from `CODEFLOW_GITHUB_TOKEN` env var
+1. Write a temporary Python script that reads the token from `ONRAMP_GITHUB_TOKEN` env var
 2. Set `GIT_ASKPASS` to point to that script
 3. Error output deliberately omits stderr to prevent token leakage
 4. Temp script is cleaned up in a `finally` block

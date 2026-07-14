@@ -10,7 +10,7 @@ from app.services.user_service import create_user
 from app.database.config import db_config
 
 DEV_USER_ID = "00000000-0000-0000-0000-000000000001"
-DEV_EMAIL = "dev@codeflow.ai"
+DEV_EMAIL = "dev@onramp.ai"
 DEV_NAME = "Dev User"
 DEV_PROVIDER = "password"
 

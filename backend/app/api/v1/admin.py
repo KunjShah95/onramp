@@ -203,7 +203,7 @@ async def list_all_webhooks(
     from app.services.postgres_db import get_storage
 
     storage = get_storage()
-    webhooks = await storage.list_documents("codeflow_webhooks")
+    webhooks = await storage.list_documents("onramp_webhooks")
 
     if active_only:
         webhooks = [w for w in webhooks if w.get("active", True)]
@@ -249,7 +249,7 @@ async def test_admin_webhook(
         "event": "test.ping",
         "webhook_id": webhook_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "data": {"message": "This is a test ping from CodeFlow Admin."},
+        "data": {"message": "This is a test ping from Onramp Admin."},
     }
 
     try:
@@ -265,9 +265,9 @@ async def test_admin_webhook(
                 content=body,
                 headers={
                     "Content-Type": "application/json",
-                    "X-CodeFlow-Event": "test.ping",
-                    "X-CodeFlow-Signature": f"sha256={signature}",
-                    "X-CodeFlow-Delivery": webhook_id,
+                    "X-Onramp-Event": "test.ping",
+                    "X-Onramp-Signature": f"sha256={signature}",
+                    "X-Onramp-Delivery": webhook_id,
                 },
             )
 

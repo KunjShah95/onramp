@@ -4,7 +4,7 @@ from app.services.postgres_db import get_storage, generate_id
 
 
 class ContributorTracker:
-    COLLECTION = "codeflow_milestones"
+    COLLECTION = "onramp_milestones"
 
     def __init__(self):
         self.storage = get_storage()

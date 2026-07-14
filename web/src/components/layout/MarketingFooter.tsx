@@ -33,7 +33,7 @@ export default function MarketingFooter() {
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <span className="text-lg font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-              CodeFlow
+              Onramp
             </span>
             <p className="text-xs text-[hsl(var(--muted-foreground))]/60 mt-2 leading-relaxed max-w-[200px] font-body">
               AI-powered developer onboarding for modern engineering teams.
@@ -66,7 +66,7 @@ export default function MarketingFooter() {
       {/* Copyright */}
       <div className="border-t border-[hsl(var(--border))] py-5">
         <p className="text-center text-[10px] text-[hsl(var(--muted-foreground))]/40 font-mono">
-          &copy; {new Date().getFullYear()} CodeFlow Inc. All rights reserved.
+          &copy; {new Date().getFullYear()} Onramp Inc. All rights reserved.
         </p>
       </div>
     </footer>

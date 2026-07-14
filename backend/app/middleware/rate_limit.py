@@ -5,7 +5,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-logger = logging.getLogger("codeflow.ratelimit")
+logger = logging.getLogger("onramp.ratelimit")
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Rotate environment-level secrets for CodeFlow 2.0.
+  Rotate environment-level secrets for Onramp 2.0.
 .DESCRIPTION
   Generates new values for the specified secret type and outputs the new
   value. Optionally updates the local .env file.
@@ -103,7 +103,7 @@ $externalSecrets = @(
 )
 
 Write-Host ""
-Write-Host "CodeFlow Secret Rotation" -ForegroundColor Cyan
+Write-Host "Onramp Secret Rotation" -ForegroundColor Cyan
 Write-Host ""
 
 $keysToRotate = @()

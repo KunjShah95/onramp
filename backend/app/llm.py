@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Any
 from enum import Enum
 
-logger = logging.getLogger("codeflow.llm")
+logger = logging.getLogger("onramp.llm")
 
 
 class ModelProvider(Enum):

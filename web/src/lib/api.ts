@@ -1453,7 +1453,7 @@ export async function getUserProgress(userId: string, teamId?: string): Promise<
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 
-export interface CodeFlowNotification {
+export interface OnrampNotification {
   notification_id: string
   user_id: string
   type: string
@@ -1468,7 +1468,7 @@ export interface CodeFlowNotification {
 }
 
 export interface NotificationsResponse {
-  notifications: CodeFlowNotification[]
+  notifications: OnrampNotification[]
   count: number
 }
 
@@ -1731,6 +1731,46 @@ export async function checkProvider(
   return get<ProviderCheckResponse>(
     `${API_BASE}/auth/check-provider?email=${encodeURIComponent(email)}`
   )
+}
+
+// ── OAuth Social Login ─────────────────────────────────────────────────────
+
+export function getGoogleLoginUrl(): string {
+  return `${API_BASE}/auth/oauth/google/login`
+}
+
+export function getGithubLoginUrl(): string {
+  return `${API_BASE}/auth/oauth/github/login`
+}
+
+// ── Password Reset ─────────────────────────────────────────────────────────
+
+export interface ForgotPasswordResponse {
+  ok: boolean
+  message: string
+}
+
+export interface ResetPasswordResponse {
+  ok: boolean
+  message: string
+}
+
+export async function forgotPassword(
+  email: string
+): Promise<ForgotPasswordResponse> {
+  return request<ForgotPasswordResponse>(`${API_BASE}/auth/forgot-password`, {
+    email,
+  })
+}
+
+export async function resetPassword(
+  token: string,
+  password: string
+): Promise<ResetPasswordResponse> {
+  return request<ResetPasswordResponse>(`${API_BASE}/auth/reset-password`, {
+    token,
+    password,
+  })
 }
 
 // ── Invites ────────────────────────────────────────────────────

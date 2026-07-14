@@ -16,7 +16,7 @@ from app.services.invite_service import (
 from app.services.user_service import get_user_by_email
 from app.services.cache_service import cached, invalidate_prefix
 
-logger = logging.getLogger("codeflow.invites")
+logger = logging.getLogger("onramp.invites")
 router = APIRouter(prefix="/invites", tags=["team-invites"])
 
 

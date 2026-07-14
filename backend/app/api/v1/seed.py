@@ -15,7 +15,7 @@ from app.services import (
 from app.services.billing_service import BillingService, TIER_PRICING
 from app.services.github_service import GitHubService
 
-logger = logging.getLogger("codeflow.seed")
+logger = logging.getLogger("onramp.seed")
 
 router = APIRouter(prefix="/seed", tags=["seed"])
 
@@ -62,7 +62,7 @@ async def _global_stats(storage) -> dict:
     # api_calls_24h: count real usage rows in the last 24h if the collection exists.
     api_calls = 0
     try:
-        usage = await storage.list_documents("codeflow_usage")
+        usage = await storage.list_documents("onramp_usage")
         cutoff = datetime.now(timezone.utc).timestamp() - 86400
         for u in usage:
             ts = u.get("created_at") or u.get("timestamp")

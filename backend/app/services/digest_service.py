@@ -18,11 +18,11 @@ from typing import Optional
 from app.services.postgres_db import get_storage
 from app.services.email_service import send_digest_email
 
-logger = logging.getLogger("codeflow.digest")
+logger = logging.getLogger("onramp.digest")
 
-COLLECTION_NOTIFICATIONS = "codeflow_notifications"
+COLLECTION_NOTIFICATIONS = "onramp_notifications"
 COLLECTION_TASKS = "workflow_tasks"
-COLLECTION_QUIZ_RESULTS = "codeflow_quiz_results"
+COLLECTION_QUIZ_RESULTS = "onramp_quiz_results"
 COLLECTION_MEMBER_MODULES = "member_modules"
 
 
@@ -296,4 +296,4 @@ def _notif_emoji(notif_type: str) -> str:
 
 def _frontend_url() -> str:
     import os
-    return os.getenv("FRONTEND_URL", "https://codeflow.dev")
+    return os.getenv("FRONTEND_URL", "https://onramp.dev")

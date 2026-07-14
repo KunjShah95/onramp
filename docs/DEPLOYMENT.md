@@ -1,6 +1,6 @@
-# CodeFlow 2.0 — Deployment Guide
+# Onramp 2.0 — Deployment Guide
 
-Deploy CodeFlow to production. For local development, see [QUICK_START.md](QUICK_START.md).
+Deploy Onramp to production. For local development, see [QUICK_START.md](QUICK_START.md).
 
 ## Architecture
 
@@ -96,7 +96,7 @@ railway up
 | `FIREBASE_PROJECT_ID` | `your-project-id` | From Firebase Console |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | `{ ... }` | Full JSON from service account key |
 | `AUTH_DEV_BYPASS` | `false` | MUST be false in production |
-| `CORS_ALLOWED_ORIGINS` | `https://codeflow.vercel.app` | Add your Vercel domain |
+| `CORS_ALLOWED_ORIGINS` | `https://onramp.vercel.app` | Add your Vercel domain |
 | `TRUST_PROXY` | `true` | Railway runs behind a proxy |
 | `OPENROUTER_API_KEY` | `sk-or-v1-...` | Or `GEMINI_API_KEY` |
 | `GITHUB_TOKEN` | `ghp_...` | GitHub personal access token |
@@ -153,7 +153,7 @@ vercel --prod
 
 **Deploy:** Click **Deploy**. Vercel will build and deploy automatically.
 
-Your frontend URL will be: `https://codeflow.vercel.app` (you can rename in Vercel dashboard).
+Your frontend URL will be: `https://onramp.vercel.app` (you can rename in Vercel dashboard).
 
 ### Step 4: Post-Deployment Checks
 
@@ -167,7 +167,7 @@ curl https://your-backend.railway.app/health
 # Should show Swagger UI
 
 # 3. Open frontend
-# https://codeflow.vercel.app
+# https://onramp.vercel.app
 # Sign in with Google → should redirect to dashboard
 
 # 4. Test the full flow
@@ -209,8 +209,8 @@ For teams that prefer full control over infrastructure. See `docker-compose.prod
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/codeflow.git
-cd codeflow
+git clone https://github.com/your-org/onramp.git
+cd onramp
 
 # Configure environment
 cp .env.production.example .env.production
@@ -349,7 +349,7 @@ Check browser console for CORS errors. Verify:
 Common issues:
 1. Firebase project not configured for the frontend domain
    - Firebase Console → Authentication → Settings → Authorized domains
-   - Add `codeflow.vercel.app`
+   - Add `onramp.vercel.app`
 2. Service account JSON not set correctly in Railway
    - Use `FIREBASE_SERVICE_ACCOUNT_JSON` (inline JSON, properly escaped)
 3. Auth dev bypass still enabled

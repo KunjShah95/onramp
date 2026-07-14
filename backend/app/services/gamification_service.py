@@ -1,5 +1,5 @@
 """
-Gamification Service — XP, badges, streaks, and leaderboard for CodeFlow.
+Gamification Service — XP, badges, streaks, and leaderboard for Onramp.
 
 Tracks user engagement through experience points (XP), achievement badges,
 daily login streaks, and team leaderboards. Integrates with the existing
@@ -10,10 +10,10 @@ from datetime import datetime, timezone, date, timedelta
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
-XP_COLLECTION = "codeflow_gamification_xp"
-BADGE_COLLECTION = "codeflow_gamification_badges"
-STREAK_COLLECTION = "codeflow_gamification_streaks"
-LEADERBOARD_COLLECTION = "codeflow_gamification_leaderboard"
+XP_COLLECTION = "onramp_gamification_xp"
+BADGE_COLLECTION = "onramp_gamification_badges"
+STREAK_COLLECTION = "onramp_gamification_streaks"
+LEADERBOARD_COLLECTION = "onramp_gamification_leaderboard"
 
 
 def _utcnow() -> str:

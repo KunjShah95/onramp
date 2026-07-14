@@ -78,7 +78,7 @@ export default function LegalLayout({ label, title, lastUpdated, intro, sections
         <div className="mt-16 pt-6 border-t border-[hsl(var(--border))] flex flex-wrap gap-6 text-sm">
           <Link to="/privacy" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors">Privacy Policy</Link>
           <Link to="/terms" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors">Terms of Service</Link>
-          <a href="mailto:legal@codeflow.ai" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors">legal@codeflow.ai</a>
+          <a href="mailto:legal@onramp.ai" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors">legal@onramp.ai</a>
         </div>
       </div>
     </MarketingLayout>

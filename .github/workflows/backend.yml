@@ -17,7 +17,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: codeflow_test
+          POSTGRES_DB: onramp_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
@@ -44,19 +44,19 @@ jobs:
       - name: Check code compiles
         run: python -m compileall backend/app
 
-      - name: Run Alembic migrations
+      - name: Create .env and run migrations
         run: |
-          cp backend/.env.example backend/.env
-          echo "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test" >> backend/.env
+          grep -v '^\[TEMPLATE\]' backend/.env.example > backend/.env 2>/dev/null || cp backend/.env.example backend/.env
+          echo "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test" >> backend/.env
           cd backend && alembic upgrade head
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
 
       - name: Run tests
         run: |
           cd backend && python -m pytest tests/ -v --timeout=30
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder

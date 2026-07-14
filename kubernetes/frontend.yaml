@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: codeflow-frontend
+  name: onramp-frontend
   labels:
-    app: codeflow
+    app: onramp
     component: frontend
 spec:
   replicas: 2
@@ -14,17 +14,17 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       component: frontend
   template:
     metadata:
       labels:
-        app: codeflow
+        app: onramp
         component: frontend
     spec:
       containers:
         - name: frontend
-          image: codeflow-frontend:latest
+          image: onramp-frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -51,9 +51,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: codeflow-frontend
+  name: onramp-frontend
   labels:
-    app: codeflow
+    app: onramp
     component: frontend
 spec:
   type: ClusterIP
@@ -62,5 +62,5 @@ spec:
       port: 80
       targetPort: 80
   selector:
-    app: codeflow
+    app: onramp
     component: frontend

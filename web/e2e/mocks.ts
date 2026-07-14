@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 const FAKE_UID = 'test-user-001'
 const FAKE_SESSION_TOKEN = 'fake-session-token-abc123'
-const FAKE_EMAIL = 'admin@codeflow.dev'
+const FAKE_EMAIL = 'admin@onramp.dev'
 const FAKE_NAME = 'Admin User'
 
 const FAKE_USER = {
@@ -133,7 +133,7 @@ export async function mockBackendAPIs(page: Page) {
         teams: [
           {
             team_id: MOCK_TEAM_ID,
-            name: 'CodeFlow Engineering',
+            name: 'Onramp Engineering',
             owner: FAKE_UID,
             tier: 'pro',
             members: ['member-1', 'member-2'],

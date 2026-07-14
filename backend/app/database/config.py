@@ -31,7 +31,7 @@ class DatabaseConfig:
         self.database_url = os.getenv("DATABASE_URL")
         if not self.database_url and not self.is_production:
             self.database_url = (
-                "postgresql+asyncpg://postgres:postgres@localhost:5432/codeflow"
+                "postgresql+asyncpg://postgres:postgres@localhost:5432/onramp"
             )
 
         # SQLAlchemy async engine requires an async driver. Rewrite plain

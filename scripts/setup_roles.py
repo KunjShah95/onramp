@@ -11,7 +11,7 @@ import asyncio
 import os
 import sys
 
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:HACKER_K@localhost:5432/codeflow")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:HACKER_K@localhost:5432/onramp")
 os.environ.setdefault("ENV", "development")
 os.environ.setdefault("JWT_SECRET", "dev-jwt-secret-test-123")
 

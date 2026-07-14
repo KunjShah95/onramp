@@ -12,11 +12,18 @@ jobs:
   frontend:
     name: Deploy frontend → Vercel
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip notice
+        if: env.VERCEL_TOKEN == ''
+        run: echo "VERCEL_TOKEN not configured — skipping Vercel deploy. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets to enable."
+
       - uses: amondnet/vercel-action@v42
+        if: env.VERCEL_TOKEN != ''
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -28,7 +35,14 @@ jobs:
   backend:
     name: Deploy backend → Render
     runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
     steps:
       - name: Trigger Render deploy hook
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Skip notice
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
+        run: echo "RENDER_DEPLOY_HOOK_URL not configured — skipping backend deploy. Add the RENDER_DEPLOY_HOOK_URL secret to enable."

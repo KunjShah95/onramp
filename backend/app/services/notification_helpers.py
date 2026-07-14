@@ -15,7 +15,7 @@ Channels dispatched per event:
 
 import logging
 
-logger = logging.getLogger("codeflow.notification_helpers")
+logger = logging.getLogger("onramp.notification_helpers")
 
 
 async def notify_task_assigned_all_channels(

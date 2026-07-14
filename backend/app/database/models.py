@@ -1,5 +1,5 @@
 """
-SQLAlchemy Models for CodeFlow PostgreSQL Database
+SQLAlchemy Models for Onramp PostgreSQL Database
 Follows security and backend best practices:
 - Proper indexing for query performance
 - UUID primary keys for security

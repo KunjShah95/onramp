@@ -4,7 +4,7 @@ REM Sets up backend/frontend dependencies, starts local data services, and appli
 
 cls
 echo.
-echo 🚀 CodeFlow - Local Development Setup
+echo 🚀 Onramp - Local Development Setup
 echo ======================================
 echo.
 
@@ -89,6 +89,6 @@ echo   Frontend: http://localhost:5173
 echo   Backend API: http://localhost:8000
 echo   API Docs: http://localhost:8000/docs
 echo.
-echo 📝 Database: postgresql+asyncpg://codeflow:postgres_password@localhost:5432/codeflow
+echo 📝 Database: postgresql+asyncpg://onramp:postgres_password@localhost:5432/onramp
 echo.
 pause

@@ -30,8 +30,8 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const THEME_KEY = 'codeflow-theme'
-const ACCENT_KEY = 'codeflow-accent'
+const THEME_KEY = 'onramp-theme'
+const ACCENT_KEY = 'onramp-accent'
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'himalayan'

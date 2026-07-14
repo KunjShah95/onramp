@@ -63,6 +63,8 @@ const JoinPage = lazy(() => import('./pages/JoinPage'))
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
+const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
 // New Phase 2-5 pages
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
@@ -133,6 +135,16 @@ export default function App() {
               <Route path="/waitlist" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><WaitlistPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/auth/callback" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><AuthCallback /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/reset-password" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><ResetPassword /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/privacy" element={

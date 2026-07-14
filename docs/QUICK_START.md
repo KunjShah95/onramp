@@ -1,4 +1,4 @@
-# CodeFlow 2.0 — Quick Start Guide
+# Onramp 2.0 — Quick Start Guide
 
 Get the platform running locally with PostgreSQL, Redis, the FastAPI backend, and the Vite frontend. For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -66,10 +66,10 @@ Docker Compose creates this PostgreSQL database:
 |---------|-------|
 | Host | `localhost` |
 | Port | `5432` |
-| Database | `codeflow` |
-| User | `codeflow` |
+| Database | `onramp` |
+| User | `onramp` |
 | Password | `postgres_password` |
-| Backend URL | `postgresql+asyncpg://codeflow:postgres_password@localhost:5432/codeflow` |
+| Backend URL | `postgresql+asyncpg://onramp:postgres_password@localhost:5432/onramp` |
 
 For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deployments should set a provider-specific `DATABASE_URL` and usually `DB_SSL_MODE=require` or stronger.
 
@@ -96,7 +96,7 @@ For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deplo
 | Problem | Solution |
 |---------|----------|
 | PostgreSQL connection refused | Run `docker compose up -d postgres` and wait for the health check. |
-| Password authentication failed | Ensure `backend/.env` uses `codeflow:postgres_password`, or set `DB_PASSWORD` before creating the container volume. |
+| Password authentication failed | Ensure `backend/.env` uses `onramp:postgres_password`, or set `DB_PASSWORD` before creating the container volume. |
 | Tables missing | Run `cd backend && alembic upgrade head`. |
 | Redis connection refused | Start Redis with `docker compose up -d redis`, or leave `REDIS_URL` unset for local fallback behavior. |
 | AI responses empty | Add at least one AI provider key to `backend/.env` and restart the backend. |

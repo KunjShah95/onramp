@@ -4,10 +4,10 @@ import os
 import logging
 from typing import Optional
 
-logger = logging.getLogger("codeflow.email")
+logger = logging.getLogger("onramp.email")
 
 SENDGRID_API_KEY_ENV = "SENDGRID_API_KEY"
-DEFAULT_FROM = "noreply@codeflow.dev"
+DEFAULT_FROM = "noreply@onramp.dev"
 
 
 def is_enabled() -> bool:
@@ -61,7 +61,7 @@ async def send_invite_email(email: str, invite_link: str, team_name: str, invite
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">You're invited to <span style="color:#FF8C00">{team_name}</span></h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">
-{invited_by_name} has invited you to join <strong style="color:#FDFBF8">{team_name}</strong> on CodeFlow.
+{invited_by_name} has invited you to join <strong style="color:#FDFBF8">{team_name}</strong> on Onramp.
 Click below to accept the invitation and start contributing.
 </p>
 <div style="text-align:center;margin-bottom:24px">
@@ -154,7 +154,7 @@ async def send_task_reviewed_email(email: str, task_title: str, team_name: str, 
     else:
         emoji = "🔄"
         heading = "Changes Requested"
-        subtext = "Your senior has requested changes. Check the feedback in CodeFlow and revise your submission."
+        subtext = "Your senior has requested changes. Check the feedback in Onramp and revise your submission."
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
@@ -227,15 +227,15 @@ async def send_digest_email(
 </div>
 {sections_html}
 <div style="text-align:center;margin-top:24px">
-<a href="{os.getenv('FRONTEND_URL', 'https://codeflow.dev')}/dashboard" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Open Dashboard →</a>
+<a href="{os.getenv('FRONTEND_URL', 'https://onramp.dev')}/dashboard" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Open Dashboard →</a>
 </div>
 <p style="color:rgba(253,251,248,0.2);font-size:10px;text-align:center;margin-top:24px">
 You're receiving this because your notification preferences are set to {period} digests.
-<a href="{os.getenv('FRONTEND_URL', 'https://codeflow.dev')}/settings/notifications" style="color:rgba(253,251,248,0.3)">Manage preferences</a>
+<a href="{os.getenv('FRONTEND_URL', 'https://onramp.dev')}/settings/notifications" style="color:rgba(253,251,248,0.3)">Manage preferences</a>
 </p>
 </div></body></html>"""
 
-    return await send_email(email, f"{period_label} CodeFlow Digest", html)
+    return await send_email(email, f"{period_label} Onramp Digest", html)
 
 
 async def send_task_submitted_email(email: str, task_title: str, team_name: str, submitter_name: str) -> bool:
@@ -254,6 +254,6 @@ async def send_task_submitted_email(email: str, task_title: str, team_name: str,
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
 <p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
 </div>
-<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Log in to CodeFlow to review the submission.</p>
+<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Log in to Onramp to review the submission.</p>
 </div></body></html>"""
     return await send_email(email, f"Task submitted for review: {task_title}", html)

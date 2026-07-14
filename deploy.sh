@@ -2,7 +2,7 @@
 # Deployment Setup Script for Vercel + Render
 
 echo "=================================================="
-echo "CodeFlow Deployment Setup"
+echo "Onramp Deployment Setup"
 echo "=================================================="
 echo ""
 

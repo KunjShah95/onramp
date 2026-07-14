@@ -34,7 +34,7 @@ from app.services.notification_helpers import (
 from app.services.audit_service import log_event
 from app.services.cache_service import cached, invalidate_prefix
 
-logger = logging.getLogger("codeflow.tasks")
+logger = logging.getLogger("onramp.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
 
 

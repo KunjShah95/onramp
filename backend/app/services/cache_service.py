@@ -8,7 +8,7 @@ from typing import Optional, Callable
 from functools import wraps
 from fastapi import Request, Response
 
-logger = logging.getLogger("codeflow.cache")
+logger = logging.getLogger("onramp.cache")
 
 REDIS_URL_ENV = "REDIS_URL"
 DEFAULT_TTL = 300  # 5 minutes

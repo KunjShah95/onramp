@@ -69,7 +69,7 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
 
-    await page.fill('input#email', 'admin@codeflow.dev')
+    await page.fill('input#email', 'admin@onramp.dev')
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
 
@@ -86,7 +86,7 @@ test.describe('Login Flow — End-to-End Auth', () => {
 
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
-    await page.fill('input#email', 'admin@codeflow.dev')
+    await page.fill('input#email', 'admin@onramp.dev')
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })

@@ -114,7 +114,7 @@ class TestWebhookEvents:
             data={"object": {"id": "sub_e2e", "status": "past_due", "items": {"data": [{"price": {"id": ""}}]}, "cancel_at_period_end": False}},
         )
         await service.handle_webhook(payload, sig_header=None)
-        subs = await service.storage.query_documents("codeflow_subscriptions", [("team_id", "==", "team_e2e")])
+        subs = await service.storage.query_documents("onramp_subscriptions", [("team_id", "==", "team_e2e")])
         assert subs[0]["status"] == "past_due"
 
     async def test_subscription_deleted_cancels_local(self, service, seeded_sub):
@@ -137,7 +137,7 @@ class TestWebhookEvents:
             data={"object": {"subscription": "sub_e2e"}},
         )
         await service.handle_webhook(payload, sig_header=None)
-        subs = await service.storage.query_documents("codeflow_subscriptions", [("team_id", "==", "team_e2e")])
+        subs = await service.storage.query_documents("onramp_subscriptions", [("team_id", "==", "team_e2e")])
         assert subs[0]["status"] == "past_due"
 
     async def test_idempotency_skips_duplicate(self, service, seeded_sub):

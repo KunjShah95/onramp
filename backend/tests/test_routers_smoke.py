@@ -31,7 +31,7 @@ class TestAppStartup:
         assert resp.status_code == 200
         data = resp.json()
         assert data["data"]["status"] == "running"
-        assert "CodeFlow 2.0 API" in data["data"]["message"]
+        assert "Onramp 2.0 API" in data["data"]["message"]
 
     def test_health_endpoint(self, client):
         resp = client.get("/health")

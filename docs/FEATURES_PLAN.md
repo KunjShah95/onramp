@@ -1,4 +1,4 @@
-# CodeFlow 2.0 — Features Implementation Plan
+# Onramp 2.0 — Features Implementation Plan
 
 > **What needs to be built next.** This document catalogs all features that are planned but not yet implemented, organized by priority and category. Updated to reflect completed work from recent implementation sessions.
 
@@ -77,7 +77,7 @@ These must be completed before the platform can be considered production-ready.
 **What was built:**
 
 - Idempotency support via `Idempotency-Key` header — duplicate event prevention
-- Event audit log (`codeflow_webhook_events` collection) with query API
+- Event audit log (`onramp_webhook_events` collection) with query API
 - Async-safe `stripe.Webhook.construct_event` wrapped in `asyncio.to_thread`
 - Sentry error reporting for webhook failures
 - Additional event types: `payment_intent.succeeded`, `payment_intent.payment_failed`, `customer.subscription.trial_will_end`, `setup_intent.created`
@@ -240,7 +240,7 @@ AI-generated multiple-choice quizzes from the codebase. After completing a learn
 - New API endpoint: `POST /api/v1/learn/quiz/submit`
   - Input: `{ "quiz_id": "...", "answers": [0, 2, 1, ...] }`
   - Output: `{ "score": 8, "total": 10, "passed": true, "wrong": [...] }`
-- Store quiz results in existing `codeflow_subscriptions` collection or new `codeflow_quiz_results` collection
+- Store quiz results in existing `onramp_subscriptions` collection or new `onramp_quiz_results` collection
 - Frontend: Quiz modal on LearnPage after module completion
   - Question carousel with progress dots
   - Show correct/incorrect after each answer
@@ -460,24 +460,24 @@ Profile and optimize hot paths across the stack. Focus on API response times, da
 **Effort:** 3 days (frontend/extension)
 
 **Description:**
-A VS Code extension that brings CodeFlow features directly into the editor. Inline code explanations, PR review summaries, and quick repo analysis without leaving the IDE.
+A VS Code extension that brings Onramp features directly into the editor. Inline code explanations, PR review summaries, and quick repo analysis without leaving the IDE.
 
 **Implementation Details:**
 
 - Create new directory: `extensions/vscode/`
 - Use VS Code Extension API
 - Features:
-  - "Analyze this file" — Right-click → sends file to CodeFlow API
+  - "Analyze this file" — Right-click → sends file to Onramp API
   - "Explain this function" — Hover over function → AI explanation
   - "PR Review" — Open PR in editor → inline review comments
   - "Learning Path" — Show current module in sidebar
-- Authentication: VS Code prompts for CodeFlow API key
+- Authentication: VS Code prompts for Onramp API key
 - Packaging: `.vsix` file for VS Code Marketplace
 
 **Acceptance Criteria:**
 
 - [ ] Extension installs and activates in VS Code
-- [ ] Right-click context menu shows CodeFlow options
+- [ ] Right-click context menu shows Onramp options
 - [ ] Hover over function shows AI explanation
 - [ ] PR review shows inline comments
 
@@ -619,7 +619,7 @@ A mobile app (or PWA) for on-the-go access to onboarding progress, notifications
 
 ## P4: AIaaS API Expansion
 
-API products for external developers to consume CodeFlow's AI capabilities.
+API products for external developers to consume Onramp's AI capabilities.
 
 ---
 
@@ -631,7 +631,7 @@ API products for external developers to consume CodeFlow's AI capabilities.
 **Effort:** 3 days (backend)
 
 **Description:**
-Package CodeFlow's AI capabilities as first-class public APIs for third-party developers. Current AIaaS has key management and usage tracking but the public API endpoints are still coupled to the SaaS frontend.
+Package Onramp's AI capabilities as first-class public APIs for third-party developers. Current AIaaS has key management and usage tracking but the public API endpoints are still coupled to the SaaS frontend.
 
 **Implementation Details:**
 
@@ -671,7 +671,7 @@ Package CodeFlow's AI capabilities as first-class public APIs for third-party de
 **Effort:** 2 days (SDK)
 
 **Description:**
-Expand the existing TypeScript SDK to cover all new AIaaS endpoints. Make it easy for external developers to integrate CodeFlow into their tools.
+Expand the existing TypeScript SDK to cover all new AIaaS endpoints. Make it easy for external developers to integrate Onramp into their tools.
 
 **Implementation Details:**
 
@@ -685,7 +685,7 @@ Expand the existing TypeScript SDK to cover all new AIaaS endpoints. Make it eas
   - `client.analytics.architecture(repoUrl)`
 - Add streaming support for query endpoint
 - Add TypeScript types for all request/response schemas
-- Publish to npm under `@codeflow/sdk`
+- Publish to npm under `@onramp/sdk`
 
 **Files to modify:**
 

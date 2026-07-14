@@ -8,6 +8,7 @@ asyncpg>=0.29.0
 sqlalchemy>=2.0.0
 alembic>=1.13.0
 bcrypt>=4.1.0
+PyJWT>=2.8.0          # JWT session tokens (app.middleware.auth, app.api.v1.auth)
 tenacity>=8.2.0
 cachetools>=5.3.0
 # AI provider SDKs (free providers first, paid fallback)

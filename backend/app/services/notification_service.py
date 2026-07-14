@@ -1,5 +1,5 @@
 """
-Notification Service — in-app notifications for CodeFlow.
+Notification Service — in-app notifications for Onramp.
 
 Stores notifications in the same DynamiDocument / JSONB collection used by
 the rest of the platform so that the storage backend (PostgreSQL or in-memory)
@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
-COLLECTION = "codeflow_notifications"
+COLLECTION = "onramp_notifications"
 
 
 def _utcnow() -> str:
@@ -26,7 +26,7 @@ def _preview_message(title: str, message: str, max_len: int = 120) -> str:
 
 # ── Notification Preferences ────────────────────────────────
 
-PREFERENCES_COLLECTION = "codeflow_notification_preferences"
+PREFERENCES_COLLECTION = "onramp_notification_preferences"
 
 
 DEFAULT_PREFERENCES = {

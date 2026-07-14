@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 
 class BaseAgent(ABC):
-    """Abstract base class for all CodeFlow agents."""
+    """Abstract base class for all Onramp agents."""
 
     def __init__(self, llm_client):
         self.llm = llm_client

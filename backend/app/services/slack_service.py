@@ -5,7 +5,7 @@ import httpx
 from app.services.webhook_service import get_integration_config
 from app.services.notification_service import get_preferences
 
-logger = logging.getLogger("codeflow.slack")
+logger = logging.getLogger("onramp.slack")
 
 # ── Event type mapping: notification type → webhook event name ───
 
@@ -50,7 +50,7 @@ def _format_task_message(task: dict, event: str, actor_name: str = "") -> str:
         lines.append(f"*PR:* <{pr_url}|View Pull Request>")
 
     lines.append("")
-    lines.append(":arrow_right: <https://codeflow.app/tasks/" + task_id + "|View in CodeFlow>")
+    lines.append(":arrow_right: <https://onramp.app/tasks/" + task_id + "|View in Onramp>")
 
     return "\n".join(lines)
 
@@ -61,7 +61,7 @@ def _format_module_message(module: str, source: str) -> str:
         f":unlock: *Module Access Granted*\n\n"
         f"You now have access to module: `{module}`\n"
         f"*Source:* {source}\n\n"
-        f":arrow_right: <https://codeflow.app/tasks|View your tasks>"
+        f":arrow_right: <https://onramp.app/tasks|View your tasks>"
     )
 
 
@@ -94,7 +94,7 @@ class SlackService:
     def format_health_report(self, repo: str, health: dict) -> str:
         score = health.get("overall_score", 0)
         lines = [
-            f"*CodeFlow Health Report: {repo}*\n",
+            f"*Onramp Health Report: {repo}*\n",
             f"Overall Score: {score}/100",
             f"Test Coverage: {health.get('test_coverage', 0)}%",
             f"Maintainability: {health.get('maintainability', 0)}/10",

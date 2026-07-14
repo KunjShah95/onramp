@@ -12,7 +12,7 @@ from app.services.postgres_db import get_storage, generate_id
 
 
 class ConversationService:
-    COLLECTION = "codeflow_conversations"
+    COLLECTION = "onramp_conversations"
 
     def __init__(self):
         self.storage = get_storage()

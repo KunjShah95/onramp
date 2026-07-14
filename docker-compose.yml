@@ -19,15 +19,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: codeflow
+      POSTGRES_USER: onramp
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_password}
-      POSTGRES_DB: codeflow
+      POSTGRES_DB: onramp
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U codeflow -d codeflow"]
+      test: ["CMD-SHELL", "pg_isready -U onramp -d onramp"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,7 +46,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
@@ -74,7 +74,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
@@ -100,7 +100,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD:-postgres_password}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
       - DB_SSL_MODE=disable
     volumes:
       - ./backend:/app

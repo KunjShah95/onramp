@@ -1,7 +1,7 @@
 """Check current DB timestamp column types"""
 import asyncio, os, sys
 
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:HACKER_K@localhost:5432/codeflow"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:HACKER_K@localhost:5432/onramp"
 os.environ["ENV"] = "development"
 os.environ["JWT_SECRET"] = "dev-jwt-secret-test-123"
 

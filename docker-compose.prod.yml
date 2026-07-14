@@ -21,13 +21,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: codeflow
+      POSTGRES_USER: onramp
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: codeflow
+      POSTGRES_DB: onramp
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U codeflow -d codeflow"]
+      test: ["CMD-SHELL", "pg_isready -U onramp -d onramp"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD}@postgres:5432/onramp
       - DB_SSL_MODE=prefer
       - CORS_ORIGINS=${CORS_ORIGINS}
       - LOG_LEVEL=INFO
@@ -105,7 +105,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - DATABASE_URL=postgresql+asyncpg://codeflow:${DB_PASSWORD}@postgres:5432/codeflow
+      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD}@postgres:5432/onramp
       - DB_SSL_MODE=prefer
       - LLM_PROVIDER=${LLM_PROVIDER}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}

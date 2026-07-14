@@ -1,5 +1,5 @@
 """
-Notifications API — in-app notification endpoints for CodeFlow.
+Notifications API — in-app notification endpoints for Onramp.
 
 Supports: list, unread count, mark read, mark all read, delete, clear read.
 """

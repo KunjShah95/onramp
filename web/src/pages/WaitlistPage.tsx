@@ -95,7 +95,7 @@ export default function WaitlistPage() {
           <div className="w-7 h-7 rounded-lg bg-accent-primary/15 flex items-center justify-center">
             <Terminal className="w-4 h-4 text-accent-primary" weight="fill" />
           </div>
-          <span className="font-display font-bold text-lg tracking-tight">CodeFlow</span>
+          <span className="font-display font-bold text-lg tracking-tight">Onramp</span>
         </Link>
       </nav>
 
@@ -117,7 +117,7 @@ export default function WaitlistPage() {
             <span className="text-text-tertiary">how your team onboards.</span>
           </h1>
           <p className="text-text-secondary text-base max-w-xl leading-relaxed">
-            CodeFlow maps your codebase, builds guided learning paths, and gets new engineers shipping PRs on day 5 — not day 45.
+            Onramp maps your codebase, builds guided learning paths, and gets new engineers shipping PRs on day 5 — not day 45.
           </p>
           {count !== null && (
             <div className="flex items-center gap-2 text-sm text-accent-primary/80">

@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: codeflow-backend
+  name: onramp-backend
   labels:
-    app: codeflow
+    app: onramp
     component: backend
 spec:
   replicas: 2
@@ -14,12 +14,12 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: codeflow
+      app: onramp
       component: backend
   template:
     metadata:
       labels:
-        app: codeflow
+        app: onramp
         component: backend
       annotations:
         prometheus.io/scrape: "true"
@@ -28,88 +28,88 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: backend
-          image: codeflow-backend:latest
+          image: onramp-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
             - configMapRef:
-                name: codeflow-config
+                name: onramp-config
           env:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: REDIS_PASSWORD
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: DATABASE_URL
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: OPENROUTER_API_KEY
             - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: GEMINI_API_KEY
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: OPENAI_API_KEY
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: ANTHROPIC_API_KEY
             - name: GROQ_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: GROQ_API_KEY
             - name: NEON_AUTH_URL
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: NEON_AUTH_URL
             - name: AUTH_DB_URL
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: AUTH_DB_URL
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: STRIPE_SECRET_KEY
             - name: STRIPE_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: STRIPE_WEBHOOK_SECRET
             - name: SENDGRID_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: SENDGRID_API_KEY
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: JWT_SECRET_KEY
             - name: API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: API_KEY_ENCRYPTION_KEY
             - name: SENTRY_DSN
               valueFrom:
                 secretKeyRef:
-                  name: codeflow-secrets
+                  name: onramp-secrets
                   key: SENTRY_DSN
           resources:
             requests:

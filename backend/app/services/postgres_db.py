@@ -16,7 +16,7 @@ from sqlalchemy.orm import class_mapper, selectinload
 from app.database.config import db_config
 from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, DynamicDocument, Repository
 
-logger = logging.getLogger("codeflow.db")
+logger = logging.getLogger("onramp.db")
 
 
 def _is_valid_uuid(value: str) -> bool:

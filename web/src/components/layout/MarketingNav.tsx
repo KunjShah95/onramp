@@ -33,7 +33,7 @@ export default function MarketingNav({
     >
       {/* Logo */}
       <Link to="/" className="flex items-center gap-2">          <span className="text-xl font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-            CodeFlow
+            Onramp
           </span>
       </Link>
 

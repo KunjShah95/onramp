@@ -110,60 +110,60 @@ async def deactivate_user(uid: str) -> dict:
 
     # 2. Delete webhooks and integration configs (contains GitHub tokens)
     webhooks = await storage.query_documents(
-        "codeflow_webhooks", [("user_id", "==", uid)]
+        "onramp_webhooks", [("user_id", "==", uid)]
     )
     for w in webhooks:
-        await storage.delete_document("codeflow_webhooks", w["id"])
+        await storage.delete_document("onramp_webhooks", w["id"])
 
     integrations = await storage.query_documents(
-        "codeflow_integrations", [("user_id", "==", uid)]
+        "onramp_integrations", [("user_id", "==", uid)]
     )
     for i in integrations:
-        await storage.delete_document("codeflow_integrations", i["id"])
+        await storage.delete_document("onramp_integrations", i["id"])
 
     # 3. Delete notifications
     notifications = await storage.query_documents(
-        "codeflow_notifications", [("user_id", "==", uid)]
+        "onramp_notifications", [("user_id", "==", uid)]
     )
     for n in notifications:
-        await storage.delete_document("codeflow_notifications", n["id"])
+        await storage.delete_document("onramp_notifications", n["id"])
 
-    notification_prefs = await storage.get_document("codeflow_notification_preferences", uid)
+    notification_prefs = await storage.get_document("onramp_notification_preferences", uid)
     if notification_prefs:
-        await storage.delete_document("codeflow_notification_preferences", uid)
+        await storage.delete_document("onramp_notification_preferences", uid)
 
     # 4. Clean gamification data (XP, badges, streaks)
-    for coll in ("codeflow_gamification_xp", "codeflow_gamification_badges",
-                  "codeflow_gamification_streaks"):
+    for coll in ("onramp_gamification_xp", "onramp_gamification_badges",
+                  "onramp_gamification_streaks"):
         records = await storage.query_documents(coll, [("user_id", "==", uid)])
         for r in records:
             await storage.delete_document(coll, r["id"])
 
     # 5. Delete conversations
     conversations = await storage.query_documents(
-        "codeflow_conversations", [("user_id", "==", uid)]
+        "onramp_conversations", [("user_id", "==", uid)]
     )
     for c in conversations:
-        await storage.delete_document("codeflow_conversations", c["id"])
+        await storage.delete_document("onramp_conversations", c["id"])
 
     # 6. Delete quizzes and quiz results
-    for coll in ("codeflow_quizzes", "codeflow_quiz_results"):
+    for coll in ("onramp_quizzes", "onramp_quiz_results"):
         records = await storage.query_documents(coll, [("user_id", "==", uid)])
         for r in records:
             await storage.delete_document(coll, r["id"])
 
     # 7. Delete learning paths
     paths = await storage.query_documents(
-        "codeflow_learning_paths", [("user_id", "==", uid)]
+        "onramp_learning_paths", [("user_id", "==", uid)]
     )
     for p in paths:
-        await storage.delete_document("codeflow_learning_paths", p["id"])
+        await storage.delete_document("onramp_learning_paths", p["id"])
 
     # 8. Anonymize user record and mark inactive
     anonymized = {
-        "email": encrypt_field(f"deleted-{uid[:8]}@codeflow.ai"),
+        "email": encrypt_field(f"deleted-{uid[:8]}@onramp.ai"),
         "name": encrypt_field("Deleted User"),
-        "email_hash": email_hash(f"deleted-{uid[:8]}@codeflow.ai"),
+        "email_hash": email_hash(f"deleted-{uid[:8]}@onramp.ai"),
         "is_active": False,
         "updated_at": datetime.now(timezone.utc),
         "deactivated_at": datetime.now(timezone.utc),

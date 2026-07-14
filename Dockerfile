@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 # =============================================================================
-# CodeFlow - Production Dockerfile
+# Onramp - Production Dockerfile
 # =============================================================================
 # Multi-stage build for optimized production image
 # =============================================================================
@@ -33,11 +33,11 @@ FROM python:3.11-slim-bookworm AS production
 ARG VERSION="2.0.0"
 ARG BUILD_DATE
 ARG GIT_COMMIT
-LABEL maintainer="codeflow@example.com" \
+LABEL maintainer="onramp@example.com" \
       version="${VERSION}" \
       build-date="${BUILD_DATE}" \
       git-commit="${GIT_COMMIT}" \
-      description="CodeFlow AI Onboarding Platform - Backend API"
+      description="Onramp AI Onboarding Platform - Backend API"
 
 # Security: Create non-root user
 RUN groupadd --gid=1000 appgroup && \
@@ -48,7 +48,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    SERVICE_NAME=codeflow-backend \
+    SERVICE_NAME=onramp-backend \
     SERVICE_VERSION=${VERSION}
 
 # Install runtime dependencies
@@ -61,9 +61,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 
 # Copy application (backend only)
-COPY --chown=appuser:appgroup backend/ /codeflow
+COPY --chown=appuser:appgroup backend/ /onramp
 
-WORKDIR /codeflow
+WORKDIR /onramp
 
 # Switch to non-root user
 USER appuser
@@ -85,7 +85,7 @@ CMD ["app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # =============================================================================
 FROM python:3.11-slim-bookworm AS development
 
-WORKDIR /codeflow
+WORKDIR /onramp
 
 # Install development dependencies
 COPY backend/requirements.txt requirements.txt
@@ -116,9 +116,9 @@ CMD ["python", "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0",
 FROM python:3.11-slim-bookworm AS celery-worker
 
 ARG VERSION="2.0.0"
-LABEL maintainer="codeflow@example.com" \
+LABEL maintainer="onramp@example.com" \
       version="${VERSION}" \
-      description="CodeFlow AI Onboarding Platform - Celery Worker"
+      description="Onramp AI Onboarding Platform - Celery Worker"
 
 RUN groupadd --gid=1000 appgroup && \
     useradd --uid=1000 --gid=appgroup --shell /bin/bash --create-home appuser
@@ -132,9 +132,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /install /usr/local
 
-COPY --chown=appuser:appgroup backend/ /codeflow
+COPY --chown=appuser:appgroup backend/ /onramp
 
-WORKDIR /codeflow
+WORKDIR /onramp
 
 USER appuser
 

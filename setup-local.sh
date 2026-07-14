@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🚀 CodeFlow - Local Development Setup"
+echo "🚀 Onramp - Local Development Setup"
 echo "======================================"
 
 GREEN='\033[0;32m'
@@ -95,4 +95,4 @@ echo "  Frontend: http://localhost:5173"
 echo "  Backend API: http://localhost:8000"
 echo "  API Docs: http://localhost:8000/docs"
 echo ""
-echo -e "${YELLOW}📝 Database: postgresql+asyncpg://codeflow:postgres_password@localhost:5432/codeflow${NC}"
+echo -e "${YELLOW}📝 Database: postgresql+asyncpg://onramp:postgres_password@localhost:5432/onramp${NC}"

@@ -6,13 +6,13 @@ import {
   getUnreadCount,
   markNotificationsRead,
   markAllNotificationsRead,
-  type CodeFlowNotification,
+  type OnrampNotification,
 } from '../../lib/api'
 
 export default function NotificationBell() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState<CodeFlowNotification[]>([])
+  const [notifications, setNotifications] = useState<OnrampNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -72,7 +72,7 @@ export default function NotificationBell() {
     }
   }
 
-  async function handleMarkRead(n: CodeFlowNotification) {
+  async function handleMarkRead(n: OnrampNotification) {
     if (n.read) return
     try {
       await markNotificationsRead([n.notification_id])

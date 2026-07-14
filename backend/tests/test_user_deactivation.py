@@ -14,23 +14,23 @@ async def test_deactivate_cleans_gamification_data():
     await create_user(uid=uid, email="frank@example.com", name="Frank", provider="google.com")
 
     xp_id = generate_id()
-    await s.create_document("codeflow_gamification_xp", xp_id, {
+    await s.create_document("onramp_gamification_xp", xp_id, {
         "user_id": uid, "source": "code_review", "amount": 50, "date": "2026-07-01"
     })
     badge_id = generate_id()
-    await s.create_document("codeflow_gamification_badges", badge_id, {
+    await s.create_document("onramp_gamification_badges", badge_id, {
         "user_id": uid, "badge_type": "explorer", "unlocked_at": "2026-07-01"
     })
     streak_id = generate_id()
-    await s.create_document("codeflow_gamification_streaks", streak_id, {
+    await s.create_document("onramp_gamification_streaks", streak_id, {
         "user_id": uid, "current_streak": 5, "longest_streak": 10
     })
 
     await deactivate_user(uid)
 
-    assert await s.get_document("codeflow_gamification_xp", xp_id) is None
-    assert await s.get_document("codeflow_gamification_badges", badge_id) is None
-    assert await s.get_document("codeflow_gamification_streaks", streak_id) is None
+    assert await s.get_document("onramp_gamification_xp", xp_id) is None
+    assert await s.get_document("onramp_gamification_badges", badge_id) is None
+    assert await s.get_document("onramp_gamification_streaks", streak_id) is None
 
 
 @pytest.mark.asyncio
@@ -41,28 +41,28 @@ async def test_deactivate_cleans_conversations_quizzes_paths():
     await create_user(uid=uid, email="grace@example.com", name="Grace", provider="github.com")
 
     conv_id = generate_id()
-    await s.create_document("codeflow_conversations", conv_id, {
+    await s.create_document("onramp_conversations", conv_id, {
         "user_id": uid, "question": "How do I deploy?", "answer": "Run deploy script"
     })
     quiz_id = generate_id()
-    await s.create_document("codeflow_quizzes", quiz_id, {
+    await s.create_document("onramp_quizzes", quiz_id, {
         "user_id": uid, "module": "docker", "score": 80
     })
     result_id = generate_id()
-    await s.create_document("codeflow_quiz_results", result_id, {
+    await s.create_document("onramp_quiz_results", result_id, {
         "user_id": uid, "quiz_id": quiz_id, "answers": []
     })
     path_id = generate_id()
-    await s.create_document("codeflow_learning_paths", path_id, {
+    await s.create_document("onramp_learning_paths", path_id, {
         "user_id": uid, "title": "Kubernetes", "progress": 50
     })
 
     await deactivate_user(uid)
 
-    assert await s.get_document("codeflow_conversations", conv_id) is None
-    assert await s.get_document("codeflow_quizzes", quiz_id) is None
-    assert await s.get_document("codeflow_quiz_results", result_id) is None
-    assert await s.get_document("codeflow_learning_paths", path_id) is None
+    assert await s.get_document("onramp_conversations", conv_id) is None
+    assert await s.get_document("onramp_quizzes", quiz_id) is None
+    assert await s.get_document("onramp_quiz_results", result_id) is None
+    assert await s.get_document("onramp_learning_paths", path_id) is None
 
 
 @pytest.mark.asyncio
@@ -111,18 +111,18 @@ async def test_deactivate_deletes_webhooks_and_integrations():
     await create_user(uid=uid, email="carol@example.com", name="Carol", provider="password")
 
     wh_id = generate_id()
-    await s.create_document("codeflow_webhooks", wh_id, {
+    await s.create_document("onramp_webhooks", wh_id, {
         "user_id": uid, "url": "https://hooks.example.com", "secret": "s3cr3t"
     })
     int_id = generate_id()
-    await s.create_document("codeflow_integrations", int_id, {
+    await s.create_document("onramp_integrations", int_id, {
         "user_id": uid, "integration": "github", "token": "ghp_encrypted"
     })
 
     await deactivate_user(uid)
 
-    assert await s.get_document("codeflow_webhooks", wh_id) is None
-    assert await s.get_document("codeflow_integrations", int_id) is None
+    assert await s.get_document("onramp_webhooks", wh_id) is None
+    assert await s.get_document("onramp_integrations", int_id) is None
 
 
 @pytest.mark.asyncio
@@ -133,17 +133,17 @@ async def test_deactivate_deletes_notifications():
     await create_user(uid=uid, email="dave@example.com", name="Dave", provider="google.com")
 
     n_id = generate_id()
-    await s.create_document("codeflow_notifications", n_id, {
+    await s.create_document("onramp_notifications", n_id, {
         "user_id": uid, "message": "You have a new task", "read": False
     })
-    await s.create_document("codeflow_notification_preferences", uid, {
+    await s.create_document("onramp_notification_preferences", uid, {
         "user_id": uid, "email_digest": "daily"
     })
 
     await deactivate_user(uid)
 
-    assert await s.get_document("codeflow_notifications", n_id) is None
-    assert await s.get_document("codeflow_notification_preferences", uid) is None
+    assert await s.get_document("onramp_notifications", n_id) is None
+    assert await s.get_document("onramp_notification_preferences", uid) is None
 
 
 @pytest.mark.asyncio

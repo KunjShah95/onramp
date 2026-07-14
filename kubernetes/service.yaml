@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: codeflow-backend
+  name: onramp-backend
   labels:
-    app: codeflow
+    app: onramp
     component: backend
 spec:
   type: ClusterIP
@@ -12,5 +12,5 @@ spec:
       port: 8000
       targetPort: 8000
   selector:
-    app: codeflow
+    app: onramp
     component: backend

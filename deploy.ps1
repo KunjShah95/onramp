@@ -1,7 +1,7 @@
 # Deployment Setup Script for Vercel + Render (PowerShell)
 
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "CodeFlow Deployment Setup" -ForegroundColor Cyan
+Write-Host "Onramp Deployment Setup" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
 

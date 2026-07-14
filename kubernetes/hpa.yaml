@@ -1,15 +1,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: codeflow-backend-hpa
+  name: onramp-backend-hpa
   labels:
-    app: codeflow
+    app: onramp
     component: backend
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: codeflow-backend
+    name: onramp-backend
   minReplicas: 2
   maxReplicas: 10
   metrics:
@@ -29,15 +29,15 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: codeflow-frontend-hpa
+  name: onramp-frontend-hpa
   labels:
-    app: codeflow
+    app: onramp
     component: frontend
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: codeflow-frontend
+    name: onramp-frontend
   minReplicas: 2
   maxReplicas: 6
   metrics:

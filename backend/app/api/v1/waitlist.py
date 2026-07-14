@@ -1,5 +1,5 @@
 """
-Waitlist API Router - pre-launch signup capture for CodeFlow.
+Waitlist API Router - pre-launch signup capture for Onramp.
 Writes to Google Sheets (if configured), sends SendGrid emails (if configured).
 Exposes /api/v1/waitlist/join and /api/v1/waitlist/count.
 """
@@ -127,7 +127,7 @@ def get_sheet():
 def send_emails(name: str, email: str, role: str, company: str,
                 team_size: str, use_case: str, position: int) -> None:
     api_key = os.environ.get("SENDGRID_API_KEY", "")
-    from_email = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@codeflow.dev")
+    from_email = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@onramp.dev")
     admin_email = os.environ.get("ADMIN_EMAIL", "")
     if not api_key:
         return
@@ -137,12 +137,12 @@ def send_emails(name: str, email: str, role: str, company: str,
     confirmation = Mail(
         from_email=from_email,
         to_emails=email,
-        subject="You're on the CodeFlow waitlist!",
+        subject="You're on the Onramp waitlist!",
         html_content=(
             f"<p>Hi {_e(name)},</p>"
-            f"<p>You're <strong>#{position}</strong> on the CodeFlow early access list.</p>"
+            f"<p>You're <strong>#{position}</strong> on the Onramp early access list.</p>"
             f"<p>We'll email you the moment we launch. Reply to tell us more about your team — we read every message.</p>"
-            f"<p>— The CodeFlow Team</p>"
+            f"<p>— The Onramp Team</p>"
         ),
     )
 

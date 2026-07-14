@@ -232,7 +232,7 @@ class GitHubService:
         if not _BRANCH_PATTERN.match(branch):
             raise ValueError(f"Invalid branch name: {branch!r}. Only alphanumeric, dots, dashes, underscores, and slashes allowed.")
 
-        temp_dir = tempfile.mkdtemp(prefix="codeflow_")
+        temp_dir = tempfile.mkdtemp(prefix="onramp_")
 
         # "--" separates options from positional args so git cannot
         # interpret repo_url (or temp_dir) as an option flag.
@@ -242,15 +242,15 @@ class GitHubService:
 
         if self.github_token:
             # Write a cross-platform GIT_ASKPASS helper script
-            fd, askpass_path = tempfile.mkstemp(suffix=".py", prefix="codeflow_git_askpass_")
+            fd, askpass_path = tempfile.mkstemp(suffix=".py", prefix="onramp_git_askpass_")
             with os.fdopen(fd, "w") as f:
                 f.write("import sys, os\n")
-                f.write("sys.stdout.write(os.environ.get('CODEFLOW_GITHUB_TOKEN', '') + '\\n')\n")
+                f.write("sys.stdout.write(os.environ.get('ONRAMP_GITHUB_TOKEN', '') + '\\n')\n")
             if sys.platform != "win32":
                 os.chmod(askpass_path, 0o755)
 
             env["GIT_ASKPASS"] = askpass_path
-            env["CODEFLOW_GITHUB_TOKEN"] = self.github_token
+            env["ONRAMP_GITHUB_TOKEN"] = self.github_token
 
         try:
             result = subprocess.run(cmd, env=env, capture_output=True, text=True)
@@ -295,7 +295,7 @@ class GitHubService:
         """
         headers = {
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "CodeFlow-2.0"
+            "User-Agent": "Onramp-2.0"
         }
         if self.github_token:
             headers["Authorization"] = f"Bearer {self.github_token}"
@@ -362,7 +362,7 @@ class GitHubService:
 
             headers = {
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "CodeFlow-2.0"
+                "User-Agent": "Onramp-2.0"
             }
             if self.github_token:
                 headers["Authorization"] = f"Bearer {self.github_token}"
@@ -438,7 +438,7 @@ class GitHubService:
 
             headers = {
                 "Accept": "application/vnd.github.v3.diff",
-                "User-Agent": "CodeFlow-2.0"
+                "User-Agent": "Onramp-2.0"
             }
             if self.github_token:
                 headers["Authorization"] = f"Bearer {self.github_token}"
