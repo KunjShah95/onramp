@@ -1,14 +1,27 @@
-// @ts-nocheck — Pre-existing union type narrowing issues with authClient
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
-import { authClient } from '../lib/neon-auth'
 import Login from './Login'
+
+// Mock API auth functions used by AuthContext
+const { mockAuthLogin } = vi.hoisted(() => ({
+  mockAuthLogin: vi.fn().mockResolvedValue({
+    uid: '1', email: 'test@test.com', name: 'Test', provider: 'password', token: 'test-token',
+  }),
+}))
+vi.mock(import('../lib/api'), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    authLogin: mockAuthLogin,
+    authMe: vi.fn().mockRejectedValue(new Error('No session')),
+    listTeams: vi.fn().mockResolvedValue({ teams: [] }),
+  }
+})
 
 describe('Login', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(authClient.signIn.email).mockResolvedValue({ data: { user: { id: '1', email: 'test@test.com' } } } as any)
   })
 
   it('renders the login form', () => {
@@ -19,20 +32,14 @@ describe('Login', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
   })
 
-  it('shows social sign-in buttons', () => {
-    render(<Login />)
-    expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /continue with github/i })).toBeInTheDocument()
-  })
-
-  it('calls Neon Auth login on valid submit', async () => {
+  it('calls auth login on valid submit', async () => {
     const user = userEvent.setup()
     render(<Login />)
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     await waitFor(() => {
-      expect(authClient.signIn.email).toHaveBeenCalledWith({ email: 'test@test.com', password: 'password123' })
+      expect(mockAuthLogin).toHaveBeenCalledWith('test@test.com', 'password123')
     })
   })
 

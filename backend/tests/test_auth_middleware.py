@@ -1,5 +1,5 @@
-"""Regression tests for critical 1.1 (public-path prefix bypass) and 1.2
-(session token-only auth) — see features_mvp.md section 2.
+"""Regression tests for auth middleware: public-path prefix bypass protection
+and JWT-based authentication.
 """
 import pytest
 from starlette.applications import Starlette
@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from app.middleware.auth import AuthMiddleware, _dev_bypass_enabled
+from app.middleware.auth import AuthMiddleware
 
 
 PUBLIC_PATHS = ["/health", "/api/v1/billing/webhook"]
@@ -85,20 +85,13 @@ def test_options_request_bypasses_auth(client):
     assert resp.status_code != 401
 
 
-class TestDevBypass:
-    """Session-token-only regression (critical 1.2): dev bypass must never
-    activate outside explicit opt-in + non-production."""
+class TestJWTValidation:
+    """JWT validation: invalid/expired tokens must be rejected."""
 
-    def test_disabled_by_default(self, monkeypatch):
-        monkeypatch.delenv("AUTH_DEV_BYPASS", raising=False)
-        assert _dev_bypass_enabled() is False
+    def test_invalid_jwt_format_rejected(self, client):
+        resp = client.get("/protected", headers={"Authorization": "Bearer not-a-jwt"})
+        assert resp.status_code == 401
 
-    def test_disabled_in_production_even_if_flag_set(self, monkeypatch):
-        monkeypatch.setenv("AUTH_DEV_BYPASS", "true")
-        monkeypatch.setenv("ENV", "production")
-        assert _dev_bypass_enabled() is False
-
-    def test_enabled_only_with_flag_and_non_production(self, monkeypatch):
-        monkeypatch.setenv("AUTH_DEV_BYPASS", "true")
-        monkeypatch.setenv("ENV", "development")
-        assert _dev_bypass_enabled() is True
+    def test_malformed_bearer_header_rejected(self, client):
+        resp = client.get("/protected", headers={"Authorization": "NotBearer token"})
+        assert resp.status_code == 401

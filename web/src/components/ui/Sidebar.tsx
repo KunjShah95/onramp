@@ -9,29 +9,29 @@ import {
 } from '@phosphor-icons/react'
 
 const portalItems = [
-  { to: '/dev-space',      label: 'Dev Space',     Icon: Code,        roles: ['developer', 'owner'] },
-  { to: '/executive',      label: 'Executive',     Icon: ChartBar,    roles: ['owner'] },
-  { to: '/senior-space',   label: 'Senior',        Icon: ShieldCheck, roles: ['senior', 'developer', 'owner'] },
-  { to: '/onboarding-hub', label: 'Onboarding',    Icon: GraduationCap, roles: ['member'] },
+  { to: '/dev-space',      label: 'Dev Space',     Icon: Code,        roles: ['developer', 'tester', 'owner', 'ceo', 'cto'] },
+  { to: '/executive',      label: 'Executive',     Icon: ChartBar,    roles: ['owner', 'ceo', 'cto'] },
+  { to: '/senior-space',   label: 'Senior',        Icon: ShieldCheck, roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/onboarding-hub', label: 'Onboarding',    Icon: GraduationCap, roles: ['new_dev', 'member'] },
 ]
 
 const toolItems = [
-  { to: '/dashboard',   label: 'Dashboard',    Icon: House,          roles: ['senior', 'developer', 'owner'] },
-  { to: '/my-progress', label: 'My Progress',  Icon: Star,           roles: ['member'] },
-  { to: '/explore',     label: 'Explore',      Icon: Compass,        roles: ['member', 'senior', 'developer', 'owner'] },
-  { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['member', 'senior', 'developer', 'owner'] },
-  { to: '/learn',       label: 'Learn',        Icon: GraduationCap,  roles: ['member', 'senior', 'developer', 'owner'] },
-  { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,     roles: ['member', 'senior', 'developer', 'owner'] },
-  { to: '/first-issue',  label: 'First Issue', Icon: BugBeetle,      roles: ['member', 'senior', 'developer', 'owner'] },
-  { to: '/pr-describe',  label: 'PR Describe', Icon: GitPullRequest, roles: ['member', 'senior', 'developer', 'owner'] },
+  { to: '/dashboard',   label: 'Dashboard',    Icon: House,          roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/my-progress', label: 'My Progress',  Icon: Star,           roles: ['new_dev', 'member'] },
+  { to: '/explore',     label: 'Explore',      Icon: Compass,        roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/learn',       label: 'Learn',        Icon: GraduationCap,  roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/first-issue',  label: 'First Issue', Icon: BugBeetle,      roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/pr-describe',  label: 'PR Describe', Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 
 const mgmtItems = [
-  { to: '/reviews',     label: 'Reviews',      Icon: Eye,           roles: ['senior', 'developer', 'owner'] },
-  { to: '/code-health', label:'Code Health',   Icon: Heartbeat,     roles: ['senior', 'developer', 'owner'] },
-  { to: '/api-keys',    label: 'API Keys',     Icon: Key,           roles: ['senior', 'developer', 'owner'] },
-  { to: '/admin',       label: 'Admin',        Icon: ShieldCheck,   roles: ['owner'] },
-  { to: '/settings',    label: 'Settings',     Icon: Gear,          roles: ['member', 'senior', 'developer', 'owner'] },
+  { to: '/reviews',     label: 'Reviews',      Icon: Eye,           roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/code-health', label:'Code Health',   Icon: Heartbeat,     roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/api-keys',    label: 'API Keys',     Icon: Key,           roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/admin',       label: 'Admin',        Icon: ShieldCheck,   roles: ['owner', 'ceo', 'cto'] },
+  { to: '/settings',    label: 'Settings',     Icon: Gear,          roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 
 const bottomItems = [
@@ -121,7 +121,7 @@ export default function Sidebar() {
         </div>
 
         {/* Management */}
-        {(role === 'senior' || role === 'developer' || role === 'owner') && (
+        {(role === 'senior' || role === 'senior_dev' || role === 'developer' || role === 'tester' || role === 'owner' || role === 'ceo' || role === 'cto') && (
           <div>
             <div className="px-2.5 pb-1">
               <span className="text-[10px] font-medium tracking-wider text-text-muted/40 uppercase">Management</span>

@@ -102,7 +102,7 @@ async def register(body: RegisterRequest):
     uid = str(uuid.uuid4())
     password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     record = {
         "email": encrypt_field(body.email),
         "name": encrypt_field(body.name),

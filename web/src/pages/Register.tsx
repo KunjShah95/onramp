@@ -24,13 +24,14 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
 
-  const { register, error, clearError, user } = useAuth()
+  const { register, error, clearError, user, loading } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true })
-  }, [user, navigate])
+    // Wait for role sync before redirecting to dashboard
+    if (user && !loading) navigate('/dashboard', { replace: true })
+  }, [user, loading, navigate])
 
   useEffect(() => {
     return () => clearError()

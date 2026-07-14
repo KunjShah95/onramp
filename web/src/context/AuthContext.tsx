@@ -13,9 +13,18 @@ interface User {
   id: string
   email: string
   name: string
+  displayName?: string
+  photoURL?: string
   emailVerified: boolean
   createdAt: Date | string
   updatedAt: Date | string
+  metadata?: {
+    creationTime?: string
+    lastSignInTime?: string
+  }
+  providerData?: Array<{
+    providerId: string
+  }>
 }
 
 interface AuthState {
@@ -23,9 +32,11 @@ interface AuthState {
   loading: boolean
   error: string | null
   authMethod: 'password' | null
-  role: 'owner' | 'developer' | 'senior' | 'member' | null
+  role: 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | null
   activeTeamId: string | null
 }
+
+export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member'
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
@@ -39,16 +50,6 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-
-function decodeToken(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    return JSON.parse(atob(parts[1]))
-  } catch {
-    return null
-  }
-}
 
 function mapUser(raw: Record<string, unknown>): User {
   return {
@@ -79,13 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({
           ...prev,
           activeTeamId: (activeTeam as any).team_id || null,
-          role: ((activeTeam as any).role as 'owner' | 'developer' | 'senior' | 'member') || 'member',
+          role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member') || 'new_dev',
         }))
       } else {
         setState((prev) => ({ ...prev, role: null, activeTeamId: null }))
       }
     } catch {
-      setState((prev) => ({ ...prev, role: 'member' }))
+      setState((prev) => ({ ...prev, role: 'new_dev' }))
     }
   }, [])
 
@@ -200,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...prev,
           loading: false,
           activeTeamId: teamId,
-          role: ((targetTeam as any).role as 'owner' | 'developer' | 'senior' | 'member') || 'member',
+          role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member') || 'new_dev',
         }))
       } else {
         setState((prev) => ({ ...prev, loading: false }))
@@ -221,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (targetTeam) {
             return {
               ...prev,
-              role: ((targetTeam as any).role as 'owner' | 'developer' | 'senior' | 'member') || 'member',
+              role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member') || 'new_dev',
             }
           }
         }
@@ -230,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return {
             ...prev,
             activeTeamId: activeTeam.team_id,
-            role: ((activeTeam as any).role as 'owner' | 'developer' | 'senior' | 'member') || 'member',
+            role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member') || 'new_dev',
           }
         }
         return { ...prev, role: null, activeTeamId: null }

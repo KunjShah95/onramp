@@ -44,6 +44,62 @@ def _safe_int(val: Optional[str], default: int = 0) -> int:
         return default
 
 
+def _compute_health_score(data: Dict[str, Any]) -> tuple:
+    """Derive a 0-100 repository health score from real GitHub signals.
+
+    Transparent, deterministic formula — every deduction is reported in the
+    returned factor list so the number is explainable, not a magic constant.
+    """
+    factors: List[str] = []
+
+    if data.get("archived") or data.get("disabled"):
+        return 20, ["archived_or_disabled"]
+
+    score = 100
+
+    if not data.get("description"):
+        score -= 10
+        factors.append("no_description")
+    if not data.get("license"):
+        score -= 10
+        factors.append("no_license")
+
+    # Staleness from last push.
+    pushed_at = data.get("pushed_at")
+    if pushed_at:
+        try:
+            dt = datetime.datetime.fromisoformat(str(pushed_at).replace("Z", "+00:00"))
+            days = (datetime.datetime.now(datetime.timezone.utc) - dt).days
+            if days > 365:
+                score -= 25
+                factors.append("stale_over_1y")
+            elif days > 180:
+                score -= 15
+                factors.append("stale_over_6mo")
+            elif days > 90:
+                score -= 5
+                factors.append("stale_over_3mo")
+        except Exception:
+            pass
+
+    # Open-issue pressure relative to popularity.
+    stars = data.get("stargazers_count", 0)
+    open_issues = data.get("open_issues_count", 0)
+    if stars > 0:
+        ratio = open_issues / stars
+        if ratio > 1:
+            score -= 15
+            factors.append("high_issue_ratio")
+        elif ratio > 0.5:
+            score -= 8
+            factors.append("elevated_issue_ratio")
+    elif open_issues > 50:
+        score -= 10
+        factors.append("many_open_issues")
+
+    return max(0, min(100, score)), factors
+
+
 def _check_rate_limits(response: httpx.Response, context: str = "") -> None:
     """Inspect GitHub's X-RateLimit-* headers and warn when remaining is low."""
     remaining = response.headers.get("X-RateLimit-Remaining")
@@ -230,7 +286,13 @@ class GitHubService:
         before_sleep=_log_retry,
     )
     async def get_repo_stats(self, owner: str, repo: str) -> dict:
-        """Fetch repository metadata from GitHub API and return estimated stats."""
+        """Fetch real repository metadata from the GitHub API.
+
+        Returns only values sourced from GitHub, plus a health_score derived
+        from those real signals (see _compute_health_score). On failure it
+        returns {"available": False} rather than fabricated numbers, so callers
+        can render an honest "not analyzed" state.
+        """
         headers = {
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "CodeFlow-2.0"
@@ -244,18 +306,24 @@ class GitHubService:
                 response = await self._fetch_page(client, url, headers)
                 data = response.json()
 
+                health_score, health_factors = _compute_health_score(data)
+                license_info = data.get("license") or {}
                 return {
+                    "available": True,
                     "description": data.get("description", ""),
                     "language": data.get("language"),
                     "stars": data.get("stargazers_count", 0),
                     "forks": data.get("forks_count", 0),
+                    "watchers": data.get("subscribers_count", data.get("watchers_count", 0)),
                     "open_issues": data.get("open_issues_count", 0),
+                    "size_kb": data.get("size", 0),
                     "default_branch": data.get("default_branch", "main"),
-                    "estimated_nodes": min(data.get("stargazers_count", 1000) + 247, 5000),
-                    "estimated_edges": min(data.get("forks_count", 500) * 2 + 2000, 15000),
-                    "health_score": 85,
-                    "learning_paths": 4,
-                    "first_issues": 12,
+                    "pushed_at": data.get("pushed_at"),
+                    "license": license_info.get("spdx_id") if isinstance(license_info, dict) else None,
+                    "archived": data.get("archived", False),
+                    "topics": data.get("topics", []),
+                    "health_score": health_score,
+                    "health_factors": health_factors,
                 }
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
@@ -265,13 +333,8 @@ class GitHubService:
             except Exception as e:
                 logger.exception(f"Error fetching repo stats for {owner}/{repo}: {e}")
 
-        return {
-            "estimated_nodes": 1247,
-            "estimated_edges": 3892,
-            "health_score": 85,
-            "learning_paths": 4,
-            "first_issues": 12,
-        }
+        # No fabricated fallback — signal unavailability truthfully.
+        return {"available": False, "health_score": None}
 
     async def get_issues(self, repo_url: str, labels: List[str] = None, limit: int = 20) -> List[Issue]:
         """

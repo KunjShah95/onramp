@@ -1,14 +1,11 @@
-// @ts-nocheck — Pre-existing union type narrowing issues with authClient
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
-import { authClient } from '../lib/neon-auth'
 import ForgotPassword from './ForgotPassword'
 
 describe('ForgotPassword', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(authClient.forgetPassword.emailOtp).mockResolvedValue({} as any)
   })
 
   it('renders the forgot password form', () => {
@@ -17,23 +14,20 @@ describe('ForgotPassword', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
   })
 
-  it('calls Neon Auth reset password on submit', async () => {
+  it('shows error on submit (password reset not available)', async () => {
     const user = userEvent.setup()
     render(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
-    await user.click(screen.getByRole('button', { name: /send/i }))
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {
-      expect(authClient.forgetPassword.emailOtp).toHaveBeenCalledWith({ email: 'test@test.com' })
+      // AuthContext.resetPassword throws immediately — error text appears in
+      // both the inline error div and the toast notification
+      expect(screen.getAllByText(/contact your administrator/i).length).toBeGreaterThan(0)
     })
   })
 
-  it('shows success message after sending', async () => {
-    const user = userEvent.setup()
+  it('links back to sign in', () => {
     render(<ForgotPassword />)
-    await user.type(screen.getByLabelText(/email/i), 'test@test.com')
-    await user.click(screen.getByRole('button', { name: /send/i }))
-    await waitFor(() => {
-      expect(screen.getByText(/check your email/i)).toBeInTheDocument()
-    })
+    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
   })
 })

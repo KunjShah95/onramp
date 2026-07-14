@@ -131,16 +131,44 @@ async def repo_analysis(
     gh = GitHubService()
     stats = await gh.get_repo_stats(owner, repo)
 
+    if not stats.get("available"):
+        # Honest unavailable state — no fabricated graph or scores.
+        return {
+            "available": False,
+            "owner": owner,
+            "repo": repo,
+            "graph": {"nodes": 0, "edges": 0},
+            "learning_paths": 0,
+            "first_issues_identified": 0,
+            "health_score": None,
+            "message": "Repository not found on GitHub or not yet analyzed.",
+        }
+
+    # Real count of beginner-friendly open issues.
+    repo_url = f"https://github.com/{owner}/{repo}"
+    try:
+        first_issues = await gh.get_issues(
+            repo_url, labels=["good first issue"], limit=30
+        )
+    except Exception:
+        first_issues = []
+
     return {
-        "graph": {
-            "nodes": stats.get("estimated_nodes", 1247),
-            "edges": stats.get("estimated_edges", 3892),
-        },
-        "learning_paths": stats.get("learning_paths", 4),
-        "first_issues_identified": stats.get("first_issues", 12),
-        "health_score": stats.get("health_score", 85),
+        "available": True,
         "owner": owner,
         "repo": repo,
+        "language": stats.get("language"),
+        "stars": stats.get("stars", 0),
+        "forks": stats.get("forks", 0),
+        "open_issues": stats.get("open_issues", 0),
+        "topics": stats.get("topics", []),
+        "health_score": stats.get("health_score"),
+        "health_factors": stats.get("health_factors", []),
+        "first_issues_identified": len(first_issues),
+        # Code-graph analysis requires cloning + parsing the repo, which is a
+        # separate pipeline; 0 here means "not yet computed", not fabricated.
+        "graph": {"nodes": 0, "edges": 0},
+        "learning_paths": len(stats.get("topics", [])),
     }
 
 
@@ -157,13 +185,7 @@ async def list_roadmap(user: dict = Depends(get_current_user)):
         "milestones",
         [("team_id", "==", team_id)] if team_id else [],
     )
-    if not milestones:
-        milestones = [
-            {"id": "1", "title": "Phase 1: Agent Layer", "phase": "Phase 1", "status": "completed", "progress": 100},
-            {"id": "2", "title": "Phase 2 & 3: Enhancers & Differentiators", "phase": "Phase 2", "status": "completed", "progress": 100},
-            {"id": "3", "title": "Phase 4: AIaaS Launch", "phase": "Phase 4", "status": "active", "progress": 60},
-            {"id": "4", "title": "Phase 5: SaaS Dashboard", "phase": "Phase 5", "status": "active", "progress": 30},
-        ]
+    # Real milestones only — empty list when none exist, no fabricated roadmap.
     return {"milestones": milestones}
 
 

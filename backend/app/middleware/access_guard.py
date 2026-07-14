@@ -28,7 +28,17 @@ Usage:
 
 from fastapi import Request, HTTPException, Depends
 
-ROLE_HIERARCHY = {"owner": 3, "senior": 2, "member": 1}
+ROLE_HIERARCHY = {
+    "ceo": 6,
+    "cto": 6,
+    "owner": 6,
+    "senior_dev": 5,
+    "senior": 5,
+    "developer": 4,
+    "tester": 3,
+    "new_dev": 2,
+    "member": 2,
+}
 
 
 def _get_user_or_401(request: Request) -> dict:

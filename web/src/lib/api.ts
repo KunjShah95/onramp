@@ -21,18 +21,24 @@ function getApiBaseUrl(): string {
 export const API_BASE = getApiBaseUrl()
 
 
-let _idToken: string | null = null
-
-export function setAuthToken(token: string | null) {
-  _idToken = token
-}
+// Token is stored/retrieved through neon-auth.ts to keep a single source of truth
+import { getToken } from './neon-auth'
 
 export function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (_idToken) {
-    headers['Authorization'] = `Bearer ${_idToken}`
+  const token = getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
   }
   return headers
+}
+
+/** Unwrap the backend's `{success, data}` response envelope. */
+function unwrap<T>(json: any): T {
+  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+    return json.data as T
+  }
+  return json as T
 }
 
 async function request<T>(url: string, body?: Record<string, unknown>, method?: string): Promise<T> {
@@ -48,7 +54,7 @@ async function request<T>(url: string, body?: Record<string, unknown>, method?: 
     const text = await res.text()
     throw new Error(`API error ${res.status}: ${text}`)
   }
-  return res.json()
+  return unwrap<T>(await res.json())
 }
 
 async function get<T>(url: string): Promise<T> {
@@ -60,7 +66,7 @@ async function get<T>(url: string): Promise<T> {
     const text = await res.text()
     throw new Error(`API error ${res.status}: ${text}`)
   }
-  return res.json()
+  return unwrap<T>(await res.json())
 }
 
 export async function analyzeArchitecture(

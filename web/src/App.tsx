@@ -196,8 +196,8 @@ export default function App() {
                     </Suspense>
                   } />
 
-                  {/* Trainee / Junior Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['member']} />}>
+                  {/* Trainee / New Dev / Junior Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['new_dev', 'member']} />}>
                     <Route path="/my-progress" element={
                       <Suspense fallback={<TraineeDashboardSkeleton />}>
                         <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
@@ -210,8 +210,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Developer / Owner Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['developer', 'owner']} />}>
+                  {/* Developer / Tester / Owner Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['developer', 'tester', 'owner', 'ceo', 'cto']} />}>
                     <Route path="/dev-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><DevSpacePage /></ErrorBoundary>
@@ -219,8 +219,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Senior / CTO / Lead Only Pages */}
-                  <Route element={<RoleGuard minRole="senior" />}>
+                  {/* Senior / CTO / Lead / Owner Only Pages */}
+                  <Route element={<RoleGuard minRole="senior_dev" />}>
                     <Route path="/senior-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><SeniorSpacePage /></ErrorBoundary>
@@ -284,8 +284,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Owner / Admin Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['owner']} />}>
+                  {/* Owner / CEO / CTO / Admin Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['owner', 'ceo', 'cto']} />}>
                     <Route path="/executive" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ExecutivePage /></ErrorBoundary>

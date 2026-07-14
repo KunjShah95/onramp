@@ -201,7 +201,13 @@ async def create_team(request: CreateTeamRequest):
 @router.get("")
 @cached("teams", ttl=120)
 async def list_teams(request: Request, user: Optional[str] = None):
-    teams = await team_service.list_teams(user)
+    # Resolve "current-user" to the authenticated user's UID
+    resolved_user = user
+    if user == "current-user":
+        auth_user = getattr(request.state, "user", None)
+        if auth_user:
+            resolved_user = auth_user.get("uid", "")
+    teams = await team_service.list_teams(resolved_user or "")
     return {"teams": teams, "count": len(teams)}
 
 

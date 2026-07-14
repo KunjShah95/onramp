@@ -21,16 +21,17 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { login, error, clearError, user } = useAuth()
+  const { login, error, clearError, user, loading } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
 
+  // Only auto-redirect if already authenticated AND role is synced (not loading)
   useEffect(() => {
-    if (user) navigate(from, { replace: true })
-  }, [user, navigate, from])
+    if (user && !loading) navigate(from, { replace: true })
+  }, [user, loading, navigate, from])
 
   useEffect(() => {
     return () => clearError()

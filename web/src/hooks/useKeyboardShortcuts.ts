@@ -9,9 +9,9 @@ export interface Shortcut {
 }
 
 const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[] }[] = [
-  { key: 'd', path: '/dashboard', label: 'Overview', roles: ['owner', 'senior'] },
-  { key: 'p', path: '/my-progress', label: 'My Progress', roles: ['member'] },
-  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['owner', 'senior'] },
+  { key: 'd', path: '/dashboard', label: 'Overview', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev'] },
+  { key: 'p', path: '/my-progress', label: 'My Progress', roles: ['member', 'new_dev'] },
+  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev'] },
   { key: 't', path: '/tasks', label: 'Tasks' },
   { key: 'e', path: '/explore', label: 'Explore' },
   { key: 'a', path: '/ask', label: 'Ask Codebase' },
@@ -19,8 +19,8 @@ const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[
   { key: 'x', path: '/first-issue', label: 'First Issue' },
   { key: 'n', path: '/notifications', label: 'Notifications' },
   { key: 's', path: '/settings', label: 'Settings' },
-  { key: 'i', path: '/admin', label: 'Admin', roles: ['owner'] },
-  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['owner', 'senior'] },
+  { key: 'i', path: '/admin', label: 'Admin', roles: ['owner', 'ceo', 'cto'] },
+  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev'] },
 ]
 
 export function useKeyboardShortcuts() {

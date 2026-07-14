@@ -1,29 +1,9 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-const mockUser = {
-  id: 'test-uid',
-  email: 'test@example.com',
-  name: 'Test User',
-}
-
-vi.mock('@neondatabase/neon-js/auth', () => ({
-  createAuthClient: vi.fn(() => ({
-    signUp: {
-      email: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    },
-    signIn: {
-      email: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-      social: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    },
-    signOut: vi.fn().mockResolvedValue({}),
-    getSession: vi.fn().mockResolvedValue({ data: null }),
-    updateUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    forgetPassword: {
-      emailOtp: vi.fn().mockResolvedValue({}),
-    },
-  })),
-}))
+// @neondatabase/neon-js/auth is no longer used — the project uses custom JWT auth.
+// Keeping this mock empty avoids import errors if any transitive dep references it.
+vi.mock('@neondatabase/neon-js/auth', () => ({}))
 
 Element.prototype.scrollIntoView = vi.fn()
 globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
@@ -34,19 +14,6 @@ globalThis.IntersectionObserver = vi.fn().mockImplementation(() => ({
 }))
 
 vi.mock('../lib/neon-auth', () => ({
-  authClient: {
-    signUp: {
-      email: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    },
-    signIn: {
-      email: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-      social: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    },
-    signOut: vi.fn().mockResolvedValue({}),
-    getSession: vi.fn().mockResolvedValue({ data: null }),
-    updateUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-    forgetPassword: {
-      emailOtp: vi.fn().mockResolvedValue({}),
-    },
-  },
+  getToken: vi.fn(() => null),
+  setToken: vi.fn(),
 }))

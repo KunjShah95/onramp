@@ -61,6 +61,54 @@ export default function DashboardPage() {
 
   const codeHealth = healthData?.overall_score ?? null
 
+  // ── Derived chart data (must be BEFORE early returns to keep hook order stable) ──
+  const defaultDash = {
+    total_tasks: 0, completed_tasks: 0, in_progress_tasks: 0, pending_review_tasks: 0,
+    blocked_tasks: 0, completion_rate: 0, total_members: 0, total_trainees: 0,
+    first_prs_merged: 0, member_progress: [] as any[], pending_reviews: [] as any[],
+    recent_activity: [] as any[], actions: [] as any[],
+  }
+  const {
+    total_tasks, completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks,
+    completion_rate, total_members, total_trainees, first_prs_merged,
+    member_progress = [], pending_reviews = [], recent_activity = [], actions = [],
+  } = dashboard ?? defaultDash
+
+  const taskDistribution = useMemo(() => [
+    { name: 'Completed', value: completed_tasks, color: '#10B981' },
+    { name: 'In Progress', value: in_progress_tasks, color: '#F59E0B' },
+    { name: 'Pending Review', value: pending_review_tasks, color: '#EAB308' },
+    { name: 'Blocked', value: blocked_tasks, color: '#EF4444' },
+  ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks])
+
+  const memberBarData = useMemo(() =>
+    member_progress.map(m => ({
+      name: m.name.length > 10 ? m.name.slice(0, 10) + '…' : m.name,
+      completed: m.completed,
+      inProgress: m.in_progress,
+      pending: m.pending_review,
+      completionRate: m.completion_rate,
+    })).reverse(),
+    [member_progress]
+  )
+
+  const activityTrendData = useMemo(() => {
+    const grouped: Record<string, { date: string; completed: number; submitted: number; started: number }> = {}
+    for (const act of recent_activity) {
+      const day = act.updated_at ? `${new Date(act.updated_at).getMonth()}-${new Date(act.updated_at).getDate()}` : 'Today'
+      if (!grouped[day]) grouped[day] = { date: day, completed: 0, submitted: 0, started: 0 }
+      if (act.state === 'completed') grouped[day].completed++
+      else if (act.state === 'submitted' || act.state === 'under_review') grouped[day].submitted++
+      else grouped[day].started++
+    }
+    const sorted = Object.values(grouped).reverse()
+    return sorted.map((d, i) => {
+      const prev = sorted.slice(Math.max(0, i - 2), i + 1)
+      const velocity = prev.length > 0 ? Math.round((prev.reduce((s, p) => s + p.completed, 0) / prev.length) * 10) / 10 : 0
+      return { ...d, velocity }
+    })
+  }, [recent_activity])
+
   if (isLoading) {
     return (
       <div className="animate-in w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
@@ -100,49 +148,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  const {
-    total_tasks, completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks,
-    completion_rate, total_members, total_trainees, first_prs_merged,
-    member_progress = [], pending_reviews = [], recent_activity = [], actions = [],
-  } = dashboard
-
-  // ── Derived chart data ────────────────────────────────────────
-
-  const taskDistribution = useMemo(() => [
-    { name: 'Completed', value: completed_tasks, color: '#10B981' },
-    { name: 'In Progress', value: in_progress_tasks, color: '#F59E0B' },
-    { name: 'Pending Review', value: pending_review_tasks, color: '#EAB308' },
-    { name: 'Blocked', value: blocked_tasks, color: '#EF4444' },
-  ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks])
-
-  const memberBarData = useMemo(() =>
-    member_progress.map(m => ({
-      name: m.name.length > 10 ? m.name.slice(0, 10) + '…' : m.name,
-      completed: m.completed,
-      inProgress: m.in_progress,
-      pending: m.pending_review,
-      completionRate: m.completion_rate,
-    })).reverse(),
-    [member_progress]
-  )
-
-  const activityTrendData = useMemo(() => {
-    const grouped: Record<string, { date: string; completed: number; submitted: number; started: number }> = {}
-    for (const act of recent_activity) {
-      const day = act.updated_at ? `${new Date(act.updated_at).getMonth()}-${new Date(act.updated_at).getDate()}` : 'Today'
-      if (!grouped[day]) grouped[day] = { date: day, completed: 0, submitted: 0, started: 0 }
-      if (act.state === 'completed') grouped[day].completed++
-      else if (act.state === 'submitted' || act.state === 'under_review') grouped[day].submitted++
-      else grouped[day].started++
-    }
-    const sorted = Object.values(grouped).reverse()
-    return sorted.map((d, i) => {
-      const prev = sorted.slice(Math.max(0, i - 2), i + 1)
-      const velocity = prev.length > 0 ? Math.round((prev.reduce((s, p) => s + p.completed, 0) / prev.length) * 10) / 10 : 0
-      return { ...d, velocity }
-    })
-  }, [recent_activity])
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', count: null },
@@ -612,7 +617,7 @@ export default function DashboardPage() {
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
                             {member.modules_unlocked.length > 0 ? (
-                              member.modules_unlocked.map((mod, mi) => (
+                              member.modules_unlocked.map((mod: string, mi: number) => (
                                 <Link key={mi} to={`/module/${encodeURIComponent(mod)}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-success-muted text-success text-caption font-code border border-success/15 hover:bg-success-muted/70 transition-colors">
                                   <Lock size={10} weight="fill" />
                                   {mod}

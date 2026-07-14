@@ -39,7 +39,7 @@ async def delete_team(team_id: str) -> None:
     await storage.delete_document("teams", team_id)
 
 
-async def add_member(team_id: str, user_id: str, role: str = "member") -> dict:
+async def add_member(team_id: str, user_id: str, role: str = "new_dev") -> dict:
     """Add a user to a team"""
     storage = get_storage()
     
@@ -176,7 +176,7 @@ class TeamService:
             t["team_id"] = t.get("id")
         return teams
 
-    async def add_member(self, team_id: str, user: str, role: str = "member") -> dict:
+    async def add_member(self, team_id: str, user: str, role: str = "new_dev") -> dict:
         try:
             # Check for duplicates
             members = await get_team_members(team_id)
@@ -191,7 +191,7 @@ class TeamService:
         await remove_member(team_id, user)
         return {"removed": True, "user": user}
 
-    async def create_invite(self, team_id: str, email: str, invited_by: str, role: str = "member", message: str = "") -> dict:
+    async def create_invite(self, team_id: str, email: str, invited_by: str, role: str = "new_dev", message: str = "") -> dict:
         from app.services.invite_service import create_invite as _create
         return await _create(team_id, email, invited_by, role=role, message=message)
 
