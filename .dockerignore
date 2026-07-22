@@ -1,0 +1,17 @@
+node_modules
+.venv
+venv
+.env
+.git
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.planning
+AGENTS.md
+CLAUDE.md
+*.egg-info
+dist
+.vercel
+.vite
+# Keep backend/web services clean within their own contexts

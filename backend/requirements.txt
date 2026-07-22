@@ -45,6 +45,8 @@ tree-sitter-css                 # CSS parser
 tree-sitter-sql                 # SQL parser
 gspread>=6.1.0
 email-validator>=2.0.0
+# Background task processing
+celery>=5.4.0
 # Test tooling
 pytest>=8.0.0
 pytest-asyncio>=0.24.0

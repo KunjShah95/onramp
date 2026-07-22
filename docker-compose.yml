@@ -1,5 +1,4 @@
-version: '3.8'
-
+# docker compose v2
 services:
   redis:
     image: redis:7-alpine
@@ -23,7 +22,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_password}
       POSTGRES_DB: onramp
     ports:
-      - "5432:5432"
+      - "5433:5432"   # host:5433 → container:5432 (avoids conflict with local PG)
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -38,7 +37,7 @@ services:
       dockerfile: Dockerfile
       target: development
     ports:
-      - "8000:8000"
+      - "8001:8000"   # host:8001 → container:8000 (avoids conflict with local server)
     environment:
       - ENVIRONMENT=development
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-test-project}
@@ -51,7 +50,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost:3000
       - LOG_LEVEL=DEBUG
       - ENV=${ENV:-development}
     volumes:
@@ -64,12 +63,26 @@ services:
         condition: service_healthy
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  frontend:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    ports:
+      - "8080:80"   # host:8080 → container:80 (avoids conflict with local web server)
+    depends_on:
+      backend:
+        condition: service_started
+    # API calls from the browser go through Nginx at port 80 (same-origin via /api/* proxy)
+    # or directly to http://localhost:8000 if VITE_API_URL is absolute.
+
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: development
-    environment:
+    environment: &celery_env
       - ENVIRONMENT=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -86,7 +99,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: celery -A app.tasks.celery_app worker -l debug -Q agent-tasks,analytics-tasks,notification-tasks,default
+    command: celery -A app.tasks.celery_app worker -l info -Q agent-tasks,analytics-tasks,notification-tasks,default
     profiles:
       - worker
 
@@ -109,10 +122,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: celery -A app.tasks.celery_app beat -l debug
+    command: celery -A app.tasks.celery_app beat -l info
     profiles:
       - worker
-
 volumes:
   redis_data:
   postgres_data:

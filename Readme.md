@@ -174,45 +174,81 @@ Navigate to [http://localhost:5173](http://localhost:5173) and register a new ac
 
 ## 🐳 Docker Quick Start (One Command)
 
-Start the entire stack (PostgreSQL + Redis + Backend + Frontend) with Docker Compose:
+Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI) with one command:
 
 ```bash
-# Start all services
+# 1. Copy the environment template (edit if needed)
+cp .env.example .env
+
+# 2. Set at least one AI provider API key in .env (GEMINI_API_KEY, OPENROUTER_API_KEY, etc.)
+#    Open .env with a text editor and fill in your key(s).
+
+# 3. Start all services
 docker compose up -d
 
-# Run database migrations
-docker compose exec backend alembic upgrade head
-
-# View logs
+# 4. View logs
 docker compose logs -f
 
-# Stop all services
+# 5. Open the app
+#    Frontend: http://localhost:8080
+#    Backend API: http://localhost:8001
+#    API Docs: http://localhost:8001/docs
+
+# 6. Stop all services
 docker compose down
 ```
+
+> **Note:** The first build will take a few minutes (installing Python & Node.js dependencies).
 
 ### Docker Service Ports
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost:80 | React app (Nginx) |
-| **Frontend (dev)** | http://localhost:5173 | React app (Vite, without Docker) |
-| **Backend API** | http://localhost:8000 | FastAPI backend |
-| **API Docs** | http://localhost:8000/docs | Swagger UI (interactive) |
-| **PostgreSQL** | localhost:5432 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
+| **Frontend** | http://localhost:8080 | React app (Nginx, proxies `/api` → backend) |
+| **Frontend (dev)** | http://localhost:5173 | React app (Vite dev server, `npm run dev`) |
+| **Backend API** | http://localhost:8001 | FastAPI backend |
+| **API Docs** | http://localhost:8001/docs | Swagger UI (interactive) |
+| **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
 | **Redis** | localhost:6379 | Cache (pass: `redis_password`) |
+
+> **Note:** Host port 5433 is used instead of 5432, and 8001 instead of 8000, to avoid conflicts with locally-running PostgreSQL and backend dev servers. All internal Docker networking is unaffected (services communicate via Docker DNS internally).
 
 ### Docker Database Commands
 
 ```bash
-# Connect to PostgreSQL
+# Connect to PostgreSQL (via Docker's internal port 5432)
 docker compose exec postgres psql -U onramp -d onramp
+
+# Or connect from host (via mapped port 5433):
+psql -h localhost -p 5433 -U onramp -d onramp
 
 # View logs
 docker compose logs postgres
 
-# Reset database
-docker compose down -v && docker compose up -d postgres && docker compose exec backend alembic upgrade head
+# Reset database (removes volumes, recreates fresh)
+docker compose down -v && docker compose up -d
 ```
+
+### Required Configuration
+
+The app needs at least one AI provider API key to function. Get a free one:
+- **[Google Gemini](https://aistudio.google.com/apikey)** — Free tier
+- **[OpenRouter](https://openrouter.ai/)** — Free tier
+
+Set the key in your `.env` file:
+```bash
+GEMINI_API_KEY=your-key-here
+```
+
+### Frontend API URL
+
+The frontend is pre-built as a static site served by Nginx on port 80. It uses a **relative API URL** (`/api/v1`) by default, so API calls go through Nginx's proxy (`/api/*` → `backend:8000`) on the same origin — no CORS issues.
+
+To use an absolute URL instead:
+```bash
+VITE_API_URL=http://localhost:8000/api/v1 docker compose up -d
+```
+or set `VITE_API_URL` in your `.env` file.
 
 ---
 
