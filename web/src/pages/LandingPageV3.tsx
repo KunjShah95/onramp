@@ -353,7 +353,7 @@ export default function LandingPageV3() {
               key={c.title}
               className="group rounded-[18px] border border-[rgba(23,23,30,.08)] bg-white p-7 shadow-[0_1px_2px_rgba(23,23,30,.03)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(91,91,214,.30)] hover:shadow-[0_12px_32px_-12px_rgba(91,91,214,.25)]"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#ECECFB] text-[#5B5BD6] transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-[#5B5BD6] group-hover:to-[#4F46E5] group-hover:text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#ECECFB] text-[#5B5BD6] transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-[#5B5BD6] group-hover:to-[#4F46E5] group-hover:text-white group-hover:shadow-[0_4px_12px_rgba(91,91,214,.3)]">
                 <c.icon size={20} weight="duotone" />
               </span>
               <h3 className="mt-5 text-[18px] font-semibold text-[#17171B]">{c.title}</h3>
@@ -572,12 +572,12 @@ function HowItWorks() {
         className="relative mt-14 grid grid-cols-1 gap-5 md:grid-cols-3"
       >
         {/* connecting hairline */}
-        <div className="pointer-events-none absolute left-0 right-0 top-[38px] hidden h-px bg-[rgba(23,23,30,.08)] md:block" />
+        <div className="pointer-events-none absolute left-0 right-0 top-[38px] hidden h-px bg-gradient-to-r from-transparent via-[#5B5BD6]/20 to-transparent md:block" />
         {steps.map((s) => (
           <motion.div variants={item} key={s.n} className="relative">
             <div className="relative z-10 flex h-[76px] w-[76px] items-center justify-center rounded-[18px] border border-[rgba(23,23,30,.08)] bg-white shadow-[0_4px_16px_-6px_rgba(23,23,30,.12)]">
               <s.icon size={30} weight="duotone" className="text-[#5B5BD6]" />
-              <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#17171B] text-[10px] font-semibold text-white">
+              <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#5B5BD6] to-[#4F46E5] text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(91,91,214,.3)]">
                 {s.n}
               </span>
             </div>
@@ -647,7 +647,7 @@ function Features() {
                 <div className="rounded-[10px] bg-white px-3 py-2 text-[12px] text-[#4A4A52] shadow-[0_1px_2px_rgba(23,23,30,.04)]">
                   How does auth work?
                 </div>
-                <div className="rounded-[10px] bg-[#ECECFB] px-3 py-2 text-[12px] leading-[1.5] text-[#3A3A6B]">
+                <div className="rounded-[10px] bg-gradient-to-r from-[#ECECFB] to-[#E0E0FA] px-3 py-2 text-[12px] leading-[1.5] text-[#3A3A6B]">
                   Sessions are issued in <span className="font-medium">auth/session.go:42</span> and verified by middleware.
                 </div>
               </div>
@@ -690,7 +690,7 @@ function FeatureCard({
   return (
     <div className="group flex h-full flex-col rounded-[18px] border border-[rgba(23,23,30,.08)] bg-white p-6 shadow-[0_1px_2px_rgba(23,23,30,.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(91,91,214,.28)] hover:shadow-[0_16px_40px_-16px_rgba(91,91,214,.28)]">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#ECECFB] text-[#5B5BD6] transition-colors group-hover:bg-[#5B5BD6] group-hover:text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#ECECFB] text-[#5B5BD6] transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-[#5B5BD6] group-hover:to-[#4F46E5] group-hover:text-white group-hover:shadow-[0_4px_12px_rgba(91,91,214,.3)]">
           <Icon size={18} weight="duotone" />
         </span>
         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9A9AA2]">{tag}</span>
