@@ -97,7 +97,7 @@ export default function LandingPageV3() {
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">
-            {['Features', 'How it works', 'Pricing', 'Docs'].map((label) => (
+            {['Features', 'How it works', 'Pricing'].map((label) => (
               <a
                 key={label}
                 href={`#${label.split(' ')[0].toLowerCase()}`}
@@ -107,6 +107,13 @@ export default function LandingPageV3() {
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#5B5BD6] transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
+            <Link
+              to="/docs"
+              className="group relative text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]"
+            >
+              Docs
+              <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#5B5BD6] transition-all duration-300 group-hover:w-full" />
+            </Link>
 
           </div>
 
@@ -144,16 +151,38 @@ export default function LandingPageV3() {
             animate={{ opacity: 1, y: 0 }}
             className="mx-6 rounded-2xl border border-[rgba(23,23,30,.08)] bg-white/95 backdrop-blur-xl p-3 shadow-lg md:hidden"
           >
-            {['Features', 'How it works', 'Pricing', 'Docs', 'Log in'].map((label) => (
-              <a
-                key={label}
-                href="#"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#4A4A52] hover:bg-[#F6F4EF]"
-              >
-                {label}
-              </a>
-            ))}
+            {['Features', 'How it works', 'Pricing', 'Docs', 'Log in'].map((label) => {
+              if (label === 'Docs') return (
+                <Link
+                  key={label}
+                  to="/docs"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#4A4A52] hover:bg-[#F6F4EF]"
+                >
+                  {label}
+                </Link>
+              )
+              if (label === 'Log in') return (
+                <Link
+                  key={label}
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#4A4A52] hover:bg-[#F6F4EF]"
+                >
+                  {label}
+                </Link>
+              )
+              return (
+                <a
+                  key={label}
+                  href={`#${label.split(' ')[0].toLowerCase()}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#4A4A52] hover:bg-[#F6F4EF]"
+                >
+                  {label}
+                </a>
+              )
+            })}
           </motion.div>
         )}
       </nav>
@@ -1086,7 +1115,12 @@ function FinalCTA() {
   )
 }
 
-/* -- */
+const FOOTER_LINK_TO: Record<string, string> = {
+  'Features': '#features', 'How it works': '#how', 'Pricing': '/pricing',
+  'Changelog': '/changelog', 'Docs': '/docs', 'Documentation': '/docs',
+  'Privacy': '/privacy', 'Terms': '/terms',
+}
+
 function Footer() {
   const cols = [
     { h: 'Product', links: ['Features', 'How it works', 'Pricing', 'Changelog', 'Docs'] },
@@ -1112,10 +1146,16 @@ function Footer() {
               The AI-powered developer onboarding platform. Understand any codebase in hours, not weeks.
             </motion.p>
             <div className="mt-5 flex items-center gap-2.5">
-              {[GithubLogo, XLogo, LinkedinLogo].map((Icon, i) => (
+              {[
+                { Icon: GithubLogo, url: 'https://github.com/onramp' },
+                { Icon: XLogo, url: 'https://x.com/onramp' },
+                { Icon: LinkedinLogo, url: 'https://linkedin.com/company/onramp' },
+              ].map(({ Icon, url }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[rgba(23,23,30,.1)] bg-white text-[#4A4A52] transition-all duration-300 hover:border-transparent hover:bg-gradient-to-br hover:from-[#5B5BD6] hover:to-[#4F46E5] hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(91,91,214,.4)]"
                 >
                   <Icon size={16} weight="fill" />
@@ -1128,18 +1168,31 @@ function Footer() {
             <div key={c.h}>
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9A9AA2]">{c.h}</h3>
               <ul className="mt-4 space-y-2.5">
-                {c.links.map((l) => (
-                  <li key={l}>
-                    <a href="#" className="relative text-[14px] text-[#6B6B73] transition-colors duration-300 hover:text-[#17171B] after:absolute after:bottom-[-2px] after:left-0 after:h-px after:w-0 after:bg-[#5B5BD6]/40 after:transition-all after:duration-300 hover:after:w-full">{l}</a>
-                  </li>
-                ))}
+                {c.links.map((l) => {
+                  const to = FOOTER_LINK_TO[l]
+                  if (to?.startsWith('/')) return (
+                    <li key={l}>
+                      <Link to={to} className="relative text-[14px] text-[#6B6B73] transition-colors duration-300 hover:text-[#17171B] after:absolute after:bottom-[-2px] after:left-0 after:h-px after:w-0 after:bg-[#5B5BD6]/40 after:transition-all after:duration-300 hover:after:w-full">{l}</Link>
+                    </li>
+                  )
+                  if (to?.startsWith('#')) return (
+                    <li key={l}>
+                      <a href={to} className="relative text-[14px] text-[#6B6B73] transition-colors duration-300 hover:text-[#17171B] after:absolute after:bottom-[-2px] after:left-0 after:h-px after:w-0 after:bg-[#5B5BD6]/40 after:transition-all after:duration-300 hover:after:w-full">{l}</a>
+                    </li>
+                  )
+                  return (
+                    <li key={l}>
+                      <span className="relative cursor-default text-[14px] text-[#6B6B73]/50">{l}</span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-[rgba(23,23,30,.08)] pt-8 sm:flex-row">
-          <p className="text-[13px] text-[#9A9AA2]">(c)(c) {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
+          <p className="text-[13px] text-[#9A9AA2]">{'\u00A9'} {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
           <div className="flex items-center gap-2 text-[13px] text-[#6B6B73]">
             <span className="h-2 w-2 rounded-full bg-[#22A06B]" />
             All systems operational
