@@ -43,6 +43,9 @@ venv\Scripts\activate   # Windows
 # source venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env     # Windows cmd: copy .env.example .env
+# If you use your own local PostgreSQL server, DATABASE_URL must match the
+# actual username/password configured on that server.
+# The Docker Compose defaults are onramp / postgres_password.
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
@@ -96,7 +99,7 @@ For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deplo
 | Problem | Solution |
 |---------|----------|
 | PostgreSQL connection refused | Run `docker compose up -d postgres` and wait for the health check. |
-| Password authentication failed | Ensure `backend/.env` uses `onramp:postgres_password`, or set `DB_PASSWORD` before creating the container volume. |
+| Password authentication failed | Ensure `backend/.env` matches the credentials for your actual PostgreSQL server. For the Docker Compose local stack, use `onramp:postgres_password`. |
 | Tables missing | Run `cd backend && alembic upgrade head`. |
 | Redis connection refused | Start Redis with `docker compose up -d redis`, or leave `REDIS_URL` unset for local fallback behavior. |
 | AI responses empty | Add at least one AI provider key to `backend/.env` and restart the backend. |
