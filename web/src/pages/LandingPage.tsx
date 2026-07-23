@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import {
@@ -30,14 +30,15 @@ import {
 
 /* ── Design Read ────────────────────────────────────────────────
  * B2B SaaS landing for engineering buyers. Target aesthetic:
- * warm editorial "paper" light theme, indigo accent, Instrument
- * Serif display with italic emphasis words, a high-fidelity product
- * dashboard mockup as the hero centerpiece. Refined, not maximal.
+ * premium dark tech, indigo/cyan palette, glassmorphism surfaces.
+ * Instrument Serif display with italic emphasis words in cyan.
  *
- * Palette (scoped, light):
- *   paper   #F6F4EF   ink    #17171B   sub   #57575F
- *   card    #FFFFFF   line   rgba(23,23,30,.08)
- *   indigo  #5B5BD6   indigo-soft #ECECFB
+ * Palette (scoped, dark):
+ *   bg      #050816   text-primary   #FFFFFF
+ *   glass   rgba(255,255,255,0.03)   text-secondary #94A3B8
+ *   card    rgba(255,255,255,0.05)   text-muted     #64748B
+ *   primary #4F46E5   accent         #22D3EE
+ *   border  rgba(255,255,255,0.10)
  *
  * Dials: VARIANCE 6 | MOTION 5 | DENSITY 4
  * ────────────────────────────────────────────────────────────────*/
@@ -65,6 +66,13 @@ const item = {
 /* ═══════════════════════════════════════════════════════════════ */
 export default function LandingPageV3() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const navigate = useNavigate()
 
   const heroRef = useRef<HTMLDivElement>(null)
@@ -81,16 +89,22 @@ export default function LandingPageV3() {
       style={{ background: '#F6F4EF', color: '#17171B' }}
     >
       {/* ═══ Navbar ═══ */}
-      <nav className="absolute top-0 inset-x-0 z-50">
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'bg-[#050816]/80 backdrop-blur-xl border-b border-white/10'
+            : 'bg-transparent'
+        }`}
+      >
         <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-6 lg:px-10">
           <Link to="/" className="group flex items-center gap-2.5">
             <span
-              className="flex h-8 w-8 items-center justify-center rounded-[9px] text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
-              style={{ background: 'linear-gradient(140deg,#6366F1,#4F46E5)' }}
+              className="flex h-8 w-8 items-center justify-center rounded-[9px] text-white shadow-[0_0_16px_rgba(79,70,229,.35)] transition-transform duration-200 group-hover:scale-105"
+              style={{ background: 'linear-gradient(140deg,#6366F1,#22D3EE)' }}
             >
               <TreeStructure size={17} weight="bold" />
             </span>
-            <span className="text-[19px] font-semibold tracking-tight text-[#17171B]">
+            <span className="text-[19px] font-semibold tracking-tight text-white">
               Onramp
             </span>
           </Link>
@@ -100,12 +114,22 @@ export default function LandingPageV3() {
               <a
                 key={label}
                 href={`#${label.split(' ')[0].toLowerCase()}`}
-                className="text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]"
+                className={`text-[14px] font-medium transition-colors ${
+                  scrolled
+                    ? 'text-[#94A3B8] hover:text-white'
+                    : 'text-white/70 hover:text-white'
+                }`}
               >
                 {label}
               </a>
             ))}
-            <button className="flex items-center gap-1 text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]">
+            <button
+              className={`flex items-center gap-1 text-[14px] font-medium transition-colors ${
+                scrolled
+                  ? 'text-[#94A3B8] hover:text-white'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
               Resources
               <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="mt-px">
                 <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -116,13 +140,21 @@ export default function LandingPageV3() {
           <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="hidden text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B] sm:inline"
+              className={`hidden text-[14px] font-medium transition-colors sm:inline ${
+                scrolled
+                  ? 'text-[#94A3B8] hover:text-white'
+                  : 'text-white/70 hover:text-white'
+              }`}
             >
               Log in
             </Link>
             <Link
               to="/register"
-              className="group inline-flex items-center gap-1.5 rounded-[10px] bg-[#17171B] px-4 py-2.5 text-[14px] font-medium text-white shadow-[0_1px_2px_rgba(23,23,30,.2)] transition-all hover:bg-[#000] active:scale-[0.98]"
+              className={`group inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2.5 text-[14px] font-medium text-white transition-all active:scale-[0.98] ${
+                scrolled
+                  ? 'bg-gradient-to-r from-[#4F46E5] to-[#6366F1] shadow-[0_2px_16px_rgba(79,70,229,.35)] hover:shadow-[0_2px_24px_rgba(79,70,229,.50)]'
+                  : 'bg-white/10 border border-white/10 hover:bg-white/20'
+              }`}
             >
               Start free
               <ArrowRight size={14} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
@@ -130,7 +162,9 @@ export default function LandingPageV3() {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-[#4A4A52] md:hidden"
+              className={`flex h-9 w-9 items-center justify-center rounded-lg md:hidden ${
+                scrolled ? 'text-[#94A3B8]' : 'text-white/70'
+              }`}
             >
               <div className="flex flex-col gap-[5px]">
                 <span className={`block h-px w-4 bg-current transition-all ${mobileMenuOpen ? 'translate-y-[6px] rotate-45' : ''}`} />
@@ -145,14 +179,14 @@ export default function LandingPageV3() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-6 rounded-2xl border border-[rgba(23,23,30,.08)] bg-white p-3 shadow-lg md:hidden"
+            className="mx-6 rounded-2xl border border-white/10 bg-[#050816]/95 backdrop-blur-xl p-3 shadow-lg md:hidden"
           >
             {['Features', 'How it works', 'Pricing', 'Docs', 'Log in'].map((label) => (
               <a
                 key={label}
                 href="#"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#4A4A52] hover:bg-[#F6F4EF]"
+                className="block rounded-lg px-3 py-2.5 text-[14px] font-medium text-[#94A3B8] hover:bg-white/5 hover:text-white"
               >
                 {label}
               </a>
