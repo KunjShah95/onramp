@@ -63,8 +63,6 @@ const JoinPage = lazy(() => import('./pages/JoinPage'))
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
-const AuthCallback = lazy(() => import('./pages/AuthCallback'))
-const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
 // New Phase 2-5 pages
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
@@ -137,16 +135,6 @@ export default function App() {
                   <ErrorBoundary><WaitlistPage /></ErrorBoundary>
                 </Suspense>
               } />
-              <Route path="/auth/callback" element={
-                <Suspense fallback={<FormLoadingFallback />}>
-                  <ErrorBoundary><AuthCallback /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/reset-password" element={
-                <Suspense fallback={<FormLoadingFallback />}>
-                  <ErrorBoundary><ResetPassword /></ErrorBoundary>
-                </Suspense>
-              } />
               <Route path="/privacy" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><PrivacyPage /></ErrorBoundary>
@@ -208,8 +196,8 @@ export default function App() {
                     </Suspense>
                   } />
 
-                  {/* Trainee / New Dev / Junior Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['new_dev', 'member']} />}>
+                  {/* Trainee / Junior Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['member']} />}>
                     <Route path="/my-progress" element={
                       <Suspense fallback={<TraineeDashboardSkeleton />}>
                         <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
@@ -222,8 +210,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Developer / Tester / Owner Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['developer', 'tester', 'owner', 'ceo', 'cto']} />}>
+                  {/* Developer / Owner Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['developer', 'owner']} />}>
                     <Route path="/dev-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><DevSpacePage /></ErrorBoundary>
@@ -231,8 +219,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Senior / CTO / Lead / Owner Only Pages */}
-                  <Route element={<RoleGuard minRole="senior_dev" />}>
+                  {/* Senior / CTO / Lead Only Pages */}
+                  <Route element={<RoleGuard minRole="senior" />}>
                     <Route path="/senior-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><SeniorSpacePage /></ErrorBoundary>
@@ -296,8 +284,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Owner / CEO / CTO / Admin Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['owner', 'ceo', 'cto']} />}>
+                  {/* Owner / Admin Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['owner']} />}>
                     <Route path="/executive" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ExecutivePage /></ErrorBoundary>

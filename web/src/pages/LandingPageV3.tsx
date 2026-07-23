@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import {
@@ -28,7 +28,7 @@ import {
   LinkedinLogo,
 } from '@phosphor-icons/react'
 
-/* ── Design Read ────────────────────────────────────────────────
+/* ΓöÇΓöÇ Design Read ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
  * B2B SaaS landing for engineering buyers. Target aesthetic:
  * warm editorial "paper" light theme, indigo accent, Instrument
  * Serif display with italic emphasis words, a high-fidelity product
@@ -40,9 +40,9 @@ import {
  *   indigo  #5B5BD6   indigo-soft #ECECFB
  *
  * Dials: VARIANCE 6 | MOTION 5 | DENSITY 4
- * ────────────────────────────────────────────────────────────────*/
+ * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ*/
 
-/* ── Motion primitives ──────────────────────────────────────── */
+/* ΓöÇΓöÇ Motion primitives ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 22 },
   whileInView: { opacity: 1, y: 0 },
@@ -59,12 +59,18 @@ const stagger = {
 const item = {
   initial: { opacity: 0, y: 18 },
   whileInView: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
+  transition: { duration: 0.6, ease: [0.34, 1.56, 0.64, 1] as const },
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
+/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
 export default function LandingPageV3() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const navigate = useNavigate()
 
   const heroRef = useRef<HTMLDivElement>(null)
@@ -80,8 +86,8 @@ export default function LandingPageV3() {
       className="relative min-h-screen w-full overflow-x-hidden font-body antialiased"
       style={{ background: '#F6F4EF', color: '#17171B' }}
     >
-      {/* ═══ Navbar ═══ */}
-      <nav className="absolute top-0 inset-x-0 z-50">
+      {/* ΓòÉΓòÉΓòÉ Navbar ΓòÉΓòÉΓòÉ */}
+      <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-[rgba(23,23,30,.08)] shadow-sm' : 'bg-transparent'}`}>
         <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-6 lg:px-10">
           <Link to="/" className="group flex items-center gap-2.5">
             <span
@@ -100,9 +106,10 @@ export default function LandingPageV3() {
               <a
                 key={label}
                 href={`#${label.split(' ')[0].toLowerCase()}`}
-                className="text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]"
+                className="group relative text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]"
               >
                 {label}
+                <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#5B5BD6] transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
             <button className="flex items-center gap-1 text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]">
@@ -122,7 +129,7 @@ export default function LandingPageV3() {
             </Link>
             <Link
               to="/register"
-              className="group inline-flex items-center gap-1.5 rounded-[10px] bg-[#17171B] px-4 py-2.5 text-[14px] font-medium text-white shadow-[0_1px_2px_rgba(23,23,30,.2)] transition-all hover:bg-[#000] active:scale-[0.98]"
+              className="group inline-flex items-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[#5B5BD6] to-[#4F46E5] px-4 py-2.5 text-[14px] font-medium text-white shadow-[0_1px_2px_rgba(23,23,30,.2)] transition-all hover:shadow-[0_2px_8px_rgba(91,91,214,.35)] active:scale-[0.98]"
             >
               Start free
               <ArrowRight size={14} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
@@ -145,7 +152,7 @@ export default function LandingPageV3() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-6 rounded-2xl border border-[rgba(23,23,30,.08)] bg-white p-3 shadow-lg md:hidden"
+            className="mx-6 rounded-2xl border border-[rgba(23,23,30,.08)] bg-white/95 backdrop-blur-xl p-3 shadow-lg md:hidden"
           >
             {['Features', 'How it works', 'Pricing', 'Docs', 'Log in'].map((label) => (
               <a
@@ -161,7 +168,7 @@ export default function LandingPageV3() {
         )}
       </nav>
 
-      {/* ═══ Hero ═══ */}
+      {/* ΓòÉΓòÉΓòÉ Hero ΓòÉΓòÉΓòÉ */}
       <section ref={heroRef} className="relative overflow-hidden pt-[128px] pb-24">
         {/* Atmospheric mountain photo, masked + faded */}
         <motion.div
@@ -176,8 +183,8 @@ export default function LandingPageV3() {
             style={{ maskImage: 'linear-gradient(to bottom, transparent 2%, black 22%, black 74%, transparent 98%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 2%, black 22%, black 74%, transparent 98%)' }}
           />
           {/* warm wash so text stays readable over the photo, brightest behind the copy */}
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 70% at 28% 42%, rgba(246,244,239,.72) 0%, rgba(246,244,239,.30) 45%, transparent 78%)' }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, #F6F4EF 0%, transparent 20%, transparent 80%, #F6F4EF 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(75% 65% at 32% 40%, rgba(91,91,214,.12) 0%, rgba(246,244,239,.50) 45%, transparent 70%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, #F6F4EF 0%, transparent 15%, transparent 85%, rgba(91,91,214,.06) 100%)' }} />
         </motion.div>
 
         <div className="relative z-10 mx-auto grid max-w-[1280px] grid-cols-1 items-center gap-14 px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:px-10">
@@ -185,7 +192,7 @@ export default function LandingPageV3() {
           <div className="max-w-xl">
             <motion.div
               {...fadeUp(0)}
-              className="inline-flex items-center gap-2 rounded-full border border-[rgba(91,91,214,.22)] bg-white/70 px-3.5 py-1.5 text-[13px] font-medium text-[#4A4A52] shadow-[0_1px_2px_rgba(23,23,30,.04)] backdrop-blur-sm"
+              className="inline-flex items-center gap-2 rounded-full border border-[rgba(91,91,214,.22)] bg-white/70 px-3.5 py-1.5 text-[13px] font-medium text-[#4A4A52] shadow-[0_1px_2px_rgba(23,23,30,.04)] backdrop-blur-sm transition-all hover:border-[#5B5BD6]/30"
             >
               <Sparkle size={13} weight="fill" className="text-[#5B5BD6]" />
               The AI-powered developer onboarding platform
@@ -196,7 +203,7 @@ export default function LandingPageV3() {
               className="mt-6 font-display text-[52px] leading-[0.98] tracking-[-0.02em] text-[#17171B] sm:text-[64px]"
             >
               Onboard developers in hours, not{' '}
-              <span className="italic text-[#5B5BD6]">weeks.</span>
+              <span className="italic text-[#5B5BD6]" style={{ textShadow: '0 1px 8px rgba(91,91,214,.18)' }}>weeks.</span>
             </motion.h1>
 
             <motion.p
@@ -210,14 +217,14 @@ export default function LandingPageV3() {
             <motion.div {...fadeUp(0.24)} className="mt-8 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => navigate('/register')}
-                className="group inline-flex items-center gap-2 rounded-[12px] bg-[#17171B] px-6 py-3.5 text-[15px] font-medium text-white shadow-[0_2px_8px_rgba(23,23,30,.18)] transition-all hover:bg-black active:scale-[0.98]"
+                className="group inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#5B5BD6] to-[#4F46E5] px-6 py-3.5 text-[15px] font-medium text-white shadow-[0_2px_12px_rgba(91,91,214,.25)] transition-all hover:shadow-[0_4px_20px_rgba(91,91,214,.4)] active:scale-[0.98]"
               >
                 Start free
                 <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
               </button>
               <button
                 onClick={() => navigate('/explore')}
-                className="inline-flex items-center gap-2 rounded-[12px] border border-[rgba(23,23,30,.12)] bg-white px-6 py-3.5 text-[15px] font-medium text-[#17171B] shadow-[0_1px_2px_rgba(23,23,30,.04)] transition-all hover:border-[rgba(23,23,30,.2)] hover:bg-[#FBFAF8] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-[12px] border border-[rgba(23,23,30,.12)] bg-white px-6 py-3.5 text-[15px] font-medium text-[#17171B] shadow-[0_1px_2px_rgba(23,23,30,.04)] transition-all hover:border-[#5B5BD6]/30 hover:bg-[#FBFAF8] active:scale-[0.98]"
               >
                 <Play size={15} weight="fill" className="text-[#5B5BD6]" />
                 Watch demo
@@ -247,60 +254,66 @@ export default function LandingPageV3() {
             style={{ y: mockY }}
             initial={{ opacity: 0, y: 40, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
+            whileHover={{ scale: 1.015, y: -6 }}
             transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="relative"
+            className="relative cursor-pointer"
           >
             <DashboardMockup />
           </motion.div>
         </div>
       </section>
 
-      {/* ═══ Trust bar ═══ */}
+      {/* ΓòÉΓòÉΓòÉ Trust bar ΓòÉΓòÉΓòÉ */}
       <section className="relative z-10 mx-auto -mt-4 max-w-[1180px] px-6 lg:px-10">
-        <motion.div
-          {...fadeUp(0)}
-          className="rounded-[20px] border border-[rgba(23,23,30,.07)] bg-white px-8 py-7 shadow-[0_1px_2px_rgba(23,23,30,.04),0_12px_40px_-16px_rgba(23,23,30,.12)]"
-        >
-          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9A9AA2]">
-            Trusted by engineering teams at
-          </p>
-          <div className="mt-6 flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
-            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
-              {[
-                { slug: 'vercel', label: 'Vercel' },
-                { slug: 'linear', label: 'Linear' },
-                { slug: 'stripe', label: 'Stripe' },
-                { slug: 'ramp', label: 'Ramp' },
-                { slug: 'sentry', label: 'Sentry' },
-              ].map((b) => (
-                <img
-                  key={b.slug}
-                  src={`https://cdn.simpleicons.org/${b.slug}/17171B`}
-                  alt={b.label}
-                  className="h-[22px] w-auto opacity-70 grayscale transition hover:opacity-100"
-                />
-              ))}
-            </div>
-            <div className="flex items-center gap-8 border-l border-[rgba(23,23,30,.08)] pl-8">
-              <Stat
-                top={
-                  <span className="inline-flex text-[#5B5BD6]">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <Star key={i} size={15} weight="fill" />
-                    ))}
-                  </span>
-                }
-                big="4.9/5"
-                label="average rating"
-              />
-              <Stat big="10,000+" label="developers onboarded" />
-              <Stat big="2M+" label="repositories indexed" />
+        <motion.div {...fadeUp(0)}>
+          <div className="group relative rounded-[20px] bg-white p-[1px] transition-all duration-500 hover:bg-gradient-to-br hover:from-[#5B5BD6]/25 hover:to-[#4F46E5]/25">
+            <div className="rounded-[19px] border border-[rgba(23,23,30,.07)] bg-white px-8 py-7 shadow-[0_1px_2px_rgba(23,23,30,.04),0_12px_40px_-16px_rgba(23,23,30,.12)]">
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9A9AA2]">
+                Trusted by engineering teams at
+              </p>
+              <div className="mt-6 flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
+                <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
+                  {[
+                    { slug: 'vercel', label: 'Vercel' },
+                    { slug: 'linear', label: 'Linear' },
+                    { slug: 'stripe', label: 'Stripe' },
+                    { slug: 'ramp', label: 'Ramp' },
+                    { slug: 'sentry', label: 'Sentry' },
+                  ].map((b) => (
+                    <img
+                      key={b.slug}
+                      src={`https://cdn.simpleicons.org/${b.slug}/17171B`}
+                      alt={b.label}
+                      className="h-[22px] w-auto opacity-70 grayscale transition-all duration-300 hover:opacity-100 hover:brightness-110 hover:-translate-y-0.5"
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-8 border-l border-[rgba(23,23,30,.08)] pl-8">
+                  <Stat
+                    top={
+                      <motion.span
+                        animate={{ scale: [1, 1.06, 1] }}
+                        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                        className="inline-flex text-[#5B5BD6]"
+                      >
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <Star key={i} size={15} weight="fill" />
+                        ))}
+                      </motion.span>
+                    }
+                    big="4.9/5"
+                    label="average rating"
+                  />
+                  <Stat big="10,000+" label="developers onboarded" />
+                  <Stat big="2M+" label="repositories indexed" />
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
       </section>
 
-      {/* ═══ The Onboarding Tax (problem) ═══ */}
+      {/* ΓòÉΓòÉΓòÉ The Onboarding Tax (problem) ΓòÉΓòÉΓòÉ */}
       <section className="mx-auto max-w-[1180px] px-6 pt-28 pb-20 lg:px-10">
         <motion.div {...fadeUp(0)} className="text-center">
           <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#5B5BD6]">
@@ -322,12 +335,12 @@ export default function LandingPageV3() {
             {
               icon: UsersThree,
               title: 'Tribal knowledge',
-              desc: 'Critical context lives in senior engineers’ heads.',
+              desc: 'Critical context lives in senior engineersΓÇÖ heads.',
             },
             {
               icon: FileText,
               title: 'Stale docs',
-              desc: 'READMEs rot the day they’re written.',
+              desc: 'READMEs rot the day theyΓÇÖre written.',
             },
             {
               icon: ArrowsClockwise,
@@ -338,9 +351,9 @@ export default function LandingPageV3() {
             <motion.div
               variants={item}
               key={c.title}
-              className="group rounded-[18px] border border-[rgba(23,23,30,.08)] bg-white p-7 shadow-[0_1px_2px_rgba(23,23,30,.03)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(91,91,214,.28)] hover:shadow-[0_12px_32px_-12px_rgba(91,91,214,.25)]"
+              className="group rounded-[18px] border border-[rgba(23,23,30,.08)] bg-white p-7 shadow-[0_1px_2px_rgba(23,23,30,.03)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(91,91,214,.30)] hover:shadow-[0_12px_32px_-12px_rgba(91,91,214,.25)]"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#ECECFB] text-[#5B5BD6] transition-colors group-hover:bg-[#5B5BD6] group-hover:text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#ECECFB] text-[#5B5BD6] transition-all duration-300 group-hover:bg-gradient-to-br group-hover:from-[#5B5BD6] group-hover:to-[#4F46E5] group-hover:text-white">
                 <c.icon size={20} weight="duotone" />
               </span>
               <h3 className="mt-5 text-[18px] font-semibold text-[#17171B]">{c.title}</h3>
@@ -360,18 +373,18 @@ export default function LandingPageV3() {
   )
 }
 
-/* ── Trust stat ─────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Trust stat ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function Stat({ big, label, top }: { big: string; label: string; top?: React.ReactNode }) {
   return (
     <div className="text-center">
       {top && <div className="mb-1 flex justify-center">{top}</div>}
-      <div className="text-[20px] font-semibold leading-none text-[#17171B]">{big}</div>
+      <div className="text-[20px] font-semibold leading-none tracking-tight text-[#17171B] tabular-nums">{big}</div>
       <div className="mt-1 text-[12px] text-[#8A8A93]">{label}</div>
     </div>
   )
 }
 
-/* ── Hero dashboard mockup ──────────────────────────────────── */
+/* ΓöÇΓöÇ Hero dashboard mockup ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function DashboardMockup() {
   return (
     <div className="overflow-hidden rounded-[16px] border border-[rgba(23,23,30,.09)] bg-white shadow-[0_2px_4px_rgba(23,23,30,.04),0_40px_80px_-24px_rgba(23,23,30,.28)]">
@@ -418,7 +431,7 @@ function DashboardMockup() {
             </div>
           </div>
 
-          <div className="mt-3 text-[15px] font-semibold text-[#17171B]">Good morning, Alex 👋</div>
+          <div className="mt-3 text-[15px] font-semibold text-[#17171B]">Good morning, Alex ≡ƒæï</div>
           <div className="text-[11px] text-[#8A8A93]">Here&rsquo;s what&rsquo;s happening with your codebase.</div>
 
           {/* Stat cards */}
@@ -497,7 +510,7 @@ function DashboardMockup() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between rounded-[6px] bg-[#17171B] px-2 py-1.5">
-                  <span className="text-[9px] text-white/60">Ask anything about your codebase…</span>
+                  <span className="text-[9px] text-white/60">Ask anything about your codebaseΓÇª</span>
                   <PlusCircle size={11} weight="fill" className="text-[#5B5BD6]" />
                 </div>
               </div>
@@ -517,14 +530,14 @@ function Sparkline({ color }: { color: string }) {
   )
 }
 
-/* ── How it works ───────────────────────────────────────────── */
+/* ΓöÇΓöÇ How it works ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function HowItWorks() {
   const steps = [
     {
       n: '01',
       icon: GitBranch,
       title: 'Connect your repo',
-      desc: 'One-click GitHub install, read-only. Onramp clones and indexes your codebase in minutes — no config, no agents to babysit.',
+      desc: 'One-click GitHub install, read-only. Onramp clones and indexes your codebase in minutes ΓÇö no config, no agents to babysit.',
     },
     {
       n: '02',
@@ -536,7 +549,7 @@ function HowItWorks() {
       n: '03',
       icon: UsersThree,
       title: 'Engineers self-onboard',
-      desc: 'New hires follow guided paths and ask an AI mentor anything — answered from your real code, not a stale wiki.',
+      desc: 'New hires follow guided paths and ask an AI mentor anything ΓÇö answered from your real code, not a stale wiki.',
     },
   ]
   return (
@@ -577,7 +590,7 @@ function HowItWorks() {
   )
 }
 
-/* ── Features (bento) ───────────────────────────────────────── */
+/* ΓöÇΓöÇ Features (bento) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function Features() {
   return (
     <section id="features" className="border-y border-[rgba(23,23,30,.07)] bg-[#F1EEE7]">
@@ -602,7 +615,7 @@ function Features() {
               icon={MapTrifold}
               tag="Live architecture"
               title="A map that never goes stale"
-              desc="Every service, dependency, and data flow rendered as an interactive graph — regenerated on each push so it always matches reality."
+              desc="Every service, dependency, and data flow rendered as an interactive graph ΓÇö regenerated on each push so it always matches reality."
             >
               <div className="mt-5 grid grid-cols-3 gap-2">
                 {[
@@ -653,7 +666,7 @@ function Features() {
 
           {/* Insights */}
           <motion.div variants={item} className="md:col-span-2">
-            <FeatureCard icon={ChartLineUp} tag="Insights" title="Measure ramp-up" desc="Track time-to-first-PR, health scores, and where new hires get stuck — per team." />
+            <FeatureCard icon={ChartLineUp} tag="Insights" title="Measure ramp-up" desc="Track time-to-first-PR, health scores, and where new hires get stuck ΓÇö per team." />
           </motion.div>
         </motion.div>
       </div>
@@ -689,26 +702,26 @@ function FeatureCard({
   )
 }
 
-/* ── Pricing ────────────────────────────────────────────────────
+/* ΓöÇΓöÇ Pricing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
  * Design intent: pricing is where trust is won or lost. Three moves
  * to avoid the generic "3 boxes + checkmarks" template:
  *   1. A billing toggle that rewards commitment (annual = 2 months
  *      free) with an animated segmented control and morphing price.
- *   2. Real hierarchy — the recommended plan is physically taller,
+ *   2. Real hierarchy ΓÇö the recommended plan is physically taller,
  *      warmer, and lifted; the others recede so the eye lands once.
  *   3. A live seat stepper on the team plan, so a buyer sees *their*
  *      number, not an abstract per-seat figure. Progressive feature
- *      lists ("Everything in Starter, plus…") show the value ladder.
- * ──────────────────────────────────────────────────────────────*/
-const STARTER_FEATURES = ['1 repository', 'Live architecture map', 'AI mentor — 100 questions / mo', 'Auto-generated docs', 'Community support']
+ *      lists ("Everything in Starter, plusΓÇª") show the value ladder.
+ * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ*/
+const STARTER_FEATURES = ['1 repository', 'Live architecture map', 'AI mentor ΓÇö 100 questions / mo', 'Auto-generated docs', 'Community support']
 const TEAM_FEATURES = ['Unlimited repositories', 'Unlimited AI mentor', 'Guided onboarding paths', 'Ramp-up & time-to-PR insights', 'GitHub, Slack & Linear sync', 'Priority support']
 const ENTERPRISE_FEATURES = ['SSO / SAML & SCIM provisioning', 'Self-hosted or private cloud', 'Audit logs & SOC 2 Type II', 'Dedicated success engineer', 'Custom onboarding modules', '99.9% uptime SLA']
 
 type Currency = 'USD' | 'INR'
 const PRICES: Record<Currency, { sym: string; monthly: number; annual: number; roi: string }> = {
-  // Flat price per workspace — unlimited engineers. INR is PPP-adjusted, not FX-converted.
+  // Flat price per workspace ΓÇö unlimited engineers. INR is PPP-adjusted, not FX-converted.
   USD: { sym: '$', monthly: 99, annual: 82, roi: '$8,000' },
-  INR: { sym: '₹', monthly: 2999, annual: 2499, roi: '₹6,00,000' },
+  INR: { sym: 'Γé╣', monthly: 2999, annual: 2499, roi: 'Γé╣6,00,000' },
 }
 
 function Pricing() {
@@ -733,11 +746,11 @@ function Pricing() {
           One flat price. Your <span className="italic text-[#5B5BD6]">whole team.</span>
         </h2>
         <p className="mt-4 text-[16px] leading-[1.6] text-[#57575F]">
-          No per-seat math. Every engineer can ask, explore, and onboard — you pay one price per workspace.
+          No per-seat math. Every engineer can ask, explore, and onboard ΓÇö you pay one price per workspace.
         </p>
       </motion.div>
 
-      {/* ROI anchor — reframes cost against the real alternative, not a $20 tool */}
+      {/* ROI anchor ΓÇö reframes cost against the real alternative, not a $20 tool */}
       <motion.div {...fadeUp(0.06)} className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 rounded-full border border-[rgba(91,91,214,.2)] bg-[#F7F6FD] px-4 py-2 text-center text-[13.5px] text-[#4A4A52]">
         <Sparkle size={14} weight="fill" className="shrink-0 text-[#5B5BD6]" />
         <span>
@@ -787,7 +800,7 @@ function Pricing() {
           </PlanCard>
         </motion.div>
 
-        {/* Team — featured, flat per workspace */}
+        {/* Team ΓÇö featured, flat per workspace */}
         <motion.div variants={item} className="md:-mt-4">
           <PlanCard name="Team" blurb="Everything your team needs to onboard fast." featured>
             <div className="flex items-baseline gap-1">
@@ -811,10 +824,10 @@ function Pricing() {
             <p className="mt-3 h-[18px] text-[13px] text-[#8A8A93]">
               {annual ? (
                 <>
-                  <span className="text-[#B0B0B8] line-through">{c.sym}{fmt(c.monthly)}</span> billed annually · unlimited engineers
+                  <span className="text-[#B0B0B8] line-through">{c.sym}{fmt(c.monthly)}</span> billed annually ┬╖ unlimited engineers
                 </>
               ) : (
-                'per workspace · unlimited engineers'
+                'per workspace ┬╖ unlimited engineers'
               )}
             </p>
 
@@ -965,14 +978,14 @@ function FeatureList({ items, inherit, featured = false }: { items: string[]; in
   )
 }
 
-/* ── FAQ ────────────────────────────────────────────────────── */
+/* ΓöÇΓöÇ FAQ ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function FAQ() {
   const [open, setOpen] = useState<number | null>(0)
   const faqs = [
     { q: 'How long does setup take?', a: 'Under two minutes. Install the GitHub app, pick a repository, and Onramp indexes it in the background. You get a live architecture map and docs before your coffee cools.' },
     { q: 'Is my source code stored anywhere?', a: 'No. Onramp reads your code to build an analysis graph and metadata, then discards the raw source. Nothing is used to train shared models. Self-hosting is available on Enterprise.' },
     { q: 'Which languages are supported?', a: 'TypeScript, JavaScript, Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, plus config, SQL, and Markdown. New languages ship continuously.' },
-    { q: 'How does the AI mentor stay accurate?', a: 'Every answer is grounded in your indexed code with file and line references, and the index refreshes on each push — so answers track the codebase instead of a stale wiki.' },
+    { q: 'How does the AI mentor stay accurate?', a: 'Every answer is grounded in your indexed code with file and line references, and the index refreshes on each push ΓÇö so answers track the codebase instead of a stale wiki.' },
     { q: 'Can I roll it out to my whole org?', a: 'Yes. Team and Enterprise plans support SSO/SAML, SCIM provisioning, per-team onboarding paths, and ramp-up analytics across every repository.' },
   ]
 
@@ -1028,7 +1041,7 @@ function FAQ() {
   )
 }
 
-/* ── Final CTA ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Final CTA ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function FinalCTA() {
   return (
     <section className="mx-auto max-w-[1180px] px-6 py-24 lg:px-10">
@@ -1062,14 +1075,14 @@ function FinalCTA() {
               Watch demo
             </Link>
           </div>
-          <p className="mt-6 text-[13px] text-[#9A94B2]">No credit card required · 2-minute setup</p>
+          <p className="mt-6 text-[13px] text-[#9A94B2]">No credit card required ┬╖ 2-minute setup</p>
         </div>
       </motion.div>
     </section>
   )
 }
 
-/* ── Footer ─────────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Footer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function Footer() {
   const cols = [
     { h: 'Product', links: ['Features', 'How it works', 'Pricing', 'Changelog', 'Docs'] },
@@ -1122,7 +1135,7 @@ function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-[rgba(23,23,30,.08)] pt-8 sm:flex-row">
-          <p className="text-[13px] text-[#9A9AA2]">© {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
+          <p className="text-[13px] text-[#9A9AA2]">┬⌐ {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
           <div className="flex items-center gap-2 text-[13px] text-[#6B6B73]">
             <span className="h-2 w-2 rounded-full bg-[#22A06B]" />
             All systems operational
