@@ -921,14 +921,14 @@ function PlanCard({
     <div
       className={`relative flex h-full flex-col overflow-hidden rounded-[22px] p-7 transition-all duration-300 ${
         featured
-          ? 'border border-[rgba(91,91,214,.35)] bg-white shadow-[0_30px_70px_-28px_rgba(91,91,214,.55)]'
-          : 'border border-[rgba(23,23,30,.08)] bg-white/70 shadow-[0_1px_2px_rgba(23,23,30,.03)] hover:bg-white'
+          ? 'border border-[rgba(91,91,214,.35)] bg-white shadow-[0_30px_70px_-28px_rgba(91,91,214,.55)] hover:-translate-y-0.5 hover:shadow-[0_40px_80px_-28px_rgba(91,91,214,.75)]'
+          : 'border border-[rgba(23,23,30,.08)] bg-white/70 shadow-[0_1px_2px_rgba(23,23,30,.03)] hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_16px_40px_-16px_rgba(23,23,30,.12)]'
       }`}
     >
       {featured && (
         <>
-          <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#6366F1] via-[#818CF8] to-[#6366F1]" />
-          <span className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-[#ECECFB] px-2.5 py-1 text-[11px] font-semibold text-[#4F46E5]">
+          <span className="absolute inset-x-0 top-0 h-1 animate-pulse-glow bg-gradient-to-r from-[#5B5BD6] via-[#818CF8] to-[#4F46E5]" />
+          <span className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#5B5BD6]/10 to-[#4F46E5]/10 px-2.5 py-1 text-[11px] font-semibold text-[#4F46E5]">
             <Sparkle size={11} weight="fill" /> Recommended
           </span>
         </>
@@ -999,14 +999,21 @@ function FAQ() {
           </h2>
         </motion.div>
 
-        <motion.div {...fadeUp(0.1)} className="mt-12 space-y-3">
+        <motion.div
+          variants={stagger}
+          initial="initial"
+          whileInView="whileInView"
+          viewport={{ once: true, amount: 0.15 }}
+          className="mt-12 space-y-3"
+        >
           {faqs.map((f, i) => {
             const isOpen = open === i
             return (
-              <div
+              <motion.div
+                variants={item}
                 key={f.q}
-                className={`overflow-hidden rounded-[16px] border bg-white transition-colors ${
-                  isOpen ? 'border-[rgba(91,91,214,.3)]' : 'border-[rgba(23,23,30,.08)]'
+                className={`overflow-hidden rounded-[16px] border bg-white transition-all duration-300 ${
+                  isOpen ? 'border-[rgba(91,91,214,.3)] shadow-[0_8px_24px_-8px_rgba(91,91,214,.18)]' : 'border-[rgba(23,23,30,.08)] shadow-[0_1px_2px_rgba(23,23,30,.04)]'
                 }`}
               >
                 <button
@@ -1015,9 +1022,9 @@ function FAQ() {
                   aria-expanded={isOpen}
                   className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
                 >
-                  <span className="text-[16px] font-medium text-[#17171B]">{f.q}</span>
+                  <span className="text-[16px] font-medium text-[#17171B] transition-colors duration-200 hover:text-[#000000]">{f.q}</span>
                   <span
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                       isOpen ? 'rotate-45 bg-[#5B5BD6] text-white' : 'bg-[#ECECFB] text-[#5B5BD6]'
                     }`}
                   >
@@ -1027,12 +1034,12 @@ function FAQ() {
                 <motion.div
                   initial={false}
                   animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
-                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
                 >
                   <p className="px-6 pb-5 text-[15px] leading-[1.65] text-[#6B6B73]">{f.a}</p>
                 </motion.div>
-              </div>
+              </motion.div>
             )
           })}
         </motion.div>
@@ -1043,15 +1050,28 @@ function FAQ() {
 
 /* ΓöÇΓöÇ Final CTA ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function FinalCTA() {
+  const ctaRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: ctaRef,
+    offset: ['start end', 'end start'],
+  })
+  const glowY = useTransform(scrollYProgress, [0, 1], ['-8%', '8%'])
+
   return (
-    <section className="mx-auto max-w-[1180px] px-6 py-24 lg:px-10">
+    <section ref={ctaRef} className="mx-auto max-w-[1180px] px-6 py-24 lg:px-10">
       <motion.div
         {...fadeUp(0)}
         className="relative overflow-hidden rounded-[28px] px-8 py-16 text-center sm:px-16 sm:py-20"
         style={{ background: 'linear-gradient(160deg,#1B1B24 0%,#2A2340 55%,#3B2F63 100%)' }}
       >
-        {/* soft indigo glow */}
-        <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(60% 80% at 50% 0%, rgba(129,110,247,.35) 0%, transparent 70%)' }} />
+        {/* soft indigo glow with parallax + pulse */}
+        <motion.div
+          className="pointer-events-none absolute inset-0 animate-pulse-glow"
+          style={{
+            background: 'radial-gradient(60% 80% at 50% 0%, rgba(129,110,247,.35) 0%, transparent 70%)',
+            y: glowY,
+          }}
+        />
         <div className="relative">
           <h2 className="mx-auto max-w-2xl font-display text-[40px] leading-[1.08] tracking-[-0.02em] text-white sm:text-[52px]">
             Ship your next hire&rsquo;s first PR <span className="italic text-[#B8AEF7]">this week.</span>
@@ -1062,20 +1082,20 @@ function FinalCTA() {
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/register"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-7 py-3.5 text-[15px] font-semibold text-[#17171B] transition-all hover:bg-[#F1EEE7] active:scale-[0.98]"
+              className="group inline-flex items-center gap-2 rounded-[12px] bg-white px-7 py-3.5 text-[15px] font-semibold text-[#17171B] shadow-[0_2px_8px_rgba(255,255,255,.2)] transition-all hover:bg-[#F1EEE7] hover:shadow-[0_8px_24px_-4px_rgba(129,110,247,.35)] active:scale-[0.98]"
             >
               Start free
               <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
               to="/explore"
-              className="inline-flex items-center gap-2 rounded-[12px] border border-white/20 px-7 py-3.5 text-[15px] font-medium text-white transition-all hover:bg-white/10 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-[12px] border border-white/20 px-7 py-3.5 text-[15px] font-medium text-white transition-all hover:border-[#B8AEF7]/50 hover:bg-white/10 hover:shadow-[0_0_20px_-4px_rgba(129,110,247,.3)] active:scale-[0.98]"
             >
               <Play size={15} weight="fill" className="text-[#B8AEF7]" />
               Watch demo
             </Link>
           </div>
-          <p className="mt-6 text-[13px] text-[#9A94B2]">No credit card required ┬╖ 2-minute setup</p>
+          <p className="mt-6 text-[13px] text-[#9A94B2]">No credit card required · 2-minute setup</p>
         </div>
       </motion.div>
     </section>
@@ -1091,7 +1111,7 @@ function Footer() {
     { h: 'Legal', links: ['Privacy', 'Terms', 'Security', 'DPA', 'SOC 2'] },
   ]
   return (
-    <footer className="border-t border-[rgba(23,23,30,.08)] bg-[#F6F4EF]">
+    <footer className="relative border-t-0 bg-[#F6F4EF] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-[#5B5BD6]/20 before:to-transparent">
       <div className="mx-auto max-w-[1180px] px-6 py-16 lg:px-10">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-6">
           {/* Brand */}
@@ -1104,15 +1124,15 @@ function Footer() {
                 Onramp
               </span>
             </Link>
-            <p className="mt-4 max-w-[240px] text-[14px] leading-[1.6] text-[#6B6B73]">
+            <motion.p {...fadeUp(0.05)} className="mt-4 max-w-[240px] text-[14px] leading-[1.6] text-[#6B6B73]">
               The AI-powered developer onboarding platform. Understand any codebase in hours, not weeks.
-            </p>
+            </motion.p>
             <div className="mt-5 flex items-center gap-2.5">
               {[GithubLogo, XLogo, LinkedinLogo].map((Icon, i) => (
                 <a
                   key={i}
                   href="#"
-                  className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[rgba(23,23,30,.1)] bg-white text-[#4A4A52] transition-colors hover:border-[rgba(91,91,214,.35)] hover:text-[#5B5BD6]"
+                  className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[rgba(23,23,30,.1)] bg-white text-[#4A4A52] transition-all duration-300 hover:border-transparent hover:bg-gradient-to-br hover:from-[#5B5BD6] hover:to-[#4F46E5] hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(91,91,214,.4)]"
                 >
                   <Icon size={16} weight="fill" />
                 </a>
@@ -1126,7 +1146,7 @@ function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {c.links.map((l) => (
                   <li key={l}>
-                    <a href="#" className="text-[14px] text-[#6B6B73] transition-colors hover:text-[#17171B]">{l}</a>
+                    <a href="#" className="relative text-[14px] text-[#6B6B73] transition-colors duration-300 hover:text-[#17171B] after:absolute after:bottom-[-2px] after:left-0 after:h-px after:w-0 after:bg-[#5B5BD6]/40 after:transition-all after:duration-300 hover:after:w-full">{l}</a>
                   </li>
                 ))}
               </ul>
