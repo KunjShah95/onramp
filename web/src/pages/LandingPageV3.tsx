@@ -28,21 +28,16 @@ import {
   LinkedinLogo,
 } from '@phosphor-icons/react'
 
-/* ΓöÇΓöÇ Design Read ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+/* -- Design Read --
  * B2B SaaS landing for engineering buyers. Target aesthetic:
- * warm editorial "paper" light theme, indigo accent, Instrument
- * Serif display with italic emphasis words, a high-fidelity product
- * dashboard mockup as the hero centerpiece. Refined, not maximal.
+ * warm editorial light theme, indigo accent, Instrument Serif.
  *
- * Palette (scoped, light):
- *   paper   #F6F4EF   ink    #17171B   sub   #57575F
- *   card    #FFFFFF   line   rgba(23,23,30,.08)
- *   indigo  #5B5BD6   indigo-soft #ECECFB
+ * Palette: paper #F6F4EF  ink #17171B  indigo #5B5BD6
  *
  * Dials: VARIANCE 6 | MOTION 5 | DENSITY 4
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ*/
+ * -----------------*/
 
-/* ΓöÇΓöÇ Motion primitives ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- Motion primitives -- */
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 22 },
   whileInView: { opacity: 1, y: 0 },
@@ -62,7 +57,7 @@ const item = {
   transition: { duration: 0.6, ease: [0.34, 1.56, 0.64, 1] as const },
 }
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* -==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-== */
 export default function LandingPageV3() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -86,7 +81,7 @@ export default function LandingPageV3() {
       className="relative min-h-screen w-full overflow-x-hidden font-body antialiased"
       style={{ background: '#F6F4EF', color: '#17171B' }}
     >
-      {/* ΓòÉΓòÉΓòÉ Navbar ΓòÉΓòÉΓòÉ */}
+      {/* -==-==-== Navbar -==-==-== */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-[rgba(23,23,30,.08)] shadow-sm' : 'bg-transparent'}`}>
         <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between px-6 lg:px-10">
           <Link to="/" className="group flex items-center gap-2.5">
@@ -112,12 +107,7 @@ export default function LandingPageV3() {
                 <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#5B5BD6] transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
-            <button className="flex items-center gap-1 text-[14px] font-medium text-[#4A4A52] transition-colors hover:text-[#17171B]">
-              Resources
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="mt-px">
-                <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+
           </div>
 
           <div className="flex items-center gap-3">
@@ -168,7 +158,7 @@ export default function LandingPageV3() {
         )}
       </nav>
 
-      {/* ΓòÉΓòÉΓòÉ Hero ΓòÉΓòÉΓòÉ */}
+      {/* -==-==-== Hero -==-==-== */}
       <section ref={heroRef} className="relative overflow-hidden pt-[128px] pb-24">
         {/* Atmospheric mountain photo, masked + faded */}
         <motion.div
@@ -263,7 +253,7 @@ export default function LandingPageV3() {
         </div>
       </section>
 
-      {/* ΓòÉΓòÉΓòÉ Trust bar ΓòÉΓòÉΓòÉ */}
+      {/* -==-==-== Trust bar -==-==-== */}
       <section className="relative z-10 mx-auto -mt-4 max-w-[1180px] px-6 lg:px-10">
         <motion.div {...fadeUp(0)}>
           <div className="group relative rounded-[20px] bg-white p-[1px] transition-all duration-500 hover:bg-gradient-to-br hover:from-[#5B5BD6]/25 hover:to-[#4F46E5]/25">
@@ -313,7 +303,7 @@ export default function LandingPageV3() {
         </motion.div>
       </section>
 
-      {/* ΓòÉΓòÉΓòÉ The Onboarding Tax (problem) ΓòÉΓòÉΓòÉ */}
+      {/* -==-==-== The Onboarding Tax (problem) -==-==-== */}
       <section className="mx-auto max-w-[1180px] px-6 pt-28 pb-20 lg:px-10">
         <motion.div {...fadeUp(0)} className="text-center">
           <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#5B5BD6]">
@@ -335,12 +325,12 @@ export default function LandingPageV3() {
             {
               icon: UsersThree,
               title: 'Tribal knowledge',
-              desc: 'Critical context lives in senior engineersΓÇÖ heads.',
+              desc: 'Critical context lives in senior engineers--- heads.',
             },
             {
               icon: FileText,
               title: 'Stale docs',
-              desc: 'READMEs rot the day theyΓÇÖre written.',
+              desc: 'READMEs rot the day they---re written.',
             },
             {
               icon: ArrowsClockwise,
@@ -373,7 +363,7 @@ export default function LandingPageV3() {
   )
 }
 
-/* ΓöÇΓöÇ Trust stat ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function Stat({ big, label, top }: { big: string; label: string; top?: React.ReactNode }) {
   return (
     <div className="text-center">
@@ -384,7 +374,7 @@ function Stat({ big, label, top }: { big: string; label: string; top?: React.Rea
   )
 }
 
-/* ΓöÇΓöÇ Hero dashboard mockup ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function DashboardMockup() {
   return (
     <div className="overflow-hidden rounded-[16px] border border-[rgba(23,23,30,.09)] bg-white shadow-[0_2px_4px_rgba(23,23,30,.04),0_40px_80px_-24px_rgba(23,23,30,.28)]">
@@ -510,7 +500,7 @@ function DashboardMockup() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between rounded-[6px] bg-[#17171B] px-2 py-1.5">
-                  <span className="text-[9px] text-white/60">Ask anything about your codebaseΓÇª</span>
+                  <span className="text-[9px] text-white/60">Ask anything about your codebase...</span>
                   <PlusCircle size={11} weight="fill" className="text-[#5B5BD6]" />
                 </div>
               </div>
@@ -530,14 +520,14 @@ function Sparkline({ color }: { color: string }) {
   )
 }
 
-/* ΓöÇΓöÇ How it works ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function HowItWorks() {
   const steps = [
     {
       n: '01',
       icon: GitBranch,
       title: 'Connect your repo',
-      desc: 'One-click GitHub install, read-only. Onramp clones and indexes your codebase in minutes ΓÇö no config, no agents to babysit.',
+      desc: 'One-click GitHub install, read-only. Onramp clones and indexes your codebase in minutes --- no config, no agents to babysit.',
     },
     {
       n: '02',
@@ -549,7 +539,7 @@ function HowItWorks() {
       n: '03',
       icon: UsersThree,
       title: 'Engineers self-onboard',
-      desc: 'New hires follow guided paths and ask an AI mentor anything ΓÇö answered from your real code, not a stale wiki.',
+      desc: 'New hires follow guided paths and ask an AI mentor anything --- answered from your real code, not a stale wiki.',
     },
   ]
   return (
@@ -590,7 +580,7 @@ function HowItWorks() {
   )
 }
 
-/* ΓöÇΓöÇ Features (bento) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function Features() {
   return (
     <section id="features" className="border-y border-[rgba(23,23,30,.07)] bg-[#F1EEE7]">
@@ -615,7 +605,7 @@ function Features() {
               icon={MapTrifold}
               tag="Live architecture"
               title="A map that never goes stale"
-              desc="Every service, dependency, and data flow rendered as an interactive graph ΓÇö regenerated on each push so it always matches reality."
+              desc="Every service, dependency, and data flow rendered as an interactive graph --- regenerated on each push so it always matches reality."
             >
               <div className="mt-5 grid grid-cols-3 gap-2">
                 {[
@@ -666,7 +656,7 @@ function Features() {
 
           {/* Insights */}
           <motion.div variants={item} className="md:col-span-2">
-            <FeatureCard icon={ChartLineUp} tag="Insights" title="Measure ramp-up" desc="Track time-to-first-PR, health scores, and where new hires get stuck ΓÇö per team." />
+            <FeatureCard icon={ChartLineUp} tag="Insights" title="Measure ramp-up" desc="Track time-to-first-PR, health scores, and where new hires get stuck --- per team." />
           </motion.div>
         </motion.div>
       </div>
@@ -702,26 +692,20 @@ function FeatureCard({
   )
 }
 
-/* ΓöÇΓöÇ Pricing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
- * Design intent: pricing is where trust is won or lost. Three moves
- * to avoid the generic "3 boxes + checkmarks" template:
- *   1. A billing toggle that rewards commitment (annual = 2 months
- *      free) with an animated segmented control and morphing price.
- *   2. Real hierarchy ΓÇö the recommended plan is physically taller,
- *      warmer, and lifted; the others recede so the eye lands once.
- *   3. A live seat stepper on the team plan, so a buyer sees *their*
- *      number, not an abstract per-seat figure. Progressive feature
- *      lists ("Everything in Starter, plusΓÇª") show the value ladder.
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ*/
-const STARTER_FEATURES = ['1 repository', 'Live architecture map', 'AI mentor ΓÇö 100 questions / mo', 'Auto-generated docs', 'Community support']
+/* -- Pricing --
+ * Three moves to avoid the generic "3 boxes + checkmarks" template:
+ *   1. Animated segmented control with morphing price.
+ *   2. Real hierarchy -- the recommended plan is taller and lifted.
+ *   3. Progressive feature lists show the value ladder.
+ * -----------------*/
+const STARTER_FEATURES = ['1 repository', 'Live architecture map', 'AI mentor - 100 questions / mo', 'Auto-generated docs', 'Community support']
 const TEAM_FEATURES = ['Unlimited repositories', 'Unlimited AI mentor', 'Guided onboarding paths', 'Ramp-up & time-to-PR insights', 'GitHub, Slack & Linear sync', 'Priority support']
 const ENTERPRISE_FEATURES = ['SSO / SAML & SCIM provisioning', 'Self-hosted or private cloud', 'Audit logs & SOC 2 Type II', 'Dedicated success engineer', 'Custom onboarding modules', '99.9% uptime SLA']
 
 type Currency = 'USD' | 'INR'
 const PRICES: Record<Currency, { sym: string; monthly: number; annual: number; roi: string }> = {
-  // Flat price per workspace ΓÇö unlimited engineers. INR is PPP-adjusted, not FX-converted.
   USD: { sym: '$', monthly: 99, annual: 82, roi: '$8,000' },
-  INR: { sym: 'Γé╣', monthly: 2999, annual: 2499, roi: 'Γé╣6,00,000' },
+  INR: { sym: '\u20B9', monthly: 2999, annual: 2499, roi: '\u20B96,00,000' },
 }
 
 function Pricing() {
@@ -746,11 +730,11 @@ function Pricing() {
           One flat price. Your <span className="italic text-[#5B5BD6]">whole team.</span>
         </h2>
         <p className="mt-4 text-[16px] leading-[1.6] text-[#57575F]">
-          No per-seat math. Every engineer can ask, explore, and onboard ΓÇö you pay one price per workspace.
+          No per-seat math. Every engineer can ask, explore, and onboard --- you pay one price per workspace.
         </p>
       </motion.div>
 
-      {/* ROI anchor ΓÇö reframes cost against the real alternative, not a $20 tool */}
+      {/* ROI anchor --- reframes cost against the real alternative, not a $20 tool */}
       <motion.div {...fadeUp(0.06)} className="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 rounded-full border border-[rgba(91,91,214,.2)] bg-[#F7F6FD] px-4 py-2 text-center text-[13.5px] text-[#4A4A52]">
         <Sparkle size={14} weight="fill" className="shrink-0 text-[#5B5BD6]" />
         <span>
@@ -800,7 +784,7 @@ function Pricing() {
           </PlanCard>
         </motion.div>
 
-        {/* Team ΓÇö featured, flat per workspace */}
+        {/* Team --- featured, flat per workspace */}
         <motion.div variants={item} className="md:-mt-4">
           <PlanCard name="Team" blurb="Everything your team needs to onboard fast." featured>
             <div className="flex items-baseline gap-1">
@@ -824,10 +808,10 @@ function Pricing() {
             <p className="mt-3 h-[18px] text-[13px] text-[#8A8A93]">
               {annual ? (
                 <>
-                  <span className="text-[#B0B0B8] line-through">{c.sym}{fmt(c.monthly)}</span> billed annually ┬╖ unlimited engineers
+                  <span className="text-[#B0B0B8] line-through">{c.sym}{fmt(c.monthly)}</span> billed annually (c)╖ unlimited engineers
                 </>
               ) : (
-                'per workspace ┬╖ unlimited engineers'
+                'per workspace (c)╖ unlimited engineers'
               )}
             </p>
 
@@ -978,14 +962,14 @@ function FeatureList({ items, inherit, featured = false }: { items: string[]; in
   )
 }
 
-/* ΓöÇΓöÇ FAQ ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function FAQ() {
   const [open, setOpen] = useState<number | null>(0)
   const faqs = [
     { q: 'How long does setup take?', a: 'Under two minutes. Install the GitHub app, pick a repository, and Onramp indexes it in the background. You get a live architecture map and docs before your coffee cools.' },
     { q: 'Is my source code stored anywhere?', a: 'No. Onramp reads your code to build an analysis graph and metadata, then discards the raw source. Nothing is used to train shared models. Self-hosting is available on Enterprise.' },
     { q: 'Which languages are supported?', a: 'TypeScript, JavaScript, Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, plus config, SQL, and Markdown. New languages ship continuously.' },
-    { q: 'How does the AI mentor stay accurate?', a: 'Every answer is grounded in your indexed code with file and line references, and the index refreshes on each push ΓÇö so answers track the codebase instead of a stale wiki.' },
+    { q: 'How does the AI mentor stay accurate?', a: 'Every answer is grounded in your indexed code with file and line references, and the index refreshes on each push --- so answers track the codebase instead of a stale wiki.' },
     { q: 'Can I roll it out to my whole org?', a: 'Yes. Team and Enterprise plans support SSO/SAML, SCIM provisioning, per-team onboarding paths, and ramp-up analytics across every repository.' },
   ]
 
@@ -1048,7 +1032,7 @@ function FAQ() {
   )
 }
 
-/* ΓöÇΓöÇ Final CTA ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function FinalCTA() {
   const ctaRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
@@ -1102,7 +1086,7 @@ function FinalCTA() {
   )
 }
 
-/* ΓöÇΓöÇ Footer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+/* -- */
 function Footer() {
   const cols = [
     { h: 'Product', links: ['Features', 'How it works', 'Pricing', 'Changelog', 'Docs'] },
@@ -1155,7 +1139,7 @@ function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-[rgba(23,23,30,.08)] pt-8 sm:flex-row">
-          <p className="text-[13px] text-[#9A9AA2]">┬⌐ {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
+          <p className="text-[13px] text-[#9A9AA2]">(c)(c) {new Date().getFullYear()} Onramp, Inc. All rights reserved.</p>
           <div className="flex items-center gap-2 text-[13px] text-[#6B6B73]">
             <span className="h-2 w-2 rounded-full bg-[#22A06B]" />
             All systems operational
@@ -1165,3 +1149,5 @@ function Footer() {
     </footer>
   )
 }
+
+
