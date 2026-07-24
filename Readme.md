@@ -252,34 +252,123 @@ or set `VITE_API_URL` in your `.env` file.
 
 ---
 
-## 🔑 Test Credentials
+## 🔑 Seeded Test Accounts
 
-The following test accounts can be used for testing (register via the UI or seed script):
+Run the seed script to populate the database with realistic sample data across all 39 tables:
 
-| Email | Password | Role | Description |
-|-------|----------|------|-------------|
-| `dev@onramp.ai` | `dev123` | Developer | Dev user (seed via `python scripts/seed_dev_user.py`) |
-| `kunj@shah.com` | `hacker2005` | Senior Developer | Senior developer |
-| `varadvekariya6@gmail.com` | `varadvekariya` | New Developer | New developer / trainee |
+```bash
+cd backend
+python ../scripts/seed_dev_user.py
+```
 
-> **Note:** You can also register a new account at [http://localhost:5173/register](http://localhost:5173/register) or use OAuth (Google/GitHub) if configured.
+All accounts share the same password: **`demo123`**
+
+| Name | Email | Role | Team |
+|------|-------|------|------|
+| **Kunj Shah** | `kunj@onramp.dev` | Owner (admin) | InnovateHub |
+| **Varad Karandikar** | `varad@onramp.dev` | CTO (admin) | InnovateHub |
+| **Sarah Chen** | `sarah@onramp.dev` | Senior Dev | InnovateHub / Platform Eng |
+| **Marcus Johnson** | `marcus@onramp.dev` | Senior Dev | InnovateHub |
+| **Alisha Patel** | `alisha@onramp.dev` | Developer | InnovateHub |
+| **David Kim** | `david@onramp.dev` | Developer | InnovateHub / Platform Eng |
+| **Emma Wilson** | `emma@onramp.dev` | New Dev | InnovateHub |
+| **James Thompson** | `james@onramp.dev` | New Dev | InnovateHub / Platform Eng |
+| **Priya Sharma** | `priya@onramp.dev` | Tester | InnovateHub |
+
+> **Tip:** Log in as **Kunj Shah** (`kunj@onramp.dev` / `demo123`) to see the CTO/Executive dashboard, or as **Emma Wilson** (`emma@onramp.dev` / `demo123`) for the trainee view.
+
+> You can also register a new account at [http://localhost:5173/register](http://localhost:5173/register) or use OAuth (Google/GitHub) if configured.
 
 ---
 
-## 🧪 Running Tests
+## 🤝 Contributing
+
+### 📋 Prerequisites
+
+- Python 3.12+, Node.js 20+, PostgreSQL 16
+- Familiarity with FastAPI, SQLAlchemy 2.0 async, React, and Tailwind CSS
+
+### 🧪 Running Tests
 
 ```bash
-# Backend (177 tests)
-cd backend && .venv/Scripts/python -m pytest tests/ -q
+# Backend tests (278+ tests covering services, APIs, and DB migrations)
+cd backend
+python -m pytest tests/ -q                          # All tests (memory backend)
+python -m pytest tests/test_task_service.py          # Single test file
+python -m pytest tests/ -k "not billing_e2e" -q     # Exclude slow E2E tests
+python -m pytest tests/ -x --tb=short                # Stop on first failure
 
-# Frontend (49 tests)
-cd web && npx vitest run
+# Backend tests with PostgreSQL (requires running PG)
+python -m pytest tests/test_task_service.py --run-postgres
+python -m pytest tests/test_gamification.py --run-postgres
 
-# E2E tests (Playwright)
-cd web && npx playwright test
+# Frontend tests
+cd web
+npx vitest run                                       # Unit tests
+npx tsc --noEmit                                     # TypeScript check
+npx playwright test                                   # E2E tests
+```
 
-# TypeScript check
-cd web && npx tsc --noEmit
+### 🗄 Seeding Sample Data
+
+The seed script populates all **39 database tables** with realistic demo data:
+
+```bash
+cd backend
+python ../scripts/seed_dev_user.py                   # Full seed (90+ records)
+python ../scripts/seed_dev_user.py --quick            # Minimal: users + teams only
+python ../scripts/seed_dev_user.py --dry-run           # Preview without writing
+python ../scripts/seed_dev_user.py --force             # Re-create existing data
+```
+
+> See [🔑 Seeded Test Accounts](#-seeded-test-accounts) below for the full list of users.
+
+### 📦 Data Migration (Legacy JSONB → Real Tables)
+
+If you have existing data in the legacy `dynamic_documents` JSONB table from before migration 008:
+
+```bash
+cd backend
+python ../scripts/migrate_dynamic_to_tables.py              # Full migrate
+python ../scripts/migrate_dynamic_to_tables.py --dry-run     # Preview only
+python ../scripts/migrate_dynamic_to_tables.py --collection onramp_tasks  # Single collection
+```
+
+### 📝 Code Style
+
+- **Backend:** Follow PEP 8, use type hints everywhere, async-first patterns
+- **Frontend:** Strict TypeScript mode, functional components with hooks
+- **Imports:** Sort standard library → third-party → local (separated by blank line)
+- **Tests:** Write parametrized tests that run against both `InMemoryStorage` and `PostgresStorage` when possible
+
+### 🔄 Git Workflow
+
+```bash
+# Create a feature branch
+git checkout -b feat/my-feature
+
+# Make changes and commit
+# Use conventional commits: feat:, fix:, chore:, docs:, test:, refactor:
+git commit -m "feat: add cohort onboarding endpoint"
+
+# Push and open a PR
+git push origin feat/my-feature
+```
+
+### 🐳 Docker Development
+
+```bash
+# Start full stack with Docker
+docker compose up -d
+
+# Run seed inside the container
+docker compose exec backend python /app/scripts/seed_dev_user.py
+
+# Run tests inside the container
+docker compose exec backend python -m pytest tests/ -q
+
+# View backend logs
+docker compose logs -f backend
 ```
 
 ---
