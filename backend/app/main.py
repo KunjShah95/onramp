@@ -24,7 +24,7 @@ from app.llm import LLMClient
 from app.api.v1 import (
     admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
-    explore, first_pr, gamification, health, integrations as integrations_router,
+    explore, first_pr, gamification, health, hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
     playbooks, pr_review, quiz as quiz_router, reports, repositories,
     seed as seed_router, slack, tasks as tasks_router, teams, unique, waitlist
@@ -110,6 +110,8 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/explore/health",    # public health check for explore service
     "/api/v1/waitlist/join",     # public waitlist join
     "/api/v1/waitlist/count",    # public waitlist count
+    "/api/v1/slack/interactive",  # Slack interactive payloads (verified by signing secret)
+    "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)
 ])
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
@@ -155,6 +157,7 @@ app.include_router(digest_router.router, prefix="/api/v1")
 app.include_router(waitlist.router, prefix="/api/v1")
 app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
+app.include_router(hr_dashboard.router, prefix="/api/v1")
 
 
 @app.get("/")

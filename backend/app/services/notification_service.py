@@ -13,8 +13,8 @@ from app.services.postgres_db import get_storage, generate_id
 COLLECTION = "onramp_notifications"
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _preview_message(title: str, message: str, max_len: int = 120) -> str:
@@ -179,7 +179,7 @@ async def create_notification(
         "message": _preview_message(title, message),
         "full_message": message,
         "metadata": metadata or {},
-        "team_id": team_id or "",
+        "team_id": team_id or None,
         "read": False,
         "read_at": None,
         "created_at": now,

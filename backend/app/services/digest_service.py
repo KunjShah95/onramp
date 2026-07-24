@@ -21,7 +21,7 @@ from app.services.email_service import send_digest_email
 logger = logging.getLogger("onramp.digest")
 
 COLLECTION_NOTIFICATIONS = "onramp_notifications"
-COLLECTION_TASKS = "workflow_tasks"
+COLLECTION_TASKS = "onramp_tasks"  # Must match task_service.py
 COLLECTION_QUIZ_RESULTS = "onramp_quiz_results"
 COLLECTION_MEMBER_MODULES = "member_modules"
 

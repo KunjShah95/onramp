@@ -8,13 +8,13 @@ import os
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
-from sqlalchemy import select, update, delete
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from sqlalchemy import select, update, delete, DateTime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import class_mapper, selectinload
 from app.database.config import db_config
-from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, DynamicDocument, Repository
+from app.database import models as db_models
 
 logger = logging.getLogger("onramp.db")
 
@@ -28,22 +28,126 @@ def _is_valid_uuid(value: str) -> bool:
         return False
 
 
+def _get_pk_names(model: type) -> list[str]:
+    """Return the primary key column name(s) for a model."""
+    try:
+        mapper = class_mapper(model)
+        return [pk.name for pk in mapper.primary_key]
+    except Exception as exc:
+        logger.debug("Could not get PK names for %s: %s", model.__name__, exc)
+        return ["id"]
+
+
 def _model_uses_uuid_pk(model: type) -> bool:
     """Return True if the model's primary key column uses a UUID type."""
     try:
         pk = class_mapper(model).primary_key[0]
         return isinstance(pk.type, PG_UUID)
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not check UUID PK for %s: %s", model.__name__, exc)
         return False
+
+
+# ── Metadata Key Translation ────────────────────────────────────────────────
+# Maps models whose "metadata" Python attribute was renamed to avoid clashing
+# with sqlalchemy.orm.DeclarativeBase.metadata. Service code passes "metadata"
+# as a dict key; the storage layer translates it to the ORM attribute name.
+
+_METADATA_KEY_TRANSLATIONS: dict[type, str] = {
+    db_models.Notification: "notif_metadata",
+    db_models.XPRecord: "xp_metadata",
+    db_models.ContributionMilestone: "milestone_metadata",
+    db_models.AuditEvent: "audit_metadata",
+}
+
+
+def _translate_metadata_keys(model_cls: type, data: dict) -> dict:
+    """Rename the 'metadata' key to the model's ORM attribute name if needed."""
+    attr = _METADATA_KEY_TRANSLATIONS.get(model_cls)
+    if attr and "metadata" in data and attr not in data:
+        data[attr] = data.pop("metadata")
+    return data
+
+
+def _coerce_datetime_columns(model_cls: type, data: dict) -> dict:
+    """Parse ISO-string values into datetimes for DateTime columns.
+
+    Service code (from the DynamicDocument era) still stores timestamps as ISO
+    strings, which asyncpg rejects for typed TIMESTAMP columns. Coerce them so
+    those writes succeed against the real tables.
+    """
+    try:
+        columns = class_mapper(model_cls).columns
+    except Exception:
+        return data
+    for key, value in list(data.items()):
+        if not isinstance(value, str):
+            continue
+        col = columns.get(key)
+        if col is not None and isinstance(col.type, DateTime):
+            try:
+                data[key] = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+    return data
+
+
+# ── Model Registry ────────────────────────────────────────────────────────────
+# Maps collection name -> (model_class, pk_field_name, is_team_member_like, has_members_eager_load)
+
+_MODEL_REGISTRY: dict[str, tuple] = {
+    "users":           (db_models.User, "id", False, False),  # No eager load needed
+    "teams":           (db_models.Team, "id", False, True),
+    "team_members":    (db_models.TeamMember, None, True, False),  # auto-increment int PK
+    "api_keys":        (db_models.ApiKey, "id", False, False),
+    "usage_records":   (db_models.UsageRecord, "id", False, False),
+    "repositories":    (db_models.Repository, "id", False, False),
+    # New models from DynamicDocument migration
+    "onramp_tasks":                    (db_models.Task, "task_id", False, False),
+    "onramp_notifications":           (db_models.Notification, "notification_id", False, False),
+    "onramp_notification_preferences":(db_models.NotificationPreference, "user_id", False, False),
+    "onramp_gamification_xp":         (db_models.XPRecord, "xp_id", False, False),
+    "onramp_gamification_badges":     (db_models.Badge, "badge_id", False, False),
+    "onramp_gamification_streaks":    (db_models.Streak, "streak_id", False, False),
+    "onramp_subscriptions":           (db_models.Subscription, "subscription_id", False, False),
+    "onramp_webhooks":                (db_models.Webhook, "webhook_id", False, False),
+    "onramp_integrations":            (db_models.IntegrationConfig, "id", False, False),
+    "onramp_conversations":           (db_models.ConversationTurn, "id", False, False),
+    "onramp_learning_paths":          (db_models.LearningPath, "path_id", False, False),
+    "onramp_quizzes":                 (db_models.Quiz, "quiz_id", False, False),
+    "onramp_quiz_results":            (db_models.QuizResult, "result_id", False, False),
+    "member_modules":                 (db_models.MemberModule, "id", False, False),
+    "team_invites":                   (db_models.TeamInvite, "id", False, False),
+    "onramp_playbooks":               (db_models.Playbook, "playbook_id", False, False),
+    "onramp_milestones":              (db_models.ContributionMilestone, "id", False, False),
+    "onramp_audit_log":               (db_models.AuditEvent, "event_id", False, False),
+    "onramp_webhook_idempotency":     (db_models.WebhookIdempotency, "id", False, False),
+    "onramp_webhook_events":          (db_models.WebhookEventLog, "event_id", False, False),
+    "onramp_webhook_deliveries":      (db_models.WebhookDelivery, "id", False, False),
+}
+
+
+def _get_model(collection: str):
+    """Get (model_class, pk_field, is_team_member) or None for DynamicDocument fallback."""
+    entry = _MODEL_REGISTRY.get(collection)
+    if entry:
+        return entry
+    return None
 
 
 class PostgresStorage:
     """PostgreSQL storage backend with Firestore-like interface.
 
-    Each operation opens a fresh session from the pool and commits/rolls back
-    before returning. This avoids sharing a single session across concurrent
-    requests and prevents stale/never-committed transactions.
+    Each standalone CRUD method opens a fresh session from the pool and
+    commits/rolls back before returning. This avoids sharing a single session
+    across concurrent requests and prevents stale/never-committed transactions.
+
+    For atomic multi-table writes (e.g. create team + add owner), use
+    ``run_in_transaction()`` which gives you a shared session and lets you
+    call the ``_*_in_session`` internal methods.
     """
+
+    # ── Session lifecycle ───────────────────────────────────────────────────
 
     async def _session(self) -> AsyncSession:
         """Create a fresh, independent database session bound to the current loop."""
@@ -51,354 +155,335 @@ class PostgresStorage:
         factory = db_config.get_session_factory()
         return factory()
 
-    async def _run(self, operation):
-        """Run a callable inside a session and commit/rollback/close."""
+    async def _run(self, operation: Callable[[AsyncSession], Any]) -> Any:
+        """Execute *operation* inside a session, then commit and close.
+
+        Raises:
+            RuntimeError: wrapped around any exception with collection/op context.
+        """
         session = await self._session()
         try:
             result = await operation(session)
             await session.commit()
             return result
-        except Exception:
+        except Exception as exc:
             await session.rollback()
+            if not isinstance(exc, RuntimeError):
+                raise RuntimeError(f"Database operation failed: {exc}") from exc
             raise
         finally:
             await session.close()
 
+    # ── Transaction support ─────────────────────────────────────────────────
+
+    async def run_in_transaction(self, operations: Callable[[AsyncSession], Any]) -> Any:
+        """Execute *operations* atomically inside a single database session.
+
+        Args:
+            operations: An async callable ``(session) -> result``. Inside it you
+                can call any ``_*_in_session`` method. If the callable raises,
+                the entire transaction is rolled back.
+
+        Returns:
+            Whatever *operations* returns.
+
+        Raises:
+            RuntimeError: on any failure (all changes rolled back).
+
+        Example:
+
+            async def create_team_with_owner(session):
+                team = await storage._create_in_session(
+                    session, "teams", team_id, team_data,
+                )
+                member = await storage._create_in_session(
+                    session, "team_members", member_id, member_data,
+                )
+                return {"team": team, "member": member}
+
+            result = await storage.run_in_transaction(create_team_with_owner)
+        """
+        session = await self._session()
+        try:
+            result = await operations(session)
+            await session.commit()
+            return result
+        except Exception as exc:
+            await session.rollback()
+            raise RuntimeError(f"Transaction failed: {exc}") from exc
+        finally:
+            await session.close()
+
+    # ── Helpers ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _get_pk_value(model, pk_field: str | None, doc_id: str) -> Any:
+        """Convert doc_id to the right type for the model's PK."""
+        if pk_field is None:
+            return int(doc_id)  # auto-increment int PK
+        return doc_id
+
+    async def _get_model_instance(
+        self, session: AsyncSession, model, pk_field: str | None, doc_id: str,
+    ):
+        """Fetch a single model instance by PK inside an existing session."""
+        pk_val = self._get_pk_value(model, pk_field, doc_id)
+        if _model_uses_uuid_pk(model) and not _is_valid_uuid(str(pk_val)):
+            return None
+        return await session.get(model, pk_val)
+
+    async def _build_query(self, model, pk_field: str | None, filters: list | None, has_members: bool = False):
+        """Build a select query with optional filters and eager loading."""
+        if has_members:
+            query = select(model).options(selectinload(db_models.Team.members))
+        else:
+            query = select(model)
+        if filters:
+            for key, op, value in filters:
+                col = getattr(model, key, None)
+                if col is None:
+                    logger.warning("Unknown filter key '%s' on model %s — skipping", key, model.__name__)
+                    continue
+                if op == "==":
+                    query = query.where(col == value)
+                elif op == "in":
+                    query = query.where(col.in_(value or []))
+                else:
+                    logger.warning("Unsupported filter operator '%s' for key '%s'", op, key)
+        return query
+
+    # ── Session-aware internal CRUD (usable inside run_in_transaction) ────────
+
+    async def _create_in_session(self, session: AsyncSession, collection: str, doc_id: str, data: dict) -> dict:
+        """Create a document inside an existing session (for transactions)."""
+        entry = _get_model(collection)
+        if entry is None:
+            doc = db_models.DynamicDocument(id=doc_id, collection=collection, data=data)
+            session.add(doc)
+            await session.flush()
+            return doc.to_dict()
+
+        model_cls, pk_field, is_tm, has_members = entry
+        data = _translate_metadata_keys(model_cls, dict(data))
+        data = _coerce_datetime_columns(model_cls, data)
+
+        if is_tm:
+            obj = model_cls(**data)
+        else:
+            pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
+            # Callers (from the DynamicDocument era) often include the PK in the
+            # data dict too; drop it so it isn't passed twice.
+            data.pop(pk_field, None)
+            obj = model_cls(**{pk_field: pk_val}, **data)
+
+        session.add(obj)
+        await session.flush()
+        result = obj.to_dict()
+
+        if collection == "teams":
+            result["member_count"] = 0
+        return result
+
+    async def _get_in_session(self, session: AsyncSession, collection: str, doc_id: str) -> Optional[dict]:
+        """Get a document by ID inside an existing session."""
+        entry = _get_model(collection)
+        if entry is None:
+            result = await session.get(db_models.DynamicDocument, (doc_id, collection))
+            return result.to_dict() if result else None
+
+        model_cls, pk_field, is_tm, has_members = entry
+
+        if has_members:
+            result = await session.execute(
+                select(model_cls).options(selectinload(db_models.Team.members))
+                .where(getattr(model_cls, pk_field) == self._get_pk_value(model_cls, pk_field, doc_id))
+            )
+            obj = result.scalar_one_or_none()
+        else:
+            obj = await self._get_model_instance(session, model_cls, pk_field, doc_id)
+
+        return obj.to_dict() if obj else None
+
+    async def _update_in_session(self, session: AsyncSession, collection: str, doc_id: str, data: dict) -> Optional[dict]:
+        """Update a document inside an existing session."""
+        entry = _get_model(collection)
+        if entry is None:
+            stmt = update(db_models.DynamicDocument).where(
+                db_models.DynamicDocument.id == doc_id,
+                db_models.DynamicDocument.collection == collection
+            ).values(data=data, updated_at=datetime.now(timezone.utc))
+            await session.execute(stmt)
+            result = await session.get(db_models.DynamicDocument, (doc_id, collection))
+            return result.to_dict() if result else None
+
+        model_cls, pk_field, is_tm, has_members = entry
+        data = _translate_metadata_keys(model_cls, dict(data))
+        data = _coerce_datetime_columns(model_cls, data)
+        pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
+
+        if hasattr(model_cls, "updated_at"):
+            data["updated_at"] = datetime.now(timezone.utc)
+
+        stmt = update(model_cls).where(getattr(model_cls, pk_field) == pk_val).values(**data)
+        await session.execute(stmt)
+
+        if has_members:
+            query = select(model_cls).options(selectinload(db_models.Team.members)).where(
+                getattr(model_cls, pk_field) == pk_val
+            )
+            result = await session.execute(query)
+            obj = result.scalar_one_or_none()
+        else:
+            obj = await self._get_model_instance(session, model_cls, pk_field, doc_id)
+
+        return obj.to_dict() if obj else None
+
+    async def _delete_in_session(self, session: AsyncSession, collection: str, doc_id: str) -> None:
+        """Delete a document inside an existing session."""
+        entry = _get_model(collection)
+        if entry is None:
+            await session.execute(delete(db_models.DynamicDocument).where(
+                db_models.DynamicDocument.id == doc_id,
+                db_models.DynamicDocument.collection == collection
+            ))
+            return
+
+        model_cls, pk_field, is_tm, _ = entry
+        pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
+        await session.execute(delete(model_cls).where(getattr(model_cls, pk_field) == pk_val))
+
+    async def _list_in_session(self, session: AsyncSession, collection: str) -> List[dict]:
+        """List all documents in a collection inside an existing session."""
+        entry = _get_model(collection)
+        if entry is None:
+            result = await session.execute(
+                select(db_models.DynamicDocument).where(db_models.DynamicDocument.collection == collection)
+            )
+            return [doc.to_dict() for doc in result.scalars().all()]
+
+        model_cls, pk_field, is_tm, has_members = entry
+        query = await self._build_query(model_cls, pk_field, None, has_members=has_members)
+        result = await session.execute(query)
+        return [obj.to_dict() for obj in result.scalars().all()]
+
+    async def _query_in_session(
+        self, session: AsyncSession, collection: str,
+        filters: List[Tuple[str, str, Any]] = None,
+    ) -> List[dict]:
+        """Query documents with filters inside an existing session."""
+        entry = _get_model(collection)
+        if entry is None:
+            query = select(db_models.DynamicDocument).where(
+                db_models.DynamicDocument.collection == collection
+            )
+            if filters:
+                for key, op, value in filters:
+                    if op == "==":
+                        if isinstance(value, bool):
+                            val_str = "true" if value else "false"
+                            query = query.where(db_models.DynamicDocument.data[key].astext == val_str)
+                        else:
+                            query = query.where(db_models.DynamicDocument.data[key].astext == str(value))
+                    elif op == "in":
+                        query = query.where(db_models.DynamicDocument.data[key].astext.in_([str(v) for v in (value or [])]))
+            result = await session.execute(query)
+            return [doc.to_dict() for doc in result.scalars().all()]
+
+        model_cls, pk_field, is_tm, has_members = entry
+        query = await self._build_query(model_cls, pk_field, filters, has_members=has_members)
+        result = await session.execute(query)
+        return [obj.to_dict() for obj in result.scalars().all()]
+
+    # ── Batch Operations (atomic) ──────────────────────────────────────────
+
+    async def create_documents(self, collection: str, items: list[tuple[str, dict]]) -> list[dict]:
+        """Create multiple documents atomically within a single transaction.
+
+        Args:
+            collection: The target collection name.
+            items: List of (doc_id, data) tuples.
+
+        Returns:
+            List of created document dicts.
+        """
+        async def _create_batch(session: AsyncSession) -> list[dict]:
+            return [await self._create_in_session(session, collection, doc_id, data)
+                    for doc_id, data in items]
+
+        return await self._run(_create_batch)
+
+    async def update_documents(self, collection: str, items: list[tuple[str, dict]]) -> list[Optional[dict]]:
+        """Update multiple documents atomically within a single transaction.
+
+        Args:
+            collection: The target collection name.
+            items: List of (doc_id, data) tuples.
+
+        Returns:
+            List of updated document dicts (None for missing documents).
+        """
+        async def _update_batch(session: AsyncSession) -> list[Optional[dict]]:
+            return [await self._update_in_session(session, collection, doc_id, data)
+                    for doc_id, data in items]
+
+        return await self._run(_update_batch)
+
+    async def delete_documents(self, collection: str, doc_ids: list[str]) -> int:
+        """Delete multiple documents atomically within a single transaction.
+
+        Args:
+            collection: The target collection name.
+            doc_ids: List of document IDs to delete.
+
+        Returns:
+            Number of documents deleted.
+        """
+        async def _delete_batch(session: AsyncSession) -> int:
+            for doc_id in doc_ids:
+                await self._delete_in_session(session, collection, doc_id)
+            return len(doc_ids)
+
+        return await self._run(_delete_batch)
+
+    # ── Single-document CRUD (thin wrappers that delegate to * _in_session) ─
+
     async def create_document(self, collection: str, doc_id: str, data: dict) -> dict:
-        """Create a document in the specified collection"""
-        async def _create(session: AsyncSession) -> dict:
-            if collection == "users":
-                user = User(id=doc_id, **data)
-                session.add(user)
-                await session.flush()
-                return user.to_dict()
-
-            elif collection == "teams":
-                team = Team(id=doc_id, **data)
-                session.add(team)
-                await session.flush()
-                team_dict = team.to_dict()
-                team_dict["member_count"] = 0  # Brand new team has 0 members
-                return team_dict
-
-            elif collection == "team_members":
-                # handle auto-increment id correctly by ignoring doc_id or using it for lookup
-                # team_members doesn't strictly use UUID string primary keys in models.py (uses autoincrement ID)
-                # But to maintain Firestore compatibility, we can just use the provided doc_id if we added a string id.
-                # Actually, TeamMember has id as integer! We can't insert string doc_id. 
-                # Let's see what TeamMember has: `id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)`
-                member = TeamMember(**data)
-                session.add(member)
-                await session.flush()
-                return {
-                    "id": str(member.id),
-                    "user_id": member.user_id,
-                    "team_id": member.team_id,
-                    "role": member.role,
-                    "joined_at": member.joined_at.isoformat()
-                }
-
-            elif collection == "api_keys":
-                api_key = ApiKey(id=doc_id, **data)
-                session.add(api_key)
-                await session.flush()
-                return api_key.to_dict()
-
-            elif collection == "usage_records":
-                record = UsageRecord(id=doc_id, **data)
-                session.add(record)
-                await session.flush()
-                return record.to_dict()
-
-            elif collection == "repositories":
-                repo = Repository(id=doc_id, **data)
-                session.add(repo)
-                await session.flush()
-                return repo.to_dict()
-
-            else:
-                doc = DynamicDocument(id=doc_id, collection=collection, data=data)
-                session.add(doc)
-                await session.flush()
-                return doc.to_dict()
-
-        return await self._run(_create)
+        """Create a document in the specified collection."""
+        return await self._run(
+            lambda s: self._create_in_session(s, collection, doc_id, data)
+        )
 
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
-        """Get a document by ID"""
-        model_map = {
-            "users": User,
-            "teams": Team,
-            "team_members": TeamMember,
-            "api_keys": ApiKey,
-            "usage_records": UsageRecord,
-            "repositories": Repository,
-        }
-        model = model_map.get(collection)
-        if model is not None and _model_uses_uuid_pk(model) and not _is_valid_uuid(doc_id):
-            return None
+        """Get a document by ID."""
+        return await self._run(
+            lambda s: self._get_in_session(s, collection, doc_id)
+        )
 
-        async def _get(session: AsyncSession) -> Optional[dict]:
-            if collection == "users":
-                result = await session.get(User, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "teams":
-                result = await session.execute(
-                    select(Team).options(selectinload(Team.members)).where(Team.id == doc_id)
-                )
-                team = result.scalar_one_or_none()
-                return team.to_dict() if team else None
-
-            elif collection == "team_members":
-                result = await session.get(TeamMember, int(doc_id))
-                return {
-                    "id": str(result.id),
-                    "user_id": result.user_id,
-                    "team_id": result.team_id,
-                    "role": result.role,
-                    "joined_at": result.joined_at.isoformat()
-                } if result else None
-
-            elif collection == "api_keys":
-                result = await session.get(ApiKey, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "usage_records":
-                result = await session.get(UsageRecord, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "repositories":
-                result = await session.get(Repository, doc_id)
-                return result.to_dict() if result else None
-
-            else:
-                result = await session.get(DynamicDocument, (doc_id, collection))
-                return result.to_dict() if result else None
-
-        return await self._run(_get)
-
-    async def update_document(self, collection: str, doc_id: str, data: dict) -> dict:
-        """Update a document"""
-        async def _update(session: AsyncSession) -> dict:
-            if collection == "users":
-                stmt = update(User).where(User.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
-                await session.execute(stmt)
-                result = await session.get(User, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "teams":
-                stmt = update(Team).where(Team.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
-                await session.execute(stmt)
-                result = await session.execute(
-                    select(Team).options(selectinload(Team.members)).where(Team.id == doc_id)
-                )
-                team = result.scalar_one_or_none()
-                return team.to_dict() if team else None
-
-            elif collection == "team_members":
-                stmt = update(TeamMember).where(TeamMember.id == int(doc_id)).values(**data)
-                await session.execute(stmt)
-                result = await session.get(TeamMember, int(doc_id))
-                return {
-                    "id": str(result.id),
-                    "user_id": result.user_id,
-                    "team_id": result.team_id,
-                    "role": result.role,
-                    "joined_at": result.joined_at.isoformat()
-                } if result else None
-
-            elif collection == "api_keys":
-                stmt = update(ApiKey).where(ApiKey.id == doc_id).values(**data)
-                await session.execute(stmt)
-                result = await session.get(ApiKey, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "usage_records":
-                stmt = update(UsageRecord).where(UsageRecord.id == doc_id).values(**data)
-                await session.execute(stmt)
-                result = await session.get(UsageRecord, doc_id)
-                return result.to_dict() if result else None
-
-            elif collection == "repositories":
-                stmt = update(Repository).where(Repository.id == doc_id).values(**data, updated_at=datetime.now(timezone.utc))
-                await session.execute(stmt)
-                result = await session.get(Repository, doc_id)
-                return result.to_dict() if result else None
-
-            else:
-                stmt = update(DynamicDocument).where(
-                    DynamicDocument.id == doc_id, 
-                    DynamicDocument.collection == collection
-                ).values(data=data, updated_at=datetime.now(timezone.utc))
-                await session.execute(stmt)
-                result = await session.get(DynamicDocument, (doc_id, collection))
-                return result.to_dict() if result else None
-
-        return await self._run(_update)
+    async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
+        """Update a document."""
+        return await self._run(
+            lambda s: self._update_in_session(s, collection, doc_id, data)
+        )
 
     async def delete_document(self, collection: str, doc_id: str) -> None:
-        """Delete a document"""
-        async def _delete(session: AsyncSession) -> None:
-            if collection == "users":
-                await session.execute(delete(User).where(User.id == doc_id))
-
-            elif collection == "teams":
-                await session.execute(delete(Team).where(Team.id == doc_id))
-
-            elif collection == "team_members":
-                await session.execute(delete(TeamMember).where(TeamMember.id == int(doc_id)))
-
-            elif collection == "api_keys":
-                await session.execute(delete(ApiKey).where(ApiKey.id == doc_id))
-
-            elif collection == "usage_records":
-                await session.execute(delete(UsageRecord).where(UsageRecord.id == doc_id))
-
-            elif collection == "repositories":
-                await session.execute(delete(Repository).where(Repository.id == doc_id))
-
-            else:
-                await session.execute(delete(DynamicDocument).where(
-                    DynamicDocument.id == doc_id,
-                    DynamicDocument.collection == collection
-                ))
-
-        await self._run(_delete)
+        """Delete a document."""
+        return await self._run(
+            lambda s: self._delete_in_session(s, collection, doc_id)
+        )
 
     async def list_documents(self, collection: str) -> List[dict]:
-        """List all documents in a collection"""
-        async def _list(session: AsyncSession) -> List[dict]:
-            if collection == "users":
-                result = await session.execute(select(User))
-                return [user.to_dict() for user in result.scalars().all()]
-
-            elif collection == "teams":
-                result = await session.execute(select(Team).options(selectinload(Team.members)))
-                return [team.to_dict() for team in result.scalars().all()]
-
-            elif collection == "team_members":
-                result = await session.execute(select(TeamMember))
-                return [{
-                    "id": str(member.id),
-                    "user_id": member.user_id,
-                    "team_id": member.team_id,
-                    "role": member.role,
-                    "joined_at": member.joined_at.isoformat()
-                } for member in result.scalars().all()]
-
-            elif collection == "api_keys":
-                result = await session.execute(select(ApiKey))
-                return [key.to_dict() for key in result.scalars().all()]
-
-            elif collection == "usage_records":
-                result = await session.execute(select(UsageRecord))
-                return [record.to_dict() for record in result.scalars().all()]
-
-            elif collection == "repositories":
-                result = await session.execute(select(Repository))
-                return [repo.to_dict() for repo in result.scalars().all()]
-
-            else:
-                result = await session.execute(select(DynamicDocument).where(DynamicDocument.collection == collection))
-                return [doc.to_dict() for doc in result.scalars().all()]
-
-        return await self._run(_list)
+        """List all documents in a collection."""
+        return await self._run(
+            lambda s: self._list_in_session(s, collection)
+        )
 
     async def query_documents(
         self, collection: str, filters: List[Tuple[str, str, Any]] = None
     ) -> List[dict]:
-        """Query documents with filters"""
-        async def _query(session: AsyncSession) -> List[dict]:
-            if collection == "users":
-                query = select(User)
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(User, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(User, key).in_(value or []))
-                result = await session.execute(query)
-                return [user.to_dict() for user in result.scalars().all()]
-
-            elif collection == "teams":
-                query = select(Team).options(selectinload(Team.members))
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(Team, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(Team, key).in_(value or []))
-                result = await session.execute(query)
-                return [team.to_dict() for team in result.scalars().all()]
-
-            elif collection == "team_members":
-                query = select(TeamMember)
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(TeamMember, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(TeamMember, key).in_(value or []))
-                result = await session.execute(query)
-                return [{
-                    "id": str(member.id),
-                    "user_id": member.user_id,
-                    "team_id": member.team_id,
-                    "role": member.role,
-                    "joined_at": member.joined_at.isoformat()
-                } for member in result.scalars().all()]
-
-            elif collection == "api_keys":
-                query = select(ApiKey)
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(ApiKey, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(ApiKey, key).in_(value or []))
-                result = await session.execute(query)
-                return [key.to_dict() for key in result.scalars().all()]
-
-            elif collection == "usage_records":
-                query = select(UsageRecord)
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(UsageRecord, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(UsageRecord, key).in_(value or []))
-                result = await session.execute(query)
-                return [record.to_dict() for record in result.scalars().all()]
-
-            elif collection == "repositories":
-                query = select(Repository)
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            query = query.where(getattr(Repository, key) == value)
-                        elif op == "in":
-                            query = query.where(getattr(Repository, key).in_(value or []))
-                result = await session.execute(query)
-                return [repo.to_dict() for repo in result.scalars().all()]
-
-            else:
-                query = select(DynamicDocument).where(DynamicDocument.collection == collection)
-                # Cannot easily filter deeply nested JSONB without raw SQL/operators, but implement basic key matching
-                if filters:
-                    for key, op, value in filters:
-                        if op == "==":
-                            if isinstance(value, bool):
-                                val_str = "true" if value else "false"
-                                query = query.where(DynamicDocument.data[key].astext == val_str)
-                            else:
-                                query = query.where(DynamicDocument.data[key].astext == str(value))
-                        elif op == "in":
-                            query = query.where(DynamicDocument.data[key].astext.in_([str(v) for v in (value or [])]))
-                result = await session.execute(query)
-                return [doc.to_dict() for doc in result.scalars().all()]
-
-        return await self._run(_query)
+        """Query documents with filters."""
+        return await self._run(
+            lambda s: self._query_in_session(s, collection, filters)
+        )
 
 
 class InMemoryStorage:
@@ -406,13 +491,68 @@ class InMemoryStorage:
 
     Used for tests and local runs without a database (STORAGE_BACKEND=memory).
     Handles arbitrary collections generically.
+
+    Also supports ``run_in_transaction()`` and batch methods for API parity
+    with ``PostgresStorage``.  In the in-memory backend these are *not*
+    truly atomic — they simply execute the operations callable against the
+    shared dict.  The interface is identical so code written against the
+    memory backend works unchanged against PostgreSQL.
+
+    ``datetime`` objects passed in record values are automatically
+    serialized to ISO-8601 strings so that the returned dicts are
+    consistent with what ``PostgresStorage`` returns (model ``to_dict()``
+    also produces ISO strings).  This prevents comparison code in
+    services like ``digest_service`` from breaking when running on
+    the memory backend.
     """
 
     def __init__(self):
         self._data: Dict[str, Dict[str, dict]] = {}
 
+    @staticmethod
+    def _serialize(record: dict) -> dict:
+        """Convert any datetime values to ISO strings for consistency with PostgresStorage."""
+        return {
+            k: v.isoformat() if isinstance(v, datetime) else v
+            for k, v in record.items()
+        }
+
     def _coll(self, collection: str) -> Dict[str, dict]:
         return self._data.setdefault(collection, {})
+
+    # ── Transaction support ─────────────────────────────────────────────────
+
+    async def run_in_transaction(self, operations: Callable[[Any], Any]) -> Any:
+        """In-memory analogue of PostgresStorage.run_in_transaction.
+
+        Executes *operations* (which receives ``None`` instead of a real
+        session) against the shared in-memory dict.  If an exception is
+        raised, the partial writes **are visible** — this is a documented
+        limitation of the memory backend.  Use PostgreSQL for true atomicity.
+        """
+        try:
+            result = await operations(None)
+            return result
+        except Exception as exc:
+            raise RuntimeError(f"Transaction failed (memory backend): {exc}") from exc
+
+    # ── Batch operations ────────────────────────────────────────────────────
+
+    async def create_documents(self, collection: str, items: list[tuple[str, dict]]) -> list[dict]:
+        """Create multiple documents."""
+        return [await self.create_document(collection, doc_id, data) for doc_id, data in items]
+
+    async def update_documents(self, collection: str, items: list[tuple[str, dict]]) -> list[Optional[dict]]:
+        """Update multiple documents."""
+        return [await self.update_document(collection, doc_id, data) for doc_id, data in items]
+
+    async def delete_documents(self, collection: str, doc_ids: list[str]) -> int:
+        """Delete multiple documents."""
+        for doc_id in doc_ids:
+            await self.delete_document(collection, doc_id)
+        return len(doc_ids)
+
+    # ── Single-document CRUD ────────────────────────────────────────────────
 
     async def create_document(self, collection: str, doc_id: str, data: dict) -> dict:
         now = datetime.now(timezone.utc).isoformat()
@@ -421,12 +561,13 @@ class InMemoryStorage:
         record.setdefault("updated_at", now)
         if collection == "team_members":
             record.setdefault("joined_at", now)
+        record = self._serialize(record)
         self._coll(collection)[doc_id] = record
         return dict(record)
 
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
         rec = self._coll(collection).get(doc_id)
-        return dict(rec) if rec else None
+        return self._serialize(dict(rec)) if rec else None
 
     async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
         rec = self._coll(collection).get(doc_id)
@@ -434,13 +575,14 @@ class InMemoryStorage:
             return None
         rec.update(data)
         rec["updated_at"] = datetime.now(timezone.utc).isoformat()
+        rec = self._serialize(rec)
         return dict(rec)
 
     async def delete_document(self, collection: str, doc_id: str) -> None:
         self._coll(collection).pop(doc_id, None)
 
     async def list_documents(self, collection: str) -> List[dict]:
-        return [dict(r) for r in self._coll(collection).values()]
+        return [self._serialize(dict(r)) for r in self._coll(collection).values()]
 
     @staticmethod
     def _matches(record: dict, key: str, op: str, value: Any) -> bool:

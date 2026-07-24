@@ -438,9 +438,9 @@ class ParserService:
                 
                 if parsed_count >= max_files:
                     if parsed_count == max_files:
-                        import logging
-                        logging.getLogger("onramp.parser").warning(
-                            f"AST parsing limit hit: exceeded {max_files} files. Skipping remaining files for performance."
+                        logger.warning(
+                            "AST parsing limit hit: exceeded %d files. Skipping remaining files for performance.",
+                            max_files,
                         )
                         parsed_count += 1
                     continue

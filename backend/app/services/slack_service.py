@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, Dict
+import os
+from typing import Optional, Dict, List
 import httpx
 
 from app.services.webhook_service import get_integration_config
@@ -205,4 +206,137 @@ async def send_slack_module_granted(
         return success
     except Exception:
         logger.exception("Slack module grant notification error for %s", user_id)
+        return False
+
+
+# ── Daily Standup → Slack Block Kit ─────────────────────────────
+# Replaces the CLI daily-update flow (scripts/daily_update.py) with a
+# Slack-native workflow. `format_daily_update` renders a standup note plus
+# the auto-digest sections as Block Kit blocks; `post_to_slack` ships them to
+# the incoming-webhook URL (SLACK_WEBHOOK_URL). Both are dependency-light and
+# importable without a webhook configured.
+
+_SECTION_EMOJI = {
+    "Unread Notifications": ":bell:",
+    "Task Activity": ":clipboard:",
+    "Modules Unlocked": ":unlock:",
+    "Quiz Results": ":memo:",
+    "Pending Reviews": ":eyes:",
+}
+
+
+def format_daily_update(
+    user_name: str,
+    date: str,
+    message: str,
+    sections: Optional[List[dict]] = None,
+) -> List[dict]:
+    """Render a daily standup note + digest sections as Slack Block Kit blocks.
+
+    Args:
+        user_name: Display name of the junior submitting the standup.
+        date: ISO date string (YYYY-MM-DD) for the standup.
+        message: Free-text standup note (may be empty).
+        sections: Digest sections from digest_service.build_digest_sections(),
+            each shaped {title, items: [{emoji, text, subtitle}], cta?}.
+
+    Returns:
+        A list of Block Kit block dicts suitable for an incoming webhook or a
+        slash-command response ("blocks": [...]).
+    """
+    sections = sections or []
+    blocks: List[dict] = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f":sunrise: Daily standup — {user_name}",
+                "emoji": True,
+            },
+        },
+        {
+            "type": "context",
+            "elements": [
+                {"type": "mrkdwn", "text": f"*Date:* {date}"},
+            ],
+        },
+    ]
+
+    note = (message or "").strip()
+    if note:
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": f":speech_balloon: *Note to senior:*\n>{note}"},
+        })
+    else:
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "_No free-text note — digest only._"},
+        })
+
+    blocks.append({"type": "divider"})
+
+    if not sections:
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": ":zzz: _No tracked activity in the last 24h._"},
+        })
+        return blocks
+
+    for s in sections:
+        title = s.get("title", "Activity")
+        header_emoji = _SECTION_EMOJI.get(title, ":small_blue_diamond:")
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": f"{header_emoji} *{title}*"},
+        })
+
+        lines: List[str] = []
+        for item in s.get("items", []):
+            emoji = item.get("emoji", "•")
+            text = item.get("text", "")
+            subtitle = item.get("subtitle")
+            line = f"{emoji} {text}"
+            if subtitle:
+                line += f"  _{subtitle}_"
+            lines.append(line)
+
+        if lines:
+            blocks.append({
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "\n".join(lines)},
+            })
+
+        cta = s.get("cta")
+        if cta and cta.get("text") and cta.get("url"):
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f"<{cta['url']}|{cta['text']} →>"},
+                ],
+            })
+
+    return blocks
+
+
+async def post_to_slack(blocks: List[dict]) -> bool:
+    """POST Block Kit blocks to the SLACK_WEBHOOK_URL incoming webhook.
+
+    Graceful no-op if SLACK_WEBHOOK_URL is unset: logs and returns False,
+    never raises. Any transport error is caught and logged, returning False.
+    """
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL")
+    if not webhook_url:
+        logger.info("SLACK_WEBHOOK_URL not configured — skipping Slack post (no-op).")
+        return False
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(webhook_url, json={"blocks": blocks})
+            if resp.is_success:
+                return True
+            logger.warning("Slack webhook POST failed: HTTP %s", resp.status_code)
+            return False
+    except Exception:
+        logger.exception("Slack webhook POST raised — treating as failed.")
         return False

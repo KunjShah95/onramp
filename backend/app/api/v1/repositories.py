@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
-from app.services.postgres_db import PostgresStorage, generate_id
+from app.services.postgres_db import get_storage, generate_id
 from app.api.v1.auth import get_current_user
 
 router = APIRouter(prefix="/repos", tags=["repositories"])
 
-_storage = PostgresStorage()
+
+_storage = get_storage()  # shared storage singleton (respects STORAGE_BACKEND=memory)
 
 
 async def _verify_repo_access(owner: str, repo: str, user: dict) -> dict:

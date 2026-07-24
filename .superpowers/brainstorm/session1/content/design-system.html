@@ -1,0 +1,79 @@
+<style>
+.color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-top: 12px; }
+.color-swatch { padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+.color-swatch .preview { height: 48px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.06); }
+.color-swatch .name { font-size: 12px; font-weight: 600; }
+.color-swatch .hex { font-size: 11px; opacity: 0.7; font-family: monospace; }
+</style>
+
+<h2>Design System Foundation</h2>
+<p class="subtitle">Target: premium dark tech · indigo + cyan · glassmorphism</p>
+
+<div class="section">
+  <h3>Color Palette</h3>
+  <div class="color-grid">
+    <div class="color-swatch">
+      <div class="preview" style="background:#050816"></div>
+      <div class="name">Background</div>
+      <div class="hex">#050816</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.08)"></div>
+      <div class="name">Surface (Glass)</div>
+      <div class="hex">rgba(255,255,255,0.03)</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#4F46E5"></div>
+      <div class="name">Primary</div>
+      <div class="hex">#4F46E5</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#22D3EE"></div>
+      <div class="name">Accent</div>
+      <div class="hex">#22D3EE</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#8B5CF6"></div>
+      <div class="name">Secondary Accent</div>
+      <div class="hex">#8B5CF6</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#FFFFFF"></div>
+      <div class="name">Text Primary</div>
+      <div class="hex">#FFFFFF</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#94A3B8"></div>
+      <div class="name">Text Secondary</div>
+      <div class="hex">#94A3B8</div>
+    </div>
+    <div class="color-swatch">
+      <div class="preview" style="background:#64748B"></div>
+      <div class="name">Text Muted</div>
+      <div class="hex">#64748B</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Glassmorphism System</h3>
+  <p>Three glass tiers applied consistently across all components:</p>
+  <div class="options" style="grid-template-columns:1fr">
+    <div class="option" style="pointer-events:none;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);padding:12px">
+      <div class="content"><h3>Subtle Glass</h3><p>bg-white/2 · border-white/6 · section backgrounds, page areas</p></div>
+    </div>
+    <div class="option" style="pointer-events:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(4px);padding:12px">
+      <div class="content"><h3>Elevated Glass</h3><p>bg-white/4 · border-white/8 · backdrop-blur-sm · cards, panels</p></div>
+    </div>
+    <div class="option" style="pointer-events:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);backdrop-filter:blur(20px);padding:12px">
+      <div class="content"><h3>Prominent Glass</h3><p>bg-white/8 · border-white/12 · backdrop-blur-xl · nav, modals, CTAs</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Typography (unchanged)</h3>
+  <p>Keep current font stack: <strong>Instrument Serif</strong> for display, <strong>Inter</strong> for body, <strong>JetBrains Mono</strong> for code.</p>
+</div>
+
+<p class="subtitle" style="margin-top:20px">Does this design system foundation look right? Respond with yes/no/revise.</p>

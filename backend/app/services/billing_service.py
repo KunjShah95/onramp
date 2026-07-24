@@ -28,8 +28,8 @@ IDEMPOTENCY_COLLECTION = "onramp_webhook_idempotency"
 EVENT_LOG_COLLECTION = "onramp_webhook_events"
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _sentry_report(exc: Exception, context: dict) -> None:
@@ -332,7 +332,7 @@ class BillingService:
             if subscription_id and period_end:
                 await self._update_subscription_by_stripe_id(
                     subscription_id,
-                    {"current_period_end": datetime.fromtimestamp(period_end, tz=timezone.utc).isoformat()},
+                    {"current_period_end": datetime.fromtimestamp(period_end, tz=timezone.utc)},
                 )
                 return {"subscription_id": subscription_id, "period_end": period_end}
             return {"warning": "missing subscription id or period_end"}

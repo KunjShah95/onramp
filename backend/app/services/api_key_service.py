@@ -90,10 +90,9 @@ async def create_api_key(
 
     expires_at = None
     if expires_in_days:
-        # Bug #9: store as ISO string so validate_api_key can parse consistently.
         expires_at = (
             datetime.now(timezone.utc) + timedelta(days=expires_in_days)
-        ).isoformat()
+        )
 
     data = {
         "key_hash": key_hash,
@@ -142,7 +141,7 @@ async def validate_api_key(plain_key: str) -> Optional[dict]:
     await storage.update_document(
         "api_keys",
         key_record["id"],
-        {"last_used_at": datetime.now(timezone.utc).isoformat()}
+        {"last_used_at": datetime.now(timezone.utc)}
     )
 
     return key_record

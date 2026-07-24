@@ -23,7 +23,7 @@ class ConversationService:
             "index_id": index_id,
             "question": question,
             "answer": answer,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc),
         }
         return await self.storage.create_document(self.COLLECTION, generate_id(), turn)
 

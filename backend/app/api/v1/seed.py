@@ -49,15 +49,18 @@ async def _global_stats(storage) -> dict:
     """Real counts from the database. No fabricated numbers."""
     try:
         repos = await storage.list_documents("repositories")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list repositories for stats: %s", exc)
         repos = []
     try:
         teams = await storage.list_documents("teams")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list teams for stats: %s", exc)
         teams = []
     try:
         users = await storage.list_documents("users")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list users for stats: %s", exc)
         users = []
     # api_calls_24h: count real usage rows in the last 24h if the collection exists.
     api_calls = 0
@@ -72,7 +75,8 @@ async def _global_stats(storage) -> dict:
                     api_calls += 1
             except Exception:
                 continue
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to count API calls: %s", exc)
         api_calls = 0
     return {
         "repos_analyzed": len(repos),

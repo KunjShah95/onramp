@@ -958,6 +958,80 @@ export async function listTiers(): Promise<{ tiers: any[] }> {
   return get<{ tiers: any[] }>(`${API_BASE}/ai/tiers`)
 }
 
+// ─── HR Dashboard ──────────────────────────────────────────────────────────
+
+export interface HrMemberRamp {
+  user_id: string
+  name: string
+  ramp_days: number | null
+}
+
+export interface HrRampTime {
+  members: HrMemberRamp[]
+  team_average_days: number | null
+}
+
+export interface HrCompletionMember {
+  user_id: string
+  name: string
+  assigned: number
+  completed: number
+  completion_pct: number
+}
+
+export interface HrOnboardingCompletion {
+  members: HrCompletionMember[]
+}
+
+export interface HrEngagementMember {
+  user_id: string
+  name: string
+  current_streak: number
+  longest_streak: number
+}
+
+export interface HrEngagement {
+  members: HrEngagementMember[]
+  active_streaks: number
+}
+
+export interface HrStalledTask {
+  task_id: string
+  title: string
+  state: string
+  age_days: number
+}
+
+export interface HrAtRiskMember {
+  user_id: string
+  name: string
+  reasons: string[]
+  stalled_task: HrStalledTask | null
+}
+
+export interface HrAttritionRisk {
+  at_risk: HrAtRiskMember[]
+  at_risk_count: number
+}
+
+export interface HrCohortSummary {
+  team_id: string
+  member_count: number
+  ramp_time: HrRampTime
+  onboarding_completion: HrOnboardingCompletion
+  engagement: HrEngagement
+  attrition_risk: HrAttritionRisk
+  generated_at: string
+}
+
+export async function fetchHrCohort(teamId: string): Promise<HrCohortSummary> {
+  return get<HrCohortSummary>(`${API_BASE}/hr/cohort/${teamId}`)
+}
+
+export async function fetchHrAttrition(teamId: string): Promise<HrAttritionRisk> {
+  return get<HrAttritionRisk>(`${API_BASE}/hr/attrition/${teamId}`)
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────
 
 export interface AdminApiKey {

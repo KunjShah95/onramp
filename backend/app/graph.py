@@ -1,5 +1,8 @@
 from typing import Dict, Any, List, Optional
+import logging
 import networkx as nx
+
+logger = logging.getLogger(__name__)
 
 
 class DependencyGraph:
@@ -29,7 +32,8 @@ class DependencyGraph:
         try:
             cycles = list(nx.simple_cycles(self.graph))
             return [list(cycle) for cycle in cycles]
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to detect circular dependencies: %s", exc)
             return []
 
     def get_services(self) -> List[Dict[str, Any]]:
@@ -149,7 +153,8 @@ class DependencyGraph:
 
         try:
             cycles = [list(c) for c in nx.simple_cycles(collapsed_graph)]
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to compute cycles on collapsed graph: %s", exc)
             cycles = []
 
         # Find communities/services
@@ -161,9 +166,10 @@ class DependencyGraph:
                 services.append({
                     "name": f"service_{i + 1}",
                     "files": nodes_list,
-                    "description": f"Module cluster with {len(nodes_list)} nodes",
+                    "description": f"Module cluster with {len(nodes_list)} files",
                 })
-        except Exception:
+        except Exception as exc:
+            logger.debug("Failed to detect communities on collapsed graph: %s", exc)
             services = [{
                 "name": "service_1",
                 "files": list(collapsed_graph.nodes()),

@@ -65,6 +65,7 @@ const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
 
 // New Phase 2-5 pages
+const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
 const CodeHealthPage = lazy(() => import('./pages/CodeHealthPage'))
 const MemberDetailPage = lazy(() => import('./pages/MemberDetailPage'))
@@ -244,6 +245,11 @@ export default function App() {
                     <Route path="/billing" element={
                       <Suspense fallback={<BillingSkeleton />}>
                         <ErrorBoundary><BillingPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/hr-dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
                       </Suspense>
                     } />
                     <Route path="/api-keys" element={

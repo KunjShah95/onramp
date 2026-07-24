@@ -16,8 +16,8 @@ STREAK_COLLECTION = "onramp_gamification_streaks"
 LEADERBOARD_COLLECTION = "onramp_gamification_leaderboard"
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _today_str() -> str:
@@ -153,7 +153,7 @@ async def award_xp(
         "source": source,
         "amount": xp_amount,
         "date": today,
-        "team_id": team_id or "",
+        "team_id": team_id or None,
         "metadata": metadata or {},
         "created_at": now,
     }
@@ -282,7 +282,7 @@ async def check_badges(
                 "icon": badge_def["icon"],
                 "description": badge_def["description"],
                 "xp_bonus": badge_def["xp_bonus"],
-                "team_id": team_id or "",
+                "team_id": team_id or None,
                 "earned_at": now,
             })
 
@@ -304,7 +304,7 @@ async def check_badges(
                     "source": "badge_bonus",
                     "amount": badge_def["xp_bonus"],
                     "date": _today_str(),
-                    "team_id": team_id or "",
+                    "team_id": team_id or None,
                     "metadata": {"badge_key": badge_key},
                     "created_at": now,
                 })
