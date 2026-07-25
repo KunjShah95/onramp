@@ -57,3 +57,17 @@ web/test-results/
 !ROADMAP.md
 !docs/*.md
 *.mjs
+*.png
+*.jpg
+*.jpeg
+*.ico
+*.svg
+!web/public/*.svg
+!web/src/assets/*.svg
+
+# Agent artifacts
+.playwright-mcp/
+.impeccable/
+.claude/skills/impeccable/
+.github/skills/impeccable/
+.github/hooks/impeccable.json
