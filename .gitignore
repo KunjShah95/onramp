@@ -56,3 +56,4 @@ web/test-results/
 !README.md
 !ROADMAP.md
 !docs/*.md
+*.mjs

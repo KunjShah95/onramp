@@ -11,7 +11,7 @@ ISO strings or native datetimes are both handled.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from app.services.postgres_db import get_storage
@@ -257,6 +257,97 @@ async def attrition_risk(team_id: str) -> dict:
                 "stalled_task": stalled_task,
             })
     return {"at_risk": at_risk, "at_risk_count": len(at_risk)}
+
+
+async def activity_heatmap(team_id: str) -> dict:
+    """Daily activity data per member over the last 12 weeks.
+
+    Returns a dict keyed by user_id, each containing a list of day buckets
+    with task completions, logins, and streak activity for heatmap rendering.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+    tasks = await _team_tasks(storage, team_id)
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=84)  # 12 weeks
+
+    heatmap: dict[str, list[dict]] = {}
+    for m in members:
+        uid = m.get("user_id")
+        name = await _user_name(storage, uid)
+        days: dict[str, dict] = {}
+
+        cur = start
+        while cur <= now:
+            key = cur.strftime("%Y-%m-%d")
+            days[key] = {"date": key, "commits": 0, "tasks": 0, "logins": 0}
+            cur += timedelta(days=1)
+
+        for t in tasks:
+            if t.get("assigned_to") != uid:
+                continue
+            done = _parse_dt(t.get("completed_at")) or _parse_dt(t.get("updated_at"))
+            if done and done >= start:
+                key = done.strftime("%Y-%m-%d")
+                if key in days:
+                    days[key]["tasks"] += 1
+
+        streak = await _streak(storage, uid)
+        if streak:
+            last_active = _parse_date(streak.get("last_active_date"))
+            if last_active and last_active >= start:
+                key = last_active.strftime("%Y-%m-%d")
+                if key in days:
+                    days[key]["logins"] += 1
+
+        heatmap[uid] = {
+            "user_id": uid,
+            "name": name,
+            "total": sum(d["tasks"] + d["logins"] for d in days.values()),
+            "days": [v for v in days.values()],
+        }
+
+    return {"members": heatmap, "from": start.isoformat(), "to": now.isoformat()}
+
+
+async def developer_onboarding(team_id: str) -> dict:
+    """Per-developer onboarding overview: stage, progress, ramp, risk."""
+    ramp = await ramp_time(team_id)
+    completion = await onboarding_completion(team_id)
+    engage = await engagement(team_id)
+    risk = await attrition_risk(team_id)
+    at_risk_ids = {m["user_id"] for m in risk.get("at_risk", [])}
+
+    devs = []
+    for cm in completion["members"]:
+        uid = cm["user_id"]
+        rm = next((r for r in ramp["members"] if r["user_id"] == uid), {})
+        em = next((e for e in engage["members"] if e["user_id"] == uid), {})
+
+        ramp_days = rm.get("ramp_days")
+        if ramp_days is None:
+            stage = "onboarding"
+        elif cm["completion_pct"] >= 80:
+            stage = "independent"
+        elif cm["completion_pct"] >= 40:
+            stage = "contributing"
+        else:
+            stage = "ramping"
+
+        devs.append({
+            "user_id": uid,
+            "name": cm["name"],
+            "stage": stage,
+            "completion_pct": cm["completion_pct"],
+            "assigned": cm["assigned"],
+            "completed": cm["completed"],
+            "ramp_days": ramp_days,
+            "current_streak": em.get("current_streak", 0),
+            "longest_streak": em.get("longest_streak", 0),
+            "at_risk": uid in at_risk_ids,
+        })
+
+    return {"developers": devs, "team_id": team_id}
 
 
 async def cohort_summary(team_id: str) -> dict:

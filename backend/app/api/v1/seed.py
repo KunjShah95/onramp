@@ -259,6 +259,18 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         }
         portal = "executive"
 
+    elif role == "hr":
+        from app.services.hr_metrics_service import cohort_summary as hr_cohort
+        hr_data = await hr_cohort(primary_team) if primary_team else {}
+        data = {
+            **base_data,
+            "hr_cohort": hr_data,
+            "team_count": len(teams),
+            "active_members": hr_data.get("member_count", 0),
+            "at_risk_count": hr_data.get("attrition_risk", {}).get("at_risk_count", 0),
+        }
+        portal = "hr"
+
     elif role in ("senior",):
         review_items = await _review_items(storage, team_ids)
         team_progress = []

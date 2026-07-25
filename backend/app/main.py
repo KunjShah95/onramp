@@ -26,8 +26,8 @@ from app.api.v1 import (
     auth, billing, contributor, dashboard, digest as digest_router,
     explore, first_pr, gamification, health, hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
-    playbooks, pr_review, quiz as quiz_router, reports, repositories,
-    seed as seed_router, slack, tasks as tasks_router, teams, unique, waitlist
+    onboarding_plans as onboarding_plans_router, playbooks, pr_review, quiz as quiz_router,
+    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, waitlist, wiki
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
@@ -158,6 +158,8 @@ app.include_router(waitlist.router, prefix="/api/v1")
 app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")
+app.include_router(onboarding_plans_router.router, prefix="/api/v1")
+app.include_router(wiki.router, prefix="/api/v1")
 
 
 @app.get("/")

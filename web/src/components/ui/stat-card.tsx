@@ -44,7 +44,7 @@ export function StatCard({
       )}
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <div className={cn('font-display text-2xl md:text-3xl font-bold tracking-tight leading-none', color)}>
+          <div className={cn('font-code tabular-nums text-2xl md:text-3xl font-semibold tracking-tight leading-none', color)}>
             {value}
           </div>
           <div className="text-overline text-text-muted/60 mt-2">

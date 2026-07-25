@@ -171,7 +171,7 @@ class TeamMember(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "team_id", name="uq_team_members_user_team"),
         CheckConstraint(
-            "role IN ('ceo', 'cto', 'senior_dev', 'developer', 'tester', 'new_dev', 'member')",
+            "role IN ('ceo', 'cto', 'senior_dev', 'developer', 'tester', 'new_dev', 'member', 'hr')",
             name="ck_team_members_role"
         ),
         Index("ix_team_members_user_id", "user_id"),
@@ -1137,6 +1137,208 @@ class WebhookEventLog(Base):
             "status": self.status,
             "details": self.details,
             "received_at": self.received_at.isoformat(),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Onboarding Plans (30-60-90 Day Milestone Framework)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class OnboardingPlan(Base):
+    """Structured 30-60-90 day onboarding plan for a team member."""
+
+    __tablename__ = "onboarding_plans"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+    )
+    team_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    buddy_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(50), default="active")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("status IN ('draft', 'active', 'completed', 'cancelled')", name="ck_onboarding_plan_status"),
+        Index("ix_onboarding_plans_team", "team_id"),
+        Index("ix_onboarding_plans_user", "user_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "team_id": self.team_id,
+            "user_id": self.user_id,
+            "created_by": self.created_by,
+            "start_date": self.start_date.isoformat(),
+            "buddy_id": self.buddy_id,
+            "status": self.status,
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+class OnboardingMilestone(Base):
+    """Individual milestone within an onboarding plan (30/60/90 day targets)."""
+
+    __tablename__ = "onboarding_milestones"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+    )
+    plan_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("onboarding_plans.id", ondelete="CASCADE"), nullable=False
+    )
+    day_target: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(String(50), default="technical")
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("day_target IN (30, 60, 90)", name="ck_milestone_day_target"),
+        CheckConstraint("category IN ('technical', 'cultural', 'process', 'product', 'social')", name="ck_milestone_category"),
+        Index("ix_onboarding_milestones_plan", "plan_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "plan_id": self.plan_id,
+            "day_target": self.day_target,
+            "title": self.title,
+            "description": self.description,
+            "category": self.category,
+            "is_completed": self.is_completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "sort_order": self.sort_order,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pre-Boarding Tasks (Day -7 to Day 0)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class PreBoardingTask(Base):
+    """Tasks to complete before the developer's first day."""
+
+    __tablename__ = "pre_boarding_tasks"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+    )
+    plan_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("onboarding_plans.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assignee: Mapped[str] = mapped_column(String(50), default="developer")
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("assignee IN ('developer', 'hr', 'it', 'manager', 'buddy')", name="ck_preboarding_assignee"),
+        Index("ix_preboarding_plan", "plan_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "plan_id": self.plan_id,
+            "title": self.title,
+            "description": self.description,
+            "assignee": self.assignee,
+            "is_required": self.is_required,
+            "is_completed": self.is_completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "sort_order": self.sort_order,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pulse Surveys (Developer Sentiment & Confidence Tracking)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class PulseSurvey(Base):
+    """Weekly pulse survey sent to developers during onboarding."""
+
+    __tablename__ = "pulse_surveys"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+    )
+    plan_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("onboarding_plans.id", ondelete="CASCADE"), nullable=False
+    )
+    week_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    clarity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    support_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    workload_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sentiment: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    open_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("confidence_score BETWEEN 1 AND 10", name="ck_pulse_confidence"),
+        CheckConstraint("clarity_score BETWEEN 1 AND 10", name="ck_pulse_clarity"),
+        CheckConstraint("support_score BETWEEN 1 AND 10", name="ck_pulse_support"),
+        CheckConstraint("workload_score BETWEEN 1 AND 10", name="ck_pulse_workload"),
+        CheckConstraint("sentiment IN ('very_happy', 'happy', 'neutral', 'frustrated', 'very_frustrated')", name="ck_pulse_sentiment"),
+        UniqueConstraint("plan_id", "week_number", name="uq_pulse_week"),
+        Index("ix_pulse_surveys_plan", "plan_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "plan_id": self.plan_id,
+            "week_number": self.week_number,
+            "confidence_score": self.confidence_score,
+            "clarity_score": self.clarity_score,
+            "support_score": self.support_score,
+            "workload_score": self.workload_score,
+            "sentiment": self.sentiment,
+            "open_feedback": self.open_feedback,
+            "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
         }
 
 

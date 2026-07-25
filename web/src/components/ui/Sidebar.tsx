@@ -5,7 +5,7 @@ import {
   House, Compass, ChatCircleDots, GraduationCap,
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
-  Star, Key,
+  Star, Key, Rocket, FileCode,
 } from '@phosphor-icons/react'
 
 const portalItems = [
@@ -23,7 +23,9 @@ const toolItems = [
   { to: '/learn',       label: 'Learn',        Icon: GraduationCap,  roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/first-issue',  label: 'First Issue', Icon: BugBeetle,      roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/pr-describe',  label: 'PR Describe', Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/pr-describe',   label: 'PR Describe',  Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 
 const mgmtItems = [
@@ -89,10 +91,10 @@ export default function Sidebar() {
       {/* Brand */}
       <div className="px-4 pt-5 pb-4">
         <NavLink to="/" className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 rounded-lg bg-gradient-accent flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-            <span className="text-[10px] font-bold text-[#09090B] font-display">CF</span>
+          <div className="w-7 h-7 rounded-tile bg-accent-from flex items-center justify-center shadow-lit transition-transform duration-200 group-hover:scale-105">
+            <span className="text-[11px] font-bold text-white font-display tracking-tight">OR</span>
           </div>
-          <span className="font-display text-sm font-semibold text-text-primary tracking-tight">
+          <span className="font-display text-sm font-bold text-text-primary tracking-tight uppercase">
             Onramp
           </span>
         </NavLink>
@@ -103,7 +105,7 @@ export default function Sidebar() {
         {/* Portals */}
         <div>
           <div className="px-2.5 pb-1">
-            <span className="text-[10px] font-medium tracking-wider text-text-muted/40 uppercase">Portals</span>
+            <span className="overline text-text-muted/70">Portals</span>
           </div>
           <div className="space-y-0.5">
             <NavGroup items={portalItems} />
@@ -113,7 +115,7 @@ export default function Sidebar() {
         {/* Tools */}
         <div>
           <div className="px-2.5 pb-1">
-            <span className="text-[10px] font-medium tracking-wider text-text-muted/40 uppercase">Workspace</span>
+            <span className="overline text-text-muted/70">Workspace</span>
           </div>
           <div className="space-y-0.5">
             <NavGroup items={toolItems} />
@@ -124,7 +126,7 @@ export default function Sidebar() {
         {(role === 'senior' || role === 'senior_dev' || role === 'developer' || role === 'tester' || role === 'owner' || role === 'ceo' || role === 'cto') && (
           <div>
             <div className="px-2.5 pb-1">
-              <span className="text-[10px] font-medium tracking-wider text-text-muted/40 uppercase">Management</span>
+              <span className="overline text-text-muted/70">Management</span>
             </div>
             <div className="space-y-0.5">
               <NavGroup items={mgmtItems} />

@@ -305,7 +305,6 @@ export default function LandingPageV3() {
                   { slug: 'supabase', label: 'Supabase' },
                   { slug: 'mongodb', label: 'MongoDB' },
                   { slug: 'figma', label: 'Figma' },
-                  { slug: 'slack', label: 'Slack' },
                   { slug: 'docker', label: 'Docker' },
                   { slug: 'notion', label: 'Notion' },
                   { slug: 'redis', label: 'Redis' },

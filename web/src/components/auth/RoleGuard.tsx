@@ -12,6 +12,7 @@ const ROLE_LEVELS: Partial<Record<TeamRole, number>> = {
   new_dev: 1,
   member: 1,
   tester: 2,
+  hr: 3,
   developer: 3,
   senior_dev: 4,
   senior: 4,
@@ -50,6 +51,9 @@ export default function RoleGuard({ allowedRoles, minRole }: RoleGuardProps) {
   if (!hasAccess) {
     if (role === 'new_dev' || role === 'member') {
       return <Navigate to="/my-progress" replace />
+    }
+    if (role === 'hr') {
+      return <Navigate to="/hr/people" replace />
     }
     return <Navigate to="/dashboard" replace />
   }

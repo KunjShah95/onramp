@@ -33,3 +33,15 @@ async def get_cohort(team_id: str, user: dict = Depends(get_current_user)):
 async def get_attrition(team_id: str, user: dict = Depends(get_current_user)):
     """Attrition-risk list for a team: members with stalled tasks or lost streaks."""
     return await hr_metrics_service.attrition_risk(team_id)
+
+
+@router.get("/heatmap/{team_id}")
+async def get_heatmap(team_id: str, user: dict = Depends(get_current_user)):
+    """Daily activity heatmap data for all team members over the last 12 weeks."""
+    return await hr_metrics_service.activity_heatmap(team_id)
+
+
+@router.get("/developers/{team_id}")
+async def get_developers(team_id: str, user: dict = Depends(get_current_user)):
+    """Onboarding overview for each developer: progress, ramp, streak, stage."""
+    return await hr_metrics_service.developer_onboarding(team_id)

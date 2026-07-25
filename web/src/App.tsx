@@ -80,6 +80,9 @@ const DevSpacePage = lazy(() => import('./pages/DevSpacePage'))
 const ExecutivePage = lazy(() => import('./pages/ExecutivePage'))
 const SeniorSpacePage = lazy(() => import('./pages/SeniorSpacePage'))
 const OnboardingHubPage = lazy(() => import('./pages/OnboardingHubPage'))
+const HrPeoplePage = lazy(() => import('./pages/HrPeoplePage'))
+const OnboardingPlanPage = lazy(() => import('./pages/OnboardingPlanPage'))
+const WikiPage = lazy(() => import('./pages/WikiPage'))
 
 export default function App() {
   return (
@@ -186,6 +189,16 @@ export default function App() {
                       <ErrorBoundary><NotificationsPage /></ErrorBoundary>
                     </Suspense>
                   } />
+                  <Route path="/onboarding-plan" element={
+                    <Suspense fallback={<PageLoadingFallback />}>
+                      <ErrorBoundary><OnboardingPlanPage /></ErrorBoundary>
+                    </Suspense>
+                  } />
+                  <Route path="/wiki" element={
+                    <Suspense fallback={<PageLoadingFallback />}>
+                      <ErrorBoundary><WikiPage /></ErrorBoundary>
+                    </Suspense>
+                  } />
                   <Route path="/profile" element={
                     <Suspense fallback={<ProfileSkeleton />}>
                       <ErrorBoundary><Profile /></ErrorBoundary>
@@ -286,6 +299,20 @@ export default function App() {
                     <Route path="/module/:moduleName" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ModuleHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* HR Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['hr']} />}>
+                    <Route path="/hr/people" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrPeoplePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/hr-dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
                       </Suspense>
                     } />
                   </Route>
