@@ -36,8 +36,8 @@ TRANSITIONS = {
 TERMINAL_STATES = {"completed", "cancelled"}
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _can_transition(current: str, target: str) -> bool:
@@ -86,6 +86,7 @@ async def create_task(
         "estimated_hours": estimated_hours,
         "created_at": now,
         "updated_at": now,
+        "started_at": None,
         "completed_at": None,
     }
 
@@ -142,7 +143,8 @@ async def update_task(task_id: str, updates: dict) -> Optional[dict]:
             return None
 
     updates["updated_at"] = _utcnow()
-    return await storage.update_document(COLLECTION, task_id, updates)
+    result = await storage.update_document(COLLECTION, task_id, updates)
+    return result
 
 
 # ── State Machine Transitions ────────────────────────────────
@@ -193,6 +195,8 @@ async def transition_task(
         updates["started_at"] = now
     elif new_state == "completed":
         updates["completed_at"] = now
+    elif new_state == "submitted" and pr_url:
+        updates["pr_url"] = pr_url
     elif new_state == "submitted" and pr_url:
         updates["pr_url"] = pr_url
     elif new_state == "needs_changes" and feedback:

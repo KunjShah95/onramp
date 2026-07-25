@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.postgres_db import get_storage, generate_id
 
 
@@ -39,7 +39,7 @@ class ContributorTracker:
                 "user": user,
                 "repo": repo,
                 "type": milestone_type,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc),
                 "metadata": payload,
             }
             entry_id = generate_id()

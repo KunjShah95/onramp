@@ -1,5 +1,5 @@
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.postgres_db import get_storage, generate_id
 
 
@@ -11,6 +11,7 @@ class PlaybookService:
 
     async def create_playbook(self, team_id: str, title: str, description: str, steps: List[str], created_by: str, tags: Optional[List[str]] = None) -> Dict[str, Any]:
         pb_id = generate_id()
+        now = datetime.now(timezone.utc)
         playbook = {
             "playbook_id": pb_id,
             "team_id": team_id,
@@ -19,8 +20,8 @@ class PlaybookService:
             "steps": steps,
             "tags": tags or [],
             "created_by": created_by,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "created_at": now,
+            "updated_at": now,
             "version": 1,
             "is_archived": False,
             "use_count": 0,
@@ -41,7 +42,7 @@ class PlaybookService:
         pb = await self.get_playbook(playbook_id)
         if not pb:
             return None
-        updates["updated_at"] = datetime.now().isoformat()
+        updates["updated_at"] = datetime.now(timezone.utc)
         updates["version"] = pb.get("version", 1) + 1
         await self.storage.update_document(self.COLLECTION, playbook_id, updates)
         return {**pb, **updates}

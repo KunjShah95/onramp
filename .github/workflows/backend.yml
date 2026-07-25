@@ -52,12 +52,22 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
 
-      - name: Run tests
+      - name: Run tests (memory backend)
         run: |
           cd backend && python -m pytest tests/ -v --timeout=30
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: memory
+          GROQ_API_KEY: sk-test-placeholder
+          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+
+      - name: Run tests (PostgreSQL backend)
+        run: |
+          cd backend && python -m pytest tests/test_task_service.py tests/test_notification_service.py tests/test_gamification.py -v --timeout=60 --run-postgres
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
+          ENV: test
+          STORAGE_BACKEND: postgres
           GROQ_API_KEY: sk-test-placeholder
           PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=

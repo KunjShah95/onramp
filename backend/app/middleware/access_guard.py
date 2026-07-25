@@ -34,6 +34,7 @@ ROLE_HIERARCHY = {
     "owner": 6,
     "senior_dev": 5,
     "senior": 5,
+    "hr": 4,
     "developer": 4,
     "tester": 3,
     "new_dev": 2,

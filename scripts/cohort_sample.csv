@@ -1,0 +1,6 @@
+name,email,role,modules
+Aarav Mehta,aarav.mehta@example.dev,new_dev,frontend-setup;components
+Diya Patel,diya.patel@example.dev,new_dev,frontend-setup;routing
+Kabir Shah,kabir.shah@example.dev,new_dev,api-core;database
+Ishita Desai,ishita.desai@example.dev,new_dev,frontend-setup
+Rohan Trivedi,rohan.trivedi@example.dev,,api-core;components;routing

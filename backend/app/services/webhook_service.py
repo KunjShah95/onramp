@@ -8,11 +8,14 @@ certain events occur (task assigned, PR submitted, etc.).
 import hashlib
 import hmac
 import json
+import logging
 import os
 from cryptography.fernet import Fernet
 from datetime import datetime, timezone
 from typing import Optional, List
 from app.services.postgres_db import get_storage, generate_id
+
+logger = logging.getLogger(__name__)
 
 
 def _get_fernet() -> Optional[Fernet]:
@@ -21,7 +24,8 @@ def _get_fernet() -> Optional[Fernet]:
         return None
     try:
         return Fernet(key.encode() if isinstance(key, str) else key)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Invalid GITHUB_TOKEN_ENCRYPTION_KEY format: %s", exc)
         return None
 
 
@@ -60,8 +64,8 @@ COLLECTION = "onramp_webhooks"
 DELIVERIES_COLLECTION = "onramp_webhook_deliveries"
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _generate_secret() -> str:

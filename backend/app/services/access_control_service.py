@@ -19,8 +19,8 @@ from app.services.postgres_db import get_storage, generate_id
 COLLECTION = "member_modules"
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 # ── Module Permission CRUD ───────────────────────────────────

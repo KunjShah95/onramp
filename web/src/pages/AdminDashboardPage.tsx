@@ -9,7 +9,6 @@ import {
   Bell,
   ChartBar,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { AdminDashboardSkeleton } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
@@ -36,6 +35,11 @@ function relativeTime(iso: string): string {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h}h ago`
   return `${Math.floor(h / 24)}d ago`
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 
 export default function AdminDashboardPage() {
@@ -71,10 +75,15 @@ export default function AdminDashboardPage() {
   const fmt = (n: number | null) => (n == null ? '—' : n.toLocaleString())
 
   return (
-    <PageTransition>
-      <div className="max-w-6xl mx-auto space-y-8">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto space-y-8 relative">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         {/* Header */}
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex items-start justify-between gap-6 relative">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-accent-primary" weight="duotone" />
@@ -212,7 +221,6 @@ export default function AdminDashboardPage() {
             </div>
           </>
         )}
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }

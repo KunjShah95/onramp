@@ -46,4 +46,15 @@ BEAT_SCHEDULE = {
         "schedule": crontab(minute=0),  # Every hour at :00
         "options": {"queue": "analytics-tasks"},
     },
+
+    # ── Slack Standup Reminders ────────────────────────────────────────────────
+    # Sends proactive "What did you work on?" DMs to all team members with
+    # Slack configured. Runs at 10:00 AM UTC by default. Override via
+    # SLACK_STANDUP_TIME env var (format: HH:MM, e.g. "09:30").
+    "send-standup-reminders": {
+        "task": "app.tasks.notification_tasks.send_standup_reminders",
+        "schedule": crontab(hour=10, minute=0),
+        "options": {"queue": "notification-tasks"},
+    },
+
 }

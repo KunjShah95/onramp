@@ -41,7 +41,7 @@ const Profile = lazy(() => import('./pages/Profile'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const LandingPageV3 = lazy(() => import('./pages/LandingPageV3'))
+const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
@@ -63,10 +63,9 @@ const JoinPage = lazy(() => import('./pages/JoinPage'))
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
-const AuthCallback = lazy(() => import('./pages/AuthCallback'))
-const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
 // New Phase 2-5 pages
+const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
 const CodeHealthPage = lazy(() => import('./pages/CodeHealthPage'))
 const MemberDetailPage = lazy(() => import('./pages/MemberDetailPage'))
@@ -81,6 +80,9 @@ const DevSpacePage = lazy(() => import('./pages/DevSpacePage'))
 const ExecutivePage = lazy(() => import('./pages/ExecutivePage'))
 const SeniorSpacePage = lazy(() => import('./pages/SeniorSpacePage'))
 const OnboardingHubPage = lazy(() => import('./pages/OnboardingHubPage'))
+const HrPeoplePage = lazy(() => import('./pages/HrPeoplePage'))
+const OnboardingPlanPage = lazy(() => import('./pages/OnboardingPlanPage'))
+const WikiPage = lazy(() => import('./pages/WikiPage'))
 
 export default function App() {
   return (
@@ -94,7 +96,7 @@ export default function App() {
               {/* ── Public routes ────────────────────────────────── */}
               <Route path="/" element={
                 <Suspense fallback={<LandingLoadingFallback />}>
-                  <ErrorBoundary><LandingPageV3 /></ErrorBoundary>
+                  <ErrorBoundary><LandingPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/pricing" element={
@@ -135,16 +137,6 @@ export default function App() {
               <Route path="/waitlist" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><WaitlistPage /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/auth/callback" element={
-                <Suspense fallback={<FormLoadingFallback />}>
-                  <ErrorBoundary><AuthCallback /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/reset-password" element={
-                <Suspense fallback={<FormLoadingFallback />}>
-                  <ErrorBoundary><ResetPassword /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/privacy" element={
@@ -197,6 +189,16 @@ export default function App() {
                       <ErrorBoundary><NotificationsPage /></ErrorBoundary>
                     </Suspense>
                   } />
+                  <Route path="/onboarding-plan" element={
+                    <Suspense fallback={<PageLoadingFallback />}>
+                      <ErrorBoundary><OnboardingPlanPage /></ErrorBoundary>
+                    </Suspense>
+                  } />
+                  <Route path="/wiki" element={
+                    <Suspense fallback={<PageLoadingFallback />}>
+                      <ErrorBoundary><WikiPage /></ErrorBoundary>
+                    </Suspense>
+                  } />
                   <Route path="/profile" element={
                     <Suspense fallback={<ProfileSkeleton />}>
                       <ErrorBoundary><Profile /></ErrorBoundary>
@@ -208,8 +210,8 @@ export default function App() {
                     </Suspense>
                   } />
 
-                  {/* Trainee / New Dev / Junior Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['new_dev', 'member']} />}>
+                  {/* Trainee / Junior Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['member']} />}>
                     <Route path="/my-progress" element={
                       <Suspense fallback={<TraineeDashboardSkeleton />}>
                         <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
@@ -222,8 +224,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Developer / Tester / Owner Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['developer', 'tester', 'owner', 'ceo', 'cto']} />}>
+                  {/* Developer / Owner Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['developer', 'owner']} />}>
                     <Route path="/dev-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><DevSpacePage /></ErrorBoundary>
@@ -231,8 +233,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Senior / CTO / Lead / Owner Only Pages */}
-                  <Route element={<RoleGuard minRole="senior_dev" />}>
+                  {/* Senior / CTO / Lead Only Pages */}
+                  <Route element={<RoleGuard minRole="senior" />}>
                     <Route path="/senior-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><SeniorSpacePage /></ErrorBoundary>
@@ -256,6 +258,11 @@ export default function App() {
                     <Route path="/billing" element={
                       <Suspense fallback={<BillingSkeleton />}>
                         <ErrorBoundary><BillingPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/hr-dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
                       </Suspense>
                     } />
                     <Route path="/api-keys" element={
@@ -296,8 +303,22 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Owner / CEO / CTO / Admin Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['owner', 'ceo', 'cto']} />}>
+                  {/* HR Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['hr']} />}>
+                    <Route path="/hr/people" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrPeoplePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/hr-dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Owner / Admin Only Pages */}
+                  <Route element={<RoleGuard allowedRoles={['owner']} />}>
                     <Route path="/executive" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ExecutivePage /></ErrorBoundary>

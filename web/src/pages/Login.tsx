@@ -74,7 +74,7 @@ export default function Login() {
               <span className="text-xl font-display font-bold text-[hsl(var(--accent))]">✦</span>
             </div>
             <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-              Nexora
+              Onramp
             </h1>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Log in to your workspace</p>
           </motion.div>
@@ -162,11 +162,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || !email || !password}
-                className="w-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-body"
-              >
+              <button type="submit" disabled={isSubmitting || !email || !password} className="w-full bg-accent-from hover:bg-accent-to text-white font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
                 <ArrowRight size={16} weight="bold" />
               </button>

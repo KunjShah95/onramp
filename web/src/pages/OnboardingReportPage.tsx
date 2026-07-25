@@ -7,7 +7,6 @@ import {
   GitBranch,
   BookOpenText,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { ReportSkeleton } from '../components/ui/Skeleton'
@@ -48,6 +47,15 @@ function renderContent(content: any) {
     )
   }
   return <p className="text-body-sm text-text-secondary">{String(content)}</p>
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+}
+const itemVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
 }
 
 export default function OnboardingReportPage() {
@@ -94,114 +102,135 @@ export default function OnboardingReportPage() {
   }
 
   return (
-    <PageTransition>
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
-            <div>
-              <h1 className="text-display-sm font-display font-medium text-text-primary">
-                Onboarding Report
-              </h1>
-              <p className="text-body-sm text-text-tertiary">
-                Generate a professional onboarding report for any repository.
-              </p>
-            </div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-4xl mx-auto space-y-8 relative"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex items-center justify-between gap-3 mb-2 relative">
+        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
+          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
+          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
+        </svg>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-accent-primary" weight="duotone" />
           </div>
-          {result && (
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="btn btn-secondary flex items-center gap-2 shrink-0"
-            >
-              {downloading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              HTML
-            </button>
-          )}
+          <div>
+            <h1 className="text-display-sm font-display font-medium text-text-primary">
+              Onboarding Report
+            </h1>
+            <p className="text-body-sm text-text-tertiary">
+              Generate a professional onboarding report for any repository.
+            </p>
+          </div>
         </div>
-
-        {/* Controls */}
-        <div className="flex flex-col md:flex-row gap-3 md:items-center">
-          <div className="relative flex items-center w-full md:flex-1">
-            <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
-            <input
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-              placeholder="github.com/owner/repo"
-              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
-            />
-          </div>
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
-            {LEVELS.map((l) => (
-              <button
-                key={l.key}
-                onClick={() => setUserLevel(l.key)}
-                className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
-                  userLevel === l.key
-                    ? 'bg-bg-primary text-text-primary shadow-sm'
-                    : 'text-text-tertiary hover:text-text-secondary'
-                }`}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleGenerate}
-            disabled={loading || !repoUrl.trim()}
-            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
+        {result && (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleDownload}
+            disabled={downloading}
+            className="btn btn-secondary flex items-center gap-2 shrink-0"
           >
-            <BookOpenText className="w-3.5 h-3.5" weight="fill" />
-            {loading ? 'Generating…' : 'Generate'}
-          </button>
-        </div>
-
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
-          </div>
+            {downloading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            HTML
+          </motion.button>
         )}
+      </motion.div>
 
-        {loading && <ReportSkeleton />}
+      {/* Controls */}
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-3 md:items-center">
+        <div className="relative flex items-center w-full md:flex-1">
+          <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
+          <input
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+            placeholder="github.com/owner/repo"
+            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+          />
+        </div>
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+          {LEVELS.map((l) => (
+            <button
+              key={l.key}
+              onClick={() => setUserLevel(l.key)}
+              className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                userLevel === l.key
+                  ? 'bg-bg-primary text-text-primary shadow-sm'
+                  : 'text-text-tertiary hover:text-text-secondary'
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={handleGenerate}
+          disabled={loading || !repoUrl.trim()}
+          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
+        >
+          <BookOpenText className="w-3.5 h-3.5" weight="fill" />
+          {loading ? 'Generating…' : 'Generate'}
+        </motion.button>
+      </motion.div>
 
-        {!loading && !result && (
+      {error && (
+        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+        </motion.div>
+      )}
+
+      {loading && <motion.div variants={itemVariants}><ReportSkeleton /></motion.div>}
+
+      {!loading && !result && (
+        <motion.div variants={itemVariants}>
           <CardSpotlight className="border border-accent-primary/10">
             <EmptyState
               icon={<FileText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
               title="Enter a GitHub repository above"
               description="We'll compile a repository overview, architecture, learning path, and good-first-issues into a report."
               action={
-                <button onClick={handleGenerate} disabled={!repoUrl.trim()} className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleGenerate}
+                  disabled={!repoUrl.trim()}
+                  className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40"
+                >
                   Generate
-                </button>
+                </motion.button>
               }
             />
           </CardSpotlight>
-        )}
+        </motion.div>
+      )}
 
-        {!loading && result && (
-          <div className="space-y-4">
-            {result.report.map((section: ReportSection, i) => (
-              <motion.div
-                key={`${section.title}-${i}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-              >
-                <CardSpotlight className="p-6">
-                  <h3 className="text-body font-medium text-text-primary mb-3">{section.title}</h3>
-                  {renderContent(section.content)}
-                </CardSpotlight>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-    </PageTransition>
+      {!loading && result && (
+        <motion.div variants={itemVariants} className="space-y-4">
+          {result.report.map((section: ReportSection, i) => (
+            <motion.div
+              key={`${section.title}-${i}`}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
+            >
+              <CardSpotlight className="p-6">
+                <h3 className="text-body font-medium text-text-primary mb-3">{section.title}</h3>
+                {renderContent(section.content)}
+              </CardSpotlight>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+    </motion.div>
   )
 }

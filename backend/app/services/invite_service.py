@@ -9,8 +9,8 @@ COLLECTION = "team_invites"
 INVITE_TTL_HOURS = 48
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _generate_token() -> str:
@@ -37,7 +37,7 @@ async def create_invite(
         "role": role,
         "status": "pending",
         "message": message or "",
-        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS)).isoformat(),
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS),
         "created_at": now,
         "updated_at": now,
     }

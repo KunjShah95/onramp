@@ -1,151 +1,175 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '../lib/utils'
 import {
-  CalendarBlank,
-  GitPullRequest,
-  CheckCircle,
-  Star,
-  ChartBar,
-  ArrowLeft,
-  ShieldCheck,
-  Code,
-  Bug,
+  CalendarBlank, GitPullRequest, CheckCircle, Star,
+  ArrowLeft, ShieldCheck, Code, Bug, User,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
+import GradientHeading from '../components/ui/gradient-heading'
 import { MemberListSkeleton } from '../components/ui/Skeleton'
-import { EmptyState } from '../components/ui/empty-state'
 import { useAuth } from '../context/AuthContext'
 import { fetchTeamAnalytics } from '../lib/api'
 import type { TeamMemberProgress } from '../lib/api'
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+}
+const item = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+}
 
 export default function MemberDetailPage() {
   const [members, setMembers] = useState<TeamMemberProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
   const { activeTeamId } = useAuth()
 
   async function fetchMembers() {
-    if (!activeTeamId) {
-      setLoading(false)
-      setError('Join a team to view member progress.')
-      return
-    }
+    if (!activeTeamId) { setLoading(false); setError('Join a team to view member progress.'); return }
     setLoading(true); setError('')
     try {
       const res = await fetchTeamAnalytics()
       setMembers(res.members ?? [])
     } catch (err: any) {
       setError(err.message || 'Failed to load members.')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    fetchMembers()
-  }, [activeTeamId])
+  useEffect(() => { fetchMembers() }, [activeTeamId])
 
   return (
-    <PageTransition>
-      <div className="max-w-4xl mx-auto space-y-8">
-        <button className="flex items-center gap-1.5 text-caption text-text-tertiary hover:text-text-primary transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Team
-        </button>
+    <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        {/* Back */}
+        <motion.div variants={item} className="mb-6">
+          <button className="flex items-center gap-1.5 text-caption text-text-muted/40 hover:text-text-primary transition-colors group">
+            <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
+            Back to Team
+          </button>
+        </motion.div>
 
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-            <Star className="w-5 h-5 text-accent-primary" weight="duotone" />
+        {/* Header */}
+        <motion.div variants={item} className="mb-8">
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
+              <Star size={16} className="text-amber-400" />
+            </div>
+            <span className="text-overline text-amber-400/80">Team Roster</span>
           </div>
-          <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
-              Team Members
-            </h1>
-            <p className="text-body-sm text-text-tertiary">
-              Per-member onboarding progress and contribution stats.
-            </p>
-          </div>
-        </div>
+          <GradientHeading as="h1" className="text-display-md mb-1">Team Members</GradientHeading>
+          <p className="text-body-sm text-text-muted/60">Per-member onboarding progress and contribution stats</p>
+        </motion.div>
 
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={fetchMembers} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-6"
+            >
+              <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/15">
+                <span className="text-body-xs text-red-300">{error}</span>
+                <button onClick={fetchMembers} disabled={loading}
+                  className="text-caption text-red-400/60 hover:text-red-400 underline">Retry</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <div className="py-8"><MemberListSkeleton /></div>
         ) : members.length === 0 ? (
-          <CardSpotlight className="border border-accent-primary/10">
-            <EmptyState icon={<Star className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No members yet" description="Invite teammates to see their progress here." />
-          </CardSpotlight>
+          <motion.div variants={item}>
+            <CardSpotlight className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-4">
+                <User size={26} className="text-text-muted/20" />
+              </div>
+              <p className="text-body-sm text-text-muted/40 font-medium mb-1">No members yet</p>
+              <p className="text-caption text-text-muted/20">Invite teammates to see their progress here.</p>
+            </CardSpotlight>
+          </motion.div>
         ) : (
-          <div className="space-y-3">
+          <motion.div variants={item} className="space-y-3">
             {members.map((m, i) => {
               const initials = (m.name || m.user_id || '?').slice(0, 2).toUpperCase()
+              const rate = Math.round((m.completion_rate ?? 0) * 100)
+              const rateColor = rate >= 70 ? 'text-emerald-400' : rate >= 40 ? 'text-amber-400' : 'text-red-400'
               return (
                 <motion.div
                   key={m.user_id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
+                  transition={{ delay: i * 0.035 }}
                 >
-                  <CardSpotlight className="p-5">
-                    <div className="flex items-start gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <span className="text-body font-semibold font-display text-blue-400">{initials}</span>
+                  <CardSpotlight className="p-5 group hover:border-border-hover transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-400/15 flex items-center justify-center shrink-0">
+                        <span className="font-display text-body font-bold text-amber-400">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-display-xs font-display font-medium text-text-primary mb-1">
-                          {m.name || m.user_id}
-                        </h2>
-                        <p className="text-body-sm text-text-secondary mb-0.5 capitalize">{m.role}</p>
-                        <div className="flex items-center gap-3 text-caption text-text-tertiary">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h2 className="font-display text-body font-bold text-text-primary">{m.name || m.user_id}</h2>
+                            <p className="text-body-xs text-text-muted/50 capitalize mt-0.5">{m.role}</p>
+                          </div>
+                          <div className={cn('font-code text-body-xs font-semibold tabular-nums', rateColor)}>{rate}%</div>
+                        </div>
+
+                        <div className="mt-3 mb-4">
+                          <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${rate}%` }}
+                              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                              className={cn('h-full rounded-full', rate >= 70 ? 'bg-emerald-400' : rate >= 40 ? 'bg-amber-400' : 'bg-red-400')}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {[
+                            { label: 'Done', value: m.completed_tasks, icon: CheckCircle, color: 'text-emerald-400' },
+                            { label: 'In Progress', value: m.in_progress_tasks, icon: GitPullRequest, color: 'text-blue-400' },
+                            { label: 'Pending', value: m.pending_review, icon: Bug, color: 'text-amber-400' },
+                            { label: 'Total', value: m.total_tasks, icon: Code, color: 'text-purple-400' },
+                          ].map((stat) => (
+                            <div key={stat.label} className="p-2.5 rounded-xl bg-bg-tertiary/30 border border-border/40 text-center">
+                              <stat.icon size={12} className={cn(stat.color, 'mx-auto mb-1')} weight="fill" />
+                              <p className="text-body-xs font-semibold text-text-primary tabular-nums">{stat.value}</p>
+                              <p className="text-overline text-text-muted/30 mt-0.5">{stat.label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-3 flex-wrap text-caption text-text-muted/30">
                           <span className="flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            {m.modules_unlocked.length} modules unlocked
+                            <ShieldCheck size={11} />
+                            {m.modules_unlocked.length} unlocked
                           </span>
                           <span className="flex items-center gap-1.5">
-                            <CalendarBlank className="w-3.5 h-3.5" />
-                            {Math.round((m.completion_rate ?? 0) * 100)}% complete
+                            <CalendarBlank size={11} />
+                            {rate}% complete
                           </span>
+                          {m.modules_unlocked.length > 0 && (
+                            <span className="flex items-center gap-1.5">
+                              <User size={11} />
+                              {m.modules_unlocked.slice(0, 3).join(', ')}{m.modules_unlocked.length > 3 ? '...' : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                      {[
-                        { label: 'Tasks Done', value: m.completed_tasks, icon: CheckCircle, color: 'text-emerald-400' },
-                        { label: 'In Progress', value: m.in_progress_tasks, icon: GitPullRequest, color: 'text-blue-400' },
-                        { label: 'Pending Review', value: m.pending_review, icon: Bug, color: 'text-amber-400' },
-                        { label: 'Total Tasks', value: m.total_tasks, icon: Code, color: 'text-purple-400' },
-                      ].map((stat) => (
-                        <div key={stat.label} className="card p-3 text-center">
-                          <stat.icon className={`w-4 h-4 ${stat.color} mx-auto mb-1.5`} weight="duotone" />
-                          <p className="text-body font-medium text-text-primary">{stat.value}</p>
-                          <p className="text-caption text-text-tertiary">{stat.label}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {m.modules_unlocked.length > 0 && (
-                      <div className="flex items-center gap-2 mt-4 flex-wrap">
-                        <ChartBar className="w-3.5 h-3.5 text-text-tertiary" />
-                        {m.modules_unlocked.map((mod) => (
-                          <span key={mod} className="px-2 py-0.5 rounded text-[10px] bg-bg-tertiary/30 text-text-tertiary font-code">{mod}</span>
-                        ))}
-                      </div>
-                    )}
                   </CardSpotlight>
                 </motion.div>
               )
             })}
-          </div>
+          </motion.div>
         )}
       </div>
-    </PageTransition>
+    </motion.div>
   )
 }

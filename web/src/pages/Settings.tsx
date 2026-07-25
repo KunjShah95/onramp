@@ -25,7 +25,7 @@ import {
   type GithubTestResult,
 } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
-import PageTransition from '../components/ui/page-transition'
+
 import { useToast } from '../context/ToastContext'
 import {
   User, At, Key, Bell, Palette, ShareNetwork,
@@ -236,10 +236,10 @@ export default function Settings() {
   const initial = (name || email || 'U').charAt(0).toUpperCase()
 
   const containerVariants = {
-    hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+    hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
   }
   const itemVariants = {
-    hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 },
+    hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
   }
 
   const tabs = [
@@ -250,8 +250,13 @@ export default function Settings() {
   ]
 
   return (
-    <PageTransition>
-      <div className="w-full max-w-4xl pt-4 sm:pt-8 pb-12 font-body text-text-primary px-4 sm:px-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-4xl pt-4 sm:pt-8 pb-12 font-body text-text-primary px-4 sm:px-6 relative">
+      <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         {/* Tab bar */}
         <div className="flex items-center gap-1 border-b border-border mb-8 overflow-x-auto pb-0">
           {tabs.map(tab => (
@@ -781,17 +786,29 @@ export default function Settings() {
             </div>
           </div>
         )}
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }
 
 function ThemeTabContent() {
   const { theme, accentColor, setTheme, setAccentColor, resetAccentColor } = useTheme()
+  const themeContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  }
+  const themeItemVariants = {
+    hidden: { opacity: 0, y: 16, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+  }
 
   return (
-    <PageTransition>
-      <div className="space-y-8">
+    <motion.div variants={themeContainerVariants} initial="hidden" animate="visible" className="space-y-8 relative">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         {/* Theme Picker */}
         <CardSpotlight className="p-6">
           <div className="flex items-center gap-2 mb-6">
@@ -939,7 +956,6 @@ function ThemeTabContent() {
             </div>
           </div>
         </div>
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }

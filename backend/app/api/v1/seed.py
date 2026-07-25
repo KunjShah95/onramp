@@ -49,15 +49,18 @@ async def _global_stats(storage) -> dict:
     """Real counts from the database. No fabricated numbers."""
     try:
         repos = await storage.list_documents("repositories")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list repositories for stats: %s", exc)
         repos = []
     try:
         teams = await storage.list_documents("teams")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list teams for stats: %s", exc)
         teams = []
     try:
         users = await storage.list_documents("users")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to list users for stats: %s", exc)
         users = []
     # api_calls_24h: count real usage rows in the last 24h if the collection exists.
     api_calls = 0
@@ -72,7 +75,8 @@ async def _global_stats(storage) -> dict:
                     api_calls += 1
             except Exception:
                 continue
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to count API calls: %s", exc)
         api_calls = 0
     return {
         "repos_analyzed": len(repos),
@@ -254,6 +258,18 @@ async def get_seed_role_data(user=Depends(get_current_user)):
             "recent_audit_events": await _recent_activity(uid),
         }
         portal = "executive"
+
+    elif role == "hr":
+        from app.services.hr_metrics_service import cohort_summary as hr_cohort
+        hr_data = await hr_cohort(primary_team) if primary_team else {}
+        data = {
+            **base_data,
+            "hr_cohort": hr_data,
+            "team_count": len(teams),
+            "active_members": hr_data.get("member_count", 0),
+            "at_risk_count": hr_data.get("attrition_risk", {}).get("at_risk_count", 0),
+        }
+        portal = "hr"
 
     elif role in ("senior",):
         review_items = await _review_items(storage, team_ids)

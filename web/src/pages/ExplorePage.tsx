@@ -7,7 +7,6 @@ import { StatCard } from '../components/ui/stat-card'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
-import PageTransition from '../components/ui/page-transition'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/utils'
@@ -24,11 +23,11 @@ import {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
 }
 
 export default function ExplorePage() {
@@ -138,10 +137,15 @@ export default function ExplorePage() {
   }
 
   return (
-    <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body max-w-full overflow-x-hidden">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body max-w-full overflow-x-hidden relative">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-from" />
+      </svg>
         {/* ── Header ──────────────────────────────────────── */}
-        <div className="mb-8">
+        <div className="mb-8 relative">
           <GradientHeading as="h1" className="mb-2">Architecture Explorer</GradientHeading>
           <p className="text-body-sm text-text-muted mb-6 max-w-2xl">
             Deep codebase analysis — dependency graph, service map, circular deps detection
@@ -157,11 +161,7 @@ export default function ExplorePage() {
               placeholder="github.com/owner/repo"
               className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-28 py-2.5 focus:outline-none focus:border-accent-from/60 focus:ring-1 focus:ring-accent-muted transition-colors placeholder:text-text-muted/40"
             />
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !repoUrl.trim()}
-              className="absolute right-1.5 bg-accent-from hover:brightness-110 disabled:opacity-40 text-[#09090B] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
-            >
+            <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()} className="absolute right-1.5 rounded-md bg-accent-from text-[#09090B] px-3 py-1.5 text-caption font-semibold">
               {loading ? 'Analyzing…' : 'Analyze'}
             </button>
           </div>
@@ -179,16 +179,16 @@ export default function ExplorePage() {
         {/* ── Metric cards ────────────────────────────────── */}
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {([
-            { label: 'Total Files', value: result?.entities.files.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#F59E0B' },
-            { label: 'Classes', value: result?.entities.classes.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#EF4444' },
-            { label: 'Functions', value: result?.entities.functions.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#3B82F6' },
+            { label: 'Total Files', value: result?.entities.files.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#1A5FA8' },
+            { label: 'Classes', value: result?.entities.classes.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#BE3A2E' },
+            { label: 'Functions', value: result?.entities.functions.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#1A5FA8' },
             {
               label: 'Circular Deps',
               value: result?.circular_dependencies.length ?? '—',
               color: result
                 ? (result.circular_dependencies.length > 0 ? 'text-error' : 'text-success')
                 : 'text-text-disabled/40',
-              accent: result && result.circular_dependencies.length > 0 ? '#EF4444' : '#60606E',
+              accent: result && result.circular_dependencies.length > 0 ? '#BE3A2E' : '#A7ABA4',
             },
           ] as const).map((stat, i) => (
             <motion.div key={i} variants={itemVariants}>
@@ -480,13 +480,12 @@ export default function ExplorePage() {
             </motion.div>
           </motion.div>
         )}
-      </div>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
       `}</style>
-    </PageTransition>
+    </motion.div>
   )
 }

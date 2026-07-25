@@ -13,8 +13,8 @@ EVENT_CODES = {
 }
 
 
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 async def log_event(

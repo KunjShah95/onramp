@@ -13,7 +13,6 @@ import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
-import PageTransition from '../components/ui/page-transition'
 import Pagination from '../components/ui/Pagination'
 import { useToast } from '../context/ToastContext'
 import { TasksPageSkeleton } from '../components/ui/Skeleton'
@@ -40,10 +39,10 @@ const BOARD_COLUMNS = [
 ]
 
 const containerVariants = {
-  hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -199,8 +198,13 @@ export default function TasksPage() {
   useEffect(() => { setPage(0) }, [filter])
 
   return (
-    <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary relative">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         <PageHeader
           title="Tasks"
           subtitle="Senior → Trainee workflow — assign, work, review, approve, unlock"
@@ -234,7 +238,7 @@ export default function TasksPage() {
             {[
               { label: 'Total', value: progress.total, color: 'text-text-primary', accent: undefined },
               { label: 'Completed', value: progress.completed, color: 'text-green-400', accent: '#22c55e' },
-              { label: 'In Progress', value: progress.in_progress, color: 'text-accent-primary', accent: '#F59E0B' },
+              { label: 'In Progress', value: progress.in_progress, color: 'text-mission', accent: '#1A5FA8' },
               { label: 'Pending Rev.', value: progress.pending_review, color: 'text-yellow-400', accent: '#eab308' },
               { label: 'Blocked', value: progress.blocked, color: 'text-red-400', accent: '#ef4444' },
             ].map((stat) => (
@@ -636,7 +640,6 @@ export default function TasksPage() {
             </div>
           </div>
         )}
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }

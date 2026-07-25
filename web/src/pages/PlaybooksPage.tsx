@@ -10,7 +10,6 @@ import {
   Trash,
   Spinner,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PlaybooksSkeleton } from '../components/ui/Skeleton'
@@ -19,6 +18,15 @@ import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { listPlaybooks, createPlaybook, archivePlaybook } from '../lib/api'
 import type { Playbook } from '../lib/api'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+}
+const itemVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+}
 
 export default function PlaybooksPage() {
   const [search, setSearch] = useState('')
@@ -107,43 +115,56 @@ export default function PlaybooksPage() {
   }
 
   return (
-    <PageTransition>
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
-              </div>
-              <h1 className="text-display-sm font-display font-medium text-text-primary">
-                Playbooks
-              </h1>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-5xl mx-auto space-y-8 relative"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
+        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
+          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
+          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
+        </svg>
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+              <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
             </div>
-            <p className="text-body-sm text-text-tertiary max-w-xl">
-              Automated workflows and guided processes to standardize engineering operations.
-            </p>
+            <h1 className="text-display-sm font-display font-medium text-text-primary">
+              Playbooks
+            </h1>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            disabled={!activeTeamId}
-            className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
-          >
-            <Plus className="w-4 h-4" weight="bold" />
-            New Playbook
-          </button>
+          <p className="text-body-sm text-text-tertiary max-w-xl">
+            Automated workflows and guided processes to standardize engineering operations.
+          </p>
         </div>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowCreate(true)}
+          disabled={!activeTeamId}
+          className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
+        >
+          <Plus className="w-4 h-4" weight="bold" />
+          New Playbook
+        </motion.button>
+      </motion.div>
 
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
-          </div>
-        )}
+      {error && (
+        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+        </motion.div>
+      )}
 
-        {loading && <PlaybooksSkeleton />}
+      {loading && <motion.div variants={itemVariants}><PlaybooksSkeleton /></motion.div>}
 
-        {!loading && playbooks.length === 0 && !error && (
+      {!loading && playbooks.length === 0 && !error && (
+        <motion.div variants={itemVariants}>
           <EmptyState
             icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
             title="No playbooks yet"
@@ -154,154 +175,164 @@ export default function PlaybooksPage() {
               </button>
             }
           />
-        )}
+        </motion.div>
+      )}
 
-        {!loading && (
-          <>
-            {/* Search & Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search playbooks..."
-                  className="input w-full pl-10"
-                />
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
-                      category === cat
-                        ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
-                        : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:border-border-hover'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+      {!loading && (
+        <>
+          {/* Search & Filters */}
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search playbooks..."
+                className="input w-full pl-10"
+              />
             </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+                    category === cat
+                      ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
+                      : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:border-border-hover'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </motion.div>
 
-            {filtered.length === 0 ? (
+          {filtered.length === 0 ? (
+            <motion.div variants={itemVariants}>
               <EmptyState
                 icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
                 title="No playbooks found"
                 description={search ? 'Try a different search term' : 'No playbooks available in this category'}
               />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map((playbook, i) => (
-                  <motion.div
-                    key={playbook.playbook_id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <CardSpotlight className="p-5 h-full flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-accent-primary/10 text-accent-primary">
-                          {playbook.tags[0] || 'General'}
-                        </span>
-                        <button
-                          onClick={() => handleArchive(playbook.playbook_id)}
-                          disabled={archiving === playbook.playbook_id}
-                          className="text-text-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
-                          title="Archive"
-                        >
-                          <Trash className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <h3 className="text-body font-medium text-text-primary mb-1.5">{playbook.title}</h3>
-                      <p className="text-caption text-text-tertiary leading-relaxed mb-5 flex-1">
-                        {playbook.description || 'No description.'}
-                      </p>
-                      <div className="flex items-center gap-4 text-caption text-text-tertiary mb-4">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          {playbook.steps.length} steps
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          {playbook.use_count} uses
-                        </span>
-                      </div>
+            </motion.div>
+          ) : (
+            <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((playbook, i) => (
+                <motion.div
+                  key={playbook.playbook_id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
+                >
+                  <CardSpotlight className="p-5 h-full flex flex-col group">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-accent-primary/10 text-accent-primary">
+                        {playbook.tags[0] || 'General'}
+                      </span>
                       <button
-                        onClick={() => setOpenBook(playbook)}
-                        className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-all"
+                        onClick={() => handleArchive(playbook.playbook_id)}
+                        disabled={archiving === playbook.playbook_id}
+                        className="text-text-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
+                        title="Archive"
                       >
-                        <Play className="w-3.5 h-3.5" weight="fill" />
-                        Open
+                        <Trash className="w-3.5 h-3.5" />
                       </button>
-                    </CardSpotlight>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Create Modal */}
-        <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Playbook">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-caption font-medium text-text-secondary mb-1.5">Title</label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. New Hire Onboarding"
-                className="input w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-caption font-medium text-text-secondary mb-1.5">Description</label>
-              <input
-                type="text"
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="Optional"
-                className="input w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-caption font-medium text-text-secondary mb-1.5">Steps (one per line)</label>
-              <textarea
-                value={newSteps}
-                onChange={(e) => setNewSteps(e.target.value)}
-                rows={5}
-                placeholder={'Step one\nStep two'}
-                className="input w-full font-code text-caption"
-              />
-            </div>
-            <button onClick={handleCreate} disabled={!newTitle.trim() || creating} className="btn btn-primary w-full flex items-center justify-center gap-2">
-              {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
-              {creating ? 'Creating...' : 'Create Playbook'}
-            </button>
-          </div>
-        </Modal>
-
-        {/* Detail Modal */}
-        <Modal open={openBook !== null} onClose={() => setOpenBook(null)} title={openBook?.title} maxWidth="max-w-xl">
-          {openBook && (
-            <div className="space-y-4">
-              <p className="text-caption text-text-tertiary">{openBook.description}</p>
-              <div>
-                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Steps</div>
-                <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
-                  {openBook.steps.map((s, idx) => (
-                    <li key={idx} className="leading-relaxed">{s}</li>
-                  ))}
-                </ol>
-              </div>
-            </div>
+                    </div>
+                    <h3 className="text-body font-medium text-text-primary mb-1.5 group-hover:text-accent-from transition-colors">{playbook.title}</h3>
+                    <p className="text-caption text-text-tertiary leading-relaxed mb-5 flex-1">
+                      {playbook.description || 'No description.'}
+                    </p>
+                    <div className="flex items-center gap-4 text-caption text-text-tertiary mb-4">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        {playbook.steps.length} steps
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        {playbook.use_count} uses
+                      </span>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setOpenBook(playbook)}
+                      className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-all"
+                    >
+                      <Play className="w-3.5 h-3.5" weight="fill" />
+                      Open
+                    </motion.button>
+                  </CardSpotlight>
+                </motion.div>
+              ))}
+            </motion.div>
           )}
-        </Modal>
-      </div>
-    </PageTransition>
+        </>
+      )}
+
+      {/* Create Modal */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Playbook">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-caption font-medium text-text-secondary mb-1.5">Title</label>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="e.g. New Hire Onboarding"
+              className="input w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-caption font-medium text-text-secondary mb-1.5">Description</label>
+            <input
+              type="text"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="Optional"
+              className="input w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-caption font-medium text-text-secondary mb-1.5">Steps (one per line)</label>
+            <textarea
+              value={newSteps}
+              onChange={(e) => setNewSteps(e.target.value)}
+              rows={5}
+              placeholder={'Step one\nStep two'}
+              className="input w-full font-code text-caption"
+            />
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleCreate}
+            disabled={!newTitle.trim() || creating}
+            className="btn btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
+            {creating ? 'Creating...' : 'Create Playbook'}
+          </motion.button>
+        </div>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal open={openBook !== null} onClose={() => setOpenBook(null)} title={openBook?.title} maxWidth="max-w-xl">
+        {openBook && (
+          <div className="space-y-4">
+            <p className="text-caption text-text-tertiary">{openBook.description}</p>
+            <div>
+              <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Steps</div>
+              <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
+                {openBook.steps.map((s, idx) => (
+                  <li key={idx} className="leading-relaxed">{s}</li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </motion.div>
   )
 }

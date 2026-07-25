@@ -12,10 +12,14 @@ import {
   GitBranch,
   Fire,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/utils'
 import { indexRepo, askQuestionStream } from '../lib/api'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+}
 
 interface Message {
   id: string
@@ -130,8 +134,13 @@ export default function AskPage() {
   }
 
   return (
-    <PageTransition>
-      <div className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         {/* Header */}
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -310,11 +319,7 @@ export default function AskPage() {
               className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-tertiary/40 outline-none px-2"
               disabled={loading}
             />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || loading}
-              className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center text-accent-primary hover:bg-accent-primary/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
+            <button onClick={handleSend} disabled={!input.trim() || loading} className="rounded-xl shrink-0 w-9 h-9 flex items-center justify-center text-accent-primary bg-accent-primary/10">
               {loading ? (
                 <Spinner className="w-4 h-4 animate-spin" />
               ) : (
@@ -326,7 +331,7 @@ export default function AskPage() {
             AI responses are generated based on codebase analysis
           </p>
         </div>
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }
+

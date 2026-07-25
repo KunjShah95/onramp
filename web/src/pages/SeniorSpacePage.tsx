@@ -4,7 +4,6 @@ import {
   ShieldCheck, Eye, Heartbeat, Users, ListChecks,
   CheckCircle,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
@@ -12,11 +11,16 @@ import { fetchCTODashboard } from '../lib/api'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+}
+
+const statCardVariants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
 }
 
 interface ReviewItem {
@@ -84,23 +88,28 @@ export default function SeniorSpacePage() {
   ]
 
   return (
-    <PageTransition>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="max-w-6xl mx-auto space-y-8"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5 text-purple-400" weight="duotone" />
-          </div>
-          <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">Senior Developer Space</h1>
-            <p className="text-body-sm text-text-tertiary">Code quality, mentorship, and team oversight.</p>
-          </div>
-        </motion.div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-6xl mx-auto space-y-8 relative"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
+        <svg className="absolute -top-6 -left-6 w-40 h-40 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
+          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="3 5" />
+          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
+          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-purple-400" />
+        </svg>
+        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+          <ShieldCheck className="w-5 h-5 text-purple-400" weight="duotone" />
+        </div>
+        <div>
+          <h1 className="text-display-sm font-display font-medium text-text-primary">Senior Developer Space</h1>
+          <p className="text-body-sm text-text-tertiary">Code quality, mentorship, and team oversight.</p>
+        </div>
+      </motion.div>
 
         {error && (
           <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">{error}</div>
@@ -121,19 +130,21 @@ export default function SeniorSpacePage() {
         ) : (
           <>
             {/* Stats row */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {stats.map((stat) => (
-                <CardSpotlight key={stat.label} className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', stat.color.replace('text', 'bg'), '/10')}>
-                      <stat.icon className={cn('w-4 h-4', stat.color)} weight="fill" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {stats.map((stat, i) => (
+                <motion.div key={stat.label} custom={i} variants={statCardVariants} initial="hidden" animate="visible">
+                  <CardSpotlight className="p-4 group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110', stat.color.replace('text', 'bg'), '/10')}>
+                        <stat.icon className={cn('w-4 h-4', stat.color)} weight="fill" />
+                      </div>
+                      <span className="text-caption text-text-tertiary">{stat.label}</span>
                     </div>
-                    <span className="text-caption text-text-tertiary">{stat.label}</span>
-                  </div>
-                  <p className="text-display-xs font-display font-medium text-text-primary">{stat.value}</p>
-                </CardSpotlight>
+                    <p className="text-display-xs font-display font-medium text-text-primary">{stat.value}</p>
+                  </CardSpotlight>
+                </motion.div>
               ))}
-            </motion.div>
+            </div>
 
             {/* Review Queue + Code Health */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -312,6 +323,5 @@ export default function SeniorSpacePage() {
           </>
         )}
       </motion.div>
-    </PageTransition>
   )
 }

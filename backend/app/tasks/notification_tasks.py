@@ -337,6 +337,125 @@ def send_all_digests(self, period: str = "daily") -> dict:
         loop.close()
 
 
+# ── Slack Standup Reminders ────────────────────────────────────────────────
+
+
+@shared_task(
+    queue="notification-tasks",
+    bind=True,
+    max_retries=1,
+)
+def send_standup_reminders(self) -> dict:
+    """Send proactive standup reminders to all active team members with Slack configured.
+
+    Finds all team members who have Slack integration configured and sends
+    them a DM asking for today's standup. Runs daily at the configured time
+    (see beat_schedule.py for schedule).
+
+    Gracefully handles missing Slack config — never raises.
+    """
+    import asyncio
+    from app.slack_bot import SlackBot
+
+    async def _run() -> dict:
+        if not SlackBot.is_bot_configured():
+            logger.info("SLACK_BOT_TOKEN not set — skipping standup reminders")
+            return {"sent": 0, "skipped": 0, "reason": "no_bot_token"}
+
+        from app.services.postgres_db import get_storage
+        from app.services.webhook_service import get_integration_config
+
+        storage = get_storage()
+        bot = SlackBot()
+        sent = 0
+        skipped = 0
+
+        # Get all team members across all teams
+        members = await storage.list_documents("team_members")
+        seen_users = set()
+
+        for member in members:
+            uid = member.get("user_id")
+            if not uid or uid in seen_users:
+                continue
+            seen_users.add(uid)
+
+            team_id = member.get("team_id")
+
+            try:
+                # Check if the user has Slack integration configured
+                cfg = await get_integration_config(uid, "slack")
+                if not cfg:
+                    skipped += 1
+                    continue
+
+                slack_config = cfg.get("config", {})
+                slack_user_id = slack_config.get("slack_user_id")
+                if not slack_user_id:
+                    skipped += 1
+                    continue
+
+                # Look up user name
+                user_doc = await storage.get_document("users", uid)
+                user_name = user_doc.get("name", uid[:8]) if user_doc else uid[:8]
+
+                # Send the proactive standup reminder
+                success = await bot.send_standup_reminder(
+                    slack_user_id=slack_user_id,
+                    user_name=user_name,
+                    team_id=team_id or "",
+                )
+                if success:
+                    sent += 1
+                    logger.info("Standup reminder sent to %s (Slack user %s)", uid, slack_user_id)
+                else:
+                    skipped += 1
+            except Exception:
+                logger.exception("Failed to send standup reminder to %s", uid)
+                skipped += 1
+
+        return {"sent": sent, "skipped": skipped}
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_run())
+    except Exception as exc:
+        logger.exception("Standup reminder batch failed")
+        raise self.retry(exc=exc)
+    finally:
+        loop.close()
+
+
+# ── Team Digest (Slack) ────────────────────────────────────────────────────
+
+
+@shared_task(
+    queue="notification-tasks",
+    bind=True,
+    max_retries=1,
+)
+def send_team_digest_to_slack(self, team_id: str, team_name: str) -> dict:
+    """Post a team's daily digest to the configured Slack standup channel."""
+    import asyncio
+    from app.slack_bot import SlackBot
+
+    async def _run() -> dict:
+        bot = SlackBot()
+        success = await bot.post_daily_digest(team_id, team_name)
+        return {"team_id": team_id, "sent": success}
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_run())
+    except Exception as exc:
+        logger.exception("Team digest Slack post failed for team %s", team_id)
+        raise self.retry(exc=exc)
+    finally:
+        loop.close()
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 # Reuse the synchronous email lookup from notification_helpers to avoid duplication.

@@ -958,6 +958,126 @@ export async function listTiers(): Promise<{ tiers: any[] }> {
   return get<{ tiers: any[] }>(`${API_BASE}/ai/tiers`)
 }
 
+// ─── HR Dashboard ──────────────────────────────────────────────────────────
+
+export interface HrMemberRamp {
+  user_id: string
+  name: string
+  ramp_days: number | null
+}
+
+export interface HrRampTime {
+  members: HrMemberRamp[]
+  team_average_days: number | null
+}
+
+export interface HrCompletionMember {
+  user_id: string
+  name: string
+  assigned: number
+  completed: number
+  completion_pct: number
+}
+
+export interface HrOnboardingCompletion {
+  members: HrCompletionMember[]
+}
+
+export interface HrEngagementMember {
+  user_id: string
+  name: string
+  current_streak: number
+  longest_streak: number
+}
+
+export interface HrEngagement {
+  members: HrEngagementMember[]
+  active_streaks: number
+}
+
+export interface HrStalledTask {
+  task_id: string
+  title: string
+  state: string
+  age_days: number
+}
+
+export interface HrAtRiskMember {
+  user_id: string
+  name: string
+  reasons: string[]
+  stalled_task: HrStalledTask | null
+}
+
+export interface HrAttritionRisk {
+  at_risk: HrAtRiskMember[]
+  at_risk_count: number
+}
+
+export interface HrCohortSummary {
+  team_id: string
+  member_count: number
+  ramp_time: HrRampTime
+  onboarding_completion: HrOnboardingCompletion
+  engagement: HrEngagement
+  attrition_risk: HrAttritionRisk
+  generated_at: string
+}
+
+export async function fetchHrCohort(teamId: string): Promise<HrCohortSummary> {
+  return get<HrCohortSummary>(`${API_BASE}/hr/cohort/${teamId}`)
+}
+
+export async function fetchHrAttrition(teamId: string): Promise<HrAttritionRisk> {
+  return get<HrAttritionRisk>(`${API_BASE}/hr/attrition/${teamId}`)
+}
+
+export interface HrDayBucket {
+  date: string
+  commits: number
+  tasks: number
+  logins: number
+}
+
+export interface HrMemberHeatmap {
+  user_id: string
+  name: string
+  total: number
+  days: HrDayBucket[]
+}
+
+export interface HrHeatmapResponse {
+  members: Record<string, HrMemberHeatmap>
+  from: string
+  to: string
+}
+
+export async function fetchHrHeatmap(teamId: string): Promise<HrHeatmapResponse> {
+  return get<HrHeatmapResponse>(`${API_BASE}/hr/heatmap/${teamId}`)
+}
+
+export interface HrDeveloperOverview {
+  user_id: string
+  name: string
+  stage: 'onboarding' | 'ramping' | 'contributing' | 'independent'
+  completion_pct: number
+  assigned: number
+  completed: number
+  ramp_days: number | null
+  current_streak: number
+  longest_streak: number
+  at_risk: boolean
+}
+
+export interface HrDeveloperResponse {
+  developers: HrDeveloperOverview[]
+  team_id: string
+}
+
+export async function fetchHrDevelopers(teamId: string): Promise<HrDeveloperResponse> {
+  return get<HrDeveloperResponse>(`${API_BASE}/hr/developers/${teamId}`)
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────
 
 export interface AdminApiKey {
@@ -1932,4 +2052,158 @@ export async function getQuizResults(quizId: string): Promise<{
     attempts: number
     best_score: number
   }>(`${API_BASE}/quiz/${quizId}/results`)
+}
+
+// ─── Onboarding Plans (30-60-90 Day) ─────────────────────────────────────────
+
+export interface OnboardingMilestone {
+  id: string
+  plan_id: string
+  day_target: number
+  title: string
+  description: string | null
+  category: string
+  is_completed: boolean
+  completed_at: string | null
+  sort_order: number
+}
+
+export interface PreBoardingTask {
+  id: string
+  plan_id: string
+  title: string
+  description: string | null
+  assignee: string
+  is_required: boolean
+  is_completed: boolean
+  completed_at: string | null
+  sort_order: number
+}
+
+export interface PulseSurvey {
+  id: string
+  plan_id: string
+  week_number: number
+  confidence_score: number | null
+  clarity_score: number | null
+  support_score: number | null
+  workload_score: number | null
+  sentiment: string | null
+  open_feedback: string | null
+  submitted_at: string | null
+}
+
+export interface OnboardingPlan {
+  id: string
+  team_id: string
+  user_id: string
+  created_by: string | null
+  start_date: string
+  buddy_id: string | null
+  status: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+  milestones: OnboardingMilestone[]
+  pre_boarding_tasks: PreBoardingTask[]
+  pulse_surveys: PulseSurvey[]
+}
+
+export async function createOnboardingPlan(data: {
+  team_id: string
+  user_id: string
+  start_date?: string
+  buddy_id?: string
+  notes?: string
+}): Promise<OnboardingPlan> {
+  return request<OnboardingPlan>(`${API_BASE}/onboarding-plans`, data)
+}
+
+export async function listOnboardingPlans(params?: {
+  team_id?: string
+  user_id?: string
+}): Promise<OnboardingPlan[]> {
+  const query = new URLSearchParams()
+  if (params?.team_id) query.set('team_id', params.team_id)
+  if (params?.user_id) query.set('user_id', params.user_id)
+  const qs = query.toString()
+  return get<OnboardingPlan[]>(`${API_BASE}/onboarding-plans${qs ? '?' + qs : ''}`)
+}
+
+export async function getOnboardingPlan(planId: string): Promise<OnboardingPlan> {
+  return get<OnboardingPlan>(`${API_BASE}/onboarding-plans/${planId}`)
+}
+
+export async function updateOnboardingPlan(planId: string, data: Partial<{
+  status: string
+  buddy_id: string
+  notes: string
+  start_date: string
+}>): Promise<OnboardingPlan> {
+  return request<OnboardingPlan>(`${API_BASE}/onboarding-plans/${planId}`, data, 'PATCH')
+}
+
+export async function submitPulse(planId: string, data: {
+  week_number: number
+  confidence_score: number
+  clarity_score: number
+  support_score: number
+  workload_score: number
+  sentiment: string
+  open_feedback?: string
+}): Promise<PulseSurvey> {
+  return request<PulseSurvey>(`${API_BASE}/onboarding-plans/${planId}/pulse`, data)
+}
+
+export async function getPulseTrends(planId: string): Promise<{
+  pulses: PulseSurvey[]
+  trends: Record<string, number | null>
+}> {
+  return get<{ pulses: PulseSurvey[]; trends: Record<string, number | null> }>(
+    `${API_BASE}/onboarding-plans/${planId}/pulse-trends`
+  )
+}
+
+export async function completeMilestone(milestoneId: string): Promise<OnboardingMilestone> {
+  return request<OnboardingMilestone>(
+    `${API_BASE}/onboarding-plans/milestones/${milestoneId}/complete`, {}
+  )
+}
+
+export async function completePreBoardingTask(taskId: string): Promise<PreBoardingTask> {
+  return request<PreBoardingTask>(
+    `${API_BASE}/onboarding-plans/pre-boarding/${taskId}/complete`, {}
+  )
+}
+
+export async function getTeamPulseOverview(teamId: string): Promise<{
+  members: Array<{
+    user_id: string
+    plan_id: string
+    week_number: number
+    confidence_score: number | null
+    sentiment: string | null
+    submitted_at: string | null
+  }>
+}> {
+  return get(`${API_BASE}/onboarding-plans/team/${teamId}/pulse-overview`)
+}
+
+// ─── AI Onboarding Wiki Generator ───────────────────────────────────────────
+
+export interface WikiResponse {
+  repo: string
+  sections: string[]
+  content: string
+  generated_at: string
+  stats: {
+    stars: number
+    language: string
+    open_issues: number
+    first_issues_found: number
+  }
+}
+
+export async function generateWiki(repoUrl: string): Promise<WikiResponse> {
+  return request<WikiResponse>(`${API_BASE}/wiki/generate`, { repo_url: repoUrl })
 }
