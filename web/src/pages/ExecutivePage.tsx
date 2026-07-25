@@ -4,7 +4,6 @@ import {
   ChartBar, Users, CurrencyDollar, CreditCard, TrendUp,
   Building, Bell, ShieldCheck, GitPullRequest,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
@@ -12,11 +11,16 @@ import { fetchSeedRoleData } from '../lib/api'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+}
+
+const statCardVariants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
 }
 
 const AUDIT_STYLES: Record<string, { icon: any; color: string; bg: string }> = {
@@ -48,23 +52,28 @@ export default function ExecutivePage() {
   ]
 
   return (
-    <PageTransition>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="max-w-6xl mx-auto space-y-8"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <ChartBar className="w-5 h-5 text-emerald-400" weight="duotone" />
-          </div>
-          <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">Executive Dashboard</h1>
-            <p className="text-body-sm text-text-tertiary">CTO/CEO overview of organization metrics.</p>
-          </div>
-        </motion.div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-6xl mx-auto space-y-8 relative"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
+        <svg className="absolute -top-8 -right-4 w-56 h-56 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+          <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400" />
+        </svg>
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+          <ChartBar className="w-5 h-5 text-emerald-400" weight="duotone" />
+        </div>
+        <div>
+          <h1 className="text-display-sm font-display font-medium text-text-primary">Executive Dashboard</h1>
+          <p className="text-body-sm text-text-tertiary">CTO/CEO overview of organization metrics.</p>
+        </div>
+      </motion.div>
 
         {error && (
           <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">{error}</div>
@@ -86,19 +95,21 @@ export default function ExecutivePage() {
         ) : (
           <>
             {/* Stats row */}
-            <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {metrics.map((metric) => (
-                <CardSpotlight key={metric.label} className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', metric.color.replace('text', 'bg'), '/10')}>
-                      <metric.icon className={cn('w-4 h-4', metric.color)} weight="fill" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {metrics.map((metric, i) => (
+                <motion.div key={metric.label} custom={i} variants={statCardVariants} initial="hidden" animate="visible">
+                  <CardSpotlight className="p-4 group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110', metric.color.replace('text', 'bg'), '/10')}>
+                        <metric.icon className={cn('w-4 h-4', metric.color)} weight="fill" />
+                      </div>
+                      <span className="text-caption text-text-tertiary">{metric.label}</span>
                     </div>
-                    <span className="text-caption text-text-tertiary">{metric.label}</span>
-                  </div>
-                  <p className="text-display-xs font-display font-medium text-text-primary">{metric.value}</p>
-                </CardSpotlight>
+                    <p className="text-display-xs font-display font-medium text-text-primary">{metric.value}</p>
+                  </CardSpotlight>
+                </motion.div>
               ))}
-            </motion.div>
+            </div>
 
             {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -259,6 +270,5 @@ export default function ExecutivePage() {
           </>
         )}
       </motion.div>
-    </PageTransition>
   )
 }

@@ -10,7 +10,6 @@ import {
   ChatCircleText,
   Link as LinkIcon,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { Modal } from '../components/ui/modal'
@@ -28,6 +27,11 @@ const TABS: { key: 'all' | Level; label: string; level: Level }[] = [
   { key: 'mid', label: 'Medium', level: 'mid' },
   { key: 'senior', label: 'Hard', level: 'senior' },
 ]
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+}
 
 function difficultyFromScore(score: number): { text: string; bg: string; label: string } {
   if (score <= 4) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Easy' }
@@ -112,8 +116,13 @@ export default function FirstIssuePage() {
   }
 
   return (
-    <PageTransition>
-      <div className="max-w-5xl mx-auto space-y-8">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative max-w-5xl mx-auto space-y-8">
+      <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -311,7 +320,6 @@ export default function FirstIssuePage() {
             </div>
           </div>
         </CardSpotlight>
-      </div>
 
       {/* Guide Modal */}
       <Modal
@@ -406,6 +414,6 @@ export default function FirstIssuePage() {
           </div>
         )}
       </Modal>
-    </PageTransition>
+    </motion.div>
   )
 }

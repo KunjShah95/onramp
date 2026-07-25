@@ -5,7 +5,6 @@ import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
-import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { Check, CreditCard } from '@phosphor-icons/react'
@@ -64,8 +63,8 @@ export default function BillingPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create subscription') }
   }
 
-  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } }
-  const itemVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }
+  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
+  const itemVariants = { hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } } }
 
   async function handleCancel() {
     if (!teamId.trim() || !subscription) return
@@ -75,8 +74,21 @@ export default function BillingPage() {
   }
 
   return (
-    <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary"
+    >
+      <div className="relative">
+        <svg className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.4" strokeDasharray="3 5" />
+          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+          <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
+        </svg>
+      </div>
+      <motion.div variants={itemVariants}>
         <PageHeader
           title="Billing & Plans"
           subtitle="Manage your subscription and team quota"
@@ -85,33 +97,35 @@ export default function BillingPage() {
             { label: 'status', value: subscription.status, color: subscription.status === 'active' ? 'text-green-400' : 'text-text-tertiary' },
           ] : undefined}
         />
+      </motion.div>
 
-        {error && (<div className="mb-5 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>)}
+      {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</motion.div>)}
 
-        {/* Team Selection */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-bg-secondary p-4 rounded-xl border border-border">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">Active Team Workspace</label>
-            <div className="flex items-center gap-2">
-              {teams.length > 0 ? (
-                <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
-                  className="bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary/40 outline-none min-w-[200px]">
-                  {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>))}
-                </select>
-              ) : (<div className="text-sm text-text-tertiary">No teams found. <a href="/team" className="underline text-accent-primary hover:text-accent-primary/80">Create one</a>.</div>)}
-            </div>
+      {/* Team Selection */}
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-bg-secondary p-4 rounded-xl border border-border">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">Active Team Workspace</label>
+          <div className="flex items-center gap-2">
+            {teams.length > 0 ? (
+              <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
+                className="bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary/40 outline-none min-w-[200px]">
+                {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>))}
+              </select>
+            ) : (<div className="text-sm text-text-tertiary">No teams found. <a href="/team" className="underline text-accent-primary hover:text-accent-primary/80">Create one</a>.</div>)}
           </div>
-          {subscription && (
-            <button onClick={handleCancel} disabled={role !== 'owner'}
-              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-500/20 transition-colors disabled:opacity-40"
-              title={role !== 'owner' ? 'Only the team owner can cancel' : ''}>
-              Cancel Subscription
-            </button>
-          )}
         </div>
-
-        {/* Current plan banner */}
         {subscription && (
+          <button onClick={handleCancel} disabled={role !== 'owner'}
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-500/20 transition-colors disabled:opacity-40"
+            title={role !== 'owner' ? 'Only the team owner can cancel' : ''}>
+            Cancel Subscription
+          </button>
+        )}
+      </motion.div>
+
+      {/* Current plan banner */}
+      {subscription && (
+        <motion.div variants={itemVariants}>
           <CardSpotlight className="p-5 mb-8">
             <div className="flex items-start gap-3">
               <CreditCard className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
@@ -129,43 +143,54 @@ export default function BillingPage() {
               </div>
             </div>
           </CardSpotlight>
-        )}
-
-        {/* Tier cards */}
-        <GradientHeading as="h2" className="text-lg mb-4">Available Plans</GradientHeading>
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {TIERS.map((tier) => {
-            const isCurrent = selectedTier === tier.id
-            return (
-              <motion.div key={tier.id} variants={itemVariants}>
-                <CardSpotlight className={cn('relative p-5 flex flex-col h-full',
-                  isCurrent ? 'border-accent-primary/30 ring-1 ring-accent-primary/15' : tier.popular ? '' : '')}>
-                  {tier.popular && <span className="text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-3">Most Popular</span>}
-                  <h3 className="font-display text-base font-bold text-text-primary capitalize mb-1">{tier.label}</h3>
-                  <div className="mb-4">
-                    {tier.price > 0 ? (
-                      <span className="font-display text-2xl font-bold text-text-primary">${tier.price}<span className="text-sm text-text-tertiary font-normal">/mo</span></span>
-                    ) : (
-                      <span className="font-display text-lg text-text-tertiary">{tier.id === 'enterprise' ? 'Custom' : 'Free'}</span>
-                    )}
-                  </div>
-                  <ul className="space-y-2 text-xs text-text-secondary flex-1 mb-5">
-                    {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-accent-primary mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
-                  </ul>
-                  <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'owner'}
-                    title={role !== 'owner' ? 'Only the team owner can change plans' : ''}
-                    className={cn('w-full py-2 rounded-xl text-xs font-bold transition-all',
-                      isCurrent ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/20 cursor-default' :
-                      tier.popular ? 'bg-accent-primary hover:bg-accent-primary/90 text-white disabled:opacity-40' :
-                      'bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-secondary hover:text-text-primary border border-border disabled:opacity-40')}>
-                    {isCurrent ? 'Current Plan' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
-                  </button>
-                </CardSpotlight>
-              </motion.div>
-            )
-          })}
         </motion.div>
-      </div>
-    </PageTransition>
+      )}
+
+      {/* Tier cards */}
+      <motion.div variants={itemVariants}>
+        <GradientHeading as="h2" className="text-lg mb-4">Available Plans</GradientHeading>
+      </motion.div>
+      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {TIERS.map((tier) => {
+          const isCurrent = selectedTier === tier.id
+          return (
+            <motion.div key={tier.id} variants={itemVariants}>
+              <CardSpotlight className={cn('relative p-5 flex flex-col h-full group',
+                isCurrent ? 'border-accent-primary/30 ring-1 ring-accent-primary/15' : tier.popular ? 'hover:border-accent-primary/30' : '')}>
+                {tier.popular && <span className="text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-3">Most Popular</span>}
+                <h3 className="font-display text-base font-bold text-text-primary capitalize mb-1">{tier.label}</h3>
+                <div className="mb-4">
+                  {tier.price > 0 ? (
+                    <span className="font-display text-2xl font-bold text-text-primary">
+                      <motion.span
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: 'spring', stiffness: 100, damping: 15 }}
+                      >
+                        ${tier.price}
+                      </motion.span>
+                      <span className="text-sm text-text-tertiary font-normal">/mo</span>
+                    </span>
+                  ) : (
+                    <span className="font-display text-lg text-text-tertiary">{tier.id === 'enterprise' ? 'Custom' : 'Free'}</span>
+                  )}
+                </div>
+                <ul className="space-y-2 text-xs text-text-secondary flex-1 mb-5">
+                  {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-accent-primary mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
+                </ul>
+                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'owner'}
+                  title={role !== 'owner' ? 'Only the team owner can change plans' : ''}
+                  className={cn('w-full py-2 rounded-xl text-xs font-bold transition-all',
+                    isCurrent ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/20 cursor-default' :
+                    tier.popular ? 'bg-accent-primary hover:bg-accent-primary/90 text-white disabled:opacity-40' :
+                    'bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-secondary hover:text-text-primary border border-border disabled:opacity-40')}>
+                  {isCurrent ? 'Current Plan' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
+                </button>
+              </CardSpotlight>
+            </motion.div>
+          )
+        })}
+      </motion.div>
+    </motion.div>
   )
 }

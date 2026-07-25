@@ -173,10 +173,10 @@ function CohortFunnelCard({ members }: { members: HrCompletionMember[] | undefin
   const totalCompleted = members.reduce((s, m) => s + m.completed, 0)
   const inProgress = totalAssigned - totalCompleted
   const funnelData = [
-    { name: 'Joined', value: members.length, color: '#3B82F6' },
-    { name: 'Assigned', value: totalAssigned, color: '#8B5CF6' },
-    { name: 'In Progress', value: inProgress, color: '#F59E0B' },
-    { name: 'Completed', value: totalCompleted, color: '#10B981' },
+    { name: 'Joined', value: members.length, color: '#1A5FA8' },
+    { name: 'Assigned', value: totalAssigned, color: '#2472C4' },
+    { name: 'In Progress', value: inProgress, color: '#B5710A' },
+    { name: 'Completed', value: totalCompleted, color: '#0E7A3C' },
   ]
 
   return (
@@ -435,7 +435,7 @@ export default function HrDashboardPage() {
   const { ramp_time, onboarding_completion, engagement, attrition_risk, member_count } = cohort
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden relative">
       {/* Header */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>

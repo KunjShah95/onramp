@@ -9,11 +9,11 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 20 } },
 }
 
 const plans = [
@@ -90,20 +90,52 @@ export default function PricingPage() {
   return (
     <MarketingLayout navLinks={navLinks}>
       {/* Hero Section */}
-      <div className="pt-20 pb-14 px-6 text-center max-w-3xl mx-auto">
-        <div className="flex items-center justify-center gap-2 text-[hsl(var(--accent))] mb-4">
-          <Lightning className="w-4 h-4" weight="fill" />
-          <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-[hsl(var(--accent))]">Pricing</span>
-        </div>
-        <h1 className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
+      <div className="relative pt-20 pb-14 px-6 text-center max-w-3xl mx-auto">
+        <svg className="absolute top-10 right-0 w-64 h-64 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="0.5" />
+          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 6" />
+          <circle cx="100" cy="100" r="40" stroke="currentColor" strokeWidth="0.5" />
+          <path d="M100 20 A80 80 0 0 1 180 100" stroke="currentColor" strokeWidth="1.5" className="text-[hsl(var(--accent))]" />
+        </svg>
+        <svg className="absolute bottom-0 left-0 w-48 h-48 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.3" />
+          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" />
+          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.3" strokeDasharray="3 5" />
+        </svg>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
+          <div className="flex items-center justify-center gap-2 text-[hsl(var(--accent))] mb-4">
+            <Lightning className="w-4 h-4" weight="fill" />
+            <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-[hsl(var(--accent))]">Pricing</span>
+          </div>
+        </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]"
+        >
           Simple, transparent pricing
-        </h1>
-        <p className="text-[hsl(var(--muted-foreground))] text-base mb-8 max-w-xl mx-auto font-body">
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-[hsl(var(--muted-foreground))] text-base mb-8 max-w-xl mx-auto font-body"
+        >
           Deploy for free, scale when your infrastructure demands it. All plans include core features.
-        </p>
+        </motion.p>
 
         {/* Toggle */}
-        <div className="inline-flex items-center gap-3 p-1 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))]">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="inline-flex items-center gap-3 p-1 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))]"
+        >
           <button
             onClick={() => setIsAnnual(false)}
             className={cn(
@@ -121,9 +153,16 @@ export default function PricingPage() {
             )}
           >
             Annually
-            <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--accent))] font-bold bg-[hsl(var(--accent))]/10 px-2 py-0.5 rounded-full">Save 20%</span>
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, delay: 0.4 }}
+              className="text-[10px] uppercase tracking-wider text-[hsl(var(--accent))] font-bold bg-[hsl(var(--accent))]/10 px-2 py-0.5 rounded-full"
+            >
+              Save 20%
+            </motion.span>
           </button>
-        </div>
+        </motion.div>
       </div>
 
       {/* Pricing Cards */}
@@ -131,7 +170,7 @@ export default function PricingPage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6 pb-20"
+        className="relative max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6 pb-20"
       >
         {plans.map((plan) => (
           <motion.div key={plan.name} variants={itemVariants} className="relative">
@@ -199,7 +238,13 @@ export default function PricingPage() {
       </motion.div>
 
       {/* Feature comparison */}
-      <div className="max-w-4xl mx-auto px-6 pb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="max-w-4xl mx-auto px-6 pb-20"
+      >
         <div className="text-center mb-10">
           <h2 className="font-display text-2xl mb-2 text-[hsl(var(--foreground))]">Everything included</h2>
           <p className="text-[hsl(var(--muted-foreground))] text-sm font-body">All plans come with these features out of the box.</p>
@@ -209,32 +254,52 @@ export default function PricingPage() {
             { icon: Users, title: 'Team Collaboration', desc: 'Invite members, assign roles, manage permissions.' },
             { icon: ShieldCheck, title: 'SOC2 Compliant', desc: 'Enterprise-grade security for your code.' },
             { icon: Lightning, title: 'Fast Analysis', desc: 'Sub-minute analysis for most repositories.' },
-          ].map((feature) => (
-            <div key={feature.title} className="bg-white border border-[hsl(var(--border))] rounded-xl p-5">
+          ].map((feature, i) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+              className="bg-white border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/20 hover:shadow-[0_0_20px_rgba(99,102,241,0.04)] transition-all"
+            >
               <div className="w-9 h-9 rounded-lg bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-3">
                 <feature.icon className="w-4 h-4 text-[hsl(var(--accent))]" weight="fill" />
               </div>
               <h4 className="font-display font-bold text-sm text-[hsl(var(--foreground))] mb-1">{feature.title}</h4>
               <p className="text-[hsl(var(--muted-foreground))] text-xs font-body">{feature.desc}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* FAQs */}
-      <div className="max-w-3xl mx-auto px-6 pb-24">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="max-w-3xl mx-auto px-6 pb-24"
+      >
         <h2 className="font-display text-2xl mb-8 text-center text-[hsl(var(--foreground))]">
           Frequently asked questions
         </h2>
         <div className="space-y-3">
-          {faqs.map((faq) => (
-            <div key={faq.question} className="bg-white border border-[hsl(var(--border))] rounded-xl p-5">
+          {faqs.map((faq, i) => (
+            <motion.div
+              key={faq.question}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.4 }}
+              className="bg-white border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/15 transition-all"
+            >
               <h4 className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1.5 font-body">{faq.question}</h4>
               <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed font-body">{faq.answer}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
     </MarketingLayout>
   )
 }

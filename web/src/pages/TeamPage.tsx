@@ -11,7 +11,6 @@ import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
-import PageTransition from '../components/ui/page-transition'
 import { useToast } from '../context/ToastContext'
 import { TeamSettingsSkeleton } from '../components/ui/Skeleton'
 import {
@@ -52,11 +51,11 @@ const TIER_LABELS: Record<string, string> = {
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
 }
 
 export default function TeamPage() {
@@ -180,17 +179,20 @@ export default function TeamPage() {
 
   if (teamsLoading) {
     return (
-      <PageTransition>
-        <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6">
-          <TeamSettingsSkeleton />
-        </div>
-      </PageTransition>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+        <TeamSettingsSkeleton />
+      </motion.div>
     )
   }
 
   return (
-    <PageTransition>
-      <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary relative">
+      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+      </svg>
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}
@@ -534,7 +536,6 @@ export default function TeamPage() {
             />
           </CardSpotlight>
         )}
-      </div>
-    </PageTransition>
+    </motion.div>
   )
 }

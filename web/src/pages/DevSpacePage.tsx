@@ -14,11 +14,16 @@ import { fetchSeedRoleData } from '../lib/api'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 16, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+}
+
+const statCardVariants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
 }
 
 interface Stat {
@@ -97,10 +102,15 @@ export default function DevSpacePage() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="max-w-6xl mx-auto space-y-8"
+        className="max-w-6xl mx-auto space-y-8 relative"
       >
         {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center gap-3">
+        <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
+          <svg className="absolute -top-8 -left-8 w-48 h-48 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
+            <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
+            <circle cx="100" cy="100" r="65" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
+            <circle cx="100" cy="100" r="40" stroke="currentColor" strokeWidth="0.4" />
+          </svg>
           <div className="w-10 h-10 rounded-xl bg-info-muted border border-info/20 flex items-center justify-center">
             <Code className="w-5 h-5 text-info" weight="duotone" />
           </div>
@@ -132,39 +142,48 @@ export default function DevSpacePage() {
         ) : (
           <>
             {/* Stats row */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {stats.map((stat) => (
-                <CardSpotlight key={stat.label} className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', stat.color.replace('text', 'bg'), '/10')}>
-                      <stat.icon className={cn('w-4 h-4', stat.color)} weight="fill" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {stats.map((stat, i) => (
+                <motion.div key={stat.label} custom={i} variants={statCardVariants} initial="hidden" animate="visible">
+                  <CardSpotlight className="p-4 group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110', stat.color.replace('text', 'bg'), '/10')}>
+                        <stat.icon className={cn('w-4 h-4', stat.color)} weight="fill" />
+                      </div>
+                      <span className="text-caption text-text-tertiary">{stat.label}</span>
                     </div>
-                    <span className="text-caption text-text-tertiary">{stat.label}</span>
-                  </div>
-                  <p className="text-display-xs font-display font-medium text-text-primary">{stat.value}</p>
-                </CardSpotlight>
+                    <p className="text-display-xs font-display font-medium text-text-primary">{stat.value}</p>
+                  </CardSpotlight>
+                </motion.div>
               ))}
-            </motion.div>
+            </div>
 
             {/* Quick-access card grid */}
             <motion.div variants={itemVariants}>
               <h2 className="text-body-sm font-display font-bold text-text-primary mb-4">Quick Access</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {quickLinks.map((link) => (
-                  <NavLink key={link.to} to={link.to}>
-                    <CardSpotlight className="p-4 h-full group cursor-pointer">
-                      <div className="flex flex-col h-full">
-                        <div className="w-9 h-9 rounded-lg bg-accent-muted border border-accent/15 flex items-center justify-center mb-3 group-hover:bg-accent-muted/70 transition-colors">
-                          <link.icon className="w-4 h-4 text-accent-from" weight="fill" />
+                {quickLinks.map((link, i) => (
+                  <motion.div
+                    key={link.to}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
+                  >
+                    <NavLink to={link.to}>
+                      <CardSpotlight className="p-4 h-full group cursor-pointer">
+                        <div className="flex flex-col h-full">
+                          <div className="w-9 h-9 rounded-lg bg-accent-muted border border-accent/15 flex items-center justify-center mb-3 group-hover:bg-accent-muted/70 group-hover:scale-110 transition-all">
+                            <link.icon className="w-4 h-4 text-accent-from" weight="fill" />
+                          </div>
+                          <h3 className="text-body-sm font-medium text-text-primary mb-1 group-hover:text-accent-from transition-colors">{link.title}</h3>
+                          <p className="text-caption text-text-tertiary flex-1">{link.description}</p>
+                          <div className="mt-3 flex items-center gap-1 text-caption text-accent-from/60 group-hover:text-accent-from transition-all group-hover:translate-x-1">
+                            Open <ArrowRight size={12} weight="bold" />
+                          </div>
                         </div>
-                        <h3 className="text-body-sm font-medium text-text-primary mb-1">{link.title}</h3>
-                        <p className="text-caption text-text-tertiary flex-1">{link.description}</p>
-                        <div className="mt-3 flex items-center gap-1 text-caption text-accent-from/60 group-hover:text-accent-from transition-colors">
-                          Open <ArrowRight size={12} weight="bold" />
-                        </div>
-                      </div>
-                    </CardSpotlight>
-                  </NavLink>
+                      </CardSpotlight>
+                    </NavLink>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>

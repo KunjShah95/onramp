@@ -1,11 +1,25 @@
-import { useMemo, useState } from 'react'
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: The CTO dashboard is a flight director's console, not a SaaS card grid.
+ *   It refuses the hero-metric template (big number + label + accent, repeated).
+ * OWN-WORLD: Daylit ops room — cool gray-green ground, near-white panels seamed
+ *   by hairlines, ink nomenclature, signal-only color (GO green / mission blue /
+ *   caution amber / abort red). Archivo Expanded call-signs, Public Sans body,
+ *   JetBrains Mono telemetry. Radii <=4px. No glow, no dark, no serif.
+ * STORY: A director scans mission status in seconds — is the team GO? — then
+ *   drills into distribution, velocity, crew, and the review queue.
+ * FIRST VIEWPORT: Mission-status rail (GO/HOLD tile + crew designators) over a
+ *   butted readout bank of the seven core metrics; the primary "Review Queue"
+ *   action sits top-right. Instrument banks, not floating cards.
+ * FORM: Mission Control, grounded direction #6 of 7; seed key 3a081be2.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, SkeletonCard } from '../components/ui/Skeleton'
 import {
@@ -14,22 +28,53 @@ import {
   AreaChart, Area, Line,
 } from 'recharts'
 import {
-  ListChecks, CheckCircle, Clock, Eye, WarningCircle, Speedometer,
-  ChartPie, ChartLine, ChartBar as ChartBarIcon, Lock,
-  ArrowRight, Pulse,
+  CheckCircle, WarningCircle,
+  ArrowRight, ArrowUpRight, Lock,
 } from '@phosphor-icons/react'
+
+// Signal palette (recharts + tints) — see DESIGN.md
+const SIG = {
+  go: '#17A34A',
+  blue: '#2472C4',
+  amber: '#D6870F',
+  red: '#D24C3F',
+  ink: '#181B18',
+  grid: 'rgba(24,27,24,0.08)',
+  axis: 'rgba(24,27,24,0.45)',
+}
+const TOOLTIP = {
+  background: '#FFFFFF',
+  border: '1px solid rgba(24,27,24,0.14)',
+  borderRadius: '4px',
+  fontSize: '12px',
+  color: '#181B18',
+  boxShadow: '0 4px 16px rgba(24,27,24,0.10)',
+}
 
 const container = {
   hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06 },
-  },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+}
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
 }
 
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+/** Console panel with a call-sign rail. */
+function Panel({ callsign, designator, action, className, children }: {
+  callsign: string; designator?: string; action?: ReactNode; className?: string; children: ReactNode
+}) {
+  return (
+    <div className={cn('rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden', className)}>
+      <div className="console-rail">
+        <span className="callsign">{callsign}</span>
+        {designator && <span className="designator">{designator}</span>}
+        <span className="led ml-auto" />
+        {action && <div className="ml-2">{action}</div>}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
@@ -61,7 +106,6 @@ export default function DashboardPage() {
 
   const codeHealth = healthData?.overall_score ?? null
 
-  // ── Derived chart data (must be BEFORE early returns to keep hook order stable) ──
   const defaultDash = {
     total_tasks: 0, completed_tasks: 0, in_progress_tasks: 0, pending_review_tasks: 0,
     blocked_tasks: 0, completion_rate: 0, total_members: 0, total_trainees: 0,
@@ -75,10 +119,10 @@ export default function DashboardPage() {
   } = dashboard ?? defaultDash
 
   const taskDistribution = useMemo(() => [
-    { name: 'Completed', value: completed_tasks, color: '#10B981' },
-    { name: 'In Progress', value: in_progress_tasks, color: '#F59E0B' },
-    { name: 'Pending Review', value: pending_review_tasks, color: '#EAB308' },
-    { name: 'Blocked', value: blocked_tasks, color: '#EF4444' },
+    { name: 'Completed', value: completed_tasks, color: SIG.go },
+    { name: 'In Progress', value: in_progress_tasks, color: SIG.blue },
+    { name: 'Pending Review', value: pending_review_tasks, color: SIG.amber },
+    { name: 'Blocked', value: blocked_tasks, color: SIG.red },
   ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks])
 
   const memberBarData = useMemo(() =>
@@ -117,7 +161,7 @@ export default function DashboardPage() {
             <SkeletonHeading />
             <SkeletonText className="w-48" />
           </div>
-          <SkeletonBase className="h-9 w-48 rounded-xl" />
+          <SkeletonBase className="h-9 w-48 rounded-btn" />
         </div>
         <StatsGridSkeleton count={6} />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -134,158 +178,128 @@ export default function DashboardPage() {
 
   if (error || !dashboard) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <CardSpotlight className="max-w-md mx-auto p-8 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-error-muted border border-error/20 flex items-center justify-center mx-auto mb-5">
-            <WarningCircle size={28} className="text-error" />
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-card border border-error/25 bg-bg-secondary shadow-card overflow-hidden">
+          <div className="console-rail !bg-error-muted">
+            <span className="callsign text-error">SIGNAL LOST</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-error ml-auto animate-blink" />
           </div>
-          <p className="text-error/80 text-body-sm font-code mb-1">{(error as Error)?.message || 'Failed to load dashboard metrics.'}</p>
-          <p className="text-text-disabled/60 text-caption font-code mb-5">Check that the backend is running.</p>
-          <button onClick={() => window.location.reload()} className="bg-accent-from hover:brightness-110 text-[#09090B] px-5 py-2.5 rounded-btn text-body-sm font-semibold transition-all shadow-glow">
-            Retry
-          </button>
-        </CardSpotlight>
+          <div className="p-6 text-center">
+            <WarningCircle size={28} className="text-error mx-auto mb-4" />
+            <p className="text-error text-body-sm font-code mb-1">{(error as Error)?.message || 'Failed to acquire dashboard telemetry.'}</p>
+            <p className="text-text-muted text-caption font-code mb-5">Confirm the backend is on station.</p>
+            <button onClick={() => window.location.reload()} className="btn">Reacquire</button>
+          </div>
+        </div>
       </div>
     )
   }
 
+  // Mission readiness derived from blocked/review load
+  const missionGo = blocked_tasks === 0
   const tabs = [
     { key: 'overview' as const, label: 'Overview', count: null },
-    { key: 'trainees' as const, label: 'Trainees', count: member_progress.length },
+    { key: 'trainees' as const, label: 'Crew', count: member_progress.length },
     { key: 'reviews' as const, label: 'Reviews', count: pending_reviews.length },
-    { key: 'activity' as const, label: 'Activity', count: recent_activity.length },
+    { key: 'activity' as const, label: 'Log', count: recent_activity.length },
+  ]
+
+  const metrics = [
+    { label: 'Tasks · Total', value: total_tasks, color: 'text-text-primary' },
+    { label: 'Completed', value: completed_tasks, color: 'text-success' },
+    { label: 'In Progress', value: in_progress_tasks, color: 'text-info' },
+    { label: 'Pending Review', value: pending_review_tasks, color: 'text-warning' },
+    { label: 'Blocked', value: blocked_tasks, color: 'text-error' },
+    { label: 'Completion', value: `${completion_rate}%`, color: 'text-info' },
+    { label: 'Code Health', value: codeHealth !== null ? `${codeHealth}%` : '—', link: '/code-health',
+      color: codeHealth !== null && codeHealth >= 70 ? 'text-success' : codeHealth !== null && codeHealth >= 50 ? 'text-warning' : 'text-text-primary' },
   ]
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
-      {/* Header */}
-      <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      {/* ── Mission header ── */}
+      <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <GradientHeading as="h1">Dashboard</GradientHeading>
-          <p className="text-body-sm text-text-muted mt-1">
-            {total_members} member{total_members !== 1 ? 's' : ''} · {total_trainees} trainee{total_trainees !== 1 ? 's' : ''} · {first_prs_merged} PRs merged
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className={cn('tile', missionGo ? 'tile-go' : 'tile-hold')}>
+              {missionGo ? 'All Systems GO' : 'Hold · Blocked'}
+            </span>
+            <span className="designator">FLIGHT · CTO CONSOLE</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Mission Control</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">
+            {total_members} crew · {total_trainees} trainee{total_trainees !== 1 ? 's' : ''} · {first_prs_merged} PRs merged
           </p>
         </div>
-        <div className="flex bg-bg-secondary rounded-btn border border-border p-0.5 gap-0.5 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                'relative px-4 py-2 text-caption font-medium rounded-btn transition-all',
-                activeTab === tab.key
-                  ? 'text-accent-from'
-                  : 'text-text-muted/60 hover:text-text-primary'
-              )}
-            >
-              {activeTab === tab.key && (
-                <motion.div layoutId="activeTab" className="absolute inset-0 bg-accent-muted rounded-btn border border-accent/20" />
-              )}
-              <span className="relative z-10 flex items-center gap-1.5">
-                {tab.label}
-                {tab.count !== null && tab.count > 0 && (
-                  <span className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded-full',
-                    activeTab === tab.key ? 'bg-accent-muted text-accent-from' : 'bg-bg-tertiary text-text-muted/50'
-                  )}>
-                    {tab.count}
-                  </span>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-bg-secondary rounded-btn border border-border p-0.5 gap-0.5 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'relative px-3 py-1.5 text-caption font-display uppercase tracking-wide rounded-[2px] transition-colors',
+                  activeTab === tab.key ? 'text-white' : 'text-text-muted hover:text-text-primary'
                 )}
-              </span>
-            </button>
-          ))}
+                style={{ letterSpacing: '0.06em' }}
+              >
+                {activeTab === tab.key && (
+                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-accent-from rounded-[2px]" />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {tab.label}
+                  {tab.count !== null && tab.count > 0 && (
+                    <span className={cn('font-code text-[11px]', activeTab === tab.key ? 'text-white/80' : 'text-text-muted/70')}>
+                      {tab.count}
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => navigate('/reviews')} className="btn hidden sm:inline-flex">
+            Review Queue
+            <ArrowRight size={14} weight="bold" className="ml-1.5" />
+          </button>
         </div>
       </motion.div>
 
       {activeTab === 'overview' && (
         <>
-          {/* Metric Cards */}
-          <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
-            {[
-              { label: 'Total Tasks', value: total_tasks, color: 'text-text-primary', icon: ListChecks },
-              { label: 'Completed', value: completed_tasks, color: 'text-success', icon: CheckCircle },
-              { label: 'In Progress', value: in_progress_tasks, color: 'text-accent-from', icon: Clock },
-              { label: 'Pending Review', value: pending_review_tasks, color: 'text-warning', icon: Eye },
-              { label: 'Blocked', value: blocked_tasks, color: 'text-error', icon: WarningCircle },
-              { label: 'Completion', value: completion_rate, color: 'text-info', icon: Speedometer },
-              { label: 'Code Health', value: codeHealth !== null ? `${codeHealth}%` : '—', color: codeHealth !== null && codeHealth >= 70 ? 'text-success' : codeHealth !== null && codeHealth >= 50 ? 'text-accent-from' : 'text-text-primary', icon: Pulse },
-            ].map((m) => {
-              const isCodeHealth = m.label === 'Code Health'
-              const isGauge = m.label === 'Completion'
-              const Icon = m.icon
-
-              const card = isGauge ? (
-                <CardSpotlight className="p-4 flex flex-col items-center justify-center">
-                  <div className="relative w-16 h-16 mb-1">
-                    <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
-                      <circle cx="18" cy="18" r="15.5" fill="none" stroke="#3B82F6" strokeWidth="3"
-                        strokeDasharray={`${(m.value as number) * 0.97} 97`}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center font-display text-lg font-bold text-info">
-                      {m.value}%
-                    </span>
+          {/* ── Readout bank (butted instruments, not floating cards) ── */}
+          <motion.div variants={item} className="rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 divide-x divide-y xl:divide-y-0 divide-border">
+              {metrics.map((m) => {
+                const body = (
+                  <div className="px-4 py-4 h-full transition-colors hover:bg-bg-tertiary/60">
+                    <div className={cn('readout text-2xl font-semibold leading-none', m.color)}>{m.value}</div>
+                    <div className="overline text-text-muted/80 mt-2 flex items-center gap-1">
+                      {m.label}
+                      {m.link && <ArrowUpRight size={11} weight="bold" className="text-text-muted/50" />}
+                    </div>
                   </div>
-                  <div className="text-overline text-text-muted/50">{m.label}</div>
-                </CardSpotlight>
-              ) : (
-                <CardSpotlight className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <Icon size={16} className="text-text-muted/30" />
-                  </div>
-                  <div className={cn('font-display text-display-sm font-bold tracking-tight', m.color)}>{m.value}</div>
-                  <div className="text-overline text-text-muted/50 mt-1">{m.label}</div>
-                </CardSpotlight>
-              )
-              return isCodeHealth
-                ? <Link key={m.label} to="/code-health" className="block cursor-pointer hover:opacity-80 transition-opacity">{card}</Link>
-                : <div key={m.label}>{card}</div>
-            })}
+                )
+                return m.link
+                  ? <Link key={m.label} to={m.link} className="block">{body}</Link>
+                  : <div key={m.label}>{body}</div>
+              })}
+            </div>
           </motion.div>
 
-          {/* Charts Row 1 */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
-            {/* Task Distribution */}
-            <CardSpotlight className="lg:col-span-2 p-5">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-info-muted border border-info/20 flex items-center justify-center">
-                  <ChartPie size={16} className="text-info" />
-                </div>
-                <h2 className="font-display text-body-sm font-bold">Task Distribution</h2>
-              </div>
+          {/* ── Row 1: distribution + velocity ── */}
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
+            <Panel callsign="Task Distribution" designator="FIDO" className="lg:col-span-2">
               {total_tasks === 0 ? (
-                <div className="text-center py-8 text-text-disabled/60 text-body-sm italic">No tasks yet.</div>
+                <div className="text-center py-8 text-text-muted text-body-sm">No tasks on station.</div>
               ) : (
                 <div className="flex items-center gap-4">
                   <div className="w-36 h-36 shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={taskDistribution}
-                          cx="50%" cy="50%"
-                          innerRadius={38}
-                          outerRadius={62}
-                          paddingAngle={3}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {taskDistribution.map((d) => (
-                            <Cell key={d.name} fill={d.color} />
-                          ))}
+                        <Pie data={taskDistribution} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={2} dataKey="value" stroke="none">
+                          {taskDistribution.map((d) => <Cell key={d.name} fill={d.color} />)}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            background: '#1D1D26',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: '#F1F1F3',
-                          }}
-                          formatter={(value) => [value]}
-                        />
+                        <Tooltip contentStyle={TOOLTIP} formatter={(value) => [value]} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -293,338 +307,211 @@ export default function DashboardPage() {
                     {taskDistribution.map((d) => (
                       <div key={d.name} className="flex items-center justify-between text-caption">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                          <span className="text-text-muted">{d.name}</span>
+                          <span className="w-2 h-2 rounded-tile" style={{ backgroundColor: d.color }} />
+                          <span className="text-text-secondary">{d.name}</span>
                         </div>
-                        <span className="text-text-primary font-code tabular-nums">{d.value}</span>
+                        <span className="readout">{d.value}</span>
                       </div>
                     ))}
                     <div className="pt-2 mt-2 border-t border-border flex items-center justify-between text-caption">
-                      <span className="text-text-muted/50">Total</span>
-                      <span className="text-text-primary font-code font-bold tabular-nums">{total_tasks}</span>
+                      <span className="text-text-muted">Total</span>
+                      <span className="readout font-semibold">{total_tasks}</span>
                     </div>
                   </div>
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
 
-            {/* Activity Trend */}
-            <CardSpotlight className="lg:col-span-3 p-5">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-success-muted border border-success/20 flex items-center justify-center">
-                  <ChartLine size={16} className="text-success" />
-                </div>
-                <h2 className="font-display text-body-sm font-bold">Activity Trend</h2>
-              </div>
+            <Panel callsign="Activity Trend" designator="TRAJ · 7-DAY" className="lg:col-span-3">
               {activityTrendData.length === 0 ? (
-                <div className="text-center py-8 text-text-disabled/60 text-body-sm italic">No activity yet.</div>
+                <div className="text-center py-8 text-text-muted text-body-sm">No trajectory yet.</div>
               ) : (
-                <div className="h-40">
+                <div className="h-40 bg-plot-grid rounded-tile">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                          <stop offset="5%" stopColor={SIG.go} stopOpacity={0.28} />
+                          <stop offset="95%" stopColor={SIG.go} stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorSubmitted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#EAB308" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#EAB308" stopOpacity={0} />
+                          <stop offset="5%" stopColor={SIG.amber} stopOpacity={0.28} />
+                          <stop offset="95%" stopColor={SIG.amber} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="date" tick={{ fill: 'rgba(144,144,158,0.4)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: 'rgba(144,144,158,0.4)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          background: '#1D1D26',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          color: '#F1F1F3',
-                        }}
-                      />
-                      <Area type="monotone" dataKey="completed" stroke="#10B981" fill="url(#colorCompleted)" strokeWidth={2} dot={false} />
-                      <Area type="monotone" dataKey="submitted" stroke="#EAB308" fill="url(#colorSubmitted)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="velocity" stroke="#3B82F6" strokeWidth={2} dot={false} strokeDasharray="4 3" />
+                      <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
+                      <XAxis dataKey="date" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={TOOLTIP} />
+                      <Area type="monotone" dataKey="completed" stroke={SIG.go} fill="url(#colorCompleted)" strokeWidth={2} dot={false} />
+                      <Area type="monotone" dataKey="submitted" stroke={SIG.amber} fill="url(#colorSubmitted)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="velocity" stroke={SIG.blue} strokeWidth={2} dot={false} strokeDasharray="4 3" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
           </motion.div>
 
-          {/* Charts Row 2 */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
-            {/* Member Completion */}
-            <CardSpotlight className="lg:col-span-3 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/20 flex items-center justify-center">
-                    <ChartBarIcon size={16} className="text-accent-from" />
-                  </div>
-                  <h2 className="font-display text-body-sm font-bold">Member Completion Rates</h2>
-                </div>
-                <button onClick={() => setActiveTab('trainees')} className="text-caption text-accent-from/70 hover:text-accent-from transition-colors font-medium">
-                  View all <ArrowRight size={12} className="inline" weight="bold" />
-                </button>
-              </div>
+          {/* ── Row 2: crew completion + attention ── */}
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
+            <Panel callsign="Crew Completion" designator="EECOM"
+              action={<button onClick={() => setActiveTab('trainees')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">All crew <ArrowRight size={12} weight="bold" /></button>}
+              className="lg:col-span-3">
               {memberBarData.length === 0 ? (
-                <div className="text-center py-8 text-text-disabled/60 text-body-sm italic">No members yet.</div>
+                <div className="text-center py-8 text-text-muted text-body-sm">No crew assigned.</div>
               ) : (
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={memberBarData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} barCategoryGap="20%">
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                      <XAxis type="number" tick={{ fill: 'rgba(144,144,158,0.4)', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.2), 10)]} />
-                      <YAxis type="category" dataKey="name" tick={{ fill: 'rgba(241,241,243,0.5)', fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-                      <Tooltip
-                        contentStyle={{
-                          background: '#1D1D26',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          color: '#F1F1F3',
-                        }}
+                    <BarChart data={memberBarData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} barCategoryGap="22%">
+                      <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} horizontal={false} />
+                      <XAxis type="number" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.2), 10)]} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: SIG.ink, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                      <Tooltip contentStyle={TOOLTIP} cursor={{ fill: 'rgba(24,27,24,0.04)' }}
                         formatter={(value, name) => {
                           const labels: Record<string, string> = { completed: 'Completed', inProgress: 'In Progress', pending: 'Pending Review', completionRate: 'Rate' }
                           return [`${value}`, labels[String(name)] || String(name)]
-                        }}
-                      />
-                      <Bar dataKey="completed" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="inProgress" stackId="a" fill="#F59E0B" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="pending" stackId="a" fill="#EAB308" radius={[0, 4, 4, 0]} />
+                        }} />
+                      <Bar dataKey="completed" stackId="a" fill={SIG.go} />
+                      <Bar dataKey="inProgress" stackId="a" fill={SIG.blue} />
+                      <Bar dataKey="pending" stackId="a" fill={SIG.amber} radius={[0, 2, 2, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
 
-            {/* Requires Attention */}
-            <CardSpotlight className="lg:col-span-2 p-5">
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-warning-muted border border-warning/20 flex items-center justify-center">
-                  <WarningCircle size={16} className="text-warning" />
-                </div>
-                <h2 className="font-display text-body-sm font-bold">Requires Attention</h2>
-              </div>
+            <Panel callsign="Requires Attention" designator="CAPCOM" className="lg:col-span-2">
               {actions.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-2xl bg-success-muted border border-success/20 flex items-center justify-center mx-auto mb-3">
-                    <CheckCircle size={20} className="text-success" weight="fill" />
-                  </div>
-                  <p className="text-text-disabled/60 text-body-sm italic">Everything is up to date</p>
+                  <CheckCircle size={22} className="text-success mx-auto mb-2" weight="fill" />
+                  <p className="text-text-muted text-body-sm">All stations nominal.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {actions.slice(0, 6).map((action, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={cn(
-                        'flex items-start gap-3 p-3 rounded-card border text-body-sm transition-all',
-                        action.severity === 'warning'
-                          ? 'bg-error-muted/30 border-error/15 hover:bg-error-muted/50'
-                          : action.severity === 'info'
-                          ? 'bg-accent-muted/30 border-accent/15 hover:bg-accent-muted/50'
-                          : 'bg-bg-tertiary/30 border-border hover:bg-bg-tertiary/50'
-                      )}
-                    >
-                      <div className={cn(
-                        'w-2 h-2 rounded-full mt-1.5 shrink-0',
-                        action.severity === 'warning' ? 'bg-error' :
-                        action.severity === 'info' ? 'bg-accent-from' :
-                        'bg-text-muted/30'
-                      )} />
+                    <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                      className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border hover:border-border-hover transition-colors">
+                      <span className={cn('w-1.5 h-4 rounded-[1px] mt-0.5 shrink-0',
+                        action.severity === 'warning' ? 'bg-error' : action.severity === 'info' ? 'bg-info' : 'bg-text-muted/40')} />
                       <div className="flex-1 min-w-0">
                         <div className="text-body-xs text-text-primary font-medium">{action.title}</div>
-                        <div className="text-caption text-text-muted/50 mt-0.5">{action.subtitle}</div>
+                        <div className="text-caption text-text-muted mt-0.5">{action.subtitle}</div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
           </motion.div>
 
-          {/* Bottom Row */}
+          {/* ── Row 3: activity log + review queue ── */}
           <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Recent Activity */}
-            <CardSpotlight className="p-5">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-info-muted border border-info/20 flex items-center justify-center">
-                    <Pulse size={16} className="text-info" />
-                  </div>
-                  <h2 className="font-display text-body-sm font-bold">Recent Activity</h2>
-                </div>
-                <button onClick={() => setActiveTab('activity')} className="text-caption text-accent-from/70 hover:text-accent-from transition-colors font-medium">
-                  View all <ArrowRight size={12} className="inline" weight="bold" />
-                </button>
-              </div>
+            <Panel callsign="Recent Activity" designator="EVENT LOG"
+              action={<button onClick={() => setActiveTab('activity')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">All <ArrowRight size={12} weight="bold" /></button>}>
               {recent_activity.length === 0 ? (
-                <div className="text-center py-6 text-text-disabled/60 text-body-sm italic">No activity yet.</div>
+                <div className="text-center py-6 text-text-muted text-body-sm">No events logged.</div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {recent_activity.slice(0, 6).map((a, i) => (
-                    <motion.div
-                      key={`${a.task_id}-${i}`}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-start gap-3 text-body-sm p-2.5 rounded-card hover:bg-bg-tertiary/30 transition-colors"
-                    >
-                      <div className={cn(
-                        'w-2 h-2 rounded-full mt-1.5 shrink-0',
-                        a.state === 'completed' ? 'bg-success' :
-                        a.state === 'in_progress' ? 'bg-accent-from' :
-                        a.state === 'submitted' || a.state === 'under_review' ? 'bg-warning' :
-                        a.state === 'needs_changes' ? 'bg-error' :
-                        'bg-text-disabled/30'
-                      )} />
+                    <motion.div key={`${a.task_id}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
+                      className="flex items-start gap-3 text-body-sm p-2 rounded-tile hover:bg-bg-tertiary/60 transition-colors">
                       <div className="flex-1 min-w-0">
                         <div className="text-body-xs text-text-primary truncate font-medium">{a.title}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-1">
                           <StatusBadge state={a.state} />
-                          {a.module && <span className="text-caption text-text-muted/40 font-code">{a.module}</span>}
+                          {a.module && <span className="text-caption text-text-muted font-code">{a.module}</span>}
                         </div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
 
-            {/* Pending Reviews */}
-            <CardSpotlight className="p-5">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-warning-muted border border-warning/20 flex items-center justify-center">
-                    <Eye size={16} className="text-warning" />
-                  </div>
-                  <h2 className="font-display text-body-sm font-bold">
-                    Pending Reviews
-                    {pending_reviews.length > 0 && (
-                      <span className="ml-2 text-caption text-warning/60 font-code">({pending_reviews.length})</span>
-                    )}
-                  </h2>
-                </div>
-                <button onClick={() => navigate('/reviews')} className="text-caption text-accent-from/70 hover:text-accent-from transition-colors font-medium">
-                  Review Queue <ArrowRight size={12} className="inline" weight="bold" />
-                </button>
-              </div>
+            <Panel callsign="Pending Reviews" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
+              action={<button onClick={() => navigate('/reviews')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
               {pending_reviews.length === 0 ? (
-                <div className="text-center py-6 text-text-disabled/60 text-body-sm italic">No pending reviews. Great velocity!</div>
+                <div className="text-center py-6 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
               ) : (
                 <div className="space-y-2">
                   {pending_reviews.slice(0, 5).map((pr, i) => (
-                    <motion.div
-                      key={pr.task_id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
+                    <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
                       onClick={() => navigate('/reviews')}
-                      className="flex items-start gap-3 p-3 rounded-card bg-bg-tertiary/40 border border-border cursor-pointer hover:border-warning/30 transition-all"
-                    >
-                      <div className="w-2 h-2 rounded-full bg-warning mt-1.5 shrink-0" />
+                      className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border cursor-pointer hover:border-warning/40 transition-colors">
                       <div className="flex-1 min-w-0">
                         <div className="text-body-xs text-text-primary font-medium truncate">{pr.title}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <StatusBadge state={pr.state} />
-                          {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-accent-from/70 hover:text-accent-from font-code transition-colors">{pr.module}</Link>}
-                          {pr.assigned_to && <span className="text-caption text-text-muted/40">by {pr.assigned_to.slice(0, 8)}</span>}
+                          {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
+                          {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
                         </div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               )}
-            </CardSpotlight>
+            </Panel>
           </motion.div>
         </>
       )}
 
-      {/* ── Trainees Tab ── */}
+      {/* ── Crew tab ── */}
       {activeTab === 'trainees' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <CardSpotlight className="p-0 overflow-hidden">
-            <div className="px-6 py-4 border-b border-border">
-              <h2 className="font-display text-body-sm font-bold">All Team Members</h2>
-            </div>
+          <Panel callsign="Crew Roster" designator={`${member_progress.length} ON STATION`}>
             {member_progress.length === 0 ? (
-              <div className="p-8 text-center text-text-disabled/60 text-body-sm italic">No team members found.</div>
+              <div className="p-8 text-center text-text-muted text-body-sm">No crew found.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -m-5">
                 <table className="w-full text-body-sm">
                   <thead>
-                    <tr className="border-b border-border">
-                      {['Member', 'Total', 'Done', 'In Prog.', 'Review', 'Rate', 'Modules'].map((h) => (
-                        <th key={h} className="text-left px-6 py-3.5 text-overline text-text-muted/50 font-semibold">{h}</th>
+                    <tr className="border-b border-border bg-bg-tertiary/50">
+                      {['Crew', 'Total', 'Done', 'Active', 'Review', 'Rate', 'Modules'].map((h) => (
+                        <th key={h} className="text-left px-5 py-3 overline text-text-muted/80">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {member_progress.map((member, i) => (
-                      <motion.tr
-                        key={member.user_id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03 }}
-                        className="hover:bg-bg-tertiary/20 transition-colors"
-                      >
-                        <td className="px-6 py-4">
+                      <motion.tr key={member.user_id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025 }}
+                        className="hover:bg-bg-tertiary/40 transition-colors">
+                        <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-gradient-accent/20 border border-accent/20 flex items-center justify-center text-caption font-bold text-accent-from">
+                            <div className="w-7 h-7 rounded-tile bg-accent-muted border border-accent/25 flex items-center justify-center text-caption font-bold text-accent-from font-display">
                               {member.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <Link to={`/member/${member.user_id}`} className="text-body-sm text-text-primary font-medium hover:text-accent-from transition-colors">{member.name}</Link>
-                              <span className="ml-2 text-caption text-text-muted/40 bg-bg-tertiary px-1.5 py-0.5 rounded">{member.role}</span>
+                              <span className="ml-2 text-caption text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded-tile font-code uppercase">{member.role}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-code tabular-nums text-text-primary">{member.total}</td>
-                        <td className="px-6 py-4 font-code tabular-nums text-success">{member.completed}</td>
-                        <td className="px-6 py-4 font-code tabular-nums text-accent-from">{member.in_progress}</td>
-                        <td className="px-6 py-4 font-code tabular-nums text-warning">{member.pending_review}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3.5 readout text-text-primary">{member.total}</td>
+                        <td className="px-5 py-3.5 readout text-success">{member.completed}</td>
+                        <td className="px-5 py-3.5 readout text-info">{member.in_progress}</td>
+                        <td className="px-5 py-3.5 readout text-warning">{member.pending_review}</td>
+                        <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
-                            <div className="w-16 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${member.completion_rate}%` }}
-                                transition={{ duration: 0.6, delay: i * 0.03 }}
-                                className={cn(
-                                  'h-full rounded-full',
-                                  member.completion_rate >= 80 ? 'bg-success' :
-                                  member.completion_rate >= 50 ? 'bg-accent-from' :
-                                  'bg-error'
-                                )}
-                              />
+                            <div className="w-16 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-border">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${member.completion_rate}%` }} transition={{ duration: 0.6, delay: i * 0.03 }}
+                                className={cn('h-full', member.completion_rate >= 80 ? 'bg-success' : member.completion_rate >= 50 ? 'bg-info' : 'bg-error')} />
                             </div>
-                            <span className={cn(
-                              'text-caption font-code tabular-nums',
-                              member.completion_rate >= 80 ? 'text-success' :
-                              member.completion_rate >= 50 ? 'text-accent-from' :
-                              'text-error'
-                            )}>
+                            <span className={cn('readout text-caption', member.completion_rate >= 80 ? 'text-success' : member.completion_rate >= 50 ? 'text-info' : 'text-error')}>
                               {member.completion_rate}%
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3.5">
                           <div className="flex flex-wrap gap-1">
                             {member.modules_unlocked.length > 0 ? (
                               member.modules_unlocked.map((mod: string, mi: number) => (
-                                <Link key={mi} to={`/module/${encodeURIComponent(mod)}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-success-muted text-success text-caption font-code border border-success/15 hover:bg-success-muted/70 transition-colors">
-                                  <Lock size={10} weight="fill" />
-                                  {mod}
+                                <Link key={mi} to={`/module/${encodeURIComponent(mod)}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-tile bg-success-muted text-success text-caption font-code border border-success/20 hover:bg-success-muted/70 transition-colors">
+                                  <Lock size={10} weight="fill" />{mod}
                                 </Link>
                               ))
                             ) : (
-                              <span className="text-text-disabled/40 text-caption italic">—</span>
+                              <span className="text-text-disabled text-caption">—</span>
                             )}
                           </div>
                         </td>
@@ -634,120 +521,81 @@ export default function DashboardPage() {
                 </table>
               </div>
             )}
-          </CardSpotlight>
+          </Panel>
         </motion.div>
       )}
 
-      {/* ── Reviews Tab ── */}
+      {/* ── Reviews tab ── */}
       {activeTab === 'reviews' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <CardSpotlight className="p-0 overflow-hidden">
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-              <h2 className="font-display text-body-sm font-bold">
-                Pending Reviews
-                <span className="ml-2 text-caption text-text-muted/40 font-code">{pending_reviews.length} items</span>
-              </h2>
-              <button onClick={() => navigate('/tasks')} className="bg-accent-from hover:brightness-110 text-[#09090B] px-3 py-1.5 rounded-btn text-[11px] font-semibold transition-all shadow-glow">
-                Go to Tasks
-              </button>
-            </div>
+          <Panel callsign="Pending Reviews" designator={`${pending_reviews.length} ITEMS`}
+            action={<button onClick={() => navigate('/tasks')} className="btn !px-3 !py-1.5 text-[11px]">Go to Tasks</button>}>
             {pending_reviews.length === 0 ? (
-              <div className="p-8 text-center text-text-disabled/60 text-body-sm italic">No pending reviews.</div>
+              <div className="p-8 text-center text-text-muted text-body-sm">Review queue clear.</div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border -m-5">
                 {pending_reviews.map((pr, i) => (
-                  <motion.div
-                    key={pr.task_id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    onClick={() => navigate('/tasks')}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-bg-tertiary/20 cursor-pointer transition-colors"
-                  >
-                    <div className="w-2.5 h-2.5 rounded-full bg-warning shrink-0" />
+                  <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
+                    onClick={() => navigate('/tasks')} className="flex items-center gap-4 px-5 py-3.5 hover:bg-bg-tertiary/40 cursor-pointer transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="text-body-sm text-text-primary font-medium truncate">{pr.title}</div>
                       <div className="flex items-center gap-3 mt-1">
                         <StatusBadge state={pr.state} />
-                        {pr.module && <span className="text-caption text-text-muted/40 font-code">{pr.module}</span>}
-                        {pr.assigned_to && <span className="text-caption text-text-muted/40">by {pr.assigned_to}</span>}
+                        {pr.module && <span className="text-caption text-text-muted font-code">{pr.module}</span>}
+                        {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to}</span>}
                         {pr.pr_url && (
-                          <a href={pr.pr_url} target="_blank" rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-caption text-info hover:underline"
-                          >View PR →</a>
+                          <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit hover:underline">View PR →</a>
                         )}
                       </div>
                     </div>
-                    <span className="text-caption text-text-muted/40 font-code shrink-0">
-                      {new Date(pr.created_at).toLocaleDateString()}
-                    </span>
+                    <span className="text-caption text-text-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
                   </motion.div>
                 ))}
               </div>
             )}
-          </CardSpotlight>
+          </Panel>
         </motion.div>
       )}
 
-      {/* ── Activity Tab ── */}
+      {/* ── Log tab ── */}
       {activeTab === 'activity' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <CardSpotlight className="p-0 overflow-hidden">
-            <div className="px-6 py-4 border-b border-border">
-              <h2 className="font-display text-body-sm font-bold">
-                Recent Activity
-                <span className="ml-2 text-caption text-text-muted/40 font-code">{recent_activity.length} events</span>
-              </h2>
-            </div>
-            <div className="relative">
+          <Panel callsign="Event Log" designator={`${recent_activity.length} EVENTS`}>
+            <div className="relative -m-5">
               <div className="absolute left-9 top-0 bottom-0 w-px bg-border" />
               <div className="divide-y divide-border">
                 {recent_activity.length === 0 ? (
-                  <div className="p-8 text-center text-text-disabled/60 text-body-sm italic">No activity yet.</div>
+                  <div className="p-8 text-center text-text-muted text-body-sm">No events logged.</div>
                 ) : (
                   recent_activity.map((a, i) => (
-                    <motion.div
-                      key={`${a.task_id}-${i}`}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="relative flex gap-4 pl-14 pr-6 py-4 hover:bg-bg-tertiary/20 transition-colors"
-                    >
-                      <div className={cn(
-                        'absolute left-7 w-4 h-4 rounded-full border-2 flex items-center justify-center',
-                        a.state === 'completed' ? 'border-success bg-success-muted' :
-                        a.state === 'in_progress' ? 'border-accent-from bg-accent-muted' :
-                        a.state === 'submitted' || a.state === 'under_review' ? 'border-warning bg-warning-muted' :
-                        a.state === 'needs_changes' ? 'border-error bg-error-muted' :
-                        'border-border bg-bg-tertiary'
-                      )}>
-                        <div className={cn(
-                          'w-1.5 h-1.5 rounded-full',
+                    <motion.div key={`${a.task_id}-${i}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }}
+                      className="relative flex gap-4 pl-14 pr-5 py-3.5 hover:bg-bg-tertiary/40 transition-colors">
+                      <div className={cn('absolute left-7 w-4 h-4 rounded-tile border-2 flex items-center justify-center bg-bg-secondary',
+                        a.state === 'completed' ? 'border-success' :
+                        a.state === 'in_progress' ? 'border-info' :
+                        a.state === 'submitted' || a.state === 'under_review' ? 'border-warning' :
+                        a.state === 'needs_changes' ? 'border-error' : 'border-border')}>
+                        <div className={cn('w-1.5 h-1.5 rounded-[1px]',
                           a.state === 'completed' ? 'bg-success' :
-                          a.state === 'in_progress' ? 'bg-accent-from' :
+                          a.state === 'in_progress' ? 'bg-info' :
                           a.state === 'submitted' || a.state === 'under_review' ? 'bg-warning' :
-                          a.state === 'needs_changes' ? 'bg-error' :
-                          'bg-text-disabled/40'
-                        )} />
+                          a.state === 'needs_changes' ? 'bg-error' : 'bg-text-disabled')} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-body-sm text-text-primary font-medium truncate">{a.title}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <StatusBadge state={a.state} />
-                          {a.module && <span className="text-caption text-text-muted/40">Module: {a.module}</span>}
-                          {a.assigned_to && <span className="text-caption text-text-muted/40">Assignee: {a.assigned_to}</span>}
+                          {a.module && <span className="text-caption text-text-muted">Module: {a.module}</span>}
+                          {a.assigned_to && <span className="text-caption text-text-muted">Crew: {a.assigned_to}</span>}
                         </div>
                       </div>
-                      <span className="text-caption text-text-muted/40 font-code shrink-0">
-                        {new Date(a.updated_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-caption text-text-muted readout shrink-0">{new Date(a.updated_at).toLocaleDateString()}</span>
                     </motion.div>
                   ))
                 )}
               </div>
             </div>
-          </CardSpotlight>
+          </Panel>
         </motion.div>
       )}
     </motion.div>

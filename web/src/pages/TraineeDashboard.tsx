@@ -10,7 +10,6 @@ import {
   Trophy,
   Target,
 } from '@phosphor-icons/react'
-import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { TraineeDashboardSkeleton } from '../components/ui/Skeleton'
@@ -69,37 +68,55 @@ export default function TraineeDashboard() {
     return () => clearInterval(interval)
   }, [activeTeamId])
 
-  if (loading) return <PageTransition><TraineeDashboardSkeleton /></PageTransition>
+  if (loading) return <TraineeDashboardSkeleton />
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  }
+  const itemVariants = {
+    hidden: { opacity: 0, y: 16, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+  }
+  const metricVariants = {
+    hidden: { opacity: 0, scale: 0.92 },
+    visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
+  }
 
   if (error || !data) {
     return (
-      <PageTransition>
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-start gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-accent-primary" weight="duotone" />
-                </div>
-                <h1 className="text-display-sm font-display font-medium text-text-primary">Trainee Dashboard</h1>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-5xl mx-auto"
+      >
+        <div className="flex items-start gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-accent-primary" weight="duotone" />
               </div>
-              {error ? (
-                <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-                  <span>{error}</span>
-                  <button onClick={fetchDashboard} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
-                </div>
-              ) : (
+              <h1 className="text-display-sm font-display font-medium text-text-primary">Trainee Dashboard</h1>
+            </div>
+            {error ? (
+              <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+                <span>{error}</span>
+                <button onClick={fetchDashboard} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+              </motion.div>
+            ) : (
+              <motion.div variants={itemVariants}>
                 <CardSpotlight className="border border-accent-primary/10">
                   <EmptyState icon={<GraduationCap className="w-10 h-10 text-text-tertiary/30" weight="duotone" />} title="No data yet" description="Your onboarding progress will appear here." />
                 </CardSpotlight>
-              )}
-            </div>
-            <div className="w-80 shrink-0 hidden lg:block">
-              <GamificationPanel />
-            </div>
+              </motion.div>
+            )}
+          </div>
+          <div className="w-80 shrink-0 hidden lg:block">
+            <GamificationPanel />
           </div>
         </div>
-      </PageTransition>
+      </motion.div>
     )
   }
 
@@ -107,12 +124,22 @@ export default function TraineeDashboard() {
   const completionPct = Math.round((progress.completion_rate ?? 0) * 100)
 
   return (
-    <PageTransition>
-      <div className="max-w-6xl mx-auto flex items-start gap-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-6xl mx-auto flex items-start gap-6 relative"
+    >
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-8">
           {/* Header */}
-          <div className="flex items-start justify-between gap-6">
+          <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
+            <svg className="absolute -top-6 -left-6 w-40 h-40 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
+              <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
+              <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="3 5" />
+              <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
+              <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
+            </svg>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-accent-primary" weight="duotone" />
@@ -127,31 +154,33 @@ export default function TraineeDashboard() {
               </div>
             </div>
             <button onClick={fetchDashboard} disabled={loading} className="text-caption text-accent-primary/70 hover:text-accent-primary transition-colors shrink-0">Refresh</button>
-          </div>
+          </motion.div>
 
           {/* Metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: 'Completion', value: `${completionPct}%`, icon: Lightning, color: 'text-amber-400', subtitle: `${progress.completed}/${progress.total} tasks` },
-              { label: 'Modules Unlocked', value: progress.modules_unlocked?.length ?? 0, icon: BookOpenText, color: 'text-blue-400', subtitle: 'via grants' },
-              { label: 'In Progress', value: progress.in_progress, icon: Target, color: 'text-purple-400', subtitle: 'active tasks' },
-              { label: 'Pending Review', value: progress.pending_review, icon: Trophy, color: 'text-emerald-400', subtitle: 'awaiting feedback' },
-            ].map((metric, i) => (
-              <motion.div key={metric.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-                <CardSpotlight className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <metric.icon className={`w-4 h-4 ${metric.color}`} weight="duotone" />
-                    <span className="text-caption text-text-tertiary">{metric.label}</span>
-                  </div>
-                  <p className="text-display-2xs font-display font-medium text-text-primary">{metric.value}</p>
-                  <p className="text-caption text-text-tertiary/60">{metric.subtitle}</p>
-                </CardSpotlight>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div variants={itemVariants}>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { label: 'Completion', value: `${completionPct}%`, icon: Lightning, color: 'text-amber-400', subtitle: `${progress.completed}/${progress.total} tasks` },
+                { label: 'Modules Unlocked', value: progress.modules_unlocked?.length ?? 0, icon: BookOpenText, color: 'text-blue-400', subtitle: 'via grants' },
+                { label: 'In Progress', value: progress.in_progress, icon: Target, color: 'text-purple-400', subtitle: 'active tasks' },
+                { label: 'Pending Review', value: progress.pending_review, icon: Trophy, color: 'text-emerald-400', subtitle: 'awaiting feedback' },
+              ].map((metric, i) => (
+                <motion.div key={metric.label} custom={i} variants={metricVariants} initial="hidden" animate="visible">
+                  <CardSpotlight className="p-4 group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <metric.icon className={`w-4 h-4 ${metric.color} transition-transform group-hover:scale-110`} weight="duotone" />
+                      <span className="text-caption text-text-tertiary">{metric.label}</span>
+                    </div>
+                    <p className="text-display-2xs font-display font-medium text-text-primary">{metric.value}</p>
+                    <p className="text-caption text-text-tertiary/60">{metric.subtitle}</p>
+                  </CardSpotlight>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
 
           {/* Learning Path */}
-          <div>
+          <motion.div variants={itemVariants}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-body font-medium text-text-primary">Unlocked Modules</h2>
               <span className="text-caption text-text-tertiary">{modules.length} granted</span>
@@ -185,10 +214,10 @@ export default function TraineeDashboard() {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Recent Tasks */}
-          <div>
+          <motion.div variants={itemVariants}>
             <h2 className="text-body font-medium text-text-primary mb-4">Recent Tasks</h2>
             {recent_tasks.length === 0 ? (
               <CardSpotlight className="border border-accent-primary/10">
@@ -201,8 +230,8 @@ export default function TraineeDashboard() {
                     key={task.task_id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="card p-4 flex items-center gap-4"
+                    transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
+                    className="card p-4 flex items-center gap-4 hover:border-accent-primary/30 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-body-sm font-medium text-text-primary">{task.title}</p>
@@ -215,16 +244,15 @@ export default function TraineeDashboard() {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* Sidebar — Gamification */}
-        <div className="w-80 shrink-0 hidden lg:block">
+        <motion.div variants={itemVariants} className="w-80 shrink-0 hidden lg:block">
           <div className="sticky top-24">
             <GamificationPanel />
           </div>
-        </div>
-      </div>
-    </PageTransition>
+        </motion.div>
+    </motion.div>
   )
 }
