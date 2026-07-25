@@ -99,7 +99,7 @@ For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deplo
 | Problem | Solution |
 |---------|----------|
 | PostgreSQL connection refused | Run `docker compose up -d postgres` and wait for the health check. |
-| Password authentication failed | Ensure `backend/.env` matches the credentials for your actual PostgreSQL server. For the Docker Compose local stack, use `onramp:postgres_password`. |
+| Password authentication failed | Ensure `backend/.env` matches the credentials for your actual PostgreSQL server. The Docker Compose local stack uses `onramp:postgres_password`. |
 | Tables missing | Run `cd backend && alembic upgrade head`. |
 | Redis connection refused | Start Redis with `docker compose up -d redis`, or leave `REDIS_URL` unset for local fallback behavior. |
 | AI responses empty | Add at least one AI provider key to `backend/.env` and restart the backend. |
