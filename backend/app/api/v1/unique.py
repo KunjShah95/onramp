@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from app.agents import SilentPairProgramming, PatternRecognition, RegressionTestGenerator
+from app.agents import (
+    SilentPairProgramming,
+    PatternRecognition,
+    RegressionTestGenerator,
+    CodebaseTrailer,
+)
 
 router = APIRouter(tags=["unique"])
 
@@ -19,6 +24,11 @@ class PatternRequest(BaseModel):
 class TestChecklistRequest(BaseModel):
     pr_diff: str
     repo_structure: dict
+
+
+class TrailerRequest(BaseModel):
+    repo_url: str
+    analysis: dict | None = None
 
 
 @router.post("/pair/walkthrough")
@@ -60,5 +70,19 @@ async def generate_test_checklist(request: TestChecklistRequest, req: Request):
             repo_structure=request.repo_structure,
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/trailer")
+async def generate_trailer(request: TrailerRequest, req: Request):
+    """Generate a movie-trailer-style summary of a codebase (viral/demo feature)."""
+    llm = getattr(req.app.state, "llm", None)
+    agent = CodebaseTrailer(llm)
+    try:
+        return await agent.generate(
+            repo_url=request.repo_url,
+            analysis=request.analysis,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
