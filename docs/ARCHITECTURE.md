@@ -725,11 +725,11 @@ tests/
 |----------|----------|----------|--------|-----|
 | Framework | Django | FastAPI | FastAPI | Async-first, simpler, modern |
 | LLM | OpenAI | Claude (Anthropic) | Multi-provider | No vendor lock-in, fallback, cost optimization |
-| Database | PostgreSQL | Firebase | PostgreSQL+Neon Auth | Scalability, Neon Auth integration, SQL |
+| Database | PostgreSQL | — | PostgreSQL+Neon Auth | Scalability, Neon Auth integration, SQL |
 | Frontend | Vue | React | React | Ecosystem, team familiarity |
 | Design System | Shadcn | Aceternity | Aceternity | Premium feel, minimal |
 | Deployment | AWS | Render + Vercel | R+V | Lower ops burden |
-| Auth | Custom JWT | Firebase | Neon Auth | Database-native auth, Better Auth SDK |
+| Auth | Custom JWT | — | Neon Auth | Database-native auth, Better Auth SDK |
 | Caching | Redis | In-memory | In-mem | No infrastructure, good enough |
 | Embeddings | Vector DB | Keyword | Keyword | Phase 1: simple, upgrade Phase 2 |
 

@@ -114,7 +114,6 @@ class OnboardingReportGenerator(BaseAgent):
             "Redis": ["redis"],
             "Kubernetes": ["kubernetes/", "k8s", "deployment.yaml"],
             "Terraform": [".tf", "terraform"],
-            "Firebase": ["firebase.json", "firestore"],
         }
 
         for tech, keywords in tech_map.items():

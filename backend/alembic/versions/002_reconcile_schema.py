@@ -30,7 +30,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create dynamic_documents table - missing from 001_initial_schema
-    # Fallback/generic collection store for unmigrated Firestore collections
+    # Fallback/generic collection store for unmigrated legacy collections
     op.create_table('dynamic_documents',
         sa.Column('id', sa.String(length=255), nullable=False),
         sa.Column('collection', sa.String(length=255), nullable=False),

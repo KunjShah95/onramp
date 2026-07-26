@@ -4,9 +4,10 @@ Revision ID: 003_fix_provider_constraint
 Revises: 002_reconcile_schema
 Create Date: 2026-07-02 00:00:00.000000
 
-The auth system uses 'github.com' as the provider string (matching Firebase's
-sign_in_provider value), but the original CHECK constraint only allowed 'github'.
-This caused a DB constraint violation whenever anyone tried to register with GitHub.
+The auth system uses 'github.com' as the provider string (provider values match
+OAuth sign_in_provider conventions), but the original CHECK constraint only
+allowed 'github'. This caused a DB constraint violation whenever anyone tried
+to register with GitHub.
 """
 from typing import Sequence, Union
 

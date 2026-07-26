@@ -2,7 +2,7 @@
 
 Base URL: `http://localhost:8000/api/v1` (dev) or `https://yourdomain.com/api/v1` (production)
 
-**Authentication:** All endpoints except webhooks and health require a Firebase ID token in the `Authorization` header: `Authorization: Bearer <firebase-id-token>`
+**Authentication:** All endpoints except webhooks and health require an auth token in the `Authorization` header: `Authorization: Bearer <token>`
 
 **Content-Type:** `application/json`
 
@@ -15,7 +15,7 @@ Base URL: `http://localhost:8000/api/v1` (dev) or `https://yourdomain.com/api/v1
 POST /auth/register
 Content-Type: application/json
 
-{"id_token": "<firebase-id-token>", "provider": "google.com"}
+{"id_token": "<auth-token>", "provider": "google.com"}
 
 Response 200:
 {"uid": "...", "email": "...", "name": "...", "provider": "google.com"}

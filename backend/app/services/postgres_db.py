@@ -136,7 +136,7 @@ def _get_model(collection: str):
 
 
 class PostgresStorage:
-    """PostgreSQL storage backend with Firestore-like interface.
+    """PostgreSQL storage backend with document-store interface.
 
     Each standalone CRUD method opens a fresh session from the pool and
     commits/rolls back before returning. This avoids sharing a single session

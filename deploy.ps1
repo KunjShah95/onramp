@@ -76,4 +76,4 @@ Write-Host "Troubleshooting:" -ForegroundColor Yellow
 Write-Host "  Browser Console: F12 → Console & Network tabs" -ForegroundColor Gray
 Write-Host "  Vercel Logs: https://vercel.com/dashboard" -ForegroundColor Gray
 Write-Host "  Render Logs: https://dashboard.render.com" -ForegroundColor Gray
-Write-Host "  Firebase Console: https://console.firebase.google.com" -ForegroundColor Gray
+Write-Host "  Neon Auth Dashboard: https://console.neon.tech" -ForegroundColor Gray

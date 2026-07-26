@@ -32,29 +32,13 @@ The fastest path to production. No server management needed.
 
 - [Railway](https://railway.app) account (backend, database, redis)
 - [Vercel](https://vercel.com) account (frontend)
-- [Firebase](https://console.firebase.google.com) project with Authentication enabled
 - GitHub account connected to both Railway and Vercel
 - OpenRouter API key or Gemini API key
 - GitHub personal access token (for repo analysis)
 
 ---
 
-### Step 1: Firebase Setup
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create a new project (or use existing)
-3. **Enable Authentication:**
-   - Go to Authentication → Sign-in method
-   - Enable: Email/Password, Google, GitHub
-   - Add your authorized domains (your-vercel-domain.vercel.app)
-4. **Create Web App:**
-   - Project Settings → General → Your apps → Add app → Web
-   - Copy the `firebaseConfig` values: `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`
-5. **Generate Service Account:**
-   - Project Settings → Service Accounts → Generate New Private Key
-   - Save the JSON file — you'll paste the contents into `FIREBASE_SERVICE_ACCOUNT_JSON`
-
-### Step 2: Deploy Backend to Railway
+### Step 1: Deploy Backend to Railway
 
 ```bash
 # 1. Install Railway CLI
@@ -93,8 +77,6 @@ railway up
 |----------|-------|-------|
 | `ENV` | `production` | |
 | `ENVIRONMENT` | `production` | |
-| `FIREBASE_PROJECT_ID` | `your-project-id` | From Firebase Console |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | `{ ... }` | Full JSON from service account key |
 | `AUTH_DEV_BYPASS` | `false` | MUST be false in production |
 | `CORS_ALLOWED_ORIGINS` | `https://onramp.vercel.app` | Add your Vercel domain |
 | `TRUST_PROXY` | `true` | Railway runs behind a proxy |
@@ -142,14 +124,10 @@ vercel --prod
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `VITE_FIREBASE_API_KEY` | `...` | From Firebase web app config |
-| `VITE_FIREBASE_AUTH_DOMAIN` | `your-project.firebaseapp.com` | |
-| `VITE_FIREBASE_PROJECT_ID` | `your-project-id` | |
-| `VITE_FIREBASE_STORAGE_BUCKET` | `your-project.appspot.com` | |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `...` | |
-| `VITE_FIREBASE_APP_ID` | `1:...:web:...` | |
 | `VITE_API_URL` | `https://backend-service-name.railway.app/api/v1` | Your Railway backend URL |
 | `VITE_WAITLIST_URL` | `https://backend-service-name.railway.app` | Same as backend URL |
+
+> **Note:** Auth is handled via Neon Auth (PostgreSQL-native managed auth). No Firebase configuration is needed. See `backend/.env.example` for Neon Auth env vars.
 
 **Deploy:** Click **Deploy**. Vercel will build and deploy automatically.
 
@@ -247,8 +225,6 @@ For GCP deployment with Terraform, see `infrastructure/terraform/`.
 | `ENV` | No | `development` | Set to `production` |
 | `DATABASE_URL` | Yes | — | Set automatically by Railway PostgreSQL |
 | `REDIS_URL` | No | — | Set automatically by Railway Redis |
-| `FIREBASE_PROJECT_ID` | Yes | — | From Firebase Console |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Yes (or path) | — | Full service account JSON |
 | `CORS_ALLOWED_ORIGINS` | Yes | `http://localhost:5173` | Vercel frontend URL |
 | `TRUST_PROXY` | Yes | `false` | Set to `true` on Railway |
 | `OPENROUTER_API_KEY` | See notes | — | At least one AI key required |
@@ -263,12 +239,6 @@ For GCP deployment with Terraform, see `infrastructure/terraform/`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `VITE_FIREBASE_API_KEY` | Yes | — | From Firebase web app config |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Yes | — | `<project>.firebaseapp.com` |
-| `VITE_FIREBASE_PROJECT_ID` | Yes | — | Firebase project ID |
-| `VITE_FIREBASE_STORAGE_BUCKET` | No | — | `<project>.appspot.com` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | No | — | From Firebase settings |
-| `VITE_FIREBASE_APP_ID` | Yes | — | Firebase app ID |
 | `VITE_API_URL` | Yes | `http://localhost:8000/api/v1` | Railway backend URL + `/api/v1` |
 | `VITE_WAITLIST_URL` | No | `http://localhost:3008` | Backend URL (same as above) |
 
@@ -306,10 +276,9 @@ railway run python -m alembic upgrade head
 |---------|------|------------------|
 | Railway (backend + Postgres + Redis) | Starter ($5) or Developer ($20) | $5–20 |
 | Vercel (frontend) | Hobby (free) | $0 |
-| Firebase Auth | Spark (free tier) | $0 |
 | OpenRouter API | Pay-as-you-go | $5–50 |
 | GitHub PAT | Free | $0 |
-| **Total** | | **$10–70/month** |
+| **Total** | | **$5–70/month** |
 
 ---
 
@@ -334,7 +303,6 @@ railway logs
 
 Common issues:
 - `DATABASE_URL` not set → Add Railway PostgreSQL plugin
-- `FIREBASE_SERVICE_ACCOUNT_JSON` invalid → Verify JSON is valid and properly escaped
 - Port binding error → Railway uses `PORT` env var, not 8000
 
 ### Frontend can't reach backend
@@ -347,13 +315,12 @@ Check browser console for CORS errors. Verify:
 ### Auth fails
 
 Common issues:
-1. Firebase project not configured for the frontend domain
-   - Firebase Console → Authentication → Settings → Authorized domains
-   - Add `onramp.vercel.app`
-2. Service account JSON not set correctly in Railway
-   - Use `FIREBASE_SERVICE_ACCOUNT_JSON` (inline JSON, properly escaped)
-3. Auth dev bypass still enabled
-   - Ensure `AUTH_DEV_BYPASS=false`
+1. Neon Auth JWKS URL or issuer not configured
+   - Set `NEON_AUTH_JWKS_URL` and `NEON_AUTH_ISSUER` in backend environment
+2. Auth dev bypass still enabled
+   - Ensure `AUTH_DEV_BYPASS=false` in production
+3. CORS mismatch
+   - Ensure `CORS_ALLOWED_ORIGINS` in Railway includes the Vercel domain
 
 ### Build fails on Vercel
 

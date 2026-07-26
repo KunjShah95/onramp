@@ -19,7 +19,7 @@ def _extract_github_token(request: ExploreRequest, req: Request) -> Optional[str
     auth_header = req.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ", 1)[1]
-        # Only use it if it looks like a GitHub token, avoiding Firebase JWTs
+        # Only use it if it looks like a GitHub token (not an auth JWT)
         if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "github_pat_")):
             return token
     return None

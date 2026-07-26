@@ -166,7 +166,7 @@ Configuration: 3 attempts, exponential backoff (2s→4s→8s). Non-retriable err
 **Fix (backend complete, frontend pending):**
 - `POST /first-pr/issues` and `POST /explore/analyze` accept an optional `github_token` field
 - Token is extracted from the request body or `Authorization: Bearer` header
-- Token prefix validation ensures only GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `github_pat_`) are accepted (avoids accidentally using Firebase JWTs)
+- Token prefix validation ensures only GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `github_pat_`) are accepted (avoids accidentally using auth JWTs)
 - Forwarded through agents: `FirstPRAccelerator(llm, github_token=token)` → `IssueService(token)`
 - And: `ArchitectureExplorer(llm, github_token=token)` → `GitHubService(token=token)`
 
