@@ -84,9 +84,17 @@ async def _set_streak_date(storage, user_id: str, target_date: str):
 
 
 async def _create_user(storage, user_id: str, name: str = "Test User"):
-    """Create a minimal user doc in storage if it doesn't exist."""
+    """Create a minimal user doc, or refresh its name if it already exists.
+
+    The Postgres backend persists rows across tests within a session, so a UID
+    reused with different names (e.g. TUID_GAMING_ALICE as "Alice" then
+    "Alice Wong") would otherwise keep whichever name was written first. Upsert
+    the name so each test's stated name is authoritative regardless of order.
+    """
     existing = await storage.get_document("users", user_id)
     if existing:
+        if existing.get("name") != name:
+            await storage.update_document("users", user_id, {"name": name})
         return
     await storage.create_document("users", user_id, {
         "id": user_id,
