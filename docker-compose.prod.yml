@@ -64,9 +64,15 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY}
       - SENTRY_DSN=${SENTRY_DSN}
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
+      - GITHUB_TOKEN_ENCRYPTION_KEY=${GITHUB_TOKEN_ENCRYPTION_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - TRUST_PROXY=true
+      # Construct REDIS_URL for Docker self-hosted (Railway auto-injects it)
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
     depends_on:
       redis:
         condition: service_healthy
@@ -112,6 +118,13 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY}
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
+      - GITHUB_TOKEN_ENCRYPTION_KEY=${GITHUB_TOKEN_ENCRYPTION_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # Construct REDIS_URL for Docker self-hosted (Railway auto-injects it)
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
     depends_on:
       redis:
         condition: service_healthy

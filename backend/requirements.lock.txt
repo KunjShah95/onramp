@@ -116,3 +116,13 @@ watchfiles==1.2.0
 websockets==16.0
 Werkzeug==3.1.8
 yarl==1.24.2
+# celery task queue stack (declared in requirements.txt; pinned here for CI)
+celery==5.5.3
+kombu==5.5.4
+billiard==4.2.4
+amqp==5.3.1
+vine==5.1.0
+click-didyoumean==0.3.1
+click-repl==0.3.0
+python-dateutil==2.9.0.post0
+tzdata==2025.2

@@ -39,10 +39,17 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.lock.txt
-          pip install pytest pytest-asyncio pytest-timeout httpx
+          pip install pytest pytest-asyncio pytest-timeout pytest-cov httpx ruff pip-audit
 
       - name: Check code compiles
         run: python -m compileall backend/app
+
+      - name: Lint (ruff — errors only)
+        run: ruff check backend/app --select E9,F63,F7,F82
+
+      - name: Dependency vulnerability scan
+        continue-on-error: true
+        run: pip-audit -r backend/requirements.lock.txt --desc
 
       - name: Create .env and run migrations
         run: |
@@ -52,9 +59,32 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
 
-      - name: Run tests (memory backend)
+      - name: Run unit & integration tests (memory backend)
         run: |
-          cd backend && python -m pytest tests/ -v --timeout=30
+          cd backend && python -m pytest tests/ -v --timeout=30 \
+            --ignore=tests/test_api_contract.py \
+            --ignore=tests/test_load_performance.py \
+            --cov=app --cov-report=term-missing --cov-report=xml
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
+          ENV: test
+          STORAGE_BACKEND: memory
+          GROQ_API_KEY: sk-test-placeholder
+          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+
+      - name: Run API contract tests (35 tests — response schemas & error shapes)
+        run: |
+          cd backend && python -m pytest tests/test_api_contract.py -v --timeout=30 --cov=app --cov-report=term-missing --cov-report=xml --cov-append
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
+          ENV: test
+          STORAGE_BACKEND: memory
+          GROQ_API_KEY: sk-test-placeholder
+          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+
+      - name: Run load/performance tests (13 tests — latency & concurrent throughput)
+        run: |
+          cd backend && python -m pytest tests/test_load_performance.py -v --timeout=120 --cov=app --cov-report=term-missing --cov-report=xml --cov-append
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
@@ -64,10 +94,16 @@ jobs:
 
       - name: Run tests (PostgreSQL backend)
         run: |
-          cd backend && python -m pytest tests/test_task_service.py tests/test_notification_service.py tests/test_gamification.py -v --timeout=60 --run-postgres
+          cd backend && python -m pytest tests/test_task_service.py tests/test_notification_service.py tests/test_gamification.py -v --timeout=60 --run-postgres --cov=app --cov-append
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: postgres
           GROQ_API_KEY: sk-test-placeholder
           PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/coverage.xml

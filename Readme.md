@@ -12,6 +12,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 ## ✨ Features
 
 ### 🧠 AI-Powered Developer Tools
+
 | Tool | Description |
 |------|-------------|
 | **Architecture Explorer** | Visualize repo structure as an interactive force-directed graph |
@@ -26,52 +27,74 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 | **Regression Test Generator** | Generate test checklists from PR diffs |
 
 ### 👥 Onboarding & Learning
+
 - **Trainee Dashboard** — Track progress, unlocked modules, streak, XP
 - **Gamification** — XP points, leveling, badges, streaks, leaderboards
 - **Module-Level Access** — Grant/revoke module access per user per team
 - **Onboarding Reports** — Auto-generated HTML/Markdown docs for any repo
+- **Onboarding Plans** — 30-60-90 day structured plans with milestones and pulse check-ins
 - **Learning Paths** — Persisted milestones with completion tracking
+- **Onboarding Hub** — Central portal for new developers with guided paths
+- **Quiz Generator** — Module-level quizzes with auto-grading
+- **Wiki** — AI-generated onboarding wikis from any repo URL
+- **Playbooks** — Reusable onboarding playbook templates with tagging
 
 ### 📋 Task Management
+
 - Full task lifecycle: create → assign → start → submit → review → approve → complete
 - AI-assisted code review with inline issue detection
-- Review queue with status badges (under_review, needs_changes, approved)
+- Review queue with status badges (under_review, needs_changes, approved, product_review)
+- Direct approve / route-to-product from submitted state
 - Product sign-off gate with structured feedback
+- Dedicated review queue page with filtering and bulk actions
 
 ### 📊 CTO / Leadership Dashboard
+
 - Task distribution & completion rate charts
 - Per-member progress with completion bars
 - Pending reviews & recent activity timeline
 - Action items requiring attention
 - Activity trend analysis (7-day velocity)
+- Executive dashboard for CEO/CTO role
+- Senior developer space for team leads
+- HR dashboard for team health metrics
 
 ### 🔐 Enterprise-Grade Security
+
 - JWT-based auth (HS256, 7-day expiry)
 - bcrypt password hashing
 - Fernet field-level encryption for PII
-- RBAC with 9 roles (new_dev → ceo)
-- Alembic database migrations
+- RBAC with 9 roles (new_dev, developer, senior_dev, tester, cto, ceo, owner, member, hr)
+- OAuth2 social login (Google, GitHub) with CSRF state tokens
+- Password reset flow with short-lived JWT reset tokens
+- Alembic database migrations (8 versions)
 - CORS allowlist + Vercel regex
 - Production env validation on boot
 
 ### 💳 Billing & API Gateway
+
 - Stripe subscription management (free / pro / enterprise)
 - API key management with usage tracking
 - Rate limiting (200 req/min, Redis-backed)
 - Usage quotas with endpoint-level breakdown
 
 ### 🔔 Notifications & Integrations
-- In-app notification center (preferences, quiet hours, digest)
+
+- In-app notification center (read/unread, preferences, quiet hours, digest)
+- 14 notification event types with distinct icons and colors
+- Notification bell with real-time badge count and dropdown preview
+- Mark all read, pagination, type-filtered views
 - Webhooks (create, test, rotate secrets, delivery logs)
 - GitHub integration (token validation, scope checking)
 - Slack integration (channel config, event-driven)
-- Email via SendGrid
+- Email via SendGrid (digest, alerts)
 
 ---
 
 ## 🏗 Tech Stack
 
 ### Backend
+
 | Component | Technology |
 |-----------|-----------|
 | **Framework** | Python 3.12, FastAPI |
@@ -85,6 +108,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 | **Email** | SendGrid |
 
 ### Frontend
+
 | Component | Technology |
 |-----------|-----------|
 | **Framework** | React 19, TypeScript (strict mode) |
@@ -98,6 +122,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 | **Testing** | Vitest, React Testing Library, Playwright |
 
 ### Infrastructure
+
 | Component | Technology |
 |-----------|-----------|
 | **Backend Hosting** | Railway |
@@ -204,10 +229,10 @@ docker compose down
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost:8080 | React app (Nginx, proxies `/api` → backend) |
-| **Frontend (dev)** | http://localhost:5173 | React app (Vite dev server, `npm run dev`) |
-| **Backend API** | http://localhost:8001 | FastAPI backend |
-| **API Docs** | http://localhost:8001/docs | Swagger UI (interactive) |
+| **Frontend** | <http://localhost:8080> | React app (Nginx, proxies `/api` → backend) |
+| **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
+| **Backend API** | <http://localhost:8001> | FastAPI backend |
+| **API Docs** | <http://localhost:8001/docs> | Swagger UI (interactive) |
 | **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
 | **Redis** | localhost:6379 | Cache (pass: `redis_password`) |
 
@@ -232,10 +257,12 @@ docker compose down -v && docker compose up -d
 ### Required Configuration
 
 The app needs at least one AI provider API key to function. Get a free one:
+
 - **[Google Gemini](https://aistudio.google.com/apikey)** — Free tier
 - **[OpenRouter](https://openrouter.ai/)** — Free tier
 
 Set the key in your `.env` file:
+
 ```bash
 GEMINI_API_KEY=your-key-here
 ```
@@ -245,9 +272,11 @@ GEMINI_API_KEY=your-key-here
 The frontend is pre-built as a static site served by Nginx on port 80. It uses a **relative API URL** (`/api/v1`) by default, so API calls go through Nginx's proxy (`/api/*` → `backend:8000`) on the same origin — no CORS issues.
 
 To use an absolute URL instead:
+
 ```bash
 VITE_API_URL=http://localhost:8000/api/v1 docker compose up -d
 ```
+
 or set `VITE_API_URL` in your `.env` file.
 
 ---
@@ -291,7 +320,7 @@ All accounts share the same password: **`demo123`**
 ### 🧪 Running Tests
 
 ```bash
-# Backend tests (278+ tests covering services, APIs, and DB migrations)
+# Backend tests (177+ tests covering services, APIs, and DB migrations; dual storage backends)
 cd backend
 python -m pytest tests/ -q                          # All tests (memory backend)
 python -m pytest tests/test_task_service.py          # Single test file
@@ -304,9 +333,9 @@ python -m pytest tests/test_gamification.py --run-postgres
 
 # Frontend tests
 cd web
-npx vitest run                                       # Unit tests
-npx tsc --noEmit                                     # TypeScript check
-npx playwright test                                   # E2E tests
+npx vitest run                                       # Unit tests (49+ tests)
+npx tsc --noEmit                                     # TypeScript check (strict mode, zero errors)
+npx playwright test                                   # E2E tests (auth, dashboard, review-queue)
 ```
 
 ### 🗄 Seeding Sample Data
@@ -377,13 +406,15 @@ docker compose logs -f backend
 
 See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milestones.
 
-### What's next (v1.1)
-- OAuth2 social login (Google, GitHub)
-- Password reset flow
+### What's next (v1.2)
+
 - Real-time WebSocket notifications
-- Per-developer drill-down dashboard
 - Local AI model support (Ollama)
+- Milestone tracking with roadmap view
+- PR review auto-apply suggestions
 - GitLab & Bitbucket integration
+- Community playbook marketplace
+- Mobile-responsive views for key pages
 
 ---
 
@@ -414,6 +445,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milesto
 ```
 
 The backend uses a **layered middleware** approach:
+
 1. `CORSMiddleware` (outermost)
 2. `LoggingMiddleware` (request/response logging)
 3. `ResponseWrapperMiddleware` (unified `{success, data}` envelope)
@@ -424,7 +456,7 @@ The backend uses a **layered middleware** approach:
 
 ## 📁 Project Structure
 
-```
+```text
 onramp/
 ├── backend/
 │   ├── app/
@@ -433,15 +465,15 @@ onramp/
 │   │   ├── database/        # SQLAlchemy models, config
 │   │   ├── middleware/       # Auth, RateLimit, Logging, ResponseWrapper
 │   │   └── services/        # Business logic (billing, github, etc.)
-│   ├── alembic/             # Database migrations (5 versions)
-│   ├── tests/               # 177 pytest tests
+│   ├── alembic/             # Database migrations (8 versions)
+│   ├── tests/               # 177+ pytest tests (dual memory+postgres storage)
 │   └── scripts/             # Dev utilities
 ├── web/
 │   ├── src/
 │   │   ├── components/      # Reusable UI (Sidebar, Cards, etc.)
 │   │   ├── context/         # AuthContext, ThemeContext, ToastContext
 │   │   ├── lib/             # API client, utils, types
-│   │   ├── pages/           # 35+ page components
+│   │   ├── pages/           # 44 page components (role-gated with 15+ skeleton variants)
 │   │   ├── hooks/           # Custom hooks
 │   │   └── test/            # 49 Vitest tests
 │   ├── e2e/                 # Playwright tests

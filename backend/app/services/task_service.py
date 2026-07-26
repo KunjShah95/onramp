@@ -23,7 +23,9 @@ TRANSITIONS = {
     "pending":        {"assigned", "cancelled"},
     "assigned":       {"in_progress", "pending", "cancelled"},
     "in_progress":    {"submitted", "needs_changes", "cancelled"},
-    "submitted":      {"under_review", "needs_changes", "cancelled"},
+    # A reviewer can act on a submitted task directly (approve / route to
+    # product / request changes) — under_review is an optional intermediate.
+    "submitted":      {"under_review", "approved", "product_review", "needs_changes", "cancelled"},
     "under_review":   {"approved", "needs_changes", "product_review", "cancelled"},
     "needs_changes":  {"in_progress", "cancelled"},
     "product_review": {"approved", "needs_changes", "cancelled"},
@@ -197,8 +199,6 @@ async def transition_task(
         updates["completed_at"] = now
     elif new_state == "submitted" and pr_url:
         updates["pr_url"] = pr_url
-    elif new_state == "submitted" and pr_url:
-        updates["pr_url"] = pr_url
     elif new_state == "needs_changes" and feedback:
         updates["review_feedback"] = feedback
     elif new_state == "under_review":
@@ -214,8 +214,12 @@ async def transition_task(
 
 
 async def assign_task(task_id: str, assignee_id: str, assigned_by: str) -> dict:
-    """Assign a task to a trainee."""
-    return await transition_task(task_id, "assigned", assigned_by)
+    """Assign a task to a trainee.
+
+    The "assigned" transition sets ``assigned_to`` to the actor it receives, so
+    the assignee (not the assigner) must be passed through.
+    """
+    return await transition_task(task_id, "assigned", assignee_id)
 
 
 async def start_task(task_id: str, user_id: str) -> dict:

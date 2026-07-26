@@ -58,10 +58,6 @@ class TestPublicEndpoints:
         data = resp.json()
         assert "tiers" in data["data"] or "plans" in data["data"]
 
-    def test_waitlist_count(self, client):
-        resp = client.get("/api/v1/waitlist/count")
-        assert resp.status_code == 200
-
     def test_ai_tiers(self, client):
         resp = client.get("/api/v1/ai/tiers")
         assert resp.status_code == 200
@@ -69,11 +65,6 @@ class TestPublicEndpoints:
     def test_explore_health(self, client):
         resp = client.get("/api/v1/explore/health")
         assert resp.status_code == 200
-
-    def test_waitlist_join_rejects_empty_body(self, client):
-        resp = client.post("/api/v1/waitlist/join", json={})
-        assert resp.status_code == 422
-
 
 class TestAuthRequired:
     """Non-public endpoints reject unauthenticated requests."""

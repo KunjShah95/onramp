@@ -24,37 +24,58 @@ import {
 import type { OnrampNotification } from '../lib/api'
 import Pagination from '../components/ui/Pagination'
 
+// Keyed on the notification `type` values the backend actually emits
+// (task_assigned, task_submitted, quiz_graded, …). Legacy keys like
+// `review`/`pr`/`task` never matched, so every row fell back to the bell icon.
 const ICON_MAP: Record<string, React.ElementType> = {
-  review: GitPullRequest,
-  mention: UserCircle,
-  alert: Bug,
-  pr: GitPullRequest,
-  report: ChartBar,
-  approval: ShieldCheck,
-  task: CheckCircle,
-  module: ShieldCheck,
+  task_assigned: CheckCircle,
+  task_started: CheckCircle,
+  task_submitted: GitPullRequest,
+  task_reviewed: ShieldCheck,
+  task_approved: ShieldCheck,
+  task_needs_changes: Bug,
+  task_completed: CheckCircle,
+  task_cancelled: X,
+  module_granted: ShieldCheck,
+  team_invite: UserCircle,
+  system_alert: Bug,
+  pr_merged: GitPullRequest,
+  milestone_reached: ChartBar,
+  quiz_graded: ChartBar,
 }
 
 const COLOR_MAP: Record<string, string> = {
-  review: 'text-blue-400',
-  mention: 'text-purple-400',
-  alert: 'text-red-400',
-  pr: 'text-emerald-400',
-  report: 'text-amber-400',
-  approval: 'text-cyan-400',
-  task: 'text-accent-primary',
-  module: 'text-cyan-400',
+  task_assigned: 'text-blue-400',
+  task_started: 'text-accent-primary',
+  task_submitted: 'text-purple-400',
+  task_reviewed: 'text-yellow-400',
+  task_approved: 'text-emerald-400',
+  task_needs_changes: 'text-red-400',
+  task_completed: 'text-emerald-400',
+  task_cancelled: 'text-text-tertiary',
+  module_granted: 'text-emerald-400',
+  team_invite: 'text-pink-400',
+  system_alert: 'text-red-400',
+  pr_merged: 'text-cyan-400',
+  milestone_reached: 'text-accent-primary',
+  quiz_graded: 'text-amber-400',
 }
 
 const BG_MAP: Record<string, string> = {
-  review: 'bg-blue-500/10',
-  mention: 'bg-purple-500/10',
-  alert: 'bg-red-500/10',
-  pr: 'bg-emerald-500/10',
-  report: 'bg-amber-500/10',
-  approval: 'bg-cyan-500/10',
-  task: 'bg-accent-primary/10',
-  module: 'bg-cyan-500/10',
+  task_assigned: 'bg-blue-500/10',
+  task_started: 'bg-accent-primary/10',
+  task_submitted: 'bg-purple-500/10',
+  task_reviewed: 'bg-yellow-500/10',
+  task_approved: 'bg-emerald-500/10',
+  task_needs_changes: 'bg-red-500/10',
+  task_completed: 'bg-emerald-500/10',
+  task_cancelled: 'bg-bg-tertiary/40',
+  module_granted: 'bg-emerald-500/10',
+  team_invite: 'bg-pink-500/10',
+  system_alert: 'bg-red-500/10',
+  pr_merged: 'bg-cyan-500/10',
+  milestone_reached: 'bg-accent-primary/10',
+  quiz_graded: 'bg-amber-500/10',
 }
 
 const containerVariants = {
@@ -104,6 +125,12 @@ export default function NotificationsPage() {
   }, [filter])
 
   useEffect(() => { setPage(0) }, [filter])
+
+  // Clamp page when list shrinks (dismiss/clear) so you don't get stranded on an empty page
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(notifications.length / PAGE_SIZE))
+    if (page > totalPages - 1) setPage(totalPages - 1)
+  }, [notifications.length, page])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 

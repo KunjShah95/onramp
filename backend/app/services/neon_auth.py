@@ -1,4 +1,5 @@
 """Neon Auth service — validates JWTs issued by Neon's managed Better Auth."""
+import asyncio
 import os
 import jwt
 import httpx
@@ -12,6 +13,7 @@ ISSUER = os.getenv("NEON_AUTH_ISSUER", "")
 
 _cached_jwks: dict | None = None
 _cached_jwks_at: datetime | None = None
+_jwks_lock = asyncio.Lock()
 JWKS_CACHE_TTL = 3600
 
 
@@ -23,15 +25,19 @@ async def _fetch_jwks() -> dict:
     if _cached_jwks and _cached_jwks_at and (now - _cached_jwks_at).total_seconds() < JWKS_CACHE_TTL:
         return _cached_jwks
 
-    if not JWKS_URL:
-        raise ValueError("NEON_AUTH_JWKS_URL is not configured")
+    async with _jwks_lock:
+        if _cached_jwks and _cached_jwks_at and (now - _cached_jwks_at).total_seconds() < JWKS_CACHE_TTL:
+            return _cached_jwks
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(JWKS_URL)
-        resp.raise_for_status()
-        _cached_jwks = resp.json()
-        _cached_jwks_at = now
-        return _cached_jwks
+        if not JWKS_URL:
+            raise ValueError("NEON_AUTH_JWKS_URL is not configured")
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(JWKS_URL)
+            resp.raise_for_status()
+            _cached_jwks = resp.json()
+            _cached_jwks_at = datetime.now(timezone.utc)
+            return _cached_jwks
 
 
 async def validate_neon_token(token: str) -> dict | None:
@@ -72,8 +78,17 @@ async def validate_neon_token(token: str) -> dict | None:
 
 async def verify_neon_session(token: str) -> dict | None:
     """Verify a Neon Auth session token. Returns user info or None."""
+    if not JWKS_URL or not ISSUER:
+        logger.warning("Neon Auth not configured — set NEON_AUTH_JWKS_URL and NEON_AUTH_ISSUER")
+        return None
+
     payload = await validate_neon_token(token)
     if not payload:
+        return None
+
+    uid = payload.get("sub", "")
+    if not uid:
+        logger.warning("Neon Auth token missing 'sub' claim")
         return None
 
     return {

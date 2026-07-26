@@ -1,11 +1,13 @@
+import logging
 import os
+import secrets as _secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
 from app.database.config import db_config
@@ -18,12 +20,20 @@ from app.services.user_service import (
 )
 from app.services.postgres_db import get_storage
 from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
+from app.services.email_service import is_enabled as email_is_enabled
+from app.services.email_service import send_email
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 168  # 7 days
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
+)
 
 
 class LoginRequest(BaseModel):
@@ -32,7 +42,7 @@ class LoginRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     name: str
 
@@ -166,8 +176,47 @@ async def register(body: RegisterRequest):
         "updated_at": now,
     }
 
+    # Generate email verification token for password registrations
+    verification_token = _secrets.token_urlsafe(32)
+
+    # Attach verification token to the record
+    record["email_verification_token"] = verification_token
+
     storage = get_storage()
     await storage.create_document("users", uid, record)
+
+    # Also set via ORM so the model's relationship tracking is consistent
+    await db_config.ensure_engine()
+    factory = db_config.get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+        )
+        user_row = result.scalar_one_or_none()
+        if user_row:
+            verification_token_expires = datetime.now(timezone.utc) + timedelta(hours=48)
+            user_row.email_verification_token = verification_token
+            user_row.email_verification_token_expires_at = verification_token_expires
+            user_row.email_verified = False
+            session.add(user_row)
+            await session.commit()
+
+    # Send verification email (non-blocking best-effort)
+    verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
+
+    try:
+        if email_is_enabled():
+            await send_email(
+                to=body.email,
+                subject="Verify your email — Onramp",
+                html_body=_build_verification_email_html(verification_link),
+            )
+        else:
+            logger.info("=" * 60)
+            logger.info("EMAIL VERIFICATION LINK (dev mode): %s", verification_link)
+            logger.info("=" * 60)
+    except Exception:
+        logger.exception("Failed to send verification email to %s", body.email)
 
     token = _generate_jwt(uid, body.email, body.name, "password")
 
@@ -241,6 +290,41 @@ async def me(user: dict = Depends(get_current_user)):
     )
 
 
+class VerifyEmailResponse(BaseModel):
+    ok: bool
+    message: str
+
+
+@router.get("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email(token: str):
+    """Verify email address using a token sent via email."""
+    if not token:
+        raise HTTPException(status_code=400, detail="Verification token is required")
+
+    await db_config.ensure_engine()
+    factory = db_config.get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(UserModel).where(UserModel.email_verification_token == token)
+        )
+        user_row = result.scalar_one_or_none()
+
+        if not user_row:
+            raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+        if user_row.email_verification_token_expires_at and user_row.email_verification_token_expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Verification token has expired")
+
+        user_row.email_verified = True
+        user_row.email_verification_token = None
+        user_row.email_verification_token_expires_at = None
+        user_row.updated_at = datetime.now(timezone.utc)
+        session.add(user_row)
+        await session.commit()
+
+    return VerifyEmailResponse(ok=True, message="Email verified successfully")
+
+
 @router.get("/check-provider", response_model=ProviderCheckResponse)
 async def check_provider(email: str):
     """Check what auth provider a given email uses (or if it's unregistered)."""
@@ -255,9 +339,6 @@ async def check_provider(email: str):
 
 # ── Password Reset ───────────────────────────────────────────────────────────
 
-import secrets as _secrets
-from app.services.email_service import send_email
-
 
 class ForgotPasswordRequest(BaseModel):
     email: str
@@ -268,11 +349,11 @@ class ResetPasswordRequest(BaseModel):
     password: str
 
 
+class SetPasswordRequest(BaseModel):
+    password: str
+
+
 RESET_TOKEN_EXPIRY_MINUTES = 60
-FRONTEND_URL = os.getenv(
-    "FRONTEND_URL",
-    os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-)
 
 
 @router.post("/forgot-password")
@@ -319,7 +400,6 @@ async def forgot_password(body: ForgotPasswordRequest):
     reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
 
     email_sent = False
-    from app.services.email_service import is_enabled as email_is_enabled
 
     if email_is_enabled():
         html = _build_reset_email_html(reset_link)
@@ -382,10 +462,66 @@ async def reset_password(body: ResetPasswordRequest):
         user_row.password_hash = password_hash
         user_row.updated_at = now
         session.add(user_row)
-        await session.flush()
+        await session.commit()
 
     logger.info("Password reset successful for user: %s", uid[:12])
     return {"ok": True, "message": "Password has been reset successfully."}
+
+
+@router.post("/set-password")
+async def set_password(
+    body: SetPasswordRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Set a new password (required for provisioned users on first login)."""
+    uid = user.get("uid", "")
+
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+    now = datetime.now(timezone.utc)
+
+    await db_config.ensure_engine()
+    factory = db_config.get_session_factory()
+    async with factory() as session:
+        result = await session.execute(
+            select(UserModel).where(UserModel.id == uid)
+        )
+        user_row = result.scalar_one_or_none()
+
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_row.password_hash = password_hash
+        user_row.password_reset_required = False
+        user_row.updated_at = now
+        session.add(user_row)
+        await session.commit()
+
+    return {"ok": True, "message": "Password has been set"}
+
+
+def _build_verification_email_html(verification_link: str) -> str:
+    """Build the HTML email template for email verification."""
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
+<div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
+<div style="text-align:center;margin-bottom:24px">
+<div style="font-size:40px;margin-bottom:8px">✉️</div>
+<h1 style="color:#FDFBF8;font-size:20px;margin:0">Verify Your Email</h1>
+</div>
+<p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">
+Thanks for signing up! Click the button below to verify your email address and get started.
+</p>
+<div style="text-align:center;margin-bottom:24px">
+<a href="{verification_link}" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Verify Email</a>
+</div>
+<p style="color:rgba(253,251,248,0.3);font-size:11px;text-align:center;margin:0">
+If you didn't create an account, you can safely ignore this email.
+</p>
+</div></body></html>"""
 
 
 def _build_reset_email_html(reset_link: str) -> str:

@@ -14,6 +14,9 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://onramp:postgres_password@localhost:5432/onramp",
 )
+# Prevent false-positive 429 errors when multiple test files share the
+# same process (and thus the same RateLimitMiddleware in-memory counter).
+os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "10000")
 
 import pytest
 

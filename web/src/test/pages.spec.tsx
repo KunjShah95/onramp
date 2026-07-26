@@ -99,7 +99,6 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import ForgotPassword from '../pages/ForgotPassword'
 import JoinPage from '../pages/JoinPage'
-import WaitlistPage from '../pages/WaitlistPage'
 import PricingPage from '../pages/PricingPage'
 import ChangelogPage from '../pages/ChangelogPage'
 import DocsPage from '../pages/DocsPage'
@@ -136,7 +135,6 @@ describe('Auth pages', () => {
   it('renders Register', () => expect(() => render(<Register />)).not.toThrow())
   it('renders ForgotPassword', () => expect(() => render(<ForgotPassword />)).not.toThrow())
   it('renders JoinPage', () => expect(() => render(<JoinPage />)).not.toThrow())
-  it('renders WaitlistPage', () => expect(() => render(<WaitlistPage />)).not.toThrow())
 })
 
 describe('Landing/marketing pages', () => {

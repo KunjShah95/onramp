@@ -157,11 +157,11 @@ export default function TasksPage() {
     try { await submitTask(taskId, url.trim()); setPrUrlInput(''); await fetchTasks(); toast.success('Task submitted for review') }
     catch (e: any) { setError(e.message); toast.error('Failed to submit task') }
   }
-  async function handleReview(taskId: string, approve: boolean) {
+  async function handleReview(taskId: string, approve: boolean, needsProduct = false) {
     try {
-      await reviewTask(taskId, { approve, feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined })
+      await reviewTask(taskId, { approve, needs_product: needsProduct, feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined })
       setReviewFeedback(''); setSelectedTask(null); await fetchTasks(); await fetchProgress()
-      toast.success('Task reviewed', approve ? 'Approved' : 'Changes requested')
+      toast.success('Task reviewed', needsProduct ? 'Routed to product' : approve ? 'Approved' : 'Changes requested')
     } catch (e: any) { setError(e.message); toast.error('Failed to review task') }
   }
   async function handleApprove(taskId: string) {
@@ -587,7 +587,7 @@ export default function TasksPage() {
                       <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} />
                       <div className="flex gap-2 flex-wrap">
                         <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
-                        <button onClick={() => handleReview(selectedTask.task_id, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
+                        <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
                         <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
                         <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
                       </div>

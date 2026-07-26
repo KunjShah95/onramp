@@ -41,7 +41,7 @@ function unwrap<T>(json: any): T {
   return json as T
 }
 
-async function request<T>(url: string, body?: Record<string, unknown>, method?: string): Promise<T> {
+async function request<T>(url: string, body?: unknown, method?: string): Promise<T> {
   const res = await fetch(url, {
     method: method || 'POST',
     headers: authHeaders(),
@@ -1851,6 +1851,70 @@ export async function checkProvider(
   return get<ProviderCheckResponse>(
     `${API_BASE}/auth/check-provider?email=${encodeURIComponent(email)}`
   )
+}
+
+// ─── Admin Account Provisioning ──────────────────────────────────────────
+
+export interface CreateAccountRequest {
+  name: string
+  email: string
+  role: 'new_dev' | 'developer' | 'tester' | 'hr'
+  team_id?: string
+  message?: string
+}
+
+export interface CreateAccountResponse {
+  success: boolean
+  uid: string
+  email: string
+  name: string
+  role: string
+  temp_password: string
+  team_id?: string
+}
+
+export async function createAccount(
+  data: CreateAccountRequest
+): Promise<CreateAccountResponse> {
+  return request<CreateAccountResponse>(`${API_BASE}/admin/accounts/create`, data)
+}
+
+export interface BulkCreateRow {
+  name: string
+  email: string
+  role: string
+  team_id?: string
+}
+
+export interface BulkCreateResponse {
+  success: boolean
+  created: Array<{ email: string; uid: string; temp_password: string; role: string }>
+  skipped: Array<{ email: string; reason: string }>
+  total_created: number
+  total_skipped: number
+}
+
+export interface CsvPreviewRow {
+  row_number: number
+  name: string
+  email: string
+  role: string
+  valid: boolean
+  error?: string
+}
+
+export interface CsvPreviewResponse {
+  rows: CsvPreviewRow[]
+  total_valid: number
+  total_errors: number
+}
+
+export async function previewCsv(csvData: string): Promise<CsvPreviewResponse> {
+  return request<CsvPreviewResponse>(`${API_BASE}/admin/accounts/preview-csv`, { csv_data: csvData })
+}
+
+export async function createAccountsBulk(rows: BulkCreateRow[]): Promise<BulkCreateResponse> {
+  return request<BulkCreateResponse>(`${API_BASE}/admin/accounts/create-bulk`, { rows })
 }
 
 // ── OAuth Social Login ─────────────────────────────────────────────────────

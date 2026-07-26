@@ -1,214 +1,240 @@
 # Onramp 2.0 — Features Implementation Plan
 
-> **What needs to be built next.** This document catalogs all features that are planned but not yet implemented, organized by priority and category. Updated to reflect completed work from recent implementation sessions.
+> **Detailed task breakdown aligned with the phased convergence strategy.**
+> Maps every feature to its roadmap phase (v1.2 → v2.0) with implementation details,
+> file changes, and acceptance criteria.
 
-**Date:** 2026-06-30 (Refreshed)
-**Current Completion:** ~90%
+**Last updated:** July 2026
+**Roadmap:** [ROADMAP.md](../ROADMAP.md)
 
 ---
 
 ## Table of Contents
 
-- [Understanding This Plan](#understanding-this-plan)
-- [P0: Immediate (Production Launch Blockers)](#p0-immediate-production-launch-blockers)
-- [P1: Engagement Features](#p1-engagement-features)
-- [P2: Enterprise & Scale](#p2-enterprise--scale)
-- [P3: Platform & Ecosystem](#p3-platform--ecosystem)
-- [P4: AIaaS API Expansion](#p4-aiaas-api-expansion)
-- [P5: Viral/Demo Features](#p5-viraldemo-features)
-- [Infrastructure & Polish](#infrastructure--polish)
-- [Quick Wins (New)](#quick-wins-new)
+- [Legend](#legend)
+- [Phase Map: FEATURES_PLAN → ROADMAP](#phase-map-features_plan--roadmap)
+- [v1.2: Production Launch & Polish (Month 1)](#v12-production-launch--polish-month-1)
+- [v1.3: Enterprise + AI Acceleration (Month 2)](#v13-enterprise--ai-acceleration-month-2)
+- [v1.4: Platform & Scale (Month 3)](#v14-platform--scale-month-3)
+- [v2.0: Enterprise GA (Month 4+)](#v20-enterprise-ga-month-4)
+- [Stretch / Viral Features](#stretch--viral-features)
 - [Feature Dependency Map](#feature-dependency-map)
-- [Appendix: Complete Built vs Unbuilt Inventory](#appendix-complete-built-vs-unbuilt-inventory)
+- [Effort Summary](#effort-summary)
+- [Appendix: Previously Completed Inventory](#appendix-previously-completed-inventory)
 
 ---
 
-## Understanding This Plan
-
-### Legend
+## Legend
 
 | Mark | Meaning |
 |------|---------|
-| ✅ | Completed — ready for production |
+| ✅ | Completed |
 | 🟢 | Not started — ready to build |
 | 🟡 | Partially built — needs completion |
 | 🔴 | Blocked — requires dependency first |
-| ⚪ | Research needed before starting |
-
-### How to Read Each Entry
-
-Each feature is documented as:
-
-```
-## Feature Name
-Priority: P0 | P1 | P2 | P3 | P4 | P5 | Polish
-Status: 🟢 Not Started | 🟡 Partial | ✅ Done
-Dependencies: [feature names it depends on]
-Effort: X days (backend) + Y days (frontend)
-
-Description:
-What this feature does and why it matters.
-
-Implementation Details:
-- Specific code changes
-- Files to modify or create
-- API endpoints to add
-- Data model changes
-
-Acceptance Criteria:
-- [ ] Specific, testable outcomes
-```
 
 ---
 
-## P0: Immediate (Production Launch Blockers)
+## Phase Map: FEATURES_PLAN → ROADMAP
 
-These must be completed before the platform can be considered production-ready.
+| FEATURES_PLAN ID | Feature | Old Priority | Old Status | New Phase | New Status |
+|---|---|---|---|---|---|
+| #1 | Real Stripe Billing Webhook | P0 | ✅ Done | — | ✅ Done |
+| #2 | Production Deployment | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
+| #3 | E2E / Integration Tests (Frontend) | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
+| #4 | Interactive Repo Visualization | P1 | 🟡 Partial | **v1.2** | 🟢 Ready |
+| #5 | Knowledge Quizzes | P1 | 🟢 Not started | — | ✅ Done (v1.1) |
+| #6 | Gamification System | P1 | 🟢 Not started | — | ✅ Done (v1.1) |
+| #7 | Weekly Digest Email | P1 | 🟢 Not started | **deferred** | 🟢 Ready |
+| #8 | SSO/SAML Authentication | P2 | 🟢 Not started | **v1.3** | 🟢 Ready |
+| #9 | React Query Integration | P2 | ✅ Done | — | ✅ Done |
+| #10 | Performance Optimization | P2 | 🟢 Not started | **v1.4** | 🟢 Ready |
+| #11 | VS Code Extension | P2 | 🟢 Not started | **v1.4** | 🟢 Ready |
+| #12 | Module-Level RBAC Refinement | P2 | 🟡 Partial | **deferred** | ✅ Done (basic) |
+| #13 | Playbook Marketplace | P3 | 🟢 Not started | **v1.3** | 🟢 Ready |
+| #14 | SOC 2 Compliance Reporting | P3 | 🟢 Not started | **v2.0** | 🟢 Ready |
+| #15 | Mobile Companion App | P3 | 🟢 Not started | **v1.4** | 🟢 Ready |
+| #16 | AIaaS API Gateway | P4 | 🟡 Partial | **v1.4** | 🟡 Partial |
+| #17 | TypeScript SDK Expansion | P4 | 🟢 Not started | **v1.4** | 🟢 Ready |
+| #18 | "Senior Dev Roast" Mode | P5 | 🟢 Not started | **v1.3** | 🟢 Ready |
+| #19 | DevScore Leaderboard | P5 | 🟢 Not started | **v2.0** | 🟢 Ready |
+| #20 | Codebase Trailer | P5 | 🟢 Not started | **stretch** | 🟢 Ready |
+| #21 | "Hot Take" PR Review | P5 | 🟢 Not started | **stretch** | 🟢 Ready |
+| #22 | Loading Skeletons | Polish | ✅ Done | — | ✅ Done |
+| #23 | Toast Notification System | Polish | ✅ Done | — | ✅ Done |
+| #24 | Accessibility Audit | Polish | 🟢 Not started | — | ✅ Done (v1.2) |
+| #25 | Dark Mode Consistency | Polish | 🟢 Not started | **stretch** | 🟢 Ready |
+| #26 | Billing Idempotency | Quick Win | ✅ Done | — | ✅ Done |
+| #27 | Waitlist CORS Fix | Quick Win | ✅ Done | — | ✅ Done |
+| #28 | Load More / Infinite Scroll | Quick Win | 🟢 Not started | **v1.2** | 🟢 Ready |
+
+### New items added by phased roadmap (not in original FEATURES_PLAN)
+
+| New Item | Phase | Priority |
+|----------|-------|----------|
+| Real-time WebSocket notifications | v1.2 | Critical |
+| Milestone tracking with roadmap view | v1.2 | High |
+| Session refresh & remember-me | v1.2 | High |
+| Mobile-responsive views (2 waves) | v1.2 | High |
+| GitLab & Bitbucket repo support | v1.2 | Medium |
+| Ollama local model support | v1.2 | Medium |
+| PR review auto-apply suggestions | v1.2 | Medium |
+| API contract tests | v1.2 | ✅ Done |
+| Load testing | v1.2 | ✅ Done |
+| Frontend E2E tests | v1.2 | High |
+| CI/CD auto PR review on push | v1.3 | High |
+| Team velocity & DORA metrics | v1.3 | High |
+| Jira / Linear ticket sync | v1.3 | Medium |
+| Architecture drift detection | v1.3 | Medium |
+| Domain-based SSO routing | v1.3 | High |
+| Real-time audit log UI | v1.3 | High |
+| HMAC-SHA256 API key hashing | v1.3 | High |
+| Usage-based pricing tier | v1.3 | Medium |
+| Team-level feature flags | v1.3 | Medium |
+| Autonomous coding agent (sandboxed) | v1.4 | High |
+| Usage-based billing metering | v1.4 | High |
+| PWA mobile app | v1.4 | Medium |
+| Performance / Lighthouse optimization | v1.4 | High |
+| PostgreSQL read replicas | v1.4 | High |
+| Redis caching layer | v1.4 | High |
+| SOC 2 Type II readiness | v2.0 | Critical |
+| Third-party penetration test | v2.0 | Critical |
+| Secrets vault integration | v2.0 | High |
+| Immutable audit trail | v2.0 | High |
+| SCIM provisioning | v2.0 | High |
+| Hard tenant isolation (RLS) | v2.0 | Critical |
+| Data residency controls | v2.0 | High |
+| Self-hosted Helm chart | v2.0 | High |
+| Multi-org namespace isolation | v2.0 | High |
+| Plugin system for custom agents | v2.0 | Medium |
+| Agent MCP support | v2.0 | Medium |
+| Custom enterprise roles | v2.0 | Medium |
+| Prometheus/Grafana monitoring | v2.0 | Medium |
+| Structured JSON logging | v2.0 | Medium |
 
 ---
 
-### 1. Real Stripe Billing Webhook
+## v1.2: Production Launch & Polish (Month 1)
 
-**Priority:** P0 — **Critical**
-**Status:** ✅ Done
-**Dependencies:** None
-**Effort:** 2 days (backend)
-
-**What was built:**
-
-- Idempotency support via `Idempotency-Key` header — duplicate event prevention
-- Event audit log (`onramp_webhook_events` collection) with query API
-- Async-safe `stripe.Webhook.construct_event` wrapped in `asyncio.to_thread`
-- Sentry error reporting for webhook failures
-- Additional event types: `payment_intent.succeeded`, `payment_intent.payment_failed`, `customer.subscription.trial_will_end`, `setup_intent.created`
-- Comprehensive test suite: 20 tests covering all event types, idempotency, audit log, edge cases
+**Theme:** Foundation — ship to production, close UX gaps, set up for scale
+**Est. effort:** 2–3 weeks
 
 ---
 
-### 2. Production Deployment
+### 1. Production Deployment
 
-**Priority:** P0 — **Critical**
-**Status:** 🟡 Partial — Docker configs exist, Kubernetes manifests exist, not deployed
-**Dependencies:** Stripe webhook ✅
+**Status:** 🟢 Ready — blockers documented in `PRODUCTION_AUDIT.md`
 **Effort:** 2 days (devops)
 
-**Description:**
-The platform has all infrastructure configs (Docker Compose, Dockerfile, Nginx, K8s, Terraform) but has not been deployed to production. This blocks all real-world usage.
+**What's done:**
+- Docker Compose (dev + prod), Nginx, K8s manifests, CI/CD configs all exist
+- `DEPLOYMENT.md` documents Railway + Vercel path
+- `PRODUCTION_AUDIT.md` identifies all blockers
 
-**Implementation Details:**
+**What remains:**
 
-- **Frontend:** Deploy to Vercel with `VITE_API_URL` pointing to production backend
-  - Configure custom domain, HTTPS
-  - Set up environment variables in Vercel dashboard
-  - Connect GitHub repo for auto-deploy on `main` push
-- **Backend:** Deploy to Render or Railway
-  - Set up Dockerized FastAPI service
-  - Configure all env vars: `DATABASE_URL`, `SECRET_KEY`, `SENTRY_DSN`, `STRIPE_*`, `OPENAI_API_KEY`, etc.
-  - Apply Alembic migrations on deploy
-- **Database:** PostgreSQL instance (via Render, Railway, or AWS RDS)
-  - Apply initial schema via `alembic upgrade head`
-  - Configure automated backups
-  - Set up connection pooling (pgBouncer optional)
-- **Redis:** For distributed rate limiting and caching (via Redis Cloud or built-in on Railway)
-- **Firebase:** Production project with authentication enabled
-  - Configure authorized domains
-  - Set up service account for production
-- **CI/CD:** Wire GitHub Actions
-  - Backend: Build Docker → push to registry → deploy
-  - Frontend: Vercel auto-deploys on push
-  - `deploy.sh` / `deploy.ps1` scripts ready
+**P0 — Boot blockers (fixed):**
+- [x] Add `PII_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block
+- [x] Add `GITHUB_TOKEN_ENCRYPTION_KEY` to `docker-compose.prod.yml`
+- [x] Add `GITHUB_TOKEN` to `docker-compose.prod.yml`
+- [x] Fix `JWT_SECRET` vs `JWT_SECRET_KEY` naming mismatch — standardized on `JWT_SECRET` across docker-compose, K8s, .env.example, and docs
+- [x] Construct `REDIS_URL` from Redis vars in `docker-compose.prod.yml`
+- [x] Add `TRUST_PROXY=true` to `docker-compose.prod.yml` (Railway requirement)
+- [x] Extend `_validate_production_env()` in `main.py` to check `JWT_SECRET` + `PII_ENCRYPTION_KEY`
+- [x] Add pre-deploy env validation + smoke test to CD pipeline
+- ➡️ Set up `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` in GitHub secrets (manual)
+- ➡️ Set up `RENDER_DEPLOY_HOOK_URL` in GitHub secrets (manual)
 
-**Files to use:**
+**P1 — Pending:**
+- [ ] Update `allow_origin_regex` in `main.py` to include custom domain patterns
+- [ ] Add Nginx security headers (CSP, HSTS, X-Frame-Options) to `nginx.conf`
+- [ ] Update Dockerfile from `python:3.11` to `python:3.12`
 
-- `docker-compose.prod.yml` — Production Docker stack
-- `nginx.prod.conf` — Production Nginx config
-- `kubernetes/` — K8s manifests (if using K8s)
-- `infrastructure/terraform/` — If using GCP
-- `deploy.sh` — Deploy script
-- `scripts/deploy-prod.sh` — Production deploy script
-
-**Acceptance Criteria:**
-
-- [ ] Frontend accessible at custom domain via HTTPS
-- [ ] Backend API responds at `/health` with 200
-- [ ] Wallet onboarding flow works end-to-end
-- [ ] CI/CD pipeline deploys on git push to main
+**Files modified:**
+- `docker-compose.prod.yml` — Added `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `GITHUB_TOKEN`, `TRUST_PROXY=true`, `REDIS_URL` construction
+- `.env.example` (root) — Added all missing env vars with defaults
+- `backend/app/main.py` — Extended `_validate_production_env()` with `JWT_SECRET`, `PII_ENCRYPTION_KEY`, plus insecure-default detection
+- `.github/workflows/cd.yml` — Added pre-deploy env validation + post-deploy smoke tests
 
 ---
 
-### 3. E2E / Integration Tests (Frontend)
+### 2. Frontend E2E Tests
 
-**Priority:** P0 — **Critical**
-**Status:** 🟡 Partial — backend integration tests for full onboarding flow exist, frontend E2E pending
-**Dependencies:** None
+**Status:** 🟢 Ready
 **Effort:** 2 days (frontend E2E)
 
 **Description:**
-The project has **222 unit tests + 2 integration tests** passing. The backend full onboarding flow is covered (manager creates team → invites → user joins → creates tasks → completes → modules unlock → report generated). Frontend E2E coverage across key user journeys is still missing.
+Cover key user journeys with Playwright. Existing `web/e2e/` has auth, dashboard, and review-queue specs with mocks.
 
-**What was built:**
+**Needed:**
+- [ ] Login → Dashboard loads → stats visible
+- [ ] Navigate to Explore → enter repo URL → submit → results displayed
+- [ ] Team management: create team → invite member → verify invite created
+- [ ] Billing flow: select tier → checkout redirect → webhook → subscription active
+- [ ] Settings: update profile name → verify save confirmation toast
+- [ ] Run in CI pipeline (`frontend.yml`)
 
-- `backend/tests/integration/test_full_onboarding_flow.py` — comprehensive flow:
-  - Create team → create playbook → invite user → accept invite
-  - Generate learning path → create 2 tasks → complete both
-  - Verify modules auto-unlocked → generate report → verify playbook usage count
-  - Simplified variant: create tasks without full path generation
-
-**Still needed:**
-
-- **Frontend E2E with Playwright:**
-  - Login → Dashboard loads → stats visible
-  - Navigate to Explore → enter repo URL → submit → results displayed
-  - Team management: create team → invite member via email → verify invite created
-  - Billing flow: select tier → checkout redirect → webhook fires → subscription active
-  - Settings: update profile name → verify save confirmation toast
-- **Test structure:**
-  - `web/e2e/` directory with Playwright config
-  - Page Object Model for reusable selectors
-  - Auth setup via Firebase custom token for test users
-
-**Acceptance Criteria:**
-
-- [ ] Login → Dashboard navigation flow passes
-- [ ] Explore → Analyze repo → view results flow passes
-- [ ] Team create → invite → member joins flow passes
-- [ ] Settings save → toast appears flow passes
-- [ ] Runs in CI pipeline in < 5 minutes
+**Files to modify:**
+- `web/e2e/` — New spec files for each flow
+- `web/e2e/mocks.ts` — Add mock data for billing, team, settings
+- `.github/workflows/frontend.yml` — Add Playwright step
 
 ---
 
-## P1: Engagement Features
+### 3. Real-time WebSocket Notifications
 
-High-impact features that drive user engagement and retention.
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend 2d + frontend 1d)
+
+**Description:**
+Push task updates (assigned, reviewed, approved) to connected clients via WebSocket. Fall back to polling when WebSocket disconnects.
+
+**Implementation Details:**
+- Backend: Add WebSocket endpoint `/api/v1/ws/notifications` using FastAPI's WebSocket support
+  - Authenticate via token query param
+  - Maintain connection registry per user
+  - On task state change, push notification to connected clients
+- Frontend: Add WebSocket hook `useWebSocket.ts`
+  - Connect on app mount (when authed)
+  - Reconnect on disconnect with exponential backoff
+  - Feed notifications into existing `NotificationBell` component
+- Fallback: Keep existing polling as backup
+
+**Files to create/modify:**
+- `backend/app/api/v1/websocket.py` — WebSocket handler
+- `backend/app/services/notification_service.py` — Add broadcast method
+- `web/src/hooks/useWebSocket.ts` — WebSocket connection hook
+- `web/src/components/ui/NotificationBell.tsx` — Accept push updates
+
+**Acceptance Criteria:**
+- [ ] WebSocket connects on login, disconnects on logout
+- [ ] Task assignment triggers push notification within 1s
+- [ ] Reconnect on disconnect works automatically
+- [ ] Fallback polling works if WebSocket unavailable
 
 ---
 
 ### 4. Interactive Repo Visualization
 
-**Priority:** P1 — **High**
-**Status:** 🟡 Partial — ForceGraph component exists, d3-force is installed
-**Dependencies:** None
+**Status:** 🟢 Ready (ForceGraph exists, needs enhancement)
 **Effort:** 2 days (frontend)
 
 **Description:**
-The Explore page has a basic forced-directed graph from `d3-force`, but it lacks search, filter, drill-down, and tooltip interactions. Users need to be able to search for a module, filter by type, click a node to see details, and zoom/pan naturally.
+Upgrade the existing ForceGraph component with search, filter, drill-down, and tooltip interactions.
 
 **Implementation Details:**
-
-- Add search bar above the graph to filter nodes by name
-- Add filter controls (show/hide by file type, module, dependency count)
-- Add click-to-drill-down: clicking a node expands its dependency subgraph
-- Add hover tooltips showing module name, file count, dependency count
-- Add smooth zoom/pan with D3 zoom behavior
-- Add node color coding by: file type (blue=Python, green=JS, orange=TS), module (color by community), dependency count (gradient)
+- [ ] Add search bar above graph to filter nodes by name (real-time)
+- [ ] Add filter controls (show/hide by file type, module, dependency count)
+- [ ] Add click-to-drill-down: clicking a node expands its dependency subgraph
+- [ ] Add hover tooltips: module name, file count, dependency count
+- [ ] Add smooth zoom/pan with D3 zoom behavior
+- [ ] Add node color coding: file type (blue=Python, green=JS, orange=TS)
 
 **Files to modify:**
-
-- `web/src/components/ForceGraph.tsx`
-- `web/src/pages/ExplorePage.tsx`
+- `web/src/components/ForceGraph.tsx` — All enhancements
+- `web/src/pages/ExplorePage.tsx` — Wiring and layout
 
 **Acceptance Criteria:**
-
 - [ ] Search filters graph in real-time as user types
 - [ ] Clicking a node shows details panel with file list
 - [ ] Filter toggles show/hide node categories
@@ -216,171 +242,195 @@ The Explore page has a basic forced-directed graph from `d3-force`, but it lacks
 
 ---
 
-### 5. Knowledge Quizzes
+### 5. Milestone Tracking with Roadmap View
 
-**Priority:** P1 — **High**
-**Status:** 🟢 Not started
-**Dependencies:** None (uses existing LLM infrastructure)
-**Effort:** 2 days (backend 1d + frontend 1d)
+**Status:** 🟢 Ready
+**Effort:** 2 days (frontend 1d + backend 1d)
 
 **Description:**
-AI-generated multiple-choice quizzes from the codebase. After completing a learning module, the trainee takes a quiz about the code they studied. Quizzes test understanding and identify knowledge gaps.
+A visual roadmap timeline showing onboarding milestones, their status, and dependencies. Trainees see their path ahead; seniors see team-wide progress.
 
 **Implementation Details:**
+- Backend: Extend `onboarding_plan_service.py` with milestone dependency graph
+  - `GET /api/v1/onboarding-plans/{id}/roadmap` — Returns milestone DAG with status
+- Frontend: Timeline component on `OnboardingPlanPage.tsx` + `TraineeDashboard.tsx`
+  - Horizontal timeline with milestone nodes
+  - Status: locked, available, in_progress, completed
+  - Click a milestone to see required tasks
 
-- New agent: `QuizGenerator` in `backend/app/agents/quiz_generator.py`
-  - Takes repo structure + module name as input
-  - Generates 5-10 multiple-choice questions with LLM
-  - Each question: question text, 4 options, correct answer, explanation
-  - Cached per module to avoid regenerating
-- New API endpoint: `POST /api/v1/learn/quiz`
-  - Input: `{ "path_id": "...", "module_index": 2 }`
-  - Output: `{ "questions": [...], "quiz_id": "..." }`
-  - Follow existing agent pattern from `learning_path_generator.py`
-- New API endpoint: `POST /api/v1/learn/quiz/submit`
-  - Input: `{ "quiz_id": "...", "answers": [0, 2, 1, ...] }`
-  - Output: `{ "score": 8, "total": 10, "passed": true, "wrong": [...] }`
-- Store quiz results in existing `onramp_subscriptions` collection or new `onramp_quiz_results` collection
-- Frontend: Quiz modal on LearnPage after module completion
-  - Question carousel with progress dots
-  - Show correct/incorrect after each answer
-  - Summary screen with score and review
-
-**Acceptance Criteria:**
-
-- [ ] Quiz generates 5-10 questions from codebase content
-- [ ] Questions are unique per generation attempt
-- [ ] Quiz submission returns score with correct/incorrect breakdown
-- [ ] Passing threshold (70%) configurable
-- [ ] Frontend shows quiz as step after module completion
+**Files to create/modify:**
+- `backend/app/api/v1/onboarding_plans.py` — Add roadmap endpoint
+- `backend/app/services/onboarding_plan_service.py` — Roadmap DAG logic
+- `web/src/components/ui/RoadmapTimeline.tsx` — New timeline component
+- `web/src/pages/OnboardingPlanPage.tsx` — Integrate timeline
+- `web/src/pages/TraineeDashboard.tsx` — Integrate timeline
 
 ---
 
-### 6. Gamification System
+### 6. Session Refresh & Remember Me
 
-**Priority:** P1 — **High**
-**Status:** 🟢 Not started
-**Dependencies:** Knowledge Quizzes (quiz scores feed XP)
-**Effort:** 3 days (backend 1.5d + frontend 1.5d)
+**Status:** 🟢 Ready
+**Effort:** 1 day (backend 0.5d + frontend 0.5d)
 
 **Description:**
-XP points, badges, and streaks to make onboarding addictive. Each learning activity earns XP. Milestones unlock badges. Daily streaks encourage consistent progress.
-
-**XP Sources:**
-
-| Activity | XP | Limit |
-|----------|----|-------|
-| Learning module completed | +50 | Per module |
-| Quiz passed (70%+) | +10 | Per quiz |
-| Quiz perfect score (100%) | +25 | Per quiz |
-| First PR merged | +200 | Once |
-| Task completed | +30 | Per task |
-| Question asked in Q&A | +5 | Per day |
-| Playbook created | +100 | Per playbook |
-| Daily login streak (day 1) | +5 | Once/day |
-| Daily login streak (day 7) | +25 | Once/day |
-| Daily login streak (day 30) | +100 | Once/day |
-
-**Badges:**
-
-| Badge | Requirement | XP Bonus |
-|-------|-------------|----------|
-| 🗺️ Explorer | Analyze 3 repos | +50 |
-| 📚 Scholar | Complete 5 learning modules | +100 |
-| 🐛 Squasher | Merge first PR | +200 |
-| 🔥 Streak Master | 7-day login streak | +100 |
-| ⚡ Speed Runner | Complete onboarding in < 2 weeks | +500 |
-| 🏆 Code Champion | 1000+ XP | +1000 |
+Persist login across browser closes. Currently JWT expires at 7 days with no refresh mechanism.
 
 **Implementation Details:**
+- Backend: Add refresh token endpoint `POST /api/v1/auth/refresh`
+  - Short-lived access token (15 min) + long-lived refresh token (30 days, stored in DB)
+  - Refresh token rotation (old token invalidated on each refresh)
+- Frontend: Store refresh token in `localStorage`, access token in memory
+  - Intercept 401 responses → attempt refresh → retry original request
 
-- New service: `backend/app/services/gamification_service.py`
-  - `award_xp(user_id, source, amount)` — Award XP with daily caps
-  - `check_badges(user_id)` — Check and award new badges
-  - `get_leaderboard(team_id, period)` — Weekly/monthly/all-time
-  - `get_streak(user_id)` — Current streak and next milestone
-- New API endpoints:
-  - `GET /api/v1/gamification/xp/{user_id}` — XP total and breakdown
-  - `GET /api/v1/gamification/badges/{user_id}` — Earned badges
-  - `GET /api/v1/gamification/leaderboard/{team_id}` — Team leaderboard
-  - `GET /api/v1/gamification/streak/{user_id}` — Streak info
-- Frontend: Gamification tab on TraineeDashboard
-  - XP progress bar with next milestone
-  - Badge showcase with locked/unlocked states
-  - Weekly leaderboard for the team
-  - Streak indicator with fire emoji 🔥
-
-**Acceptance Criteria:**
-
-- [ ] XP awarded correctly for all activity types with daily caps
-- [ ] Badges auto-award when conditions met
-- [ ] Leaderboard sorts by XP and resets weekly
-- [ ] Streak tracks consecutive daily logins
-- [ ] Frontend shows gamification UI on TraineeDashboard
+**Files to create/modify:**
+- `backend/app/api/v1/auth.py` — Add refresh token logic
+- `backend/app/services/user_service.py` — Refresh token storage
+- `web/src/context/AuthContext.tsx` — Token refresh interceptor
+- `web/src/lib/api.ts` — HTTP interceptor for auto-refresh
 
 ---
 
-### 7. Weekly Digest Email
+### 7. Mobile-Responsive Views
 
-**Priority:** P1 — **High**
-**Status:** 🟢 Not started
-**Dependencies:** SendGrid integration (exists in requirements.txt)
-**Effort:** 1.5 days (backend)
+**Status:** 🟢 Ready
+**Effort:** 3 days (wave 1) + 3 days (wave 2)
 
 **Description:**
-Auto-generated weekly email summarizing team learning progress. Sent to managers and optionally to trainees. Includes completion stats, top performers, pending reviews, and recent activity.
+Make all 44 page components usable on mobile. Tailwind responsive classes are partially used; many pages lack mobile breakpoints.
 
 **Implementation Details:**
+- **Wave 1 (core 10 pages):** Dashboard, Tasks, Explore, Team, Notifications, Settings, Profile, Login, Register, Landing
+- **Wave 2 (remaining 34):** All other pages
+- Per-page: Add `sm:` and `md:` breakpoint overrides
+- Fix table overflow (horizontal scroll on data tables)
+- Stack sidebar content vertically
+- Ensure touch targets ≥ 44px
 
-- New service: `backend/app/services/digest_service.py`
-  - `generate_team_digest(team_id)` — Compile weekly stats
-  - `generate_trainee_digest(user_id)` — Personal weekly recap
-  - `send_digests()` — Batch send to all subscribed users
-- Digest content:
-  - **Manager digest:** Team completion % change, pending reviews count, top trainee by XP, modules completed this week, tasks overdue
-  - **Trainee digest:** Personal progress % change, modules completed, XP earned, badges earned, tasks for next week
-- Cron job: Send every Monday at 9 AM (use APScheduler or Celery Beat)
-- Preference toggle: UI in Settings page to opt in/out (Settings.tsx already has notification prefs)
-
-**Files to create:**
-
-- `backend/app/services/digest_service.py`
-- Backend cron config or Celery schedule
-
-**Acceptance Criteria:**
-
-- [ ] Manager digest sent every Monday with team stats
-- [ ] Trainee digest sent with personal progress
-- [ ] Digest preferences configurable in Settings
-- [ ] Empty digests handled gracefully (no email if no activity)
+**Files to modify:**
+- All 44 page components — responsive CSS classes
+- `web/src/components/ui/Sidebar.tsx` — Collapsible on mobile
+- `web/src/components/layout/Layout.tsx` — Mobile layout structure
 
 ---
 
-## P2: Enterprise & Scale
+### 8. GitLab & Bitbucket Repository Support
 
-Features needed for enterprise customers and production scale.
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend)
+
+**Description:**
+Expand repo analysis beyond GitHub to support GitLab and Bitbucket. Uses existing architecture explorer infrastructure.
+
+**Implementation Details:**
+- Extend `github_service.py` → `git_service.py` (multi-provider)
+- For GitLab: Use GitLab API (personal access token, project ID)
+- For Bitbucket: Use Bitbucket Cloud API (app password)
+- For all: Git clone via HTTPS (works for any public repo)
+
+**Files to create/modify:**
+- `backend/app/services/git_service.py` — Unified git service
+- `backend/app/services/github_service.py` — Refactor as GitHub provider
+- `backend/app/services/gitlab_service.py` — New GitLab provider
+- `backend/app/services/bitbucket_service.py` — New Bitbucket provider
 
 ---
 
-### 8. SSO/SAML Authentication
+### 9. Ollama Local Model Support
 
-**Priority:** P2 — **Medium**
-**Status:** 🟢 Not started
-**Dependencies:** None
-**Effort:** 3 days (backend 1.5d + frontend 1.5d)
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend)
 
 **Description:**
-Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD, and Google Workspace as identity providers.
+Allow users to run AI features using local Ollama models — critical for air-gapped/self-hosted deployments and cost reduction.
 
 **Implementation Details:**
+- Add `OLLAMA` provider to `llm.py` fallback chain
+  - Reads `OLLAMA_BASE_URL` env var (default: `http://localhost:11434`)
+  - Uses OpenAI-compatible API (Ollama serves OpenAI-compatible endpoints)
+  - Model: configurable via `OLLAMA_MODEL` (default: `llama3`)
+  - Priority: below NVIDIA (free), above OpenAI (paid)
+- No dependencies to install — uses existing `AsyncOpenAI` client
 
-- Integrate SAML library (`python3-saml` or similar)
-- New flow:
-  - Enterprise admin configures IdP in Settings → SSO
-  - Users click "Sign in with Company SSO"
-  - Redirect to IdP → callback → Firebase custom token minted
-  - User authenticated with their corporate identity
-- New storage collection: `sso_configs` (team_id, provider, metadata_url, entity_id, x509_cert)
+**Files to modify:**
+- `backend/app/llm.py` — Add `OLLAMA` provider to `ModelProvider` enum and config
+- `backend/.env.example` — Add `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
+
+---
+
+### 10. PR Review — Auto-Apply Suggestions
+
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend 2d + frontend 1d)
+
+**Description:**
+AI reviews come with actionable fix suggestions. Users can auto-apply them as commit suggestions on the PR.
+
+**Implementation Details:**
+- Backend: Extend `PRReviewAgent` to generate `fix_suggestions`
+  - Each suggestion: `{ file, line_start, line_end, original, suggested, explanation }`
+  - Return in existing review response
+- Frontend: Display suggestions inline on `PRDescriptionPage`
+  - Each suggestion has an "Apply" button
+  - "Apply All" bulk action
+
+**Files to modify:**
+- `backend/app/agents/pr_review.py` — Add fix suggestion generation
+- `web/src/pages/PRDescriptionPage.tsx` — Display + apply suggestions
+
+---
+
+### 11. Load More Pagination (Quick Win)
+
+**Status:** 🟢 Ready
+**Effort:** 0.5 days (frontend)
+
+**Description:**
+Add pagination to TasksPage and NotificationsPage using existing Pagination component.
+
+**Files to modify:**
+- `web/src/pages/TasksPage.tsx` — Add Pagination component
+- `web/src/pages/NotificationsPage.tsx` — Already has pagination via API, wire UI
+
+---
+
+### 12. CI/CD Test Expansion
+
+**Status:** ✅ Contract + load tests now running in CI
+**Effort:** ✅ Complete (backend)
+
+**Description:**
+Contract tests (35 tests) and load tests (13 tests) now run in dedicated named steps on every PR.
+
+**What was done:**
+- `backend.yml` split into 3 named steps: unit/integration, API contract, load/performance
+- Contract tests get 30s timeout; load tests get 120s timeout (concurrent benchmarks)
+- Contract + load tests excluded from main test run to avoid duplication
+
+**Also done:**
+- ✅ `pytest-cov` coverage reporting now configured across all 4 test steps (unit, contract, load, postgres) using `--cov-append` for aggregate coverage.xml output
+
+**Remaining:**
+- [ ] Add Playwright E2E + a11y tests to `frontend.yml` (separate task)
+
+---
+
+## v1.3: Enterprise + AI Acceleration (Month 2)
+
+**Theme:** Enterprise foundation + AI differentiation
+**Est. effort:** 3–4 weeks
+
+---
+
+### 13. SSO/SAML Authentication
+
+**Status:** 🟢 Ready
+**Effort:** 3 weeks (backend 1.5w + frontend 1.5w)
+
+**Description:**
+Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD (Entra ID), and Google Workspace.
+
+**Implementation Details:**
+- Integrate `python3-saml` or use WorkOS for faster implementation
 - New API endpoints:
   - `POST /api/v1/auth/sso/configure` — Save IdP config
   - `GET /api/v1/auth/sso/login/{team_id}` — Initiate SSO login
@@ -389,683 +439,360 @@ Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD, an
   - Upload metadata XML or enter fields manually
   - Test connection button
   - Enable/disable SSO for team
+- Domain-based routing: auto-detect IdP from email domain
 
-**Acceptance Criteria:**
-
-- [ ] SSO login flow works with Okta
-- [ ] SSO login flow works with Azure AD
-- [ ] Multiple IdPs configurable per team
-- [ ] Fallback to password login if SSO fails
-- [ ] Session timeout respects IdP session
+**Files to create:**
+- `backend/app/services/sso_service.py`
+- `web/src/pages/Settings.tsx` — SSO config section
 
 ---
 
-### 9. React Query Integration
+### 14. Team Velocity & DORA Metrics
 
-**Priority:** P2 — **Medium**
-**Status:** ✅ Done
-**Dependencies:** None
-**Effort:** 2 days (frontend)
-
-**What was built:**
-
-- Installed `@tanstack/react-query` in `web/package.json`
-- Wrapped `App` with `QueryClientProvider` in `web/src/main.tsx` (staleTime: 30s, retries: 2)
-- **TraineeDashboard.tsx** — replaced `useEffect` + `setInterval(30s)` with `useQuery({ refetchInterval: 30000 })`
-- **DashboardPage.tsx** — replaced sequential fetches with 3 `useQuery` calls (dashboard, repos, health score with `enabled` flag)
-- **NotificationsPage.tsx** — replaced `useEffect` + polling with `useQuery` + `useMutation` for mark read, delete, clear read + `queryClient.invalidateQueries()`
-- TypeScript typecheck: ✅ zero errors
-
----
-
-### 10. Performance Optimization
-
-**Priority:** P2 — **Medium**
-**Status:** 🟢 Not started
-**Dependencies:** None
-**Effort:** 2 days (backend 1d + frontend 1d)
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend 2d + frontend 1d)
 
 **Description:**
-Profile and optimize hot paths across the stack. Focus on API response times, database query performance, and frontend bundle size.
+Add engineering team analytics — cycle time, deployment frequency, mean time to recovery (MTTR), change failure rate.
 
 **Implementation Details:**
-
-- Backend:
-  - Profile with cProfile or py-spy to find slow endpoints
-  - Add database query optimization (missing indexes, N+1 queries)
-  - Add response compression (gzip/brotli)
-  - Add Redis caching for frequent endpoints (repo analysis results)
-  - Optimize LLM calls (reduce token usage, add response caching)
-- Frontend:
-  - Run Lighthouse audit and fix top issues
-  - Add lazy loading for heavy components (ForceGraph, recharts)
-  - Add image optimization (WebP format, lazy loading)
-  - Add bundle analysis (`vite-bundle-visualizer`)
-  - Remove unused dependencies
-
-**Acceptance Criteria:**
-
-- [ ] p95 API response time < 500ms for cached endpoints
-- [ ] Lighthouse score > 90 for all pages
-- [ ] Initial bundle size < 200KB (gzipped)
-- [ ] No N+1 query patterns in hot paths
+- New dashboard endpoint: `GET /api/v1/dashboard/dora/{team_id}`
+- Compute from existing task + PR data
+- Frontend: New analytics tab on DashboardPage with trend charts
 
 ---
 
-### 11. VS Code Extension
+### 15. CI/CD Auto PR Review on Push
 
-**Priority:** P2 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** None
-**Effort:** 3 days (frontend/extension)
+**Status:** 🟢 Ready
+**Effort:** 3 days (devops + backend)
 
 **Description:**
-A VS Code extension that brings Onramp features directly into the editor. Inline code explanations, PR review summaries, and quick repo analysis without leaving the IDE.
+GitHub Action that triggers an Onramp PR review when a PR is opened/updated.
 
 **Implementation Details:**
-
-- Create new directory: `extensions/vscode/`
-- Use VS Code Extension API
-- Features:
-  - "Analyze this file" — Right-click → sends file to Onramp API
-  - "Explain this function" — Hover over function → AI explanation
-  - "PR Review" — Open PR in editor → inline review comments
-  - "Learning Path" — Show current module in sidebar
-- Authentication: VS Code prompts for Onramp API key
-- Packaging: `.vsix` file for VS Code Marketplace
-
-**Acceptance Criteria:**
-
-- [ ] Extension installs and activates in VS Code
-- [ ] Right-click context menu shows Onramp options
-- [ ] Hover over function shows AI explanation
-- [ ] PR review shows inline comments
+- New GitHub Action: `.github/actions/onramp-review/action.yml`
+- On `pull_request` event → call Onramp API with PR diff
+- Post review as PR comment via GitHub API
 
 ---
 
-### 12. Module-Level RBAC Refinement
+### 16. Architecture Drift Detection
 
-**Priority:** P2 — **Medium**
-**Status:** 🟡 Partial — basic role checks exist (`require_minimum_role`), module-level granularity is missing; TeamPage already has module grant/revoke UI stubs
-**Dependencies:** None
-**Effort:** 2 days (backend 1d + frontend 1d)
+**Status:** 🟢 Ready
+**Effort:** 4 days (backend 3d + frontend 1d)
 
 **Description:**
-The current RBAC has owner/senior/member roles but no module-level access granularity. This means access is binary per team — you're either a member (access to everything) or you're not. True progressive onboarding requires granting access module-by-module.
+Monitor repos for divergence from documented architecture. Alert on drift.
 
 **Implementation Details:**
-
-- Extend team membership model to include `accessible_modules: List[str]`
-- Create API endpoints:
-  - `POST /api/v1/teams/{id}/members/{user}/grant-module` — Grant module access
-  - `POST /api/v1/teams/{id}/members/{user}/revoke-module` — Revoke module access
-  - `GET /api/v1/teams/{id}/modules` — List available modules for the team
-- Create middleware or guard to check module access on per-endpoint basis
-- Extend existing task completion flow to auto-grant modules
-- Frontend: Module management UI on TeamPage and TraineeDashboard
-  - Seniors see module grid with grant/revoke toggles per member
-  - Trainees see locked/unlocked module badges
-
-**Files to modify:**
-
-- `backend/app/services/team_service.py`
-- `backend/app/api/v1/teams.py`
-- `backend/app/middleware/access_guard.py`
-- `web/src/pages/TeamPage.tsx`
-- `web/src/pages/TraineeDashboard.tsx`
-
-**Acceptance Criteria:**
-
-- [ ] Seniors can grant/revoke module access to individual members
-- [ ] Task completion auto-grants associated module
-- [ ] Module-gated endpoints return 403 if access not granted
-- [ ] Frontend shows locked modules with lock icon
+- Compare current repo structure against last architecture analysis
+- Flag: new modules, removed modules, dependency changes, circular deps
+- Alert via notification when drift > threshold
 
 ---
 
-## P3: Platform & Ecosystem
+### 17. Community Playbook Marketplace
 
-Long-term platform features that expand the product's reach.
-
----
-
-### 13. Playbook Marketplace
-
-**Priority:** P3 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** Playbooks exist, Teams exist
+**Status:** 🟢 Ready
 **Effort:** 4 days (backend 2d + frontend 2d)
 
 **Description:**
-A marketplace where teams can share and discover onboarding playbooks. Community-contributed templates make it easy to start onboarding for any tech stack.
+Marketplace for sharing onboarding playbooks. Search, import, rate, publish.
+
+**Implementation Details:** — see original FEATURES_PLAN #13
+
+---
+
+### 18. Senior Dev Roast Mode
+
+**Status:** 🟢 Ready
+**Effort:** 1 day (frontend + backend)
+
+**Description:**
+Toggle in Q&A chat that makes AI respond with sarcastic but accurate code criticism.
+
+**Implementation Details:** — see original FEATURES_PLAN #18
+
+---
+
+### 19. Jira / Linear Ticket Sync
+
+**Status:** 🟢 Ready
+**Effort:** 4 days (backend 3d + frontend 1d)
+
+**Description:**
+Bi-directional sync between Onramp tasks and Jira/Linear tickets.
 
 **Implementation Details:**
-
-- New storage collection: `marketplace_playbooks` (title, description, steps JSON, author, downloads, rating, tech_stack tags)
-- New API endpoints:
-  - `GET /api/v1/marketplace` — Browse playbooks with search/filter
-  - `POST /api/v1/marketplace/publish` — Publish a team playbook
-  - `POST /api/v1/marketplace/{id}/import` — Import to your team
-  - `POST /api/v1/marketplace/{id}/rate` — Rate a playbook
-- Frontend: New route `/marketplace`
-  - Search by tech stack (React, Django, Go, etc.)
-  - Playbook cards with downloads, rating, author
-  - One-click import to own team
-
-**Acceptance Criteria:**
-
-- [ ] Users can browse and search marketplace playbooks
-- [ ] One-click import adds playbook to team
-- [ ] Rating and download counts work
-- [ ] Playbook author attribution preserved
+- New integrations: `backend/app/services/jira_service.py`, `linear_service.py`
+- Webhook handlers for Jira/Linear events → update Onramp task status
+- Outbound sync: Onramp task state changes → update Jira/Linear ticket
+- Frontend: Integration config page in Settings with OAuth flow
 
 ---
 
-### 14. SOC 2 Compliance Reporting
+### 20. Real-Time Audit Log UI + HMAC-SHA256 Keys
 
-**Priority:** P3 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** RBAC, Audit trail
-**Effort:** 5 days (backend 3d + docs 2d)
+**Status:** 🟢 Ready
+**Effort:** 4 days (backend 3d + frontend 1d)
 
 **Description:**
-Generate SOC 2 compliance reports for enterprise customers. Show security controls, access logs, data handling practices, and uptime guarantees.
+SIEM-exportable audit event viewer + upgrade API key hashing from unsalted SHA-256 to HMAC-SHA256.
+
+---
+
+## v1.4: Platform & Scale (Month 3)
+
+**Theme:** Open the platform, ship AI SDK, scale infrastructure
+**Est. effort:** 3–4 weeks
+
+---
+
+### 21. Autonomous Coding Agent (Sandboxed)
+
+**Status:** 🟢 Ready
+**Effort:** 4 weeks (backend 3w + frontend 1w)
+
+**Description:**
+Assign a GitHub Issue → AI implements the fix → opens a PR with the solution. Sandboxed execution for safety.
 
 **Implementation Details:**
-
-- New service: `backend/app/services/compliance_service.py`
-  - `generate_soc2_report(team_id)` — Build compliance PDF
-  - Report sections: Access Control, Data Encryption, Audit Logs, Incident Response, Availability
-- New API endpoint: `GET /api/v1/compliance/soc2/{team_id}`
-- Frontend: Compliance tab in Team Settings with download button
-
-**Acceptance Criteria:**
-
-- [ ] SOC 2 report generated as downloadable PDF
-- [ ] Report includes all required sections
-- [ ] Audit logs included in report
+- New agent: `backend/app/agents/autonomous_agent.py`
+- Pipeline: Understand issue → plan → implement → test → open PR
+- Sandbox: Docker container with limited network/filesystem
+- PR contains: implementation, tests, documentation update
 
 ---
 
-### 15. Mobile Companion App
+### 22. AIaaS Public API Gateway + TypeScript SDK
 
-**Priority:** P3 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** None (uses existing API)
-**Effort:** 2 weeks (React Native or PWA)
+**Status:** 🟡 Partial (API key infra exists, endpoints need decoupling)
+**Effort:** 5 days
 
 **Description:**
-A mobile app (or PWA) for on-the-go access to onboarding progress, notifications, and quick Q&A. Not a full code analysis tool — focused on consumption and awareness.
+Package AI agents as first-class public APIs. Publish `@onramp/sdk` to npm.
+
+**Implementation Details:** — see original FEATURES_PLAN #16 and #17
+
+---
+
+### 23. VS Code Extension
+
+**Status:** 🟢 Ready
+**Effort:** 3 days
+
+**Description:**
+Bring Onramp features into VS Code — inline explanations, PR reviews, learning paths.
+
+**Implementation Details:** — see original FEATURES_PLAN #11
+
+---
+
+### 24. PWA Mobile App
+
+**Status:** 🟢 Ready
+**Effort:** 2 weeks
+
+**Description:**
+Progressive Web App for on-the-go access — push notifications, quick Q&A, progress.
+
+**Implementation Details:** — see original FEATURES_PLAN #15 (Option A)
+
+---
+
+### 25. Performance Optimization & Scaling
+
+**Status:** 🟢 Ready
+**Effort:** 3 days (backend 1.5d + frontend 1.5d)
+
+**Description:**
+Profile and optimize hot paths: API response times, DB queries, frontend bundle size, infrastructure scaling.
 
 **Implementation Details:**
-
-- Option A: Progressive Web App (PWA) — Add service worker, manifest, offline support to existing web app
-- Option B: React Native app — New project in `mobile/` directory
-- Features:
-  - Push notifications for task events
-  - Quick Q&A (ask a question, get answer)
-  - Progress dashboard (read-only)
-  - Daily streak reminder
-  - View learning path modules
-
-**Acceptance Criteria:**
-
-- [ ] Mobile app shows push notifications for task events
-- [ ] Quick Q&A works with streaming responses
-- [ ] Progress dashboard shows completion percentage
-- [ ] Daily login streak tracked from mobile
+- PostgreSQL read replicas + connection pooling (pgBouncer)
+- Redis caching layer for frequent endpoints (repo analysis results)
+- Response compression (gzip/brotli) at Nginx level
+- CDN for static assets (via Vercel Edge Network)
+- Lighthouse audit → p95 API < 500ms, bundle < 200KB gzipped
+- Load testing CI gate — run `test_load_performance.py` in CI, fail on regression
+- Backend: Profile with cProfile/py-spy, optimize N+1 queries, add DB indexes
+- Frontend: Lazy load heavy components, image optimization, bundle analysis
 
 ---
 
-## P4: AIaaS API Expansion
+## v2.0: Enterprise GA (Month 4+)
 
-API products for external developers to consume Onramp's AI capabilities.
+**Theme:** Enterprise-grade compliance, horizontal scaling, ecosystem
+**Est. effort:** 6–8 weeks
 
 ---
 
-### 16. AIaaS API Gateway
+### 26. SOC 2 Type II Readiness
 
-**Priority:** P4 — **Medium**
-**Status:** 🟡 Partial — API key management exists, tier system exists, usage tracking exists
-**Dependencies:** None
-**Effort:** 3 days (backend)
+**Status:** 🟢 Ready
+**Effort:** Ongoing
+
+**Key activities:**
+- Evidence collection for all 5 trust service criteria
+- Access review process documentation
+- Change management procedures
+- Vendor risk questionnaire automation
+
+---
+
+### 27. Hard Tenant Isolation (RLS)
+
+**Status:** 🟢 Ready
+**Effort:** 2 weeks
 
 **Description:**
-Package Onramp's AI capabilities as first-class public APIs for third-party developers. Current AIaaS has key management and usage tracking but the public API endpoints are still coupled to the SaaS frontend.
-
-**Implementation Details:**
-
-- New API endpoints under `/api/v1/ai/`:
-  - `POST /api/v1/ai/knowledge/query` — Query a codebase (context-aware RAG)
-  - `POST /api/v1/ai/knowledge/index` — Index a repo for retrieval
-  - `POST /api/v1/ai/knowledge/stream` — Streaming query with SSE
-  - `POST /api/v1/ai/learn/path` — Generate learning path
-  - `POST /api/v1/ai/learn/quiz` — Generate quiz questions
-  - `POST /api/v1/ai/review/pr` — Review a PR diff
-  - `POST /api/v1/ai/review/code` — Review code snippet
-  - `POST /api/v1/ai/analytics/architecture` — Analyze repo architecture
-- Rate limiting: Per API key, per tier (Free: 100/day, Startup: 10K/day, Pro: 100K/day)
-- Pricing: $0.001/query (Startup), $0.0005/query (Pro)
-- Documentation: Public API reference with OpenAPI/Swagger
-
-**Files to create/modify:**
-
-- `backend/app/api/v1/ai_gateway.py` — Add public endpoints
-- `backend/app/services/quota.py` — Per-key quota enforcement
-- `sdks/typescript/src/index.ts` — SDK methods for new endpoints
-
-**Acceptance Criteria:**
-
-- [ ] All AIaaS endpoints work with API key authentication
-- [ ] Rate limiting enforced per key
-- [ ] SDK methods for all new endpoints
-- [ ] Public API documentation published
+PostgreSQL Row-Level Security or per-tenant database to create a hard security boundary between customers.
 
 ---
 
-### 17. TypeScript SDK Expansion
+### 28. Enterprise Compliance Package
 
-**Priority:** P4 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** AIaaS API Gateway
-**Effort:** 2 days (SDK)
+**Items:** SCIM provisioning, immutable audit trail, data residency controls, secrets vault integration, third-party penetration test, Helm chart for self-hosted deployment, multi-org namespace isolation
 
-**Description:**
-Expand the existing TypeScript SDK to cover all new AIaaS endpoints. Make it easy for external developers to integrate Onramp into their tools.
-
-**Implementation Details:**
-
-- Add SDK methods for all AIaaS endpoints:
-  - `client.knowledge.query(repoId, question)`
-  - `client.knowledge.index(repoUrl)`
-  - `client.learning.path(repoUrl, level)`
-  - `client.learning.quiz(pathId, moduleIndex)`
-  - `client.review.pr(repoUrl, prNumber)`
-  - `client.review.code(codeSnippet)`
-  - `client.analytics.architecture(repoUrl)`
-- Add streaming support for query endpoint
-- Add TypeScript types for all request/response schemas
-- Publish to npm under `@onramp/sdk`
-
-**Files to modify:**
-
-- `sdks/typescript/src/index.ts`
-
-**Acceptance Criteria:**
-
-- [ ] All new endpoints have SDK methods
-- [ ] Streaming queries work with async iterators
-- [ ] Published to npm with CI/CD
+**Status:** 🟢 All items ready
+**Effort:** Combined ~12 weeks
 
 ---
 
-## P5: Viral/Demo Features
+### 29. Ecosystem Items
 
-Features designed to be recorded, shared, and drive adoption through word-of-mouth.
+**Items:** Plugin system for custom AI agents, Agent MCP support, custom enterprise roles, Prometheus/Grafana monitoring, structured JSON logging
 
----
-
-### 18. "Senior Dev Roast" Mode
-
-**Priority:** P5 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** None (uses existing Q&A streaming infrastructure)
-**Effort:** 0.5 days (frontend)
-
-**Description:**
-A toggle in the Q&A chat that makes the AI respond with brutal, sarcastic but _accurate_ code criticism. Built on existing streaming Q&A infrastructure — just a system prompt change.
-
-**Implementation Details:**
-
-- Frontend: Toggle switch in AskPage chat header labeled "🔥 Roast Mode"
-- When active, send `{ "roast_mode": true }` with query
-- Backend: Modify system prompt when `roast_mode` is true
-  - Normal: "You are a helpful coding assistant..."
-  - Roast: "You are a sarcastic senior developer who has seen it all..."
-- No new API endpoint needed — reuse `POST /api/v1/ask/query`
-- Add a "Copy Roast" button for easy sharing
-
-**Files to modify:**
-
-- `web/src/pages/AskPage.tsx` — Add toggle UI
-- `backend/app/agents/repo_qa.py` — Add roast system prompt variant
-
-**Acceptance Criteria:**
-
-- [ ] Toggle switches chat personality in real-time
-- [ ] Roast responses are sarcastic but technically accurate
-- [ ] "Copy Roast" button copies last response
+**Status:** 🟢 All items ready
+**Effort:** Combined ~8 weeks
 
 ---
 
-### 19. DevScore Leaderboard
-
-**Priority:** P5 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** Gamification System (XP tracking)
-**Effort:** 1 day (frontend)
-
-**Description:**
-A team leaderboard showing XP scores. Weekly top scorer gets a crown badge. Competitive but friendly — drives engagement through social comparison.
-
-**Implementation Details:**
-
-- Frontend: Leaderboard component on DashboardPage
-  - Show top 10 team members by weekly XP
-  - Current user highlighted even if not in top 10
-  - Trophy icons for top 3 (🥇🥈🥉)
-  - Crown badge on weekly winner
-  - XP trend sparkline (up/down from last week)
-
-**Files to modify:**
-
-- `web/src/pages/DashboardPage.tsx` — Add leaderboard tab
-
-**Acceptance Criteria:**
-
-- [ ] Leaderboard shows top 10 by weekly XP
-- [ ] Current user shown with rank even if outside top 10
-- [ ] Crown badge on previous week's winner
-- [ ] Weekly reset works correctly
-
----
-
-### 20. Codebase Trailer
-
-**Priority:** P5 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** ArchitectureExplorer (provides the raw data)
-**Effort:** 1 day (backend 0.5d + frontend 0.5d)
-
-**Description:**
-Auto-generate a 30-second "trailer" for the codebase — a fun, shareable movie-trailer-style summary.
-
-**Implementation Details:**
-
-- New API endpoint: `POST /api/v1/unique/trailer`
-  - Input: `{ "repo_url": "..." }`
-  - Output: `{ "title": "IN A WORLD...", "tagline": "...", "scenes": [...], "cast": [...], "genre": "..." }`
-- LLM prompt: Generate a movie trailer script from the architecture analysis
-- Frontend: Display trailer as animated card on ExplorePage after analysis
-  - Typewriter effect for the title
-  - Scene-by-scene reveal
-  - Share button to copy trailer text
-
-**Acceptance Criteria:**
-
-- [ ] Trailer generated from architecture analysis
-- [ ] Title, tagline, scenes, cast all populated
-- [ ] Frontend shows animated reveal
-- [ ] Share button copies to clipboard
-
----
-
-### 21. "Hot Take" PR Review
-
-**Priority:** P5 — **Low**
-**Status:** 🟢 Not started
-**Dependencies:** PR Review Agent (exists)
-**Effort:** 0.5 days (backend)
-
-**Description:**
-The PR review agent adds a one-line "hot take" to each review. A humorous, personality-driven summary that makes code reviews more enjoyable and shareable.
-
-**Implementation Details:**
-
-- Extend `PRReviewAgent` to generate a "hot_take" field
-- Examples:
-  - "This is the cleanest code I've seen all week. Have a cookie. 🍪"
-  - "This looks like it was written at 3 AM after three energy drinks."
-  - "Solid logic. The variable names suggest you hate your future self though."
-- Add to PR review response: `{ "hot_take": "...", ...existing_fields }`
-- Frontend: Display hot take as a highlighted quote at the top of the review
-
-**Files to modify:**
-
-- `backend/app/agents/pr_review.py` — Add hot take generation
-- `web/src/pages/PRDescriptionPage.tsx` — Display hot take
-
-**Acceptance Criteria:**
-
-- [ ] Hot take generated for every PR review
-- [ ] Hot take is humorous but relevant to the PR
-- [ ] Frontend displays hot take prominently
-
----
-
-## Infrastructure & Polish
-
-Non-feature work that improves quality, reliability, and developer experience.
-
----
-
-### 22. Loading Skeletons for All Pages
-
-**Priority:** Polish
-**Status:** ✅ Done
-**Effort:** 0.5 days (frontend)
-
-**Description:**
-Replace spinner-based loading states with skeleton screens that match the page layout. Improves perceived performance and UX.
-
-**What was built:**
-
-- **CodeHealthPage** — in-page loading skeleton upgraded from raw `animate-pulse` divs to reusable `StatsGridSkeleton` + `SkeletonBase`
-- **MemberDetailPage** — skeleton upgraded to `SkeletonHeading`/`SkeletonBase` + `StatsGridSkeleton`
-- **ModuleHealthPage** — skeleton upgraded to `SkeletonHeading` + `StatsGridSkeleton`
-- **ReviewQueuePage** — loading state uses `StatsGridSkeleton` + `SkeletonBase` cards with error toasts
-- **AdminDashboardPage** — page-level skeleton uses `SkeletonHeading`/`SkeletonBase`/`StatsGridSkeleton` with toasts on all catch blocks
-- **WaitlistPage** — `useToast` wired for errors (static form page, no loading skeleton needed)
-
-**Acceptance Criteria:**
-
-- [x] All 24 pages have consistent skeleton loading states
-- [x] Skeletons match the page layout structure
-- [x] Skeletons use the reusable `SkeletonBase` / page-specific skeleton components
-
----
-
-### 23. Toast Notification System (Remaining Pages)
-
-**Priority:** Polish
-**Status:** ✅ Done
-**Effort:** 0.5 days (frontend)
-
-**Description:**
-Consistent toast notifications for all CRUD operations. Success, error, and info toasts on create/update/delete actions.
-
-**What was built:**
-
-- **CodeHealthPage** — added `useToast`, error toasts for repos, tasks, teams fetch failures
-- **MemberDetailPage** — added `useToast`, error toasts for tasks, member details, module permissions failures
-- **ModuleHealthPage** — added `useToast`, error toasts for tasks, team members fetch failures
-- **ReviewQueuePage** — `useToast` wired with error toasts on team-load and task-load failures
-- **AdminDashboardPage** — all 7 silent catch blocks replaced with toast.error calls (usage, audit, keys, webhooks)
-- **WaitlistPage** — `useToast` added with error toasts for count fetch and form submission network errors
-
----
-
-### 24. Accessibility Audit
-
-**Priority:** Polish
-**Status:** 🟢 Not started
-**Effort:** 1 day (frontend)
-
-**Description:**
-Audit all pages for WCAG 2.1 AA compliance. Fix issues with keyboard navigation, ARIA labels, color contrast, and screen reader support.
-
-**Implementation Details:**
-
-- Run axe DevTools on all 24 pages
-- Fix violations: missing ARIA labels, insufficient contrast, missing focus indicators
-- Add skip-to-content link
-- Ensure all interactive elements are keyboard accessible
-
----
-
-### 25. Dark Mode Consistency
-
-**Priority:** Polish
-**Status:** 🟢 Not started
-**Effort:** 0.5 days (frontend)
-
-**Description:**
-Audit all 24 pages for dark mode consistency. Some components may not render correctly in dark mode. With themes including himalayan, midnight, forest, and violet, each theme variant should be checked.
-
----
-
-## Quick Wins (New)
-
-Small, high-value improvements discovered during implementation that don't fit neatly into other categories.
-
----
-
-### 26. Billing API — Idempotency Key Header Passthrough
-
-**Priority:** Quick Win
-**Status:** ✅ Done
-**Effort:** 0.1 days
-
-**What was built:**
-
-- `backend/app/api/v1/billing.py` — stripe_webhook endpoint now reads `Idempotency-Key` header and passes it to `billing.handle_webhook()`
-
----
-
-### 27. Waitlist Service — CORS Middleware Fix
-
-**Priority:** Quick Win
-**Status:** ✅ Done
-**Effort:** 0.1 days
-
-**What was built:**
-
-- Fixed CORS middleware ordering issue in waitlist service that prevented frontend from calling the waitlist API
-
----
-
-### 28. Load More / Infinite Scroll on Tasks
-
-**Priority:** Quick Win
-**Status:** 🟢 Not started
-**Effort:** 0.5 days (frontend)
-
-**Description:**
-TasksPage and NotificationsPage show all items at once. Add load-more pagination or infinite scroll for performance with large datasets. Pagination component (Pagination.tsx) already exists and is used in AdminDashboardPage — reuse it in tasks and notifications.
-
-**Files to modify:**
-
-- `web/src/pages/TasksPage.tsx` — Add Pagination component
-- `web/src/pages/NotificationsPage.tsx` — Add Pagination component
+## Stretch / Viral Features
+
+Quick wins that can be slotted into any release:
+
+| Feature | Effort | Dependencies |
+|---------|--------|-------------|
+| Codebase trailer — auto-generated movie trailer for any repo | 1 day | ArchitectureExplorer |
+| Hot Take PR review — personality-driven one-liner summary | 0.5 day | PRReviewAgent |
+| DevScore leaderboard — weekly XP rankings | 1 day | Gamification engine |
+| Dark mode consistency audit across all 4 themes | 0.5 day | None |
 
 ---
 
 ## Feature Dependency Map
 
 ```
-P0 ─────────────────────────────────────────────────────────
+v1.2 ─────────────────────────────────────────────────────────────
 │
-├── ✅ Real Stripe Webhook
-│
-├── 🟡 Production Deployment (ready to go)
-│
-└── 🟡 E2E / Integration Tests (backend ✅, frontend pending)
+├── 🔴 Production Deployment (blocked by 7 P0 items)
+├── 🟢 Real-time WebSocket notifications
+├── 🟢 Interactive repo visualization
+├── 🟢 Milestone roadmap view
+├── 🟢 Session refresh & remember-me
+├── 🟢 Mobile-responsive (wave 1: 10 pages)
+├── 🟢 GitLab & Bitbucket support
+├── 🟢 Ollama local model support
+├── 🟢 PR review auto-apply
+├── 🟢 E2E tests + CI test expansion
+├── 🟢 Load more pagination
+├── ✅ API contract tests (35 tests)
+├── ✅ Load testing (13 tests)
+└── ✅ A11y audit (13 axe-core tests)
 
-P1 ─────────────────────────────────────────────────────────
+v1.3 ─────────────────────────────────────────────────────────────
 │
-├── 🟢 Interactive Repo Visualization
-│
-├── 🟢 Knowledge Quizzes ──→ Gamification System ──→ DevScore Leaderboard
-│                               │
-│                               └── Weekly Digest
-│
-└── 🟡 Module-Level RBAC
+├── 🟢 SSO/SAML (Okta + Azure AD)
+├── 🟢 Domain-based routing
+├── 🟢 Real-time audit log UI
+├── 🟢 HMAC-SHA256 API key hashing
+├── 🟢 Team velocity & DORA metrics
+├── 🟢 CI/CD auto PR review on push
+├── 🟢 Jira / Linear ticket sync
+├── 🟢 Architecture drift detection
+├── 🟢 Community playbook marketplace
+├── 🟢 Usage-based pricing tier
+├── 🟢 Team-level feature flags
+└── 🟢 Senior Dev Roast mode
 
-P2 ─────────────────────────────────────────────────────────
+v1.4 ─────────────────────────────────────────────────────────────
 │
-├── 🟢 SSO/SAML Authentication
-│
-├── ✅ React Query Integration
-│
-├── 🟢 Performance Optimization
-│
-└── 🟢 VS Code Extension
+├── 🟢 Autonomous coding agent (4 weeks)
+├── 🟢 AIaaS API gateway
+├── 🟢 TypeScript SDK → npm
+├── 🟢 Usage-based billing metering
+├── 🟢 VS Code extension
+├── 🟢 PWA mobile app
+├── 🟢 Performance optimization
+├── 🟢 PostgreSQL read replicas
+├── 🟢 Redis caching layer
+├── 🟢 Lighthouse audit + bundle optimization
+└── 🟢 CDN + load testing CI gate
 
-P3 ─────────────────────────────────────────────────────────
+v2.0 ─────────────────────────────────────────────────────────────
 │
-├── 🟢 Playbook Marketplace
-│
-├── 🟢 SOC 2 Compliance Reporting (needs RBAC + Audit)
-│
-└── 🟢 Mobile Companion App
+├── 🔴 SOC 2 Type II readiness (ongoing)
+├── 🔴 Hard tenant isolation (RLS)
+├── 🟢 Immutable audit trail
+├── 🟢 SCIM provisioning
+├── 🟢 Data residency controls
+├── 🟢 Secrets vault integration
+├── 🟢 Self-hosted Helm chart
+├── 🟢 Plugin system for custom agents
+├── 🟢 Agent MCP support
+├── 🟢 Custom enterprise roles
+├── 🟢 Prometheus/Grafana monitoring
+└── 🟢 Structured JSON logging
 
-P4 ─────────────────────────────────────────────────────────
-│
-├── 🟡 AIaaS API Gateway ──→ 🟢 TypeScript SDK Expansion
-│
-P5 ─────────────────────────────────────────────────────────
-│
-├── 🟢 Roast Mode
-├── 🟢 Codebase Trailer
-└── 🟢 Hot Take PR Review
+Stretch ──────────────────────────────────────────────────────────
+├── 🟢 Codebase trailer
+├── 🟢 Hot Take PR review
+├── 🟢 DevScore leaderboard
+└── 🟢 Dark mode consistency
 ```
 
 ---
 
 ## Effort Summary (Remaining)
 
-| Priority | Features | Total Effort |
-|----------|----------|-------------|
-| **P0** | Production Deploy + Frontend E2E | 4 days |
-| **P1** | 5 features | 11.5 days |
-| **P2** | 3 features + 2 complete ✅ | 8 days |
-| **P3** | 3 features | 11 days |
-| **P4** | 2 features | 5 days |
-| **P5** | 4 features | 3 days |
-| **Polish** | 2 items (A11y, Dark Mode) | 1.5 days |
-| **Quick Wins** | 1 remaining | 0.5 days |
-| **Total** | **~18 remaining items** | **~44.5 days** |
-
-### By Track
-
-| Track | Effort |
-|-------|--------|
-| Backend | ~24 days |
-| Frontend | ~19 days |
-| DevOps | ~2.5 days |
+| Phase | Features | Total Effort |
+|-------|----------|-------------|
+| **v1.2** | 12 features (6 P0, 6 other) | ~2–3 weeks |
+| **v1.3** | 9 features | ~3–4 weeks |
+| **v1.4** | 7 features | ~3–4 weeks |
+| **v2.0** | 12 features | ~6–8 weeks |
+| **Stretch** | 4 features | ~3 days |
+| **Total remaining** | **~40 items** | **~14–19 weeks** |
 
 ---
 
-## Appendix: Complete Built vs Unbuilt Inventory
+## Appendix: Previously Completed Inventory
 
-### ✅ Already Built (60+ endpoints, 11 agents, 24 pages)
+### ✅ Done (original FEATURES_PLAN)
 
-| Category | Items |
-|----------|-------|
-| **AI Agents** | ArchitectureExplorer, LearningPathGenerator, FirstPRAccelerator, RepoQA, SilentPairProgramming, PatternRecognition, RegressionTestGenerator, OnboardingReportGenerator, HealthScorer, PR Review Agent, TaskQA |
-| **Backend Services** | GitHubService, ParserService, EmbeddingsService, CacheService, TaskService, UserService, TeamService, PlaybookService, BillingService (+ Stripe webhook with idempotency), APIKeyService, UsageTracker, InviteService, AuditService, NotificationService, AccessControlService, ConversationService, ContributorTracker, SlackService, ReportGenerator, EmailService, WebhookService (+ custom webhooks with signing), QuotaService, PostgresDB, FirestoreDB, GraphBuilder |
-| **Frontend Pages** | All 24 routes: Landing, Pricing, Changelog, Docs, Login, Register, ForgotPassword, Join, Explore, Learn, FirstIssue, Ask, Reports, Dashboard, Team, Playbooks, Billing, API Keys, Settings, PR Describe, Tasks, My Progress, Notifications, Profile |
-| **Middleware** | CORS, Auth, RateLimit, ResponseWrapper, Logging, AccessGuard |
-| **Infrastructure** | Docker Compose (dev + prod + microservices), Nginx (dev + prod), Kubernetes (8 manifests), Terraform (GCP), CI/CD configs |
-| **SDK** | TypeScript SDK with key management, basic AIaaS methods |
-| **Tests** | 222+ unit tests + 2 integration tests (full onboarding flow) |
-| **React Query** | 3 pages migrated (TraineeDashboard, DashboardPage, NotificationsPage) |
+| ID | Feature | Shipped In |
+|----|---------|-----------|
+| #1 | Real Stripe Billing Webhook | v1.0 |
+| #5 | Knowledge Quizzes (QuizGenerator agent) | v1.1 |
+| #6 | Gamification System (XP, badges, streaks) | v1.1 |
+| #9 | React Query Integration | v1.1 |
+| #22 | Loading Skeletons for All Pages | v1.1 |
+| #23 | Toast Notification System | v1.1 |
+| #24 | Accessibility Audit (axe-core tests) | v1.2 |
+| #26 | Billing API Idempotency | v1.1 |
+| #27 | Waitlist CORS Fix | v1.1 |
 
-### 🚧 To Be Built (~20 items)
+### ✅ Done (new — created during v1.2 prep)
 
-| Priority | Items | Total Effort |
-|----------|-------|-------------|
-| **P0** | Production Deployment, Frontend E2E Tests | 4 days |
-| **P1** | Repo Visualization, Knowledge Quizzes, Gamification, Weekly Digest, Module RBAC | 11.5 days |
-| **P2** | SSO/SAML, Performance, VS Code Extension | 8 days |
-| **P3** | Playbook Marketplace, SOC 2, Mobile App | 11 days |
-| **P4** | AIaaS Gateway, SDK Expansion | 5 days |
-| **P5** | Roast Mode, DevScore, Codebase Trailer, Hot Take | 3 days |
-| **Polish** | Skeletons ✅, Toasts ✅, A11y, Dark Mode | 1.5 days |
-| **Quick Wins** | Load More on Tasks/Notifications | 0.5 days |
+| Feature | Tests | Status |
+|---------|-------|--------|
+| API contract tests | 35 tests in `test_api_contract.py` | ✅ Done |
+| Load / performance tests | 13 tests in `test_load_performance.py` | ✅ Done |
+| A11y audit tests | 13 tests in `web/e2e/a11y.spec.ts` using `@axe-core/playwright` | ✅ Done |
+| Production audit | `docs/PRODUCTION_AUDIT.md` with 14 blockers identified | ✅ Done |
 
 ---
 
-_This plan was generated from analysis of all existing documentation: STATUS.md, PLAN.md, docs/features2.md, p.md, readme1.md, docs/system_architecture_design.md — and updated with completion status from implementation sessions up to June 30, 2026._
-
-_Last updated: 2026-06-30 (Refreshed)_
+_This plan is aligned with ROADMAP.md (July 2026). Features may be re-prioritized based on user feedback and business needs._

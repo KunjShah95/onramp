@@ -96,11 +96,11 @@ spec:
                 secretKeyRef:
                   name: onramp-secrets
                   key: SENDGRID_API_KEY
-            - name: JWT_SECRET_KEY
+            - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: onramp-secrets
-                  key: JWT_SECRET_KEY
+                  key: JWT_SECRET
             - name: API_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

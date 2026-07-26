@@ -6,7 +6,10 @@ import pytest
 
 from app.main import _validate_production_env
 
-REQUIRED_VARS = ("DATABASE_URL", "STRIPE_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL")
+REQUIRED_VARS = (
+    "DATABASE_URL", "STRIPE_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY",
+    "REDIS_URL", "JWT_SECRET", "PII_ENCRYPTION_KEY",
+)
 _ALL_ENV_KEYS = REQUIRED_VARS + (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
     "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
@@ -21,7 +24,11 @@ def _clear_env(monkeypatch):
 
 def _set_all_required(monkeypatch, llm_key="OPENAI_API_KEY"):
     for var in REQUIRED_VARS:
-        monkeypatch.setenv(var, "x")
+        if var == "JWT_SECRET":
+            # Must not equal the insecure default
+            monkeypatch.setenv(var, "real-production-secret-xxxxxxxxxxxx")
+        else:
+            monkeypatch.setenv(var, "x")
     monkeypatch.setenv(llm_key, "sk-x")
 
 

@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Builder - Install dependencies
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir --prefix=/install \
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Runtime image
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS production
+FROM python:3.12-slim-bookworm AS production
 
 # Labels
 ARG VERSION="2.0.0"
@@ -83,7 +83,7 @@ CMD ["app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # =============================================================================
 # Development Dockerfile (development use only)
 # =============================================================================
-FROM python:3.11-slim-bookworm AS development
+FROM python:3.12-slim-bookworm AS development
 
 WORKDIR /onramp
 
@@ -113,7 +113,7 @@ CMD ["python", "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0",
 # =============================================================================
 # Celery Worker Dockerfile
 # =============================================================================
-FROM python:3.11-slim-bookworm AS celery-worker
+FROM python:3.12-slim-bookworm AS celery-worker
 
 ARG VERSION="2.0.0"
 LABEL maintainer="onramp@example.com" \

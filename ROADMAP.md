@@ -1,7 +1,7 @@
 # 🗺️ Onramp 2.0 — Product Roadmap
 
 **Last updated:** July 2026  
-**Status:** MVP Launch (v1.0.0)
+**Status:** v1.1 Launch
 
 ---
 
@@ -14,6 +14,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 ## ✅ MVP (v1.0.0) — Complete
 
 ### Authentication & Teams
+
 - [x] Email/password registration & login with JWT
 - [x] Role-based access control (new_dev, developer, senior_dev, tester, cto, ceo, owner, member)
 - [x] Team creation, invites, and membership management
@@ -21,6 +22,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 - [x] PostgreSQL-backed session management (no third-party auth dependency)
 
 ### AI-Powered Developer Tools
+
 - [x] **Code Architecture Explorer** — Visualize repo structure as an interactive force-directed graph
 - [x] **First PR Accelerator** — Find beginner-friendly issues and generate step-by-step contribution guides
 - [x] **Learning Path Generator** — Generate personalized learning paths from any codebase
@@ -33,114 +35,324 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 - [x] **Regression Test Generator** — Generate test checklists and edge-case coverage from PR diffs
 
 ### Onboarding & Learning
+
 - [x] **Onboarding Report Generator** — Auto-generated HTML/Markdown onboarding docs for any repo
 - [x] **Trainee Dashboard** — Track progress, unlocked modules, streak, XP, and badges
 - [x] **Gamification Engine** — XP points, leveling, badges, streaks, leaderboards
 - [x] **Module-Level Access Control** — Grant/revoke module access per user per team
 - [x] **Learning Paths** — Persisted, reusable path milestones
+- [x] **Onboarding Hub** — Central portal for new developers with guided paths
 
 ### Task Management & Workflow
+
 - [x] **Full task lifecycle** (create → assign → start → submit → review → approve → complete)
 - [x] **AI-assisted code review** with inline issue detection, scoring, and recommendations
-- [x] **Review queue** with status badges (under_review, needs_changes, approved)
+- [x] **Review queue** with status badges (under_review, needs_changes, approved, product_review)
 - [x] **Product sign-off gate** with review feedback
+- [x] **Dedicated review queue page** with filtering and batch actions
+- [x] **Direct approve / route-to-product** from submitted state (no mandatory under_review)
 
 ### CTO / Leadership Dashboard
+
 - [x] Task distribution & completion rates
 - [x] Member progress table with per-user metrics
 - [x] Pending reviews & recent activity timeline
 - [x] Require-attention action items
 - [x] Activity trend charts (AreaChart, BarChart, PieChart via Recharts)
+- [x] **Executive Dashboard** dedicated to C-suite (CEO/CTO)
+- [x] **Senior Developer Space** for team leads
 
 ### Billing & API Gateway
+
 - [x] Stripe subscription management (create, update, cancel, webhooks)
 - [x] Tiered pricing (free → pro → enterprise)
 - [x] API key management with per-key usage tracking
 - [x] Rate limiting (200 req/min per IP, Redis-backed)
 - [x] Usage quotas and credit tracking
 
-### Notifications & Integrations
-- [x] In-app notification center (read/unread, preferences, quiet hours)
-- [x] Webhook management (create, test, rotate secrets, delivery logs)
-- [x] GitHub integration (token validation, scope checking)
-- [x] Slack integration (channel config, event-driven notifications)
-- [x] Email via SendGrid (digest, alerts)
+### v1.1 Additions — Complete
 
-### Admin & Audit
-- [x] Admin panel — view all API keys, usage across teams, audit events
-- [x] Audit log (CRUD events with actor/target/metadata)
-- [x] User deactivation (GDPR right-to-erasure)
-- [x] Webhook delivery inspection and retry
+#### Authentication & Security
+
+- [x] **OAuth2 social login** — Google & GitHub (server-side flow with CSRF state tokens)
+- [x] **OAuth callback handling** — AuthCallback page for seamless provider redirects
+- [x] **Password reset flow** — Short-lived JWT token via email reset link
+- [x] **Forgot / Reset password pages** — Full UI with success/error states
+- [x] **Role expansion** — Added `ceo`, `cto`, `senior_dev`, `tester` roles with route guards
+
+#### Onboarding Plans (30-60-90 Day)
+
+- [x] **Onboarding Plan CRUD** — Create structured plans with milestones per team member
+- [x] **Milestone tracking** — Individual milestones with status, due dates, completion
+- [x] **Pulse check-ins** — Weekly pulse surveys with trend tracking
+- [x] **Plan review workflow** — Reviewer sign-off gates
+
+#### Playbooks
+
+- [x] **Full CRUD** — Create, read, update, delete playbook templates
+- [x] **Tag system** — Categorize playbooks by technology and role
+- [x] **Usage tracking** — Per-playbook use counters
+- [x] **Rich card UI** — Grid view with filtering by category
+
+#### Wiki
+
+- [x] **AI-generated onboarding wikis** — Generate from any public repo URL
+- [x] **Semantic sections** — Architecture, setup, conventions, deployment, testing
+- [x] **Markdown output** — Downloadable onboarding wiki documents
+
+#### Quiz System
+
+- [x] **Module-level quiz generation** — Multiple choice, code review, matching
+- [x] **Quiz grading notifications** — `quiz_graded` event with score display
+- [x] **Notification integration** — Bell icon, badge count, quiz_graded icon/color
+
+#### HR Dashboard
+
+- [x] **HR analytics** — Team health metrics, onboarding progress
+- [x] **People management** — HR People page with team member overview
+- [x] **Role-scoped views** — HR-specific dashboard alongside senior dashboard
+
+#### Notifications & Integrations
+
+- [x] **In-app notification center** — Read/unread, preferences, quiet hours
+- [x] **Notification Bell** — Real-time badge count, dropdown preview
+- [x] **Rich notification types** — 14 event types with distinct icons & colors
+- [x] **Pagination support** — Page clamping, type-filtered views
+- [x] **Mark all read** — Bulk read status updates
+- [x] **Webhook management** — Create, test, rotate secrets, delivery logs
+- [x] **GitHub integration** — Token validation, scope checking
+- [x] **Slack integration** — Channel config, event-driven notifications
+- [x] **Email via SendGrid** — Digest, alerts
+
+#### UX & Polish
+
+- [x] **Custom CSS design system** — 50+ design tokens (bg/text/accent colors, spacing, shadows, transitions)
+- [x] **Per-page skeleton loading** — 15+ page-specific skeleton components
+- [x] **Keyboard shortcuts** — Global nav shortcuts (g+d dashboard, g+e explore, etc.)
+- [x] **Global background effects** — Ambient gradient backgrounds
+- [x] **Transition context** — Page transition animations
+- [x] **Error boundaries** — Per-route error isolation
+- [x] **Changelog page** — Public changelog for release notes
+- [x] **Pricing page** — Public pricing with plan comparison
+- [x] **Privacy & Terms pages** — Legal compliance
+
+#### Drill-Down Views
+
+- [x] **Per-developer detail** (`/member/:userId`) — Member profile, tasks, progress, module access
+- [x] **Module health** (`/module/:moduleName`) — Per-module status and health metrics
+- [x] **Dev Space** — Developer workspace with tool launcher
+- [x] **Senior Space** — Team lead command center
+
+#### Admin & Infrastructure
+
+- [x] **Admin dashboard** — View all API keys, usage across teams, audit events
+- [x] **Audit log** — CRUD events with actor/target/metadata
+- [x] **User deactivation** — GDPR right-to-erasure
+- [x] **Webhook delivery inspection and retry**
+- [x] **Database: 8 Alembic migrations** — Schema evolution from initial to dynamic document tables
+- [x] **Database: Dynamic document table migration** — 21 collections migrated from JSONB to real tables
 
 ### Security
+
 - [x] JWT-based auth (HS256, 7-day expiry)
 - [x] bcrypt password hashing (all production users)
 - [x] Fernet field-level encryption (PII: email, name)
-- [x] Alembic database migrations (5 versions)
+- [x] Alembic database migrations (8 versions)
 - [x] RBAC middleware with route-level access guards
 - [x] CORS with allowlist + Vercel regex
 - [x] Production env validation on boot (fail-fast)
 
 ### Tech Stack
+
 - [x] **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0, asyncpg, Alembic
-- [x] **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Framer Motion, Recharts
+- [x] **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 3, Framer Motion, Recharts, TanStack React Query, Phosphor Icons
 - [x] **Database:** PostgreSQL 16 (local/Railway), Redis (caching/rate-limit)
 - [x] **AI:** OpenRouter, Gemini, Groq, OpenAI, Anthropic (multi-provider with failover)
 - [x] **Infra:** Docker Compose, Railway, Vercel, Nginx, Sentry
+- [x] **CI/CD:** GitHub Actions (backend + frontend pipelines)
 
 ---
 
-## 🎯 Next Up (v1.1 — Post-MVP)
+## 🎯 v1.2 — Production Launch & Polish (Month 1)
 
-### Short-term (next 2–4 weeks)
+**Theme:** Foundation — ship to production, close UX gaps, set up for scale  
+**Est. effort:** 2–3 weeks  
+**Focus:** Production readiness, real-time, mobile, accessibility, performance
 
-| Area | Feature | Priority | Effort |
-|------|---------|----------|--------|
-| **Auth** | OAuth2 social login (Google, GitHub) | High | Medium | ✅ DONE |
-| **Auth** | Password reset flow (via email) | High | Small | ✅ DONE |
-| **Trainee** | Milestone tracking with roadmap view | Medium | Medium |
-| **Dashboard** | Per-developer detail drill-down | Medium | Small |
-| **AI** | Support for local models (Ollama) | Medium | Medium |
-| **AI** | PR review — auto-apply suggestions | Low | Medium |
-| **DevEx** | Landing page with live demo | High | Small |
+### Production Readiness
 
-### Medium-term (1–2 months)
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **DevOps** | Deploy backend to Railway/Render with Docker | 🔴 Critical | 2 days |
+| **DevOps** | Deploy frontend to Vercel with custom domain + HTTPS | 🔴 Critical | 1 day |
+| **DevOps** | Production PostgreSQL (managed) + automated backups | 🔴 Critical | 1 day |
+| **DevOps** | Production Redis for rate limiting + caching | 🔴 Critical | 0.5 day |
+| **DevOps** | Wire CI/CD — auto-deploy on `main` push | 🔴 Critical | 1 day |
+| **DevOps** | SSL/TLS, env vars, sanity checks | 🔴 Critical | 1 day |
 
-| Area | Feature |
-|------|---------|
-| **Notifications** | Real-time WebSocket push for task updates |
-| **Integrations** | GitLab & Bitbucket support |
-| **Integrations** | Jira linear ticket sync |
-| **CI/CD** | GitHub Actions — auto PR review on push |
-| **Analytics** | Team velocity trends & DORA metrics |
-| **Billing** | Usage-based pricing tier |
-| **Admin** | Team-level feature flag management |
-| **DevEx** | Mobile-responsive views for key pages |
+### UX & Polish
 
-### Long-term (3–6 months)
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Notifications** | Real-time WebSocket push for task updates | 🔴 Critical | 3 days |
+| **Visualization** | Interactive repo graph — search, filter, drill-down, tooltips | 🟢 High | 2 days |
+| **Trainee** | Milestone tracking with roadmap timeline view | 🟢 High | 2 days |
+| **Auth** | Session refresh & remember-me (persist across browser closes) | 🟢 High | 1 day |
+| **DevEx** | Mobile-responsive views — wave 1: core 10 pages (dash, tasks, explore, team, notifications, settings) | 🟢 High | 3 days |
+| **DevEx** | Mobile-responsive — wave 2: remaining 34 pages | 🟢 High | 3 days |
+| **A11y** | WCAG 2.1 AA audit — keyboard nav, ARIA labels, focus indicators | 🟢 High | 2 days |
+| **Load More** | Pagination on TasksPage + NotificationsPage (reuse existing Pagination) | 🟢 Medium | 1 day |
+| **CI/CD Tests** | Frontend E2E — login → dashboard → explore → team → billing flows | 🟢 High | 2 days |
+| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days |
 
-| Area | Feature |
-|------|---------|
-| **AI** | Autonomous coding agent (sandboxed) |
-| **AI** | Architecture drift detection |
-| **Platform** | Multi-org support with SAML/SSO |
-| **Platform** | Self-hosted deployment option (Helm chart) |
-| **Integrations** | VS Code extension |
-| **Integrations** | GitHub Actions marketplace app |
-| **Marketplace** | Plugin system for custom AI agents |
-| **Scale** | Read replicas, connection pooling, CDN |
+### Platform Expansion
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days |
+| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days |
+| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days |
+
+---
+
+## 🎯 v1.3 — Enterprise + AI Acceleration (Month 2)
+
+**Theme:** Enterprise foundation + AI differentiation  
+**Est. effort:** 3–4 weeks  
+**Focus:** SSO, audit, DORA metrics, PR automation, community marketplace
+
+### Enterprise Foundation
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Auth** | SSO/SAML — Okta + Azure AD / Entra ID federation | 🔴 Critical | 3 weeks |
+| **Auth** | Domain-based routing (auto-detect IdP from email) | 🟢 High | 3 days |
+| **Admin** | Real-time audit log UI with SIEM-exportable events | 🟢 High | 3 days |
+| **Security** | HMAC-SHA256 for API key hashing (replace unsalted SHA-256) | 🟢 High | 1 day |
+| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day |
+
+### AI Differentiation
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Analytics** | Team velocity trends — cycle time, throughput, DORA metrics | 🟢 High | 3 days |
+| **Tasks** | CI/CD auto PR review on push (GitHub Actions integration) | 🟢 High | 3 days |
+| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days |
+| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days |
+
+### Community & Content
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days |
+| **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days |
+| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days |
+| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day |
+
+---
+
+## 🎯 v1.4 — Platform & Scale (Month 3)
+
+**Theme:** Open the platform, ship AI SDK, scale infrastructure  
+**Est. effort:** 3–4 weeks  
+**Focus:** Public API, autonomous agents, VS Code extension, performance
+
+### AI Platform
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **AI** | Autonomous coding agent (sandboxed) — assign issue → AI implements → opens PR | 🟢 High | 4 weeks |
+| **API** | AIaaS public API gateway — package agents as REST APIs with key auth | 🟢 High | 3 days |
+| **API** | TypeScript SDK → publish `@onramp/sdk` to npm | 🟢 High | 2 days |
+| **API** | Usage-based billing: per-query metering + credit system | 🟢 High | 3 days |
+
+### Developer Experience
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **IDE** | VS Code extension — inline explanations, PR review, learning paths | 🟢 High | 3 days |
+| **CI/CD** | GitHub Actions marketplace app — auto onboarding report on push | 🟢 Medium | 3 days |
+| **Mobile** | PWA — service worker, offline support, push notifications | 🟢 Medium | 2 weeks |
+| **Mobile** | Quick Q&A from mobile | 🟢 Medium | 3 days |
+
+### Performance & Scale
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Scale** | PostgreSQL read replicas + connection pooling (pgBouncer) | 🟢 High | 2 days |
+| **Scale** | Redis caching layer for frequent endpoints | 🟢 High | 1 day |
+| **Scale** | Response compression (gzip/brotli) | 🟢 Medium | 0.5 day |
+| **Scale** | Lighthouse audit → p95 API < 500ms, bundle < 200KB gzipped | 🟢 High | 2 days |
+| **Scale** | CDN for static assets | 🟢 Medium | 1 day |
+| **Scale** | Load testing (k6 or Locust) + CI gate | 🟢 Medium | 2 days |
+
+---
+
+## 🎯 v2.0 — Enterprise GA (Month 4+)
+
+**Theme:** Enterprise-grade compliance, horizontal scaling, ecosystem  
+**Est. effort:** 6–8 weeks  
+**Focus:** SOC 2, tenant isolation, Helm, agent plugins
+
+### Enterprise Compliance
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Security** | SOC 2 Type II readiness — evidence collection, access reviews, change management | 🔴 Critical | ongoing |
+| **Security** | Third-party penetration test | 🔴 Critical | 4 weeks (ext.) |
+| **Security** | Secrets vault integration (HashiCorp Vault / Azure Key Vault) | 🟢 High | 1 week |
+| **Security** | Immutable audit trail with tamper-evident logging | 🟢 High | 1 week |
+| **Security** | SCIM provisioning — user lifecycle managed from IdP | 🟢 High | 2 weeks |
+
+### Multi-Tenant Architecture
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Platform** | Hard tenant isolation — PostgreSQL RLS or per-tenant database | 🔴 Critical | 2 weeks |
+| **Platform** | Data residency controls — EU/US/APAC region pinning | 🟢 High | 2 weeks |
+| **Platform** | Self-hosted deployment — Helm chart for Kubernetes | 🟢 High | 2 weeks |
+| **Platform** | Multi-org support with namespace isolation | 🟢 High | 3 weeks |
+
+### Ecosystem & Plugins
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **Platform** | Plugin system for custom AI agents — write your own agent | 🟢 Medium | 3 weeks |
+| **Platform** | Agent MCP (Model Context Protocol) support | 🟢 Medium | 2 weeks |
+| **Platform** | Custom enterprise roles (beyond owner/ceo/member) | 🟢 Medium | 1 week |
+| **Monitoring** | Prometheus/Grafana observability stack | 🟢 Medium | 1 week |
+| **Monitoring** | Structured JSON logging for production | 🟢 Medium | 1 day |
+
+---
+
+## 🎯 Stretch / Viral Features
+
+Quick wins that drive engagement and social sharing, can be slotted into any release:
+
+| Area | Feature | Effort |
+|------|---------|--------|
+| **Viral** | Codebase trailer — "In a world..." auto-generated movie trailer for any repo | 1 day |
+| **Viral** | Hot Take PR review — personality-driven one-liner summary | 0.5 day |
+| **Viral** | DevScore leaderboard — weekly XP rankings with crown badges | 1 day |
+| **Viral** | Dark mode consistency audit across all 4 themes | 0.5 day |
 
 ---
 
 ## 🧪 Testing & Reliability
 
-- [x] **Backend tests:** 177 passing (pytest, async fixtures)
-- [x] **Frontend tests:** 49 passing (Vitest, React Testing Library)
+- [x] **Backend tests:** 177+ passing (pytest, async fixtures, dual memory+postgres storage)
+- [x] **Frontend tests:** 49+ passing (Vitest, React Testing Library)
 - [x] **E2E tests:** Playwright suite (auth, dashboard, review-queue)
 - [x] **TypeScript:** strict mode, zero errors
-- [ ] **API contract tests** (planned for v1.1)
-- [ ] **Load testing** (planned for v1.1)
-- [ ] **A11y audit** (planned for v1.2)
+- [x] **Backend CI:** GitHub Actions (compileall + alembic upgrade + pytest w/ service Postgres)
+- [x] **Frontend CI:** GitHub Actions (tsc + vitest + build)
+- [x] **Database migration tests:** Regression test for migration 003 ordering
+- [x] **RBAC access guard tests:** Parametrized role-based auth matrix
+- [x] **Field encryption tests:** Fernet encrypt/decrypt round-trip
+- [x] **Production env validation tests:** Fail-fast on missing env vars
+- [x] **API contract tests** — 35 tests covering response envelopes, validation errors, auth guards, OpenAPI schema, and content-type contracts
+- [x] **Load testing** — 13 tests covering endpoint latency, average latency over 20 samples, concurrent load (10 users × 5 requests), mixed endpoint stress, and error rate under 100-request stress
+- [x] **A11y audit** — 13 Playwright + axe-core tests covering WCAG 2.1 AA compliance across 10 public pages, form labels, keyboard navigation, image alt text, and color contrast
 
 ---
 
@@ -149,11 +361,15 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 | Metric | Current |
 |--------|---------|
 | Backend API endpoints | 100+ |
-| Frontend pages | 35+ |
+| Frontend page components | 44 |
 | AI agents | 10 |
-| Database migrations | 5 |
-| Test coverage (backend) | ~70% |
-| Test count | 226 total |
+| Database tables | 39+ |
+| Database migrations | 8 |
+| Test count (backend + frontend) | 226+ |
+| CI/CD pipelines | 2 (backend + frontend) |
+| Auth providers | 3 (email, Google OAuth, GitHub OAuth) |
+| Notification event types | 14 |
+| Design tokens (CSS vars) | 50+ |
 
 ---
 

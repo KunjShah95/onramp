@@ -22,12 +22,12 @@ from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
 from app.api.v1 import (
-    admin as admin_router, ai_gateway, ask, audit as audit_router,
+    accounts as accounts_router, admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     explore, first_pr, gamification, health, hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, notifications as notifications_router,
     onboarding_plans as onboarding_plans_router, playbooks, pr_review, quiz as quiz_router,
-    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, waitlist, wiki
+    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, wiki
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
@@ -51,9 +51,16 @@ def _validate_production_env() -> None:
     if os.getenv("ENV") != "production":
         return
     missing = [
-        var for var in ("DATABASE_URL", "STRIPE_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL")
+        var for var in (
+            "DATABASE_URL", "STRIPE_WEBHOOK_SECRET",
+            "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL",
+            "JWT_SECRET", "PII_ENCRYPTION_KEY",
+        )
         if not os.getenv(var)
     ]
+    # Also verify JWT_SECRET isn't the insecure default
+    if os.getenv("JWT_SECRET") == "dev-jwt-secret-change-in-production":
+        missing.append("JWT_SECRET (still using insecure default — generate a real secret)")
     if not any(os.getenv(var) for var in _LLM_KEY_VARS):
         missing.append("at least one of " + "/".join(_LLM_KEY_VARS))
     if missing:
@@ -104,22 +111,28 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/oauth/github/callback",  # GitHub OAuth callback
     "/api/v1/auth/forgot-password",       # password reset request
     "/api/v1/auth/reset-password",        # password reset submission
+    "/api/v1/auth/verify-email",          # email verification
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
     "/api/v1/explore/health",    # public health check for explore service
-    "/api/v1/waitlist/join",     # public waitlist join
-    "/api/v1/waitlist/count",    # public waitlist count
     "/api/v1/slack/interactive",  # Slack interactive payloads (verified by signing secret)
     "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)
 ])
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)
+# CORS origin regex — configurable via env var for custom domains.
+# Default matches Vercel preview deployments; override for custom domains.
+_cors_regex = os.getenv(
+    "CORS_ALLOWED_ORIGIN_REGEX",
+    r"^https://(onramp|onramp-[a-z0-9]+)\.vercel\.app$",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_origin_regex=r"^https://(onramp|onramp-[a-z0-9]+)\.vercel\.app$",
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -151,10 +164,10 @@ app.include_router(notifications_router.router, prefix="/api/v1")
 app.include_router(integrations_router.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(invites_router.router, prefix="/api/v1")
+app.include_router(accounts_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
-app.include_router(waitlist.router, prefix="/api/v1")
 app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")

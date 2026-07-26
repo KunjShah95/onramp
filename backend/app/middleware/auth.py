@@ -52,7 +52,10 @@ async def verify_session_token(token: str) -> dict | None:
     if neon_user:
         uid = neon_user.get("uid", "")
         record = await get_user_by_uid(uid)
-        if record and not record.get("is_active", True):
+        if record is None:
+            logger.warning("Neon Auth user not found in database: %s", uid)
+            return None
+        if not record.get("is_active", True):
             logger.warning("Neon Auth user account is deactivated: %s", uid)
             return None
 

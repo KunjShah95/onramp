@@ -48,7 +48,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
+      - JWT_SECRET=${JWT_SECRET:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080,http://localhost:3000,http:localhost:80
       - LOG_LEVEL=DEBUG
@@ -90,7 +90,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
+      - JWT_SECRET=${JWT_SECRET:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
     volumes:
       - ./backend:/app

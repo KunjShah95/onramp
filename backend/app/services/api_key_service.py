@@ -4,6 +4,8 @@ Manages API key creation, validation, and rotation
 """
 
 import hashlib
+import hmac
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any

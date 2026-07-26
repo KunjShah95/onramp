@@ -236,7 +236,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
     stats = await _global_stats(storage)
     base_data = {"stats": stats}
 
-    if role in ("developer",):
+    if role in ("developer", "tester", "senior_dev"):
         data = {
             **base_data,
             "recent_activity": await _recent_activity(uid),
@@ -249,7 +249,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         }
         portal = "dev"
 
-    elif role in ("owner",):
+    elif role in ("owner", "ceo", "cto"):
         billing = await _billing_rollup(storage)
         data = {
             **base_data,

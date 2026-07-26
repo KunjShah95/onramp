@@ -53,6 +53,10 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    email_verification_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    email_verification_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_reset_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -74,7 +78,7 @@ class User(Base):
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
         CheckConstraint(
-            "provider IN ('google.com', 'password', 'github.com')",
+            "provider IN ('google.com', 'password', 'github.com', 'neon')",
             name="ck_users_provider"
         ),
         Index("ix_users_created_at", "created_at"),
@@ -87,6 +91,7 @@ class User(Base):
             "email": self.email,
             "name": self.name,
             "provider": self.provider,
+            "email_verified": self.email_verified,
             "email_hash": self.email_hash,
             "password_hash": self.password_hash,
             "is_active": self.is_active,

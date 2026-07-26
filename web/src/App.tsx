@@ -41,6 +41,8 @@ const Profile = lazy(() => import('./pages/Profile'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+const SetPassword = lazy(() => import('./pages/SetPassword'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
@@ -60,7 +62,6 @@ const TasksPage = lazy(() => import('./pages/TasksPage'))
 const TraineeDashboard = lazy(() => import('./pages/TraineeDashboard'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const JoinPage = lazy(() => import('./pages/JoinPage'))
-const WaitlistPage = lazy(() => import('./pages/WaitlistPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
 
@@ -73,6 +74,7 @@ const ModuleHealthPage = lazy(() => import('./pages/ModuleHealthPage'))
 
 // Admin/Owner pages
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
+const AdminCreateAccount = lazy(() => import('./pages/AdminCreateAccount'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 // Role-based portal pages
@@ -129,14 +131,19 @@ export default function App() {
                   <ErrorBoundary><ForgotPassword /></ErrorBoundary>
                 </Suspense>
               } />
+              <Route path="/verify-email" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><VerifyEmail /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/set-password" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><SetPassword /></ErrorBoundary>
+                </Suspense>
+              } />
               <Route path="/join" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><JoinPage /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/waitlist" element={
-                <Suspense fallback={<FormLoadingFallback />}>
-                  <ErrorBoundary><WaitlistPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/privacy" element={
@@ -224,8 +231,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Developer / Owner Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['developer', 'owner']} />}>
+                  {/* Developer / Owner / CEO / CTO Pages */}
+                  <Route element={<RoleGuard allowedRoles={['developer', 'owner', 'ceo', 'cto', 'senior_dev', 'tester']} />}>
                     <Route path="/dev-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><DevSpacePage /></ErrorBoundary>
@@ -317,8 +324,8 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Owner / Admin Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['owner']} />}>
+                  {/* Owner / CEO / CTO Pages */}
+                  <Route element={<RoleGuard allowedRoles={['owner', 'ceo', 'cto']} />}>
                     <Route path="/executive" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ExecutivePage /></ErrorBoundary>
@@ -327,6 +334,11 @@ export default function App() {
                     <Route path="/admin" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><AdminDashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/admin/create-account" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><AdminCreateAccount /></ErrorBoundary>
                       </Suspense>
                     } />
                   </Route>

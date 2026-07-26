@@ -5,7 +5,7 @@ import {
   House, Compass, ChatCircleDots, GraduationCap,
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
-  Star, Key, Rocket, FileCode,
+  Star, Key, Rocket, FileCode, Bell,
 } from '@phosphor-icons/react'
 
 const portalItems = [
@@ -26,6 +26,7 @@ const toolItems = [
   { to: '/pr-describe',   label: 'PR Describe',  Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/notifications', label: 'Notifications', Icon: Bell,         roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 
 const mgmtItems = [
