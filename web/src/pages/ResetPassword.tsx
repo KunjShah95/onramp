@@ -129,7 +129,7 @@ export default function ResetPassword() {
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                      <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">New Password</label>
+                      <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">New Password</label>
                       <div className="relative">
                         <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                         <input
@@ -147,7 +147,7 @@ export default function ResetPassword() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label htmlFor="confirmPassword" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Confirm Password</label>
+                      <label htmlFor="confirmPassword" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Confirm Password</label>
                       <div className="relative">
                         <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                         <input

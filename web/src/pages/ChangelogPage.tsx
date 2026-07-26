@@ -81,7 +81,7 @@ const entries = [
 ]
 
 const tagStyles: Record<string, string> = {
-  major:       'bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] border-[hsl(var(--accent))]/25',
+    major:       'bg-[hsl(var(--accent))]/10 text-[hsl(var(--foreground))] border-[hsl(var(--accent))]/25',
   feature:     'bg-blue-50 text-blue-700 border-blue-200',
   improvement: 'bg-purple-50 text-purple-700 border-purple-200',
   fix:         'bg-green-50 text-green-700 border-green-200',
@@ -117,14 +117,14 @@ export default function ChangelogPage() {
         <div className="mb-12">
           <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
             <Rss className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest">Changelog</span>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Changelog</span>
           </div>
           <h1 className="font-display text-3xl md:text-4xl mb-3 font-bold tracking-tight text-[hsl(var(--foreground))]">
             What's new in Nexora
           </h1>
           <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed font-body">
             Every release, every fix, every improvement — in one place. Subscribe to{' '}
-            <a href="#" className="text-[hsl(var(--accent))] hover:underline font-medium">release notes</a> to stay current.
+            <a href="#" className="text-[hsl(var(--foreground))] hover:underline font-medium">release notes</a> to stay current.
           </p>
         </div>
 

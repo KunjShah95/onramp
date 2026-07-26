@@ -35,7 +35,7 @@ export default function MarketingFooter() {
             <span className="text-lg font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
               Onramp
             </span>
-            <p className="text-xs text-[hsl(var(--muted-foreground))]/60 mt-2 leading-relaxed max-w-[200px] font-body">
+            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 leading-relaxed max-w-[200px] font-body">
               AI-powered developer onboarding for modern engineering teams.
             </p>
           </div>
@@ -43,7 +43,7 @@ export default function MarketingFooter() {
           {/* Link columns */}
           {footerColumns.map((col) => (
             <div key={col.title}>
-              <h3 className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))]/50 uppercase tracking-widest mb-4 font-body">
+              <h3 className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-4 font-body">
                 {col.title}
               </h3>
               <ul className="flex flex-col gap-2.5">
@@ -65,7 +65,7 @@ export default function MarketingFooter() {
 
       {/* Copyright */}
       <div className="border-t border-[hsl(var(--border))] py-5">
-        <p className="text-center text-[10px] text-[hsl(var(--muted-foreground))]/40 font-mono">
+        <p className="text-center text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
           &copy; {new Date().getFullYear()} Onramp Inc. All rights reserved.
         </p>
       </div>

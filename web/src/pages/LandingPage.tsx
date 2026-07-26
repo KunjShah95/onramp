@@ -77,7 +77,7 @@ export default function LandingPageV3() {
   const photoOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
 
   return (
-    <div
+    <main
       className="relative min-h-screen w-full overflow-x-hidden font-body antialiased"
       style={{ background: '#DDE1DD', color: '#181B18' }}
     >
@@ -315,8 +315,7 @@ export default function LandingPageV3() {
                   <img
                     key={b.slug}
                     src={`https://cdn.simpleicons.org/${b.slug}/181B18`}
-                    alt=""
-                    aria-label={b.label}
+                    alt={b.label}
                     className="h-[22px] w-auto opacity-50 grayscale transition-all duration-300 hover:opacity-100 hover:brightness-110 hover:-translate-y-0.5"
                   />
                 ))}
@@ -404,7 +403,7 @@ export default function LandingPageV3() {
       <FAQ />
       <FinalCTA />
       <Footer />
-    </div>
+    </main>
   )
 }
 
@@ -422,7 +421,7 @@ function Stat({ big, label, top }: { big: string; label: string; top?: React.Rea
 /* -- */
 function DashboardMockup() {
   return (
-    <div className="overflow-hidden rounded-md border border-[rgba(24,27,24,.09)] bg-white shadow-[0_2px_4px_rgba(24,27,24,.04),0_40px_80px_-24px_rgba(24,27,24,.28)]">
+    <div className="overflow-hidden rounded-md border border-[rgba(24,27,24,.09)] bg-white shadow-[0_2px_4px_rgba(24,27,24,.04),0_12px_32px_-12px_rgba(24,27,24,.14)]">
       <div className="flex">
         {/* Sidebar */}
         <aside className="hidden w-[190px] shrink-0 flex-col gap-1 border-r border-[rgba(24,27,24,.07)] bg-[#FFFFFF] p-3 sm:flex">
@@ -467,18 +466,18 @@ function DashboardMockup() {
           </div>
 
           <div className="mt-3 text-[15px] font-semibold text-[#181B18]">Good morning, Alex ≡ƒæï</div>
-          <div className="text-[11px] text-[#7C817A]">Here&rsquo;s what&rsquo;s happening with your codebase.</div>
+          <div className="text-[11px] text-[#565B54]">Here&rsquo;s what&rsquo;s happening with your codebase.</div>
 
           {/* Stat cards */}
           <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {[
               { k: 'Codebase health', v: '92%', t: 'Healthy', c: '#0E7A3C' },
               { k: 'Architecture score', v: '89/100', t: 'Good', c: '#0E7A3C' },
-              { k: 'Active onboarding', v: '12', t: 'Engineers', c: '#B5710A' },
+              { k: 'Active onboarding', v: '12', t: 'Engineers', c: '#7A4E00' },
               { k: 'Questions answered', v: '1,248', t: 'This week', c: '#0E7A3C' },
             ].map((s) => (
               <div key={s.k} className="rounded-sm border border-[rgba(24,27,24,.07)] bg-white p-2.5">
-                <div className="text-[9.5px] text-[#7C817A]">{s.k}</div>
+                <div className="text-[9.5px] text-[#565B54]">{s.k}</div>
                 <div className="mt-1 text-[16px] font-semibold text-[#181B18]">{s.v}</div>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-[9px]" style={{ color: s.c }}>{s.t}</span>
@@ -507,7 +506,7 @@ function DashboardMockup() {
                     style={{ left: n.x, top: n.y }}
                   >
                     <div className="text-[8px] font-semibold text-[#181B18]">{n.l}</div>
-                    <div className="text-[7px] text-[#A7ABA4]">{n.s}</div>
+                    <div className="text-[7px] text-[#6C716A]">{n.s}</div>
                   </div>
                 ))}
                 <span className="absolute left-[24%] top-[62%] h-1.5 w-1.5 rounded-full bg-[#0E7A3C]" />
@@ -528,7 +527,7 @@ function DashboardMockup() {
                   <div key={a.t} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: a.c }} />
                     <span className="min-w-0 flex-1 truncate text-[9px] text-[#565B54]">{a.t}</span>
-                    <span className="text-[8px] text-[#A7ABA4]">{a.s}</span>
+                    <span className="text-[8px] text-[#6C716A]">{a.s}</span>
                   </div>
                 ))}
               </div>
@@ -1149,15 +1148,16 @@ function Footer() {
             </motion.p>
             <div className="mt-5 flex items-center gap-2.5">
               {[
-                { Icon: GithubLogo, url: 'https://github.com/onramp' },
-                { Icon: XLogo, url: 'https://x.com/onramp' },
-                { Icon: LinkedinLogo, url: 'https://linkedin.com/company/onramp' },
-              ].map(({ Icon, url }, i) => (
+                { Icon: GithubLogo, url: 'https://github.com/onramp', label: 'GitHub' },
+                { Icon: XLogo, url: 'https://x.com/onramp', label: 'X (Twitter)' },
+                { Icon: LinkedinLogo, url: 'https://linkedin.com/company/onramp', label: 'LinkedIn' },
+              ].map(({ Icon, url, label }, i) => (
                 <a
                   key={i}
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={label}
                   className="flex h-9 w-9 items-center justify-center rounded-sm border border-[rgba(24,27,24,.1)] bg-white text-[#565B54] transition-all duration-300 hover:border-transparent hover:bg-gradient-to-br hover:from-[#0E7A3C] hover:to-[#0E7A3C] hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(14,122,60,.4)]"
                 >
                   <Icon size={16} weight="fill" />

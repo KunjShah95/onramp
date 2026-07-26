@@ -6,6 +6,7 @@ import { getToken } from '../lib/neon-auth'
 import { cn } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
+  API_BASE,
   listApiKeys,
   createApiKey,
   revokeApiKey,
@@ -19,6 +20,10 @@ import {
   saveIntegration,
   deleteIntegration,
   testGithubToken,
+  listTeams,
+  configureSso,
+  getSsoConfig,
+  testSsoConnection,
   type ApiKey,
   type NotificationPreferences,
   type Webhook,
@@ -246,6 +251,7 @@ export default function Settings() {
     { id: 'account', label: 'Account', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'integrations', label: 'Integrations', icon: Plugs },
+    { id: 'sso', label: 'SSO', icon: Lock },
     { id: 'theme', label: 'Theme', icon: Palette },
   ]
 
@@ -535,6 +541,9 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        {/* SSO Tab */}
+        {activeTab === 'sso' && <SsoConfigSection />}
 
         {/* Theme Tab */}
         {activeTab === 'theme' && <ThemeTabContent />}
@@ -957,5 +966,198 @@ function ThemeTabContent() {
           </div>
         </div>
     </motion.div>
+  )
+}
+
+/** SSO configuration section with form fields and test connection. */
+function SsoConfigSection() {
+  const [idpType, setIdpType] = useState('okta')
+  const [domain, setDomain] = useState('')
+  const [entityId, setEntityId] = useState('')
+  const [ssoUrl, setSsoUrl] = useState('')
+  const [x509Cert, setX509Cert] = useState('')
+  const [metadataXml, setMetadataXml] = useState('')
+  const [useMetadata, setUseMetadata] = useState(false)
+  const [teamId, setTeamId] = useState('')
+  const [existingConfig, setExistingConfig] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [message, setMessage] = useState('')
+  const { user } = useAuth()
+  const toast = useToast()
+
+  useEffect(() => {
+    async function load() {
+      if (!user?.uid) return
+      setLoading(true)
+      try {
+        const teamsData = await listTeams(user.uid)
+        if (teamsData.teams?.length > 0) {
+          const tid = teamsData.teams[0].team_id
+          setTeamId(tid)
+          try {
+            const existing = await getSsoConfig(tid)
+            setExistingConfig(existing)
+            setIdpType(existing.idp_type)
+            setEntityId(existing.entity_id)
+            setSsoUrl(existing.sso_url)
+            setDomain(existing.domain)
+          } catch { /* no existing config */ }
+        }
+      } catch { /* ignore */ }
+      setLoading(false)
+    }
+    load()
+  }, [user?.uid])
+
+  async function handleSave() {
+    if (!teamId) { setMessage('No team selected'); return }
+    setSaving(true); setMessage('')
+    try {
+      await configureSso({
+        team_id: teamId, idp_type: idpType,
+        entity_id: useMetadata ? '' : entityId,
+        sso_url: useMetadata ? '' : ssoUrl,
+        x509_cert: useMetadata ? '' : x509Cert,
+        domain,
+        metadata_xml: useMetadata ? metadataXml : '',
+      })
+      setMessage('SSO configuration saved')
+      toast.success('SSO configured')
+      setExistingConfig({ idp_type: idpType, entity_id: entityId, domain })
+    } catch (e: any) { setMessage(`Failed: ${e.message}`); toast.error('Failed to save') }
+    setSaving(false)
+  }
+
+  async function handleTest() {
+    if (!teamId) return
+    setTesting(true)
+    try {
+      const result = await testSsoConnection(teamId)
+      setMessage(result.success ? 'Connection OK!' : `Test failed: ${result.errors?.join(', ') || 'Unknown'}`)
+    } catch (e: any) { setMessage(`Error: ${e.message}`) }
+    setTesting(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="w-5 h-5 animate-spin text-accent-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <CardSpotlight className="p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Lock className="w-5 h-5 text-accent-primary" weight="fill" />
+          <div>
+            <h3 className="font-display text-lg font-bold">SSO / SAML Configuration</h3>
+            <p className="text-sm text-text-secondary">Configure single sign-on via SAML 2.0 identity providers.</p>
+          </div>
+        </div>
+
+        {message && (
+          <div className={cn('mb-4 px-4 py-3 rounded-xl text-sm border',
+            message.includes('OK') || message.includes('saved')
+              ? 'bg-green-500/10 text-green-400 border-green-500/20'
+              : 'bg-red-500/10 text-red-400 border-red-500/20'
+          )}>
+            {message}
+          </div>
+        )}
+
+        {existingConfig && (
+          <div className="mb-6 px-4 py-3 rounded-xl bg-accent-primary/5 border border-accent-primary/15 text-sm text-text-secondary">
+            <p className="font-semibold text-accent-primary mb-1">✓ Currently configured</p>
+            <p className="text-xs">IdP: {existingConfig.idp_type} · Domain: {existingConfig.domain}</p>
+          </div>
+        )}
+
+        <div className="space-y-5">
+          <div>
+            <label className="text-xs text-text-secondary font-medium mb-1.5 block">Identity Provider</label>
+            <select value={idpType} onChange={(e) => setIdpType(e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 transition-colors">
+              <option value="okta">Okta</option>
+              <option value="azure_ad">Azure AD / Entra ID</option>
+              <option value="google_workspace">Google Workspace</option>
+              <option value="onelogin">OneLogin</option>
+              <option value="custom">Custom SAML 2.0</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-text-secondary font-medium mb-1.5 block">Domain (e.g., company.com)</label>
+            <input value={domain} onChange={(e) => setDomain(e.target.value)}
+              placeholder="company.com"
+              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+            <p className="text-[10px] text-text-tertiary mt-1">Users with this email domain will be redirected for SSO login.</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={useMetadata} onChange={() => setUseMetadata(!useMetadata)}
+                className="w-4 h-4 rounded accent-accent-primary" />
+              <span className="text-xs text-text-secondary">Use metadata XML</span>
+            </label>
+          </div>
+
+          {useMetadata ? (
+            <div>
+              <label className="text-xs text-text-secondary font-medium mb-1.5 block">IdP Metadata XML</label>
+              <textarea value={metadataXml} onChange={(e) => setMetadataXml(e.target.value)}
+                rows={6} placeholder="Paste IdP metadata XML here..."
+                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs text-text-secondary font-medium mb-1.5 block">Entity ID / Issuer</label>
+                <input value={entityId} onChange={(e) => setEntityId(e.target.value)}
+                  placeholder="https://idp.company.com/saml/metadata"
+                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-medium mb-1.5 block">SSO URL</label>
+                <input value={ssoUrl} onChange={(e) => setSsoUrl(e.target.value)}
+                  placeholder="https://idp.company.com/saml/sso"
+                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-medium mb-1.5 block">X.509 Certificate</label>
+                <textarea value={x509Cert} onChange={(e) => setX509Cert(e.target.value)}
+                  rows={4} placeholder="-----BEGIN CERTIFICATE-----\n..."
+                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button onClick={handleTest} disabled={!teamId || testing}
+              className="border border-border text-text-secondary hover:text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+              {testing ? 'Testing...' : 'Test Connection'}
+            </button>
+            <button onClick={handleSave} disabled={!teamId || saving || !domain.trim()}
+              className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </button>
+          </div>
+        </div>
+      </CardSpotlight>
+
+      <div className="bg-accent-primary/5 border border-accent-primary/15 rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
+          <div className="text-xs text-text-secondary leading-relaxed">
+            <p className="font-semibold text-text-secondary mb-1">About SSO / SAML</p>
+            <p>Onramp supports SAML 2.0 federation with major identity providers. Once configured, users with matching email domains are automatically redirected to your IdP for authentication.</p>
+            <p className="mt-1">The ACS (Assertion Consumer Service) URL is: <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary text-[10px]">{API_BASE}/auth/sso/callback</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

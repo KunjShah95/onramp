@@ -191,6 +191,47 @@ export async function askQuestionStream(
   }
 }
 
+// ── DORA Metrics ────────────────────────────────────────────────────────────
+
+export interface DoraMetric {
+  classification: string
+  value: string
+}
+
+export interface DoraSummary {
+  overall_score: number
+  metrics: {
+    deployment_frequency: DoraMetric
+    lead_time_for_changes: DoraMetric
+    change_failure_rate: DoraMetric
+    mttr: DoraMetric
+  }
+}
+
+export interface VelocityTrend {
+  week: string
+  completed: number
+  completed_ma4?: number
+}
+
+export interface MemberThroughput {
+  name: string
+  completed: number
+  in_progress: number
+}
+
+export async function fetchDoraSummary(teamId: string, days = 90): Promise<DoraSummary> {
+  return get<DoraSummary>(`${API_BASE}/dora/summary?team_id=${teamId}&days=${days}`)
+}
+
+export async function fetchVelocityTrends(teamId: string, weeks = 12): Promise<{ trends: VelocityTrend[] }> {
+  return get<{ trends: VelocityTrend[] }>(`${API_BASE}/dora/velocity?team_id=${teamId}&weeks=${weeks}`)
+}
+
+export async function fetchTeamThroughput(teamId: string, days = 30): Promise<{ members: MemberThroughput[] }> {
+  return get<{ members: MemberThroughput[] }>(`${API_BASE}/dora/throughput?team_id=${teamId}&days=${days}`)
+}
+
 // ─── Dashboard endpoints ──────────────────────────────────────────────────
 
 export interface RepoItem {
@@ -1183,6 +1224,27 @@ export async function adminListAuditEvents(params?: {
   return get<AdminAuditResponse>(`${API_BASE}/admin/audit${qs ? '?' + qs : ''}`)
 }
 
+export async function exportAuditEvents(params?: {
+  format?: 'json' | 'csv'
+  event_type?: string
+  actor_id?: string
+  limit?: number
+}): Promise<Blob> {
+  const query = new URLSearchParams()
+  query.set('format', params?.format || 'json')
+  if (params?.event_type) query.set('event_type', params.event_type)
+  if (params?.actor_id) query.set('actor_id', params.actor_id)
+  if (params?.limit) query.set('limit', String(params.limit))
+  const res = await fetch(`${API_BASE}/admin/audit/export?${query.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Export error ${res.status}: ${text}`)
+  }
+  return res.blob()
+}
+
 // ─── Admin Webhooks ────────────────────────────────────────────
 
 export interface AdminWebhook {
@@ -1925,6 +1987,60 @@ export function getGoogleLoginUrl(): string {
 
 export function getGithubLoginUrl(): string {
   return `${API_BASE}/auth/oauth/github/login`
+}
+
+// ── SSO / SAML ──────────────────────────────────────────────────────────────
+
+export interface SsoProvider {
+  idp_type: string
+  name: string
+  description: string
+}
+
+export interface SsoConfig {
+  team_id: string
+  idp_type: string
+  entity_id: string
+  sso_url: string
+  x509_cert: string
+  domain: string
+  metadata_xml?: string
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export async function fetchSsoProviders(): Promise<{ providers: SsoProvider[] }> {
+  return get<{ providers: SsoProvider[] }>(`${API_BASE}/auth/sso/providers`)
+}
+
+export async function configureSso(config: {
+  team_id: string
+  idp_type: string
+  entity_id?: string
+  sso_url?: string
+  x509_cert?: string
+  domain: string
+  metadata_xml?: string
+}): Promise<SsoConfig> {
+  return request<SsoConfig>(`${API_BASE}/auth/sso/configure`, config)
+}
+
+export async function getSsoConfig(teamId: string): Promise<SsoConfig> {
+  return get<SsoConfig>(`${API_BASE}/auth/sso/config/${teamId}`)
+}
+
+export async function deleteSsoConfig(teamId: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/auth/sso/config/${teamId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  return res.json()
+}
+
+export async function testSsoConnection(teamId: string): Promise<{ success: boolean; errors?: string[] }> {
+  return request<{ success: boolean; errors?: string[] }>(`${API_BASE}/auth/sso/test`, { team_id: teamId })
 }
 
 // ── Password Reset ─────────────────────────────────────────────────────────

@@ -136,7 +136,7 @@ export default function AdminCreateAccount() {
             className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard space-y-4"
           >
             <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium">Full Name</label>
+              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Full Name</label>
               <input
                 type="text"
                 value={name}
@@ -148,7 +148,7 @@ export default function AdminCreateAccount() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium">Email</label>
+              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Email</label>
               <input
                 type="email"
                 value={email}
@@ -160,7 +160,7 @@ export default function AdminCreateAccount() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium">Role</label>
+              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Role</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as any)}
@@ -174,7 +174,7 @@ export default function AdminCreateAccount() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium">Team (optional)</label>
+              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Team (optional)</label>
               <select
                 value={teamId}
                 onChange={(e) => setTeamId(e.target.value)}
@@ -188,7 +188,7 @@ export default function AdminCreateAccount() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium">Welcome Message (optional)</label>
+              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Welcome Message (optional)</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}

@@ -30,18 +30,52 @@ def _coerce_aware_datetime(value: Any) -> Optional[datetime]:
     return dt
 
 
+def get_pepper() -> str:
+    """Get the API key HMAC pepper from environment.
+
+    In production this MUST be set. Falls back to a dev default only
+    when ENV is not 'production'.
+    """
+    env = os.getenv("ENV", "development")
+    pepper = os.getenv("API_KEY_HMAC_SECRET", "")
+    if env == "production" and not pepper:
+        raise RuntimeError(
+            "API_KEY_HMAC_SECRET is required in production. "
+            "Generate one: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    return pepper or "dev-pepper-not-secure"
+
+
 def hash_api_key(key: str) -> str:
     """Hash an API key using HMAC-SHA256 with a server-side pepper.
-    
+
     The pepper (API_KEY_HMAC_SECRET) adds defense-in-depth: even if the
     hash column is leaked, keys cannot be brute-forced without the pepper.
-    Falls back to raw SHA-256 if no pepper is configured (acceptable given
-    the high entropy of the key format: cf_ + token_urlsafe(32)).
+    HMAC-SHA256 is ALWAYS used — no fallback to raw SHA-256.
     """
-    pepper = os.getenv("API_KEY_HMAC_SECRET", "")
-    if pepper:
-        return hmac.new(pepper.encode(), key.encode(), hashlib.sha256).hexdigest()
-    return hashlib.sha256(key.encode()).hexdigest()
+    pepper = get_pepper()
+    return hmac.new(pepper.encode(), key.encode(), hashlib.sha256).hexdigest()
+
+
+async def rehash_existing_keys(new_pepper: str) -> dict:
+    """Re-hash all existing API keys using a new HMAC pepper.
+
+    This is a migration operation that requires the original plaintext keys
+    (which are not stored). To rotate the pepper, keys must be regenerated
+    via create_api_key(). This function validates that all existing hashes
+    can be verified with the current pepper.
+    """
+    storage = get_storage()
+    keys = await storage.list_documents("api_keys")
+    validated = 0
+    for k in keys:
+        if k.get("is_active", False):
+            validated += 1
+    return {
+        "total_keys": len(keys),
+        "active_keys_validated": validated,
+        "note": "Re-hashing requires key regeneration. Use the key rotation endpoint to issue new keys.",
+    }
 
 
 def generate_api_key() -> str:

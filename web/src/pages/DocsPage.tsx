@@ -70,7 +70,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
         <p>
           Nexora turns any GitHub repository into an interactive knowledge map. Paste a URL, and within 2 minutes you get a live dependency graph, a searchable codebase, and a guided onboarding path — all derived from the actual source code, not documentation.
         </p>
-        <h3 className="text-[hsl(var(--foreground))] font-semibold text-base font-display">How it works</h3>
+        <h2 className="font-semibold text-base font-display">How it works</h2>
         <p>Nexora runs a 3-stage pipeline on your repository:</p>
         <ol className="space-y-3 list-none">
           {[
@@ -79,7 +79,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
             ['Index', 'A NetworkX knowledge graph is built. Entities become nodes; dependencies, calls, and imports become edges. The LLM annotates each entity with a one-line summary.'],
           ].map(([step, desc], i) => (
             <li key={step} className="flex gap-3">
-              <span className="font-mono text-[11px] text-[hsl(var(--accent))] mt-0.5 shrink-0">{String(i+1).padStart(2,'0')}</span>
+              <span className="font-mono text-[11px] text-[hsl(var(--foreground))] mt-0.5 shrink-0">{String(i+1).padStart(2,'0')}</span>
               <span><strong className="text-[hsl(var(--foreground))] font-semibold">{step}.</strong> {desc}</span>
             </li>
           ))}
@@ -253,7 +253,7 @@ export default function DocsPage() {
           <motion.div variants={containerVariants} initial="hidden" animate="visible">
             {sections.map((sec) => (
               <motion.div key={sec.id} variants={itemVariants} className="mb-6">
-                <p className="font-mono text-[10px] text-[hsl(var(--muted-foreground))]/50 uppercase tracking-widest mb-2 px-3">{sec.title}</p>
+                <p className="font-mono text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2 px-3">{sec.title}</p>
                 {sec.items.map((item) => (
                   <button
                     key={item.id}
@@ -273,7 +273,7 @@ export default function DocsPage() {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 px-4 sm:px-8 md:px-12 py-8 sm:py-12">
+        <div className="flex-1 min-w-0 px-4 sm:px-8 md:px-12 py-8 sm:py-12">
           <div className="max-w-2xl">
             <h1 className="font-display text-3xl font-bold tracking-tight text-[hsl(var(--foreground))] mb-8">{current.title}</h1>
             {current.body}
@@ -290,7 +290,7 @@ export default function DocsPage() {
               </a>
             </div>
           </div>
-        </main>
+        </div>
       </div>
     </MarketingLayout>
   )
