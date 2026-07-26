@@ -68,7 +68,7 @@ function Panel({ callsign, designator, action, className, children }: {
   return (
     <div className={cn('rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden', className)}>
       <div className="console-rail">
-        <span className="callsign">{callsign}</span>
+        <span className="callsign opacity-50">{callsign}</span>
         {designator && <span className="designator">{designator}</span>}
         <span className="led ml-auto" />
         {action && <div className="ml-2">{action}</div>}
@@ -189,7 +189,7 @@ export default function DashboardPage() {
             <WarningCircle size={28} className="text-error mx-auto mb-4" />
             <p className="text-error text-body-sm font-code mb-1">{(error as Error)?.message || 'Failed to acquire dashboard telemetry.'}</p>
             <p className="text-text-muted text-caption font-code mb-5">Confirm the backend is on station.</p>
-            <button onClick={() => window.location.reload()} className="btn">Reacquire</button>
+            <button onClick={() => window.location.reload()} className="btn-glass">Reacquire</button>
           </div>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden bg-white">
       {/* ── Mission header ── */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
@@ -226,7 +226,7 @@ export default function DashboardPage() {
             <span className={cn('tile', missionGo ? 'tile-go' : 'tile-hold')}>
               {missionGo ? 'All Systems GO' : 'Hold · Blocked'}
             </span>
-            <span className="designator">FLIGHT · CTO CONSOLE</span>
+            <span className="designator opacity-50">FLIGHT · CTO CONSOLE</span>
           </div>
           <h1 className="text-display-md md:text-display-lg text-text-primary">Mission Control</h1>
           <p className="text-body-sm text-text-secondary mt-1 font-code">
@@ -259,7 +259,7 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => navigate('/reviews')} className="btn hidden sm:inline-flex">
+          <button onClick={() => navigate('/reviews')} className="btn-glass hidden sm:inline-flex">
             Review Queue
             <ArrowRight size={14} weight="bold" className="ml-1.5" />
           </button>
@@ -268,16 +268,19 @@ export default function DashboardPage() {
 
       {activeTab === 'overview' && (
         <>
-          {/* ── Readout bank (butted instruments, not floating cards) ── */}
-          <motion.div variants={item} className="rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 divide-x divide-y xl:divide-y-0 divide-border">
+          {/* ── Hero readout bank ── */}
+          <motion.div variants={item} className="rounded-lg border border-border/60 overflow-hidden mb-6 bg-gradient-to-b from-white to-bg-secondary/40 shadow-sm">
+            <div className="px-5 pt-4 pb-1">
+              <span className="callsign opacity-40">MISSION TELEMETRY</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 divide-x divide-y xl:divide-y-0 divide-border/50">
               {metrics.map((m) => {
                 const body = (
-                  <div className="px-4 py-4 h-full transition-colors hover:bg-bg-tertiary/60">
-                    <div className={cn('readout text-2xl font-semibold leading-none', m.color)}>{m.value}</div>
-                    <div className="overline text-text-muted/80 mt-2 flex items-center gap-1">
+                  <div className="px-4 py-5 h-full transition-colors hover:bg-bg-tertiary/40">
+                    <div className={cn('text-3xl md:text-4xl font-bold leading-none tracking-tight', m.color)}>{m.value}</div>
+                    <div className="overline text-text-muted/50 mt-2.5 flex items-center gap-1">
                       {m.label}
-                      {m.link && <ArrowUpRight size={11} weight="bold" className="text-text-muted/50" />}
+                      {m.link && <ArrowUpRight size={11} weight="bold" className="text-text-muted/40" />}
                     </div>
                   </div>
                 )
@@ -358,7 +361,7 @@ export default function DashboardPage() {
           {/* ── Row 2: crew completion + attention ── */}
           <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
             <Panel callsign="Crew Completion" designator="EECOM"
-              action={<button onClick={() => setActiveTab('trainees')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">All crew <ArrowRight size={12} weight="bold" /></button>}
+              action={<button onClick={() => setActiveTab('trainees')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">All crew <ArrowRight size={12} weight="bold" /></button>}
               className="lg:col-span-3">
               {memberBarData.length === 0 ? (
                 <div className="text-center py-8 text-text-muted text-body-sm">No crew assigned.</div>
@@ -410,7 +413,7 @@ export default function DashboardPage() {
           {/* ── Row 3: activity log + review queue ── */}
           <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <Panel callsign="Recent Activity" designator="EVENT LOG"
-              action={<button onClick={() => setActiveTab('activity')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">All <ArrowRight size={12} weight="bold" /></button>}>
+              action={<button onClick={() => setActiveTab('activity')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">All <ArrowRight size={12} weight="bold" /></button>}>
               {recent_activity.length === 0 ? (
                 <div className="text-center py-6 text-text-muted text-body-sm">No events logged.</div>
               ) : (
@@ -432,7 +435,7 @@ export default function DashboardPage() {
             </Panel>
 
             <Panel callsign="Pending Reviews" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
-              action={<button onClick={() => navigate('/reviews')} className="text-caption text-accent-from hover:text-accent-to transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
+              action={<button onClick={() => navigate('/reviews')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
               {pending_reviews.length === 0 ? (
                 <div className="text-center py-6 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
               ) : (
@@ -531,7 +534,7 @@ export default function DashboardPage() {
       {activeTab === 'reviews' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Panel callsign="Pending Reviews" designator={`${pending_reviews.length} ITEMS`}
-            action={<button onClick={() => navigate('/tasks')} className="btn !px-3 !py-1.5 text-[11px]">Go to Tasks</button>}>
+            action={<button onClick={() => navigate('/tasks')} className="btn-glass !px-3 !py-1.5 text-[11px]">Go to Tasks</button>}>
             {pending_reviews.length === 0 ? (
               <div className="p-8 text-center text-text-muted text-body-sm">Review queue clear.</div>
             ) : (

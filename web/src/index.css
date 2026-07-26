@@ -299,6 +299,28 @@
   .btn-danger { background: rgba(190, 58, 46, 0.10); color: var(--abort); }
   .btn-danger:hover { background: rgba(190, 58, 46, 0.18); }
 
+  .btn-glass {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Public Sans', Inter, system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 3px;
+    padding: 10px 18px;
+    transition: all 0.15s ease;
+    border: 1px solid rgba(24,27,24,0.08);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(12px);
+    color: var(--ink);
+  }
+  .btn-glass:hover { background: rgba(255,255,255,0.80); border-color: rgba(24,27,24,0.14); }
+  .btn-glass:active { transform: translateY(1px); }
+  .btn-glass:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .btn-glass:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
   /* ── Inputs — recessed wells ───────────────────── */
   .input {
     width: 100%;
