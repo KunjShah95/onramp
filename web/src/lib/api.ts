@@ -48,7 +48,17 @@ async function request<T>(url: string, body?: unknown, method?: string): Promise
     body: body ? JSON.stringify(body) : undefined,
   })
   if (res.status === 401) {
-    throw new Error('Authentication required. Please sign in again.')
+    const text = await res.text()
+    let message = 'Authentication required. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
   }
   if (!res.ok) {
     const text = await res.text()
@@ -60,7 +70,17 @@ async function request<T>(url: string, body?: unknown, method?: string): Promise
 async function get<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: authHeaders() })
   if (res.status === 401) {
-    throw new Error('Authentication required. Please sign in again.')
+    const text = await res.text()
+    let message = 'Authentication required. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
   }
   if (!res.ok) {
     const text = await res.text()
