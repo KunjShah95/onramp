@@ -17,6 +17,7 @@ def _build_app(**middleware_kwargs):
 
     app = Starlette(routes=[
         Route("/api/v1/ask/query", handler),
+        Route("/api/v1/auth/login", handler),
         Route("/plain", handler),
         Route("/health", handler),
     ])
@@ -57,17 +58,36 @@ def test_non_production_without_redis_url_starts_fine(monkeypatch):
 def test_llm_route_has_stricter_limit_than_default(monkeypatch):
     monkeypatch.setenv("ENV", "development")
     monkeypatch.delenv("REDIS_URL", raising=False)
-    app = _build_app(requests_per_minute=200)
+    app = _build_app()
     client = TestClient(app)
 
-    for _ in range(RateLimitMiddleware.LLM_ROUTE_LIMIT):
+    # LLM routes: token bucket with capacity 20
+    for _ in range(20):
         resp = client.get("/api/v1/ask/query")
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Failed on iteration {_}"
 
     resp = client.get("/api/v1/ask/query")
     assert resp.status_code == 429
 
-    # A non-LLM route on the same client should still be well within budget.
+    # Non-LLM route on the same client should still work (sliding window 200/min)
+    resp = client.get("/plain")
+    assert resp.status_code == 200
+
+
+def test_auth_route_has_separate_bucket(monkeypatch):
+    monkeypatch.setenv("ENV", "development")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    app = _build_app()
+    client = TestClient(app)
+
+    for _ in range(10):
+        resp = client.get("/api/v1/auth/login")
+        assert resp.status_code == 200, f"Auth failed on iteration {_}"
+
+    resp = client.get("/api/v1/auth/login")
+    assert resp.status_code == 429
+
+    # Auth exhaustion should not affect API routes
     resp = client.get("/plain")
     assert resp.status_code == 200
 
