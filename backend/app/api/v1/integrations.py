@@ -204,6 +204,204 @@ async def test_github_token(
         return {"valid": False, "error": f"Connection error: {str(e)}"}
 
 
+# ── GitLab Integration Endpoints ───────────────────────────────
+
+
+@router.post("/gitlab/test")
+async def test_gitlab_connection(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Validate a GitLab personal access token."""
+    from app.services.gitlab_service import GitLabService
+    token = request.config.get("token", "")
+    if not token:
+        return {"valid": False, "error": "Missing GitLab token"}
+    svc = GitLabService(token=token)
+    return await svc.test_connection()
+
+
+@router.post("/gitlab/projects")
+async def list_gitlab_projects(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Search GitLab projects accessible with the configured token."""
+    from app.services.gitlab_service import GitLabService
+    token = request.config.get("token", "")
+    search = request.config.get("search", "")
+    if not token or not search:
+        return {"projects": [], "count": 0}
+
+    try:
+        svc = GitLabService(token=token)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://gitlab.com/api/v4/projects",
+                headers={"PRIVATE-TOKEN": token, "Accept": "application/json"},
+                params={"search": search, "per_page": 20, "simple": True},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                projects = [
+                    {
+                        "id": p["id"],
+                        "name": p.get("name", ""),
+                        "path_with_namespace": p.get("path_with_namespace", ""),
+                        "web_url": p.get("web_url", ""),
+                        "description": p.get("description", ""),
+                        "avatar_url": p.get("avatar_url", ""),
+                        "visibility": p.get("visibility", "private"),
+                        "star_count": p.get("star_count", 0),
+                    }
+                    for p in data
+                ]
+                return {"projects": projects, "count": len(projects)}
+            return {"projects": [], "count": 0}
+    except Exception as e:
+        return {"projects": [], "count": 0, "error": str(e)}
+
+
+# ── Bitbucket Integration Endpoints ────────────────────────────
+
+
+@router.post("/bitbucket/test")
+async def test_bitbucket_connection(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Validate Bitbucket credentials (username + app password)."""
+    from app.services.bitbucket_service import BitbucketService
+    username = request.config.get("username", "")
+    app_password = request.config.get("app_password", "")
+    if not username or not app_password:
+        return {"valid": False, "error": "Missing Bitbucket username or app password"}
+    svc = BitbucketService(username=username, app_password=app_password)
+    return await svc.test_connection()
+
+
+@router.post("/bitbucket/repos")
+async def list_bitbucket_repos(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """List Bitbucket repositories for a workspace."""
+    import base64
+    username = request.config.get("username", "")
+    app_password = request.config.get("app_password", "")
+    workspace = request.config.get("workspace", "")
+
+    if not username or not app_password:
+        return {"repos": [], "count": 0}
+
+    headers = {
+        "Authorization": f"Basic {base64.b64encode(f'{username}:{app_password}'.encode()).decode()}",
+        "Accept": "application/json",
+    }
+    url = f"https://api.bitbucket.org/2.0/repositories/{workspace}" if workspace else "https://api.bitbucket.org/2.0/repositories"
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(url, headers=headers, params={"pagelen": 50, "role": "member"})
+            if resp.status_code == 200:
+                data = resp.json()
+                repos = [
+                    {
+                        "slug": r.get("slug", ""),
+                        "name": r.get("name", ""),
+                        "full_name": r.get("full_name", ""),
+                        "description": r.get("description", ""),
+                        "language": r.get("language", ""),
+                        "is_private": r.get("is_private", True),
+                        "links": {
+                            "html": (r.get("links", {}).get("html", {}) or {}).get("href", ""),
+                            "clone": [c["href"] for c in (r.get("links", {}).get("clone", []) or [])],
+                        },
+                    }
+                    for r in data.get("values", [])
+                ]
+                return {"repos": repos, "count": len(repos)}
+            return {"repos": [], "count": 0}
+    except Exception as e:
+        return {"repos": [], "count": 0, "error": str(e)}
+
+
+# ── Jira Integration Endpoints ────────────────────────────────
+
+
+@router.post("/jira/test")
+async def test_jira_connection(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Test Jira connection with provided credentials."""
+    from app.services.jira_service import test_connection
+    return await test_connection(request.config)
+
+
+@router.post("/jira/projects")
+async def list_jira_projects(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """List Jira projects accessible with the configured credentials."""
+    from app.services.jira_service import list_projects
+    projects = await list_projects(request.config)
+    return {"projects": projects, "count": len(projects)}
+
+
+@router.post("/jira/issue-types")
+async def list_jira_issue_types(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """List issue types for a Jira project."""
+    from app.services.jira_service import list_issue_types
+    project_key = request.config.get("project_key", "")
+    if not project_key:
+        raise HTTPException(status_code=400, detail="project_key is required")
+    types = await list_issue_types(request.config, project_key)
+    return {"issue_types": types, "count": len(types)}
+
+
+# ── Linear Integration Endpoints ──────────────────────────────
+
+
+@router.post("/linear/test")
+async def test_linear_connection(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Test Linear connection with provided API key."""
+    from app.services.linear_service import test_connection
+    return await test_connection(request.config.get("api_key", ""))
+
+
+@router.post("/linear/teams")
+async def list_linear_teams(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """List Linear teams accessible with the configured API key."""
+    from app.services.linear_service import list_teams
+    teams = await list_teams(request.config.get("api_key", ""))
+    return {"teams": teams, "count": len(teams)}
+
+
+@router.post("/linear/workflow-states")
+async def list_linear_workflow_states(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """List workflow states for a Linear team."""
+    from app.services.linear_service import list_workflow_states
+    team_id = request.config.get("team_id", "")
+    if not team_id:
+        raise HTTPException(status_code=400, detail="team_id is required")
+    states = await list_workflow_states(request.config.get("api_key", ""), team_id)
+    return {"workflow_states": states, "count": len(states)}
+
+
 @router.get("/{integration_type}")
 async def get_integration(
     integration_type: str,

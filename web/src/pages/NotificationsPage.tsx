@@ -180,7 +180,7 @@ export default function NotificationsPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-3xl mx-auto space-y-6 relative"
+      className="max-w-3xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0 relative"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
@@ -195,7 +195,7 @@ export default function NotificationsPage() {
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
               <Bell className="w-5 h-5 text-accent-primary" weight="duotone" />
             </div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
+            <h1 className="text-xl sm:text-display-sm font-display font-medium text-text-primary">
               Notifications
             </h1>
             {unreadCount > 0 && (

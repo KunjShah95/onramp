@@ -172,12 +172,12 @@ async def _get_task_activity(storage, user_id: str, team_id: Optional[str], sinc
         module = t.get("module", "")
 
         emoji, text = {
-            "completed": ("✅", f"Task completed: {title}"),
-            "approved": ("✅", f"Task approved: {title}"),
-            "submitted": ("📋", f"Task submitted for review: {title}"),
-            "needs_changes": ("🔄", f"Changes requested: {title}"),
-            "assigned": ("📌", f"Task assigned: {title}"),
-            "in_progress": ("▶️", f"Task in progress: {title}"),
+            "completed": ("", f"Task completed: {title}"),
+            "approved": ("", f"Task approved: {title}"),
+            "submitted": ("", f"Task submitted for review: {title}"),
+            "needs_changes": ("", f"Changes requested: {title}"),
+            "assigned": ("", f"Task assigned: {title}"),
+            "in_progress": ("", f"Task in progress: {title}"),
         }.get(state, ("•", f"Task {state}: {title}"))
 
         subtitle = f"Module: {module}" if module else None
@@ -202,7 +202,7 @@ async def _get_module_activity(storage, user_id: str, team_id: Optional[str], si
         source = r.get("source", "manual")
         source_label = "auto-unlocked via task" if source == "task_completion" else "granted"
         items.append({
-            "emoji": "🔓",
+            "emoji": "",
             "text": f"Access to module: {module}",
             "subtitle": source_label,
         })
@@ -227,7 +227,7 @@ async def _get_quiz_activity(storage, user_id: str, since: str) -> list:
         passed = r.get("passed", False)
         module = r.get("module", "codebase")
 
-        emoji = "🎉" if passed else "📝"
+        emoji = "" if passed else ""
         items.append({
             "emoji": emoji,
             "text": f"Quiz: {module} — {score}/{total} ({percentage}%)",
@@ -254,7 +254,7 @@ async def _get_pending_reviews(storage, user_id: str, team_id: Optional[str]) ->
         if module:
             subtitle += f" · {module}" if subtitle else f"Module: {module}"
         items.append({
-            "emoji": "👀",
+            "emoji": "",
             "text": f"Pending review: {title}",
             "subtitle": subtitle or None,
         })
@@ -277,19 +277,19 @@ def _since_cutoff(period: str) -> str:
 
 def _notif_emoji(notif_type: str) -> str:
     emoji_map = {
-        "task_assigned": "📌",
-        "task_submitted": "📋",
-        "task_reviewed": "👀",
-        "task_approved": "✅",
-        "task_needs_changes": "🔄",
-        "task_completed": "🎉",
-        "task_cancelled": "🗑️",
-        "module_granted": "🔓",
-        "team_invite": "🤝",
-        "system_alert": "⚠️",
-        "pr_merged": "🔀",
-        "milestone_reached": "🏆",
-        "quiz_graded": "📝",
+        "task_assigned": "",
+        "task_submitted": "",
+        "task_reviewed": "",
+        "task_approved": "",
+        "task_needs_changes": "",
+        "task_completed": "",
+        "task_cancelled": "",
+        "module_granted": "",
+        "team_invite": "",
+        "system_alert": "",
+        "pr_merged": "",
+        "milestone_reached": "",
+        "quiz_graded": "",
     }
     return emoji_map.get(notif_type, "•")
 

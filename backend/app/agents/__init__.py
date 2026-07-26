@@ -12,6 +12,8 @@ from app.agents.pr_review import PRReviewAgent
 from app.agents.task_qa import TaskQA
 from app.agents.quiz_generator import QuizGenerator
 from app.agents.codebase_trailer import CodebaseTrailer
+from app.agents.drift_detector import DriftDetector
+from app.agents.coding_agent import AutonomousCodingAgent
 
 __all__ = [
     "BaseAgent",
@@ -28,4 +30,6 @@ __all__ = [
     "TaskQA",
     "QuizGenerator",
     "CodebaseTrailer",
+    "DriftDetector",
+    "AutonomousCodingAgent",
 ]

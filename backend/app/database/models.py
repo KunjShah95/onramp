@@ -465,6 +465,7 @@ class NotificationPreference(Base):
     quiet_hours_start: Mapped[str] = mapped_column(String(10), default="22:00")
     quiet_hours_end: Mapped[str] = mapped_column(String(10), default="08:00")
     email_digest_time: Mapped[str] = mapped_column(String(10), default="09:00")
+    roast_mode_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -480,6 +481,7 @@ class NotificationPreference(Base):
             "quiet_hours_start": self.quiet_hours_start,
             "quiet_hours_end": self.quiet_hours_end,
             "email_digest_time": self.email_digest_time,
+            "roast_mode_enabled": self.roast_mode_enabled,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -1344,6 +1346,42 @@ class PulseSurvey(Base):
             "sentiment": self.sentiment,
             "open_feedback": self.open_feedback,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Feature Flags
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class FeatureFlag(Base):
+    """Team-level feature flag toggles"""
+
+    __tablename__ = "onramp_feature_flags"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    team_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    flag_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "flag_name", name="uq_team_feature_flag"),
+        Index("ix_feature_flags_team", "team_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "team_id": self.team_id,
+            "flag_name": self.flag_name,
+            "enabled": self.enabled,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }
 
 

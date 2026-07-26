@@ -175,7 +175,7 @@ async def create_account(
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">🚀</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Welcome to Onramp</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">

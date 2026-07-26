@@ -1,10 +1,18 @@
+import logging
+import random
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
+
+logger = logging.getLogger(__name__)
 
 
 class HealthScorer(BaseAgent):
     async def execute(self, **kwargs) -> Dict[str, Any]:
-        return await self.score(kwargs.get("repo_structure", {}))
+        mode = kwargs.get("mode", "normal")
+        score_result = await self.score(kwargs.get("repo_structure", {}))
+        if mode == "roast" and self.llm:
+            return await self._add_roast(score_result, kwargs.get("repo_structure", {}))
+        return score_result
 
     async def score(self, repo_structure: Dict) -> Dict[str, Any]:
         files = repo_structure.get("files", [])
@@ -77,6 +85,40 @@ class HealthScorer(BaseAgent):
             "test_files": test_files,
             "recommendations": recommendations[:5],
         }
+
+    async def _add_roast(self, score_result: Dict[str, Any], repo_structure: Dict) -> Dict[str, Any]:
+        files_summary = "\n".join(f.get("path", "") for f in repo_structure.get("files", []))[:2000]
+        scores = f"Overall: {score_result['overall_score']}/100, Tests: {score_result['test_coverage']}%, Docs: {score_result['documentation']}%, Maintainability: {score_result['maintainability']}/10"
+        prompt = (
+            f"You are 'Health Score Roast Bot' — a sarcastic code health analyst.\n\n"
+            f"Given these health scores for a codebase, write a funny 2-3 sentence roast:\n{scores}\n\n"
+            f"Repository files:\n{files_summary}\n\n"
+            "Return JSON only:\n"
+            "{\n"
+            '  "roast_summary": "Your funny roast (max 3 sentences)",\n'
+            '  "roast_intensity": "light|medium|dark|burnt"\n'
+            "}"
+        )
+        try:
+            result = await self.llm.json_chat(prompt)
+            score_result["roast"] = result.get("roast_summary", "")
+            score_result["roast_intensity"] = result.get("roast_intensity", "light")
+        except Exception:
+            logger.exception("LLM roast failed for health scorer")
+            score_result["roast"] = self._fallback_roast(score_result)
+        return score_result
+
+    @staticmethod
+    def _fallback_roast(score_result: Dict[str, Any]) -> str:
+        score = score_result.get("overall_score", 50)
+        test_cov = score_result.get("test_coverage", 0)
+        if score < 30:
+            return "This codebase is held together by hope and outdated comments."
+        if score < 50:
+            return f"Test coverage at {test_cov}% is not 'coverage', it's an alibi."
+        if score < 70:
+            return "Your code is like a good indie movie — rough around the edges but it gets the job done."
+        return "This codebase is so clean I'm genuinely suspicious. Who hurt you?"
 
     def _is_test_file(self, path: str) -> bool:
         name = path.lower()

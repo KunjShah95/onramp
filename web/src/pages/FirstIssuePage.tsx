@@ -145,7 +145,7 @@ export default function FirstIssuePage() {
         </div>
 
         {/* Repo input */}
-        <div className="relative flex items-center w-full md:w-[520px]">
+        <div className="relative flex items-center w-full w-full md:w-[520px]">
           <Bug size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
           <input
             value={repoUrl}

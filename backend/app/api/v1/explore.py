@@ -2,6 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import ArchitectureExplorer
+from app.services.quota import enforce_quota
 
 router = APIRouter(prefix="/explore", tags=["architecture"])
 
@@ -26,7 +27,7 @@ def _extract_github_token(request: ExploreRequest, req: Request) -> Optional[str
 
 
 @router.post("/analyze")
-async def analyze_repo(request: ExploreRequest, req: Request):
+async def analyze_repo(request: ExploreRequest, req: Request, _q=enforce_quota("explore")):
     llm = getattr(req.app.state, "llm", None)
     github_token = _extract_github_token(request, req)
     explorer = ArchitectureExplorer(llm, github_token=github_token)

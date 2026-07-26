@@ -195,7 +195,7 @@ class SlackBot:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "☀️ Time for your daily standup!",
+                    "text": "Time for your daily standup!",
                     "emoji": True,
                 },
             },
@@ -243,7 +243,7 @@ class SlackBot:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"✅ *{senior_name}* acknowledged your standup for *{date}*.",
+                    "text": f"*{senior_name}* acknowledged your standup for *{date}*.",
                 },
             },
         ]
@@ -309,7 +309,7 @@ class SlackBot:
                         "type": "button",
                         "text": {
                             "type": "plain_text",
-                            "text": "✅ Acknowledge",
+                            "text": "Acknowledge",
                             "emoji": True,
                         },
                         "action_id": "standup_acknowledge",
@@ -323,7 +323,7 @@ class SlackBot:
                         "type": "button",
                         "text": {
                             "type": "plain_text",
-                            "text": "💬 Ask for details",
+                            "text": "Ask for details",
                             "emoji": True,
                         },
                         "action_id": "standup_request_details",
@@ -374,14 +374,14 @@ class SlackBot:
         )
 
         today = datetime.now(timezone.utc).date().isoformat()
-        header_msg = f"📬 *{team_name}* — Daily digest for {today}"
+        header_msg = f"*{team_name}* — Daily digest for {today}"
 
         blocks = [
             {
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"📬 Team Digest — {team_name}",
+                    "text": f"Team Digest — {team_name}",
                     "emoji": True,
                 },
             },
@@ -408,7 +408,7 @@ class SlackBot:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*👤 {user_name}*",
+                    "text": f"*{user_name}*",
                 },
             })
 
@@ -518,7 +518,7 @@ class SlackBot:
                 "date": data.get("date", ""),
                 "response": {
                     "response_type": "ephemeral",
-                    "text": f"✅ Standup acknowledged! The junior will be notified.",
+                    "text": f"Standup acknowledged! The junior will be notified.",
                 },
             }
 

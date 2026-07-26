@@ -943,6 +943,7 @@ export async function createCheckoutSession(data: {
 
 export interface ApiKey {
   key_id: string
+  name?: string
   org_name: string
   tier: string
   created_at: string
@@ -1015,8 +1016,109 @@ export async function getQuota(
   return get<{ quota: any }>(`${API_BASE}/ai/usage/${orgName}/quota`)
 }
 
-export async function listTiers(): Promise<{ tiers: any[] }> {
-  return get<{ tiers: any[] }>(`${API_BASE}/ai/tiers`)
+export interface TierLimits {
+  requests_per_minute: number
+  requests_per_day: number
+  credits_per_month: number
+  max_repos: number
+}
+
+export interface CreditCosts {
+  chat: number
+  embed: number
+  generate: number
+  learn: number
+  explore: number
+  analyze: number
+  pr_review: number
+  trailer: number
+  [key: string]: number
+}
+
+export interface RateLimitInfo {
+  tiers: Record<string, TierLimits>
+  credit_costs: CreditCosts
+}
+
+export async function listTiers(): Promise<RateLimitInfo> {
+  return get<RateLimitInfo>(`${API_BASE}/ai/tiers`)
+}
+
+// ─── AIaaS Public Gateway ────────────────────────────────────────────────────
+
+export interface AgentInfo {
+  name: string
+  description: string
+  required_params: string[]
+  credit_cost: number
+}
+
+export async function listAgents(): Promise<{ agents: AgentInfo[]; count: number }> {
+  return get<{ agents: AgentInfo[]; count: number }>(`${API_BASE}/ai/agents`)
+}
+
+export async function executeAgent(
+  agentName: string,
+  params: Record<string, unknown>,
+  apiKey?: string,
+): Promise<{ agent: string; result: any; credits_used: number; tier: string }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey
+  } else {
+    Object.assign(headers, authHeaders())
+  }
+  const res = await fetch(`${API_BASE}/ai/agents/${agentName}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  })
+  if (res.status === 401) {
+    const text = await res.text()
+    let message = 'Authentication required. Provide a valid API key or JWT.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+// ─── Autonomous Coding Agent ────────────────────────────────────────────────
+
+export interface AutonomousCodingResult {
+  success: boolean
+  pr_url?: string
+  pr_number?: number
+  branch?: string
+  summary?: string
+  files_changed?: number
+  patches_applied?: number
+  patches_failed?: number
+  error?: string
+}
+
+export async function executeAutonomousCoding(
+  repoUrl: string,
+  issueDescription: string,
+  baseBranch = 'main',
+  branchName?: string,
+): Promise<AutonomousCodingResult> {
+  return request<AutonomousCodingResult>(`${API_BASE}/ai/agents/autonomous`, {
+    repo_url: repoUrl,
+    issue_description: issueDescription,
+    base_branch: baseBranch,
+    branch_name: branchName,
+  })
 }
 
 // ─── HR Dashboard ──────────────────────────────────────────────────────────
@@ -1231,6 +1333,63 @@ export async function describePR(
   })
 }
 
+// ─── PR Review Auto-Apply ────────────────────────────────────────────────────
+
+export interface AutoApplySuggestion {
+  file_path: string
+  old_string: string
+  new_string: string
+  commit_message?: string
+}
+
+export interface AutoApplyResult {
+  total: number
+  succeeded: number
+  failed: number
+  results: Array<{
+    success: boolean
+    commit_sha?: string
+    commit_url?: string
+    file_path?: string
+    error?: string
+  }>
+}
+
+export async function autoApplySuggestions(
+  repoUrl: string,
+  prNumber: number,
+  suggestions: AutoApplySuggestion[],
+  commitMessagePrefix = 'fix: auto-apply PR review suggestion'
+): Promise<AutoApplyResult> {
+  return request<AutoApplyResult>(`${API_BASE}/pr-review/auto-apply`, {
+    repo_url: repoUrl,
+    pr_number: prNumber,
+    suggestions,
+    commit_message_prefix: commitMessagePrefix,
+  })
+}
+
+export async function autoApplySuggestion(
+  repoUrl: string,
+  prNumber: number,
+  filePath: string,
+  oldString: string,
+  newString: string,
+  commitMessage = 'fix: auto-apply PR review suggestion'
+): Promise<{ success: boolean; commit_sha?: string; commit_url?: string }> {
+  return request<{ success: boolean; commit_sha?: string; commit_url?: string }>(
+    `${API_BASE}/pr-review/auto-apply/single`,
+    {
+      repo_url: repoUrl,
+      pr_number: prNumber,
+      file_path: filePath,
+      old_string: oldString,
+      new_string: newString,
+      commit_message: commitMessage,
+    }
+  )
+}
+
 export async function adminListAuditEvents(params?: {
   event_type?: string
   actor_id?: string
@@ -1342,6 +1501,35 @@ export async function adminGetWebhookDeliveries(webhookId: string, limit = 50): 
 
 export async function adminRotateWebhookSecret(webhookId: string): Promise<AdminWebhook> {
   return request<AdminWebhook>(`${API_BASE}/admin/webhooks/${webhookId}/rotate-secret`, {})
+}
+
+// ─── Architecture Drift Detection ─────────────────────────────────────────
+
+export interface DriftResult {
+  drift_score: number
+  status: string
+  has_docs: boolean
+  documented_but_missing: string[]
+  undocumented_components: string[]
+  code_component_count: number
+  documented_component_count: number
+  alerts: Array<{
+    type: string
+    severity: string
+    detail: string
+    recommendation: string
+  }>
+  summary: string
+}
+
+export async function detectArchitectureDrift(
+  repoStructure: Record<string, unknown>,
+  docs: string
+): Promise<DriftResult> {
+  return request<DriftResult>(`${API_BASE}/drift/detect`, {
+    repo_structure: repoStructure,
+    docs,
+  })
 }
 
 // ─── Ask / Q&A History ─────────────────────────────────────────────────────
@@ -1729,6 +1917,7 @@ export interface NotificationPreferences {
   quiet_hours_start: string
   quiet_hours_end: string
   email_digest_time: string
+  roast_mode_enabled: boolean
 }
 
 export interface NotificationPreferencesDefaults {
@@ -1749,6 +1938,7 @@ export async function updateNotificationPreferences(data: Partial<{
   quiet_hours_start: string
   quiet_hours_end: string
   email_digest_time: string
+  roast_mode_enabled: boolean
 }>): Promise<NotificationPreferences> {
   return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, data, 'PUT')
 }
@@ -1881,6 +2071,183 @@ export async function getSupportedEvents(): Promise<SupportedEventsResponse> {
   return get<SupportedEventsResponse>(`${API_BASE}/integrations/events/list`)
 }
 
+// ─── Jira Integration ─────────────────────────────────────────────────────
+
+export interface JiraTestResult {
+  valid: boolean
+  display_name?: string
+  account_id?: string
+  error?: string
+}
+
+export interface JiraProject {
+  key: string
+  name: string
+  id: string
+}
+
+export interface JiraIssueType {
+  id: string
+  name: string
+  subtask: boolean
+}
+
+export async function testJiraConnection(config: Record<string, any>): Promise<JiraTestResult> {
+  return request<JiraTestResult>(`${API_BASE}/integrations/jira/test`, { config })
+}
+
+export async function listJiraProjects(config: Record<string, any>): Promise<{ projects: JiraProject[]; count: number }> {
+  return request<{ projects: JiraProject[]; count: number }>(`${API_BASE}/integrations/jira/projects`, { config })
+}
+
+export async function listJiraIssueTypes(config: Record<string, any>): Promise<{ issue_types: JiraIssueType[]; count: number }> {
+  return request<{ issue_types: JiraIssueType[]; count: number }>(`${API_BASE}/integrations/jira/issue-types`, { config })
+}
+
+// ─── Linear Integration ───────────────────────────────────────────────────
+
+export interface LinearTestResult {
+  valid: boolean
+  name?: string
+  email?: string
+  id?: string
+  error?: string
+}
+
+export interface LinearTeam {
+  id: string
+  name: string
+  key: string
+}
+
+export interface LinearWorkflowState {
+  id: string
+  name: string
+  type: string
+}
+
+export async function testLinearConnection(config: Record<string, any>): Promise<LinearTestResult> {
+  return request<LinearTestResult>(`${API_BASE}/integrations/linear/test`, { config })
+}
+
+export async function listLinearTeams(config: Record<string, any>): Promise<{ teams: LinearTeam[]; count: number }> {
+  return request<{ teams: LinearTeam[]; count: number }>(`${API_BASE}/integrations/linear/teams`, { config })
+}
+
+export async function listLinearWorkflowStates(config: Record<string, any>): Promise<{ workflow_states: LinearWorkflowState[]; count: number }> {
+  return request<{ workflow_states: LinearWorkflowState[]; count: number }>(`${API_BASE}/integrations/linear/workflow-states`, { config })
+}
+
+// ─── Credit Wallet (Usage-Based Billing) ─────────────────────────────────
+
+export interface CreditWallet {
+  scope: string
+  balance: number
+  lifetime_purchased: number
+  lifetime_spent: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface LedgerEntry {
+  entry_id: string
+  scope: string
+  delta: number
+  balance_after: number
+  reason: string
+  action: string
+  created_at: string
+}
+
+export async function getCreditWallet(): Promise<CreditWallet> {
+  return get<CreditWallet>(`${API_BASE}/billing/credits`)
+}
+
+export async function topUpCredits(amount: number): Promise<CreditWallet> {
+  return request<CreditWallet>(`${API_BASE}/billing/credits/topup`, { amount })
+}
+
+export async function getCreditLedger(limit = 50): Promise<{ entries: LedgerEntry[]; count: number }> {
+  return get<{ entries: LedgerEntry[]; count: number }>(`${API_BASE}/billing/credits/ledger?limit=${limit}`)
+}
+
+export interface CreditCostInfo {
+  action: string
+  cost: number
+  description: string
+}
+
+export const CREDIT_COSTS_LIST: CreditCostInfo[] = [
+  { action: 'chat', cost: 1, description: 'Ask a question to the codebase' },
+  { action: 'embed', cost: 1, description: 'Embed a code snippet' },
+  { action: 'generate', cost: 5, description: 'Generate PR description / guide' },
+  { action: 'learn', cost: 5, description: 'Generate learning path' },
+  { action: 'explore', cost: 10, description: 'Explore repo architecture' },
+  { action: 'analyze', cost: 10, description: 'Analyze code patterns / drift' },
+  { action: 'pr_review', cost: 15, description: 'Review a pull request' },
+  { action: 'trailer', cost: 20, description: 'Generate codebase trailer' },
+]
+
+// ─── GitLab Integration ───────────────────────────────────────────────────
+
+export interface GitLabTestResult {
+  valid: boolean
+  username?: string
+  name?: string
+  avatar_url?: string
+  error?: string
+}
+
+export interface GitLabProject {
+  id: number
+  name: string
+  path_with_namespace: string
+  web_url: string
+  description: string
+  avatar_url: string
+  visibility: string
+  star_count: number
+}
+
+export async function testGitLabConnection(config: Record<string, any>): Promise<GitLabTestResult> {
+  return request<GitLabTestResult>(`${API_BASE}/integrations/gitlab/test`, { config })
+}
+
+export async function listGitLabProjects(config: Record<string, any>): Promise<{ projects: GitLabProject[]; count: number }> {
+  return request<{ projects: GitLabProject[]; count: number }>(`${API_BASE}/integrations/gitlab/projects`, { config })
+}
+
+// ─── Bitbucket Integration ────────────────────────────────────────────────
+
+export interface BitbucketTestResult {
+  valid: boolean
+  username?: string
+  display_name?: string
+  uuid?: string
+  error?: string
+}
+
+export interface BitbucketRepo {
+  slug: string
+  name: string
+  full_name: string
+  description: string
+  language: string
+  is_private: boolean
+  links: {
+    html: string
+    clone: string[]
+  }
+}
+
+export async function testBitbucketConnection(config: Record<string, any>): Promise<BitbucketTestResult> {
+  return request<BitbucketTestResult>(`${API_BASE}/integrations/bitbucket/test`, { config })
+}
+
+export async function listBitbucketRepos(config: Record<string, any>): Promise<{ repos: BitbucketRepo[]; count: number }> {
+  return request<{ repos: BitbucketRepo[]; count: number }>(`${API_BASE}/integrations/bitbucket/repos`, { config })
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {
@@ -1906,9 +2273,14 @@ export interface ProviderCheckResponse {
 
 export async function authLogin(
   email: string,
-  password: string
+  password: string,
+  rememberMe = false
 ): Promise<AuthResponse> {
-  return request<AuthResponse>(`${API_BASE}/auth/login`, { email, password })
+  return request<AuthResponse>(`${API_BASE}/auth/login`, { email, password, remember_me: rememberMe })
+}
+
+export async function refreshToken(): Promise<{ token: string }> {
+  return request<{ token: string }>(`${API_BASE}/auth/refresh`, {})
 }
 
 export async function authRegister(
@@ -2406,4 +2778,118 @@ export interface WikiResponse {
 
 export async function generateWiki(repoUrl: string): Promise<WikiResponse> {
   return request<WikiResponse>(`${API_BASE}/wiki/generate`, { repo_url: repoUrl })
+}
+
+// ─── Feature Flags ──────────────────────────────────────────────────────
+
+export interface FeatureFlag {
+  id: string
+  team_id: string
+  flag_name: string
+  enabled: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FeatureFlagsResponse {
+  flags: FeatureFlag[]
+  count: number
+}
+
+export async function listFeatureFlags(teamId: string): Promise<FeatureFlagsResponse> {
+  return get<FeatureFlagsResponse>(`${API_BASE}/feature-flags/${teamId}`)
+}
+
+export async function getFeatureFlag(teamId: string, flagName: string): Promise<FeatureFlag> {
+  return get<FeatureFlag>(`${API_BASE}/feature-flags/${teamId}/${flagName}`)
+}
+
+export async function setFeatureFlag(teamId: string, flagName: string, enabled: boolean): Promise<FeatureFlag> {
+  return request<FeatureFlag>(`${API_BASE}/feature-flags/${teamId}/${flagName}`, { enabled })
+}
+
+export async function deleteFeatureFlag(teamId: string, flagName: string): Promise<void> {
+  return (await fetch(`${API_BASE}/feature-flags/${teamId}/${flagName}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })).json()
+}
+
+// ─── Playbook Marketplace ───────────────────────────────────────────────────
+
+export interface MarketplaceRating {
+  rating_id: string
+  user_id: string
+  rating: number
+  comment?: string
+  created_at?: string
+}
+
+export interface MarketplaceListing {
+  listing_id: string
+  source_playbook_id: string
+  publisher_id: string
+  publisher_name: string
+  origin_team_id?: string | null
+  title: string
+  description: string
+  steps: string[]
+  tags: string[]
+  import_count: number
+  rating_avg: number
+  rating_count: number
+  published_at?: string
+  updated_at?: string
+  ratings?: MarketplaceRating[]
+}
+
+export type MarketplaceSort = 'popular' | 'top_rated' | 'newest'
+
+export async function listMarketplacePlaybooks(params?: {
+  search?: string
+  tag?: string
+  sort?: MarketplaceSort
+  limit?: number
+}): Promise<{ listings: MarketplaceListing[]; count: number }> {
+  const query = new URLSearchParams()
+  if (params?.search) query.set('search', params.search)
+  if (params?.tag) query.set('tag', params.tag)
+  if (params?.sort) query.set('sort', params.sort)
+  if (params?.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return get(`${API_BASE}/marketplace/playbooks${qs ? '?' + qs : ''}`)
+}
+
+export async function getMarketplaceListing(listingId: string): Promise<MarketplaceListing> {
+  return get<MarketplaceListing>(`${API_BASE}/marketplace/playbooks/${listingId}`)
+}
+
+export async function publishPlaybook(sourcePlaybookId: string): Promise<MarketplaceListing> {
+  return request<MarketplaceListing>(`${API_BASE}/marketplace/publish`, {
+    source_playbook_id: sourcePlaybookId,
+  })
+}
+
+export async function unpublishListing(listingId: string): Promise<{ unpublished: boolean }> {
+  return request<{ unpublished: boolean }>(
+    `${API_BASE}/marketplace/playbooks/${listingId}`,
+    undefined,
+    'DELETE',
+  )
+}
+
+export async function importMarketplaceListing(
+  listingId: string,
+  teamId: string,
+): Promise<{ imported_playbook: unknown; listing_id: string }> {
+  return request(`${API_BASE}/marketplace/playbooks/${listingId}/import`, { team_id: teamId })
+}
+
+export async function rateMarketplaceListing(
+  listingId: string,
+  rating: number,
+  comment = '',
+): Promise<{ rating_avg: number; rating_count: number }> {
+  return request(`${API_BASE}/marketplace/playbooks/${listingId}/rate`, { rating, comment })
 }

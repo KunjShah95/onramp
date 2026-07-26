@@ -92,7 +92,7 @@ export default function SeniorSpacePage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-6xl mx-auto space-y-8 relative"
+      className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8 relative"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center gap-3 relative">

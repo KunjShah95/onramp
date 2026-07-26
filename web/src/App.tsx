@@ -4,6 +4,9 @@ import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import { ToastProvider } from './context/ToastContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { RoastModeProvider } from './context/RoastModeContext'
+import { FeatureFlagProvider } from './context/FeatureFlagContext'
+import { RealTimeProvider } from './context/RealTimeContext'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import {
   PageLoadingFallback,
@@ -43,6 +46,7 @@ const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
 const SetPassword = lazy(() => import('./pages/SetPassword'))
+const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
@@ -52,6 +56,7 @@ const OnboardingReportPage = lazy(() => import('./pages/OnboardingReportPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const TeamPage = lazy(() => import('./pages/TeamPage'))
 const PlaybooksPage = lazy(() => import('./pages/PlaybooksPage'))
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
@@ -86,11 +91,18 @@ const OnboardingHubPage = lazy(() => import('./pages/OnboardingHubPage'))
 const HrPeoplePage = lazy(() => import('./pages/HrPeoplePage'))
 const OnboardingPlanPage = lazy(() => import('./pages/OnboardingPlanPage'))
 const WikiPage = lazy(() => import('./pages/WikiPage'))
+const FeatureFlagsPage = lazy(() => import('./pages/FeatureFlagsPage'))
+const DeveloperPortal = lazy(() => import('./pages/DeveloperPortal'))
+const DriftDetectionPage = lazy(() => import('./pages/DriftDetectionPage'))
+const AutonomousCodingPage = lazy(() => import('./pages/AutonomousCodingPage'))
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <RealTimeProvider>
+        <RoastModeProvider>
+        <FeatureFlagProvider>
         <TransitionProvider>
           <ToastProvider>
           <ThemeProvider>
@@ -142,6 +154,11 @@ export default function App() {
                   <ErrorBoundary><SetPassword /></ErrorBoundary>
                 </Suspense>
               } />
+              <Route path="/auth/callback" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><AuthCallback /></ErrorBoundary>
+                </Suspense>
+              } />
               <Route path="/join" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><JoinPage /></ErrorBoundary>
@@ -187,12 +204,17 @@ export default function App() {
                       <ErrorBoundary><PRDescriptionPage /></ErrorBoundary>
                     </Suspense>
                   } />
-                  <Route path="/tasks" element={
-                    <Suspense fallback={<TasksPageSkeleton />}>
-                      <ErrorBoundary><TasksPage /></ErrorBoundary>
-                    </Suspense>
-                  } />
-                  <Route path="/notifications" element={
+                   <Route path="/tasks" element={
+                     <Suspense fallback={<TasksPageSkeleton />}>
+                       <ErrorBoundary><TasksPage /></ErrorBoundary>
+                     </Suspense>
+                   } />
+                   <Route path="/developer-portal" element={
+                     <Suspense fallback={<PageLoadingFallback />}>
+                       <ErrorBoundary><DeveloperPortal /></ErrorBoundary>
+                     </Suspense>
+                   } />
+                   <Route path="/notifications" element={
                     <Suspense fallback={<NotificationsSkeleton />}>
                       <ErrorBoundary><NotificationsPage /></ErrorBoundary>
                     </Suspense>
@@ -263,6 +285,11 @@ export default function App() {
                         <ErrorBoundary><PlaybooksPage /></ErrorBoundary>
                       </Suspense>
                     } />
+                    <Route path="/marketplace" element={
+                      <Suspense fallback={<PlaybooksSkeleton />}>
+                        <ErrorBoundary><MarketplacePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
                     <Route path="/billing" element={
                       <Suspense fallback={<BillingSkeleton />}>
                         <ErrorBoundary><BillingPage /></ErrorBoundary>
@@ -295,6 +322,20 @@ export default function App() {
                     <Route path="/code-health" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><CodeHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    {/* Architecture Drift Detection */}
+                    <Route path="/drift" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><DriftDetectionPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    {/* Autonomous Coding Agent */}
+                    <Route path="/autonomous" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><AutonomousCodingPage /></ErrorBoundary>
                       </Suspense>
                     } />
 
@@ -342,15 +383,21 @@ export default function App() {
                         <ErrorBoundary><AdminCreateAccount /></ErrorBoundary>
                       </Suspense>
                     } />
-                    <Route path="/admin/audit" element={
-                      <Suspense fallback={<PageLoadingFallback />}>
-                        <ErrorBoundary><AuditLogPage /></ErrorBoundary>
-                      </Suspense>
-                    } />
-                  </Route>
-                </Route>
-              </Route>
-              {/* ── Catch-all 404 ─────────────────────────────── */}
+                     <Route path="/admin/audit" element={
+                       <Suspense fallback={<PageLoadingFallback />}>
+                         <ErrorBoundary><AuditLogPage /></ErrorBoundary>
+                       </Suspense>
+                     } />
+                     <Route path="/admin/feature-flags" element={
+                       <Suspense fallback={<PageLoadingFallback />}>
+                         <ErrorBoundary><FeatureFlagsPage /></ErrorBoundary>
+                       </Suspense>
+                     } />
+               </Route>
+               </Route>
+               </Route>
+
+              {/* ── Catch-all 404 ── */}
               <Route path="*" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><NotFoundPage /></ErrorBoundary>
@@ -361,6 +408,9 @@ export default function App() {
           </ThemeProvider>
           </ToastProvider>
         </TransitionProvider>
+        </FeatureFlagProvider>
+        </RoastModeProvider>
+        </RealTimeProvider>
       </AuthProvider>
     </BrowserRouter>
   )

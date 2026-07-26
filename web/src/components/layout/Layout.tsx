@@ -8,10 +8,10 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import AppShell from './AppShell'
 
 export default function Layout() {
-  const { showHelp, setShowHelp, getShortcuts } = useKeyboardShortcuts()
+  const { showHelp, setShowHelp, getShortcuts, lastShortcut } = useKeyboardShortcuts()
 
   return (
-    <AppShell sidebar={<Sidebar />} topbar={<TopBar />}>
+    <AppShell sidebar={<Sidebar />} topbar={<TopBar lastShortcut={lastShortcut} />}>
       <TransitionOverlay />
       <PageTransition>
         <Outlet />

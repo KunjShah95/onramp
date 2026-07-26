@@ -1,7 +1,8 @@
 # 🗺️ Onramp 2.0 — Product Roadmap
 
 **Last updated:** July 2026  
-**Status:** v1.3 Complete
+**Status:** v1.3 Complete  
+**Next:** v1.4 — Platform & Scale
 
 ---
 
@@ -115,7 +116,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 #### Notifications & Integrations
 
 - [x] **In-app notification center** — Read/unread, preferences, quiet hours
-- [x] **Notification Bell** — Real-time badge count, dropdown preview
+- [x] **Notification Bell** — Polling-based badge count, dropdown preview
 - [x] **Rich notification types** — 14 event types with distinct icons & colors
 - [x] **Pagination support** — Page clamping, type-filtered views
 - [x] **Mark all read** — Bulk read status updates
@@ -173,7 +174,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 ---
 
-## 🎯 v1.2 — Production Launch & Polish (Month 1)
+## ✅ v1.2 — Production Launch & Polish (Month 1)
 
 **Theme:** Foundation — ship to production, close UX gaps, set up for scale  
 **Est. effort:** 2–3 weeks  
@@ -181,37 +182,43 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 ### Production Readiness
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **DevOps** | Deploy backend to Railway/Render with Docker | 🔴 Critical | 2 days |
-| **DevOps** | Deploy frontend to Vercel with custom domain + HTTPS | 🔴 Critical | 1 day |
-| **DevOps** | Production PostgreSQL (managed) + automated backups | 🔴 Critical | 1 day |
-| **DevOps** | Production Redis for rate limiting + caching | 🔴 Critical | 0.5 day |
-| **DevOps** | Wire CI/CD — auto-deploy on `main` push | 🔴 Critical | 1 day |
-| **DevOps** | SSL/TLS, env vars, sanity checks | 🔴 Critical | 1 day |
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **DevOps** | Deploy backend to Railway/Render with Docker | 🔴 Critical | 2 days | ✅ Done |
+| **DevOps** | Deploy frontend to Vercel with custom domain + HTTPS | 🔴 Critical | 1 day | ✅ Done |
+| **DevOps** | Production PostgreSQL (managed) + automated backups | 🔴 Critical | 1 day | ✅ Done |
+| **DevOps** | Production Redis for rate limiting + caching | 🔴 Critical | 0.5 day | ✅ Done |
+| **DevOps** | Wire CI/CD — auto-deploy on `main` push | 🔴 Critical | 1 day | ✅ Done |
+| **DevOps** | SSL/TLS, env vars, sanity checks | 🔴 Critical | 1 day | ✅ Done |
 
 ### UX & Polish
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **Notifications** | Real-time WebSocket push for task updates | 🔴 Critical | 3 days |
-| **Visualization** | Interactive repo graph — search, filter, drill-down, tooltips | 🟢 High | 2 days |
-| **Trainee** | Milestone tracking with roadmap timeline view | 🟢 High | 2 days |
-| **Auth** | Session refresh & remember-me (persist across browser closes) | 🟢 High | 1 day |
-| **DevEx** | Mobile-responsive views — wave 1: core 10 pages (dash, tasks, explore, team, notifications, settings) | 🟢 High | 3 days |
-| **DevEx** | Mobile-responsive — wave 2: remaining 34 pages | 🟢 High | 3 days |
-| **A11y** | WCAG 2.1 AA audit — keyboard nav, ARIA labels, focus indicators | 🟢 High | 2 days |
-| **Load More** | Pagination on TasksPage + NotificationsPage (reuse existing Pagination) | 🟢 Medium | 1 day |
-| **CI/CD Tests** | Frontend E2E — login → dashboard → explore → team → billing flows | 🟢 High | 2 days |
-| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days |
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **Notifications** | Real-time WebSocket push for task updates | 🔴 Critical | 3 days | ✅ Done (backend WS + frontend 5-min polling) |
+| **Visualization** | Interactive repo graph — search, filter, drill-down, tooltips | 🟢 High | 2 days | ✅ Done |
+| **Trainee** | Milestone tracking with roadmap timeline view | 🟢 High | 2 days | ✅ Done |
+| **Auth** | Session refresh & remember-me (persist across browser closes) | 🟢 High | 1 day | ✅ Done |
+| **DevEx** | Mobile-responsive views — wave 1: core 10 pages | 🟢 High | 3 days | ✅ Done |
+| **DevEx** | Mobile-responsive — wave 2: remaining 34 pages | 🟢 High | 3 days | ✅ Done |
+| **A11y** | WCAG 2.1 AA audit — keyboard nav, ARIA labels, focus indicators, axe-core scans | 🟢 High | 2 days | ✅ Done |
+| **Load More** | Pagination on TasksPage + NotificationsPage (reuse existing Pagination) | 🟢 Medium | 1 day | ✅ Done |
+| **CI/CD Tests** | Frontend E2E — login → dashboard → explore → team → billing → a11y | 🟢 High | 2 days | ✅ Done (65+ tests) |
+| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days | ✅ Done (31 tests) |
+| **DevEx** | Keyboard shortcuts — visual feedback, expanded coverage to all pages | 🟢 Medium | 0.5 day | ✅ Done |
+| **Notifications** | Backend WebSocket endpoint + connection manager | 🟢 Medium | 2 days | ✅ Done |
+| **Notifications** | Notification bell z-index fix (fixed positioning above all layers) | 🟢 Medium | 0.5 day | ✅ Done |
+| **Notifications** | Polling interval configurable via VITE_NOTIFICATION_POLL_INTERVAL | 🟢 Low | 0.5 day | ✅ Done |
+| **Integrations** | Jira / Linear ticket synchronization (bi-directional) | 🟢 Medium | 4 days | ✅ Done |
+| **Integrations** | Feature flag management UI | 🟢 Medium | 1 day | ✅ Done |
 
-### Platform Expansion
+### Platform Expansion — Carried Forward to v1.4
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days |
-| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days |
-| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days |
+| Area | Feature | Priority | Original Est. | Status |
+|------|---------|----------|---------------|--------|
+| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
+| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
+| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
 
 ---
 
@@ -229,7 +236,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 | **Auth** | Domain-based routing (auto-detect IdP from email) | 🟢 High | 3 days | ✅ Done |
 | **Admin** | Real-time audit log UI with SIEM-exportable events | 🟢 High | 3 days | ✅ Done |
 | **Security** | HMAC-SHA256 for API key hashing (replace unsalted SHA-256) | 🟢 High | 1 day | ✅ Done |
-| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day | ⏳ |
+| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day | ✅ Done |
 
 ### AI Differentiation
 
@@ -237,17 +244,17 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 |------|---------|----------|-------------|--------|
 | **Analytics** | Team velocity trends — cycle time, throughput, DORA metrics | 🟢 High | 3 days | ✅ Done |
 | **Tasks** | CI/CD auto PR review on push (GitHub Actions integration) | 🟢 High | 3 days | ✅ Done |
-| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days | ⏳ |
-| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ⏳ |
+| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days | ✅ Done (moved from v1.2) |
+| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ✅ Done (`DriftDetector` agent + `POST /api/v1/drift/detect`) |
 
 ### Community & Content
 
 | Area | Feature | Priority | Est. Effort | Status |
 |------|---------|----------|-------------|--------|
-| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ⏳ |
-| **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ⏳ |
-| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days | ⏳ |
-| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day | ⏳ |
+| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ✅ Done (`/api/v1/marketplace/*` + Marketplace page) || **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ✅ Done |
+ ✅ Done (prepaid credit wallet + metered drawdown) |
+| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days | ✅ Done |
+| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day | ✅ Done |
 
 ---
 
@@ -255,16 +262,34 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 **Theme:** Open the platform, ship AI SDK, scale infrastructure  
 **Est. effort:** 3–4 weeks  
-**Focus:** Public API, autonomous agents, VS Code extension, performance
+**Focus:** Public API, autonomous agents, VS Code extension, performance  
+**Includes carried-forward:** Mobile wave 2, A11y audit, CI/CD tests, GitLab/Bitbucket, Ollama, PR auto-apply, rate limit docs, drift detection, marketplace, usage-based billing
+
+### Remaining v1.2 Carried Items
+
+| Area | Feature | Priority | Est. Effort |
+|------|---------|----------|-------------|
+| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days |
+| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days | ✅ Done |
+
+### Remaining v1.3 Carried Items
+
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ✅ Done |
+| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ✅ Done || **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ✅ Done |
+ ✅ Done |
 
 ### AI Platform
 
 | Area | Feature | Priority | Est. Effort |
 |------|---------|----------|-------------|
-| **AI** | Autonomous coding agent (sandboxed) — assign issue → AI implements → opens PR | 🟢 High | 4 weeks |
-| **API** | AIaaS public API gateway — package agents as REST APIs with key auth | 🟢 High | 3 days |
-| **API** | TypeScript SDK → publish `@onramp/sdk` to npm | 🟢 High | 2 days |
-| **API** | Usage-based billing: per-query metering + credit system | 🟢 High | 3 days |
+| **AI** | Autonomous coding agent (sandboxed) — assign issue -> AI implements -> opens PR | 🟢 High | 4 weeks | ✅ Done |
+| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days | ✅ Done |
+| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days | ✅ Done |
+| **API** | AIaaS public API gateway — package agents as REST APIs with key auth | 🟢 High | 3 days | ✅ Done |
+| **API** | TypeScript SDK -> publish `@onramp/sdk` to npm | 🟢 High | 2 days |
+| **API** | Usage-based billing: per-query metering + credit system | 🟢 High | 3 days | ✅ Done (`CreditService` wallet + `/api/v1/billing/credits*`) |
 
 ### Developer Experience
 
@@ -280,11 +305,11 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 | Area | Feature | Priority | Est. Effort |
 |------|---------|----------|-------------|
 | **Scale** | PostgreSQL read replicas + connection pooling (pgBouncer) | 🟢 High | 2 days |
-| **Scale** | Redis caching layer for frequent endpoints | 🟢 High | 1 day |
-| **Scale** | Response compression (gzip/brotli) | 🟢 Medium | 0.5 day |
-| **Scale** | Lighthouse audit → p95 API < 500ms, bundle < 200KB gzipped | 🟢 High | 2 days |
-| **Scale** | CDN for static assets | 🟢 Medium | 1 day |
-| **Scale** | Load testing (k6 or Locust) + CI gate | 🟢 Medium | 2 days |
+| **Scale** | Redis caching layer for frequent endpoints | 🟢 High | 1 day | ✅ Done |
+| **Scale** | Response compression (gzip/brotli) | 🟢 Medium | 0.5 day | ✅ Done (ASGI GZip + optional Brotli middleware) |
+| **Scale** | Lighthouse audit -> p95 API < 500ms, bundle < 200KB gzipped | 🟢 High | 2 days | ✅ Done (Perf + bundle CI gates) |
+| **Scale** | CDN for static assets (Vercel edge + Nginx Cache-Control) | 🟢 Medium | 1 day | ✅ Done |
+| **Scale** | Load testing (k6 or Locust) + CI gate | 🟢 Medium | 2 days | ✅ Done (12 backend tests + k6 script) |
 
 ---
 
@@ -312,6 +337,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 | **Platform** | Data residency controls — EU/US/APAC region pinning | 🟢 High | 2 weeks |
 | **Platform** | Self-hosted deployment — Helm chart for Kubernetes | 🟢 High | 2 weeks |
 | **Platform** | Multi-org support with namespace isolation | 🟢 High | 3 weeks |
+| **Platform** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days |
 
 ### Ecosystem & Plugins
 
@@ -342,7 +368,7 @@ Quick wins that drive engagement and social sharing, can be slotted into any rel
 
 - [x] **Backend tests:** 177+ passing (pytest, async fixtures, dual memory+postgres storage)
 - [x] **Frontend tests:** 49+ passing (Vitest, React Testing Library)
-- [x] **E2E tests:** Playwright suite (auth, dashboard, review-queue)
+- [x] **E2E tests:** Playwright suite (auth, dashboard, review-queue, explore, team, billing, a11y) — **65+ tests**
 - [x] **TypeScript:** strict mode, zero errors
 - [x] **Backend CI:** GitHub Actions (compileall + alembic upgrade + pytest w/ service Postgres)
 - [x] **Frontend CI:** GitHub Actions (tsc + vitest + build)
@@ -351,8 +377,8 @@ Quick wins that drive engagement and social sharing, can be slotted into any rel
 - [x] **Field encryption tests:** Fernet encrypt/decrypt round-trip
 - [x] **Production env validation tests:** Fail-fast on missing env vars
 - [x] **API contract tests** — 35 tests covering response envelopes, validation errors, auth guards, OpenAPI schema, and content-type contracts
-- [x] **Load testing** — 13 tests covering endpoint latency, average latency over 20 samples, concurrent load (10 users × 5 requests), mixed endpoint stress, and error rate under 100-request stress
-- [x] **A11y audit** — 13 Playwright + axe-core tests covering WCAG 2.1 AA compliance across 10 public pages, form labels, keyboard navigation, image alt text, and color contrast
+- [x] **Load testing** — 13 tests covering endpoint latency, average latency over 20 samples, concurrent load (10 users x 5 requests), mixed endpoint stress, and error rate under 100-request stress
+- [x] **A11y audit** — 13 Playwright + axe-core tests covering WCAG 2.1 AA compliance across 10 public pages, form labels, keyboard navigation, image alt text, landmark structure, and color contrast
 
 ---
 
@@ -360,15 +386,22 @@ Quick wins that drive engagement and social sharing, can be slotted into any rel
 
 | Metric | Current |
 |--------|---------|
-| Backend API endpoints | 100+ |
+| Backend API endpoints | 110+ |
 | Frontend page components | 44 |
 | AI agents | 10 |
 | Database tables | 39+ |
 | Database migrations | 8 |
-| Test count (backend + frontend) | 449+ |
+| Test count (backend + frontend) | 560+ |
+| API contract tests | 31 (response schemas, validation, OpenAPI) |
+| Load/performance tests | 12 (latency, concurrent, stress) |
+| Lighthouse-style perf tests | 8 (FCP, DCL, DOM, console errors) |
+| Bundle size analysis | 5 budgets (JS, CSS, HTML, max chunk) |
+| E2E Playwright tests | 65+ (auth, dashboard, review-queue, explore, team, billing, a11y) |
+| k6 load test script | 1 (public + auth endpoints) |
 | CI/CD pipelines | 3 (backend + frontend + PR review) |
 | Auth providers | 4 (email, Google OAuth, GitHub OAuth, SSO/SAML) |
 | Notification event types | 14 |
+| Integration services | 7 (Slack, GitHub, Webhooks, Jira, Linear, GitLab, Bitbucket) |
 | Design tokens (CSS vars) | 50+ |
 
 ---

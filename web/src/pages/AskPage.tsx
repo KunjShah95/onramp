@@ -10,11 +10,11 @@ import {
   Check,
   Trash,
   GitBranch,
-  Fire,
 } from '@phosphor-icons/react'
 import { useToast } from '../context/ToastContext'
-import { cn } from '../lib/utils'
+import { useRoastMode } from '../context/RoastModeContext'
 import { indexRepo, askQuestionStream } from '../lib/api'
+import RoastModeToggle from '../components/ui/RoastModeToggle'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -50,7 +50,7 @@ export default function AskPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [roastMode, setRoastMode] = useState(false)
+  const { enabled: roastMode } = useRoastMode()
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -158,18 +158,7 @@ export default function AskPage() {
           </div>
           <div className="flex items-center gap-2">
             {/* Roast Mode Toggle */}
-            <button
-              onClick={() => setRoastMode(!roastMode)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-all duration-200',
-                roastMode
-                  ? 'bg-red-500/15 text-red-400 border border-red-500/25 shadow-sm'
-                  : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:text-text-secondary'
-              )}
-            >
-              <Fire className={cn('w-3.5 h-3.5', roastMode && 'animate-pulse')} weight={roastMode ? 'fill' : 'regular'} />
-              {roastMode ? 'Roast Mode ON' : 'Roast Mode'}
-            </button>
+            <RoastModeToggle />
             {messages.length > 1 && (
               <button
                 onClick={handleClear}

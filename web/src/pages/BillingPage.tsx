@@ -1,30 +1,40 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, topUpCredits, getCreditLedger, CREDIT_COSTS_LIST } from '../lib/api'
+import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { Check, CreditCard } from '@phosphor-icons/react'
-
-const TIERS = [
-  { id: 'free', price: 0, label: 'Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
-  { id: 'startup', price: 49, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
-  { id: 'professional', price: 299, label: 'Professional', popular: true, features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
-  { id: 'enterprise', price: 0, label: 'Enterprise', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
-]
+import { useFeatureFlag } from '../context/FeatureFlagContext'
+import { Check, CreditCard, Coins, ArrowDown, ArrowUp, CurrencyDollar, Spinner } from '@phosphor-icons/react'
 
 export default function BillingPage() {
   const toast = useToast()
   const { activeTeamId, role, switchTeam } = useAuth()
+  const usageBasedEnabled = useFeatureFlag('usage_based_billing')
   const [teams, setTeams] = useState<any[]>([])
   const [teamId, setTeamId] = useState(activeTeamId || '')
   const [subscription, setSubscription] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedTier, setSelectedTier] = useState<string | null>(null)
+
+  // Wallet state
+  const [wallet, setWallet] = useState<CreditWallet | null>(null)
+  const [ledger, setLedger] = useState<LedgerEntry[]>([])
+  const [walletLoading, setWalletLoading] = useState(false)
+  const [topUpAmount, setTopUpAmount] = useState(100)
+
+  const tiers = [
+    { id: 'free', price: 0, label: 'Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
+    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 9, label: 'Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
+    { id: 'startup', price: 49, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
+    { id: 'professional', price: 299, label: 'Professional', popular: true, features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
+    { id: 'enterprise', price: 0, label: 'Enterprise', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
+  ]
 
   useEffect(() => {
     async function loadTeams() {
@@ -34,7 +44,14 @@ export default function BillingPage() {
   }, [])
 
   useEffect(() => { if (activeTeamId) setTeamId(activeTeamId) }, [activeTeamId])
-  useEffect(() => { if (teamId) fetchSubscription(teamId); else { setSubscription(null); setSelectedTier(null) } }, [teamId])
+  useEffect(() => {
+    if (teamId) {
+      fetchSubscription(teamId)
+    } else {
+      setSubscription(null); setSelectedTier(null); setWallet(null)
+    }
+  }, [teamId])
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') { const tid = params.get('team_id'); if (tid) { setTeamId(tid); window.history.replaceState({}, '', window.location.pathname) } }
@@ -43,9 +60,27 @@ export default function BillingPage() {
   async function fetchSubscription(id: string = teamId) {
     if (!id.trim()) return
     setLoading(true); setError('')
-    try { const data = await getSubscription(id.trim()); setSubscription(data); setSelectedTier(data.tier) }
-    catch { setSubscription(null); setSelectedTier(null) }
+    try {
+      const data = await getSubscription(id.trim())
+      setSubscription(data)
+      setSelectedTier(data.tier)
+      if (data.tier === 'usage_based') {
+        await fetchWallet()
+      }
+    } catch {
+      setSubscription(null); setSelectedTier(null)
+    }
     setLoading(false)
+  }
+
+  async function fetchWallet() {
+    setWalletLoading(true)
+    try {
+      const [w, l] = await Promise.all([getCreditWallet(), getCreditLedger(20)])
+      setWallet(w)
+      setLedger(l.entries || [])
+    } catch { /* wallet may not exist yet */ }
+    setWalletLoading(false)
   }
 
   async function handleCreateSubscription(tier: string) {
@@ -69,9 +104,21 @@ export default function BillingPage() {
   async function handleCancel() {
     if (!teamId.trim() || !subscription) return
     if (!confirm('Cancel your current subscription?')) return
-    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null); toast.info('Plan cancelled') }
+    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null); setWallet(null); toast.info('Plan cancelled') }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
   }
+
+  async function handleTopUp() {
+    try {
+      await topUpCredits(topUpAmount)
+      toast.success('Credits added', `${topUpAmount} credits added to wallet`)
+      await fetchWallet()
+    } catch (e) {
+      toast.error('Top-up failed', e instanceof Error ? e.message : 'Unknown error')
+    }
+  }
+
+  const isUsageBased = subscription?.tier === 'usage_based'
 
   return (
     <motion.div
@@ -146,12 +193,101 @@ export default function BillingPage() {
         </motion.div>
       )}
 
+      {/* Usage-Based Wallet Section */}
+      {isUsageBased && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <CardSpotlight className="p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <Coins className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" weight="fill" />
+              <div className="flex-1">
+                <div className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Prepaid Credit Wallet</div>
+                {walletLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-text-tertiary">
+                    <Spinner className="w-4 h-4 animate-spin" />
+                    Loading wallet…
+                  </div>
+                ) : wallet ? (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="font-display text-3xl font-bold text-amber-400">{wallet.balance.toLocaleString()}</span>
+                      <span className="text-sm text-text-tertiary">credits available</span>
+                    </div>
+                    <div className="flex gap-4 text-xs text-text-tertiary mb-4">
+                      <span>Purchased: <span className="font-mono text-text-secondary">{wallet.lifetime_purchased.toLocaleString()}</span></span>
+                      <span>Spent: <span className="font-mono text-text-secondary">{wallet.lifetime_spent.toLocaleString()}</span></span>
+                    </div>
+
+                    {/* Top-up */}
+                    <div className="flex items-center gap-3 p-3 bg-bg-secondary rounded-xl border border-border mb-4">
+                      <CurrencyDollar className="w-4 h-4 text-emerald-400" weight="fill" />
+                      <input
+                        type="number"
+                        min={10}
+                        max={100000}
+                        value={topUpAmount}
+                        onChange={(e) => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 10))}
+                        className="w-24 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/60"
+                      />
+                      <span className="text-xs text-text-tertiary">credits</span>
+                      <button
+                        onClick={handleTopUp}
+                        className="ml-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-lg text-xs font-semibold border border-emerald-500/20 transition-colors"
+                      >
+                        <ArrowDown size={14} className="inline mr-1" weight="bold" />
+                        Add Credits
+                      </button>
+                    </div>
+
+                    {/* Cost breakdown */}
+                    <h4 className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Credit Costs per Action</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                      {CREDIT_COSTS_LIST.map((item) => (
+                        <div key={item.action} className="bg-bg-primary border border-border rounded-lg p-2.5">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[10px] font-mono text-text-secondary uppercase">{item.action}</span>
+                            <span className="font-mono text-[11px] font-bold text-amber-400">{item.cost}</span>
+                          </div>
+                          <p className="text-[9px] text-text-tertiary leading-tight">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Ledger */}
+                    {ledger.length > 0 && (
+                      <>
+                        <h4 className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Recent Activity</h4>
+                        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                          {ledger.map((entry) => (
+                            <div key={entry.entry_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-primary border border-border text-xs">
+                              {entry.delta > 0 ? (
+                                <ArrowDown size={12} className="text-emerald-400 shrink-0" weight="bold" />
+                              ) : (
+                                <ArrowUp size={12} className="text-red-400 shrink-0" weight="bold" />
+                              )}
+                              <span className="font-mono text-text-secondary">{entry.delta > 0 ? '+' : ''}{entry.delta}</span>
+                              <span className="text-text-tertiary flex-1 capitalize">{entry.reason.replace('charge:', '')}</span>
+                              <span className="text-[10px] text-text-muted/50">{new Date(entry.created_at).toLocaleDateString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-text-tertiary">No wallet created yet. Usage will be tracked as you use the platform.</p>
+                )}
+              </div>
+            </div>
+          </CardSpotlight>
+        </motion.div>
+      )}
+
       {/* Tier cards */}
       <motion.div variants={itemVariants}>
         <GradientHeading as="h2" className="text-lg mb-4">Available Plans</GradientHeading>
       </motion.div>
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {TIERS.map((tier) => {
+        {tiers.map((tier) => {
           const isCurrent = selectedTier === tier.id
           return (
             <motion.div key={tier.id} variants={itemVariants}>
@@ -191,6 +327,12 @@ export default function BillingPage() {
           )
         })}
       </motion.div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+      `}</style>
     </motion.div>
   )
 }

@@ -6,9 +6,12 @@ the rest of the platform so that the storage backend (PostgreSQL or in-memory)
 is transparent to callers.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
+
+logger = logging.getLogger("onramp.notifications")
 
 COLLECTION = "onramp_notifications"
 
@@ -95,6 +98,7 @@ async def get_preferences(user_id: str) -> dict:
         "quiet_hours_start": "22:00",
         "quiet_hours_end": "08:00",
         "email_digest_time": "09:00",
+        "roast_mode_enabled": False,
     }
 
 
@@ -110,6 +114,7 @@ async def update_preferences(user_id: str, preferences: dict) -> dict:
         "quiet_hours_start": preferences.get("quiet_hours_start", "22:00"),
         "quiet_hours_end": preferences.get("quiet_hours_end", "08:00"),
         "email_digest_time": preferences.get("email_digest_time", "09:00"),
+        "roast_mode_enabled": preferences.get("roast_mode_enabled", False),
         "updated_at": now,
     }
     existing = await storage.get_document(PREFERENCES_COLLECTION, user_id)
@@ -186,6 +191,27 @@ async def create_notification(
     }
 
     await storage.create_document(COLLECTION, notif_id, notification)
+
+    # Broadcast the new notification via WebSocket
+    try:
+        from app.services.ws_manager import manager
+        await manager.send_to_user(user_id, {
+            "type": "notification",
+            "event": "new",
+            "notification": {
+                "notification_id": notif_id,
+                "type": type,
+                "title": title,
+                "message": _preview_message(title, message),
+                "metadata": metadata or {},
+                "team_id": team_id or None,
+                "read": False,
+                "created_at": now.isoformat() if hasattr(now, 'isoformat') else str(now),
+            },
+        })
+    except Exception:
+        logger.debug("Failed to broadcast WS notification to user %s", user_id[:8] if user_id else "?")
+
     return notification
 
 
@@ -363,7 +389,7 @@ async def notify_task_completed(task: dict) -> Optional[dict]:
     return await create_notification(
         user_id=assignee,
         type="task_completed",
-        title="Task Completed 🎉",
+        title="Task Completed",
         message=msg,
         metadata={
             "task_id": task.get("task_id"),
@@ -383,7 +409,7 @@ async def notify_module_granted(
     return await create_notification(
         user_id=user_id,
         type="module_granted",
-        title="Module Access Granted 🔓",
+        title="Module Access Granted",
         message=f"You now have access to module: {module}",
         metadata={
             "module": module,

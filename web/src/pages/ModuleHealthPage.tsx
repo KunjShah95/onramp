@@ -47,7 +47,7 @@ export default function ModuleHealthPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
           <div className="flex items-center gap-3 mb-1.5">

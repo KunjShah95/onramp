@@ -15,6 +15,7 @@ class ModelProvider(Enum):
     NVIDIA = "nvidia"          # Free
     OPENAI = "openai"          # Paid fallback
     ANTHROPIC = "anthropic"    # Paid fallback
+    OLLAMA = "ollama"          # Local / self-hosted (no API key required)
 
 
 class LLMRouter:
@@ -27,7 +28,7 @@ class LLMRouter:
     """
 
     def __init__(self):
-        # Fallback chain: free providers first → paid providers second
+        # Fallback chain: free providers first → paid providers second → local/Ollama last
         self.fallback_chain = [
             ModelProvider.OPENROUTER,
             ModelProvider.GEMINI,
@@ -35,9 +36,12 @@ class LLMRouter:
             ModelProvider.NVIDIA,
             ModelProvider.OPENAI,
             ModelProvider.ANTHROPIC,
+            ModelProvider.OLLAMA,
         ]
 
         # Provider config: api_key, model, base_url (for OpenAI-compatible), type, free flag
+        # Ollama uses OLLAMA_BASE_URL (not an API key) as the availability signal.
+        _ollama_base_url = os.getenv("OLLAMA_BASE_URL", "")
         self.providers = {
             ModelProvider.OPENROUTER: {
                 "api_key": os.getenv("OPENROUTER_API_KEY"),
@@ -81,19 +85,42 @@ class LLMRouter:
                 "type": "anthropic_sdk",
                 "free": False,
             },
+            ModelProvider.OLLAMA: {
+                "api_key": os.getenv("OLLAMA_API_KEY", "ollama"),  # Most local Ollama installs don't need a key
+                "model": os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+                "base_url": _ollama_base_url or "http://localhost:11434/v1",
+                "type": "openai_sdk",
+                "free": True,
+            },
         }
 
         self.current_provider = None
         self._initialize_providers()
 
     def _initialize_providers(self):
-        """Check which providers have API keys available and set primary."""
-        available = [p for p in self.fallback_chain if self.providers[p]["api_key"]]
+        """Check which providers are available and set primary.
+
+        A provider is available if:
+        - It has an ``api_key`` configured (all cloud providers), OR
+        - It has ``OLLAMA_BASE_URL`` set or a default local Ollama at
+          ``http://localhost:11434/v1`` (checked at call time by sniffing
+          the endpoint — we always include Ollama in the chain; if the
+          server isn't running the request will fail and the router falls
+          through to the next provider).
+        """
+        available = [
+            p for p in self.fallback_chain
+            if self.providers[p]["api_key"]
+        ]
+        # Ollama is always included in the chain (checked at call time),
+        # but only becomes primary if no cloud providers are configured.
+        if not available:
+            available = [ModelProvider.OLLAMA]
         if not available:
             raise RuntimeError(
                 "No LLM provider API keys configured. Set at least one: "
                 "OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, NVIDIA_API_KEY, "
-                "OPENAI_API_KEY, or ANTHROPIC_API_KEY"
+                "OPENAI_API_KEY, ANTHROPIC_API_KEY, or set OLLAMA_BASE_URL for local models."
             )
         self.current_provider = available[0]
         fallback_list = [p.value for p in available[1:]]

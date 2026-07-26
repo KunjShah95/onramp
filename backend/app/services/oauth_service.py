@@ -317,6 +317,11 @@ async def _find_or_create_oauth_user(
             raw_email = email
             raw_name = name
 
+        # Persist the new user / last-login update. Without this commit the
+        # session rolls back on block exit and the OAuth user is never saved,
+        # so the issued token points at a uid that doesn't exist.
+        await session.commit()
+
     token = _generate_jwt(uid, raw_email, raw_name, provider)
     return {
         "uid": uid,

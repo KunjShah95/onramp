@@ -17,6 +17,7 @@ if _sentry_dsn:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import logging
 from contextlib import asynccontextmanager
 
@@ -24,10 +25,13 @@ from app.llm import LLMClient
 from app.api.v1 import (
     accounts as accounts_router, admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
-    explore, first_pr, gamification, health, hr_dashboard, integrations as integrations_router,
-    invites as invites_router, learn, notifications as notifications_router,
+    explore, feature_flags as feature_flags_router, first_pr, gamification, health,
+    hr_dashboard, integrations as integrations_router,
+    invites as invites_router, learn, marketplace as marketplace_router,
+    notifications as notifications_router,
     onboarding_plans as onboarding_plans_router, playbooks, pr_review, quiz as quiz_router,
-    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, wiki
+    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, wiki,
+    ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 
@@ -38,6 +42,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 _LLM_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
     "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+    "OLLAMA_BASE_URL",
 )
 
 
@@ -139,6 +144,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Response compression (outermost — compresses the fully-built response).
+# Prefer Brotli when `brotli-asgi` is installed; always fall back to gzip so
+# clients that only advertise gzip still get compressed bodies. minimum_size
+# skips tiny payloads where compression overhead outweighs the savings.
+_COMPRESS_MIN_SIZE = int(os.getenv("COMPRESSION_MIN_SIZE", "500"))
+try:
+    from brotli_asgi import BrotliMiddleware
+
+    app.add_middleware(BrotliMiddleware, minimum_size=_COMPRESS_MIN_SIZE, gzip_fallback=True)
+except ImportError:
+    app.add_middleware(GZipMiddleware, minimum_size=_COMPRESS_MIN_SIZE)
+
 
 llm_client = LLMClient()
 app.state.llm = llm_client
@@ -157,6 +174,7 @@ app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(ai_gateway.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(playbooks.router, prefix="/api/v1")
+app.include_router(marketplace_router.router, prefix="/api/v1")
 app.include_router(billing.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(pr_review.router, prefix="/api/v1")
@@ -170,10 +188,12 @@ app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
 app.include_router(seed_router.router, prefix="/api/v1")
+app.include_router(feature_flags_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")
 app.include_router(onboarding_plans_router.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")
+app.include_router(ws_router.router, prefix="/api/v1")
 
 
 @app.get("/")

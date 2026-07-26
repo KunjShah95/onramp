@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import {
@@ -15,6 +16,9 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<OnrampNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchUnreadCount = useCallback(async () => {
@@ -37,10 +41,11 @@ export default function NotificationBell() {
     setLoading(false)
   }, [])
 
-  // Fetch unread count on mount and poll every 30s
+  // Poll for unread count (default 2 min, configurable via VITE_NOTIFICATION_POLL_INTERVAL)
   useEffect(() => {
+    const intervalMs = Number(import.meta.env.VITE_NOTIFICATION_POLL_INTERVAL) || 120_000
     fetchUnreadCount()
-    const interval = setInterval(fetchUnreadCount, 30_000)
+    const interval = setInterval(fetchUnreadCount, intervalMs)
     return () => clearInterval(interval)
   }, [fetchUnreadCount])
 
@@ -54,12 +59,21 @@ export default function NotificationBell() {
   // Close on click outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
     if (open) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  // Close on scroll so the fixed-position dropdown doesn't float disconnected
+  useEffect(() => {
+    if (!open) return
+    const handleScroll = () => setOpen(false)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [open])
 
   async function handleMarkAllRead() {
@@ -140,10 +154,20 @@ export default function NotificationBell() {
   }
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={containerRef} className="relative">
       {/* Bell button */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={buttonRef}
+        onClick={() => {
+          if (!open && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect()
+            setDropdownPos({
+              top: rect.bottom + 8,
+              right: window.innerWidth - rect.right,
+            })
+          }
+          setOpen((v) => !v)
+        }}
         className={cn(
           'relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
           open
@@ -164,9 +188,16 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-[380px] max-h-[520px] bg-bg-primary border border-border rounded-xl shadow-card overflow-hidden z-50" role="menu" aria-label="Notifications list">
+      {/* Dropdown — portaled to <body> so the TopBar's backdrop-blur stacking
+          context can't trap it behind the dashboard. Fixed coords stay valid. */}
+      {open && dropdownPos && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+          className="w-[380px] max-h-[520px] bg-bg-primary border border-border rounded-xl shadow-card shadow-black/15 overflow-y-auto"
+          role="menu"
+          aria-label="Notifications list"
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 className="text-body-sm font-semibold text-text-primary">Notifications</h3>
@@ -262,7 +293,8 @@ export default function NotificationBell() {
               View all notifications
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

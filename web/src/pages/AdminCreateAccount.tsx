@@ -74,7 +74,7 @@ export default function AdminCreateAccount() {
 
   return (
     <PageTransition>
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 p-6">
         <Link to="/admin" className="inline-flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] mb-6 transition-colors">
           <ArrowLeft size={16} /> Back to Admin
         </Link>
@@ -99,7 +99,7 @@ export default function AdminCreateAccount() {
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-              <p className="text-xs font-semibold text-amber-800 mb-1">⚠️ Temporary Password — Copy it now</p>
+              <p className="text-xs font-semibold text-amber-800 mb-1">Temporary Password — Copy it now</p>
               <p className="text-xs text-amber-700 mb-3">This password will only be shown once. Share it securely with the developer.</p>
               <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
                 <code className="flex-1 text-sm font-mono select-all">{result.temp_password}</code>

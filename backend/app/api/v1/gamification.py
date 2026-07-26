@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
 from app.api.v1.auth import get_current_user
 from app.services import gamification_service as gs
+from app.services.cache_service import cached, invalidate_prefix
 
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
@@ -35,6 +36,7 @@ async def award_xp(
         team_id=request.team_id,
         metadata=request.metadata,
     )
+    await invalidate_prefix("gamification")
     return result
 
 
@@ -42,7 +44,9 @@ async def award_xp(
 
 
 @router.get("/summary")
+@cached("gamification", ttl=120)
 async def get_gamification_summary(
+    request: Request,
     team_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):
@@ -61,7 +65,9 @@ async def get_gamification_summary(
 
 
 @router.get("/badges")
+@cached("gamification", ttl=120)
 async def list_badges(
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """Get all badges earned by the current user."""
@@ -71,7 +77,9 @@ async def list_badges(
 
 
 @router.get("/badges/definitions")
+@cached("gamification", ttl=300)
 async def list_badge_definitions(
+    request: Request,
     _user: dict = Depends(get_current_user),
 ):
     """Get all available badge definitions with their requirements."""
@@ -113,6 +121,7 @@ async def record_login(
         team_id=None,
     )
 
+    await invalidate_prefix("gamification")
     return {
         "streak": streak_info,
         "xp_awarded": xp_result.get("awarded", False),
@@ -121,7 +130,9 @@ async def record_login(
 
 
 @router.get("/streak")
+@cached("gamification", ttl=60)
 async def get_streak(
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """Get the current login streak for the current user."""
@@ -134,7 +145,9 @@ async def get_streak(
 
 
 @router.get("/leaderboard")
+@cached("gamification", ttl=60)
 async def get_leaderboard(
+    request: Request,
     team_id: str = Query(..., description="Team ID to scope leaderboard to"),
     period: str = Query("all_time", description="Period: all_time, monthly, or weekly"),
     limit: int = Query(20, description="Max number of entries"),
@@ -156,7 +169,9 @@ async def get_leaderboard(
 
 
 @router.get("/sources")
+@cached("gamification", ttl=600)
 async def list_xp_sources(
+    request: Request,
     _user: dict = Depends(get_current_user),
 ):
     """Get all available XP sources and their default amounts."""

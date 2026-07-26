@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.agents import LearningPathGenerator
 from app.api.v1.auth import get_current_user
 from app.services.postgres_db import get_storage, generate_id
+from app.services.quota import enforce_quota
 
 router = APIRouter(prefix="/learn", tags=["learning"])
 
@@ -21,6 +22,7 @@ async def generate_path(
     request: LearnRequest,
     req: Request,
     user: dict = Depends(get_current_user),
+    _q=enforce_quota("learn"),
 ):
     llm = getattr(req.app.state, "llm", None)
     generator = LearningPathGenerator(llm)

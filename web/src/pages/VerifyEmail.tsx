@@ -54,11 +54,11 @@ export default function VerifyEmail() {
 
             <div className="text-4xl mb-4">
               {status === 'verifying' ? (
-                <span className="inline-block animate-pulse">⏳</span>
+                <span className="inline-block animate-pulse"></span>
               ) : status === 'success' ? (
-                <span>✅</span>
+                <span></span>
               ) : (
-                <span>❌</span>
+                <span></span>
               )}
             </div>
 

@@ -83,9 +83,19 @@ def generate_api_key() -> str:
     return f"cf_{secrets.token_urlsafe(32)}"
 
 
+# Tier mapping: subscription tier → API key tier
+TIER_MAPPING = {
+    "free": "free",
+    "startup": "pro",
+    "professional": "enterprise",
+    "usage_based": "usage_based",
+    "enterprise": "enterprise",
+}
+
 TIER_LIMITS = {
     "free": {"requests_per_minute": 20, "requests_per_day": 100, "credits_per_month": 500, "max_repos": 1},
     "pro": {"requests_per_minute": 200, "requests_per_day": 10000, "credits_per_month": 10000, "max_repos": 50},
+    "usage_based": {"requests_per_minute": 200, "requests_per_day": 10000, "credits_per_month": 0, "max_repos": 1},
     "enterprise": {"requests_per_minute": 2000, "requests_per_day": 100000, "credits_per_month": 100000, "max_repos": -1},
 }
 
@@ -100,6 +110,7 @@ CREDIT_COSTS = {
     "explore": 10,
     "analyze": 10,
     "pr_review": 15,
+    "trailer": 20,
 }
 
 
@@ -296,7 +307,13 @@ class APIKeyService:
     @classmethod
     def get_tier_limits(cls, tier: str) -> dict:
         """Return limits for a given tier."""
-        return TIER_LIMITS.get(tier, TIER_LIMITS["free"])
+        mapped_tier = TIER_MAPPING.get(tier, "free")
+        return TIER_LIMITS.get(mapped_tier, TIER_LIMITS["free"])
+
+    @classmethod
+    def map_subscription_tier(cls, subscription_tier: str) -> str:
+        """Map a subscription tier to an API key tier."""
+        return TIER_MAPPING.get(subscription_tier, "free")
 
     @classmethod
     def get_credit_cost(cls, action: str) -> int:

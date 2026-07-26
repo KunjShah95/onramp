@@ -143,7 +143,8 @@ async def cto_dashboard(request: Request, user: dict = Depends(get_current_user)
 
 
 @router.get("/dashboard/team")
-async def team_analytics(user: dict = Depends(get_current_user)):
+@cached("dashboard", ttl=120)
+async def team_analytics(request: Request, user: dict = Depends(get_current_user)):
     """Return team analytics with per-user task completion data."""
     team_id = await _get_user_team(user)
     members = await get_team_members(team_id)
@@ -173,7 +174,9 @@ async def team_analytics(user: dict = Depends(get_current_user)):
 
 
 @router.get("/dashboard/trainee")
+@cached("dashboard", ttl=60)
 async def trainee_dashboard(
+    request: Request,
     team_id: Optional[str] = Query(None),
     user: dict = Depends(get_current_user),
 ):

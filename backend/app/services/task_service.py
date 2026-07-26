@@ -5,9 +5,143 @@ Manages the full lifecycle: create → assign → work → review → approve �
 Enforces valid state transitions and tracks timestamps.
 """
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
+
+
+async def _broadcast_task_update(task: dict, event_type: str = "updated") -> None:
+    """Broadcast a task update via WebSocket to relevant users."""
+    try:
+        from app.services.ws_manager import manager
+
+        # Collect user IDs that should be notified
+        user_ids = set()
+        if task.get("assigned_to"):
+            user_ids.add(task["assigned_to"])
+        if task.get("created_by"):
+            user_ids.add(task["created_by"])
+
+        if not user_ids:
+            return
+
+        await manager.broadcast_to_team(
+            team_id=task.get("team_id", ""),
+            event={
+                "type": "task_update",
+                "event": event_type,
+                "task": {
+                    "task_id": task.get("task_id"),
+                    "team_id": task.get("team_id"),
+                    "state": task.get("state"),
+                    "title": task.get("title"),
+                    "assigned_to": task.get("assigned_to"),
+                    "module": task.get("module"),
+                    "updated_at": str(task.get("updated_at", "")),
+                },
+            },
+            user_ids=list(user_ids),
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Failed to broadcast WS task update", exc_info=True)
+
+
+async def _sync_task_to_jira(task: dict) -> None:
+    """Sync a task update to connected Jira integration."""
+    try:
+        from app.services.jira_service import get_config, create_ticket, update_ticket_state
+        from app.services.feature_flag_service import is_feature_flag_enabled
+
+        team_id = task.get("team_id", "")
+        if not team_id:
+            return
+
+        # Check if jira_sync feature flag is enabled for this team
+        if not await is_feature_flag_enabled(team_id, "jira_sync"):
+            return
+
+        # Get the Jira config for the task creator (who configured the integration)
+        created_by = task.get("created_by", "")
+        if not created_by:
+            return
+
+        config = await get_config(created_by)
+        if not config or not config.get("api_token"):
+            return
+
+        jira_issue_key = task.get("jira_issue_key") or task.get("metadata", {}).get("jira_issue_key")
+
+        if jira_issue_key:
+            # Ticket already exists — update its state
+            await update_ticket_state(config, jira_issue_key, task)
+        else:
+            # Check if auto-create is enabled
+            if task.get("state") in ["assigned", "in_progress"] and config.get("project_key"):
+                result = await create_ticket(config, task, config.get("project_key"))
+                if result and result.get("key"):
+                    # Store the Jira issue key back on the task
+                    from app.services.postgres_db import get_storage
+                    storage = get_storage()
+                    try:
+                        await storage.update_document(
+                            "onramp_tasks",
+                            task.get("task_id", ""),
+                            {"jira_issue_key": result["key"]},
+                        )
+                    except Exception:
+                        pass
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Jira sync error", exc_info=True)
+
+
+async def _sync_task_to_linear(task: dict) -> None:
+    """Sync a task update to connected Linear integration."""
+    try:
+        from app.services.linear_service import get_config, create_issue, update_issue_state
+        from app.services.feature_flag_service import is_feature_flag_enabled
+
+        team_id = task.get("team_id", "")
+        if not team_id:
+            return
+
+        # Check if linear_sync feature flag is enabled for this team
+        if not await is_feature_flag_enabled(team_id, "linear_sync"):
+            return
+
+        # Get Linear config for the task creator
+        created_by = task.get("created_by", "")
+        if not created_by:
+            return
+
+        config = await get_config(created_by)
+        if not config or not config.get("api_key"):
+            return
+
+        linear_issue_id = task.get("linear_issue_id") or task.get("metadata", {}).get("linear_issue_id")
+
+        if linear_issue_id:
+            await update_issue_state(config["api_key"], linear_issue_id, task, config.get("team_id", ""))
+        else:
+            if task.get("state") in ["assigned", "in_progress"] and config.get("team_id"):
+                result = await create_issue(config["api_key"], task, config["team_id"])
+                if result and result.get("id"):
+                    from app.services.postgres_db import get_storage
+                    storage = get_storage()
+                    try:
+                        await storage.update_document(
+                            "onramp_tasks",
+                            task.get("task_id", ""),
+                            {"linear_issue_id": result["id"]},
+                        )
+                    except Exception:
+                        pass
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Linear sync error", exc_info=True)
+
 
 COLLECTION = "onramp_tasks"
 
@@ -93,6 +227,10 @@ async def create_task(
     }
 
     await storage.create_document(COLLECTION, task_id, task)
+    await _broadcast_task_update(task, "created")
+    # Fire-and-forget sync to Jira/Linear (do not block task creation)
+    asyncio.ensure_future(_sync_task_to_jira(task))
+    asyncio.ensure_future(_sync_task_to_linear(task))
     return task
 
 
@@ -208,9 +346,15 @@ async def transition_task(
     elif new_state == "approved" and feedback:
         updates["review_feedback"] = feedback
     elif new_state == "assigned":
-        updates["assigned_to"] = user_id
-
-    return await storage.update_document(COLLECTION, task_id, updates)
+        updates["assigned_to"] = user_id        # Broadcast the state transition
+    result = await storage.update_document(COLLECTION, task_id, updates)
+    if result:
+        result["state"] = new_state
+        await _broadcast_task_update(result, "updated")
+        # Fire-and-forget sync to Jira/Linear (do not block the transition)
+        asyncio.ensure_future(_sync_task_to_jira(result))
+        asyncio.ensure_future(_sync_task_to_linear(result))
+    return result
 
 
 async def assign_task(task_id: str, assignee_id: str, assigned_by: str) -> dict:

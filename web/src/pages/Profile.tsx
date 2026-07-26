@@ -53,7 +53,7 @@ export default function Profile() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
           <GradientHeading as="h1" className="text-display-md mb-1">Profile</GradientHeading>

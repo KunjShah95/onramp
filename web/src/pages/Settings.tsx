@@ -20,6 +20,10 @@ import {
   saveIntegration,
   deleteIntegration,
   testGithubToken,
+  testJiraConnection,
+  listJiraProjects,
+  testLinearConnection,
+  listLinearTeams,
   listTeams,
   configureSso,
   getSsoConfig,
@@ -36,7 +40,7 @@ import {
   User, At, Key, Bell, Palette, ShareNetwork,
   ChatCircle, GithubLogo, Check, X, Spinner, Info, Lock,
   EnvelopeSimple, Sun, Moon, Eye, Code, Trash,
-  Plugs
+  Plugs, Fire
 } from '@phosphor-icons/react'
 
 export default function Settings() {
@@ -291,7 +295,7 @@ export default function Settings() {
                 <h3 className="font-display text-lg font-bold">Profile Information</h3>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-bg-tertiary border border-border flex items-center justify-center">
                     {user?.photoURL ? (
@@ -417,7 +421,7 @@ export default function Settings() {
 
               {!notifPrefsLoading && notifPrefs && (
                 <>
-                  <div className="grid grid-cols-[1fr_repeat(3,44px)] sm:grid-cols-[1fr_repeat(3,60px)] gap-2 mb-4 px-1">
+                  <div className="grid grid-cols-[1fr_repeat(3,36px)] sm:grid-cols-[1fr_repeat(3,60px)] gap-1 sm:gap-2 mb-4 px-1">
                     <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Type</div>
                     {channels.map((ch) => (
                       <div key={ch} className="flex flex-col items-center text-[10px] text-text-tertiary">
@@ -542,6 +546,56 @@ export default function Settings() {
           </div>
         )}
 
+        {/* Roast Mode Tab */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-4">
+            <CardSpotlight className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
+                    <Fire className="w-5 h-5 text-red-400" weight="fill" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-bold">Senior Dev Roast Mode</h4>
+                    <p className="text-xs text-text-tertiary">Make the AI brutally honest. Code gets roasted, not people.</p>
+                  </div>
+                </div>
+                {notifPrefs && (
+                  <button
+                    onClick={async () => {
+                      if (notifPrefsSaving) return
+                      setNotifPrefsSaving(true)
+                      const next = !notifPrefs.roast_mode_enabled
+                      try {
+                        const updated = await updateNotificationPreferences({ roast_mode_enabled: next })
+                        setNotifPrefs(updated)
+                        setNotifPrefsMsg(next ? 'Roast mode activated' : 'Roast mode off')
+                        setTimeout(() => setNotifPrefsMsg(''), 2000)
+                      } catch (e) {
+                        toast.error('Failed to save roast mode preference')
+                      }
+                      setNotifPrefsSaving(false)
+                    }}
+                    disabled={notifPrefsSaving}
+                    className={cn(
+                      'w-11 h-6 rounded-full transition-all duration-200 relative shrink-0',
+                      notifPrefs.roast_mode_enabled ? 'bg-red-500' : 'bg-bg-tertiary'
+                    )}
+                  >
+                    <div className={cn(
+                      'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 shadow-sm',
+                      notifPrefs.roast_mode_enabled ? 'left-[22px]' : 'left-[2px]'
+                    )} />
+                  </button>
+                )}
+              </div>
+              {notifPrefs?.roast_mode_enabled && (
+                <p className="text-xs text-red-400/70 italic mt-2">"Finally, someone who wants the truth. Buckle up." — Senior Dev Roast Bot</p>
+              )}
+            </CardSpotlight>
+          </div>
+        )}
+
         {/* SSO Tab */}
         {activeTab === 'sso' && <SsoConfigSection />}
 
@@ -651,6 +705,16 @@ export default function Settings() {
                   <button onClick={handleDisconnectGithub} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
                 </div>
               )}
+            </CardSpotlight>
+
+            {/* Jira */}
+            <CardSpotlight className="p-6">
+              <JiraIntegrationSection />
+            </CardSpotlight>
+
+            {/* Linear */}
+            <CardSpotlight className="p-6">
+              <LinearIntegrationSection />
             </CardSpotlight>
 
             {/* Webhooks */}
@@ -1159,5 +1223,313 @@ function SsoConfigSection() {
         </div>
       </div>
     </div>
+  )
+}
+
+
+/*
+ * Jira Integration Section
+ */
+function JiraIntegrationSection() {
+  const [connected, setConnected] = useState(false)
+  const [config, setConfig] = useState({ base_url: '', email: '', api_token: '', project_key: '', issue_type: 'Task' })
+  const [testResult, setTestResult] = useState<any>(null)
+  const [testing, setTesting] = useState(false)
+  const [projects, setProjects] = useState<any[]>([])
+  const [showProjects, setShowProjects] = useState(false)
+  const toast = useToast()
+
+  useEffect(() => {
+    getIntegration('jira').then((data: any) => {
+      if (data.configured && data.config) {
+        setConnected(true)
+        setConfig({
+          base_url: data.config.base_url || '',
+          email: data.config.email || '',
+          api_token: '••••••••',
+          project_key: data.config.project_key || '',
+          issue_type: data.config.issue_type || 'Task',
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
+  async function handleTest() {
+    if (config.api_token === '••••••••') {
+      toast.info('Already connected', 'Disconnect first to re-enter credentials')
+      return
+    }
+    setTesting(true); setTestResult(null)
+    try {
+      const result = await testJiraConnection({
+        base_url: config.base_url,
+        email: config.email,
+        api_token: config.api_token,
+      })
+      setTestResult(result)
+      if (result.valid) {
+        // Fetch projects
+        const projData = await listJiraProjects({
+          base_url: config.base_url,
+          email: config.email,
+          api_token: config.api_token,
+        })
+        setProjects(projData.projects || [])
+        setShowProjects(true)
+      }
+    } catch (e: any) {
+      setTestResult({ valid: false, error: e.message })
+    }
+    setTesting(false)
+  }
+
+  async function handleConnect() {
+    try {
+      await saveIntegration('jira', config)
+      setConnected(true)
+      setConfig(prev => ({ ...prev, api_token: '••••••••' }))
+      toast.success('Jira connected')
+    } catch (e: any) {
+      toast.error('Failed', e.message)
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      await deleteIntegration('jira')
+      setConnected(false)
+      setConfig({ base_url: '', email: '', api_token: '', project_key: '', issue_type: 'Task' })
+      setTestResult(null)
+      setProjects([])
+      setShowProjects(false)
+      toast.success('Jira disconnected')
+    } catch {
+      toast.error('Failed to disconnect')
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+            <span className="text-blue-400 text-sm font-bold">J</span>
+          </div>
+          <div>
+            <h4 className="font-display font-bold">Jira</h4>
+            <p className="text-xs text-text-tertiary">Sync tasks as Jira issues</p>
+          </div>
+        </div>
+        {connected && (
+          <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Connected
+          </span>
+        )}
+      </div>
+
+      {!connected ? (
+        <div className="space-y-4">
+          <p className="text-xs text-text-tertiary">Enter your Jira Cloud credentials. You'll need an <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">API token</a> from Atlassian.</p>
+          <div className="space-y-3">
+            <input value={config.base_url} onChange={(e) => setConfig(p => ({ ...p, base_url: e.target.value }))}
+              placeholder="https://your-domain.atlassian.net"
+              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+            <div className="flex gap-3">
+              <input value={config.email} onChange={(e) => setConfig(p => ({ ...p, email: e.target.value }))}
+                placeholder="you@company.com"
+                className="flex-1 bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+              <input value={config.api_token} onChange={(e) => setConfig(p => ({ ...p, api_token: e.target.value }))}
+                type="password" placeholder="API token"
+                className="flex-1 bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={handleTest} disabled={!config.base_url || !config.email || !config.api_token || testing}
+              className="bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-tertiary hover:text-text-secondary px-3 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40">
+              {testing ? 'Testing…' : 'Test & Fetch Projects'}
+            </button>
+          </div>
+          {testResult && (
+            <div className={`text-xs flex items-center gap-2 ${testResult.valid ? 'text-green-400' : 'text-red-400'}`}>
+              {testResult.valid ? (
+                <><Check className="w-4 h-4" weight="bold" /> Connected as {testResult.display_name}</>
+              ) : (
+                <><X className="w-4 h-4" weight="bold" /> {testResult.error}</>
+              )}
+            </div>
+          )}
+          {showProjects && projects.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary">Project</label>
+              <select value={config.project_key}
+                onChange={(e) => setConfig(p => ({ ...p, project_key: e.target.value, issue_type: 'Task' }))}
+                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50">
+                <option value="">Select a project…</option>
+                {projects.map((p: any) => (
+                  <option key={p.key} value={p.key}>{p.name} ({p.key})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button onClick={handleConnect} disabled={!config.project_key}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              Connect Jira
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-text-tertiary flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-400" weight="bold" /> Connected to {config.base_url || 'Jira'}
+            {config.project_key && <span className="text-text-secondary ml-1">({config.project_key})</span>}
+          </div>
+          <button onClick={handleDisconnect} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+
+/*
+ * Linear Integration Section
+ */
+function LinearIntegrationSection() {
+  const [connected, setConnected] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+  const [teamId, setTeamId] = useState('')
+  const [testResult, setTestResult] = useState<any>(null)
+  const [testing, setTesting] = useState(false)
+  const [teams, setTeams] = useState<any[]>([])
+  const [showTeams, setShowTeams] = useState(false)
+  const toast = useToast()
+
+  useEffect(() => {
+    getIntegration('linear').then((data: any) => {
+      if (data.configured && data.config) {
+        setConnected(true)
+        setApiKey('••••••••')
+        setTeamId(data.config.team_id || '')
+      }
+    }).catch(() => {})
+  }, [])
+
+  async function handleTest() {
+    if (apiKey === '••••••••') {
+      toast.info('Already connected', 'Disconnect first to re-enter credentials')
+      return
+    }
+    setTesting(true); setTestResult(null)
+    try {
+      const result = await testLinearConnection({ api_key: apiKey })
+      setTestResult(result)
+      if (result.valid) {
+        const teamData = await listLinearTeams({ api_key: apiKey })
+        setTeams(teamData.teams || [])
+        setShowTeams(true)
+      }
+    } catch (e: any) {
+      setTestResult({ valid: false, error: e.message })
+    }
+    setTesting(false)
+  }
+
+  async function handleConnect() {
+    try {
+      await saveIntegration('linear', { api_key: apiKey, team_id: teamId })
+      setConnected(true)
+      setApiKey('••••••••')
+      toast.success('Linear connected')
+    } catch (e: any) {
+      toast.error('Failed', e.message)
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      await deleteIntegration('linear')
+      setConnected(false)
+      setApiKey('')
+      setTeamId('')
+      setTestResult(null)
+      setTeams([])
+      setShowTeams(false)
+      toast.success('Linear disconnected')
+    } catch {
+      toast.error('Failed to disconnect')
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+            <span className="text-purple-400 text-sm font-bold">L</span>
+          </div>
+          <div>
+            <h4 className="font-display font-bold">Linear</h4>
+            <p className="text-xs text-text-tertiary">Sync tasks as Linear issues</p>
+          </div>
+        </div>
+        {connected && (
+          <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Connected
+          </span>
+        )}
+      </div>
+
+      {!connected ? (
+        <div className="space-y-4">
+          <p className="text-xs text-text-tertiary">Enter your Linear API key. Generate one from <span className="text-text-secondary">Settings → API → Personal API keys</span> in Linear.</p>
+          <input value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+            type="password" placeholder="lin_api_..."
+            className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+          <div className="flex gap-3">
+            <button onClick={handleTest} disabled={!apiKey || testing}
+              className="bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-tertiary hover:text-text-secondary px-3 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40">
+              {testing ? 'Testing…' : 'Test & Fetch Teams'}
+            </button>
+          </div>
+          {testResult && (
+            <div className={`text-xs flex items-center gap-2 ${testResult.valid ? 'text-green-400' : 'text-red-400'}`}>
+              {testResult.valid ? (
+                <><Check className="w-4 h-4" weight="bold" /> Connected as {testResult.name} ({testResult.email})</>
+              ) : (
+                <><X className="w-4 h-4" weight="bold" /> {testResult.error}</>
+              )}
+            </div>
+          )}
+          {showTeams && teams.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary">Team</label>
+              <select value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50">
+                <option value="">Select a team…</option>
+                {teams.map((t: any) => (
+                  <option key={t.id} value={t.id}>{t.name} ({t.key})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button onClick={handleConnect} disabled={!teamId}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              Connect Linear
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-text-tertiary flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-400" weight="bold" /> Connected to Linear
+            {teamId && <span className="text-text-secondary ml-1">(team: {teams.find((t: any) => t.id === teamId)?.name || teamId})</span>}
+          </div>
+          <button onClick={handleDisconnect} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+        </div>
+      )}
+    </>
   )
 }

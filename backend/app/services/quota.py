@@ -11,11 +11,13 @@ from fastapi import Request, HTTPException, Depends
 from app.services.api_key_service import APIKeyService
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
+from app.services.credit_service import CreditService, InsufficientCreditsError
 
 logger = logging.getLogger(__name__)
 
 _usage = UsageTracker()
 _billing = BillingService()
+_credits = CreditService()
 
 
 async def _resolve_tier(scope: str) -> str:
@@ -37,6 +39,26 @@ async def check_and_record(scope: str, action: str) -> dict:
     """
     cost = APIKeyService.get_credit_cost(action)
     tier = await _resolve_tier(scope)
+
+    # Usage-based tier: draw down the prepaid credit wallet instead of a fixed
+    # monthly allowance. Block (402) when the balance can't cover the charge.
+    if tier == "usage_based":
+        try:
+            wallet = await _credits.deduct(scope, cost, action=action)
+        except InsufficientCreditsError as exc:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "Insufficient credits — top up to continue",
+                    "code": "INSUFFICIENT_CREDITS",
+                    "balance": exc.balance,
+                    "required": exc.required,
+                    "tier": tier,
+                },
+            )
+        await _usage.track(scope, action, cost)
+        return {"charged": cost, "tier": tier, "credit_balance": wallet.get("balance")}
+
     limits = APIKeyService.get_tier_limits(tier)
 
     quota = await _usage.check_quota(scope, limits)

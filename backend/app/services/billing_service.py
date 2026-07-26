@@ -12,6 +12,7 @@ logger = logging.getLogger("onramp.billing")
 STRIPE_PRICE_IDS = {
     "startup": os.getenv("STRIPE_PRICE_STARTUP"),
     "professional": os.getenv("STRIPE_PRICE_PROFESSIONAL"),
+    "usage_based": os.getenv("STRIPE_PRICE_USAGE_BASED"),
 }
 
 
@@ -19,6 +20,7 @@ TIER_PRICING = {
     "free": {"price_monthly": 0, "price_yearly": 0, "features": ["1 member", "1 repo", "50 credits/mo"]},
     "startup": {"price_monthly": 49, "price_yearly": 499, "features": ["5 members", "10 repos", "5000 credits/mo"]},
     "professional": {"price_monthly": 299, "price_yearly": 2999, "features": ["20 members", "50 repos", "50000 credits/mo"]},
+    "usage_based": {"price_monthly": 9, "price_yearly": 90, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
 

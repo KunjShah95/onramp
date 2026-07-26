@@ -22,6 +22,7 @@ sendgrid>=6.11.0    # transactional email delivery
 stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
 cryptography>=42.0.0  # token encryption at rest
 sentry-sdk>=2.0.0     # error monitoring
+brotli-asgi>=1.4.0    # optional Brotli response compression (falls back to gzip if absent)
 # AST parsing (tree-sitter ecosystem)
 tree-sitter>=0.23.0              # core parsing library (v0.23+)
 tree-sitter-javascript          # JS/JSX parser

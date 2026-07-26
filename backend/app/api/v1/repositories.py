@@ -128,9 +128,32 @@ async def repo_analysis(
     """Return analysis summary for a specific repository."""
     repo_data = await _verify_repo_access(owner, repo, user)
 
-    from app.services.github_service import GitHubService
+    from app.services.github_service import GitHubService, detect_provider, _is_valid_gitlab_url, _is_valid_bitbucket_url
     gh = GitHubService()
-    stats = await gh.get_repo_stats(owner, repo)
+    
+    # Detect the provider from the repo URL
+    repo_url = f"https://github.com/{owner}/{repo}"
+    
+    # Check if stored URL is available
+    stored_url = repo_data.get("url", "")
+    if stored_url:
+        repo_url = stored_url
+    else:
+        # Try to detect from the combination
+        pass
+    
+    provider = detect_provider(repo_url)
+    
+    if provider == 'gitlab':
+        from app.services.gitlab_service import GitLabService
+        gl = GitLabService()
+        stats = await gl.get_repo_stats(owner, repo)
+    elif provider == 'bitbucket':
+        from app.services.bitbucket_service import BitbucketService
+        bb = BitbucketService()
+        stats = await bb.get_repo_stats(owner, repo)
+    else:
+        stats = await gh.get_repo_stats(owner, repo)
 
     if not stats.get("available"):
         # Honest unavailable state — no fabricated graph or scores.

@@ -43,9 +43,9 @@ function getProgressColor(xp: number, needed: number): string {
 // ── Rank medal emojis ─────────────────────────────────────────
 
 function rankMedal(rank: number): string {
-  if (rank === 1) return '🥇'
-  if (rank === 2) return '🥈'
-  if (rank === 3) return '🥉'
+  if (rank === 1) return ''
+  if (rank === 2) return ''
+  if (rank === 3) return ''
   return `#${rank}`
 }
 
@@ -186,7 +186,7 @@ export default function GamificationPanel() {
                 : 'text-text-tertiary/60 hover:text-text-secondary hover:bg-bg-tertiary/30'
             }`}
           >
-            {tab === 'leaderboard' ? '🏆 Rank' : tab === 'badges' ? `🎖️ ${badges_count} Badges` : '📊 Overview'}
+            {tab === 'leaderboard' ? 'Rank' : tab === 'badges' ? `${badges_count} Badges` : 'Overview'}
           </button>
         ))}
       </div>
@@ -227,16 +227,16 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
     badge_bonus: 'Badges',
   }
   const sourceIcons: Record<string, string> = {
-    learning_module_completed: '📚',
-    quiz_passed: '📝',
-    quiz_perfect_score: '💯',
-    first_pr_merged: '🔄',
-    task_completed: '✅',
-    question_asked: '❓',
-    playbook_created: '📋',
-    repo_analyzed: '🔍',
-    daily_login: '🔑',
-    badge_bonus: '🎖️',
+    learning_module_completed: '',
+    quiz_passed: '',
+    quiz_perfect_score: '',
+    first_pr_merged: '',
+    task_completed: '',
+    question_asked: '',
+    playbook_created: '',
+    repo_analyzed: '',
+    daily_login: '',
+    badge_bonus: '',
   }
 
   const sortedSources = Object.entries(xp_breakdown).sort(([, a], [, b]) => b - a)
@@ -353,7 +353,7 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
             <p className="text-body-sm font-medium text-text-primary truncate">{entry.name}</p>
             <p className="text-[10px] text-text-tertiary/50">
               {entry.badges_count} badge{entry.badges_count !== 1 ? 's' : ''}
-              {entry.current_streak > 0 && ` · 🔥 ${entry.current_streak}d`}
+              {entry.current_streak > 0 && ` · ${entry.current_streak}d`}
             </p>
           </div>
 

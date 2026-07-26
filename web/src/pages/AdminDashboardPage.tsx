@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
         <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
       </svg>
         {/* Header */}
-        <div className="flex items-start justify-between gap-6 relative">
+        <div className="flex items-start justify-between gap-4 sm:p-6 relative">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-accent-primary" weight="duotone" />
@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:p-6">
               {/* Org Health */}
               <CardSpotlight className="p-5">
                 <h3 className="text-body-sm font-medium text-text-primary mb-4">Organization Health</h3>

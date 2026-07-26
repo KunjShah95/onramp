@@ -57,7 +57,7 @@ async def send_invite_email(email: str, invite_link: str, team_name: str, invite
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">🚀</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">You're invited to <span style="color:#FF8C00">{team_name}</span></h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">
@@ -81,7 +81,7 @@ async def send_task_assigned_email(email: str, task_title: str, team_name: str, 
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">📋</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">New Task Assigned</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
@@ -102,7 +102,7 @@ async def send_task_completed_email(email: str, task_title: str, team_name: str)
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">✅</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Completed</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
@@ -111,7 +111,7 @@ A task in <strong style="color:#FF8C00">{team_name}</strong> has been completed:
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
 <p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
 </div>
-<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Well done! 🎉</p>
+<p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Well done!</p>
 </div></body></html>"""
     return await send_email(email, f"Task completed: {task_title}", html)
 
@@ -123,7 +123,7 @@ async def send_task_approved_email(email: str, task_title: str, team_name: str, 
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">✅</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Approved</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
@@ -148,11 +148,11 @@ async def send_task_reviewed_email(email: str, task_title: str, team_name: str, 
         action: Either "approved" (routed to product review) or "requested changes".
     """
     if action == "approved":
-        emoji = "✅"
+        emoji = ""
         heading = "Task Reviewed — Route to Product"
         subtext = "Your task has been reviewed and routed to product review. The product team will take it from here."
     else:
-        emoji = "🔄"
+        emoji = ""
         heading = "Changes Requested"
         subtext = "Your senior has requested changes. Check the feedback in Onramp and revise your submission."
     html = f"""<!DOCTYPE html>
@@ -221,7 +221,7 @@ async def send_digest_email(
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:560px;margin:0 auto">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:36px;margin-bottom:8px">{'📬' if period == 'daily' else '📬'}</div>
+<div style="font-size:36px;margin-bottom:8px">{'' if period == 'daily' else ''}</div>
 <h1 style="color:#FDFBF8;font-size:22px;margin:0">{period_label} Digest</h1>
 <p style="color:rgba(253,251,248,0.4);font-size:13px;margin:6px 0 0">Hey {user_name}, here's your {period_label.lower()} summary</p>
 </div>
@@ -245,7 +245,7 @@ async def send_task_submitted_email(email: str, task_title: str, team_name: str,
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">📋</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Submitted for Review</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">

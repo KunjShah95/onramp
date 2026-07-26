@@ -5,7 +5,9 @@ from app.agents import (
     PatternRecognition,
     RegressionTestGenerator,
     CodebaseTrailer,
+    DriftDetector,
 )
+from app.services.quota import enforce_quota
 
 router = APIRouter(tags=["unique"])
 
@@ -19,6 +21,7 @@ class WalkthroughRequest(BaseModel):
 class PatternRequest(BaseModel):
     pattern: str
     repo_structure: dict
+    mode: str = "normal"
 
 
 class TestChecklistRequest(BaseModel):
@@ -31,8 +34,13 @@ class TrailerRequest(BaseModel):
     analysis: dict | None = None
 
 
+class DriftRequest(BaseModel):
+    repo_structure: dict
+    docs: str = ""
+
+
 @router.post("/pair/walkthrough")
-async def generate_walkthrough(request: WalkthroughRequest, req: Request):
+async def generate_walkthrough(request: WalkthroughRequest, req: Request, _q=enforce_quota("generate")):
     llm = getattr(req.app.state, "llm", None)
     agent = SilentPairProgramming(llm)
     try:
@@ -47,13 +55,14 @@ async def generate_walkthrough(request: WalkthroughRequest, req: Request):
 
 
 @router.post("/patterns/find-similar")
-async def find_patterns(request: PatternRequest, req: Request):
+async def find_patterns(request: PatternRequest, req: Request, _q=enforce_quota("analyze")):
     llm = getattr(req.app.state, "llm", None)
     agent = PatternRecognition(llm)
     try:
         result = await agent.find_similar(
             pattern=request.pattern,
             repo_structure=request.repo_structure,
+            mode=request.mode,
         )
         return result
     except Exception as e:
@@ -61,7 +70,7 @@ async def find_patterns(request: PatternRequest, req: Request):
 
 
 @router.post("/test-checklist/generate")
-async def generate_test_checklist(request: TestChecklistRequest, req: Request):
+async def generate_test_checklist(request: TestChecklistRequest, req: Request, _q=enforce_quota("analyze")):
     llm = getattr(req.app.state, "llm", None)
     agent = RegressionTestGenerator(llm)
     try:
@@ -75,7 +84,7 @@ async def generate_test_checklist(request: TestChecklistRequest, req: Request):
 
 
 @router.post("/trailer")
-async def generate_trailer(request: TrailerRequest, req: Request):
+async def generate_trailer(request: TrailerRequest, req: Request, _q=enforce_quota("trailer")):
     """Generate a movie-trailer-style summary of a codebase (viral/demo feature)."""
     llm = getattr(req.app.state, "llm", None)
     agent = CodebaseTrailer(llm)
@@ -83,6 +92,21 @@ async def generate_trailer(request: TrailerRequest, req: Request):
         return await agent.generate(
             repo_url=request.repo_url,
             analysis=request.analysis,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/drift/detect")
+async def detect_drift(request: DriftRequest, req: Request, _q=enforce_quota("analyze")):
+    """Detect architecture drift — where documented architecture diverges from the
+    actual code structure. Returns a drift score, status, and severity-ranked alerts."""
+    llm = getattr(req.app.state, "llm", None)
+    agent = DriftDetector(llm)
+    try:
+        return await agent.detect(
+            repo_structure=request.repo_structure,
+            docs=request.docs,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
