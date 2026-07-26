@@ -50,7 +50,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-test-secret-key-min-32-chars}
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:-test-encryption-key-32-chars}
-      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080,http://localhost:3000,http:localhost:80
       - LOG_LEVEL=DEBUG
       - ENV=${ENV:-development}
     volumes:
