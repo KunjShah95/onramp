@@ -54,6 +54,7 @@ TUID_NONEXISTENT = "f0000000-0000-4000-ffff-000000000000"
 
 # Tables truncated between tests when running against PostgreSQL.
 _POSTGRES_CLEAN_TABLES = [
+    "users",
     "onramp_tasks",
     "member_modules",
     "onramp_notifications",
