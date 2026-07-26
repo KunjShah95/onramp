@@ -11,6 +11,7 @@ from app.agents.regression_test_generator import RegressionTestGenerator
 from app.agents.pr_review import PRReviewAgent
 from app.agents.task_qa import TaskQA
 from app.agents.quiz_generator import QuizGenerator
+from app.agents.codebase_trailer import CodebaseTrailer
 
 __all__ = [
     "BaseAgent",
@@ -26,4 +27,5 @@ __all__ = [
     "PRReviewAgent",
     "TaskQA",
     "QuizGenerator",
+    "CodebaseTrailer",
 ]
