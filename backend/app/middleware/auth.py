@@ -7,6 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.services.user_service import get_user_by_uid
+from app.services.neon_auth import verify_neon_session
 
 logger = logging.getLogger(__name__)
 
@@ -15,34 +16,49 @@ JWT_ALGORITHM = "HS256"
 
 
 async def verify_session_token(token: str) -> dict | None:
-    """Verify a JWT and return the user payload."""
+    """Verify a JWT and return the user payload.
+
+    Tries custom JWT (HS256) first, then falls back to Neon Auth (RS256).
+    """
+    payload = None
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
         logger.warning("JWT token has expired")
-        return None
     except jwt.InvalidTokenError as e:
         logger.warning("Invalid JWT token: %s", e)
-        return None
 
-    uid = payload.get("uid")
-    if not uid:
-        return None
+    if payload:
+        uid = payload.get("uid")
+        if not uid:
+            return None
 
-    record = await get_user_by_uid(uid)
-    if record is None:
-        logger.warning("User not found for uid: %s", uid)
-        return None
-    if not record.get("is_active", True):
-        logger.warning("User account is deactivated: %s", uid)
-        return None
+        record = await get_user_by_uid(uid)
+        if record is None:
+            logger.warning("User not found for uid: %s", uid)
+            return None
+        if not record.get("is_active", True):
+            logger.warning("User account is deactivated: %s", uid)
+            return None
 
-    return {
-        "uid": payload.get("uid", ""),
-        "email": payload.get("email", ""),
-        "name": payload.get("name", ""),
-        "provider": payload.get("provider", "password"),
-    }
+        return {
+            "uid": payload.get("uid", ""),
+            "email": payload.get("email", ""),
+            "name": payload.get("name", ""),
+            "provider": payload.get("provider", "password"),
+        }
+
+    neon_user = await verify_neon_session(token)
+    if neon_user:
+        uid = neon_user.get("uid", "")
+        record = await get_user_by_uid(uid)
+        if record and not record.get("is_active", True):
+            logger.warning("Neon Auth user account is deactivated: %s", uid)
+            return None
+
+        return neon_user
+
+    return None
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
