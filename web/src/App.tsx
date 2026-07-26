@@ -75,6 +75,7 @@ const ModuleHealthPage = lazy(() => import('./pages/ModuleHealthPage'))
 // Admin/Owner pages
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
 const AdminCreateAccount = lazy(() => import('./pages/AdminCreateAccount'))
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 // Role-based portal pages
@@ -339,6 +340,11 @@ export default function App() {
                     <Route path="/admin/create-account" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><AdminCreateAccount /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/admin/audit" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><AuditLogPage /></ErrorBoundary>
                       </Suspense>
                     } />
                   </Route>

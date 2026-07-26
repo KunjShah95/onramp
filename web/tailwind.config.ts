@@ -19,7 +19,6 @@ export default {
       colors: {
         // ── Mission-native names ──
         room: '#DDE1DD',
-        base: '#E4E7E3',
         panel: '#F6F7F4',
         'panel-raised': '#FFFFFF',
         well: '#EDEFEB',

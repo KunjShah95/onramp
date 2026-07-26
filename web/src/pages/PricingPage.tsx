@@ -109,7 +109,7 @@ export default function PricingPage() {
         >
           <div className="flex items-center justify-center gap-2 text-[hsl(var(--accent))] mb-4">
             <Lightning className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-[hsl(var(--accent))]">Pricing</span>
+            <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-[hsl(var(--foreground))]">Pricing</span>
           </div>
         </motion.div>
         <motion.h1
@@ -189,7 +189,7 @@ export default function PricingPage() {
                 </div>
               )}
 
-              <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1.5">{plan.name}</h3>
+              <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1.5">{plan.name}</h2>
               <p className="text-[hsl(var(--muted-foreground))] text-sm mb-6 font-body">{plan.desc}</p>
 
               <div className="mb-6">
@@ -226,7 +226,7 @@ export default function PricingPage() {
                     ) : (
                       <Check className="w-4 h-4 text-[hsl(var(--muted-foreground))]/20 shrink-0" weight="bold" />
                     )}
-                    <span className={feat.included ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]/40"}>
+                    <span className={feat.included ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}>
                       {feat.text}
                     </span>
                   </li>
@@ -266,7 +266,7 @@ export default function PricingPage() {
               <div className="w-9 h-9 rounded-lg bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-3">
                 <feature.icon className="w-4 h-4 text-[hsl(var(--accent))]" weight="fill" />
               </div>
-              <h4 className="font-display font-bold text-sm text-[hsl(var(--foreground))] mb-1">{feature.title}</h4>
+              <h3 className="font-display font-bold text-sm text-[hsl(var(--foreground))] mb-1">{feature.title}</h3>
               <p className="text-[hsl(var(--muted-foreground))] text-xs font-body">{feature.desc}</p>
             </motion.div>
           ))}
@@ -294,7 +294,7 @@ export default function PricingPage() {
               transition={{ delay: i * 0.08, duration: 0.4 }}
               className="bg-white border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/15 transition-all"
             >
-              <h4 className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1.5 font-body">{faq.question}</h4>
+              <h3 className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1.5 font-body">{faq.question}</h3>
               <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed font-body">{faq.answer}</p>
             </motion.div>
           ))}

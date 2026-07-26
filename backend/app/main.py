@@ -55,6 +55,7 @@ def _validate_production_env() -> None:
             "DATABASE_URL", "STRIPE_WEBHOOK_SECRET",
             "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL",
             "JWT_SECRET", "PII_ENCRYPTION_KEY",
+            "API_KEY_HMAC_SECRET",
         )
         if not os.getenv(var)
     ]

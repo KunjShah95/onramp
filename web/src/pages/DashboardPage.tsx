@@ -21,6 +21,7 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import StatusBadge from '../components/ui/status-badge'
+import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, SkeletonCard } from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -79,7 +80,7 @@ function Panel({ callsign, designator, action, className, children }: {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'overview' | 'trainees' | 'reviews' | 'activity'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'trainees' | 'reviews' | 'activity' | 'dora'>('overview')
 
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['ctoDashboard'],
@@ -202,6 +203,7 @@ export default function DashboardPage() {
     { key: 'trainees' as const, label: 'Crew', count: member_progress.length },
     { key: 'reviews' as const, label: 'Reviews', count: pending_reviews.length },
     { key: 'activity' as const, label: 'Log', count: recent_activity.length },
+    { key: 'dora' as const, label: 'DORA', count: null },
   ]
 
   const metrics = [
@@ -553,6 +555,15 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
+          </Panel>
+        </motion.div>
+      )}
+
+      {/* ── DORA tab ── */}
+      {activeTab === 'dora' && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <Panel callsign="DORA Metrics" designator="DEVOPS RESEARCH & ASSESSMENT">
+            <DoraMetricsPanel />
           </Panel>
         </motion.div>
       )}

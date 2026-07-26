@@ -41,10 +41,10 @@ export default function LegalLayout({ label, title, lastUpdated, intro, sections
         <div className="mb-12">
           <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
             <ShieldCheck className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest">{label}</span>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">{label}</span>
           </div>
           <h1 className="font-display text-3xl md:text-4xl mb-3 font-bold tracking-tight text-[hsl(var(--foreground))]">{title}</h1>
-          <p className="font-mono text-xs text-[hsl(var(--muted-foreground))]/50 mb-4">Last updated: {lastUpdated}</p>
+          <p className="font-mono text-xs text-[hsl(var(--muted-foreground))] mb-4">Last updated: {lastUpdated}</p>
           <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed font-body">{intro}</p>
         </div>
 
@@ -54,7 +54,7 @@ export default function LegalLayout({ label, title, lastUpdated, intro, sections
             <motion.section key={section.heading} variants={itemVariants} className="relative pl-6 border-l border-[hsl(var(--border))]">
               <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[hsl(var(--accent))] bg-[hsl(var(--background))]" />
               <h2 className="font-display text-lg font-bold text-[hsl(var(--foreground))] mb-3">
-                <span className="font-mono text-xs text-[hsl(var(--muted-foreground))]/50 mr-2">{String(idx + 1).padStart(2, '0')}</span>
+                <span className="font-mono text-xs text-[hsl(var(--muted-foreground))] mr-2">{String(idx + 1).padStart(2, '0')}</span>
                 {section.heading}
               </h2>
               {section.paragraphs.map((p, i) => (

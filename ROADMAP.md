@@ -1,7 +1,7 @@
 # 🗺️ Onramp 2.0 — Product Roadmap
 
 **Last updated:** July 2026  
-**Status:** v1.1 Launch
+**Status:** v1.3 Complete
 
 ---
 
@@ -215,7 +215,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 ---
 
-## 🎯 v1.3 — Enterprise + AI Acceleration (Month 2)
+## ✅ v1.3 — Enterprise + AI Acceleration (Month 2)
 
 **Theme:** Enterprise foundation + AI differentiation  
 **Est. effort:** 3–4 weeks  
@@ -223,31 +223,31 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 ### Enterprise Foundation
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **Auth** | SSO/SAML — Okta + Azure AD / Entra ID federation | 🔴 Critical | 3 weeks |
-| **Auth** | Domain-based routing (auto-detect IdP from email) | 🟢 High | 3 days |
-| **Admin** | Real-time audit log UI with SIEM-exportable events | 🟢 High | 3 days |
-| **Security** | HMAC-SHA256 for API key hashing (replace unsalted SHA-256) | 🟢 High | 1 day |
-| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day |
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **Auth** | SSO/SAML — Okta + Azure AD / Entra ID federation | 🔴 Critical | 3 weeks | ✅ Done |
+| **Auth** | Domain-based routing (auto-detect IdP from email) | 🟢 High | 3 days | ✅ Done |
+| **Admin** | Real-time audit log UI with SIEM-exportable events | 🟢 High | 3 days | ✅ Done |
+| **Security** | HMAC-SHA256 for API key hashing (replace unsalted SHA-256) | 🟢 High | 1 day | ✅ Done |
+| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day | ⏳ |
 
 ### AI Differentiation
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **Analytics** | Team velocity trends — cycle time, throughput, DORA metrics | 🟢 High | 3 days |
-| **Tasks** | CI/CD auto PR review on push (GitHub Actions integration) | 🟢 High | 3 days |
-| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days |
-| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days |
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **Analytics** | Team velocity trends — cycle time, throughput, DORA metrics | 🟢 High | 3 days | ✅ Done |
+| **Tasks** | CI/CD auto PR review on push (GitHub Actions integration) | 🟢 High | 3 days | ✅ Done |
+| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days | ⏳ |
+| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ⏳ |
 
 ### Community & Content
 
-| Area | Feature | Priority | Est. Effort |
-|------|---------|----------|-------------|
-| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days |
-| **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days |
-| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days |
-| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day |
+| Area | Feature | Priority | Est. Effort | Status |
+|------|---------|----------|-------------|--------|
+| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ⏳ |
+| **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ⏳ |
+| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days | ⏳ |
+| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day | ⏳ |
 
 ---
 
@@ -365,9 +365,9 @@ Quick wins that drive engagement and social sharing, can be slotted into any rel
 | AI agents | 10 |
 | Database tables | 39+ |
 | Database migrations | 8 |
-| Test count (backend + frontend) | 226+ |
-| CI/CD pipelines | 2 (backend + frontend) |
-| Auth providers | 3 (email, Google OAuth, GitHub OAuth) |
+| Test count (backend + frontend) | 449+ |
+| CI/CD pipelines | 3 (backend + frontend + PR review) |
+| Auth providers | 4 (email, Google OAuth, GitHub OAuth, SSO/SAML) |
 | Notification event types | 14 |
 | Design tokens (CSS vars) | 50+ |
 

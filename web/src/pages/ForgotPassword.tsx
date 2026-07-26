@@ -110,7 +110,7 @@ export default function ForgotPassword() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Email Address</label>
+                    <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Email Address</label>
                     <div className="relative">
                       <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                       <input

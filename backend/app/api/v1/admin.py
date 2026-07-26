@@ -36,6 +36,24 @@ async def _require_owner(user: dict = Depends(get_current_user)) -> str:
     return uid
 
 
+@router.post("/keys/rehash")
+async def rehash_all_api_keys(
+    uid: str = Depends(_require_owner),
+):
+    """Validate and report on API key hashing status.
+
+    Since plaintext keys are not stored, 're-hashing' means validating
+    that all active keys were hashed with the current pepper. New keys
+    are always created with HMAC-SHA256.
+    """
+    from app.services.api_key_service import rehash_existing_keys, get_pepper
+
+    pepper_status = "configured" if os.getenv("API_KEY_HMAC_SECRET") else "using dev default"
+    result = await rehash_existing_keys(os.getenv("API_KEY_HMAC_SECRET", ""))
+    result["pepper_status"] = pepper_status
+    return result
+
+
 @router.get("/keys")
 async def list_all_api_keys(
     include_revoked: bool = Query(False),
@@ -314,6 +332,50 @@ async def get_webhook_deliveries(
     )
     deliveries.sort(key=lambda d: d.get("created_at", ""), reverse=True)
     return {"deliveries": deliveries[:limit], "count": len(deliveries)}
+
+
+@router.get("/audit/export")
+async def export_audit_events(
+    format: str = Query("json", regex="^(json|csv)$"),
+    event_type: Optional[str] = Query(None),
+    actor_id: Optional[str] = Query(None),
+    limit: int = Query(1000, ge=1, le=10000),
+    uid: str = Depends(_require_owner),
+):
+    """Export audit events in JSON or CSV format (SIEM-compatible)."""
+    from app.services.audit_service import query_events
+
+    events = await query_events(
+        actor_id=actor_id,
+        event_type=event_type,
+        limit=limit,
+    )
+
+    if format == "csv":
+        import csv
+        import io
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["event_id", "event_type", "actor_id", "target_id", "team_id", "timestamp", "metadata"])
+        for e in events:
+            writer.writerow([
+                e.get("event_id", ""),
+                e.get("event_type", ""),
+                e.get("actor_id", ""),
+                e.get("target_id", ""),
+                e.get("team_id", ""),
+                e.get("timestamp", ""),
+                json.dumps(e.get("metadata", {})),
+            ])
+        from starlette.responses import Response
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=audit-log-export.csv"},
+        )
+
+    return {"events": events, "count": len(events), "exported_at": datetime.now(timezone.utc).isoformat()}
 
 
 @router.post("/webhooks/{webhook_id}/rotate-secret")

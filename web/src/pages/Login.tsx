@@ -119,14 +119,14 @@ export default function Login() {
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 h-px bg-[hsl(var(--border))]" />
-              <span className="text-xs text-[hsl(var(--muted-foreground))]/40 font-body">or sign in with email</span>
+              <span className="text-xs text-[hsl(var(--muted-foreground))] font-body">or sign in with email</span>
               <div className="flex-1 h-px bg-[hsl(var(--border))]" />
             </div>
 
             {/* Email/Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Email Address</label>
+                <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Email Address</label>
                 <div className="relative">
                   <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
                   <input
@@ -137,14 +137,14 @@ export default function Login() {
                     onChange={(e) => { setEmail(e.target.value); clearError() }}
                     required
                     autoComplete="email"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))]/70 font-medium font-body">Password</label>
+                  <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Password</label>
                   <Link to="/forgot-password" className="text-xs text-[hsl(var(--accent))] hover:opacity-80 transition-colors font-body">Forgot?</Link>
                 </div>
                 <div className="relative">
@@ -157,7 +157,7 @@ export default function Login() {
                     onChange={(e) => { setPassword(e.target.value); clearError() }}
                     required
                     autoComplete="current-password"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
                   />
                 </div>
               </div>
