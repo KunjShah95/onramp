@@ -29,10 +29,14 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-2xl' }
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={onClose}
+      role="presentation"
     >
       <div
         className={`bg-bg-primary border border-border rounded-2xl w-full ${maxWidth} max-h-[85vh] overflow-y-auto shadow-2xl relative`}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : 'Dialog'}
       >
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent rounded-t-2xl" />
         {title !== undefined && (

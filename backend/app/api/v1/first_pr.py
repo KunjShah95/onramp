@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from app.agents import FirstPRAccelerator
+from app.services.quota import enforce_quota
 
 router = APIRouter(prefix="/first-pr", tags=["onboarding"])
 
@@ -32,30 +33,30 @@ def extract_github_token(request_body: BaseModel, req: Request) -> Optional[str]
 
 
 @router.post("/issues")
-async def find_issues(request: IssuesRequest, req: Request):
+async def find_issues(request: IssuesRequest, req: Request, _q=enforce_quota("generate")):
     llm = getattr(req.app.state, "llm", None)
     github_token = extract_github_token(request, req)
-    accelerator = FirstPRAccelerator(llm, github_token=github_token)
+    agent = FirstPRAccelerator(llm, github_token=github_token)
     try:
-        issues = await accelerator.find_issues(
+        result = await agent.find_issues(
             repo_url=request.repo_url,
-            user_level=request.user_level
+            user_level=request.user_level,
         )
-        return {"issues": issues}
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/guide")
-async def generate_guide(request: GuideRequest, req: Request):
+async def generate_guide(request: GuideRequest, req: Request, _q=enforce_quota("generate")):
     llm = getattr(req.app.state, "llm", None)
     github_token = extract_github_token(request, req)
-    accelerator = FirstPRAccelerator(llm, github_token=github_token)
+    agent = FirstPRAccelerator(llm, github_token=github_token)
     try:
-        guide = await accelerator.generate_guide(
+        result = await agent.generate_guide(
             issue_id=request.issue_id,
-            repo_structure=request.repo_structure
+            repo_structure=request.repo_structure,
         )
-        return guide
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

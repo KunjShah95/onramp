@@ -4,10 +4,11 @@ Notifications API — in-app notification endpoints for Onramp.
 Supports: list, unread count, mark read, mark all read, delete, clear read.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from app.api.v1.auth import get_current_user
+from app.services.cache_service import cached, invalidate_prefix
 from app.services.notification_service import (
     list_notifications,
     get_notification,
@@ -61,6 +62,7 @@ class NotificationPreferencesRequest(BaseModel):
     quiet_hours_start: Optional[str] = None
     quiet_hours_end: Optional[str] = None
     email_digest_time: Optional[str] = None
+    roast_mode_enabled: Optional[bool] = None
 
 
 class PreferencesResponse(BaseModel):
@@ -71,10 +73,13 @@ class PreferencesResponse(BaseModel):
     quiet_hours_start: str
     quiet_hours_end: str
     email_digest_time: str
+    roast_mode_enabled: bool = False
 
 
 @router.get("/preferences", response_model=PreferencesResponse)
+@cached("notifications", ttl=120)
 async def get_notification_preferences(
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """Get notification preferences for the current user."""
@@ -110,12 +115,18 @@ async def update_notification_preferences(
         updates["quiet_hours_end"] = request.quiet_hours_end
     if request.email_digest_time is not None:
         updates["email_digest_time"] = request.email_digest_time
+    if request.roast_mode_enabled is not None:
+        updates["roast_mode_enabled"] = request.roast_mode_enabled
 
     return await update_preferences(uid, updates)
 
 
 @router.get("/preferences/defaults")
-async def get_default_preferences():
+@cached("notifications", ttl=600)
+async def get_default_preferences(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
     """Get default notification preferences and available types/channels."""
     return {
         "defaults": DEFAULT_PREFERENCES,
@@ -129,7 +140,9 @@ async def get_default_preferences():
 
 
 @router.get("", response_model=NotificationsResponse)
+@cached("notifications", ttl=30)
 async def list_user_notifications(
+    request: Request,
     unread_only: bool = False,
     limit: int = 50,
     type_filter: Optional[str] = None,
@@ -147,7 +160,9 @@ async def list_user_notifications(
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
+@cached("notifications", ttl=30)
 async def get_unread_count_endpoint(
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """Get the number of unread notifications."""
@@ -181,6 +196,7 @@ async def mark_read(
     for nid in request.notification_ids:
         if await mark_as_read(nid, uid):
             count += 1
+    await invalidate_prefix("notifications")
     return {"marked_count": count}
 
 
@@ -190,6 +206,7 @@ async def mark_all_read(
 ):
     """Mark all notifications as read."""
     count = await mark_all_as_read(user.get("uid", ""))
+    await invalidate_prefix("notifications")
     return {"marked_count": count}
 
 
@@ -211,4 +228,5 @@ async def clear_read_notifications(
 ):
     """Delete all read notifications."""
     count = await delete_all_read(user.get("uid", ""))
+    await invalidate_prefix("notifications")
     return {"deleted_count": count}

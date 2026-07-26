@@ -5,7 +5,7 @@ import {
   House, Compass, ChatCircleDots, GraduationCap,
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
-  Star, Key, Rocket, FileCode, Bell,
+  Star, Key, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
 } from '@phosphor-icons/react'
 
 const portalItems = [
@@ -26,14 +26,19 @@ const toolItems = [
   { to: '/pr-describe',   label: 'PR Describe',  Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/autonomous',   label: 'Auto Coding',    Icon: Robot,        roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/notifications', label: 'Notifications', Icon: Bell,         roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 
 const mgmtItems = [
   { to: '/reviews',     label: 'Reviews',      Icon: Eye,           roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/code-health', label:'Code Health',   Icon: Heartbeat,     roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/drift',       label:'Drift Detect',   Icon: Warning,       roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/api-keys',    label: 'API Keys',     Icon: Key,           roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/admin',       label: 'Admin',        Icon: ShieldCheck,   roles: ['owner', 'ceo', 'cto'] },
+  { to: '/admin/feature-flags', label: 'Feature Flags', Icon: Flag, roles: ['owner', 'ceo', 'cto'] },
+  { to: '/developer-portal', label: 'Developer Portal', Icon: Code, roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/settings',    label: 'Settings',     Icon: Gear,          roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
 ]
 

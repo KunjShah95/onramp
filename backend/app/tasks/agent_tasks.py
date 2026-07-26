@@ -161,4 +161,59 @@ def find_first_pr_issues(
         loop.close()
 
 
+# ── Autonomous Coding Task ───────────────────────────────────────────────────
+
+@shared_task(
+    queue="agent-tasks",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=60,
+    acks_late=True,
+    track_started=True,
+)
+def autonomous_code_change(
+    self,
+    repo_url: str,
+    issue_description: str,
+    branch_name: str = "",
+    base_branch: str = "main",
+) -> dict:
+    """Run the autonomous coding agent to implement an issue and open a PR.
+
+    Runs as a background Celery task so the caller gets an immediate
+    task ID and can poll for the result.
+    """
+    import asyncio
+    from app.agents.coding_agent import AutonomousCodingAgent
+    from app.llm import LLMClient
+
+    async def _run() -> dict:
+        llm = LLMClient()
+        github_token = os.getenv("GITHUB_TOKEN")
+        agent = AutonomousCodingAgent(llm, github_token=github_token)
+        return await agent.execute(
+            repo_url=repo_url,
+            issue_description=issue_description,
+            branch_name=branch_name or f"ai/{asyncio.get_event_loop().time():.0f}",
+            base_branch=base_branch,
+        )
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_run())
+        logger.info(
+            "Autonomous coding %s for %s: %s",
+            "succeeded" if result.get("success") else "failed",
+            repo_url,
+            result.get("pr_url", "no PR created"),
+        )
+        return result
+    except Exception as exc:
+        logger.exception("Autonomous coding failed for %s", repo_url)
+        raise self.retry(exc=exc)
+    finally:
+        loop.close()
+
+
 

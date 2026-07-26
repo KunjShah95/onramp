@@ -28,10 +28,44 @@ _GITHUB_URL_PATTERN = re.compile(
     r'^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(\.git)?/?$'
 )
 
+# GitLab URL pattern (nested groups supported)
+_GITLAB_URL_PATTERN = re.compile(
+    r'^https://gitlab\.com/[A-Za-z0-9_.\-/]+/[A-Za-z0-9_.\-]+(\.git)?/?$'
+)
+
+# Bitbucket URL pattern
+_BITBUCKET_URL_PATTERN = re.compile(
+    r'^https://bitbucket\.org/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(\.git)?/?$'
+)
+
 
 def _is_valid_github_url(repo_url: str) -> bool:
     """Return True if repo_url is a strict GitHub https URL."""
     return bool(isinstance(repo_url, str) and _GITHUB_URL_PATTERN.match(repo_url))
+
+
+def _is_valid_gitlab_url(repo_url: str) -> bool:
+    """Return True if repo_url is a strict GitLab https URL."""
+    return bool(isinstance(repo_url, str) and _GITLAB_URL_PATTERN.match(repo_url))
+
+
+def _is_valid_bitbucket_url(repo_url: str) -> bool:
+    """Return True if repo_url is a strict Bitbucket https URL."""
+    return bool(isinstance(repo_url, str) and _BITBUCKET_URL_PATTERN.match(repo_url))
+
+
+def detect_provider(repo_url: str) -> Optional[str]:
+    """Detect the git provider from a repository URL.
+
+    Returns 'github', 'gitlab', 'bitbucket', or None.
+    """
+    if _is_valid_github_url(repo_url):
+        return 'github'
+    if _is_valid_gitlab_url(repo_url):
+        return 'gitlab'
+    if _is_valid_bitbucket_url(repo_url):
+        return 'bitbucket'
+    return None
 
 
 def _safe_int(val: Optional[str], default: int = 0) -> int:
@@ -278,6 +312,456 @@ class GitHubService:
         response.raise_for_status()
         _check_rate_limits(response, url.split("?")[0].split("/")[-1])
         return response
+
+    # ── Git Data API: Create commits via blob → tree → commit → ref ──────────
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception(_is_transient_http_error),
+        before_sleep=_log_retry,
+    )
+    async def _gh_request(self, method: str, path: str, json_body: dict = None) -> dict:
+        """Make an authenticated GitHub API request and return JSON."""
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Onramp-2.0",
+        }
+        if self.github_token:
+            headers["Authorization"] = f"Bearer {self.github_token}"
+        url = f"https://api.github.com{path}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if method == "GET":
+                resp = await client.get(url, headers=headers)
+            elif method == "POST":
+                resp = await client.post(url, headers=headers, json=json_body or {})
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+            resp.raise_for_status()
+            _check_rate_limits(resp, path.split("/")[-1])
+            return resp.json()
+
+    async def get_pr_info(self, repo_url: str, pr_number: int) -> Optional[dict]:
+        """Get PR metadata — head ref, head SHA, base repo full_name."""
+        cleaned = repo_url.strip().rstrip("/")
+        if cleaned.endswith(".git"):
+            cleaned = cleaned[:-4]
+        parts = cleaned.split("/")
+        if len(parts) < 2:
+            return None
+        owner, repo = parts[-2], parts[-1]
+        try:
+            data = await self._gh_request("GET", f"/repos/{owner}/{repo}/pulls/{pr_number}")
+            return {
+                "owner": owner,
+                "repo": repo,
+                "head_ref": data["head"]["ref"],
+                "head_sha": data["head"]["sha"],
+                "base_ref": data["base"]["ref"],
+                "base_repo_full_name": data["base"]["repo"]["full_name"],
+                "title": data.get("title", ""),
+            }
+        except Exception:
+            logger.exception(f"Failed to fetch PR info for {repo_url}#{pr_number}")
+            return None
+
+    async def get_file_content(self, repo_url: str, file_path: str, ref: str) -> Optional[str]:
+        """Get the content of a file at a given ref. Returns decoded text."""
+        cleaned = repo_url.strip().rstrip("/")
+        if cleaned.endswith(".git"):
+            cleaned = cleaned[:-4]
+        parts = cleaned.split("/")
+        if len(parts) < 2:
+            return None
+        owner, repo = parts[-2], parts[-1]
+        import base64
+        try:
+            data = await self._gh_request(
+                "GET",
+                f"/repos/{owner}/{repo}/contents/{file_path}?ref={ref}"
+            )
+            if data.get("encoding") == "base64":
+                raw = base64.b64decode(data["content"])
+                return raw.decode("utf-8", errors="replace")
+            return None
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+            logger.exception(f"Failed to fetch file {file_path}@{ref}")
+            return None
+
+    async def apply_suggestion(
+        self,
+        repo_url: str,
+        pr_number: int,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        commit_message: str = "fix: auto-apply PR review suggestion",
+    ) -> dict:
+        """Apply a find-and-replace suggestion to a file in the PR's branch.
+
+        Uses the Git Data API (blob → tree → commit → update ref) to create
+        an inline fix commit on the PR's head branch.
+
+        Returns:
+            dict with ``commit_sha``, ``commit_url``, ``file_path``.
+        """
+        pr_info = await self.get_pr_info(repo_url, pr_number)
+        if not pr_info:
+            raise ValueError("Could not fetch PR info — check repo URL and PR number.")
+
+        owner = pr_info["owner"]
+        repo = pr_info["repo"]
+        head_ref = pr_info["head_ref"]
+        head_sha = pr_info["head_sha"]
+
+        # 1. Get current file content from the PR's head ref
+        content = await self.get_file_content(repo_url, file_path, head_sha)
+        if content is None:
+            raise ValueError(f"File '{file_path}' not found at ref {head_sha[:8]}")
+
+        # 2. Apply the find-and-replace
+        if old_string not in content:
+            raise ValueError(
+                f"Could not find the specified snippet in '{file_path}'. "
+                "The file may have been modified since the review."
+            )
+        new_content = content.replace(old_string, new_string, 1)
+
+        # 3. Create blob with new content
+        import base64
+        encoded = base64.b64encode(new_content.encode("utf-8")).decode("ascii")
+        blob = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/blobs",
+            {"content": encoded, "encoding": "base64"},
+        )
+        blob_sha = blob["sha"]
+
+        # 4. Get the current tree SHA
+        commit_data = await self._gh_request("GET", f"/repos/{owner}/{repo}/git/commits/{head_sha}")
+        base_tree_sha = commit_data["tree"]["sha"]
+
+        # 5. Create a new tree with the updated file
+        new_tree = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/trees",
+            {
+                "base_tree": base_tree_sha,
+                "tree": [
+                    {
+                        "path": file_path,
+                        "mode": "100644",
+                        "type": "blob",
+                        "sha": blob_sha,
+                    }
+                ],
+            },
+        )
+        new_tree_sha = new_tree["sha"]
+
+        # 6. Create a commit
+        new_commit = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/commits",
+            {
+                "message": commit_message,
+                "tree": new_tree_sha,
+                "parents": [head_sha],
+            },
+        )
+        new_commit_sha = new_commit["sha"]
+
+        # 7. Update the ref (push the commit to the PR branch)
+        await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/refs/heads/{head_ref}",
+            {"sha": new_commit_sha, "force": False},
+        )
+
+        return {
+            "commit_sha": new_commit_sha,
+            "commit_url": f"https://github.com/{owner}/{repo}/commit/{new_commit_sha}",
+            "file_path": file_path,
+        }
+
+    # ── Pull Request Creation ──────────────────────────────────────────────
+
+    async def get_authenticated_user(self) -> Optional[str]:
+        """Fetch the authenticated user's GitHub login (username).
+
+        Returns the login string (e.g. "octocat"), or None on failure.
+        """
+        try:
+            data = await self._gh_request("GET", "/user")
+            return data.get("login")
+        except Exception:
+            logger.exception("Failed to fetch authenticated user")
+            return None
+
+    async def commit_to_branch(
+        self,
+        owner: str,
+        repo: str,
+        branch: str,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        commit_message: str = "feat: autonomous coding change",
+    ) -> dict:
+        """Commit a find-and-replace change directly to a branch (no PR needed).
+
+        Uses the Git Data API (get branch ref → get file content → create blob →
+        create tree → create commit → update ref) to push a commit to a branch.
+
+        Args:
+            owner: Repo owner
+            repo: Repo name
+            branch: Target branch name
+            file_path: Path to the file to modify
+            old_string: Exact existing code to replace
+            new_string: Replacement code
+            commit_message: Git commit message
+
+        Returns:
+            dict with ``commit_sha``, ``commit_url``, ``file_path``.
+
+        Raises:
+            ValueError: If the branch doesn't exist, file not found, or old_string
+                       doesn't match the current content.
+        """
+        # 1. Get the branch ref to find the current head SHA
+        ref_data = await self._gh_request(
+            "GET", f"/repos/{owner}/{repo}/git/refs/heads/{branch}"
+        )
+        head_sha = ref_data["object"]["sha"]
+
+        # 2. Construct the repo URL for file content lookup
+        repo_url = f"https://github.com/{owner}/{repo}"
+
+        # 3. Determine new content — for new files (empty old_string) skip fetch
+        if not old_string:
+            # New file creation — no existing content to fetch
+            new_content = new_string
+        else:
+            # Existing file modification — fetch current content
+            content = await self.get_file_content(repo_url, file_path, head_sha)
+            if content is None:
+                raise ValueError(
+                    f"File '{file_path}' not found at ref {head_sha[:8]}. "
+                    "To create a new file, pass an empty old_string."
+                )
+            if old_string not in content:
+                raise ValueError(
+                    f"Could not find the specified snippet in '{file_path}'. "
+                    "The file may have been modified since the plan was generated."
+                )
+            new_content = content.replace(old_string, new_string, 1)
+
+        # 4. Create blob with new content
+        import base64
+        encoded = base64.b64encode(new_content.encode("utf-8")).decode("ascii")
+        blob = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/blobs",
+            {"content": encoded, "encoding": "base64"},
+        )
+        blob_sha = blob["sha"]
+
+        # 5. Get the current tree SHA from the head commit
+        commit_data = await self._gh_request("GET", f"/repos/{owner}/{repo}/git/commits/{head_sha}")
+        base_tree_sha = commit_data["tree"]["sha"]
+
+        # 6. Create a new tree with the updated file
+        new_tree = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/trees",
+            {
+                "base_tree": base_tree_sha,
+                "tree": [
+                    {
+                        "path": file_path,
+                        "mode": "100644",
+                        "type": "blob",
+                        "sha": blob_sha,
+                    }
+                ],
+            },
+        )
+        new_tree_sha = new_tree["sha"]
+
+        # 7. Create a commit
+        new_commit = await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/commits",
+            {
+                "message": commit_message,
+                "tree": new_tree_sha,
+                "parents": [head_sha],
+            },
+        )
+        new_commit_sha = new_commit["sha"]
+
+        # 8. Update the branch ref
+        await self._gh_request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/refs/heads/{branch}",
+            {"sha": new_commit_sha, "force": False},
+        )
+
+        return {
+            "commit_sha": new_commit_sha,
+            "commit_url": f"https://github.com/{owner}/{repo}/commit/{new_commit_sha}",
+            "file_path": file_path,
+        }
+
+    async def create_fork(self, owner: str, repo: str) -> Optional[str]:
+        """Fork a repo to the authenticated user's account.
+
+        Returns the full name of the fork ("username/repo"), or None on failure.
+        """
+        try:
+            data = await self._gh_request("POST", f"/repos/{owner}/{repo}/forks")
+            return data.get("full_name") or data.get("full_name", "")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 202:
+                # Fork already being created — check for existing fork
+                logger.info("Fork of %s/%s already being created, will retry later", owner, repo)
+                return None
+            logger.exception("Failed to fork %s/%s", owner, repo)
+            return None
+
+    async def create_branch(
+        self, owner: str, repo: str, base_branch: str, new_branch: str
+    ) -> Optional[str]:
+        """Create a new branch from an existing base branch.
+
+        Returns the new branch ref, or None on failure.
+        """
+        try:
+            # Get the SHA of the base branch
+            ref_data = await self._gh_request(
+                "GET", f"/repos/{owner}/{repo}/git/refs/heads/{base_branch}"
+            )
+            base_sha = ref_data["object"]["sha"]
+
+            # Create the new branch
+            await self._gh_request(
+                "POST",
+                f"/repos/{owner}/{repo}/git/refs",
+                {"ref": f"refs/heads/{new_branch}", "sha": base_sha},
+            )
+            return new_branch
+        except Exception:
+            logger.exception("Failed to create branch %s/%s:%s", owner, repo, new_branch)
+            return None
+
+    async def create_pr(
+        self,
+        owner: str,
+        repo: str,
+        head: str,
+        base: str,
+        title: str,
+        body: str = "",
+    ) -> Optional[dict]:
+        """Create a pull request on GitHub.
+
+        Args:
+            owner: Repo owner
+            repo: Repo name
+            head: Branch with changes (can be "fork_owner:branch" for cross-repo PRs)
+            base: Target branch (usually "main")
+            title: PR title
+            body: PR description body
+
+        Returns:
+            dict with ``pr_number``, ``pr_url``, ``html_url``, or None on failure.
+        """
+        try:
+            data = await self._gh_request(
+                "POST",
+                f"/repos/{owner}/{repo}/pulls",
+                {"title": title, "body": body, "head": head, "base": base},
+            )
+            return {
+                "pr_number": data["number"],
+                "pr_url": data["html_url"],
+                "html_url": data["html_url"],
+                "title": data.get("title", ""),
+            }
+        except Exception:
+            logger.exception("Failed to create PR %s/%s %s->%s", owner, repo, head, base)
+            return None
+
+    async def get_pr_info(self, repo_url: str, pr_number: int) -> Optional[dict]:
+        """Get PR metadata — head ref, head SHA, base repo full_name."""
+        cleaned = repo_url.strip().rstrip("/")
+        if cleaned.endswith(".git"):
+            cleaned = cleaned[:-4]
+        parts = cleaned.split("/")
+        if len(parts) < 2:
+            return None
+        owner, repo = parts[-2], parts[-1]
+        try:
+            data = await self._gh_request("GET", f"/repos/{owner}/{repo}/pulls/{pr_number}")
+            return {
+                "owner": owner,
+                "repo": repo,
+                "head_ref": data["head"]["ref"],
+                "head_sha": data["head"]["sha"],
+                "base_ref": data["base"]["ref"],
+                "base_repo_full_name": data["base"]["repo"]["full_name"],
+                "title": data.get("title", ""),
+            }
+        except Exception:
+            logger.exception(f"Failed to fetch PR info for {repo_url}#{pr_number}")
+            return None
+
+    async def apply_suggestions_bulk(
+        self,
+        repo_url: str,
+        pr_number: int,
+        suggestions: List[dict],
+        commit_message_prefix: str = "fix: auto-apply PR review suggestions",
+    ) -> List[dict]:
+        """Apply multiple suggestions sequentially as individual commits.
+
+        Each suggestion dict must have: ``file_path``, ``old_string``, ``new_string``.
+        Optionally: ``commit_message`` (overrides default).
+
+        .. note::
+
+           Suggestions are applied one at a time on the PR's head branch.
+           Each call updates the ref, so **two suggestions targeting the
+           same file will cause the second to fail** (the snippet to replace
+           may no longer exist at the new head SHA). Bulk calls typically
+           target one suggestion per file; for multiple changes in one file
+           merge them into a single suggestion with the full old/new content.
+
+        Returns a list of per-suggestion results.
+        """
+        results = []
+        for s in suggestions:
+            try:
+                result = await self.apply_suggestion(
+                    repo_url=repo_url,
+                    pr_number=pr_number,
+                    file_path=s["file_path"],
+                    old_string=s["old_string"],
+                    new_string=s["new_string"],
+                    commit_message=s.get("commit_message", f"{commit_message_prefix}: {s.get('file_path', '')}"),
+                )
+                result["success"] = True
+                results.append(result)
+            except Exception as e:
+                results.append({
+                    "success": False,
+                    "file_path": s.get("file_path", ""),
+                    "error": str(e),
+                })
+        return results
 
     @retry(
         stop=stop_after_attempt(2),

@@ -261,8 +261,11 @@ async def get_integration_config(user_id: str, integration: str) -> Optional[dic
         return None
     result = results[0]
     config = result.get("config", {})
-    if integration == "github" and config.get("token"):
+    if integration in ("github", "gitlab") and config.get("token"):
         config["token"] = decrypt_token(config["token"])
+        result["config"] = config
+    if integration == "bitbucket" and config.get("app_password"):
+        config["app_password"] = decrypt_token(config["app_password"])
         result["config"] = config
     return result
 
@@ -279,9 +282,11 @@ async def save_integration_config(
         [("user_id", "==", user_id), ("integration", "==", integration)],
     )
 
-    # Encrypt GitHub token at rest
-    if integration == "github" and config.get("token"):
+    # Encrypt tokens at rest for supported integrations
+    if integration in ("github", "gitlab") and config.get("token"):
         config["token"] = encrypt_token(config["token"])
+    if integration == "bitbucket" and config.get("app_password"):
+        config["app_password"] = encrypt_token(config["app_password"])
 
     now = _utcnow()
     entry = {

@@ -90,6 +90,21 @@ export async function mockNeonAuth(page: Page) {
 const MOCK_TEAM_ID = 'team-42'
 
 export async function mockBackendAPIs(page: Page) {
+  // ── Auth routes ──────────────────────────────────────────────────
+  await page.route('**/api/v1/auth/login', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        uid: FAKE_UID,
+        email: FAKE_EMAIL,
+        name: FAKE_NAME,
+        provider: 'password',
+        token: FAKE_SESSION_TOKEN,
+      }),
+    })
+  })
+
   await page.route('**/api/v1/auth/register', async (route) => {
     return route.fulfill({
       status: 200,
@@ -99,6 +114,7 @@ export async function mockBackendAPIs(page: Page) {
         email: FAKE_EMAIL,
         name: FAKE_NAME,
         provider: 'password',
+        token: FAKE_SESSION_TOKEN,
       }),
     })
   })
@@ -243,7 +259,7 @@ export async function mockDashboardAPI(page: Page) {
 }
 
 export async function mockReviewQueueAPI(page: Page) {
-  await page.route('**/api/v1/tasks', async (route) => {
+  await page.route(/\/api\/v1\/tasks(\?|$)/, async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -318,6 +334,144 @@ export async function mockReviewQueueAPI(page: Page) {
         ],
         count: 3,
       }),
+    })
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/*  Explore page mock                                                  */
+/* ------------------------------------------------------------------ */
+
+export async function mockExploreAPI(page: Page) {
+  await page.route('**/api/v1/explore/analyze', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        repo: 'org/repo',
+        entities: {
+          files: [
+            { path: 'src/index.ts', language: 'typescript', classes: [], functions: [{ name: 'main', args: [], lineno: 1 }], imports: ['react'], exports: [], dependencies: [] },
+            { path: 'src/app.tsx', language: 'typescript', classes: [{ name: 'App', methods: ['render'], bases: [], lineno: 1 }], functions: [], imports: ['react'], exports: [], dependencies: [] },
+          ],
+          classes: [{ name: 'App', methods: ['render'], bases: [], lineno: 1 }],
+          functions: [{ name: 'main', args: [], lineno: 1 }],
+          imports: [{ module: 'react', file: 'src/index.ts', language: 'typescript' }],
+          exports: [{ name: 'App', file: 'src/app.tsx', language: 'typescript' }],
+        },
+        services: [
+          { name: 'frontend', files: ['src/index.ts', 'src/app.tsx'], description: 'React frontend application' },
+          { name: 'api', files: ['src/api.ts'], description: 'API client layer' },
+          { name: 'utils', files: ['src/utils.ts'], description: 'Utility functions' },
+        ],
+        dependencies: {
+          frontend: ['api', 'utils'],
+          api: ['utils'],
+        },
+        circular_dependencies: [],
+        architecture_pattern: 'layered',
+        architecture_diagram: '',
+      }),
+    })
+  })
+
+  await page.route('**/api/v1/explore/health*', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'healthy', uptime: 99.9 }),
+    })
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/*  Team page mock                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function mockTeamAPI(page: Page) {
+  await page.route('**/api/v1/teams/*/members', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { user_id: 'member-1', name: 'Alice Chen', role: 'senior' },
+        { user_id: 'member-2', name: 'Bob Martinez', role: 'member' },
+        { user_id: 'member-3', name: 'Carol Nguyen', role: 'member' },
+        { user_id: 'member-4', name: 'Dave Park', role: 'tester' },
+      ]),
+    })
+  })
+
+  await page.route('**/api/v1/teams/*/module-permissions', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        permissions: [
+          { id: 'perm-1', user_id: 'member-1', user_name: 'Alice Chen', module: 'react-basics', granted_by: 'system', granted_at: new Date().toISOString(), source: 'manual' },
+          { id: 'perm-2', user_id: 'member-2', user_name: 'Bob Martinez', module: 'react-basics', granted_by: 'system', granted_at: new Date().toISOString(), source: 'manual' },
+          { id: 'perm-3', user_id: 'member-2', user_name: 'Bob Martinez', module: 'testing', granted_by: 'system', granted_at: new Date().toISOString(), source: 'manual' },
+        ],
+        modules: ['react-basics', 'testing', 'api-design', 'infra'],
+        count: 3,
+      }),
+    })
+  })
+
+  await page.route('**/api/v1/dashboard/team', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        members: [
+          { name: 'Alice Chen', user_id: 'member-1', role: 'senior', total_tasks: 14, completed_tasks: 8, in_progress_tasks: 3, pending_review: 2, modules_unlocked: ['react-basics', 'testing'], completion_rate: 57 },
+          { name: 'Bob Martinez', user_id: 'member-2', role: 'member', total_tasks: 10, completed_tasks: 4, in_progress_tasks: 5, pending_review: 1, modules_unlocked: ['react-basics'], completion_rate: 40 },
+          { name: 'Carol Nguyen', user_id: 'member-3', role: 'member', total_tasks: 18, completed_tasks: 6, in_progress_tasks: 4, pending_review: 4, modules_unlocked: ['react-basics', 'testing', 'api-design'], completion_rate: 33 },
+        ],
+      }),
+    })
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/*  Billing page mock                                                 */
+/* ------------------------------------------------------------------ */
+
+export async function mockBillingAPI(page: Page) {
+  await page.route('**/api/v1/billing/pricing', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        tiers: [
+          { tier: 'free', price_monthly: 0, price_yearly: 0, features: ['1 member', '1 repo', '50 credits/mo'] },
+          { tier: 'startup', price_monthly: 49, price_yearly: 499, features: ['5 members', '10 repos', '5000 credits/mo'] },
+          { tier: 'professional', price_monthly: 299, price_yearly: 2999, features: ['20 members', '50 repos', '50000 credits/mo'] },
+          { tier: 'enterprise', price_monthly: 0, price_yearly: 0, features: ['Custom', 'Unlimited', 'Dedicated support'] },
+        ],
+      }),
+    })
+  })
+
+  await page.route('**/api/v1/billing/subscriptions/*', async (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          team_id: MOCK_TEAM_ID,
+          tier: 'pro',
+          price: 49,
+          billing_cycle: 'monthly',
+          status: 'active',
+          created_at: '2025-06-01T00:00:00Z',
+        }),
+      })
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true }),
     })
   })
 }

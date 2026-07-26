@@ -22,6 +22,7 @@ from app.services.postgres_db import get_storage
 from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
 from app.services.email_service import is_enabled as email_is_enabled
 from app.services.email_service import send_email
+from app.services.api_key_service import APIKeyService
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 168  # 7 days
+JWT_REFRESH_EXPIRY_HOURS = 720  # 30 days (for remember_me)
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
     os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
@@ -39,6 +41,7 @@ FRONTEND_URL = os.getenv(
 class LoginRequest(BaseModel):
     email: str
     password: str
+    remember_me: bool = False
 
 
 class RegisterRequest(BaseModel):
@@ -75,14 +78,59 @@ async def get_current_user(request: Request) -> dict:
     return user
 
 
-def _generate_jwt(uid: str, email: str, name: str, provider: str) -> str:
+async def get_user_or_api_key(request: Request) -> dict:
+    """Dependency that accepts either a JWT (Authorization header) or an API key (X-API-Key header).
+
+    Used by the AIaaS public gateway so external users can authenticate with
+    just an API key without needing a user JWT.
+
+    Returns a dict with:
+      - ``uid`` (str) — user ID from JWT or "api:{org_name}" for API key auth
+      - ``auth_method`` (str) — "jwt" or "api_key"
+      - ``tier`` (str) — tier from the API key, or "free" for JWT
+      - ``org_name`` (str, optional) — org scope from API key
+    """
+    # Try JWT first
+    user = getattr(request.state, "user", None)
+    if user is not None:
+        return {**user, "auth_method": "jwt", "tier": user.get("tier", "free")}
+
+    # Fall back to X-API-Key header
+    api_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Not authenticated. Provide a JWT (Authorization) or API key (X-API-Key).")
+
+    key_service = APIKeyService()
+    key = await key_service.validate_key(api_key)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid or expired API key")
+
+    perms = key.get("permissions") or {}
+    org_name = perms.get("org_name") or key.get("org_name", "")
+    tier = perms.get("tier", "free")
+
+    return {
+        "uid": f"api:{org_name}" if org_name else "api:unknown",
+        "email": f"api@{org_name}.placeholder" if org_name else "api@unknown.placeholder",
+        "name": f"API Key ({org_name})" if org_name else "API Key",
+        "provider": "api_key",
+        "auth_method": "api_key",
+        "tier": tier,
+        "org_name": org_name,
+        "raw_key_record": key,
+    }
+
+
+def _generate_jwt(uid: str, email: str, name: str, provider: str, remember_me: bool = False) -> str:
+    expiry_hours = JWT_REFRESH_EXPIRY_HOURS if remember_me else JWT_EXPIRY_HOURS
     payload = {
         "uid": uid,
         "email": email,
         "name": name,
         "provider": provider,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
         "iat": datetime.now(timezone.utc),
+        "remember_me": remember_me,
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -263,7 +311,7 @@ async def login(body: LoginRequest):
         raw_email = decrypt_field(raw_email)
         raw_name = decrypt_field(raw_name)
 
-    token = _generate_jwt(uid, raw_email, raw_name, "password")
+    token = _generate_jwt(uid, raw_email, raw_name, "password", remember_me=body.remember_me)
 
     return AuthResponse(
         uid=uid,
@@ -272,6 +320,23 @@ async def login(body: LoginRequest):
         provider="password",
         token=token,
     )
+
+
+class RefreshResponse(BaseModel):
+    token: str
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_token(user: dict = Depends(get_current_user)):
+    """Issue a new JWT for an authenticated user (session extension)."""
+    uid = user.get("uid", "")
+    email = user.get("email", "")
+    name = user.get("name", "")
+    provider = user.get("provider", "password")
+    # Preserve the original session length — 7 days (standard) or 30 days (remember_me)
+    # Default to 7 days if we can't determine preference
+    token = _generate_jwt(uid, email, name, provider, remember_me=False)
+    return RefreshResponse(token=token)
 
 
 @router.get("/me", response_model=MeResponse)
@@ -509,7 +574,7 @@ def _build_verification_email_html(verification_link: str) -> str:
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">✉️</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Verify Your Email</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">
@@ -531,7 +596,7 @@ def _build_reset_email_html(reset_link: str) -> str:
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0D0906;padding:40px 20px">
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
-<div style="font-size:40px;margin-bottom:8px">🔐</div>
+<div style="font-size:40px;margin-bottom:8px"></div>
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Password Reset</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">

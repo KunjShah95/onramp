@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { setToken, getToken } from '../lib/neon-auth'
-import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword } from '../lib/api'
+import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken } from '../lib/api'
 
 interface User {
   id: string
@@ -39,7 +39,7 @@ interface AuthState {
 export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr'
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<{ ok: boolean; message: string }>
@@ -134,11 +134,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { active = false }
   }, [syncRoleFromTeams])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, rememberMe = false) => {
     setState((prev) => ({ ...prev, error: null, loading: true }))
     try {
-      const resp = await authLogin(email, password)
-      setToken(resp.token)
+      const resp = await authLogin(email, password, rememberMe)
+      setToken(resp.token, rememberMe)
       setState((prev) => ({
         ...prev,
         user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
@@ -153,6 +153,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(message)
     }
   }, [syncRoleFromTeams])
+
+  // Auto-refresh token periodically (every 4 hours) if user is signed in
+  useEffect(() => {
+    if (!state.user) return
+    const interval = setInterval(async () => {
+      try {
+        const resp = await refreshToken()
+        setToken(resp.token)
+      } catch {
+        // Silent — next 401 will redirect to login
+      }
+    }, 4 * 60 * 60 * 1000) // 4 hours
+    return () => clearInterval(interval)
+  }, [state.user])
 
   const register = useCallback(
     async (email: string, password: string, name: string) => {

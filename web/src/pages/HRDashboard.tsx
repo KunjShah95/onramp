@@ -164,7 +164,7 @@ export default function HRDashboard() {
                   <div key={m.user_id} className="flex items-center justify-between text-body-sm">
                     <span className="text-text-secondary">{m.name}</span>
                     <span className="text-text-tertiary">
-                      🔥 {m.current_streak} (best {m.longest_streak})
+                      {m.current_streak} (best {m.longest_streak})
                     </span>
                   </div>
                 ))}

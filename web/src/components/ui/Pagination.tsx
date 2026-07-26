@@ -31,6 +31,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
       <button
         onClick={() => onPageChange(Math.max(0, page - 1))}
         disabled={page === 0}
+        aria-label="Previous page"
         className="w-7 h-7 rounded-lg bg-[#FDFBF8]/5 border border-[#FDFBF8]/8 flex items-center justify-center text-[11px] text-[#FDFBF8]/60 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/10 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
       >
         ‹
@@ -110,6 +111,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
       <button
         onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1}
+        aria-label="Next page"
         className="w-7 h-7 rounded-lg bg-[#FDFBF8]/5 border border-[#FDFBF8]/8 flex items-center justify-center text-[11px] text-[#FDFBF8]/60 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/10 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
       >
         ›

@@ -198,7 +198,7 @@ export default function TasksPage() {
   useEffect(() => { setPage(0) }, [filter])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-text-primary relative">
       <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
         <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
         <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
@@ -234,7 +234,7 @@ export default function TasksPage() {
         />
 
         {progress && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-6">
             {[
               { label: 'Total', value: progress.total, color: 'text-text-primary', accent: undefined },
               { label: 'Completed', value: progress.completed, color: 'text-green-400', accent: '#22c55e' },
@@ -327,7 +327,14 @@ export default function TasksPage() {
                       {colTasks.length > 0 ? colTasks.map((task) => (
                         <motion.div key={task.task_id} variants={itemVariants}>
                           <CardSpotlight>
-                            <div onClick={() => setSelectedTask(task)} className="p-3.5 cursor-pointer">
+                            <div
+                              onClick={() => setSelectedTask(task)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTask(task) } }}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Task: ${task.title}`}
+                              className="p-3.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-primary/40 rounded-lg"
+                            >
                               <div className="flex items-center gap-2 mb-2.5">
                                 <StatusBadge state={task.state} className="flex-1" />
                                 <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
@@ -376,7 +383,7 @@ export default function TasksPage() {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <div className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 px-5 py-2.5 border-b border-border min-w-[500px]">
+                    <div className="grid grid-cols-[100px_1fr_80px_70px_54px] gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 border-b border-border min-w-[450px] sm:min-w-[500px]">
                       {['Status', 'Task', 'Assignee', 'Priority', 'Est.'].map((h) => (
                         <span key={h} className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">{h}</span>
                       ))}
@@ -385,10 +392,14 @@ export default function TasksPage() {
                       {paginatedTasks.map((task) => (
                         <motion.div key={task.task_id} variants={itemVariants}>
                           <div onClick={() => setSelectedTask(task)}
-                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-bg-tertiary/30 cursor-pointer transition-colors group min-w-[500px]">
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTask(task) } }}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Task: ${task.title}`}
+                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-bg-tertiary/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-accent-primary/40 rounded-lg">
                             <StatusBadge state={task.state} />
                             <div className="min-w-0">
-                              <div className="text-sm text-text-secondary group-hover:text-text-primary truncate font-medium transition-colors">{task.title}</div>
+                              <div className="text-xs sm:text-sm text-text-secondary group-hover:text-text-primary truncate font-medium transition-colors">{task.title}</div>
                               {task.module && <div className="text-[10px] text-accent-primary/50 font-mono mt-0.5">{task.module}</div>}
                             </div>
                             <div className="text-xs text-text-tertiary truncate flex items-center gap-1">
@@ -418,7 +429,7 @@ export default function TasksPage() {
 
         {/* Task Detail Modal */}
         {selectedTask && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedTask(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedTask(null)} role="presentation">
             <div className="bg-bg-primary border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 shadow-2xl relative"
               onClick={(e) => e.stopPropagation()}>
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent rounded-t-2xl" />

@@ -9,13 +9,13 @@ test.describe('Login Page', () => {
   })
 
   test('renders all login form elements', async ({ page }) => {
-    // Brand header
-    await expect(page.getByText('Nexora')).toBeVisible()
+    // Brand header — page shows "Onramp"
+    await expect(page.getByText('Onramp')).toBeVisible()
     await expect(page.getByText('Log in to your workspace')).toBeVisible()
 
-    // Social login buttons
-    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /continue with github/i })).toBeVisible()
+    // Social login — rendered as <a> tags with text content
+    await expect(page.getByText('Continue with Google')).toBeVisible()
+    await expect(page.getByText('Continue with GitHub')).toBeVisible()
 
     // Email/password form
     await expect(page.locator('input#email')).toBeVisible()
@@ -51,11 +51,11 @@ test.describe('Login Page', () => {
   })
 
   test('social login buttons are present and clickable', async ({ page }) => {
-    const googleBtn = page.getByRole('button', { name: /continue with google/i })
-    await expect(googleBtn).toBeEnabled()
+    const googleLink = page.getByText('Continue with Google')
+    await expect(googleLink).toBeVisible()
 
-    const githubBtn = page.getByRole('button', { name: /continue with github/i })
-    await expect(githubBtn).toBeEnabled()
+    const githubLink = page.getByText('Continue with GitHub')
+    await expect(githubLink).toBeVisible()
   })
 })
 
@@ -73,9 +73,9 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
 
-    // Should redirect to dashboard
+    // Should redirect to dashboard — page title is "Mission Control"
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    await expect(page.getByText(/dashboard/i)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
   })
 
   test('login page redirects to dashboard when already authenticated', async ({ page }) => {
@@ -90,7 +90,7 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    await page.waitForTimeout(2_000)
+    await page.waitForTimeout(500)
 
     // Navigate back to login — should be redirected away
     await page.goto('/login')

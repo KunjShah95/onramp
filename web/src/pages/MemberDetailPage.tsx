@@ -42,7 +42,7 @@ export default function MemberDetailPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
         {/* Back */}
         <motion.div variants={item} className="mb-6">
           <button className="flex items-center gap-1.5 text-caption text-text-muted/40 hover:text-text-primary transition-colors group">

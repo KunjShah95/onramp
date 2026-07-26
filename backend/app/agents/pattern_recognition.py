@@ -37,10 +37,10 @@ PATTERN_TEMPLATES = {
 
 
 class PatternRecognition(BaseAgent):
-    async def execute(self, pattern: str, repo_structure: Dict) -> Dict[str, Any]:
-        return await self.find_similar(pattern, repo_structure)
+    async def execute(self, pattern: str, repo_structure: Dict, mode: str = "normal") -> Dict[str, Any]:
+        return await self.find_similar(pattern, repo_structure, mode)
 
-    async def find_similar(self, pattern: str, repo_structure: Dict) -> Dict[str, Any]:
+    async def find_similar(self, pattern: str, repo_structure: Dict, mode: str = "normal") -> Dict[str, Any]:
         pattern_lower = pattern.lower()
 
         detected = self._detect_pattern_from_structure(repo_structure)
@@ -56,18 +56,35 @@ class PatternRecognition(BaseAgent):
             files_summary = "\n".join(
                 f.get("path", "") for f in repo_structure.get("files", [])
             )[:2000]
-            prompt = (
-                f"I'm analyzing a codebase that implements '{selected}'. "
-                f"Repository files:\n{files_summary}\n\n"
-                "Find similar solutions in other open-source repos. "
-                "For each, explain the approach and why it differs.\n\n"
-                "Return as JSON:\n"
-                "{\n"
-                '  "pattern": "identified pattern",\n'
-                '  "your_approach": {"approach": "...", "files": [...]},\n'
-                '  "similar_solutions": [{"repo": "org/repo", "approach": "...", "why_different": "..."}]\n'
-                "}"
-            )
+
+            if mode == "roast":
+                prompt = (
+                    f"I'm analyzing a codebase that implements '{selected}'. "
+                    f"Repository files:\n{files_summary}\n\n"
+                    "You are 'Pattern Roast Bot' — you find similar patterns in other repos "
+                    "and roast the current implementation while suggesting better approaches. "
+                    "Be funny but technically accurate.\n\n"
+                    "Return as JSON:\n"
+                    "{\n"
+                    '  "pattern": "identified pattern",\n'
+                    '  "your_approach": {"approach": "— roasted version of current approach", "files": [...]},\n'
+                    '  "roast_comment": "A funny one-liner about the current implementation",\n'
+                    '  "similar_solutions": [{"repo": "org/repo", "approach": "...", "why_different": "...", "roast": "why theirs is better (funny)"}]\n'
+                    "}"
+                )
+            else:
+                prompt = (
+                    f"I'm analyzing a codebase that implements '{selected}'. "
+                    f"Repository files:\n{files_summary}\n\n"
+                    "Find similar solutions in other open-source repos. "
+                    "For each, explain the approach and why it differs.\n\n"
+                    "Return as JSON:\n"
+                    "{\n"
+                    '  "pattern": "identified pattern",\n'
+                    '  "your_approach": {"approach": "...", "files": [...]},\n'
+                    '  "similar_solutions": [{"repo": "org/repo", "approach": "...", "why_different": "..."}]\n'
+                    "}"
+                )
             try:
                 result = await self.llm.json_chat(prompt)
                 if result.get("pattern"):

@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.services.billing_service import BillingService
+from app.services.credit_service import CreditService
 from app.services.team_service import get_team_members
 from app.api.v1.auth import get_current_user
 
 router = APIRouter(prefix="/billing", tags=["saas"])
 billing = BillingService()
+credits = CreditService()
 
 
 async def require_team_membership(team_id: str, user: dict) -> None:
@@ -148,3 +150,39 @@ async def stripe_webhook(request: Request):
 @router.get("/pricing")
 async def get_pricing():
     return {"tiers": BillingService.get_pricing()}
+
+
+# ── Usage-based billing: prepaid credit wallet ───────────────────────────────
+
+
+class TopUpRequest(BaseModel):
+    amount: int = Field(..., gt=0, le=1_000_000, description="Credits to add")
+
+
+@router.get("/credits")
+async def get_credit_wallet(user: dict = Depends(get_current_user)):
+    """Return the caller's prepaid credit wallet (balance + lifetime totals)."""
+    return await credits.get_wallet(user.get("uid", ""))
+
+
+@router.post("/credits/topup")
+async def top_up_credits(
+    request: TopUpRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Add credits to the caller's wallet.
+
+    In production this runs after a successful Stripe payment; the amount is the
+    number of credits purchased. Returns the updated wallet.
+    """
+    return await credits.add_credits(user.get("uid", ""), request.amount, reason="topup")
+
+
+@router.get("/credits/ledger")
+async def get_credit_ledger(
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+):
+    """Append-only history of credit top-ups and per-query charges."""
+    entries = await credits.get_ledger(user.get("uid", ""), limit=limit)
+    return {"entries": entries, "count": len(entries)}

@@ -226,7 +226,7 @@ export default function TeamPage() {
 
         {activeSection === 'teams' && (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
               {/* Create team */}
               <CardSpotlight className="p-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -400,7 +400,7 @@ export default function TeamPage() {
                 Grant access to a codebase module (e.g. <code className="text-accent-primary bg-accent-primary/8 px-1 rounded">api-core</code>).
                 Also auto-granted when a task with <code className="text-accent-primary/70 bg-accent-primary/8 px-1 rounded">unlock_modules</code> completes.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Field label="Team Member">
                   <Select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
                     <option value="">Select member…</option>

@@ -289,7 +289,7 @@ async def quiz_graded(
     await create_notification(
         user_id=user_id,
         type="quiz_graded",
-        title="Quiz Graded 📝",
+        title="Quiz Graded",
         message=f"You scored {score}/{total} ({percentage}%) — {'Passed!' if passed else 'Needs improvement.'}",
         metadata={
             "quiz_id": quiz_id,

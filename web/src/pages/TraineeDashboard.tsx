@@ -128,7 +128,7 @@ export default function TraineeDashboard() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-6xl mx-auto flex items-start gap-6 relative"
+      className="max-w-6xl mx-auto px-4 sm:px-6 flex items-start gap-6 relative"
     >
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-8">

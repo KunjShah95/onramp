@@ -49,7 +49,7 @@ async def generate_wiki(repo_owner: str, repo_name: str) -> dict:
     tree_lines = ""
     if contents and isinstance(contents, list):
         tree_lines = "\n".join(
-            f"{'📁' if c.get('type') == 'dir' else '📄'} {c.get('name')}" for c in contents[:30]
+            f"{'' if c.get('type') == 'dir' else ''} {c.get('name')}" for c in contents[:30]
         )
 
     contributing_text = ""

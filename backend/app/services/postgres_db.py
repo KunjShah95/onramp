@@ -124,6 +124,7 @@ _MODEL_REGISTRY: dict[str, tuple] = {
     "onramp_webhook_idempotency":     (db_models.WebhookIdempotency, "id", False, False),
     "onramp_webhook_events":          (db_models.WebhookEventLog, "event_id", False, False),
     "onramp_webhook_deliveries":      (db_models.WebhookDelivery, "id", False, False),
+    "onramp_feature_flags":           (db_models.FeatureFlag, "id", False, False),
 }
 
 

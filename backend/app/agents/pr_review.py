@@ -29,6 +29,7 @@ class PRReviewAgent(BaseAgent):
         repo_url: str,
         pr_number: int,
         focus_areas: List[str] = None,
+        mode: str = "normal",
     ) -> Dict[str, Any]:
         """Review a PR and return structured feedback."""
         diff = await self.github.get_pr_diff(repo_url, pr_number)
@@ -39,19 +40,20 @@ class PRReviewAgent(BaseAgent):
                 "pr_number": pr_number,
             }
 
-        return await self._analyze_diff(diff, focus_areas)
+        return await self._analyze_diff(diff, focus_areas, mode)
 
     async def _analyze_diff(
         self,
         diff: str,
         focus_areas: List[str] = None,
+        mode: str = "normal",
     ) -> Dict[str, Any]:
         """Analyze the diff and return review feedback."""
         if not self.llm:
-            return self._fallback_analysis(diff)
+            return self._fallback_analysis(diff, mode)
 
         focus = focus_areas or ["security", "performance", "maintainability", "correctness"]
-        prompt = self._build_review_prompt(diff, focus)
+        prompt = self._build_review_prompt(diff, focus, mode)
 
         try:
             result = await self._call_claude(prompt)
@@ -59,9 +61,44 @@ class PRReviewAgent(BaseAgent):
         except Exception:
             return self._fallback_analysis(diff)
 
-    def _build_review_prompt(self, diff: str, focus_areas: List[str]) -> str:
+    def _build_review_prompt(self, diff: str, focus_areas: List[str], mode: str = "normal") -> str:
         """Build the prompt for PR review."""
         focus_str = ", ".join(focus_areas)
+
+        if mode == "roast":
+            return f"""You are 'PR Roast Bot' — a senior engineer who's seen every bad PR in existence.
+Your job: review this PR with brutally honest, sarcastic humor while still being ACCURATELY HELPFUL.
+
+Roast the code, not the person. End every review with genuinely good advice.
+
+Focus areas: {focus_str}
+
+Diff:
+```diff
+{diff[:8000]}
+```
+
+Provide your response as JSON with this exact structure:
+{{
+  "summary": "Savage but fair overall assessment (2-3 sentences — make it funny)",
+  "score": 85,
+  "issues": [
+    {{
+      "type": "security|performance|maintainability|correctness|style",
+      "severity": "critical|high|medium|low",
+      "file": "path/to/file.py",
+      "line": 42,
+      "message": "Description of the issue — roast the code, be specific",
+      "suggestion": "How to fix it"
+    }}
+  ],
+  "positives": ["Good practice 1", "Good practice 2"],
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "hot_take": "A hilarious, personality-driven one-liner summarizing this PR. Make it memorable."
+}}
+
+Only include the JSON response, no extra text."""
+
         return f"""You are a senior code reviewer. Analyze the following PR diff and provide structured feedback.
 
 Focus areas: {focus_str}
@@ -87,7 +124,7 @@ Provide your response as JSON with this exact structure:
   ],
   "positives": ["Good practice 1", "Good practice 2"],
   "recommendations": ["Recommendation 1", "Recommendation 2"],
-  "hot_take": "A witty, personality-driven one-liner summarizing this PR — humorous but relevant. E.g. 'This is the cleanest code I've seen all week. Have a cookie. 🍪' or 'This looks like it was written at 3 AM after three energy drinks.'"
+  "hot_take": "A witty, personality-driven one-liner summarizing this PR — humorous but relevant. E.g. 'This is the cleanest code I've seen all week. Have a cookie.' or 'This looks like it was written at 3 AM after three energy drinks.'"
 }}
 
 Only include the JSON response, no extra text."""
@@ -106,7 +143,7 @@ Only include the JSON response, no extra text."""
             logger.exception("Failed to parse LLM review result, using fallback analysis")
         return self._fallback_analysis(diff)
 
-    def _fallback_analysis(self, diff: str) -> Dict[str, Any]:
+    def _fallback_analysis(self, diff: str, mode: str = "normal") -> Dict[str, Any]:
         """Fallback analysis when LLM is not available."""
         stats = self._get_diff_stats(diff)
         hot_take_options = [
@@ -116,6 +153,16 @@ Only include the JSON response, no extra text."""
         "The variable names suggest you actually care about your future self. Respect.",
         "Solid logic. The commit messages could use some work though.",
     ]
+        if mode == "roast":
+            return {
+                "summary": f"Oh look, another PR that modifies {stats['files_changed']} files (+{stats['additions']}/-{stats['deletions']} lines). I'd review it properly but my LLM is on strike. The code is probably fine... probably.",
+                "score": 69,
+                "issues": [{"type": "style", "severity": "low", "file": "unknown", "line": 0, "message": "Can't roast properly without LLM — the code gets a pass this time.", "suggestion": "Enable the LLM for truly savage reviews"}],
+                "positives": ["At least the diff compiles (probably)"],
+                "recommendations": ["Come back when the AI is feeling spicy again"],
+                "hot_take": "I'd roast this PR but my LLM model is taking a coffee break. Ship it?",
+                "diff_stats": stats,
+            }
         return {
             "summary": f"PR modifies {stats['files_changed']} files (+{stats['additions']}/-{stats['deletions']} lines). Manual review recommended.",
             "score": 70,

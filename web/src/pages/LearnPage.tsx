@@ -185,7 +185,7 @@ export default function LearnPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-5xl mx-auto space-y-8 relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-5xl mx-auto px-4 sm:px-6 space-y-8 relative">
       <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
         <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
         <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
