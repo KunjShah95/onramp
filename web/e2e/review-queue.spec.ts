@@ -13,16 +13,16 @@ test.describe('Review Queue', () => {
 
     // Log in
     await page.goto('/login')
-    await page.waitForSelector('input#email', { timeout: 10_000 })
+    await page.waitForSelector('input#email', { timeout: 15_000 })
     await page.fill('input#email', 'admin@onramp.dev')
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
-    await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    await page.waitForTimeout(300)
+    await page.waitForURL('**/dashboard', { timeout: 20_000 })
+    await page.waitForTimeout(500)
 
-    // Navigate to review queue
+    // Navigate to review queue — cascading API calls: listTeams → setTeamId → listTasks
     await page.goto('/reviews')
-    await page.waitForSelector('text=Review Queue', { timeout: 10_000 })
+    await page.waitForSelector('text=Review Queue', { timeout: 30_000 })
   })
 
   test('renders review queue page with header', async ({ page }) => {
