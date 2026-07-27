@@ -15,6 +15,7 @@ provides its own async event loop, so we can safely call the same
 LLMRouter / agent classes the main process uses.
 """
 
+import os
 import logging
 from typing import Optional
 from celery import shared_task

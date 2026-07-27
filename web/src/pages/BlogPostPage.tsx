@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Calendar, Tag, ArrowLeft, ArrowRight, Clock, ShareNetwork } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
-import { posts } from './BlogPage'
+import { posts } from '../data/blog'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Blog', href: '/blog' },

@@ -10,7 +10,7 @@ import {
 } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
-import { openRoles } from './CareersPage'
+import { openRoles } from '../data/careers'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Careers', href: '/careers' },
