@@ -23,7 +23,7 @@ setup-local.bat
 
 The setup scripts will:
 
-1. Create `backend/venv` if needed.
+1. Create `backend/.venv` if needed.
 2. Install backend dependencies from `backend/requirements.txt`.
 3. Copy `backend/.env.example` to `backend/.env` if missing.
 4. Start local PostgreSQL and Redis with Docker Compose.
@@ -38,9 +38,9 @@ docker compose up -d postgres redis
 
 # 2) Backend
 cd backend
-python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate  # macOS/Linux
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env     # Windows cmd: copy .env.example .env
 # If you use your own local PostgreSQL server, DATABASE_URL must match the

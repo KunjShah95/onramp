@@ -19,13 +19,13 @@ REM Backend Setup
 echo ▶ Setting up Backend...
 cd backend
 
-if not exist "venv" (
+if not exist ".venv" (
     echo Creating Python virtual environment...
-    python -m venv venv
+    python -m venv .venv
 )
 
 echo Installing Python dependencies...
-call venv\Scripts\activate.bat
+call .venv\Scripts\activate.bat
 pip install -q -r requirements.txt
 
 if not exist ".env" (
@@ -75,7 +75,7 @@ echo To start development:
 echo.
 echo Terminal 1 - Backend:
 echo   cd backend
-echo   venv\Scripts\activate.bat
+echo   .venv\Scripts\activate.bat
 echo   alembic upgrade head
 echo   uvicorn app.main:app --reload --port 8000
 echo.

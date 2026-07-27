@@ -22,15 +22,15 @@ echo -e "${BLUE}▶ Setting up Backend...${NC}"
 
 cd backend
 
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment..."
-    python -m venv venv
+    python -m venv .venv
 fi
 
-if [ -f "venv/Scripts/activate" ]; then
-    source venv/Scripts/activate  # Windows Git Bash
-elif [ -f "venv/bin/activate" ]; then
-    source venv/bin/activate      # macOS/Linux
+if [ -f ".venv/Scripts/activate" ]; then
+    source .venv/Scripts/activate  # Windows Git Bash
+elif [ -f ".venv/bin/activate" ]; then
+    source .venv/bin/activate      # macOS/Linux
 fi
 
 echo "Installing Python dependencies..."
@@ -81,7 +81,7 @@ echo "To start development:"
 echo ""
 echo -e "${BLUE}Terminal 1 - Backend:${NC}"
 echo "  cd backend"
-echo "  source venv/bin/activate  # or venv\\Scripts\\activate on Windows"
+echo "  source .venv/bin/activate  # or .venv\\Scripts\\activate on Windows"
 echo "  alembic upgrade head"
 echo "  uvicorn app.main:app --reload --port 8000"
 echo ""
