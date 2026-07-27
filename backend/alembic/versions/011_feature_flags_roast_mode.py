@@ -1,6 +1,6 @@
 """Add onramp_feature_flags table and roast_mode_enabled column
 
-Revision ID: 011_add_feature_flags_and_roast_mode
+Revision ID: 011_feature_flags_roast_mode
 Revises: 010_backfill_email_hash
 Create Date: 2026-07-27 00:00:00.000000
 
@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
 # revision identifiers, used by Alembic.
-revision: str = "011_add_feature_flags_and_roast_mode"
+revision: str = "011_feature_flags_roast_mode"
 down_revision: Union[str, None] = "010_backfill_email_hash"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
