@@ -8,12 +8,14 @@ from app.llm import LLMRouter, ModelProvider
 class TestInit:
     """LLMRouter initialization — key detection and provider selection."""
 
-    async def test_raises_with_no_api_keys(self, monkeypatch):
+    async def test_falls_back_to_ollama_with_no_api_keys(self, monkeypatch):
+        """When no cloud API keys are set, Ollama (local) is the fallback provider."""
         for var in ("OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
                      "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
             monkeypatch.delenv(var, raising=False)
-        with pytest.raises(RuntimeError, match="No LLM provider API keys configured"):
-            LLMRouter()
+        router = LLMRouter()
+        # No RuntimeError — Ollama is always available as the last resort
+        assert router.current_provider == ModelProvider.OLLAMA
 
     async def test_picks_first_available_key(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
@@ -39,7 +41,7 @@ class TestInit:
         monkeypatch.setenv("GROQ_API_KEY", "sk-groq")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-anthropic")
         router = LLMRouter()
-        assert len(router.fallback_chain) == 6
+        assert len(router.fallback_chain) == 7
 
 
 class TestChat:

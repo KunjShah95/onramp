@@ -75,6 +75,10 @@ const CareersPage = lazy(() => import('./pages/CareersPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
 const CareerDetailPage = lazy(() => import('./pages/CareerDetailPage'))
+const CustomersPage = lazy(() => import('./pages/CustomersPage'))
+const SecurityPage = lazy(() => import('./pages/SecurityPage'))
+const DPAPage = lazy(() => import('./pages/DPAPage'))
+const SOC2Page = lazy(() => import('./pages/SOC2Page'))
 
 // New Phase 2-5 pages
 const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
@@ -208,6 +212,26 @@ export default function App() {
               <Route path="/careers/:slug" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><CareerDetailPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/customers" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><CustomersPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/security" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><SecurityPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/dpa" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><DPAPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/soc-2" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><SOC2Page /></ErrorBoundary>
                 </Suspense>
               } />
 
