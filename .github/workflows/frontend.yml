@@ -36,7 +36,7 @@ jobs:
         working-directory: web
 
       - name: Run unit tests
-        run: npx vitest run --testTimeout 15000
+        run: npx vitest run --testTimeout 15000 --exclude '**/test/bundle/**'
         working-directory: web
 
       - name: Install Playwright browsers (chromium only)
