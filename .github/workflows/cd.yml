@@ -20,9 +20,10 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
           MISSING=""
-          for var in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID RENDER_DEPLOY_HOOK_URL; do
+          for var in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID RENDER_DEPLOY_HOOK_URL RENDER_SERVICE_URL; do
             if [ -z "${!var}" ]; then
               MISSING="$MISSING $var"
             fi
@@ -51,7 +52,7 @@ jobs:
         if: env.VERCEL_TOKEN == ''
         run: echo "VERCEL_TOKEN not configured — skipping Vercel deploy. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets to enable."
 
-      - uses: amondnet/vercel-action@v42
+      - uses: amondnet/vercel-action@v25
         if: env.VERCEL_TOKEN != ''
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -64,10 +65,19 @@ jobs:
       - name: Smoke test — frontend
         if: env.VERCEL_TOKEN != ''
         run: |
-          DEPLOYED_URL="https://${{ secrets.VERCEL_PROJECT_ID }}.vercel.app"
-          echo "Checking $DEPLOYED_URL..."
-          curl -fsSL -o /dev/null -w "%{http_code}" "$DEPLOYED_URL" || \
-            echo "⚠️  Smoke test failed — frontend may not be reachable. Check Vercel dashboard."
+          # Fetch the production deployment URL from Vercel API
+          DEPLOYED_URL=$(curl -fsSL \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}/domains" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print(next((d['name'] for d in data.get('domains',[]) if d.get('verified')), 'unknown'))" 2>/dev/null || echo "https://onramp.vercel.app")
+          FULL_URL="https://${DEPLOYED_URL}"
+          echo "Checking $FULL_URL..."
+          HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" "$FULL_URL" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ Frontend smoke test passed (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️  Smoke test returned HTTP $HTTP_CODE — verify deployment manually."
+          fi
 
   backend:
     name: Deploy backend → Render
@@ -89,9 +99,16 @@ jobs:
         if: env.RENDER_DEPLOY_HOOK_URL != ''
         run: |
           sleep 30
-          # Render auto-assigns a URL; this checks a generic health endpoint.
-          # In practice, replace DEPLOYED_API_URL with the actual Render URL.
-          DEPLOYED_API_URL="https://onramp-backend.onrender.com/health"
+          # Use RENDER_DEPLOY_HOOK_URL to derive the service URL
+          # Render hooks follow: https://api.render.com/deploy/srv-<id>?key=<key>
+          # The actual service URL should be configured as a secret.
+          DEPLOYED_API_URL="${{ secrets.RENDER_SERVICE_URL }}"
+          if [ -z "$DEPLOYED_API_URL" ]; then
+            echo "⚠️  RENDER_SERVICE_URL not configured — skipping smoke test."
+            echo "Add it as a GitHub secret (e.g. https://onramp-backend.onrender.com)."
+            exit 0
+          fi
+          DEPLOYED_API_URL="${DEPLOYED_API_URL}/health"
           echo "Checking $DEPLOYED_API_URL..."
           HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" "$DEPLOYED_API_URL" 2>/dev/null || echo "000")
           if [ "$HTTP_CODE" = "200" ]; then

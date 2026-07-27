@@ -1,0 +1,39 @@
+{
+  "projectId": "8a5beac6-b699-4fee-8ed0-826a47353bee",
+  "type": "frontend",
+  "name": "Registration - Accessibility compliance",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to the registration page"
+    },
+    {
+      "type": "assertion",
+      "description": "Registration form has proper ARIA labels for all inputs"
+    },
+    {
+      "type": "assertion",
+      "description": "Form fields have clear labels and instructions"
+    },
+    {
+      "type": "assertion",
+      "description": "Error messages are properly associated with form fields"
+    },
+    {
+      "type": "action",
+      "description": "Test keyboard navigation and focus management"
+    },
+    {
+      "type": "assertion",
+      "description": "Focus order is logical and predictable"
+    },
+    {
+      "type": "action",
+      "description": "Test form validation with screen reader announcements"
+    },
+    {
+      "type": "assertion",
+      "description": "Validation errors are announced appropriately"
+    }
+  ]
+}

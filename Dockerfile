@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Builder - Install dependencies
 # -----------------------------------------------------------------------------
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -19,15 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
-COPY backend/requirements.txt requirements.txt
+COPY backend/requirements.lock.txt requirements.lock.txt
 RUN pip install --no-cache-dir --prefix=/install \
-    -r requirements.txt \
+    -r requirements.lock.txt \
     && rm -rf /root/.cache
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Runtime image
 # -----------------------------------------------------------------------------
-FROM python:3.12-slim-bookworm AS production
+FROM python:3.11-slim-bookworm AS production
 
 # Labels
 ARG VERSION="2.0.0"
@@ -83,13 +83,13 @@ CMD ["app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # =============================================================================
 # Development Dockerfile (development use only)
 # =============================================================================
-FROM python:3.12-slim-bookworm AS development
+FROM python:3.11-slim-bookworm AS development
 
 WORKDIR /onramp
 
 # Install development dependencies
-COPY backend/requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.lock.txt requirements.lock.txt
+RUN pip install --no-cache-dir -r requirements.lock.txt
 
 # Install dev tools
 RUN pip install --no-cache-dir \
@@ -113,7 +113,7 @@ CMD ["python", "-m", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0",
 # =============================================================================
 # Celery Worker Dockerfile
 # =============================================================================
-FROM python:3.12-slim-bookworm AS celery-worker
+FROM python:3.11-slim-bookworm AS celery-worker
 
 ARG VERSION="2.0.0"
 LABEL maintainer="onramp@example.com" \

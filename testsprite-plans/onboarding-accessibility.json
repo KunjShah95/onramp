@@ -1,0 +1,35 @@
+{
+  "projectId": "8a5beac6-b699-4fee-8ed0-826a47353bee",
+  "type": "frontend",
+  "name": "Onboarding Flow - Accessibility compliance",
+  "planSteps": [
+    {
+      "type": "action",
+      "description": "Navigate to onboarding hub after login"
+    },
+    {
+      "type": "assertion",
+      "description": "Onboarding content is perceivable and operable"
+    },
+    {
+      "type": "assertion",
+      "description": "Text can be resized without loss of content or functionality"
+    },
+    {
+      "type": "action",
+      "description": "Test keyboard navigation through onboarding steps"
+    },
+    {
+      "type": "assertion",
+      "description": "All interactive elements in onboarding flow are keyboard accessible"
+    },
+    {
+      "type": "action",
+      "description": "Test form inputs in onboarding process"
+    },
+    {
+      "type": "assertion",
+      "description": "Form inputs have appropriate labels and error handling"
+    }
+  ]
+}

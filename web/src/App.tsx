@@ -69,6 +69,12 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const JoinPage = lazy(() => import('./pages/JoinPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const BlogPage = lazy(() => import('./pages/BlogPage'))
+const CareersPage = lazy(() => import('./pages/CareersPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
+const CareerDetailPage = lazy(() => import('./pages/CareerDetailPage'))
 
 // New Phase 2-5 pages
 const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
@@ -172,6 +178,36 @@ export default function App() {
               <Route path="/terms" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><TermsPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/about" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><AboutPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/blog" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><BlogPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/careers" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><CareersPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/contact" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><ContactPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/blog/:slug" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><BlogPostPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/careers/:slug" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><CareerDetailPage /></ErrorBoundary>
                 </Suspense>
               } />
 

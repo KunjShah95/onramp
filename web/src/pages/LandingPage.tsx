@@ -1120,6 +1120,9 @@ const FOOTER_LINK_TO: Record<string, string> = {
   'Features': '#features', 'How it works': '#how', 'Pricing': '/pricing',
   'Changelog': '/changelog', 'Docs': '/docs', 'Documentation': '/docs',
   'Privacy': '/privacy', 'Terms': '/terms',
+  'About': '/about', 'Blog': '/blog', 'Careers': '/careers',
+  'Customers': '/customers', 'Contact': '/contact',
+  'Security': '/security', 'DPA': '/dpa', 'SOC 2': '/soc-2',
 }
 
 function Footer() {
