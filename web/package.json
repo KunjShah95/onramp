@@ -33,7 +33,7 @@
     "hls.js": "^1.6.16",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.1",
+    "react-router-dom": "^7.11.0",
     "react-youtube": "^10.1.0",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0"
