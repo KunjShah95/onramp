@@ -61,13 +61,19 @@ export default function ReviewQueuePage() {
   const { activeTeamId } = useAuth()
 
   useEffect(() => {
+    let cancelled = false
     listTeams('current-user')
       .then((data: TeamsResponse) => {
+        if (cancelled) return
         const tid = activeTeamId || data.teams?.[0]?.team_id || ''
         if (tid) setTeamId(tid)
         else { setLoading(false); setError('Join a team to view the review queue.') }
       })
-      .catch(() => { setLoading(false); setError('Failed to load teams.') })
+      .catch(() => {
+        if (cancelled) return
+        setLoading(false); setError('Failed to load teams.')
+      })
+    return () => { cancelled = true }
   }, [activeTeamId])
 
   async function fetchTasks() {
