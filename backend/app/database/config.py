@@ -50,8 +50,9 @@ class DatabaseConfig:
             "DB_SSL_MODE", "require" if self.is_production else "prefer"
         )
 
-        # Remove sslmode from query parameters since asyncpg doesn't support it
-        # as a query param and throws TypeError. We handle SSL via connect_args instead.
+        # Remove sslmode and channel_binding from query parameters since asyncpg
+        # doesn't support them as query params and throws TypeError. We handle SSL
+        # via connect_args instead, and channel_binding is not needed in-app.
         if self.database_url and "?" in self.database_url:
             base_url, query = self.database_url.split("?", 1)
             from urllib.parse import parse_qs, urlencode
@@ -61,6 +62,9 @@ class DatabaseConfig:
                 url_ssl_mode = params["sslmode"][0]
                 self.ssl_mode = url_ssl_mode
                 del params["sslmode"]
+            if "channel_binding" in params:
+                # asyncpg doesn't support channel_binding as a URL query param
+                del params["channel_binding"]
             if params:
                 self.database_url = f"{base_url}?{urlencode(params, doseq=True)}"
             else:

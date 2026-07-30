@@ -45,7 +45,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp}
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET=${JWT_SECRET:-test-secret-key-min-32-chars}
@@ -87,7 +87,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp}
       - DB_SSL_MODE=disable
       - GEMINI_API_KEY=${GEMINI_API_KEY:-test-key}
       - JWT_SECRET=${JWT_SECRET:-test-secret-key-min-32-chars}
@@ -113,7 +113,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-      - DATABASE_URL=postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://onramp:${DB_PASSWORD:-postgres_password}@postgres:5432/onramp}
       - DB_SSL_MODE=disable
     volumes:
       - ./backend:/app

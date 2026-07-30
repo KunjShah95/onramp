@@ -785,7 +785,7 @@ class GitHubService:
             headers["Authorization"] = f"Bearer {self.github_token}"
 
         url = f"https://api.github.com/repos/{owner}/{repo}"
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             try:
                 response = await self._fetch_page(client, url, headers)
                 data = response.json()
@@ -859,7 +859,7 @@ class GitHubService:
                 params["labels"] = ",".join(labels)
 
             issues = []
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 while url and len(issues) < limit:
                     try:
                         response = await self._fetch_page(client, url, headers, params)
@@ -927,7 +927,7 @@ class GitHubService:
             if self.github_token:
                 headers["Authorization"] = f"Bearer {self.github_token}"
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await self._fetch_page(client, url, headers)
                 diff_text = response.text
                 _diffs_cache[cache_key] = diff_text

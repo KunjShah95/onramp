@@ -13,6 +13,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Default: local CI Postgres. Override via repo secret to point to NeonDB.
+      DATABASE_URL: ${{
+        secrets.DATABASE_URL
+        || 'postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test'
+      }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -54,10 +60,8 @@ jobs:
       - name: Create .env and run migrations
         run: |
           grep -v '^\[TEMPLATE\]' backend/.env.example > backend/.env 2>/dev/null || cp backend/.env.example backend/.env
-          echo "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test" >> backend/.env
+          echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
           cd backend && alembic upgrade head
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
 
       - name: Run unit & integration tests (memory backend)
         run: |
@@ -66,7 +70,6 @@ jobs:
             --ignore=tests/test_load_performance.py \
             --cov=app --cov-report=term-missing --cov-report=xml
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
@@ -76,7 +79,6 @@ jobs:
         run: |
           cd backend && python -m pytest tests/test_api_contract.py -v --timeout=30 --cov=app --cov-report=term-missing --cov-report=xml --cov-append
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
@@ -86,7 +88,6 @@ jobs:
         run: |
           cd backend && python -m pytest tests/test_load_performance.py -v --timeout=120 --cov=app --cov-report=term-missing --cov-report=xml --cov-append
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
@@ -96,7 +97,6 @@ jobs:
         run: |
           cd backend && python -m pytest tests/test_task_service.py tests/test_notification_service.py tests/test_gamification.py -v --timeout=60 --run-postgres --cov=app --cov-append
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test
           ENV: test
           STORAGE_BACKEND: postgres
           GROQ_API_KEY: sk-test-placeholder
