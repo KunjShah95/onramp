@@ -176,7 +176,7 @@ class TeamMember(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "team_id", name="uq_team_members_user_team"),
         CheckConstraint(
-            "role IN ('ceo', 'cto', 'senior_dev', 'developer', 'tester', 'new_dev', 'member', 'hr')",
+            "role IN ('owner', 'ceo', 'cto', 'senior_dev', 'developer', 'tester', 'new_dev', 'member', 'hr')",
             name="ck_team_members_role"
         ),
         Index("ix_team_members_user_id", "user_id"),
@@ -333,6 +333,8 @@ class Repository(Base):
             "id": self.id,
             "name": self.name,
             "owner": self.owner,
+            "team_id": self.team_id,
+            "url": self.url,
             "language": self.language,
             "description": self.description,
             "status": self.status,

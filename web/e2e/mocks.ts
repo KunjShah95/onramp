@@ -475,3 +475,50 @@ export async function mockBillingAPI(page: Page) {
     })
   })
 }
+
+/* ------------------------------------------------------------------ */
+/*  Allocated repo access — new dev → repo visibility → health          */
+/* ------------------------------------------------------------------ */
+
+const ALLOCATED_REPO = {
+  id: 'repo-hello-world',
+  name: 'Hello-World',
+  owner: 'octocat',
+  status: 'ready',
+  last_analyzed: new Date().toISOString(),
+}
+
+/**
+ * Mock GET /api/v1/repos — the repo allocated to the (new) dev's team.
+ * The regex intentionally matches `/repos` and `/repos?team_id=...` but NOT
+ * `/repos/{owner}/{repo}/health`, mirroring the teams-list convention.
+ */
+export async function mockReposAPI(page: Page) {
+  await page.route(/\/api\/v1\/repos(\?|$)/, async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ repos: [ALLOCATED_REPO] }),
+    })
+  })
+}
+
+/**
+ * Mock POST /api/v1/repos/octocat/Hello-World/health — the health score the
+ * dashboard and Code Health page fetch for the allocated repo.
+ */
+export async function mockRepoHealthAPI(page: Page) {
+  await page.route('**/api/v1/repos/octocat/Hello-World/health', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        overall_score: 85,
+        test_coverage: 72,
+        maintainability: 8,
+        complexity: 'moderate',
+        recommendations: ['Add more tests', 'Document public APIs'],
+      }),
+    })
+  })
+}

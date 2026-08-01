@@ -79,6 +79,42 @@ async def test_user_in_multiple_teams_can_access_any(seeded_storage):
 
 
 @pytest.mark.asyncio
+async def test_create_repo_duplicate_returns_409(seeded_storage):
+    """Creating a repo with an already-tracked (owner, name) returns 409,
+    not a 500 from the unique constraint."""
+    from app.api.v1.repositories import create_repo
+
+    mock_user = {"uid": "user_a"}
+    with patch("app.api.v1.repositories._storage", seeded_storage), \
+         patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
+             {"team_id": "team_a", "role": "member"}
+         ])):
+        with pytest.raises(HTTPException) as exc:
+            await create_repo(
+                name="repo-a", owner="org", user=mock_user,
+            )
+    assert exc.value.status_code == 409
+    assert "already" in exc.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_create_repo_allows_new_owner_name(seeded_storage):
+    """A brand-new (owner, name) still creates successfully."""
+    from app.api.v1.repositories import create_repo
+
+    mock_user = {"uid": "user_a"}
+    with patch("app.api.v1.repositories._storage", seeded_storage), \
+         patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
+             {"team_id": "team_a", "role": "member"}
+         ])):
+        repo = await create_repo(
+            name="repo-new", owner="org", user=mock_user,
+        )
+    assert repo["name"] == "repo-new"
+    assert repo["team_id"] == "team_a"
+
+
+@pytest.mark.asyncio
 async def test_delete_repo_requires_ownership(seeded_storage):
     """A user can only delete repos belonging to their team."""
     from app.api.v1.repositories import _verify_repo_access

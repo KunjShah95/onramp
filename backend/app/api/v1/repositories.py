@@ -66,10 +66,22 @@ async def create_repo(
     team_id: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
-    """Register a new repository for tracking."""
+    """Register a new repository for tracking.
+
+    Returns 409 if an identical (owner, name) is already tracked — the DB
+    unique constraint (uq_repositories_owner_name) would otherwise surface
+    as a 500 on re-allocation.
+    """
+    existing = await _storage.query_documents(
+        "repositories",
+        [("owner", "==", owner), ("name", "==", name)],
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Repository already tracked")
+
     uid = user.get("uid", "")
     resolved_team_id = team_id
-    if not resolved_team_id and not team_id:
+    if not resolved_team_id:
         from app.services.team_service import get_user_teams
         teams = await get_user_teams(uid)
         resolved_team_id = teams[0].get("team_id") if teams else None
@@ -128,20 +140,12 @@ async def repo_analysis(
     """Return analysis summary for a specific repository."""
     repo_data = await _verify_repo_access(owner, repo, user)
 
-    from app.services.github_service import GitHubService, detect_provider, _is_valid_gitlab_url, _is_valid_bitbucket_url
+    from app.services.github_service import GitHubService, detect_provider
     gh = GitHubService()
-    
-    # Detect the provider from the repo URL
-    repo_url = f"https://github.com/{owner}/{repo}"
-    
-    # Check if stored URL is available
-    stored_url = repo_data.get("url", "")
-    if stored_url:
-        repo_url = stored_url
-    else:
-        # Try to detect from the combination
-        pass
-    
+
+    # Use the stored URL when available (otherwise falls back to github.com)
+    repo_url = repo_data.get("url", "") or f"https://github.com/{owner}/{repo}"
+
     provider = detect_provider(repo_url)
     
     if provider == 'gitlab':

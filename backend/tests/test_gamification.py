@@ -10,8 +10,8 @@ from datetime import datetime, timezone, date, timedelta
 from app.services import gamification_service as gs
 from app.services.postgres_db import get_storage
 
-# Import deterministic UUIDs from conftest
-from conftest import (
+# Import deterministic UUIDs from the tests package conftest
+from tests.conftest import (
     TUID_USER_USER1, TUID_USER_USER2, TUID_USER_JUNIOR1,
     TUID_TEAM_ALPHA, TUID_TEAM_BETA,
     TUID_GAMING_ALICE, TUID_GAMING_BOB, TUID_GAMING_CHARLIE,
