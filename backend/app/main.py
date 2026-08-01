@@ -34,6 +34,24 @@ from app.api.v1 import (
     ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
+
+
+_MAX_BODY_SIZE = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(4 * 1024 * 1024)))  # 4 MB default
+
+
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > _MAX_BODY_SIZE:
+            return Response(
+                content='{"detail":"Request body too large"}',
+                status_code=413,
+                media_type="application/json",
+            )
+        return await call_next(request)
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -89,11 +107,16 @@ async def lifespan(app: FastAPI):
     await close_cache()
 
 
+_is_production = os.getenv("ENV") == "production"
+
 app = FastAPI(
     title="Onramp 2.0 API",
     version="1.0.0",
     description="AI-powered developer onboarding platform",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 # Middleware is executed in reverse order of addition (last added = outermost)
@@ -106,8 +129,10 @@ _cors_origins = [
     if origin.strip()
 ]
 
+_doc_paths = [] if _is_production else ["/docs", "/redoc", "/openapi.json"]
+
 app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/docs", "/openapi.json", "/health",
+    "/", "/health", *_doc_paths,
     "/api/v1/auth/register",        # email/password registration
     "/api/v1/auth/login",           # email/password login
     "/api/v1/auth/check-provider",  # public provider lookup by email
@@ -125,6 +150,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/slack/interactive",  # Slack interactive payloads (verified by signing secret)
     "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)
 ])
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)
@@ -187,7 +213,8 @@ app.include_router(accounts_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
-app.include_router(seed_router.router, prefix="/api/v1")
+if not _is_production:
+    app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(feature_flags_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")

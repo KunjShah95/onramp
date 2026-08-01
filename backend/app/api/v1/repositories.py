@@ -39,18 +39,25 @@ async def list_repos(
     from app.services.team_service import get_user_teams
 
     uid = user.get("uid", "")
-    resolved_team_id = team_id
-    if not resolved_team_id:
-        teams = await get_user_teams(uid)
-        resolved_team_id = teams[0].get("team_id") if teams else None
+    teams = await get_user_teams(uid)
+    user_team_ids = {t.get("team_id") or t.get("id") for t in teams}
 
-    if resolved_team_id:
-        repos = await _storage.query_documents(
-            "repositories",
-            [("team_id", "==", resolved_team_id)]
-        )
+    if team_id:
+        if team_id not in user_team_ids:
+            raise HTTPException(status_code=403, detail="Access denied")
+        query_team_ids = {team_id}
     else:
-        repos = await _storage.list_documents("repositories")
+        query_team_ids = user_team_ids
+
+    if not query_team_ids:
+        return {"repos": []}
+
+    repos = []
+    for tid in query_team_ids:
+        team_repos = await _storage.query_documents(
+            "repositories", [("team_id", "==", tid)]
+        )
+        repos.extend(team_repos)
 
     repos.sort(key=lambda r: r.get("created_at", ""), reverse=True)
     return {"repos": repos}

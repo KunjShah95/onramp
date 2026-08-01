@@ -22,17 +22,24 @@ class AwardXpRequest(BaseModel):
 # ── Award XP ──────────────────────────────────────────────────
 
 
+_CLIENT_ALLOWED_SOURCES = frozenset({
+    "daily_login", "profile_complete", "first_pr_merged",
+})
+
+
 @router.post("/xp")
 async def award_xp(
     request: AwardXpRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Award XP to the current user from a specific source."""
+    """Award XP to the current user. Only client-initiated sources allowed; amount ignored."""
+    if request.source not in _CLIENT_ALLOWED_SOURCES:
+        raise HTTPException(status_code=403, detail=f"Source '{request.source}' cannot be self-awarded")
     uid = user.get("uid", "")
     result = await gs.award_xp(
         user_id=uid,
         source=request.source,
-        amount=request.amount,
+        amount=None,
         team_id=request.team_id,
         metadata=request.metadata,
     )
@@ -151,17 +158,21 @@ async def get_leaderboard(
     team_id: str = Query(..., description="Team ID to scope leaderboard to"),
     period: str = Query("all_time", description="Period: all_time, monthly, or weekly"),
     limit: int = Query(20, description="Max number of entries"),
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ):
-    """Get the team leaderboard sorted by XP descending."""
+    """Get the team leaderboard sorted by XP descending. Requires team membership."""
+    from app.services.team_service import get_user_teams
+
     if period not in ("all_time", "monthly", "weekly"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid period. Must be 'all_time', 'monthly', or 'weekly'.",
-        )
-    leaderboard = await gs.get_leaderboard(
-        team_id=team_id, period=period, limit=limit
-    )
+        raise HTTPException(status_code=400, detail="Invalid period. Must be 'all_time', 'monthly', or 'weekly'.")
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    leaderboard = await gs.get_leaderboard(team_id=team_id, period=period, limit=limit)
     return leaderboard
 
 
