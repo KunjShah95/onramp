@@ -189,7 +189,17 @@ export default function ReviewQueuePage() {
       ) : (
         <motion.div variants={itemVariants} className="space-y-2">
           {filtered.map(({ task, status }, i) => {
-            const statusStyle = STATUS_CONFIG[status]
+            // STATUS_CONFIG is keyed by task state (e.g. needs_changes, in_progress),
+            // NOT by tab keys (changes, in-progress). Look up by the task's own state
+            // first, fall back to the tab key, then a neutral default so a new/unknown
+            // state can never crash the queue.
+            const statusStyle =
+              STATUS_CONFIG[task.state] ??
+              STATUS_CONFIG[status] ?? {
+                label: task.state,
+                color: 'text-text-tertiary',
+                bg: 'bg-bg-tertiary/50',
+              }
             const priorityStyle = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.low
             return (
               <motion.div
