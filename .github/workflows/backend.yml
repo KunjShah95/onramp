@@ -15,10 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Default: local CI Postgres. Override via repo secret to point to NeonDB.
-      DATABASE_URL: ${{
-        secrets.DATABASE_URL
-        || 'postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test'
-      }}
+      # NOTE: the ${{ }} expression must stay on ONE line — multi-line
+      # expressions are invalid in GitHub Actions and fail the workflow parse.
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql+asyncpg://postgres:postgres@localhost:5432/onramp_test' }}
     services:
       postgres:
         image: postgres:16-alpine
