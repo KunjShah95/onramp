@@ -24,6 +24,9 @@ NOTIF_TYPE_TO_SLACK_EVENT = {
     "system_alert": "System Alert",
     "pr_merged": "PR Merged",
     "milestone_reached": "Milestone Reached",
+    "task_stale": "Stale Task Alert",
+    "task_time_overrun": "Time Overrun Alert",
+    "peer_review_claimed": "Peer Review Claimed",
 }
 
 

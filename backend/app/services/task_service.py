@@ -6,6 +6,7 @@ Enforces valid state transitions and tracks timestamps.
 """
 
 import asyncio
+import re as _re
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
@@ -149,7 +150,7 @@ COLLECTION = "onramp_tasks"
 
 VALID_STATES = {
     "pending", "assigned", "in_progress", "submitted",
-    "under_review", "needs_changes", "product_review",
+    "under_review", "peer_review", "needs_changes", "product_review",
     "approved", "completed", "cancelled",
 }
 
@@ -159,8 +160,12 @@ TRANSITIONS = {
     "in_progress":    {"submitted", "needs_changes", "cancelled"},
     # A reviewer can act on a submitted task directly (approve / route to
     # product / request changes) — under_review is an optional intermediate.
-    "submitted":      {"under_review", "approved", "product_review", "needs_changes", "cancelled"},
-    "under_review":   {"approved", "needs_changes", "product_review", "cancelled"},
+    "submitted":      {"under_review", "peer_review", "approved", "product_review", "needs_changes", "cancelled"},
+    "under_review":   {"peer_review", "approved", "needs_changes", "product_review", "cancelled"},
+    # Peer review: a fellow dev (not the assignee, not necessarily a senior)
+    # claims the task for peer review. Outcome loops back into the normal
+    # review outcomes.
+    "peer_review":    {"approved", "needs_changes", "product_review", "cancelled"},
     "needs_changes":  {"in_progress", "cancelled"},
     "product_review": {"approved", "needs_changes", "cancelled"},
     "approved":       {"completed", "cancelled"},
@@ -196,8 +201,15 @@ async def create_task(
     unlock_modules: Optional[List[str]] = None,
     estimated_hours: Optional[float] = None,
     assigned_to: Optional[str] = None,
+    quiz_required: bool = False,
+    source_issue: Optional[Dict[str, Any]] = None,
+    depends_on: Optional[List[str]] = None,
 ) -> dict:
-    """Create a new task in pending state."""
+    """Create a new task in pending state.
+
+    ``depends_on`` is an optional list of prerequisite task_ids — the task
+    cannot be started until all of them are completed (task dependency DAG).
+    """
     storage = get_storage()
 
     now = _utcnow()
@@ -220,6 +232,15 @@ async def create_task(
         "ai_review": None,
         "product_signoff": False,
         "estimated_hours": estimated_hours,
+        "actual_hours": None,
+        "pr_comments": None,
+        "peer_reviewed_by": None,
+        "quiz_required": quiz_required,
+        "source_issue": source_issue,
+        "depends_on": depends_on or [],
+        "submitted_at": None,
+        "reviewed_at": None,
+        "review_cycles": 0,
         "created_at": now,
         "updated_at": now,
         "started_at": None,
@@ -335,18 +356,28 @@ async def transition_task(
         updates["started_at"] = now
     elif new_state == "completed":
         updates["completed_at"] = now
-    elif new_state == "submitted" and pr_url:
-        updates["pr_url"] = pr_url
-    elif new_state == "needs_changes" and feedback:
-        updates["review_feedback"] = feedback
+    elif new_state == "submitted":
+        updates["submitted_at"] = now
+        if pr_url:
+            updates["pr_url"] = pr_url
+    elif new_state == "needs_changes":
+        updates["reviewed_at"] = now
+        updates["review_cycles"] = int(task.get("review_cycles", 0) or 0) + 1
+        if feedback:
+            updates["review_feedback"] = feedback
     elif new_state == "under_review":
+        updates["reviewed_at"] = now
         updates["reviewed_by"] = user_id
+    elif new_state in ("product_review", "approved"):
+        updates["reviewed_at"] = now
     elif new_state == "product_review":
         updates["product_signoff"] = False
     elif new_state == "approved" and feedback:
         updates["review_feedback"] = feedback
     elif new_state == "assigned":
-        updates["assigned_to"] = user_id        # Broadcast the state transition
+        updates["assigned_to"] = user_id
+
+    # Broadcast the state transition
     result = await storage.update_document(COLLECTION, task_id, updates)
     if result:
         result["state"] = new_state
@@ -367,13 +398,75 @@ async def assign_task(task_id: str, assignee_id: str, assigned_by: str) -> dict:
 
 
 async def start_task(task_id: str, user_id: str) -> dict:
-    """Mark task as in_progress."""
+    """Mark task as in_progress (trainee starts working).
+
+    Enforces the prerequisite quiz gate (when the task requires a quiz on its
+    module) and the task dependency DAG (all ``depends_on`` tasks must be
+    completed before this task can be started).
+
+    Raises:
+        ValueError: If the quiz gate or a dependency is not satisfied.
+    """
+    gate = await check_quiz_gate(task_id, user_id)
+    if gate.get("required") and not gate.get("passed"):
+        raise ValueError(
+            f"Module quiz not passed yet — complete the quiz for '{gate['module']}' "
+            "to unlock this task."
+        )
+    unmet = await get_unmet_dependencies(task_id)
+    if unmet:
+        titles = ", ".join(u["title"] for u in unmet[:5])
+        raise ValueError(f"Prerequisite task(s) not completed yet: {titles}")
     return await transition_task(task_id, "in_progress", user_id)
 
 
+async def get_unmet_dependencies(task_id: str) -> List[Dict[str, Any]]:
+    """Return prerequisite tasks that are not completed.
+
+    Reads the task's ``depends_on`` list and checks each prerequisite's state.
+    Missing prerequisites (deleted tasks) are treated as unmet so the DAG can't
+    be silently bypassed.
+    """
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        raise ValueError(f"Task {task_id} not found")
+    dep_ids = task.get("depends_on") or []
+    if not dep_ids:
+        return []
+    unmet = []
+    for dep_id in dep_ids:
+        dep = await storage.get_document(COLLECTION, dep_id)
+        if not dep or dep.get("state") != "completed":
+            unmet.append({
+                "task_id": dep_id,
+                "title": dep.get("title", dep_id) if dep else dep_id,
+                "state": dep.get("state") if dep else "missing",
+            })
+    return unmet
+
+
+# Accepts https://github.com/owner/repo/pull/123 and https://github.com/pull/1
+# (the latter is used by existing tests). Host + optional path segments + /pull/N.
+_PR_URL_RE = _re.compile(r"^https?://[^/\s]+(?:/[^/\s]+)*/pull/\d+")
+
+
+def _is_valid_pr_url(pr_url: str) -> bool:
+    """Accept GitHub-style PR URLs: https://github.com/owner/repo/pull/123."""
+    return bool(pr_url and _PR_URL_RE.match(pr_url.strip()))
+
+
 async def submit_task(task_id: str, user_id: str, pr_url: str) -> dict:
-    """Submit task for review with a PR URL."""
-    return await transition_task(task_id, "submitted", user_id, pr_url=pr_url)
+    """Submit task for review with a PR URL.
+
+    Validates that the PR URL is a real GitHub pull-request URL before
+    transitioning, so invalid links never enter the review pipeline.
+    """
+    if not _is_valid_pr_url(pr_url):
+        raise ValueError(
+            "pr_url must be a valid GitHub pull request URL, e.g. https://github.com/owner/repo/pull/42"
+        )
+    return await transition_task(task_id, "submitted", user_id, pr_url=pr_url.strip())
 
 
 async def review_task(
@@ -389,6 +482,245 @@ async def review_task(
             return await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
         return await transition_task(task_id, "approved", reviewer_id, feedback=feedback)
     return await transition_task(task_id, "needs_changes", reviewer_id, feedback=feedback)
+
+
+def _assert_not_own_task(task: dict, reviewer_id: str) -> None:
+    """Raise if the reviewer is the task assignee."""
+    if task.get("assigned_to") == reviewer_id:
+        raise ValueError("You cannot peer-review your own task")
+
+
+async def peer_review_task(
+    task_id: str,
+    reviewer_id: str,
+    feedback: Dict[str, Any],
+    approve: bool = False,
+    needs_product: bool = False,
+) -> dict:
+    """Peer review a task — a fellow dev (not the assignee) reviews the PR.
+
+    Peers claim the review by moving the task to ``peer_review``, then land on
+    the same outcomes as senior review (approve / request changes / product).
+    The reviewer identity is recorded on ``peer_reviewed_by``.
+
+    Raises:
+        ValueError: If the reviewer is the task assignee (can't review your own work).
+    """
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        raise ValueError(f"Task {task_id} not found")
+    _assert_not_own_task(task, reviewer_id)
+
+    # Route to the outcome state first — only record the reviewer on success.
+    if approve:
+        if needs_product:
+            result = await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
+        else:
+            result = await transition_task(task_id, "approved", reviewer_id, feedback=feedback)
+    else:
+        result = await transition_task(task_id, "needs_changes", reviewer_id, feedback=feedback)
+
+    await storage.update_document(COLLECTION, task_id, {"peer_reviewed_by": reviewer_id})
+    if result:
+        result["peer_reviewed_by"] = reviewer_id
+    return result
+
+
+async def start_peer_review(task_id: str, reviewer_id: str) -> dict:
+    """Move a submitted task into peer_review so a peer can review it."""
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        raise ValueError(f"Task {task_id} not found")
+    _assert_not_own_task(task, reviewer_id)
+    result = await transition_task(task_id, "peer_review", reviewer_id)
+    await storage.update_document(COLLECTION, task_id, {"peer_reviewed_by": reviewer_id})
+    if result:
+        result["peer_reviewed_by"] = reviewer_id
+    return result
+
+
+# ── Time Tracking ────────────────────────────────────────────
+
+
+async def log_actual_hours(task_id: str, hours: float, user_id: str) -> dict:
+    """Log actual hours spent on a task (time tracking).
+
+    Only the assignee or the task creator may log hours. When the actual time
+    exceeds the estimate, a time-overrun alert is fired (in-app + Slack via the
+    notification helpers) so the senior can see tasks running long.
+
+    Raises:
+        ValueError: If the task doesn't exist or the caller isn't authorized.
+    """
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        raise ValueError(f"Task {task_id} not found")
+    if user_id not in (task.get("assigned_to"), task.get("created_by")):
+        raise ValueError("Only the assignee or task creator can log hours")
+    if hours is None or hours < 0:
+        raise ValueError("hours must be a non-negative number")
+    result = await storage.update_document(
+        COLLECTION, task_id, {"actual_hours": float(hours)}
+    )
+    await _broadcast_task_update(result or task, "updated")
+
+    # Time-overrun alert — actual hours exceeded the estimate.
+    estimated = task.get("estimated_hours")
+    if estimated is not None and float(hours) > float(estimated):
+        try:
+            from app.services.notification_helpers import notify_task_time_overrun
+
+            overrun_task = result or task
+            await notify_task_time_overrun(overrun_task, float(hours), float(estimated))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).debug("Time-overrun alert failed", exc_info=True)
+
+    return result or task
+
+
+async def get_task_by_pr_url(pr_url: str) -> Optional[dict]:
+    """Find a task whose PR URL matches the given URL (used by PR-merge webhooks).
+
+    Normalizes trailing slashes so ``.../pull/42`` and ``.../pull/42/`` match.
+    """
+    storage = get_storage()
+    tasks = await storage.list_documents(COLLECTION)
+    target = (pr_url or "").strip().rstrip("/")
+    if not target:
+        return None
+    for t in tasks:
+        task_url = (t.get("pr_url") or "").strip().rstrip("/")
+        if task_url and task_url == target:
+            return t
+    return None
+
+
+async def get_team_time_stats(team_id: str) -> Dict[str, Any]:
+    """Estimated vs actual hours per completed/assigned task, plus variance.
+
+    Returns per-task rows (title, module, estimated_hours, actual_hours,
+    variance_hours, variance_pct, state) plus aggregates over tasks that have
+    an actual value logged.
+    """
+    storage = get_storage()
+    tasks = await storage.query_documents(
+        COLLECTION, [("team_id", "==", team_id)]
+    )
+
+    rows = []
+    with_actual = 0
+    total_est = 0.0
+    total_actual = 0.0
+    total_variance = 0.0
+
+    for t in tasks:
+        est = t.get("estimated_hours")
+        actual = t.get("actual_hours")
+        variance = None
+        variance_pct = None
+        if est is not None and actual is not None:
+            variance = round(actual - est, 1)
+            variance_pct = round((actual - est) / est * 100, 1) if est else None
+            with_actual += 1
+            total_est += est
+            total_actual += actual
+            total_variance += variance
+
+        rows.append({
+            "task_id": t.get("task_id"),
+            "title": t.get("title"),
+            "module": t.get("module", ""),
+            "state": t.get("state"),
+            "estimated_hours": est,
+            "actual_hours": actual,
+            "variance_hours": variance,
+            "variance_pct": variance_pct,
+        })
+
+    rows.sort(key=lambda r: r.get("actual_hours") is None)  # rows with actual first
+    return {
+        "team_id": team_id,
+        "tasks": rows,
+        "with_actual_count": with_actual,
+        "total_estimated_hours": round(total_est, 1),
+        "total_actual_hours": round(total_actual, 1),
+        "avg_variance_hours": round(total_variance / with_actual, 1) if with_actual else None,
+        "avg_variance_pct": round((total_actual - total_est) / total_est * 100, 1) if total_est else None,
+    }
+
+
+# ── Quiz Gates ───────────────────────────────────────────────
+
+
+async def has_passed_module_quiz(user_id: str, module: str) -> bool:
+    """Return True if the user has passed a quiz for the given module.
+
+    Uses the ``onramp_quiz_results`` collection — a result row is a pass when
+    ``passed`` is True. Any passing attempt unlocks the gate.
+    """
+    if not module:
+        return True
+    try:
+        storage = get_storage()
+        results = await storage.query_documents(
+            "onramp_quiz_results",
+            [("user_id", "==", user_id), ("module", "==", module), ("passed", "==", True)],
+        )
+        return bool(results)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Quiz gate lookup failed", exc_info=True)
+        # Fail open when quiz tracking is unavailable so we never brick a task.
+        return True
+
+
+async def check_quiz_gate(task_id: str, user_id: str) -> Dict[str, Any]:
+    """Check whether the user may start a task under its quiz gate.
+
+    Returns ``{required, module, passed}`` — when the task does not require a
+    quiz (quiz_required False or no module) the gate is not required.
+    """
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        raise ValueError(f"Task {task_id} not found")
+    required = bool(task.get("quiz_required")) and bool(task.get("module"))
+    passed = await has_passed_module_quiz(user_id, task.get("module", ""))
+    return {
+        "required": required,
+        "module": task.get("module", ""),
+        "passed": passed if required else True,
+        "task_id": task_id,
+    }
+
+
+# ── PR Comment Sync ──────────────────────────────────────────
+
+
+async def store_pr_comments(task_id: str, comments: List[Dict[str, Any]]) -> Optional[dict]:
+    """Persist fetched GitHub PR review comments onto a task.
+
+    Each comment dict is normalized to ``{user, body, path, line, created_at}``
+    so the frontend can render real diff comments next to the AI summary.
+    """
+    if not comments:
+        return None
+    normalized = []
+    for c in comments:
+        normalized.append({
+            "user": (c.get("user") or {}).get("login", "unknown") if isinstance(c.get("user"), dict) else c.get("user", ""),
+            "body": c.get("body", ""),
+            "path": c.get("path", ""),
+            "line": c.get("line"),
+            "created_at": str(c.get("created_at", "")),
+        })
+    storage = get_storage()
+    result = await storage.update_document(COLLECTION, task_id, {"pr_comments": normalized})
+    return result
 
 
 async def request_changes(task_id: str, reviewer_id: str, feedback: Dict[str, Any]) -> dict:

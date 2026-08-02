@@ -22,7 +22,7 @@ export const API_BASE = getApiBaseUrl()
 
 
 // Token is stored/retrieved through neon-auth.ts to keep a single source of truth
-import { getToken } from './neon-auth'
+import { getToken, getRefreshToken, setToken, setRefreshToken } from './neon-auth'
 
 export function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -33,60 +33,95 @@ export function authHeaders(): Record<string, string> {
   return headers
 }
 
+/**
+ * Silent session refresh — exchange the stored refresh token for a fresh
+ * access token pair, then retry the original request once. Fails gracefully
+ * (returns null) when there is no refresh token or the exchange is rejected,
+ * so the caller surfaces its normal 401 handling.
+ */
+async function trySilentRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return false
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!res.ok) return false
+    const json = await res.json()
+    const data = unwrap<any>(json)
+    if (data?.token) {
+      setToken(data.token)
+      if (data.refresh_token) setRefreshToken(data.refresh_token)
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+async function request<T>(url: string, body?: unknown, method?: string, retried = false): Promise<T> {
+  const res = await fetch(url, {
+    method: method || 'POST',
+    headers: authHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (res.status === 401 && !retried) {
+    if (await trySilentRefresh()) {
+      return request<T>(url, body, method, true)
+    }
+    const text = await res.text()
+    let message = 'Authentication required. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return unwrap<T>(await res.json())
+}
+
+async function get<T>(url: string, retried = false): Promise<T> {
+  const res = await fetch(url, { headers: authHeaders() })
+  if (res.status === 401 && !retried) {
+    if (await trySilentRefresh()) {
+      return get<T>(url, true)
+    }
+    const text = await res.text()
+    let message = 'Authentication required. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return unwrap<T>(await res.json())
+}
+
 /** Unwrap the backend's `{success, data}` response envelope. */
 function unwrap<T>(json: any): T {
   if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
     return json.data as T
   }
   return json as T
-}
-
-async function request<T>(url: string, body?: unknown, method?: string): Promise<T> {
-  const res = await fetch(url, {
-    method: method || 'POST',
-    headers: authHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  if (res.status === 401) {
-    const text = await res.text()
-    let message = 'Authentication required. Please sign in again.'
-    if (text) {
-      try {
-        const err = JSON.parse(text)
-        if (err.detail) message = err.detail
-      } catch {
-        if (text.length < 200) message = text
-      }
-    }
-    throw new Error(message)
-  }
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
-  }
-  return unwrap<T>(await res.json())
-}
-
-async function get<T>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: authHeaders() })
-  if (res.status === 401) {
-    const text = await res.text()
-    let message = 'Authentication required. Please sign in again.'
-    if (text) {
-      try {
-        const err = JSON.parse(text)
-        if (err.detail) message = err.detail
-      } catch {
-        if (text.length < 200) message = text
-      }
-    }
-    throw new Error(message)
-  }
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
-  }
-  return unwrap<T>(await res.json())
 }
 
 export async function analyzeArchitecture(
@@ -1241,6 +1276,156 @@ export async function fetchHrDevelopers(teamId: string): Promise<HrDeveloperResp
   return get<HrDeveloperResponse>(`${API_BASE}/hr/developers/${teamId}`)
 }
 
+// ─── Cohort Analytics / Timeline / Mentor Matching ──────────
+
+export interface CohortBlocker {
+  task_id: string
+  title: string
+  assignee: string
+  age_days: number
+  module: string
+}
+
+export interface CohortComparisonEntry {
+  cohort: string
+  label: string
+  member_count: number
+  avg_ramp_days: number | null
+  avg_days_to_first_pr: number | null
+  avg_completion_pct: number | null
+  blocker_count: number
+  top_blockers: CohortBlocker[]
+}
+
+export interface CohortComparisonResponse {
+  cohorts: CohortComparisonEntry[]
+  team_id: string
+}
+
+export async function fetchCohortComparison(teamId: string): Promise<CohortComparisonResponse> {
+  return get<CohortComparisonResponse>(`${API_BASE}/hr/cohort-comparison/${teamId}`)
+}
+
+// ─── Plan Roadmap (milestone DAG) ────────────────────────────
+
+export interface PlanRoadmapMilestone {
+  id: string
+  title: string
+  description: string | null
+  category: string
+  day_target: number | null
+  sort_order: number
+  is_completed: boolean
+  status: 'completed' | 'in_progress' | 'available' | 'locked'
+  depends_on: string[]
+}
+
+export interface PlanRoadmapResponse {
+  plan_id: string
+  milestones: PlanRoadmapMilestone[]
+  count: number
+}
+
+export async function fetchPlanRoadmap(planId: string): Promise<PlanRoadmapResponse> {
+  return get<PlanRoadmapResponse>(`${API_BASE}/onboarding-plans/${planId}/roadmap`)
+}
+
+export interface TimelineMilestone {
+  task_id: string
+  module: string
+  state: string
+  at: string
+  label: string
+  title: string
+}
+
+export interface TimelineLane {
+  user_id: string
+  name: string
+  role: string
+  joined_at: string
+  milestone_count: number
+  milestones: TimelineMilestone[]
+}
+
+export interface OnboardingTimelineResponse {
+  lanes: TimelineLane[]
+  team_id: string
+}
+
+export async function fetchOnboardingTimeline(teamId: string): Promise<OnboardingTimelineResponse> {
+  return get<OnboardingTimelineResponse>(`${API_BASE}/hr/timeline/${teamId}`)
+}
+
+export interface MentorMatchEntry {
+  user_id: string
+  name: string
+  role: string
+  score: number
+  shared_languages: string[]
+  mentor_languages: string[]
+}
+
+export interface MentorMatchResponse {
+  new_dev_id: string
+  new_dev_languages: string[]
+  matches: MentorMatchEntry[]
+  match_count: number
+}
+
+export async function fetchMentorMatch(teamId: string, userId: string): Promise<MentorMatchResponse> {
+  return get<MentorMatchResponse>(`${API_BASE}/hr/mentor-match/${teamId}/${userId}`)
+}
+
+// ─── Review Analytics ────────────────────────────────────────
+
+export interface ReviewAnalyticsReviewer {
+  user_id: string
+  name: string
+  reviews: number
+}
+
+export interface ReviewAnalytics {
+  team_id: string
+  total_tasks: number
+  rework_rate_pct: number
+  reworked_task_count: number
+  avg_review_turnaround_hours: number | null
+  pending_review_count: number
+  top_reviewers: ReviewAnalyticsReviewer[]
+  generated_at: string
+}
+
+export async function fetchReviewAnalytics(teamId: string): Promise<ReviewAnalytics> {
+  return get<ReviewAnalytics>(`${API_BASE}/hr/review-analytics/${teamId}`)
+}
+
+// ─── Task CSV Export ─────────────────────────────────────────
+
+async function downloadCsv(url: string, filename: string): Promise<void> {
+  const res = await fetch(url, { headers: authHeaders() })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Export error ${res.status}: ${text}`)
+  }
+  const blob = await res.blob()
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  URL.revokeObjectURL(link.href)
+  link.remove()
+}
+
+export async function exportTasksCsv(teamId: string): Promise<void> {
+  return downloadCsv(`${API_BASE}/tasks/export.csv?team_id=${encodeURIComponent(teamId)}`, 'tasks.csv')
+}
+
+export async function exportTimeStatsCsv(teamId: string): Promise<void> {
+  return downloadCsv(`${API_BASE}/tasks/time-stats/team/${encodeURIComponent(teamId)}/export.csv`, 'time-stats.csv')
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────
 
 export interface AdminApiKey {
@@ -1683,6 +1868,12 @@ export interface WorkflowTask {
   ai_review: AiReview | null
   product_signoff: boolean
   estimated_hours: number | null
+  actual_hours: number | null
+  pr_comments: Array<{ user: string; body: string; path: string; line: number | null; created_at: string }> | null
+  peer_reviewed_by: string | null
+  quiz_required: boolean
+  depends_on: string | null
+  source_issue: number | null
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -1747,6 +1938,7 @@ export async function createTask(data: {
   unlock_modules?: string[]
   estimated_hours?: number
   assigned_to?: string
+  quiz_required?: boolean
 }): Promise<WorkflowTask> {
   return request<WorkflowTask>(`${API_BASE}/tasks`, data)
 }
@@ -1839,6 +2031,177 @@ export async function getTeamProgress(teamId: string): Promise<TeamProgress> {
 export async function getUserProgress(userId: string, teamId?: string): Promise<UserProgress> {
   const qs = teamId ? `?team_id=${teamId}` : ''
   return get<UserProgress>(`${API_BASE}/tasks/progress/user/${userId}${qs}`)
+}
+
+// ─── Time Tracking ───────────────────────────────────────────
+
+export interface TimeStatRow {
+  task_id: string
+  title: string
+  module: string
+  state: string
+  estimated_hours: number | null
+  actual_hours: number | null
+  variance_hours: number | null
+  variance_pct: number | null
+}
+
+export interface TeamTimeStats {
+  team_id: string
+  tasks: TimeStatRow[]
+  with_actual_count: number
+  total_estimated_hours: number
+  total_actual_hours: number
+  avg_variance_hours: number | null
+  avg_variance_pct: number | null
+}
+
+export async function getTeamTimeStats(teamId: string): Promise<TeamTimeStats> {
+  return get<TeamTimeStats>(`${API_BASE}/tasks/time-stats/team/${teamId}`)
+}
+
+export async function logActualHours(taskId: string, hours: number): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/actual-hours`, { hours })
+}
+
+// ─── GitHub Issue Import ─────────────────────────────────────
+
+export async function importIssueToTask(data: {
+  team_id: string
+  repo_url: string
+  issue_number: number
+  assigned_to?: string
+  module?: string
+  quiz_required?: boolean
+}): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/import-issue`, data)
+}
+
+// ─── Peer Review ─────────────────────────────────────────────
+
+export async function peerReviewTask(taskId: string, data: {
+  approve: boolean
+  needs_product?: boolean
+  feedback?: any
+}): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/peer-review`, data)
+}
+
+export async function claimPeerReview(taskId: string): Promise<WorkflowTask> {
+  return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/peer-review`, {})
+}
+
+// ─── Quiz Gates ──────────────────────────────────────────────
+
+export interface QuizGateStatus {
+  task_id: string
+  required: boolean
+  module: string
+  passed: boolean
+}
+
+export async function getQuizGateStatus(taskId: string): Promise<QuizGateStatus> {
+  return get<QuizGateStatus>(`${API_BASE}/tasks/${taskId}/quiz-gate`)
+}
+
+// ─── Task Templates ──────────────────────────────────────────
+
+export interface TaskTemplate {
+  template_id: string
+  team_id: string
+  created_by: string
+  name: string
+  description: string
+  module: string
+  priority: string
+  repo_url: string
+  unlock_modules: string[]
+  estimated_hours: number | null
+  created_at: string
+}
+
+export interface TaskTemplatesResponse {
+  templates: TaskTemplate[]
+  count: number
+}
+
+export async function listTaskTemplates(teamId?: string, module?: string): Promise<TaskTemplatesResponse> {
+  const query = new URLSearchParams()
+  if (teamId) query.set('team_id', teamId)
+  if (module) query.set('module', module)
+  const qs = query.toString()
+  return get<TaskTemplatesResponse>(`${API_BASE}/tasks/templates${qs ? '?' + qs : ''}`)
+}
+
+export async function createTaskTemplate(data: {
+  name: string
+  description?: string
+  module?: string
+  priority?: string
+  repo_url?: string
+  unlock_modules?: string[]
+  estimated_hours?: number
+}): Promise<TaskTemplate> {
+  return request<TaskTemplate>(`${API_BASE}/tasks/templates`, data)
+}
+
+export async function updateTaskTemplate(templateId: string, data: Partial<{
+  name: string
+  description: string
+  module: string
+  priority: string
+  repo_url: string
+  unlock_modules: string[]
+  estimated_hours: number
+}>): Promise<TaskTemplate> {
+  return request<TaskTemplate>(`${API_BASE}/tasks/templates/${templateId}`, data, 'PATCH')
+}
+
+export async function deleteTaskTemplate(templateId: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/tasks/templates/${templateId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`API error ${res.status}: ${text}`)
+  }
+  return res.json()
+}
+
+// ─── Bulk Assignment ─────────────────────────────────────────
+
+export interface BulkAssignResult {
+  created_count: number
+  missing_count: number
+  missing_template_ids: string[]
+  tasks: WorkflowTask[]
+}
+
+export async function bulkAssignTemplates(data: {
+  team_id: string
+  assignee_id: string
+  template_ids: string[]
+}): Promise<BulkAssignResult> {
+  return request<BulkAssignResult>(`${API_BASE}/tasks/bulk-assign`, data)
+}
+
+// ─── Automated First-Task Assignment ─────────────────────────
+
+export interface StarterAssignmentResult {
+  level: string
+  created_count: number
+  tasks: WorkflowTask[]
+  message?: string
+}
+
+export async function autoAssignStarterTasks(data: {
+  team_id: string
+  user_id: string
+  repo_url: string
+  count?: number
+}): Promise<StarterAssignmentResult> {
+  return request<StarterAssignmentResult>(`${API_BASE}/tasks/auto-assign-starter`, data)
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────
@@ -2256,6 +2619,7 @@ export interface AuthResponse {
   name: string
   provider: string
   token: string
+  refresh_token?: string | null
 }
 
 export interface AuthMeResponse {
@@ -2279,8 +2643,38 @@ export async function authLogin(
   return request<AuthResponse>(`${API_BASE}/auth/login`, { email, password, remember_me: rememberMe })
 }
 
-export async function refreshToken(): Promise<{ token: string }> {
-  return request<{ token: string }>(`${API_BASE}/auth/refresh`, {})
+/**
+ * Exchange the stored refresh token for a fresh access-token pair.
+ * The endpoint is public (no auth header) — the refresh token itself is the
+ * credential. Returns the new token pair so callers can persist both.
+ */
+export async function refreshToken(): Promise<{ token: string; refresh_token?: string | null }> {
+  const stored = getRefreshToken()
+  if (!stored) throw new Error('No refresh token available')
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: stored }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    let message = 'Session expired. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
+  }
+  const json = await res.json()
+  const data = unwrap<any>(json)
+  if (!data?.token) throw new Error('Refresh failed')
+  setToken(data.token)
+  if (data.refresh_token) setRefreshToken(data.refresh_token)
+  return { token: data.token, refresh_token: data.refresh_token }
 }
 
 export async function authRegister(

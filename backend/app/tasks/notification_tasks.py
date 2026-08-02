@@ -427,6 +427,109 @@ def send_standup_reminders(self) -> dict:
         loop.close()
 
 
+# ── Stale Task Alerts ─────────────────────────────────────────────────────
+
+# Thresholds (hours) for the stale-task sweep
+STALE_NEEDS_CHANGES_HOURS = 48
+STALE_SUBMITTED_HOURS = 24
+
+
+async def sweep_stale_tasks() -> dict:
+    """Core stale-task sweep — async, directly testable.
+
+    Rules (from the roadmap "stale task alerts"):
+      - A task sitting in ``needs_changes`` for > 48h → notify the assignee
+        (nudge to resume) AND the task creator (senior visibility).
+      - A task sitting in ``submitted`` for > 24h with no review → notify the
+        task creator (senior) that a review is due.
+
+    Returns ``{"alerts": [...], "notifications_sent": int}``.
+    """
+    from datetime import datetime, timezone
+    from app.services.postgres_db import get_storage
+
+    storage = get_storage()
+    from app.services.notification_service import create_notification
+
+    now = datetime.now(timezone.utc)
+    tasks = await storage.list_documents("onramp_tasks")
+
+    from app.services.notification_helpers import notify_stale_task
+
+    notified = 0
+    alerts = []
+
+    for t in tasks:
+        state = t.get("state")
+        if state not in ("needs_changes", "submitted"):
+            continue
+
+        updated = t.get("updated_at") or t.get("created_at")
+        try:
+            if isinstance(updated, str):
+                dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+            else:
+                dt = updated
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            age_hours = (now - dt.astimezone(timezone.utc)).total_seconds() / 3600
+        except Exception:
+            continue
+
+        task_id = t.get("task_id", "")
+        title = t.get("title", "Untitled task")
+        assignee = t.get("assigned_to")
+        creator = t.get("created_by")
+        team_id = t.get("team_id")
+
+        if state == "needs_changes" and age_hours > STALE_NEEDS_CHANGES_HOURS:
+            # In-app + Slack for the assignee (nudge to resume).
+            if assignee:
+                await notify_stale_task(t, age_hours / 24)
+                notified += 1
+            # Separate visibility alert for the creator (senior).
+            if creator and creator != assignee:
+                await create_notification(
+                    user_id=creator,
+                    type="task_stale",
+                    title="Stale task needs attention",
+                    message=f"\"{title}\" has been waiting on changes for >{int(age_hours)}h.",
+                    metadata={"task_id": task_id, "state": state, "age_hours": round(age_hours, 1)},
+                    team_id=team_id,
+                )
+                notified += 1
+            alerts.append({"task_id": task_id, "state": state, "age_hours": round(age_hours, 1)})
+
+        elif state == "submitted" and age_hours > STALE_SUBMITTED_HOURS:
+            if creator:
+                await notify_stale_task(t, age_hours / 24)
+                notified += 1
+            alerts.append({"task_id": task_id, "state": state, "age_hours": round(age_hours, 1)})
+
+    logger.info("Stale task sweep: %d alerts, %d notifications sent", len(alerts), notified)
+    return {"alerts": alerts, "notifications_sent": notified}
+
+
+@shared_task(
+    queue="notification-tasks",
+    bind=True,
+    max_retries=1,
+)
+def check_stale_tasks(self) -> dict:
+    """Celery wrapper for the stale-task sweep (see sweep_stale_tasks)."""
+    import asyncio
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(sweep_stale_tasks())
+    except Exception as exc:
+        logger.exception("Stale task sweep failed")
+        raise self.retry(exc=exc)
+    finally:
+        loop.close()
+
+
 # ── Team Digest (Slack) ────────────────────────────────────────────────────
 
 

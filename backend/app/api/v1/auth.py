@@ -30,12 +30,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_HOURS = 168  # 7 days
-JWT_REFRESH_EXPIRY_HOURS = 720  # 30 days (for remember_me)
+# Access token lifetime — short-lived per the session-refresh design (FEATURES_PLAN §6).
+JWT_ACCESS_EXPIRY_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRY_MINUTES", "15"))
+JWT_REFRESH_EXPIRY_DAYS = int(os.getenv("JWT_REFRESH_EXPIRY_DAYS", "30"))
+JWT_EXPIRY_HOURS = 168  # legacy fallback when no refresh flow used
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
     os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
 )
+
+# Refresh tokens are stored (hashed) in the generic dynamic_documents table so
+# they survive server restarts and can be revoked/rotated server-side.
+REFRESH_TOKEN_COLLECTION = "onramp_refresh_tokens"
 
 
 class LoginRequest(BaseModel):
@@ -56,6 +62,7 @@ class AuthResponse(BaseModel):
     name: str
     provider: str
     token: str
+    refresh_token: str | None = None
 
 
 class MeResponse(BaseModel):
@@ -122,17 +129,125 @@ async def get_user_or_api_key(request: Request) -> dict:
 
 
 def _generate_jwt(uid: str, email: str, name: str, provider: str, remember_me: bool = False) -> str:
-    expiry_hours = JWT_REFRESH_EXPIRY_HOURS if remember_me else JWT_EXPIRY_HOURS
+    """Issue a short-lived access token.
+
+    Access tokens are intentionally short-lived (default 15 min). Long-lived
+    sessions are maintained by rotating refresh tokens stored server-side.
+    """
     payload = {
         "uid": uid,
         "email": email,
         "name": name,
         "provider": provider,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=expiry_hours),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_EXPIRY_MINUTES),
         "iat": datetime.now(timezone.utc),
         "remember_me": remember_me,
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+# ── Refresh token store (server-side rotation) ───────────────────────────
+
+
+def _hash_refresh_token(token: str) -> str:
+    """Hash a refresh token so the raw value is never stored at rest."""
+    import hashlib
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _generate_refresh_token() -> str:
+    """Generate a cryptographically random opaque refresh token."""
+    return _secrets.token_urlsafe(48)
+
+
+async def _store_refresh_token(user_id: str, token: str, remember_me: bool) -> dict:
+    """Persist a refresh token (hashed) with expiry, revoking any prior tokens."""
+    storage = get_storage()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_EXPIRY_DAYS)
+    record = {
+        "user_id": user_id,
+        "token_hash": _hash_refresh_token(token),
+        "expires_at": expires_at.isoformat(),
+        "remember_me": remember_me,
+        "revoked": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Revoke existing tokens for this user (single active session per design).
+    try:
+        existing = await storage.query_documents(
+            REFRESH_TOKEN_COLLECTION, [("user_id", "==", user_id)]
+        )
+        for e in existing:
+            await storage.update_document(
+                REFRESH_TOKEN_COLLECTION, e["id"], {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}
+            )
+    except Exception:
+        logger.exception("Failed to revoke prior refresh tokens for %s", user_id)
+    token_id = _secrets.token_hex(16)
+    record["id"] = token_id
+    try:
+        await storage.create_document(REFRESH_TOKEN_COLLECTION, token_id, record)
+    except Exception:
+        logger.exception("Failed to persist refresh token")
+    return record
+
+
+async def _validate_refresh_token(token: str) -> dict | None:
+    """Validate a refresh token. Returns the stored record or None."""
+    storage = get_storage()
+    token_hash = _hash_refresh_token(token)
+    try:
+        rows = await storage.query_documents(
+            REFRESH_TOKEN_COLLECTION, [("token_hash", "==", token_hash)]
+        )
+    except Exception:
+        logger.exception("Refresh token lookup failed")
+        return None
+    if not rows:
+        return None
+    record = rows[0]
+    if record.get("revoked"):
+        return None
+    try:
+        expires = datetime.fromisoformat(record["expires_at"])
+        if expires < datetime.now(timezone.utc):
+            return None
+    except (KeyError, ValueError):
+        return None
+    return record
+
+
+async def _revoke_refresh_token(token: str) -> None:
+    """Revoke a refresh token (rotation invalidates the previous one)."""
+    storage = get_storage()
+    token_hash = _hash_refresh_token(token)
+    try:
+        rows = await storage.query_documents(
+            REFRESH_TOKEN_COLLECTION, [("token_hash", "==", token_hash)]
+        )
+        for r in rows:
+            await storage.update_document(
+                REFRESH_TOKEN_COLLECTION, r["id"], {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}
+            )
+    except Exception:
+        logger.exception("Failed to revoke refresh token")
+
+
+async def _issue_tokens(
+    uid: str, email: str, name: str, provider: str, remember_me: bool = False
+) -> dict:
+    """Issue an access token and (optionally) a rotating refresh token.
+
+    Returns ``{token, refresh_token?}``. Refresh tokens are only issued for
+    remember-me sessions; otherwise the client gets a plain access token.
+    """
+    token = _generate_jwt(uid, email, name, provider, remember_me=remember_me)
+    result: dict = {"token": token}
+    if remember_me:
+        refresh = _generate_refresh_token()
+        await _store_refresh_token(uid, refresh, remember_me=True)
+        result["refresh_token"] = refresh
+    return result
 
 
 def _decode_jwt(token: str) -> dict | None:
@@ -266,14 +381,15 @@ async def register(body: RegisterRequest):
     except Exception:
         logger.exception("Failed to send verification email to %s", body.email)
 
-    token = _generate_jwt(uid, body.email, body.name, "password")
+    tokens = await _issue_tokens(uid, body.email, body.name, "password", remember_me=False)
 
     return AuthResponse(
         uid=uid,
         email=body.email,
         name=body.name,
         provider="password",
-        token=token,
+        token=tokens["token"],
+        refresh_token=tokens.get("refresh_token"),
     )
 
 
@@ -311,32 +427,56 @@ async def login(body: LoginRequest):
         raw_email = decrypt_field(raw_email)
         raw_name = decrypt_field(raw_name)
 
-    token = _generate_jwt(uid, raw_email, raw_name, "password", remember_me=body.remember_me)
+    tokens = await _issue_tokens(uid, raw_email, raw_name, "password", remember_me=body.remember_me)
 
     return AuthResponse(
         uid=uid,
         email=raw_email,
         name=raw_name,
         provider="password",
-        token=token,
+        token=tokens["token"],
+        refresh_token=tokens.get("refresh_token"),
     )
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class RefreshResponse(BaseModel):
     token: str
+    refresh_token: str | None = None
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-async def refresh_token(user: dict = Depends(get_current_user)):
-    """Issue a new JWT for an authenticated user (session extension)."""
-    uid = user.get("uid", "")
+async def refresh_token(body: RefreshRequest):
+    """Exchange a refresh token for a new access token (with rotation).
+
+    The presented refresh token is validated, then rotated: the old token is
+    revoked and a new refresh token is issued. This endpoint is public — it is
+    authenticated by the refresh token itself, so the client can call it after
+    its access token expires (silent 401 retry on the frontend).
+    """
+    record = await _validate_refresh_token(body.refresh_token)
+    if not record:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    uid = record["user_id"]
+    user = await get_user_by_uid(uid)
+    if not user or not user.get("is_active", True):
+        raise HTTPException(status_code=401, detail="Account is not active")
+
     email = user.get("email", "")
+    if email.startswith("gAAAAA"):
+        email = decrypt_field(email)
     name = user.get("name", "")
-    provider = user.get("provider", "password")
-    # Preserve the original session length — 7 days (standard) or 30 days (remember_me)
-    # Default to 7 days if we can't determine preference
-    token = _generate_jwt(uid, email, name, provider, remember_me=False)
-    return RefreshResponse(token=token)
+    if name.startswith("gAAAAA"):
+        name = decrypt_field(name)
+
+    # Rotate: revoke the old refresh token, issue a fresh pair.
+    await _revoke_refresh_token(body.refresh_token)
+    tokens = await _issue_tokens(uid, email, name, user.get("provider", "password"), remember_me=True)
+    return RefreshResponse(token=tokens["token"], refresh_token=tokens.get("refresh_token"))
 
 
 @router.get("/me", response_model=MeResponse)

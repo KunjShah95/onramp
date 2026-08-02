@@ -935,3 +935,64 @@ class GitHubService:
         except Exception as e:
             logger.exception(f"Error fetching PR diff {pr_number} for {repo_url}: {e}")
             return ""
+
+    async def get_pr_review_comments(self, repo_url: str, pr_number: int, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetch inline review comments for a pull request.
+
+        Returns a list of comment dicts with ``user``, ``body``, ``path``,
+        ``line``, ``created_at`` — the real diff comments that reviewers left
+        on the PR, used to enrich ``review_feedback`` on task submit.
+
+        Fails softly: any error returns an empty list so submission is never
+        blocked by comment syncing.
+        """
+        try:
+            cleaned_url = repo_url.strip()
+            if not _is_valid_github_url(cleaned_url):
+                logger.warning(f"Invalid repository URL passed to get_pr_review_comments: {repo_url!r}")
+                return []
+            if cleaned_url.endswith(".git"):
+                cleaned_url = cleaned_url[:-4]
+            parts = cleaned_url.rstrip("/").split("/")
+            if len(parts) < 2:
+                return []
+            owner, repo = parts[-2], parts[-1]
+
+            url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Onramp-2.0",
+            }
+            if self.github_token:
+                headers["Authorization"] = f"Bearer {self.github_token}"
+
+            comments: List[Dict[str, Any]] = []
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                while url and len(comments) < limit:
+                    try:
+                        response = await self._fetch_page(client, url, headers)
+                        data = response.json()
+                        for item in data:
+                            comments.append({
+                                "user": item.get("user", {}),
+                                "body": item.get("body", ""),
+                                "path": item.get("path", ""),
+                                "line": item.get("line") or item.get("original_line"),
+                                "created_at": item.get("created_at", ""),
+                            })
+                            if len(comments) >= limit:
+                                break
+                        url = None
+                        if "Link" in response.headers:
+                            links = response.headers["Link"].split(",")
+                            for link in links:
+                                if 'rel="next"' in link:
+                                    url = link[link.find("<") + 1:link.find(">")]
+                                    break
+                    except Exception as e:
+                        logger.exception(f"Error fetching PR review comments for {repo_url}#{pr_number}: {e}")
+                        break
+            return comments
+        except Exception as e:
+            logger.exception(f"Failed to fetch PR review comments for {repo_url}#{pr_number}: {e}")
+            return []

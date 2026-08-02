@@ -365,3 +365,291 @@ async def cohort_summary(team_id: str) -> dict:
         "attrition_risk": risk,
         "generated_at": datetime.now(timezone.utc),
     }
+
+
+async def cohort_comparison(team_id: str) -> dict:
+    """Compare onboarding speed across hiring cohorts (by join month).
+
+    Groups members by the month they joined, then for each cohort computes:
+    - member_count
+    - avg_ramp_days (days joined → first completed task)
+    - avg_completion_pct
+    - avg_days_to_first_pr (days joined → first submitted/approved task)
+    - blockers (tasks stuck in needs_changes for the cohort's members)
+
+    Cohorts are sorted oldest first so HR can see improvement over time.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+    tasks = await _team_tasks(storage, team_id)
+
+    # Member → join month
+    cohorts: dict[str, list[dict]] = {}
+    for m in members:
+        joined = _parse_dt(m.get("joined_at"))
+        if not joined:
+            continue
+        month = joined.strftime("%Y-%m")
+        cohorts.setdefault(month, []).append(m)
+
+    # Per-member first completion / first PR timestamps
+    first_completed: dict[str, datetime] = {}
+    first_pr: dict[str, datetime] = {}
+    completed_count: dict[str, int] = {}
+    assigned_count: dict[str, int] = {}
+    blockers: list[dict] = []
+    now = datetime.now(timezone.utc)
+
+    for t in tasks:
+        uid = t.get("assigned_to")
+        if not uid:
+            continue
+        assigned_count[uid] = assigned_count.get(uid, 0) + 1
+        done = _parse_dt(t.get("completed_at")) or _parse_dt(t.get("updated_at"))
+        if t.get("state") == "completed" and done:
+            completed_count[uid] = completed_count.get(uid, 0) + 1
+            prev = first_completed.get(uid)
+            if prev is None or done < prev:
+                first_completed[uid] = done
+        if t.get("state") in ("submitted", "approved", "completed", "product_review") and done:
+            prev = first_pr.get(uid)
+            if prev is None or done < prev:
+                first_pr[uid] = done
+        if t.get("state") == "needs_changes":
+            updated = _parse_dt(t.get("updated_at")) or _parse_dt(t.get("created_at"))
+            if updated:
+                age_days = (now - updated).total_seconds() / 86400
+                blockers.append({
+                    "task_id": t.get("task_id"),
+                    "title": t.get("title"),
+                    "assignee": uid,
+                    "age_days": round(age_days, 1),
+                    "module": t.get("module", ""),
+                })
+
+    result = []
+    for month in sorted(cohorts.keys()):
+        cohort_members = cohorts[month]
+        ramp_values: list[float] = []
+        pr_values: list[float] = []
+        comp_values: list[float] = []
+        cohort_blockers: list[dict] = []
+
+        for m in cohort_members:
+            uid = m.get("user_id")
+            joined = _parse_dt(m.get("joined_at"))
+            if joined:
+                if uid in first_completed:
+                    ramp_values.append((first_completed[uid] - joined).total_seconds() / 86400)
+                if uid in first_pr:
+                    pr_values.append((first_pr[uid] - joined).total_seconds() / 86400)
+            n_assigned = assigned_count.get(uid, 0)
+            n_completed = completed_count.get(uid, 0)
+            if n_assigned:
+                comp_values.append((n_completed / n_assigned) * 100)
+            cohort_blockers.extend([b for b in blockers if b["assignee"] == uid])
+
+        cohort_blockers.sort(key=lambda b: b.get("age_days", 0), reverse=True)
+        result.append({
+            "cohort": month,
+            "label": _format_month(month),
+            "member_count": len(cohort_members),
+            "avg_ramp_days": round(sum(ramp_values) / len(ramp_values), 1) if ramp_values else None,
+            "avg_days_to_first_pr": round(sum(pr_values) / len(pr_values), 1) if pr_values else None,
+            "avg_completion_pct": round(sum(comp_values) / len(comp_values), 1) if comp_values else None,
+            "blocker_count": len(cohort_blockers),
+            "top_blockers": cohort_blockers[:5],
+        })
+
+    return {"cohorts": result, "team_id": team_id}
+
+
+def _format_month(ym: str) -> str:
+    """Format '2026-03' → 'Mar 2026'."""
+    try:
+        return datetime.strptime(ym, "%Y-%m").strftime("%b %Y")
+    except (ValueError, TypeError):
+        return ym
+
+
+async def onboarding_timeline(team_id: str) -> dict:
+    """Per-developer onboarding timeline — each dev is a lane, task states are milestones.
+
+    Returns one entry per developer with an ordered list of milestones derived
+    from their tasks (assigned → started → submitted → approved → completed),
+    each carrying a timestamp so HR can render a lane-based timeline.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+    tasks = await _team_tasks(storage, team_id)
+
+    by_user: dict[str, list[dict]] = {}
+    for m in members:
+        by_user.setdefault(m.get("user_id"), [])
+
+    for t in tasks:
+        uid = t.get("assigned_to")
+        if not uid or uid not in by_user:
+            continue
+        milestones = []
+        created = _parse_dt(t.get("created_at"))
+        started = _parse_dt(t.get("started_at"))
+        completed = _parse_dt(t.get("completed_at")) or _parse_dt(t.get("updated_at"))
+        state = t.get("state")
+
+        if created:
+            milestones.append({"state": "assigned", "label": "Assigned", "at": created.isoformat(), "title": t.get("title")})
+        if started:
+            milestones.append({"state": "in_progress", "label": "Started", "at": started.isoformat(), "title": t.get("title")})
+        if state in ("submitted", "under_review", "peer_review", "approved", "completed", "product_review"):
+            milestones.append({"state": "submitted", "label": "Submitted", "at": completed.isoformat() if completed else created.isoformat(), "title": t.get("title")})
+        if state in ("approved", "completed"):
+            milestones.append({"state": "approved", "label": "Approved", "at": completed.isoformat() if completed else created.isoformat(), "title": t.get("title")})
+        if state == "completed":
+            milestones.append({"state": "completed", "label": "Completed", "at": completed.isoformat(), "title": t.get("title")})
+        if state == "needs_changes":
+            milestones.append({"state": "needs_changes", "label": "Needs changes", "at": completed.isoformat() if completed else created.isoformat(), "title": t.get("title")})
+
+        milestones.sort(key=lambda ms: ms["at"])
+        by_user[uid].extend({"task_id": t.get("task_id"), "module": t.get("module", ""), "state": state, **ms} for ms in milestones)
+
+    lanes = []
+    for m in members:
+        uid = m.get("user_id")
+        ms = by_user.get(uid, [])
+        ms.sort(key=lambda x: x.get("at", ""))
+        lanes.append({
+            "user_id": uid,
+            "name": await _user_name(storage, uid),
+            "role": m.get("role", ""),
+            "joined_at": m.get("joined_at"),
+            "milestone_count": len(ms),
+            "milestones": ms,
+        })
+    return {"lanes": lanes, "team_id": team_id}
+
+
+async def review_analytics(team_id: str) -> dict:
+    """Review-quality analytics: rework rate, turnaround, and reviewer load.
+
+    Derived entirely from onramp_tasks:
+    - rework_rate: % of tasks that have ever gone through a needs_changes cycle
+      (tracked via ``review_cycles`` / ``reviewed_at`` timestamps)
+    - avg_review_turnaround_hours: submitted → first review outcome
+    - reviewer_load: reviews performed per reviewer (senior or peer)
+    - pending_review_count: tasks currently waiting in submitted/under_review
+    """
+    storage = get_storage()
+    tasks = await _team_tasks(storage, team_id)
+    now = datetime.now(timezone.utc)
+
+    reworked = 0
+    turnaround_hours: list[float] = []
+    reviewer_load: dict[str, int] = {}
+    pending = 0
+
+    for t in tasks:
+        cycles = int(t.get("review_cycles", 0) or 0)
+        if cycles > 0 or t.get("state") == "needs_changes":
+            reworked += 1
+
+        submitted = _parse_dt(t.get("submitted_at"))
+        reviewed = _parse_dt(t.get("reviewed_at"))
+        if submitted and reviewed and reviewed >= submitted:
+            turnaround_hours.append((reviewed - submitted).total_seconds() / 3600)
+
+        for reviewer in (t.get("reviewed_by"), t.get("peer_reviewed_by")):
+            if reviewer:
+                reviewer_load[reviewer] = reviewer_load.get(reviewer, 0) + 1
+
+        if t.get("state") in ("submitted", "under_review"):
+            pending += 1
+
+    total = len(tasks)
+    top_reviewers = []
+    for uid, count in sorted(reviewer_load.items(), key=lambda kv: -kv[1]):
+        top_reviewers.append({
+            "user_id": uid,
+            "name": await _user_name(storage, uid),
+            "reviews": count,
+        })
+
+    return {
+        "team_id": team_id,
+        "total_tasks": total,
+        "rework_rate_pct": round((reworked / total) * 100, 1) if total else 0.0,
+        "reworked_task_count": reworked,
+        "avg_review_turnaround_hours": round(sum(turnaround_hours) / len(turnaround_hours), 1) if turnaround_hours else None,
+        "pending_review_count": pending,
+        "top_reviewers": top_reviewers[:10],
+        "generated_at": now,
+    }
+
+
+async def mentor_matching(team_id: str, new_dev_id: str, limit: int = 5) -> dict:
+    """Match a new dev to senior devs by shared tech stack.
+
+    Scoring (simple, not ML): each member's language set is derived from the
+    repositories their tasks reference (``onramp_tasks.repo_url`` matched to
+    the repositories table). A new dev with no tasks yet falls back to the
+    team's repo languages (their planned stack).
+
+    A candidate senior scores +2 per shared language. Seniors are members with
+    role in {owner, ceo, cto, senior_dev}.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+    repos = await storage.query_documents("repositories", [("team_id", "==", team_id)])
+
+    # repo URL (normalized) → language
+    repo_lang: dict[str, str] = {}
+    team_langs: set = set()
+    for r in repos:
+        lang = (r.get("language") or "").strip().lower()
+        url = (r.get("url") or f"https://github.com/{r.get('owner', '')}/{r.get('name', '')}").rstrip("/").lower()
+        if not lang:
+            continue
+        repo_lang[url] = lang
+        team_langs.add(lang)
+
+    # Per-user languages from the repos their tasks touch
+    tasks = await _team_tasks(storage, team_id)
+    langs_by_user: dict[str, set] = {m.get("user_id"): set() for m in members}
+    for t in tasks:
+        uid = t.get("assigned_to")
+        if not uid or uid not in langs_by_user:
+            continue
+        repo_url = (t.get("repo_url") or "").rstrip("/").lower()
+        lang = repo_lang.get(repo_url)
+        if lang:
+            langs_by_user[uid].add(lang)
+
+    new_dev_langs = langs_by_user.get(new_dev_id, set())
+    if not new_dev_langs:
+        new_dev_langs = set(team_langs)  # planned stack = team's stack
+
+    senior_roles = {"owner", "ceo", "cto", "senior_dev"}
+    scored = []
+    for m in members:
+        uid = m.get("user_id")
+        if uid == new_dev_id or m.get("role") not in senior_roles:
+            continue
+        langs = langs_by_user.get(uid, set())
+        shared = new_dev_langs & langs
+        score = len(shared) * 2 if new_dev_langs else 1
+        scored.append({
+            "user_id": uid,
+            "name": await _user_name(storage, uid),
+            "role": m.get("role"),
+            "score": score,
+            "shared_languages": sorted(shared),
+            "mentor_languages": sorted(langs),
+        })
+
+    scored.sort(key=lambda s: (-s["score"], s["name"]))
+    return {
+        "new_dev_id": new_dev_id,
+        "new_dev_languages": sorted(new_dev_langs),
+        "matches": scored[:limit],
+        "match_count": len(scored),
+    }

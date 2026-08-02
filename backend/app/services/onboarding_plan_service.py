@@ -216,6 +216,70 @@ async def complete_preboarding(task_id: str) -> dict | None:
         return None
 
 
+async def get_roadmap(plan_id: str) -> dict | None:
+    """Return a milestone DAG for a plan with per-milestone status.
+
+    Statuses: ``completed`` (done), ``in_progress`` (available & next up),
+    ``available`` (all dependencies satisfied), ``locked`` (blocked on a
+    prerequisite milestone). Milestones without explicit ``depends_on_milestones``
+    unlock sequentially by (day_target, sort_order) so plans have real order.
+    """
+    storage = get_storage()
+    plan = await storage.get_document("onboarding_plans", plan_id)
+    if not plan:
+        return None
+
+    milestones = await storage.query_documents("onboarding_milestones", [("plan_id", "==", plan_id)])
+    milestones.sort(key=lambda m: (m.get("day_target", 90), m.get("sort_order", 0)))
+
+    # Map milestone id → position for sequential fallback ordering.
+    order = {m["id"]: i for i, m in enumerate(milestones)}
+
+    def _deps_completed(m: dict) -> bool:
+        deps = m.get("depends_on_milestones") or []
+        if deps:
+            return all(_milestone_completed(d) for d in deps)
+        # Sequential fallback: all milestones earlier in the plan are done.
+        idx = order.get(m.get("id"), 0)
+        return all(_milestone_completed(prev["id"]) for prev in milestones[:idx])
+
+    completed_ids = set()
+
+    def _milestone_completed(mid: str) -> bool:
+        if mid in completed_ids:
+            return True
+        for m in milestones:
+            if m["id"] == mid:
+                return bool(m.get("is_completed"))
+        return False
+
+    # Compute statuses in order; a completed milestone also unblocks successors.
+    result = []
+    first_open_seen = False
+    for m in milestones:
+        if m.get("is_completed"):
+            completed_ids.add(m["id"])
+            status = "completed"
+        elif _deps_completed(m):
+            status = "in_progress" if not first_open_seen else "available"
+            first_open_seen = True
+        else:
+            status = "locked"
+        result.append({
+            "id": m["id"],
+            "title": m.get("title", ""),
+            "description": m.get("description"),
+            "category": m.get("category", ""),
+            "day_target": m.get("day_target"),
+            "sort_order": m.get("sort_order", 0),
+            "is_completed": bool(m.get("is_completed")),
+            "status": status,
+            "depends_on": m.get("depends_on_milestones") or [],
+        })
+
+    return {"plan_id": plan_id, "milestones": result, "count": len(result)}
+
+
 async def get_team_pulse_overview(team_id: str) -> list[dict]:
     storage = get_storage()
     plans = await storage.query_documents("onboarding_plans", [("team_id", "==", team_id)])
@@ -234,3 +298,90 @@ async def get_team_pulse_overview(team_id: str) -> list[dict]:
                 "submitted_at": latest.get("submitted_at"),
             })
     return results
+
+
+async def generate_plan_from_learning_path(
+    team_id: str,
+    user_id: str,
+    created_by: str,
+    repo_url: str,
+    role: str = "new_dev",
+    notes: str | None = None,
+) -> dict | None:
+    """Generate an onboarding plan from an AI-explored learning path.
+
+    The senior picks a repo + role; this connects the explore agent
+    (ArchitectureExplorer → repo structure) with LearningPathGenerator to
+    produce curriculum modules, then materializes them as plan milestones.
+
+    Falls back to the default 30-60-90 milestones when the LLM/explore path
+    is unavailable so the endpoint never hard-fails.
+    """
+    import logging
+    logger = logging.getLogger("onramp.onboarding_plan")
+
+    plan = await create_plan(
+        team_id=team_id,
+        user_id=user_id,
+        created_by=created_by,
+        notes=notes or f"AI-generated plan for {role} from {repo_url}",
+    )
+    if not plan:
+        return None
+    plan_id = plan["id"]
+
+    modules = []
+    try:
+        from app.agents.architecture_explorer import ArchitectureExplorer
+
+        explorer = ArchitectureExplorer()
+        repo_structure = await explorer.execute(repo_url=repo_url, branch="main")
+        files = repo_structure.get("entities", {}).get("files", [])
+        structure = {
+            "files": files,
+            "classes": repo_structure.get("entities", {}).get("classes", []),
+            "functions": repo_structure.get("entities", {}).get("functions", []),
+        }
+    except Exception:
+        logger.exception("ArchitectureExplorer failed for %s — using empty structure", repo_url)
+        structure = {"files": [], "classes": [], "functions": []}
+
+    try:
+        from app.agents.learning_path_generator import LearningPathGenerator
+
+        generator = LearningPathGenerator()
+        path_result = await generator.execute(structure, user_level=role)
+        modules = path_result.get("path", []) if path_result else []
+    except Exception:
+        logger.exception("LearningPathGenerator failed — using default milestones")
+        modules = []
+
+    if not modules:
+        # Keep the default 30-60-90 milestones already created by create_plan
+        logger.info("No AI modules generated for plan %s — default milestones retained", plan_id)
+        return await get_plan(plan_id)
+
+    # Replace default milestones with the AI-generated curriculum.
+    # Clear existing milestones, then build new ones bucketed into 30/60/90.
+    storage = get_storage()
+    existing = await storage.query_documents("onboarding_milestones", [("plan_id", "==", plan_id)])
+    for m in existing:
+        await storage.delete_document("onboarding_milestones", m["id"])
+
+    total = len(modules)
+    for i, mod in enumerate(modules):
+        day_target = 30 if i < total * 0.4 else (60 if i < total * 0.75 else 90)
+        mid = generate_id()
+        objectives = mod.get("objectives") or []
+        await storage.create_document("onboarding_milestones", mid, {
+            "id": mid, "plan_id": plan_id, "day_target": day_target,
+            "title": mod.get("name", "Module"),
+            "description": mod.get("description") or ("; ".join(objectives[:3]) or ""),
+            "category": "technical",
+            "is_completed": False,
+            "sort_order": i,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {"files": mod.get("files", []), "time_hours": mod.get("time_hours")},
+        })
+
+    return await get_plan(plan_id)

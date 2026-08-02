@@ -41,6 +41,15 @@ async def get_plan(plan_id: str, user: dict = Depends(get_current_user)):
     return plan
 
 
+@router.get("/{plan_id}/roadmap")
+async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user)):
+    """Milestone roadmap with statuses (locked / available / in_progress / completed)."""
+    roadmap = await ops.get_roadmap(plan_id)
+    if not roadmap:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return roadmap
+
+
 @router.patch("/{plan_id}")
 async def update_plan(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
     plan = await ops.update_plan(plan_id, payload)
@@ -79,3 +88,28 @@ async def complete_preboarding(task_id: str, user: dict = Depends(get_current_us
 @router.get("/team/{team_id}/pulse-overview")
 async def team_pulse_overview(team_id: str, user: dict = Depends(get_current_user)):
     return {"members": await ops.get_team_pulse_overview(team_id)}
+
+
+@router.post("/generate")
+async def generate_plan(payload: dict, user: dict = Depends(get_current_user)):
+    """AI-generated onboarding plan — senior picks repo + role.
+
+    Explores the codebase and generates curriculum milestones from the
+    learning path, connected to the explore agent.
+    """
+    team_id = payload.get("team_id")
+    target_user_id = payload.get("user_id")
+    repo_url = payload.get("repo_url")
+    if not team_id or not target_user_id or not repo_url:
+        raise HTTPException(status_code=400, detail="team_id, user_id, and repo_url required")
+    plan = await ops.generate_plan_from_learning_path(
+        team_id=team_id,
+        user_id=target_user_id,
+        created_by=user["uid"],
+        repo_url=repo_url,
+        role=payload.get("role", "new_dev"),
+        notes=payload.get("notes"),
+    )
+    if not plan:
+        raise HTTPException(status_code=500, detail="Failed to generate plan")
+    return plan

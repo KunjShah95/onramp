@@ -6,8 +6,10 @@
  */
 
 const STORAGE_KEY = 'onramp_token'
+const REFRESH_KEY = 'onramp_refresh_token'
 const REMEMBER_KEY = 'onramp_remember_me'
 let _token: string | null = null
+let _refreshToken: string | null = null
 
 function _getStorage(): Storage {
   const remembered = localStorage.getItem(REMEMBER_KEY)
@@ -36,6 +38,41 @@ export function setToken(token: string | null, rememberMe?: boolean): void {
     sessionStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(REMEMBER_KEY)
   }
+}
+
+/**
+ * Rotating refresh token — stored alongside the access token so a silent
+ * 401 retry can exchange it for a fresh pair without re-prompting login.
+ * Only issued for remember-me sessions.
+ */
+export function getRefreshToken(): string | null {
+  if (_refreshToken) return _refreshToken
+  const stored = _getStorage().getItem(REFRESH_KEY)
+  if (stored) {
+    _refreshToken = stored
+    return stored
+  }
+  return null
+}
+
+export function setRefreshToken(token: string | null): void {
+  _refreshToken = token
+  if (token) {
+    _getStorage().setItem(REFRESH_KEY, token)
+  } else {
+    localStorage.removeItem(REFRESH_KEY)
+    sessionStorage.removeItem(REFRESH_KEY)
+  }
+}
+
+export function clearTokens(): void {
+  _token = null
+  _refreshToken = null
+  localStorage.removeItem(STORAGE_KEY)
+  sessionStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(REFRESH_KEY)
+  sessionStorage.removeItem(REFRESH_KEY)
+  localStorage.removeItem(REMEMBER_KEY)
 }
 
 export function isRememberMe(): boolean {

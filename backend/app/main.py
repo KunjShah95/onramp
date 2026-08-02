@@ -29,9 +29,9 @@ from app.api.v1 import (
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
-    onboarding_plans as onboarding_plans_router, playbooks, pr_review, quiz as quiz_router,
-    reports, repositories, seed as seed_router, slack, tasks as tasks_router, teams, unique, wiki,
-    ws as ws_router
+    dora as dora_router, onboarding_plans as onboarding_plans_router, playbooks, pr_review,
+    quiz as quiz_router, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
+    teams, unique, webhook_handler, wiki, ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -142,7 +142,10 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/oauth/github/callback",  # GitHub OAuth callback
     "/api/v1/auth/forgot-password",       # password reset request
     "/api/v1/auth/reset-password",        # password reset submission
+    "/api/v1/auth/refresh",               # refresh token exchange (auth via refresh token body)
     "/api/v1/auth/verify-email",          # email verification
+    "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
+    "/api/v1/webhooks",                   # generic webhook deliveries
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
@@ -219,6 +222,9 @@ app.include_router(feature_flags_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")
 app.include_router(onboarding_plans_router.router, prefix="/api/v1")
+app.include_router(dora_router.router, prefix="/api/v1")
+# GitHub webhook receiver — HMAC-verified, registered as a public path above.
+app.include_router(webhook_handler.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")
 app.include_router(ws_router.router, prefix="/api/v1")
 

@@ -370,6 +370,25 @@ class Task(Base):
     ai_review: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     product_signoff: Mapped[bool] = mapped_column(Boolean, default=False)
     estimated_hours: Mapped[float | None] = mapped_column(default=None)
+    # Time tracking — actual hours logged by the assignee (estimated vs actual variance)
+    actual_hours: Mapped[float | None] = mapped_column(default=None)
+    # GitHub PR inline comments pulled on submit (PR comment sync)
+    pr_comments: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Peer review — identity of the peer who reviewed (peer_review state)
+    peer_reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Prerequisite quiz gate — when true, the assignee must pass the module quiz
+    # before the task can be started (quiz gates on tasks)
+    quiz_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Source GitHub issue for imported/starter tasks (dedicated field so the
+    # PR review agent can't clobber it on submit)
+    source_issue: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Task dependency DAG — prerequisite task_ids that must be completed before
+    # this task can be started (start_task blocks until they are)
+    depends_on: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Review analytics timestamps + counters
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_cycles: Mapped[int] = mapped_column(Integer, default=0)
     reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -403,6 +422,15 @@ class Task(Base):
             "ai_review": self.ai_review,
             "product_signoff": self.product_signoff,
             "estimated_hours": self.estimated_hours,
+            "actual_hours": self.actual_hours,
+            "pr_comments": self.pr_comments,
+            "peer_reviewed_by": self.peer_reviewed_by,
+            "quiz_required": self.quiz_required,
+            "source_issue": self.source_issue,
+            "depends_on": self.depends_on,
+            "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+            "review_cycles": self.review_cycles,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "created_at": self.created_at.isoformat(),
@@ -1225,6 +1253,9 @@ class OnboardingMilestone(Base):
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Roadmap DAG — prerequisite milestone ids that must be completed before
+    # this milestone is available
+    depends_on_milestones: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -1247,6 +1278,7 @@ class OnboardingMilestone(Base):
             "is_completed": self.is_completed,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "sort_order": self.sort_order,
+            "depends_on_milestones": self.depends_on_milestones,
         }
 
 
@@ -1382,6 +1414,57 @@ class FeatureFlag(Base):
             "flag_name": self.flag_name,
             "enabled": self.enabled,
             "created_by": self.created_by,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Task Templates (reusable task blueprints per module)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TaskTemplate(Base):
+    """Reusable task blueprint that a senior can instantiate into real tasks.
+
+    Backs the "task templates" quick win — seniors create a template once per
+    module (title, description, repo, unlock modules, estimate) and later
+    instantiate it for a trainee in one click (bulk assignment).
+    """
+
+    __tablename__ = "task_templates"
+
+    template_id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    team_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    module: Mapped[str] = mapped_column(String(100), default="")
+    priority: Mapped[str] = mapped_column(String(20), default="medium")
+    repo_url: Mapped[str] = mapped_column(String(1000), default="")
+    unlock_modules: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    estimated_hours: Mapped[float | None] = mapped_column(default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        Index("ix_task_templates_team", "team_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.template_id,
+            "template_id": self.template_id,
+            "team_id": self.team_id,
+            "created_by": self.created_by,
+            "name": self.name,
+            "description": self.description,
+            "module": self.module,
+            "priority": self.priority,
+            "repo_url": self.repo_url,
+            "unlock_modules": self.unlock_modules or [],
+            "estimated_hours": self.estimated_hours,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }

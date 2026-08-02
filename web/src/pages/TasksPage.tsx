@@ -5,7 +5,13 @@ import {
   createTask, listTasks, assignTask, startTask, submitTask, reviewTask,
   approveTask, completeTask, cancelTask, deleteTask, getTeamProgress,
   listTeams, getTeamModulePermissions,
-  type WorkflowTask, type TeamProgress,
+  getTeamTimeStats, logActualHours, importIssueToTask, peerReviewTask, claimPeerReview,
+  getQuizGateStatus,
+  listTaskTemplates, createTaskTemplate, deleteTaskTemplate,
+  bulkAssignTemplates, autoAssignStarterTasks,
+  exportTasksCsv, exportTimeStatsCsv,
+  type WorkflowTask, type TeamProgress, type TeamTimeStats, type QuizGateStatus,
+  type TaskTemplate, type BulkAssignResult, type StarterAssignmentResult,
 } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
 import { StatCard } from '../components/ui/stat-card'
@@ -19,7 +25,8 @@ import { TasksPageSkeleton } from '../components/ui/Skeleton'
 import {
   Plus, X, Trash, MagnifyingGlass, Check, ArrowRight,
   ListBullets, SquaresFour, Star,
-  Lock, ListChecks, UserCircle
+  Lock, ListChecks, UserCircle, Clock, GithubLogo, UsersThree, GraduationCap,
+  Copy, Lightning, DownloadSimple
 } from '@phosphor-icons/react'
 
 const PRIORITY_DOTS: Record<string, string> = {
@@ -91,6 +98,34 @@ export default function TasksPage() {
   const [prUrlInput, setPrUrlInput] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
 
+  // Time tracking
+  const [timeStats, setTimeStats] = useState<TeamTimeStats | null>(null)
+  const [showTimeStats, setShowTimeStats] = useState(false)
+  const [actualHoursInput, setActualHoursInput] = useState('')
+
+  // GitHub issue import
+  const [showImportIssue, setShowImportIssue] = useState(false)
+  const [importRepoUrl, setImportRepoUrl] = useState('')
+  const [importIssueNumber, setImportIssueNumber] = useState('')
+  const [importing, setImporting] = useState(false)
+
+  // Quiz gates
+  const [quizGateMap, setQuizGateMap] = useState<Record<string, QuizGateStatus>>({})
+
+  // Templates / bulk assign / starter
+  const [templates, setTemplates] = useState<TaskTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [tplModule, setTplModule] = useState('')
+  const [tplPriority, setTplPriority] = useState('medium')
+  const [tplEstHours, setTplEstHours] = useState('')
+  const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set())
+  const [bulkAssignee, setBulkAssignee] = useState('')
+  const [starterRepo, setStarterRepo] = useState('')
+  const [starterUserId, setStarterUserId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [tplCreating, setTplCreating] = useState(false)
+
   const fetchTeams = useCallback(async () => {
     try { const data = await listTeams('current-user'); setTeams(data.teams || []); if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id) } catch { /* ignore */ }
   }, [])
@@ -118,8 +153,37 @@ export default function TasksPage() {
     } catch { /* ignore */ }
   }, [selectedTeam])
 
+  const fetchTimeStats = useCallback(async () => {
+    if (!selectedTeam) return
+    try { setTimeStats(await getTeamTimeStats(selectedTeam)) } catch { /* ignore */ }
+  }, [selectedTeam])
+
+  const fetchQuizGates = useCallback(async () => {
+    if (!selectedTeam) return
+    try {
+      const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
+      const gates: Record<string, QuizGateStatus> = {}
+      await Promise.all(tasks.filter((t) => t.quiz_required && t.state === 'assigned').map(async (t) => {
+        try { gates[t.task_id] = await getQuizGateStatus(t.task_id) } catch { /* ignore */ }
+      }))
+      setQuizGateMap(gates)
+    } catch { /* ignore */ }
+  }, [selectedTeam])
+
+  const fetchTemplates = useCallback(async () => {
+    if (!selectedTeam) return
+    try {
+      const { templates = [] } = await listTaskTemplates(selectedTeam)
+      setTemplates(templates)
+    } catch { /* ignore */ }
+  }, [selectedTeam])
+
   useEffect(() => { fetchTeams() }, [])
-  useEffect(() => { fetchTasks(); fetchProgress(); fetchModulePermissions() }, [selectedTeam, fetchTasks, fetchProgress, fetchModulePermissions])
+  useEffect(() => {
+    fetchTasks(); fetchProgress(); fetchModulePermissions(); fetchTimeStats(); fetchQuizGates()
+  }, [selectedTeam, fetchTasks, fetchProgress, fetchModulePermissions, fetchTimeStats, fetchQuizGates])
+
+  useEffect(() => { fetchTemplates() }, [selectedTeam, fetchTemplates])
 
   async function handleCreateTask() {
     if (!formTitle.trim() || !selectedTeam) return
@@ -157,6 +221,114 @@ export default function TasksPage() {
     try { await submitTask(taskId, url.trim()); setPrUrlInput(''); await fetchTasks(); toast.success('Task submitted for review') }
     catch (e: any) { setError(e.message); toast.error('Failed to submit task') }
   }
+  async function handleImportIssue() {
+    const issueNumber = parseInt(importIssueNumber, 10)
+    if (!selectedTeam || !importRepoUrl.trim() || !issueNumber) return
+    setImporting(true); setError('')
+    try {
+      await importIssueToTask({
+        team_id: selectedTeam,
+        repo_url: importRepoUrl.trim(),
+        issue_number: issueNumber,
+      })
+      setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('')
+      await fetchTasks(); await fetchProgress()
+      toast.success('Issue imported', `Task created from issue #${issueNumber}`)
+    } catch (e: any) { setError(e.message || 'Failed to import issue'); toast.error('Failed to import issue') }
+    setImporting(false)
+  }
+
+  async function handleLogActualHours(taskId: string) {
+    const hours = parseFloat(actualHoursInput)
+    if (!hours || hours < 0) return
+    try {
+      await logActualHours(taskId, hours)
+      setActualHoursInput(''); await fetchTasks(); await fetchTimeStats()
+      toast.success('Hours logged', `${hours}h recorded`)
+    } catch (e: any) { setError(e.message); toast.error('Failed to log hours') }
+  }
+
+  async function handlePeerReview(taskId: string, approve: boolean, needsProduct = false) {
+    try {
+      await peerReviewTask(taskId, {
+        approve,
+        needs_product: needsProduct,
+        feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined,
+      })
+      setReviewFeedback(''); setSelectedTask(null); await fetchTasks(); await fetchProgress()
+      toast.success('Peer review submitted', approve ? 'Approved' : needsProduct ? 'Routed to product' : 'Changes requested')
+    } catch (e: any) { setError(e.message); toast.error('Failed to peer review') }
+  }
+
+  async function handleClaimPeerReview(taskId: string) {
+    try {
+      await claimPeerReview(taskId)
+      setSelectedTask(null); await fetchTasks()
+      toast.success('Peer review claimed', 'Review the PR and submit your verdict')
+    } catch (e: any) { setError(e.message); toast.error('Failed to claim peer review') }
+  }
+
+  async function handleCreateTemplate() {
+    if (!tplName.trim() || !selectedTeam) return
+    setTplCreating(true); setError('')
+    try {
+      await createTaskTemplate({
+        name: tplName.trim(),
+        module: tplModule.trim() || undefined,
+        priority: tplPriority as any,
+        estimated_hours: tplEstHours ? parseFloat(tplEstHours) : undefined,
+      })
+      setTplName(''); setTplModule(''); setTplPriority('medium'); setTplEstHours('')
+      await fetchTemplates()
+      toast.success('Template saved', 'Reusable task blueprint created')
+    } catch (e: any) { setError(e.message || 'Failed to create template'); toast.error('Failed to create template') }
+    setTplCreating(false)
+  }
+
+  async function handleBulkAssign() {
+    if (!selectedTeam || selectedTemplates.size === 0 || !bulkAssignee.trim()) return
+    setBusy(true); setError('')
+    try {
+      const res: BulkAssignResult = await bulkAssignTemplates({
+        team_id: selectedTeam,
+        assignee_id: bulkAssignee.trim(),
+        template_ids: Array.from(selectedTemplates),
+      })
+      setSelectedTemplates(new Set()); setBulkAssignee('')
+      await fetchTasks(); await fetchProgress()
+      toast.success('Plan assigned', `${res.created_count} tasks created for ${bulkAssignee.trim()}`)
+    } catch (e: any) { setError(e.message || 'Failed to bulk assign'); toast.error('Failed to bulk assign') }
+    setBusy(false)
+  }
+
+  async function handleAutoStarter() {
+    if (!selectedTeam || !starterRepo.trim() || !starterUserId.trim()) return
+    setBusy(true); setError('')
+    try {
+      const res: StarterAssignmentResult = await autoAssignStarterTasks({
+        team_id: selectedTeam,
+        user_id: starterUserId.trim(),
+        repo_url: starterRepo.trim(),
+      })
+      setStarterRepo(''); setStarterUserId('')
+      await fetchTasks(); await fetchProgress()
+      toast.success('Starter tasks assigned', `${res.created_count} tasks at ${res.level} difficulty`)
+    } catch (e: any) { setError(e.message || 'Failed to auto-assign starter tasks'); toast.error('Failed to auto-assign') }
+    setBusy(false)
+  }
+
+  async function handleExportTasks() {
+    if (!selectedTeam) return
+    try { await exportTasksCsv(selectedTeam); toast.success('Export ready', 'tasks.csv downloaded') }
+    catch (e: any) { setError(e.message || 'Export failed'); toast.error('Export failed') }
+  }
+
+  async function handleExportTimeStats() {
+    if (!selectedTeam) return
+    try { await exportTimeStatsCsv(selectedTeam); toast.success('Export ready', 'time-stats.csv downloaded') }
+    catch (e: any) { setError(e.message || 'Export failed'); toast.error('Export failed') }
+  }
+
   async function handleReview(taskId: string, approve: boolean, needsProduct = false) {
     try {
       await reviewTask(taskId, { approve, needs_product: needsProduct, feedback: reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined })
@@ -224,6 +396,27 @@ export default function TasksPage() {
                   </button>
                 ))}
               </div>
+              <button onClick={() => setShowImportIssue(!showImportIssue)}
+                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+                <GithubLogo className="w-4 h-4" />
+                Import Issue
+              </button>
+              <button onClick={() => setShowTimeStats(!showTimeStats)}
+                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+                <Clock className="w-4 h-4" />
+                Time Stats
+              </button>
+              <button onClick={() => setShowTemplates(!showTemplates)}
+                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+                <Copy className="w-4 h-4" />
+                Templates
+              </button>
+              <button onClick={handleExportTasks}
+                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors"
+                title="Download all tasks as CSV">
+                <DownloadSimple className="w-4 h-4" />
+                CSV
+              </button>
               <button onClick={() => setShowCreate(!showCreate)}
                 className="flex items-center gap-1.5 bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-1.5 rounded-xl text-sm font-bold transition-colors">
                 <Plus className="w-4 h-4" weight="bold" />
@@ -232,6 +425,218 @@ export default function TasksPage() {
             </>
           }
         />
+
+        {showImportIssue && (
+          <CardSpotlight className="mb-6">
+            <div className="p-6 relative">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="flex items-center gap-2 mb-4">
+                <GithubLogo className="w-4 h-4 text-accent-primary" weight="bold" />
+                <GradientHeading as="h3">Import GitHub Issue as Task</GradientHeading>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="md:col-span-2">
+                  <FieldLabel>Repo URL *</FieldLabel>
+                  <Input value={importRepoUrl} onChange={(e) => setImportRepoUrl(e.target.value)} placeholder="https://github.com/owner/repo" />
+                </div>
+                <div>
+                  <FieldLabel>Issue Number *</FieldLabel>
+                  <Input value={importIssueNumber} onChange={(e) => setImportIssueNumber(e.target.value)} placeholder="e.g., 42" type="number" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
+                <button onClick={handleImportIssue} disabled={importing || !importRepoUrl.trim() || !importIssueNumber.trim()}
+                  className="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                  {importing ? 'Importing…' : 'Import Issue'}
+                </button>
+              </div>
+            </div>
+          </CardSpotlight>
+        )}
+
+        {showTemplates && (
+          <CardSpotlight className="mb-6">
+            <div className="p-6 relative">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="flex items-center gap-2 mb-5">
+                <Copy className="w-4 h-4 text-accent-primary" weight="bold" />
+                <GradientHeading as="h3">Task Templates &amp; Plan Assignment</GradientHeading>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Create template */}
+                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                  <div className="text-xs font-semibold text-text-secondary mb-3">Save a template</div>
+                  <div className="space-y-3">
+                    <div>
+                      <FieldLabel>Template Name *</FieldLabel>
+                      <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="e.g., Write integration tests for auth" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <FieldLabel>Module</FieldLabel>
+                        <Input value={tplModule} onChange={(e) => setTplModule(e.target.value)} placeholder="auth" />
+                      </div>
+                      <div>
+                        <FieldLabel>Est. Hours</FieldLabel>
+                        <Input value={tplEstHours} onChange={(e) => setTplEstHours(e.target.value)} type="number" min="0" step="0.5" placeholder="4" />
+                      </div>
+                    </div>
+                    <div>
+                      <FieldLabel>Priority</FieldLabel>
+                      <select value={tplPriority} onChange={(e) => setTplPriority(e.target.value)}
+                        className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary/40">
+                        {['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                      </select>
+                    </div>
+                    <button onClick={handleCreateTemplate} disabled={tplCreating || !tplName.trim()}
+                      className="w-full bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                      {tplCreating ? 'Saving…' : 'Save Template'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bulk assign from templates */}
+                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                  <div className="text-xs font-semibold text-text-secondary mb-3">Bulk assign plan</div>
+                  {templates.length === 0 ? (
+                    <p className="text-xs text-text-tertiary italic">No templates yet — save one on the left to get started.</p>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 mb-3">
+                        {templates.map((tpl) => {
+                          const checked = selectedTemplates.has(tpl.template_id)
+                          return (
+                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-bg-primary/60 border border-border rounded-lg px-3 py-2 hover:border-accent-primary/30 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  const next = new Set(selectedTemplates)
+                                  if (checked) next.delete(tpl.template_id)
+                                  else next.add(tpl.template_id)
+                                  setSelectedTemplates(next)
+                                }}
+                                className="accent-[var(--color-accent)]"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs text-text-secondary truncate">{tpl.name}</div>
+                                <div className="text-[10px] text-text-tertiary font-mono">{tpl.module || 'general'} · ~{tpl.estimated_hours ?? '—'}h</div>
+                              </div>
+                              <button
+                                onClick={(e) => { e.preventDefault(); if (confirm('Delete this template?')) deleteTaskTemplate(tpl.template_id).then(() => { setSelectedTemplates(prev => { const n = new Set(prev); n.delete(tpl.template_id); return n }); fetchTemplates() }) }}
+                                className="text-text-tertiary/40 hover:text-red-400 transition-colors"
+                                title="Delete template"
+                              >
+                                <Trash className="w-3.5 h-3.5" />
+                              </button>
+                            </label>
+                          )
+                        })}
+                      </div>
+                      <div className="mb-3">
+                        <FieldLabel>Assign to (user ID)</FieldLabel>
+                        <Input value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)} placeholder="User ID" />
+                      </div>
+                      <button onClick={handleBulkAssign} disabled={busy || selectedTemplates.size === 0 || !bulkAssignee.trim()}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                        {busy ? 'Assigning…' : `Assign ${selectedTemplates.size || ''} template${selectedTemplates.size === 1 ? '' : 's'}`}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Auto starter assignment */}
+                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                  <div className="text-xs font-semibold text-text-secondary mb-3 flex items-center gap-1.5">
+                    <Lightning className="w-3.5 h-3.5 text-accent-primary" weight="fill" />
+                    Auto-assign starter tasks
+                  </div>
+                  <p className="text-[11px] text-text-tertiary mb-3 leading-relaxed">
+                    AI picks starter issues from the repo sized to the dev&apos;s quiz score + level.
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <FieldLabel>Dev user ID *</FieldLabel>
+                      <Input value={starterUserId} onChange={(e) => setStarterUserId(e.target.value)} placeholder="User ID" />
+                    </div>
+                    <div>
+                      <FieldLabel>Repo URL *</FieldLabel>
+                      <Input value={starterRepo} onChange={(e) => setStarterRepo(e.target.value)} placeholder="https://github.com/owner/repo" />
+                    </div>
+                    <button onClick={handleAutoStarter} disabled={busy || !starterRepo.trim() || !starterUserId.trim()}
+                      className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
+                      <Lightning className="w-3.5 h-3.5" weight="fill" />
+                      {busy ? 'Assigning…' : 'Generate Starter Tasks'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardSpotlight>
+        )}
+
+        {showTimeStats && timeStats && (
+          <CardSpotlight className="mb-6">
+            <div className="p-6 relative">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 text-accent-primary" weight="bold" />
+                <GradientHeading as="h3">Time Tracking — Estimated vs Actual</GradientHeading>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {[
+                  { label: 'Tasks with actuals', value: timeStats.with_actual_count },
+                  { label: 'Total estimated', value: `${timeStats.total_estimated_hours}h` },
+                  { label: 'Total actual', value: `${timeStats.total_actual_hours}h` },
+                  { label: 'Avg variance', value: timeStats.avg_variance_hours != null ? `${timeStats.avg_variance_hours > 0 ? '+' : ''}${timeStats.avg_variance_hours}h` : '—' },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-bg-secondary rounded-xl p-3 border border-border">
+                    <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">{stat.label}</div>
+                    <div className="text-lg font-display font-bold text-text-primary">{stat.value}</div>
+                  </div>
+                ))}
+              </div>
+              {timeStats.tasks.filter((t) => t.actual_hours != null).length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {timeStats.tasks.filter((t) => t.actual_hours != null).map((t) => {
+                    const variance = t.variance_hours ?? 0
+                    const pct = t.variance_pct ?? 0
+                    const over = variance > 0
+                    const maxH = Math.max(t.estimated_hours ?? 0, t.actual_hours ?? 0, 1)
+                    return (
+                      <div key={t.task_id} className="bg-bg-secondary rounded-xl p-3 border border-border">
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <span className="text-xs text-text-secondary truncate">{t.title}</span>
+                          <span className={cn('text-[10px] font-mono shrink-0', over ? 'text-red-400' : 'text-green-400')}>
+                            {pct > 0 ? '+' : ''}{pct}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 h-2.5">
+                          <div className="flex-1 bg-bg-primary rounded-full h-full overflow-hidden flex">
+                            <div className="bg-accent-primary/50 h-full" style={{ width: `${((t.estimated_hours ?? 0) / maxH) * 100}%` }} title={`Estimated ${t.estimated_hours}h`} />
+                            <div className={cn('h-full', over ? 'bg-red-400/70' : 'bg-green-400/70')} style={{ width: `${((t.actual_hours ?? 0) / maxH) * 100}%` }} title={`Actual ${t.actual_hours}h`} />
+                          </div>
+                          <span className="text-[10px] text-text-tertiary font-mono">est {t.estimated_hours ?? '—'}h / {t.actual_hours}h</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-text-tertiary italic">No tasks have actual hours logged yet — log hours from a task detail view.</p>
+              )}
+              <div className="flex justify-end mt-4 pt-3 border-t border-border">
+                <button onClick={handleExportTimeStats}
+                  className="flex items-center gap-1.5 text-text-tertiary hover:text-text-secondary text-sm transition-colors">
+                  <DownloadSimple className="w-4 h-4" />
+                  Export time stats CSV
+                </button>
+              </div>
+            </div>
+          </CardSpotlight>
+        )}
 
         {progress && (
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-6">
@@ -352,6 +757,17 @@ export default function TasksPage() {
                                   </span>
                                 )}
                                 {task.estimated_hours && <span className="text-[10px] text-text-tertiary font-mono">~{task.estimated_hours}h</span>}
+                                {task.depends_on && (
+                                  <span className="text-[10px] text-blue-400/70 font-mono bg-blue-500/5 px-1.5 py-0.5 rounded inline-flex items-center gap-1" title="Blocked until dependency is completed">
+                                    <Lock className="w-2.5 h-2.5" weight="fill" />
+                                    dep
+                                  </span>
+                                )}
+                                {task.actual_hours != null && task.estimated_hours != null && task.actual_hours > task.estimated_hours + 0.01 && (
+                                  <span className="text-[10px] text-red-400/80 font-mono bg-red-500/5 px-1.5 py-0.5 rounded" title="Over estimated time">
+                                    overrun
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </CardSpotlight>
@@ -472,6 +888,55 @@ export default function TasksPage() {
                       <div className="text-text-primary">{selectedTask.estimated_hours}h</div>
                     </div>
                   )}
+                  {selectedTask.actual_hours != null && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Actual Time</div>
+                      <div className={cn('text-text-primary', selectedTask.estimated_hours != null && selectedTask.actual_hours > selectedTask.estimated_hours + 0.01 ? 'text-red-400' : 'text-green-400')}>
+                        {selectedTask.actual_hours}h
+                        {selectedTask.estimated_hours != null && (
+                          <span className="text-[10px] text-text-tertiary ml-1.5 font-mono">
+                            ({selectedTask.actual_hours - selectedTask.estimated_hours > 0 ? '+' : ''}{(selectedTask.actual_hours - selectedTask.estimated_hours).toFixed(1)}h)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {selectedTask.depends_on && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Dependency
+                      </div>
+                      <div className="text-xs text-blue-400 font-mono">Blocked until {selectedTask.depends_on} completes</div>
+                    </div>
+                  )}
+                  {selectedTask.source_issue != null && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <GithubLogo className="w-3 h-3" /> Source Issue
+                      </div>
+                      <div className="text-xs text-accent-primary font-mono">#{selectedTask.source_issue}</div>
+                    </div>
+                  )}
+                  {selectedTask.quiz_required && selectedTask.module && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <GraduationCap className="w-3 h-3" /> Quiz Gate
+                      </div>
+                      <div className={cn('text-xs flex items-center gap-1.5', quizGateMap[selectedTask.task_id]?.passed ? 'text-green-400' : 'text-yellow-400')}>
+                        {quizGateMap[selectedTask.task_id]?.passed
+                          ? <><Check className="w-3 h-3" weight="bold" /> Module quiz passed</>
+                          : <><Lock className="w-3 h-3" weight="fill" /> Pass module quiz to start</>}
+                      </div>
+                    </div>
+                  )}
+                  {selectedTask.peer_reviewed_by && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <UsersThree className="w-3 h-3" /> Peer Reviewer
+                      </div>
+                      <div className="text-xs text-text-primary font-mono">{selectedTask.peer_reviewed_by}</div>
+                    </div>
+                  )}
                   {selectedTask.repo_url && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-2">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Repository</div>
@@ -513,6 +978,24 @@ export default function TasksPage() {
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2">Review Feedback</div>
                       <div className="text-xs text-text-secondary leading-relaxed">{typeof selectedTask.review_feedback === 'string' ? selectedTask.review_feedback : JSON.stringify(selectedTask.review_feedback)}</div>
+                    </div>
+                  )}
+                  {selectedTask.pr_comments && selectedTask.pr_comments.length > 0 && (
+                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
+                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <GithubLogo className="w-3 h-3" /> PR Inline Comments ({selectedTask.pr_comments.length})
+                      </div>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {selectedTask.pr_comments.map((c, i) => (
+                          <div key={i} className="text-[11px] bg-bg-primary/60 border border-border rounded-lg p-2.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-accent-primary font-mono font-semibold">@{c.user}</span>
+                              {c.path && <span className="text-text-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
+                            </div>
+                            <p className="text-text-secondary leading-relaxed">{c.body}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {selectedTask.ai_review && (
@@ -593,13 +1076,26 @@ export default function TasksPage() {
                         className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
                     </div>
                   )}
-                  {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review') && (
+                  {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review' || selectedTask.state === 'peer_review') && (
                     <div className="space-y-3">
                       <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} />
                       <div className="flex gap-2 flex-wrap">
-                        <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
-                        <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
-                        <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
+                        {selectedTask.state === 'peer_review' ? (
+                          <>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
+                            <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
+                            <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
+                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-purple-500/80 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                              <UsersThree className="w-3.5 h-3.5" /> Peer Review
+                            </button>
+                          </>
+                        )}
                         <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
                       </div>
                     </div>
@@ -625,6 +1121,15 @@ export default function TasksPage() {
                         <Check className="w-4 h-4" weight="bold" /> Mark Completed & Unlock Modules
                       </button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                    </div>
+                  )}
+                  {(selectedTask.state === 'completed' || selectedTask.state === 'in_progress' || selectedTask.state === 'needs_changes') && (
+                    <div className="flex gap-2">
+                      <Input value={actualHoursInput} onChange={(e) => setActualHoursInput(e.target.value)} placeholder="Hours spent…" type="number" min="0" step="0.5" className="w-32" />
+                      <button onClick={() => handleLogActualHours(selectedTask.task_id)} disabled={!actualHoursInput}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Log Hours
+                      </button>
                     </div>
                   )}
                   {selectedTask.state === 'completed' && selectedTask.unlock_modules && selectedTask.unlock_modules.length > 0 && (

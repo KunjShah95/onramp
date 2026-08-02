@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends } from '../lib/api'
+import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
@@ -323,6 +323,13 @@ export default function OnboardingPlanPage() {
   })
 
   const planToShow = plan || (plans && plans[0])
+
+  const { data: roadmap } = useQuery({
+    queryKey: ['planRoadmap', planToShow?.id],
+    queryFn: () => fetchPlanRoadmap(planToShow!.id),
+    enabled: !!planToShow?.id,
+    staleTime: 15_000,
+  })
   const milestones30 = planToShow?.milestones?.filter((m: any) => m.day_target === 30) || []
   const milestones60 = planToShow?.milestones?.filter((m: any) => m.day_target === 60) || []
   const milestones90 = planToShow?.milestones?.filter((m: any) => m.day_target === 90) || []
@@ -476,6 +483,72 @@ export default function OnboardingPlanPage() {
                           {t.title}
                         </p>
                       </motion.div>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Roadmap — dependency-aware progression */}
+            {roadmap && roadmap.milestones.length > 0 && (
+              <motion.div variants={item} className="mb-10">
+                <div className="flex items-center gap-2 mb-4">
+                  <ListChecks size={14} className="text-emerald-400" />
+                  <h2 className="text-body-sm font-bold text-text-primary">Roadmap</h2>
+                  <span className="text-caption text-text-muted/30 tabular-nums">
+                    {roadmap.milestones.filter((m) => m.is_completed).length}/{roadmap.milestones.length} · statuses from milestone dependencies
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-stretch gap-2">
+                  {roadmap.milestones.map((m, i) => {
+                    const cat = CATEGORY_CONFIG[m.category] || CATEGORY_CONFIG.technical
+                    return (
+                      <div key={m.id} className="flex items-stretch gap-2">
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className={cn(
+                            'w-44 p-3 rounded-xl border transition-all',
+                            m.status === 'completed' && 'bg-emerald-500/[0.06] border-emerald-500/20',
+                            m.status === 'in_progress' && 'bg-amber-500/[0.08] border-amber-500/30 shadow-glow',
+                            m.status === 'available' && 'bg-bg-secondary border-border hover:border-border-hover',
+                            m.status === 'locked' && 'bg-bg-tertiary/40 border-border/50 opacity-50'
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <cat.icon size={10} className="text-text-muted/40" />
+                            <span className="text-overline font-semibold uppercase tracking-widest">
+                              Day {m.day_target ?? '—'}
+                            </span>
+                          </div>
+                          <p className={cn('text-body-xs leading-snug mb-2', m.is_completed ? 'line-through text-text-muted/50' : 'text-text-primary')}>
+                            {m.title}
+                          </p>
+                          <div className={cn(
+                            'inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-md uppercase tracking-wider',
+                            m.status === 'completed' && 'bg-emerald-500/15 text-emerald-400',
+                            m.status === 'in_progress' && 'bg-amber-500/15 text-amber-400',
+                            m.status === 'available' && 'bg-blue-500/15 text-blue-400',
+                            m.status === 'locked' && 'bg-bg-tertiary text-text-muted/40'
+                          )}>
+                            {m.status === 'completed' ? <Check size={8} weight="bold" /> : null}
+                            {m.status === 'locked' ? '🔒 ' : null}
+                            {m.status === 'in_progress' ? '▶ ' : null}
+                            {m.status}
+                          </div>
+                          {m.depends_on.length > 0 && (
+                            <div className="mt-2 text-[9px] text-text-muted/30 font-code truncate">
+                              needs {m.depends_on.length} prior
+                            </div>
+                          )}
+                        </motion.div>
+                        {i < roadmap.milestones.length - 1 && (
+                          <div className="hidden sm:flex items-center text-text-muted/20">
+                            <CaretDoubleDown size={10} className="rotate-[-90deg]" />
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                 </div>

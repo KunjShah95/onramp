@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
-import { fetchDoraSummary, fetchVelocityTrends, fetchTeamThroughput } from '../../lib/api'
+import { fetchDoraSummary, fetchVelocityTrends, fetchTeamThroughput, listTeams } from '../../lib/api'
 import type { DoraSummary, VelocityTrend, MemberThroughput } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area,
 } from 'recharts'
@@ -36,27 +37,46 @@ function MetricBadge({ classification, value, label }: { classification: string;
 }
 
 export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
-  const resolvedId = teamId || 'default'
+  const { activeTeamId } = useAuth()
+
+  // Resolve a real team scope: explicit prop → active team from auth → first
+  // team from the user's membership list. Without a team ID the backend DORA
+  // endpoints would 403 on the team-access guard, so we never fire with empty.
+  const { data: membership } = useQuery<Array<{ team_id?: string; id?: string }>>({
+    queryKey: ['doraPanelTeams'],
+    queryFn: async () => {
+      const res = await listTeams('current-user')
+      return (res as any)?.teams || (res as any) || []
+    },
+    staleTime: 120_000,
+    enabled: !teamId && !activeTeamId,
+  })
+
+  const resolvedId =
+    teamId ||
+    activeTeamId ||
+    (Array.isArray(membership) && (membership[0]?.team_id || membership[0]?.id)) ||
+    ''
 
   const { data: dora, isLoading } = useQuery<DoraSummary>({
     queryKey: ['doraSummary', resolvedId],
     queryFn: () => fetchDoraSummary(resolvedId, 90),
     staleTime: 60_000,
-    enabled: !!resolvedId && resolvedId !== 'default',
+    enabled: !!resolvedId,
   })
 
   const { data: velocity } = useQuery<{ trends: VelocityTrend[] }>({
     queryKey: ['velocityTrends', resolvedId],
     queryFn: () => fetchVelocityTrends(resolvedId, 12),
     staleTime: 60_000,
-    enabled: !!resolvedId && resolvedId !== 'default',
+    enabled: !!resolvedId,
   })
 
   const { data: throughput } = useQuery<{ members: MemberThroughput[] }>({
     queryKey: ['teamThroughput', resolvedId],
     queryFn: () => fetchTeamThroughput(resolvedId, 30),
     staleTime: 60_000,
-    enabled: !!resolvedId && resolvedId !== 'default',
+    enabled: !!resolvedId,
   })
 
   if (isLoading) {

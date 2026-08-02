@@ -48,6 +48,9 @@ DEFAULT_PREFERENCES = {
         "pr_merged": True,
         "milestone_reached": True,
         "quiz_graded": True,
+        "task_stale": True,
+        "task_time_overrun": True,
+        "peer_review_claimed": True,
     },
     "email": {
         "task_assigned": True,
@@ -64,6 +67,9 @@ DEFAULT_PREFERENCES = {
         "pr_merged": True,
         "milestone_reached": True,
         "quiz_graded": True,
+        "task_stale": True,
+        "task_time_overrun": True,
+        "peer_review_claimed": False,
     },
     "slack": {
         "task_assigned": False,
@@ -79,6 +85,9 @@ DEFAULT_PREFERENCES = {
         "system_alert": True,
         "pr_merged": True,
         "milestone_reached": True,
+        "task_stale": True,
+        "task_time_overrun": True,
+        "peer_review_claimed": False,
     },
 }
 
@@ -145,6 +154,9 @@ NOTIFICATION_TYPE_LABELS = {
     "pr_merged": "PR Merged",
     "milestone_reached": "Milestone Reached",
     "quiz_graded": "Quiz Graded",
+    "task_stale": "Stale Task Alert",
+    "task_time_overrun": "Time Overrun Alert",
+    "peer_review_claimed": "Peer Review Claimed",
 }
 
 CHANNEL_LABELS = {

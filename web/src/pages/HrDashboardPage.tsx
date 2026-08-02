@@ -2,13 +2,19 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { fetchHrCohort, listTeams } from '../lib/api'
-import type { HrAttritionRisk, HrCompletionMember, HrRampTime, HrEngagement } from '../lib/api'
+import {
+  fetchHrCohort, listTeams,
+  fetchCohortComparison, fetchMentorMatch, fetchReviewAnalytics,
+} from '../lib/api'
+import type {
+  HrAttritionRisk, HrCompletionMember, HrRampTime, HrEngagement,
+  CohortComparisonEntry, MentorMatchResponse, ReviewAnalytics,
+} from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import {
   Brain, Clock, CheckCircle, ChartBar, TrendUp, Users, WarningCircle,
-  Fire, Hash,
+  Fire, Hash, GitMerge, Handshake, Gauge, CaretDown,
 } from '@phosphor-icons/react'
 import {
   ResponsiveContainer, Tooltip, Cell,
@@ -285,6 +291,173 @@ function EngagementCard({ engagement }: { engagement: HrEngagement | undefined }
   )
 }
 
+function ReviewAnalyticsCard({ analytics }: { analytics: ReviewAnalytics | undefined }) {
+  if (!analytics) return null
+  return (
+    <CardSpotlight className="p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-info-muted border border-info/20 flex items-center justify-center">
+          <Gauge size={16} className="text-info" />
+        </div>
+        <h2 className="font-display text-body-sm font-bold">Review Analytics</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {[
+          { label: 'Rework rate', value: `${analytics.rework_rate_pct}%`, color: analytics.rework_rate_pct > 30 ? 'text-error' : analytics.rework_rate_pct > 15 ? 'text-warning' : 'text-success' },
+          { label: 'Tasks reworked', value: String(analytics.reworked_task_count), color: 'text-text-primary' },
+          { label: 'Avg turnaround', value: analytics.avg_review_turnaround_hours != null ? `${analytics.avg_review_turnaround_hours}h` : '—', color: 'text-text-primary' },
+          { label: 'Pending review', value: String(analytics.pending_review_count), color: analytics.pending_review_count > 0 ? 'text-warning' : 'text-success' },
+        ].map((s) => (
+          <div key={s.label} className="bg-bg-tertiary/40 rounded-card p-2.5 border border-border">
+            <div className="text-caption text-text-muted/50 mb-0.5">{s.label}</div>
+            <div className={cn('font-display text-body-sm font-bold tabular-nums', s.color)}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+      {analytics.top_reviewers.length > 0 && (
+        <div>
+          <div className="text-caption text-text-muted/40 mb-2">Top reviewers</div>
+          <div className="space-y-1.5">
+            {analytics.top_reviewers.slice(0, 5).map((r, i) => (
+              <div key={r.user_id} className="flex items-center gap-2">
+                <span className="w-4 text-caption text-text-muted/30 tabular-nums">{i + 1}.</span>
+                <span className="flex-1 text-body-xs text-text-primary truncate">{r.name || r.user_id}</span>
+                <span className="text-caption font-code tabular-nums text-info">{r.reviews}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </CardSpotlight>
+  )
+}
+
+function CohortComparisonCard({ cohorts }: { cohorts: CohortComparisonEntry[] | undefined }) {
+  if (!cohorts || cohorts.length === 0) return null
+  const sorted = [...cohorts].sort((a, b) => (a.avg_ramp_days ?? 999) - (b.avg_ramp_days ?? 999))
+  const best = sorted[0]
+
+  return (
+    <CardSpotlight className="p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/20 flex items-center justify-center">
+          <GitMerge size={16} className="text-accent-from" />
+        </div>
+        <h2 className="font-display text-body-sm font-bold">Cohort Comparison</h2>
+      </div>
+      <p className="text-caption text-text-muted/40 mb-4">
+        Fastest cohort: <span className="text-success font-medium">{best.label}</span> at {best.avg_ramp_days ?? '—'} days avg ramp
+      </p>
+      <div className="space-y-3">
+        {cohorts.slice(0, 6).map((c) => (
+          <div key={c.cohort}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-body-xs text-text-primary font-medium truncate">
+                {c.label} <span className="text-text-muted/40">({c.member_count})</span>
+              </span>
+              <span className="text-caption font-code tabular-nums text-text-muted/70">
+                {c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(((c.avg_ramp_days ?? 999) / 30) * 100, 100)}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+                className={cn('h-full rounded-full', c.avg_ramp_days != null && c.avg_ramp_days <= 7 ? 'bg-success' : c.avg_ramp_days != null && c.avg_ramp_days <= 14 ? 'bg-accent-from' : 'bg-warning')}
+              />
+            </div>
+            <div className="flex gap-3 mt-1 text-caption text-text-muted/40">
+              <span>{c.avg_days_to_first_pr != null ? `1st PR ${c.avg_days_to_first_pr}d` : 'no 1st PR'}</span>
+              <span>completion {c.avg_completion_pct ?? 0}%</span>
+              <span className={c.blocker_count > 0 ? 'text-warning' : ''}>⛔ {c.blocker_count}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardSpotlight>
+  )
+}
+
+function MentorMatchCard({
+  match,
+  members,
+  selectedId,
+  onSelect,
+}: {
+  match: MentorMatchResponse | undefined
+  members: Array<{ user_id: string; name: string }>
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
+  // Keep the card rendered whenever there are members to choose from, so the
+  // selector stays usable even for devs with no matches yet.
+  if (members.length === 0) return null
+  return (
+    <CardSpotlight className="p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-warning-muted border border-warning/20 flex items-center justify-center">
+          <Handshake size={16} className="text-warning" />
+        </div>
+        <h2 className="font-display text-body-sm font-bold">Mentor Matches</h2>
+      </div>
+
+      <label htmlFor="mentor-dev-select" className="block text-caption text-text-muted/50 mb-1.5">New dev</label>
+      <div className="relative mb-3">
+        <select
+          id="mentor-dev-select"
+          aria-label="Select new dev"
+          value={selectedId}
+          onChange={(e) => onSelect(e.target.value)}
+          className="w-full appearance-none bg-bg-tertiary/60 border border-border rounded-card px-3 py-2 text-body-xs text-text-primary font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent/30 transition-all"
+        >
+          {members.map((member) => (
+            <option key={member.user_id} value={member.user_id} className="bg-bg-secondary">
+              {member.name}
+            </option>
+          ))}
+        </select>
+        <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted/40 pointer-events-none" />
+      </div>
+
+      {!match || match.matches.length === 0 ? (
+        <div className="text-center py-6">
+          <div className="w-9 h-9 rounded-xl bg-bg-tertiary/50 border border-border flex items-center justify-center mx-auto mb-2">
+            <Handshake size={16} className="text-text-muted/30" />
+          </div>
+          <p className="text-caption text-text-disabled/60 italic">
+            No mentor matches for this dev yet — assign them tasks to build their language profile.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-caption text-text-muted/40 mb-3 truncate">
+            New dev languages: <span className="text-accent-from font-code">{match.new_dev_languages.join(', ') || '—'}</span>
+          </p>
+          <div className="space-y-2">
+            {match.matches.slice(0, 4).map((m) => (
+              <div key={m.user_id} className="flex items-center gap-3 p-2.5 rounded-card bg-bg-tertiary/40 border border-border">
+                <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/20 flex items-center justify-center text-caption font-bold text-accent-from shrink-0">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-body-xs font-medium text-text-primary truncate">{m.name}</span>
+                    <span className="text-caption font-code tabular-nums text-accent-from">{m.score}</span>
+                  </div>
+                  <div className="text-caption text-text-muted/50 truncate">
+                    {m.shared_languages.length > 0 ? `Shared: ${m.shared_languages.join(', ')}` : 'No shared languages'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </CardSpotlight>
+  )
+}
+
 function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
   if (!risk) return null
 
@@ -351,6 +524,7 @@ function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
 
 export default function HrDashboardPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
+  const [selectedDevId, setSelectedDevId] = useState<string>('')
 
   // Fetch teams list for the selector
   const { data: teamsList } = useQuery({
@@ -385,6 +559,41 @@ export default function HrDashboardPage() {
     queryFn: () => fetchHrCohort(teamId),
     enabled: !!teamId,
     staleTime: 30_000,
+  })
+
+  const { data: cohortsData } = useQuery({
+    queryKey: ['hrCohortComparison', teamId],
+    queryFn: () => fetchCohortComparison(teamId),
+    enabled: !!teamId,
+    staleTime: 60_000,
+  })
+
+  const { data: reviewData } = useQuery({
+    queryKey: ['hrReviewAnalytics', teamId],
+    queryFn: () => fetchReviewAnalytics(teamId),
+    enabled: !!teamId,
+    staleTime: 60_000,
+  })
+
+  // Mentor match — the user picks which new dev to view matches for via the
+  // dropdown on the card. Defaults to the first member in the cohort.
+  const devMembers = useMemo(() => {
+    const rows = cohort?.ramp_time?.members || []
+    return rows.map((m) => ({ user_id: m.user_id, name: m.name }))
+  }, [cohort])
+
+  // Fall back to the first member when the team changes and the old selection
+  // is no longer a member (avoids firing a stale dev id on the new team).
+  const activeDevId =
+    devMembers.some((m) => m.user_id === selectedDevId)
+      ? selectedDevId
+      : devMembers[0]?.user_id || ''
+
+  const { data: mentorData } = useQuery({
+    queryKey: ['hrMentorMatch', teamId, activeDevId],
+    queryFn: () => fetchMentorMatch(teamId, activeDevId),
+    enabled: !!teamId && !!activeDevId,
+    staleTime: 120_000,
   })
 
   if (cohortLoading) {
@@ -514,6 +723,18 @@ export default function HrDashboardPage() {
       {/* Charts Row 2 */}
       <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">            <CompletionRatesCard members={onboarding_completion?.members} />
             <AttritionRiskCard risk={attrition_risk} />
+      </motion.div>
+
+      {/* Wave-2 Panels: Review analytics, cohort comparison, mentor matches */}
+      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-8">
+        <ReviewAnalyticsCard analytics={reviewData} />
+        <CohortComparisonCard cohorts={cohortsData?.cohorts} />
+        <MentorMatchCard
+          match={mentorData}
+          members={devMembers}
+          selectedId={activeDevId}
+          onSelect={setSelectedDevId}
+        />
       </motion.div>
     </motion.div>
   )

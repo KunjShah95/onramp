@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import { setToken, getToken } from '../lib/neon-auth'
+import { setToken, setRefreshToken, clearTokens, getToken } from '../lib/neon-auth'
 import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken } from '../lib/api'
 
 interface User {
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState((prev) => ({ ...prev, loading: false }))
         }
       } catch {
-        setToken(null)
+        clearTokens()
         if (active) {
           setState({
             user: null,
@@ -139,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const resp = await authLogin(email, password, rememberMe)
       setToken(resp.token, rememberMe)
+      if (resp.refresh_token) setRefreshToken(resp.refresh_token)
       setState((prev) => ({
         ...prev,
         user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
@@ -161,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const resp = await refreshToken()
         setToken(resp.token)
+        if (resp.refresh_token) setRefreshToken(resp.refresh_token)
       } catch {
         // Silent — next 401 will redirect to login
       }
@@ -174,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const resp = await authRegister(email, password, name)
         setToken(resp.token)
+        if (resp.refresh_token) setRefreshToken(resp.refresh_token)
         setState((prev) => ({
           ...prev,
           user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
@@ -192,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(async () => {
-    setToken(null)
+    clearTokens()
     setState({
       user: null,
       loading: false,

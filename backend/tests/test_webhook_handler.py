@@ -116,11 +116,11 @@ class TestHandlePrEvent:
         assert result["review_triggered"] is True
 
     async def test_pr_closed_not_handled(self):
-        """A closed PR event is not handled."""
+        """A closed PR event without a merge is not handled."""
         payload = _build_pr_payload("closed")
         result = await _handle_pr_event(payload, "pull_request")
         assert result["handled"] is False
-        assert "Unsupported action" in result["reason"]
+        assert "PR closed without merge" in result["reason"]
 
     async def test_pr_has_head_and_base_branch(self):
         """PR event extracts head and base branch info."""

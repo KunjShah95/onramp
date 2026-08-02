@@ -36,12 +36,87 @@ def _get_webhook_secret() -> str:
     return os.environ.get("GITHUB_WEBHOOK_SECRET", "dev-secret")
 
 
-async def _handle_pr_event(payload: dict, event: str) -> dict:
-    """Handle a pull_request event (opened, synchronize).
+async def _handle_pr_merged(payload: dict) -> dict:
+    """Handle a merged pull_request (action=closed + merged=true).
 
-    Extracts PR details and triggers a code review.
+    Finds the linked Onramp task by its PR URL and auto-completes it so the
+    assignee's task reflects the merge (XP already fires via complete_task).
+    This is best-effort: no linked task is not an error.
+    """
+    pr = payload.get("pull_request", {})
+    pr_url = pr.get("html_url", "")
+    pr_number = pr.get("number")
+    merged_by = (pr.get("merged_by") or {}).get("login", "") or (payload.get("sender") or {}).get("login", "")
+
+    if not pr_url:
+        return {"handled": False, "reason": "No PR URL in payload"}
+
+    from app.services.task_service import get_task_by_pr_url, complete_task
+
+    task = await get_task_by_pr_url(pr_url)
+    if not task:
+        return {
+            "handled": True,
+            "pr_number": pr_number,
+            "pr_url": pr_url,
+            "task_completed": False,
+            "reason": "No linked Onramp task found for this PR URL",
+        }
+
+    # Only complete if the task is still in a pre-completion state.
+    if task.get("state") == "completed":
+        return {"handled": True, "pr_number": pr_number, "task_completed": False, "reason": "Already completed"}
+
+    actor = task.get("assigned_to") or task.get("created_by") or ""
+    try:
+        # A merged PR is an implicit approval. The state machine only allows
+        # ``completed`` from ``approved``, so route review-stage tasks through
+        # ``approved`` first (submitted → approved → completed).
+        from app.services.task_service import transition_task
+
+        state = task.get("state")
+        if state in ("submitted", "under_review", "peer_review", "product_review", "approved"):
+            # ``approved`` is the only pre-completion state that may already be
+            # reached — everything else routes through ``approved`` first.
+            if state != "approved":
+                await transition_task(
+                    task["task_id"],
+                    "approved",
+                    actor,
+                    feedback={"message": "Auto-approved — PR merged on GitHub", "source": "pr_merged_webhook"},
+                )
+            await complete_task(task["task_id"], actor)
+        else:
+            return {"handled": True, "pr_number": pr_number, "task_completed": False, "reason": f"Task in {state} state — not auto-completed"}
+
+        logger.info(
+            "PR #%d merged → auto-completed task %s (%s)",
+            pr_number, task["task_id"], task.get("title", ""),
+        )
+        return {
+            "handled": True,
+            "pr_number": pr_number,
+            "task_id": task["task_id"],
+            "task_completed": True,
+            "merged_by": merged_by,
+        }
+    except Exception:
+        logger.exception("Failed to auto-complete task %s on PR merge", task.get("task_id"))
+        return {"handled": True, "pr_number": pr_number, "task_completed": False, "reason": "Completion failed"}
+
+
+async def _handle_pr_event(payload: dict, event: str) -> dict:
+    """Handle a pull_request event (opened, synchronize, closed/merged).
+
+    ``opened``/``synchronize`` trigger a code review; ``closed`` with
+    ``merged=true`` auto-completes the linked Onramp task.
     """
     action = payload.get("action", "")
+    if action == "closed":
+        pr = payload.get("pull_request", {})
+        if pr.get("merged"):
+            return await _handle_pr_merged(payload)
+        return {"handled": False, "reason": "PR closed without merge"}
     if action not in ("opened", "synchronize"):
         return {"handled": False, "reason": f"Unsupported action: {action}"}
 

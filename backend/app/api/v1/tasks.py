@@ -15,13 +15,22 @@ from app.services.task_service import (
     start_task,
     submit_task,
     review_task,
+    peer_review_task,
+    start_peer_review,
     approve_task,
     complete_task,
     cancel_task,
     delete_task,
     get_team_progress,
     get_user_progress,
+    log_actual_hours,
+    get_team_time_stats,
+    check_quiz_gate,
+    store_pr_comments,
 )
+from app.services import task_template_service
+from app.services.starter_assignment_service import assign_starter_tasks
+from app.services.github_service import GitHubService
 from app.api.v1.auth import get_current_user
 from app.agents import PRReviewAgent
 from app.services.notification_helpers import (
@@ -99,6 +108,7 @@ class CreateTaskRequest(BaseModel):
     unlock_modules: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
     assigned_to: Optional[str] = None
+    quiz_required: bool = False
 
 
 class UpdateTaskRequest(BaseModel):
@@ -110,6 +120,61 @@ class UpdateTaskRequest(BaseModel):
     branch: Optional[str] = None
     unlock_modules: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
+    actual_hours: Optional[float] = None
+    quiz_required: Optional[bool] = None
+
+
+class ImportIssueRequest(BaseModel):
+    team_id: str
+    repo_url: str
+    issue_number: int
+    assigned_to: Optional[str] = None
+    module: Optional[str] = None
+    quiz_required: bool = False
+
+
+class ActualHoursRequest(BaseModel):
+    hours: float
+
+
+class PeerReviewRequest(BaseModel):
+    feedback: Optional[Dict[str, Any]] = None
+    approve: bool = False
+    needs_product: bool = False
+
+
+class CreateTemplateRequest(BaseModel):
+    team_id: str
+    name: str
+    description: Optional[str] = None
+    module: Optional[str] = None
+    priority: str = "medium"
+    repo_url: Optional[str] = None
+    unlock_modules: Optional[List[str]] = None
+    estimated_hours: Optional[float] = None
+
+
+class UpdateTemplateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    module: Optional[str] = None
+    priority: Optional[str] = None
+    repo_url: Optional[str] = None
+    unlock_modules: Optional[List[str]] = None
+    estimated_hours: Optional[float] = None
+
+
+class BulkAssignRequest(BaseModel):
+    team_id: str
+    assignee_id: str
+    template_ids: List[str]
+
+
+class AutoAssignStarterRequest(BaseModel):
+    team_id: str
+    user_id: str
+    repo_url: str
+    count: int = 3
 
 
 class AssignRequest(BaseModel):
@@ -169,6 +234,93 @@ async def create_task_endpoint(
         logger.exception("Failed to log task creation audit event")
     await invalidate_prefix("tasks")
     return task
+
+
+# NOTE: /templates routes MUST be declared before /{task_id} routes —
+# FastAPI matches in definition order, so a later GET /templates would be
+# captured by GET /{task_id} with task_id="templates".
+
+
+@router.get("/templates")
+async def list_templates_endpoint(
+    team_id: Optional[str] = None,
+    module: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """List reusable task templates, optionally by team/module."""
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    if team_id:
+        teams = await get_user_teams(uid)
+        team_ids = {t.get("team_id") or t.get("id") for t in teams}
+        if team_id not in team_ids:
+            raise HTTPException(status_code=403, detail="Access denied")
+    templates = await task_template_service.list_templates(team_id=team_id, module=module)
+    return {"templates": templates, "count": len(templates)}
+
+
+@router.post("/templates")
+async def create_template_endpoint(
+    request: CreateTemplateRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Create a reusable task template (blueprint) for a team.
+
+    The caller must hold a senior/owner role in the team.
+    """
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    target = next(
+        (t for t in teams if (t.get("team_id") or t.get("id")) == request.team_id),
+        None,
+    )
+    if not target:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if target.get("role") not in ("owner", "ceo", "cto", "senior_dev"):
+        raise HTTPException(status_code=403, detail="Only senior/owner roles can create templates")
+    template = await task_template_service.create_template(
+        team_id=request.team_id,
+        created_by=uid,
+        name=request.name,
+        description=request.description or "",
+        module=request.module or "",
+        priority=request.priority,
+        repo_url=request.repo_url or "",
+        unlock_modules=request.unlock_modules,
+        estimated_hours=request.estimated_hours,
+    )
+    return template
+
+
+@router.patch("/templates/{template_id}")
+async def update_template_endpoint(
+    template_id: str,
+    request: UpdateTemplateRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Update a task template."""
+    updates = {k: v for k, v in request.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    template = await task_template_service.update_template(template_id, updates)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+
+@router.delete("/templates/{template_id}")
+async def delete_template_endpoint(
+    template_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Delete a task template."""
+    ok = await task_template_service.delete_template(template_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"deleted": True}
 
 
 @router.get("")
@@ -329,6 +481,12 @@ async def submit_task_endpoint(
     """
     uid = user.get("uid", "")
     await _verify_task_access(task_id, uid)
+    # 0. PR URL validation — must be a real GitHub pull request URL.
+    if not _parse_pr_number(request.pr_url) or not _infer_repo_url(request.pr_url):
+        raise HTTPException(
+            status_code=400,
+            detail="pr_url must be a valid GitHub pull request URL, e.g. https://github.com/owner/repo/pull/42",
+        )
     # 1. Transition task to submitted
     try:
         task = await submit_task(task_id, uid, request.pr_url)
@@ -380,6 +538,18 @@ async def submit_task_endpoint(
         except Exception as e:
             # AI review failure must never block the submission
             logger.exception("AI review failed for task %s: %s", task_id, e)
+
+        # 4b. PR comment sync — pull real GitHub inline review comments onto the
+        #     task so the senior sees actual diff comments, not just the AI summary.
+        #     This is best-effort: failures never block the submission.
+        try:
+            gh = GitHubService(github_token)
+            comments = await gh.get_pr_review_comments(repo_url, pr_number)
+            if comments:
+                await store_pr_comments(task_id, comments)
+                logger.info("Synced %d PR review comments to task %s", len(comments), task_id)
+        except Exception as e:
+            logger.exception("PR comment sync failed for task %s: %s", task_id, e)
 
     # 5. Notify the task creator (senior) that work was submitted (fire-and-forget)
     try:
@@ -492,6 +662,314 @@ async def cancel_task_endpoint(
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── GitHub Issue Import ─────────────────────────────────────
+
+
+@router.post("/import-issue")
+async def import_issue_endpoint(
+    request: ImportIssueRequest,
+    user: dict = Depends(get_current_user),
+):
+    """One-click GitHub issue → task import.
+
+    Fetches the issue from the GitHub API and auto-fills the task's title,
+    description, repo_url and estimate. Optionally assigns to a trainee.
+    """
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if request.team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    gh = GitHubService(github_token)
+    issues = await gh.get_issues(request.repo_url, limit=100)
+    issue = next((i for i in issues if i.number == request.issue_number), None)
+    if not issue:
+        raise HTTPException(status_code=404, detail=f"Issue #{request.issue_number} not found in {request.repo_url}")
+
+    # Import dedupe — refuse to create a second task for the same source issue.
+    from app.services.postgres_db import get_storage as _get_storage
+
+    storage = _get_storage()
+    existing_tasks = await storage.query_documents(
+        "onramp_tasks", [("team_id", "==", request.team_id)]
+    )
+    duplicate = next(
+        (
+            t for t in existing_tasks
+            if (t.get("source_issue") or {}).get("number") == issue.number
+            and (t.get("source_issue") or {}).get("repo_url") == request.repo_url
+        ),
+        None,
+    )
+    if duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Issue #{issue.number} was already imported as task '{duplicate.get('title', '')}'",
+        )
+
+    task = await create_task(
+        team_id=request.team_id,
+        created_by=uid,
+        title=issue.title,
+        description=issue.body or "",
+        module=request.module or "",
+        priority="medium",
+        repo_url=request.repo_url,
+        estimated_hours=max(1, len(issue.body or "") // 2000),
+        assigned_to=request.assigned_to,
+        quiz_required=request.quiz_required,
+        source_issue={"number": issue.number, "url": issue.url, "repo_url": request.repo_url},
+    )
+    try:
+        await log_event(
+            "task_imported_from_issue", uid, task.get("task_id", ""),
+            team_id=request.team_id,
+            metadata={"issue_number": issue.number, "repo_url": request.repo_url},
+        )
+    except Exception:
+        logger.exception("Failed to log issue import audit event")
+    await invalidate_prefix("tasks")
+    return task
+
+
+# ── Time Tracking ────────────────────────────────────────────
+
+
+@router.post("/{task_id}/actual-hours")
+async def log_actual_hours_endpoint(
+    task_id: str,
+    request: ActualHoursRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Log actual hours spent on a task (time tracking). Assignee or creator only."""
+    uid = user.get("uid", "")
+    await _verify_task_access(task_id, uid)
+    try:
+        return await log_actual_hours(task_id, request.hours, uid)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/time-stats/team/{team_id}")
+async def team_time_stats_endpoint(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Estimated vs actual hours per task, plus variance aggregates."""
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return await get_team_time_stats(team_id)
+
+
+# ── Peer Review ──────────────────────────────────────────────
+
+
+@router.post("/{task_id}/peer-review")
+async def peer_review_endpoint(
+    task_id: str,
+    request: PeerReviewRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Peer review a task — approve, request changes, or route to product.
+
+    Any teammate except the task assignee can peer-review. The reviewer is
+    recorded on ``peer_reviewed_by`` so seniors can see who reviewed.
+    """
+    uid = user.get("uid", "")
+    await _verify_task_access(task_id, uid)
+    try:
+        if request.feedback or request.approve or request.needs_product:
+            # Actual review outcome (approve / request changes / product)
+            task = await peer_review_task(
+                task_id,
+                uid,
+                feedback=request.feedback or {},
+                approve=request.approve,
+                needs_product=request.needs_product,
+            )
+            try:
+                reviewer_name = user.get("name") or user.get("email", "A peer")
+                if task:
+                    await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
+            except Exception:
+                logger.exception("Failed to send peer review notification")
+            return task
+
+        # No outcome given → claim the task for peer review (submitted → peer_review).
+        # No review-outcome notification here — a claim isn't a verdict, but the
+        # assignee gets a heads-up that a peer is reviewing their PR.
+        task = await start_peer_review(task_id, uid)
+        try:
+            reviewer_name = user.get("name") or user.get("email", "A peer")
+            if task:
+                from app.services.notification_helpers import notify_peer_review_claimed
+                await notify_peer_review_claimed(task, reviewer_name)
+        except Exception:
+            logger.exception("Failed to send peer review claim notification")
+        return task
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Quiz Gates ───────────────────────────────────────────────
+
+
+@router.get("/{task_id}/quiz-gate")
+async def quiz_gate_endpoint(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Check whether the caller may start a task under its prerequisite quiz gate."""
+    uid = user.get("uid", "")
+    await _verify_task_access(task_id, uid)
+    try:
+        return await check_quiz_gate(task_id, uid)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ── Bulk Assignment ──────────────────────────────────────────
+
+
+@router.post("/bulk-assign")
+async def bulk_assign_endpoint(
+    request: BulkAssignRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Assign a full set of templates (an onboarding plan) to a trainee in one click."""
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if request.team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+    result = await task_template_service.bulk_assign_templates(
+        team_id=request.team_id,
+        assignee_id=request.assignee_id,
+        template_ids=request.template_ids,
+        created_by=uid,
+    )
+    await invalidate_prefix("tasks")
+    return result
+
+
+# ── Automated First-Task Assignment ──────────────────────────
+
+
+@router.post("/auto-assign-starter")
+async def auto_assign_starter_endpoint(
+    request: AutoAssignStarterRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Automatically assign starter tasks to a new dev from repo issues.
+
+    Difficulty is inferred from the dev's quiz score + gamification level.
+    Creates up to `count` (default 3) tasks assigned to the dev.
+    """
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if request.team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+    result = await assign_starter_tasks(
+        team_id=request.team_id,
+        user_id=request.user_id,
+        repo_url=request.repo_url,
+        created_by=uid,
+        count=max(1, min(request.count, 10)),
+    )
+    await invalidate_prefix("tasks")
+    return result
+
+
+# ── CSV Export ──────────────────────────────────────────────
+
+
+@router.get("/export.csv")
+async def export_tasks_csv(
+    team_id: Optional[str] = None,
+    state: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Export tasks (optionally filtered) as CSV for spreadsheets."""
+    from fastapi.responses import StreamingResponse
+    import csv as _csv
+    import io
+
+    uid = user.get("uid", "")
+    from app.services.team_service import get_user_teams
+
+    user_teams = await get_user_teams(uid)
+    user_team_ids = {t.get("team_id") or t.get("id") for t in user_teams}
+    scoped = team_id if team_id in user_team_ids else None
+    tasks = await list_tasks(team_id=scoped, state=state)
+    if not scoped:
+        tasks = [t for t in tasks if t.get("team_id") in user_team_ids]
+
+    buf = io.StringIO()
+    writer = _csv.writer(buf)
+    writer.writerow(["task_id", "title", "module", "state", "priority", "assignee", "repo_url",
+                     "estimated_hours", "actual_hours", "created_at", "completed_at", "pr_url"])
+    for t in tasks:
+        writer.writerow([
+            t.get("task_id", ""), t.get("title", ""), t.get("module", ""),
+            t.get("state", ""), t.get("priority", ""), t.get("assigned_to", ""),
+            t.get("repo_url", ""), t.get("estimated_hours", ""), t.get("actual_hours", ""),
+            t.get("created_at", ""), t.get("completed_at", ""), t.get("pr_url", ""),
+        ])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=tasks.csv"},
+    )
+
+
+@router.get("/time-stats/team/{team_id}/export.csv")
+async def export_time_stats_csv(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Export estimated-vs-actual time stats as CSV."""
+    from fastapi.responses import StreamingResponse
+    import csv as _csv
+    import io
+
+    uid = user.get("uid", "")
+    from app.services.team_service import get_user_teams
+
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if team_id not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    stats = await get_team_time_stats(team_id)
+    buf = io.StringIO()
+    writer = _csv.writer(buf)
+    writer.writerow(["title", "module", "state", "estimated_hours", "actual_hours", "variance_hours", "variance_pct"])
+    for r in stats.get("tasks", []):
+        writer.writerow([r["title"], r["module"], r["state"], r["estimated_hours"],
+                         r["actual_hours"], r["variance_hours"], r["variance_pct"]])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=time-stats.csv"},
+    )
 
 
 # ── Progress & Aggregation ───────────────────────────────────

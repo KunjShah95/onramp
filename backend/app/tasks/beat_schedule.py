@@ -57,4 +57,13 @@ BEAT_SCHEDULE = {
         "options": {"queue": "notification-tasks"},
     },
 
+    # ── Stale Task Alerts ──────────────────────────────────────────────────────
+    # Sweep for tasks stuck in needs_changes (>48h) or submitted-but-unreviewed
+    # (>24h) and notify the affected dev + senior. Runs every 6 hours.
+    "check-stale-tasks": {
+        "task": "app.tasks.notification_tasks.check_stale_tasks",
+        "schedule": crontab(hour="*/6", minute=0),
+        "options": {"queue": "notification-tasks"},
+    },
+
 }

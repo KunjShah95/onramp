@@ -288,6 +288,13 @@ async def velocity_trends(team_id: str, weeks: int = 12) -> dict:
         })
 
     trends.reverse()
+
+    # 4-week moving average (rolling, computed after reversal so indices align).
+    for i, t in enumerate(trends):
+        window = [x["completed"] for x in trends[max(0, i - 3): i + 1]]
+        if window:
+            t["completed_ma4"] = round(sum(window) / len(window), 2)
+
     return {"trends": trends}
 
 
@@ -330,4 +337,24 @@ async def team_throughput(team_id: str, days: int = 30) -> dict:
         elif state in ("in_progress", "submitted", "under_review"):
             members[assigned_to]["in_progress"] += 1
 
-    return {"members": list(members.values())}
+    # Best-effort: replace raw user IDs with display names for the chart.
+    # Route through get_user_by_uid so encrypted PII (field encryption on
+    # Postgres) is decrypted — raw list_documents would return ciphertext.
+    from app.services.user_service import get_user_by_uid
+
+    result = list(members.values())
+    if result:
+        try:
+            name_map = {}
+            for m in result:
+                uid = m["name"]
+                if uid in name_map:
+                    continue
+                user = await get_user_by_uid(uid)
+                name_map[uid] = (user or {}).get("name") or uid
+            for m in result:
+                m["name"] = name_map.get(m["name"], m["name"])
+        except Exception:
+            logger.debug("User name lookup failed — falling back to IDs", exc_info=True)
+
+    return {"members": result}

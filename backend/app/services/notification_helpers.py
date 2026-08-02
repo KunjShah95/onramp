@@ -192,6 +192,110 @@ async def notify_task_completed_all_channels(
         logger.exception("Failed to send email notification for task_completed")
 
 
+async def notify_task_time_overrun(
+    task: dict,
+    actual_hours: float,
+    estimated_hours: float,
+) -> None:
+    """Alert the assignee and task creator that actual hours exceeded the estimate."""
+    from app.services.notification_service import create_notification
+    from app.services.slack_service import send_slack_task_notification
+
+    title = "Time Overrun Alert"
+    message = (
+        f"Task \"{task.get('title', '')}\" has logged {actual_hours}h "
+        f"vs {estimated_hours}h estimated."
+    )
+    for uid in {task.get("assigned_to"), task.get("created_by")}:
+        if not uid:
+            continue
+        try:
+            await create_notification(
+                user_id=uid,
+                type="task_time_overrun",
+                title=title,
+                message=message,
+                metadata={
+                    "task_id": task.get("task_id"),
+                    "team_id": task.get("team_id"),
+                    "actual_hours": actual_hours,
+                    "estimated_hours": estimated_hours,
+                },
+                team_id=task.get("team_id"),
+            )
+        except Exception:
+            logger.exception("Failed to send in-app time-overrun notification")
+        try:
+            await send_slack_task_notification(uid, "task_time_overrun", task, actor_name="System")
+        except Exception:
+            logger.exception("Failed to send Slack time-overrun notification")
+
+
+async def notify_stale_task(
+    task: dict,
+    stale_days: float,
+) -> None:
+    """Alert the assignee and task creator that a task has been stale."""
+    from app.services.notification_service import create_notification
+    from app.services.slack_service import send_slack_task_notification
+
+    message = (
+        f"Task \"{task.get('title', '')}\" has been in "
+        f"'{task.get('state', '')}' for {stale_days:.0f}d."
+    )
+    for uid in {task.get("assigned_to"), task.get("created_by")}:
+        if not uid:
+            continue
+        try:
+            await create_notification(
+                user_id=uid,
+                type="task_stale",
+                title="Stale Task Alert",
+                message=message,
+                metadata={
+                    "task_id": task.get("task_id"),
+                    "team_id": task.get("team_id"),
+                    "stale_days": stale_days,
+                },
+                team_id=task.get("team_id"),
+            )
+        except Exception:
+            logger.exception("Failed to send in-app stale-task notification")
+        try:
+            await send_slack_task_notification(uid, "task_stale", task, actor_name="System")
+        except Exception:
+            logger.exception("Failed to send Slack stale-task notification")
+
+
+async def notify_peer_review_claimed(task: dict, reviewer_name: str) -> None:
+    """Notify the task assignee that a peer claimed their task for review."""
+    from app.services.notification_service import create_notification
+    from app.services.slack_service import send_slack_task_notification
+
+    assignee_id = task.get("assigned_to")
+    if not assignee_id:
+        return
+    try:
+        await create_notification(
+            user_id=assignee_id,
+            type="peer_review_claimed",
+            title="Peer Review Claimed",
+            message=f"{reviewer_name} is reviewing your PR for \"{task.get('title', '')}\".",
+            metadata={
+                "task_id": task.get("task_id"),
+                "team_id": task.get("team_id"),
+                "reviewer": reviewer_name,
+            },
+            team_id=task.get("team_id"),
+        )
+    except Exception:
+        logger.exception("Failed to send in-app peer-review-claimed notification")
+    try:
+        await send_slack_task_notification(assignee_id, "peer_review_claimed", task, actor_name=reviewer_name)
+    except Exception:
+        logger.exception("Failed to send Slack peer-review-claimed notification")
+
+
 async def _get_user_email(user_id: str) -> str | None:
     """Look up a user's email from the database.
 
