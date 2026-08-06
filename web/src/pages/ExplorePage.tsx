@@ -161,7 +161,7 @@ export default function ExplorePage() {
               placeholder="github.com/owner/repo"
               className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-28 py-2.5 focus:outline-none focus:border-accent-from/60 focus:ring-1 focus:ring-accent-muted transition-colors placeholder:text-text-muted/40"
             />
-            <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()} className="absolute right-1.5 rounded-md bg-accent-from text-[#09090B] px-3 py-1.5 text-caption font-semibold">
+            <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()} className="absolute right-1.5 rounded-md bg-accent-from text-[hsl(var(--accent-foreground))] px-3 py-1.5 text-caption font-semibold">
               {loading ? 'Analyzing…' : 'Analyze'}
             </button>
           </div>

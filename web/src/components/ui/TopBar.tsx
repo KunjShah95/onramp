@@ -1,7 +1,9 @@
 import { useAuth } from '../../context/AuthContext'
-import { UserCircle } from '@phosphor-icons/react'
+import { useTheme } from '../../context/ThemeContext'
+import { UserCircle, Sun, Moon } from '@phosphor-icons/react'
 import NotificationBell from './NotificationBell'
 import RoastModeToggle from './RoastModeToggle'
+import UserMenu from './UserMenu'
 import { cn } from '../../lib/utils'
 import type { ShortcutEvent } from '../../hooks/useKeyboardShortcuts'
 
@@ -11,11 +13,13 @@ interface TopBarProps {
 
 export default function TopBar({ lastShortcut }: TopBarProps) {
   const { user } = useAuth()
+  const { theme, toggleTheme } = useTheme()
+  const isDark = theme !== 'light'
 
   return (
     <header
       role="banner"
-      className="h-12 border-b border-border bg-bg-primary/60 backdrop-blur-md flex items-center justify-between px-5"
+      className="sticky top-0 z-40 h-12 border-b border-border bg-bg-primary/60 backdrop-blur-md flex items-center justify-between px-5"
     >
       {/* Left: shortcut hint with feedback */}
       <div className="flex items-center gap-3 min-w-0">
@@ -47,23 +51,17 @@ export default function TopBar({ lastShortcut }: TopBarProps) {
           <>
             <RoastModeToggle compact />
             <NotificationBell />
-            <div className="hidden sm:flex items-center gap-2.5">
-              <span className="text-body-xs text-text-muted">
-                {user.displayName || user.email}
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
-                <span className="text-caption font-semibold text-accent-from">
-                  {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className="sm:hidden">
-              <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center" aria-label={user.displayName || user.email || 'User avatar'}>
-                <span className="text-caption font-semibold text-accent-from" aria-hidden="true">
-                  {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
+
+            {/* Light / dark theme toggle */}
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-7 h-7 rounded-lg border border-border text-text-tertiary hover:text-accent-primary hover:border-accent-primary/40 hover:bg-accent-primary/5 flex items-center justify-center transition-colors duration-150 shrink-0"
+            >
+              {isDark ? <Sun size={15} weight="regular" /> : <Moon size={15} weight="regular" />}
+            </button>
+            <UserMenu />
           </>
         ) : (
           <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">

@@ -49,7 +49,7 @@ export default function VerifyEmail() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-[400px] z-10"
         >
-          <div className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
+          <div className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
             <div className="text-4xl mb-4">
@@ -71,7 +71,7 @@ export default function VerifyEmail() {
             {status !== 'verifying' && (
               <Link
                 to="/login"
-                className="inline-block bg-[hsl(var(--accent))] text-white font-semibold text-sm py-2.5 px-6 rounded-xl hover:opacity-90 transition-opacity"
+                className="inline-block bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 px-6 rounded-xl hover:opacity-90 transition-opacity"
               >
                 {status === 'success' ? 'Go to Login' : 'Back to Login'}
               </Link>

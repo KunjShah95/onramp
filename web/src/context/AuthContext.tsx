@@ -38,6 +38,13 @@ interface AuthState {
 
 export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr'
 
+/** Role-appropriate landing page after login/register. */
+export function homeForRole(role: TeamRole | null | undefined): string {
+  if (role === 'hr') return '/hr/people'
+  if (role === 'new_dev' || role === 'member') return '/my-progress'
+  return '/dashboard'
+}
+
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>

@@ -6,12 +6,23 @@ interface PaginationProps {
   onPageChange: (page: number) => void
 }
 
+const pageBtn =
+  'w-7 h-7 rounded-lg bg-bg-secondary border border-border flex items-center justify-center text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all disabled:opacity-25 disabled:cursor-not-allowed'
+
+const numBtn = (active: boolean) =>
+  cn(
+    'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
+    active
+      ? 'bg-warning/15 text-warning border border-warning/30'
+      : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+  )
+
 export default function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null
 
   return (
     <div
-      className="flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF8C00]/30 rounded-lg"
+      className="flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-warning/30 rounded-lg"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft' && page > 0) {
@@ -23,7 +34,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
         }
       }}
     >
-      <span className="text-[10px] text-[#FDFBF8]/30 font-mono mr-1">
+      <span className="text-[10px] text-text-muted/70 font-mono mr-1">
         Page {page + 1} of {totalPages}
       </span>
 
@@ -32,7 +43,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
         onClick={() => onPageChange(Math.max(0, page - 1))}
         disabled={page === 0}
         aria-label="Previous page"
-        className="w-7 h-7 rounded-lg bg-[#FDFBF8]/5 border border-[#FDFBF8]/8 flex items-center justify-center text-[11px] text-[#FDFBF8]/60 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/10 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+        className={pageBtn}
       >
         ‹
       </button>
@@ -43,12 +54,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
           <button
             key={i}
             onClick={() => onPageChange(i)}
-            className={cn(
-              'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
-              page === i
-                ? 'bg-[#FF8C00]/15 text-[#FF8C00] border border-[#FF8C00]/30'
-                : 'text-[#FDFBF8]/40 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5'
-            )}
+            className={numBtn(page === i)}
           >
             {i + 1}
           </button>
@@ -58,18 +64,13 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
           {/* First page */}
           <button
             onClick={() => onPageChange(0)}
-            className={cn(
-              'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
-              page === 0
-                ? 'bg-[#FF8C00]/15 text-[#FF8C00] border border-[#FF8C00]/30'
-                : 'text-[#FDFBF8]/40 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5'
-            )}
+            className={numBtn(page === 0)}
           >
             1
           </button>
 
           {/* Left ellipsis */}
-          {page > 2 && <span className="text-[#FDFBF8]/20 text-[11px] px-0.5">…</span>}
+          {page > 2 && <span className="text-text-disabled text-[11px] px-0.5">…</span>}
 
           {/* Adjacent pages */}
           {Array.from({ length: totalPages }, (_, i) => i)
@@ -78,29 +79,19 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
               <button
                 key={i}
                 onClick={() => onPageChange(i)}
-                className={cn(
-                  'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
-                  page === i
-                    ? 'bg-[#FF8C00]/15 text-[#FF8C00] border border-[#FF8C00]/30'
-                    : 'text-[#FDFBF8]/40 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5'
-                )}
+                className={numBtn(page === i)}
               >
                 {i + 1}
               </button>
             ))}
 
           {/* Right ellipsis */}
-          {page < totalPages - 3 && <span className="text-[#FDFBF8]/20 text-[11px] px-0.5">…</span>}
+          {page < totalPages - 3 && <span className="text-text-disabled text-[11px] px-0.5">…</span>}
 
           {/* Last page */}
           <button
             onClick={() => onPageChange(totalPages - 1)}
-            className={cn(
-              'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
-              page === totalPages - 1
-                ? 'bg-[#FF8C00]/15 text-[#FF8C00] border border-[#FF8C00]/30'
-                : 'text-[#FDFBF8]/40 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/5'
-            )}
+            className={numBtn(page === totalPages - 1)}
           >
             {totalPages}
           </button>
@@ -112,7 +103,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
         onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
         disabled={page >= totalPages - 1}
         aria-label="Next page"
-        className="w-7 h-7 rounded-lg bg-[#FDFBF8]/5 border border-[#FDFBF8]/8 flex items-center justify-center text-[11px] text-[#FDFBF8]/60 hover:text-[#FDFBF8] hover:bg-[#FDFBF8]/10 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+        className={pageBtn}
       >
         ›
       </button>

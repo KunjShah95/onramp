@@ -88,27 +88,27 @@ export default function AdminCreateAccount() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard"
+            className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard"
           >
             <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-                <UserPlus size={24} className="text-green-600" />
+              <div className="w-12 h-12 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-3">
+                <UserPlus size={24} className="text-success" />
               </div>
               <h2 className="font-display text-lg font-bold">Account Created</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">{result.email}</p>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-              <p className="text-xs font-semibold text-amber-800 mb-1">Temporary Password — Copy it now</p>
-              <p className="text-xs text-amber-700 mb-3">This password will only be shown once. Share it securely with the developer.</p>
-              <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+            <div className="bg-warning/10 border border-warning/25 rounded-xl p-4 mb-6">
+              <p className="text-xs font-semibold text-warning mb-1">Temporary Password — Copy it now</p>
+              <p className="text-xs text-warning/90 mb-3">This password will only be shown once. Share it securely with the developer.</p>
+              <div className="flex items-center gap-2 bg-bg-elevated border border-warning/25 rounded-lg px-3 py-2">
                 <code className="flex-1 text-sm font-mono select-all">{result.temp_password}</code>
                 <button
                   onClick={handleCopyPassword}
-                  className="p-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-warning/10 transition-colors"
                   title="Copy password"
                 >
-                  {copied ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+                  {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
                 </button>
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function AdminCreateAccount() {
             <div className="flex gap-3">
               <button
                 onClick={handleReset}
-                className="flex-1 bg-[hsl(var(--accent))] text-white font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
+                className="flex-1 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
               >
                 Create Another Account
               </button>
@@ -133,7 +133,7 @@ export default function AdminCreateAccount() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             onSubmit={handleSubmit}
-            className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard space-y-4"
+            className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard space-y-4"
           >
             <div className="space-y-1.5">
               <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Full Name</label>
@@ -201,7 +201,7 @@ export default function AdminCreateAccount() {
             <button
               type="submit"
               disabled={submitting || !name || !email}
-              className="w-full bg-[hsl(var(--accent))] text-white font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="w-full bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? 'Creating Account...' : 'Create Account'}
               <UserPlus size={16} />

@@ -65,7 +65,7 @@ export default function AuthCallback() {
           </h1>
         </motion.div>
 
-        <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+        <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
           {status === 'processing' && (
@@ -79,8 +79,8 @@ export default function AuthCallback() {
 
           {status === 'success' && (
             <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-12 h-12 rounded-2xl bg-success/10 border border-success/25 flex items-center justify-center">
+                <svg className="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -95,12 +95,12 @@ export default function AuthCallback() {
 
           {status === 'error' && (
             <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-12 h-12 rounded-2xl bg-error/10 border border-error/25 flex items-center justify-center">
+                <svg className="w-6 h-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <p className="text-sm text-red-600 font-medium font-body">
+              <p className="text-sm text-error font-medium font-body">
                 Sign in failed
               </p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body mb-2">

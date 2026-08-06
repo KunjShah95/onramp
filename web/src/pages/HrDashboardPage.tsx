@@ -633,7 +633,7 @@ export default function HrDashboardPage() {
           </div>
           <p className="text-error/80 text-body-sm font-code mb-1">Failed to load HR metrics.</p>
           <p className="text-text-disabled/60 text-caption font-code mb-5">Check that the backend is running and team has members.</p>
-          <button onClick={() => window.location.reload()} className="bg-accent-from hover:brightness-110 text-[#09090B] px-5 py-2.5 rounded-btn text-body-sm font-semibold transition-all shadow-glow">
+          <button onClick={() => window.location.reload()} className="bg-accent-from hover:brightness-110 text-[hsl(var(--accent-foreground))] px-5 py-2.5 rounded-btn text-body-sm font-semibold transition-all shadow-glow">
             Retry
           </button>
         </CardSpotlight>

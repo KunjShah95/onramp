@@ -239,7 +239,7 @@ export default function LearnPage() {
           <button
             onClick={handleGenerate}
             disabled={loading || !repoUrl.trim()}
-            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
+            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
           >
             <Play className="w-3.5 h-3.5" weight="fill" />
             {loading ? 'Generating…' : 'Generate Path'}
@@ -284,7 +284,7 @@ export default function LearnPage() {
                   onClick={handleStartLearning}
                   disabled={creating || !activeTeamId}
                   title={activeTeamId ? 'Create a task per module' : 'Join a team first'}
-                  className="px-4 py-2 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2"
                 >
                   <Target className="w-3.5 h-3.5" weight="fill" />
                   {creating ? 'Creating tasks…' : 'Start Learning'}
@@ -410,7 +410,7 @@ export default function LearnPage() {
                     </p>
                     <button
                       onClick={startQuiz}
-                      className="px-6 py-2.5 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 transition-all"
+                      className="px-6 py-2.5 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 transition-all"
                     >
                       Start Quiz
                     </button>
@@ -536,7 +536,7 @@ export default function LearnPage() {
                         <button
                           onClick={handleSubmitQuiz}
                           disabled={submitting || Object.keys(quizAnswers).length < quizQuestions.length}
-                          className="px-5 py-2 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 disabled:opacity-40 transition-all"
+                          className="px-5 py-2 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 disabled:opacity-40 transition-all"
                         >
                           {submitting ? 'Submitting…' : 'Submit Quiz'}
                         </button>
@@ -624,7 +624,7 @@ export default function LearnPage() {
                       </button>
                       <button
                         onClick={closeQuiz}
-                        className="px-5 py-2 rounded-xl bg-accent-primary text-[#09090B] text-caption font-semibold hover:brightness-110 transition-all"
+                        className="px-5 py-2 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 transition-all"
                       >
                         Close
                       </button>

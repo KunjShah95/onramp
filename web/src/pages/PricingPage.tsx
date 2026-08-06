@@ -140,7 +140,7 @@ export default function PricingPage() {
             onClick={() => setIsAnnual(false)}
             className={cn(
               "px-5 py-2 rounded-lg text-sm font-medium transition-all font-body",
-              !isAnnual ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              !isAnnual ? "bg-bg-secondary text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
             )}
           >
             Monthly
@@ -149,7 +149,7 @@ export default function PricingPage() {
             onClick={() => setIsAnnual(true)}
             className={cn(
               "px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 font-body",
-              isAnnual ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              isAnnual ? "bg-bg-secondary text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
             )}
           >
             Annually
@@ -178,8 +178,8 @@ export default function PricingPage() {
               className={cn(
                 "p-8 flex flex-col h-full border",
                 plan.popular
-                  ? "border-[hsl(var(--accent))]/30 bg-white shadow-[0_0_30px_rgba(99,102,241,0.08)]"
-                  : "border-[hsl(var(--border))] bg-white"
+                  ? "border-[hsl(var(--accent))]/30 bg-bg-secondary shadow-[0_0_30px_rgba(99,102,241,0.08)]"
+                  : "border-[hsl(var(--border))] bg-bg-secondary"
               )}
             >
               {plan.popular && (
@@ -261,7 +261,7 @@ export default function PricingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="bg-white border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/20 hover:shadow-[0_0_20px_rgba(99,102,241,0.04)] transition-all"
+              className="bg-bg-secondary border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/20 hover:shadow-[0_0_20px_rgba(99,102,241,0.04)] transition-all"
             >
               <div className="w-9 h-9 rounded-lg bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-3">
                 <feature.icon className="w-4 h-4 text-[hsl(var(--accent))]" weight="fill" />
@@ -292,7 +292,7 @@ export default function PricingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08, duration: 0.4 }}
-              className="bg-white border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/15 transition-all"
+              className="bg-bg-secondary border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/15 transition-all"
             >
               <h3 className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1.5 font-body">{faq.question}</h3>
               <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed font-body">{faq.answer}</p>

@@ -543,12 +543,8 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Roast Mode Tab */}
-        {activeTab === 'notifications' && (
-          <div className="space-y-4">
+            {/* Senior Dev Roast Mode */}
             <CardSpotlight className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -595,6 +591,8 @@ export default function Settings() {
             </CardSpotlight>
           </div>
         )}
+
+
 
         {/* SSO Tab */}
         {activeTab === 'sso' && <SsoConfigSection />}
@@ -896,27 +894,27 @@ function ThemeTabContent() {
             {THEMES.map((t) => {
               const isActive = theme === t.id
               return (
-                <button key={t.id} onClick={() => setTheme(t.id as Theme)}
+                <button key={t.id} onClick={() => setTheme(t.id as Theme)} data-theme={t.id}
                   className={cn('relative group rounded-xl border-2 transition-all duration-200 overflow-hidden text-left',
                     isActive ? 'border-accent-primary ring-2 ring-accent-primary/30' : 'border-border hover:border-text-tertiary')}>
-                  <div className="h-24 px-4 pt-4 pb-3" data-theme={t.id}>
+                  <div className="h-24 px-4 pt-4 pb-3">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-5 h-5 rounded-full" style={{
-                        backgroundColor: t.id === 'himalayan' ? '#F59E0B' : t.id === 'midnight' ? '#6366F1' : t.id === 'forest' ? '#22C55E' : '#A855F7'
+                        backgroundColor: t.id === 'light' ? '#0E7A3C' : t.id === 'himalayan' ? '#F59E0B' : t.id === 'midnight' ? '#6366F1' : t.id === 'forest' ? '#22C55E' : '#A855F7'
                       }} />
                       <div className="h-2 w-16 rounded-full" style={{
-                        backgroundColor: t.id === 'himalayan' ? '#EBF0FF' : t.id === 'midnight' ? '#E8ECFF' : t.id === 'forest' ? '#E6F7E6' : '#F0E8FF', opacity: 0.7
+                        backgroundColor: t.id === 'light' ? '#E4E7E3' : t.id === 'himalayan' ? '#EBF0FF' : t.id === 'midnight' ? '#E8ECFF' : t.id === 'forest' ? '#E6F7E6' : '#F0E8FF', opacity: 0.7
                       }} />
                     </div>
                     <div className="flex gap-1">
                       <div className="h-1.5 flex-1 rounded-full" style={{
-                        backgroundColor: t.id === 'himalayan' ? '#0C1426' : t.id === 'midnight' ? '#141B33' : t.id === 'forest' ? '#162613' : '#1C1430'
+                        backgroundColor: t.id === 'light' ? '#F6F7F4' : t.id === 'himalayan' ? '#0C1426' : t.id === 'midnight' ? '#141B33' : t.id === 'forest' ? '#162613' : '#1C1430'
                       }} />
                       <div className="h-1.5 flex-1 rounded-full" style={{
-                        backgroundColor: t.id === 'himalayan' ? '#111D35' : t.id === 'midnight' ? '#1A2547' : t.id === 'forest' ? '#1E341A' : '#251C3F'
+                        backgroundColor: t.id === 'light' ? '#EDEFEB' : t.id === 'himalayan' ? '#111D35' : t.id === 'midnight' ? '#1A2547' : t.id === 'forest' ? '#1E341A' : '#251C3F'
                       }} />
                       <div className="h-1.5 w-4 rounded-full" style={{
-                        backgroundColor: t.id === 'himalayan' ? '#F59E0B' : t.id === 'midnight' ? '#6366F1' : t.id === 'forest' ? '#22C55E' : '#A855F7', opacity: 0.5
+                        backgroundColor: t.id === 'light' ? '#0E7A3C' : t.id === 'himalayan' ? '#F59E0B' : t.id === 'midnight' ? '#6366F1' : t.id === 'forest' ? '#22C55E' : '#A855F7', opacity: 0.5
                       }} />
                     </div>
                   </div>

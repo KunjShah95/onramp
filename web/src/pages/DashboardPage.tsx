@@ -39,17 +39,17 @@ const SIG = {
   blue: '#2472C4',
   amber: '#D6870F',
   red: '#D24C3F',
-  ink: '#181B18',
-  grid: 'rgba(24,27,24,0.08)',
-  axis: 'rgba(24,27,24,0.45)',
+  ink: 'rgb(var(--text-primary))',
+  grid: 'rgb(var(--border-rgb) / 0.10)',
+  axis: 'rgb(var(--text-tertiary) / 0.75)',
 }
 const TOOLTIP = {
-  background: '#FFFFFF',
-  border: '1px solid rgba(24,27,24,0.14)',
+  background: 'rgb(var(--bg-elevated))',
+  border: '1px solid rgb(var(--border-rgb) / 0.18)',
   borderRadius: '4px',
   fontSize: '12px',
-  color: '#181B18',
-  boxShadow: '0 4px 16px rgba(24,27,24,0.10)',
+  color: 'rgb(var(--text-primary))',
+  boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
 }
 
 const container = {
@@ -218,7 +218,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden bg-white">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
       {/* ── Mission header ── */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
                   'relative px-3 py-1.5 text-caption font-display uppercase tracking-wide rounded-[2px] transition-colors',
-                  activeTab === tab.key ? 'text-white' : 'text-text-muted hover:text-text-primary'
+                  activeTab === tab.key ? 'text-[hsl(var(--accent-foreground))]' : 'text-text-muted hover:text-text-primary'
                 )}
                 style={{ letterSpacing: '0.06em' }}
               >
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                 <span className="relative z-10 flex items-center gap-1.5">
                   {tab.label}
                   {tab.count !== null && tab.count > 0 && (
-                    <span className={cn('font-code text-[11px]', activeTab === tab.key ? 'text-white/80' : 'text-text-muted/70')}>
+                    <span className={cn('font-code text-[11px]', activeTab === tab.key ? 'text-[hsl(var(--accent-foreground))] opacity-80' : 'text-text-muted/70')}>
                       {tab.count}
                     </span>
                   )}
@@ -269,7 +269,7 @@ export default function DashboardPage() {
       {activeTab === 'overview' && (
         <>
           {/* ── Hero readout bank ── */}
-          <motion.div variants={item} className="rounded-lg border border-border/60 overflow-hidden mb-6 bg-gradient-to-b from-white to-bg-secondary/40 shadow-sm">
+          <motion.div variants={item} className="rounded-lg border border-border/60 overflow-hidden mb-6 bg-gradient-to-b from-bg-elevated to-bg-secondary/40 shadow-sm">
             <div className="px-5 pt-4 pb-1">
               <span className="callsign opacity-40">MISSION TELEMETRY</span>
             </div>
@@ -372,7 +372,7 @@ export default function DashboardPage() {
                       <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} horizontal={false} />
                       <XAxis type="number" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.2), 10)]} />
                       <YAxis type="category" dataKey="name" tick={{ fill: SIG.ink, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-                      <Tooltip contentStyle={TOOLTIP} cursor={{ fill: 'rgba(24,27,24,0.04)' }}
+                      <Tooltip contentStyle={TOOLTIP} cursor={{ fill: 'rgb(var(--border-rgb) / 0.06)' }}
                         formatter={(value, name) => {
                           const labels: Record<string, string> = { completed: 'Completed', inProgress: 'In Progress', pending: 'Pending Review', completionRate: 'Rate' }
                           return [`${value}`, labels[String(name)] || String(name)]
