@@ -16,7 +16,7 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
         className={cn(
           'relative w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
           enabled
-            ? 'bg-red-500/15 text-red-400'
+            ? 'bg-error/15 text-error'
             : 'text-text-muted hover:text-text-secondary'
         )}
         aria-label={enabled ? 'Roast Mode ON' : 'Roast Mode OFF'}
@@ -37,7 +37,7 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
       className={cn(
         'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-all duration-200',
         enabled
-          ? 'bg-red-500/15 text-red-400 border border-red-500/25 shadow-sm'
+          ? 'bg-error/15 text-error border border-error/25 shadow-sm'
           : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:text-text-secondary'
       )}
     >

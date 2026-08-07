@@ -157,7 +157,7 @@ export default function FirstIssuePage() {
           <button
             onClick={handleSearch}
             disabled={loading || !repoUrl.trim()}
-            className="absolute right-1.5 bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
+            className="absolute right-1.5 bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
           >
             {loading ? 'Searching…' : 'Find Issues'}
           </button>

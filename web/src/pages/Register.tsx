@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import { EnvelopeSimple, Lock, User, ArrowRight } from '@phosphor-icons/react'
@@ -25,14 +25,14 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
 
-  const { register, error, clearError, user, loading } = useAuth()
+  const { register, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Wait for role sync before redirecting to dashboard
-    if (user && !loading) navigate('/dashboard', { replace: true })
-  }, [user, loading, navigate])
+    // Wait for role sync before redirecting to the role-appropriate home
+    if (user && !loading) navigate(homeForRole(role), { replace: true })
+  }, [user, loading, navigate, role])
 
   useEffect(() => {
     return () => clearError()
@@ -57,7 +57,7 @@ export default function Register() {
     try {
       await register(email, password, name)
       toast.success('Account created', `Welcome, ${name}!`)
-      navigate('/dashboard', { replace: true })
+      // Redirect happens via the effect above once the role has synced.
     } catch {
       // Error displayed inline via AuthContext
     } finally {
@@ -94,13 +94,13 @@ export default function Register() {
           </motion.div>
 
           {displayError && (
-            <motion.div variants={fadeUp} className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-5 text-sm border border-red-200" role="alert" aria-atomic="true">
+            <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25" role="alert" aria-atomic="true">
               {displayError}
             </motion.div>
           )}
 
           {/* Auth Card */}
-          <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+          <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
             {/* Social Sign-Up Buttons */}
@@ -108,7 +108,7 @@ export default function Register() {
               <a
                 href={getGoogleLoginUrl()}
                 aria-label="Sign up with Google"
-                className="w-full flex items-center justify-center gap-2.5 bg-white border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
+                className="w-full flex items-center justify-center gap-2.5 bg-bg-secondary border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -209,7 +209,7 @@ export default function Register() {
                 </div>
               </div>
 
-              <button type="submit" disabled={isSubmitting || !name || !email || !password || !confirmPassword} className="w-full bg-accent-from hover:bg-accent-to text-white font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <button type="submit" disabled={isSubmitting || !name || !email || !password || !confirmPassword} className="w-full bg-accent-from hover:bg-accent-to text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                 {isSubmitting ? 'Creating account...' : 'Create Account'}
                 <ArrowRight size={16} weight="bold" />
               </button>

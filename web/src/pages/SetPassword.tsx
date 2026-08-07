@@ -67,7 +67,7 @@ export default function SetPassword() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-[400px] z-10"
         >
-          <div className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+          <div className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
             <div className="text-center mb-6">
@@ -81,7 +81,7 @@ export default function SetPassword() {
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm border border-red-200">
+              <div className="bg-error/10 text-error rounded-lg px-4 py-3 mb-4 text-sm border border-error/25">
                 {error}
               </div>
             )}
@@ -121,7 +121,7 @@ export default function SetPassword() {
               <button
                 type="submit"
                 disabled={submitting || !password || !confirm}
-                className="w-full bg-[hsl(var(--accent))] text-white font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-opacity"
+                className="w-full bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-opacity"
               >
                 {submitting ? 'Setting Password...' : 'Set Password'}
                 <ArrowRight size={16} />

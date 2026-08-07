@@ -161,7 +161,7 @@ app.add_middleware(LoggingMiddleware)
 # Default matches Vercel preview deployments; override for custom domains.
 _cors_regex = os.getenv(
     "CORS_ALLOWED_ORIGIN_REGEX",
-    r"^https://(onramp|onramp-[a-z0-9]+)\.vercel\.app$",
+    r"^https://[a-z0-9][a-z0-9-]*\.vercel\.app$",
 )
 
 app.add_middleware(

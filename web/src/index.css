@@ -46,6 +46,338 @@
     --ring: 145 79% 27%;
     --radius: 0.25rem;
     --shadow-dashboard: 0 1px 2px rgba(24,27,24,0.06), 0 0 0 1px rgba(24,27,24,0.08);
+
+    /* Semantic token bridge (RGB triplets for bg/text/border/accent tokens) */
+    --bg-void: 221 225 221;
+    --bg-primary: 228 231 227;
+    --bg-secondary: 246 247 244;
+    --bg-tertiary: 237 239 235;
+    --bg-elevated: 255 255 255;
+    --text-primary: 24 27 24;
+    --text-secondary: 86 91 84;
+    --text-tertiary: 108 113 106;
+    --text-muted: 124 129 122;
+    --text-disabled: 167 171 164;
+    --border-rgb: 24 27 24;
+    --accent-from: 14 122 60;
+    --accent-via: 11 106 52;
+    --accent-to: 23 163 74;
+    --accent-muted: 14 122 60;
+    --accent-glow: 14 122 60;
+    --accent-primary: 14 122 60;
+    --accent-primary-hover: 23 163 74;
+    --success: 14 122 60;
+    --success-lit: 23 163 74;
+    --warning: 181 113 10;
+    --warning-lit: 214 135 15;
+    --error: 190 58 46;
+    --error-lit: 210 76 63;
+    --info: 26 95 168;
+    --info-lit: 36 114 196;
+  }
+
+  /* ── Light theme (explicit) — mirrors :root ── */
+  [data-theme='light'] {
+    --room: #DDE1DD;
+    --base: #E4E7E3;
+    --panel: #F6F7F4;
+    --panel-raised: #FFFFFF;
+    --well: #EDEFEB;
+    --inset: #EAEDE9;
+    --ink: #181B18;
+    --ink-secondary: #565B54;
+    --ink-tertiary: #6C716A;
+    --ink-muted: #7C817A;
+    --ink-disabled: #A7ABA4;
+    --go: #0E7A3C;
+    --go-lit: #17A34A;
+    --mission: #1A5FA8;
+    --mission-lit: #2472C4;
+    --caution: #B5710A;
+    --caution-lit: #D6870F;
+    --abort: #BE3A2E;
+    --abort-lit: #D24C3F;
+    --seam: rgba(24,27,24,0.12);
+    --seam-strong: rgba(24,27,24,0.20);
+    --bg-void: 221 225 221;
+    --bg-primary: 228 231 227;
+    --bg-secondary: 246 247 244;
+    --bg-tertiary: 237 239 235;
+    --bg-elevated: 255 255 255;
+    --text-primary: 24 27 24;
+    --text-secondary: 86 91 84;
+    --text-tertiary: 108 113 106;
+    --text-muted: 124 129 122;
+    --text-disabled: 167 171 164;
+    --border-rgb: 24 27 24;
+    --accent-from: 14 122 60;
+    --accent-via: 11 106 52;
+    --accent-to: 23 163 74;
+    --accent-muted: 14 122 60;
+    --accent-glow: 14 122 60;
+    --accent-primary: 14 122 60;
+    --accent-primary-hover: 23 163 74;
+    --success: 14 122 60;
+    --success-lit: 23 163 74;
+    --warning: 181 113 10;
+    --warning-lit: 214 135 15;
+    --error: 190 58 46;
+    --error-lit: 210 76 63;
+    --info: 26 95 168;
+    --info-lit: 36 114 196;
+  }
+
+  /* ── Dark themes ─────────────────────────────── */
+  /* Himalayan — deep blue-dark with warm orange accents */
+  [data-theme='himalayan'] {
+    --room: #060912;
+    --base: #0A1120;
+    --panel: #0C1426;
+    --panel-raised: #111D35;
+    --well: #0F1830;
+    --inset: #0A1220;
+    --ink: #F1F5FB;
+    --ink-secondary: #A8B3C9;
+    --ink-tertiary: #7E8AA5;
+    --ink-muted: #64708C;
+    --ink-disabled: #46536E;
+    --go: #22C55E;
+    --go-lit: #4ADE80;
+    --mission: #60A5FA;
+    --mission-lit: #93C5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(241,245,251,0.12);
+    --seam-strong: rgba(241,245,251,0.20);
+    --bg-void: 6 9 18;
+    --bg-primary: 12 20 38;
+    --bg-secondary: 17 29 53;
+    --bg-tertiary: 24 38 66;
+    --bg-elevated: 23 36 62;
+    --text-primary: 241 245 251;
+    --text-secondary: 168 179 201;
+    --text-tertiary: 126 138 165;
+    --text-muted: 100 112 140;
+    --text-disabled: 70 83 110;
+    --border-rgb: 151 165 199;
+    --accent-from: 245 158 11;
+    --accent-via: 251 146 60;
+    --accent-to: 251 191 36;
+    --accent-muted: 245 158 11;
+    --accent-glow: 245 158 11;
+    --accent-primary: 245 158 11;
+    --accent-primary-hover: 251 191 36;
+    --success: 34 197 94;
+    --success-lit: 74 222 128;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 96 165 250;
+    --info-lit: 147 197 253;
+    --background: 222 62% 8%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 222 62% 8%;
+    --secondary: 222 40% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 222 40% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 36 98% 50%;
+    --accent-foreground: 0 0% 8%;
+    --border: 222 40% 20%;
+    --ring: 36 98% 50%;
+  }
+
+  /* Midnight — cool indigo-dark with violet-blue accents */
+  [data-theme='midnight'] {
+    --room: #080C1C;
+    --base: #0E1430;
+    --panel: #141B33;
+    --panel-raised: #1A2547;
+    --well: #111938;
+    --inset: #0C1126;
+    --ink: #EDF0FF;
+    --ink-secondary: #ACB4D7;
+    --ink-tertiary: #808AB2;
+    --ink-muted: #66709A;
+    --ink-disabled: #4C557A;
+    --go: #22C55E;
+    --go-lit: #4ADE80;
+    --mission: #60A5FA;
+    --mission-lit: #93C5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(237,240,255,0.12);
+    --seam-strong: rgba(237,240,255,0.20);
+    --bg-void: 8 12 28;
+    --bg-primary: 20 27 51;
+    --bg-secondary: 26 37 71;
+    --bg-tertiary: 34 48 97;
+    --bg-elevated: 30 42 82;
+    --text-primary: 237 240 255;
+    --text-secondary: 172 180 215;
+    --text-tertiary: 128 138 178;
+    --text-muted: 102 112 152;
+    --text-disabled: 76 85 122;
+    --border-rgb: 165 172 210;
+    --accent-from: 99 102 241;
+    --accent-via: 129 140 248;
+    --accent-to: 165 180 252;
+    --accent-muted: 99 102 241;
+    --accent-glow: 99 102 241;
+    --accent-primary: 99 102 241;
+    --accent-primary-hover: 129 140 248;
+    --success: 34 197 94;
+    --success-lit: 74 222 128;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 96 165 250;
+    --info-lit: 147 197 253;
+    --background: 232 52% 10%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 232 52% 10%;
+    --secondary: 232 44% 18%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 232 44% 18%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 239 84% 67%;
+    --accent-foreground: 0 0% 8%;
+    --border: 232 40% 22%;
+    --ring: 239 84% 67%;
+  }
+
+  /* Forest — earthy green-dark with fresh green accents */
+  [data-theme='forest'] {
+    --room: #071009;
+    --base: #0C1A0E;
+    --panel: #162613;
+    --panel-raised: #1E341A;
+    --well: #13240F;
+    --inset: #0C1709;
+    --ink: #F0FAF0;
+    --ink-secondary: #AABEA8;
+    --ink-tertiary: #7E947C;
+    --ink-muted: #647A62;
+    --ink-disabled: #4A6048;
+    --go: #22C55E;
+    --go-lit: #4ADE80;
+    --mission: #60A5FA;
+    --mission-lit: #93C5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(240,250,240,0.12);
+    --seam-strong: rgba(240,250,240,0.20);
+    --bg-void: 7 16 9;
+    --bg-primary: 22 38 19;
+    --bg-secondary: 30 52 26;
+    --bg-tertiary: 40 70 36;
+    --bg-elevated: 34 58 30;
+    --text-primary: 240 250 240;
+    --text-secondary: 170 190 168;
+    --text-tertiary: 126 148 124;
+    --text-muted: 100 122 98;
+    --text-disabled: 74 96 72;
+    --border-rgb: 150 170 148;
+    --accent-from: 34 197 94;
+    --accent-via: 74 222 128;
+    --accent-to: 134 239 172;
+    --accent-muted: 34 197 94;
+    --accent-glow: 34 197 94;
+    --accent-primary: 34 197 94;
+    --accent-primary-hover: 74 222 128;
+    --success: 34 197 94;
+    --success-lit: 74 222 128;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 96 165 250;
+    --info-lit: 147 197 253;
+    --background: 120 30% 8%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 120 30% 8%;
+    --secondary: 120 24% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 120 24% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 8%;
+    --border: 120 22% 20%;
+    --ring: 142 71% 45%;
+  }
+
+  /* Purple — deep violet-dark with vibrant purple accents */
+  [data-theme='purple'] {
+    --room: #0C0618;
+    --base: #140C22;
+    --panel: #1C1430;
+    --panel-raised: #251C3F;
+    --well: #1A1129;
+    --inset: #110A1E;
+    --ink: #F5F0FF;
+    --ink-secondary: #BEAFDC;
+    --ink-tertiary: #9484B4;
+    --ink-muted: #786A98;
+    --ink-disabled: #5C507A;
+    --go: #22C55E;
+    --go-lit: #4ADE80;
+    --mission: #60A5FA;
+    --mission-lit: #93C5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(245,240,255,0.12);
+    --seam-strong: rgba(245,240,255,0.20);
+    --bg-void: 12 6 24;
+    --bg-primary: 28 20 48;
+    --bg-secondary: 37 28 63;
+    --bg-tertiary: 49 38 86;
+    --bg-elevated: 43 32 72;
+    --text-primary: 245 240 255;
+    --text-secondary: 190 175 220;
+    --text-tertiary: 148 132 180;
+    --text-muted: 120 106 152;
+    --text-disabled: 92 80 122;
+    --border-rgb: 170 156 200;
+    --accent-from: 168 85 247;
+    --accent-via: 192 132 252;
+    --accent-to: 216 180 254;
+    --accent-muted: 168 85 247;
+    --accent-glow: 168 85 247;
+    --accent-primary: 168 85 247;
+    --accent-primary-hover: 192 132 252;
+    --success: 34 197 94;
+    --success-lit: 74 222 128;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 96 165 250;
+    --info-lit: 147 197 253;
+    --background: 264 50% 10%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 264 50% 10%;
+    --secondary: 264 42% 18%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 264 42% 18%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 271 91% 65%;
+    --accent-foreground: 0 0% 8%;
+    --border: 264 38% 22%;
+    --ring: 271 91% 65%;
   }
 
   * {
@@ -105,12 +437,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(24, 27, 24, 0.16);
+    background: rgba(var(--border-rgb), 0.18);
     border-radius: 2px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(24, 27, 24, 0.28);
+    background: rgba(var(--border-rgb), 0.30);
   }
 
   /* Autofill — light well (auth forms) */
@@ -311,12 +643,12 @@
     border-radius: 3px;
     padding: 10px 18px;
     transition: all 0.15s ease;
-    border: 1px solid rgba(24,27,24,0.08);
-    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(var(--border-rgb), 0.12);
+    background: rgba(var(--bg-elevated), 0.55);
     backdrop-filter: blur(12px);
     color: var(--ink);
   }
-  .btn-glass:hover { background: rgba(255,255,255,0.80); border-color: rgba(24,27,24,0.14); }
+  .btn-glass:hover { background: rgba(var(--bg-elevated), 0.80); border-color: rgba(var(--border-rgb), 0.20); }
   .btn-glass:active { transform: translateY(1px); }
   .btn-glass:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
   .btn-glass:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
@@ -388,7 +720,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(24,27,24,0.05) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(var(--border-rgb), 0.06) 50%, transparent 100%);
     animation: shimmer 2s ease-in-out infinite;
   }
   @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
@@ -396,24 +728,30 @@
   /* ── Engineering plotboard grids ───────────────── */
   .dot-grid {
     background-size: 22px 22px;
-    background-image: radial-gradient(circle, rgba(24, 27, 24, 0.06) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(var(--border-rgb), 0.10) 1px, transparent 1px);
   }
   .bg-dot-grid {
-    background-image: radial-gradient(rgba(24, 27, 24, 0.07) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(var(--border-rgb), 0.10) 1px, transparent 1px);
     background-size: 24px 24px;
   }
   .bg-plot-grid {
     background-image:
-      linear-gradient(rgba(24, 27, 24, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(24, 27, 24, 0.045) 1px, transparent 1px);
+      linear-gradient(rgba(var(--border-rgb), 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(var(--border-rgb), 0.05) 1px, transparent 1px);
     background-size: 28px 28px;
   }
 
   /* ── Glass → seated panel (legacy alias) ───────── */
   .glass {
-    background: rgba(246, 247, 244, 0.85);
+    background: rgba(var(--bg-secondary), 0.85);
     backdrop-filter: blur(8px);
     border: 1px solid var(--seam);
+  }
+
+  /* ── App sidebar shell (sticky + viewport height, dvh with vh fallback) ── */
+  .app-sidebar {
+    height: 100vh;
+    height: 100dvh;
   }
 
   /* ── Truncation ────────────────────────────────── */
@@ -426,7 +764,7 @@
 
   /* ── Nexora legacy aliases (light-native) ──────── */
   .nexora-glass {
-    background: rgba(255, 255, 255, 0.75);
+    background: rgba(var(--bg-secondary), 0.75);
     border: 1px solid var(--seam);
     box-shadow: var(--shadow-dashboard);
   }
@@ -451,6 +789,62 @@
     display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
   .nexora-btn-ghost:hover { background: var(--well); }
+
+  /* ── Marketing surface (landing & public pages) ──
+     Public marketing pages are designed as a daylit canvas and stay light
+     even when the app is in a dark theme. Pin the full light palette scoped
+     to the subtree so every var-driven component inside renders correctly. */
+  .marketing-surface {
+    background-color: #DDE1DD;
+    color: #181B18;
+    --room: #DDE1DD;
+    --base: #E4E7E3;
+    --panel: #F6F7F4;
+    --panel-raised: #FFFFFF;
+    --well: #EDEFEB;
+    --inset: #EAEDE9;
+    --ink: #181B18;
+    --ink-secondary: #565B54;
+    --ink-tertiary: #6C716A;
+    --ink-muted: #7C817A;
+    --ink-disabled: #A7ABA4;
+    --go: #0E7A3C;
+    --go-lit: #17A34A;
+    --mission: #1A5FA8;
+    --mission-lit: #2472C4;
+    --caution: #B5710A;
+    --caution-lit: #D6870F;
+    --abort: #BE3A2E;
+    --abort-lit: #D24C3F;
+    --seam: rgba(24,27,24,0.12);
+    --seam-strong: rgba(24,27,24,0.20);
+    --bg-void: 221 225 221;
+    --bg-primary: 228 231 227;
+    --bg-secondary: 246 247 244;
+    --bg-tertiary: 237 239 235;
+    --bg-elevated: 255 255 255;
+    --text-primary: 24 27 24;
+    --text-secondary: 86 91 84;
+    --text-tertiary: 108 113 106;
+    --text-muted: 124 129 122;
+    --text-disabled: 167 171 164;
+    --border-rgb: 24 27 24;
+    --accent-from: 14 122 60;
+    --accent-via: 11 106 52;
+    --accent-to: 23 163 74;
+    --accent-muted: 14 122 60;
+    --accent-glow: 14 122 60;
+    --accent-primary: 14 122 60;
+    --accent-primary-hover: 23 163 74;
+    --success: 14 122 60;
+    --success-lit: 23 163 74;
+    --warning: 181 113 10;
+    --warning-lit: 214 135 15;
+    --error: 190 58 46;
+    --error-lit: 210 76 63;
+    --info: 26 95 168;
+    --info-lit: 36 114 196;
+  }
 
   /* ── Toast Animations ──────────────────────────── */
   .toast-enter { animation: toastEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }

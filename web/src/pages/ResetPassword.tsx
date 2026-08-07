@@ -89,9 +89,9 @@ export default function ResetPassword() {
           </motion.div>
 
           {pageState === 'success' ? (
-            <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
+            <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
-              <CheckCircle size={40} className="text-emerald-500 mx-auto mb-3" weight="fill" />
+              <CheckCircle size={40} className="text-success mx-auto mb-3" weight="fill" />
               <h2 className="font-display text-xl text-[hsl(var(--foreground))] mb-2">Password updated</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 font-body">
                 Your password has been reset successfully. Redirecting to sign in...
@@ -106,12 +106,12 @@ export default function ResetPassword() {
           ) : (
             <>
               {errorMsg && pageState === 'error' && (
-                <motion.div variants={fadeUp} className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-5 text-sm border border-red-200">
+                <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25">
                   {errorMsg}
                 </motion.div>
               )}
 
-              <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+              <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
                 {!token ? (

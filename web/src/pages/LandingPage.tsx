@@ -78,8 +78,7 @@ export default function LandingPageV3() {
 
   return (
     <main
-      className="relative min-h-screen w-full overflow-x-hidden font-body antialiased"
-      style={{ background: '#DDE1DD', color: '#181B18' }}
+      className="marketing-surface relative min-h-screen w-full overflow-x-hidden font-body antialiased"
     >
       {/* -==-==-== Navbar -==-==-== */}
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-[rgba(24,27,24,.08)] shadow-sm' : 'bg-transparent'}`}>

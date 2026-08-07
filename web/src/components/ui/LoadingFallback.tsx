@@ -15,14 +15,14 @@ export function PageLoadingFallback() {
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-[#120D0A] border border-[#FDFBF8]/5 rounded-xl p-4 space-y-2">
+            <div key={i} className="bg-bg-secondary border border-border rounded-xl p-4 space-y-2">
               <SkeletonText className="w-16 h-3" />
               <SkeletonBase className="h-8 w-12" />
               <SkeletonText className="w-20 h-3" />
             </div>
           ))}
         </div>
-        <div className="bg-[#120D0A] border border-[#FDFBF8]/5 rounded-xl p-6 space-y-3">
+        <div className="bg-bg-secondary border border-border rounded-xl p-6 space-y-3">
           <SkeletonText className="w-48" />
           <SkeletonText className="w-3/4" />
           <SkeletonText className="w-1/2" />
@@ -39,7 +39,7 @@ export function PageLoadingFallback() {
 export function FormLoadingFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="bg-[#120D0A]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-xl p-8 w-full max-w-[420px] space-y-4">
+      <div className="bg-bg-secondary/80 backdrop-blur-xl border border-border rounded-xl p-8 w-full max-w-[420px] space-y-4">
         <div className="flex flex-col items-center mb-6">
           <SkeletonBase className="h-12 w-12 rounded-xl mb-4" />
           <SkeletonHeading className="w-40" />
@@ -48,9 +48,9 @@ export function FormLoadingFallback() {
         <SkeletonBase className="h-12 w-full rounded-lg" />
         <SkeletonBase className="h-12 w-full rounded-lg" />
         <div className="relative flex items-center py-5">
-          <div className="flex-grow border-t border-[#FDFBF8]/10" />
+          <div className="flex-grow border-t border-border" />
           <SkeletonText className="w-32 mx-4" />
-          <div className="flex-grow border-t border-[#FDFBF8]/10" />
+          <div className="flex-grow border-t border-border" />
         </div>
         <SkeletonBase className="h-10 w-full rounded-lg" />
         <SkeletonBase className="h-10 w-full rounded-lg" />
@@ -62,8 +62,8 @@ export function FormLoadingFallback() {
 
 export function LandingLoadingFallback() {
   return (
-    <div className="text-[#FDFBF8] bg-[#050505] min-h-screen">
-      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-[#0A0705]/80 backdrop-blur-xl border border-[#FDFBF8]/10 rounded-full">
+    <div className="marketing-surface min-h-screen">
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-white/80 backdrop-blur-xl border border-[rgba(24,27,24,0.10)] rounded-full">
         <SkeletonText className="w-24" />
         <div className="hidden md:flex items-center gap-8">
           <SkeletonText className="w-12" />

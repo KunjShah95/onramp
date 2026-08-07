@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import { EnvelopeSimple, Lock, ArrowRight } from '@phosphor-icons/react'
@@ -23,17 +23,18 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { login, error, clearError, user, loading } = useAuth()
+  const { login, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
+  // Explicit deep-link target (set by ProtectedRoute), or a role-appropriate home
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname
 
   // Only auto-redirect if already authenticated AND role is synced (not loading)
   useEffect(() => {
-    if (user && !loading) navigate(from, { replace: true })
-  }, [user, loading, navigate, from])
+    if (user && !loading) navigate(from || homeForRole(role), { replace: true })
+  }, [user, loading, navigate, from, role])
 
   useEffect(() => {
     return () => clearError()
@@ -46,7 +47,7 @@ export default function Login() {
     try {
       await login(email, password, rememberMe)
       toast.success('Signed in', 'Welcome back!')
-      navigate(from, { replace: true })
+      // Redirect happens via the effect above once the role has synced.
     } catch {
       // Error displayed inline via AuthContext
     } finally {
@@ -81,13 +82,13 @@ export default function Login() {
           </motion.div>
 
           {error && (
-            <motion.div variants={fadeUp} className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-5 text-sm border border-red-200" role="alert" aria-atomic="true">
+            <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25" role="alert" aria-atomic="true">
               {error}
             </motion.div>
           )}
 
           {/* Auth Card */}
-          <motion.div variants={fadeUp} className="bg-white border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
+          <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
 
@@ -96,7 +97,7 @@ export default function Login() {
               <a
                 href={getGoogleLoginUrl()}
                 aria-label="Continue with Google"
-                className="w-full flex items-center justify-center gap-2.5 bg-white border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
+                className="w-full flex items-center justify-center gap-2.5 bg-bg-secondary border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -176,7 +177,7 @@ export default function Login() {
                 <span className="text-xs text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">Remember me</span>
               </label>
 
-              <button type="submit" disabled={isSubmitting || !email || !password} className="w-full bg-accent-from hover:bg-accent-to text-white font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" aria-label={isSubmitting ? 'Signing in' : 'Sign In'}>
+              <button type="submit" disabled={isSubmitting || !email || !password} className="w-full bg-accent-from hover:bg-accent-to text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" aria-label={isSubmitting ? 'Signing in' : 'Sign In'}>
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
                 <ArrowRight size={16} weight="bold" />
               </button>

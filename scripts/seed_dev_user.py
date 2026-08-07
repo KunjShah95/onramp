@@ -353,9 +353,9 @@ SAMPLE_AUDIT_EVENTS = [
 # ═══════════════════════════════════════════════════════════════════════════
 
 SAMPLE_API_KEYS = [
-    {"key_hash": "dev-key-hash-001", "name": "CI/CD Pipeline Key",  "user_id": "00000000-0000-4000-a000-000000000001", "team_id": "00000000-0000-4000-b000-000000000001",
+    {"key_hash": "dev-key-hash-001", "name": "CI/CD Pipeline Key",  "user_id": "00000000-0000-4000-a000-000000000001", "team_id": None,
      "is_active": True, "permissions": {"read": True, "write": True}},
-    {"key_hash": "dev-key-hash-002", "name": "Read-only Analytics", "user_id": "00000000-0000-4000-a000-000000000003", "team_id": "00000000-0000-4000-b000-000000000001",
+    {"key_hash": "dev-key-hash-002", "name": "Read-only Analytics", "user_id": "00000000-0000-4000-a000-000000000003", "team_id": None,
      "is_active": True, "permissions": {"read": True, "write": False}},
 ]
 

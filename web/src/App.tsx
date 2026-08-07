@@ -63,6 +63,7 @@ const PricingPage = lazy(() => import('./pages/PricingPage'))
 const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 const DocsPage = lazy(() => import('./pages/DocsPage'))
+const SupportPage = lazy(() => import('./pages/SupportPage'))
 const TasksPage = lazy(() => import('./pages/TasksPage'))
 const TraineeDashboard = lazy(() => import('./pages/TraineeDashboard'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -137,6 +138,11 @@ export default function App() {
               <Route path="/docs" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><DocsPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/support" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><SupportPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/login" element={
@@ -301,7 +307,7 @@ export default function App() {
                   } />
 
                   {/* Trainee / Junior Only Pages */}
-                  <Route element={<RoleGuard allowedRoles={['member']} />}>
+                  <Route element={<RoleGuard allowedRoles={['member', 'new_dev']} />}>
                     <Route path="/my-progress" element={
                       <Suspense fallback={<TraineeDashboardSkeleton />}>
                         <ErrorBoundary><TraineeDashboard /></ErrorBoundary>
@@ -323,16 +329,20 @@ export default function App() {
                     } />
                   </Route>
 
+                  {/* Tester / Developer + Pages (hr deliberately excluded) */}
+                  <Route element={<RoleGuard allowedRoles={['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto']} />}>
+                    <Route path="/dashboard" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><DashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
                   {/* Senior / CTO / Lead Only Pages */}
                   <Route element={<RoleGuard minRole="senior" />}>
                     <Route path="/senior-space" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><SeniorSpacePage /></ErrorBoundary>
-                      </Suspense>
-                    } />
-                    <Route path="/dashboard" element={
-                      <Suspense fallback={<DashboardSkeleton />}>
-                        <ErrorBoundary><DashboardPage /></ErrorBoundary>
                       </Suspense>
                     } />
                     <Route path="/team" element={

@@ -175,7 +175,7 @@ export default function OnboardingReportPage() {
           whileTap={{ scale: 0.97 }}
           onClick={handleGenerate}
           disabled={loading || !repoUrl.trim()}
-          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[#09090B] transition-all flex items-center gap-2 shrink-0"
+          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
         >
           <BookOpenText className="w-3.5 h-3.5" weight="fill" />
           {loading ? 'Generating…' : 'Generate'}
