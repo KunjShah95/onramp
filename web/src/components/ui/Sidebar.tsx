@@ -92,7 +92,7 @@ export default function Sidebar() {
   return (
     <aside
       aria-label="Primary navigation"
-      className="w-[220px] min-h-screen bg-bg-primary border-r border-border/50 flex flex-col shrink-0"
+      className="w-[220px] h-full bg-bg-primary border-r border-border/50 flex flex-col shrink-0"
     >
       {/* Brand */}
       <div className="px-4 pt-5 pb-4">

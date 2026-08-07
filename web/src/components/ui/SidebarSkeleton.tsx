@@ -8,7 +8,7 @@ import { SkeletonBase, SkeletonText, SkeletonAvatar } from './Skeleton'
  */
 export default function SidebarSkeleton() {
   return (
-    <aside className="w-[260px] min-h-screen bg-bg-secondary border-r border-border flex flex-col shrink-0">
+    <aside className="w-[260px] h-full bg-bg-secondary border-r border-border flex flex-col shrink-0">
       {/* Logo area */}
       <div className="px-6 py-5 border-b border-border">
         <SkeletonBase className="h-7 w-28" />

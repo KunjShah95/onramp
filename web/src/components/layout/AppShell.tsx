@@ -19,17 +19,17 @@ interface AppShellProps {
  */
 export default function AppShell({ sidebar, topbar, children }: AppShellProps) {
   return (
-    <div className="flex min-h-screen bg-transparent">
+    <div className="flex h-dvh overflow-hidden bg-transparent">
       {/* Sidebar */}
       {sidebar}
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Top bar */}
         {topbar}
 
         {/* Content */}
-        <main className="flex-1 p-6 overflow-auto relative">
+        <main className="flex-1 p-6 overflow-auto relative min-h-0">
           {children}
         </main>
       </div>
