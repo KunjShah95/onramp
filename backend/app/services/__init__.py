@@ -8,6 +8,7 @@ from app.services.slack_service import SlackService
 from app.services.contributor_tracker import ContributorTracker
 from app.services.report_generator import ReportGenerator
 from app.services.cache_service import cached, invalidate_prefix, is_redis_available
+from app.embeddings import EmbeddingRouter, EmbeddingProvider
 
 __all__ = [
     "GitHubService",
@@ -15,6 +16,8 @@ __all__ = [
     "BitbucketService",
     "ParserService",
     "EmbeddingsService",
+    "EmbeddingRouter",
+    "EmbeddingProvider",
     "IssueService",
     "SlackService",
     "ContributorTracker",
