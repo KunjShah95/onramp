@@ -50,6 +50,7 @@ celery_app = Celery(
         "app.tasks.agent_tasks",
         "app.tasks.analytics_tasks",
         "app.tasks.notification_tasks",
+        "app.tasks.repo_index_tasks",
     ],
 )
 
@@ -75,6 +76,7 @@ celery_app.conf.update(
     task_annotations={
         "app.tasks.agent_tasks.*": {"rate_limit": "10/m"},
         "app.tasks.notification_tasks.*": {"rate_limit": "100/m"},
+        "app.tasks.repo_index_tasks.*": {"rate_limit": "5/m"},  # clone+parse is heavy
     },
     # Redis broker visibility timeout (needs to be > task_time_limit)
     broker_transport_options={

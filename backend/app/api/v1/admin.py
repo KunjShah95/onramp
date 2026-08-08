@@ -95,13 +95,18 @@ async def list_all_api_keys(
 @router.get("/usage")
 async def get_global_usage(
     period: Optional[str] = Query(None),
+    days: int = Query(14, ge=1, le=90),
     uid: str = Depends(_require_owner),
 ):
     """Aggregated usage across ALL teams.
 
-    Optionally filter by period: "day", "week", "month".
+    Optionally filter by period: "day", "week", "month". Also returns the
+    provider free-vs-paid attribution and dollar cost figures (from the route
+    metadata logged by the LLM gateway), plus a daily ``provider_series`` of
+    length ``days`` (default 14) for the free-vs-paid-over-time chart.
     """
     from app.services.postgres_db import get_storage
+    from app.services.usage_tracker import route_meta
 
     storage = get_storage()
     all_records = await storage.list_documents("usage_records")
@@ -140,12 +145,61 @@ async def get_global_usage(
         ep = r.get("endpoint", "unknown")
         endpoint_breakdown[ep] = endpoint_breakdown.get(ep, 0) + 1
 
+    # ── Provider attribution + dollar savings (free-first routing) ──
+    # Only records with route metadata (provider set) are tracked here; agent
+    # calls and gateway traffic both log route metadata via record_usage.
+    free_requests = 0
+    paid_requests = 0
+    tracked_requests = 0
+    total_cost_usd = 0.0
+    total_cost_avoided_usd = 0.0
+
+    series_start = (now - timedelta(days=days - 1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    buckets: dict[str, dict] = {}
+    for offset in range(days):
+        day = (series_start + timedelta(days=offset)).date().isoformat()
+        buckets[day] = {"date": day, "free": 0, "paid": 0, "cost_usd": 0.0, "cost_avoided_usd": 0.0}
+
+    for r in filtered:
+        meta = route_meta(r)
+        if not meta.get("provider"):
+            continue
+        tracked_requests += 1
+        if meta.get("free"):
+            free_requests += 1
+        else:
+            paid_requests += 1
+        total_cost_usd += float(r.get("cost_usd") or 0.0)
+        total_cost_avoided_usd += float(meta.get("cost_avoided_usd") or 0.0)
+
+        created = r.get("created_at")
+        day = str(created)[:10] if created else ""
+        bucket = buckets.get(day)
+        if bucket is None:
+            continue
+        if meta.get("free"):
+            bucket["free"] += 1
+        else:
+            bucket["paid"] += 1
+        bucket["cost_usd"] += float(r.get("cost_usd") or 0.0)
+        bucket["cost_avoided_usd"] += float(meta.get("cost_avoided_usd") or 0.0)
+
     return {
         "period": period or "all",
         "total_requests": total_requests,
         "total_credits": total_credits,
         "team_breakdown": team_breakdown,
         "endpoint_breakdown": endpoint_breakdown,
+        # Free-first routing attribution + dollar savings
+        "tracked_requests": tracked_requests,
+        "free_requests": free_requests,
+        "paid_requests": paid_requests,
+        "free_pct": round(100.0 * free_requests / tracked_requests, 1) if tracked_requests else 0.0,
+        "total_cost_usd": round(total_cost_usd, 6),
+        "total_cost_avoided_usd": round(total_cost_avoided_usd, 6),
+        "provider_series": list(buckets.values()),
     }
 
 

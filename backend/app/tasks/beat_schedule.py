@@ -12,6 +12,8 @@ Available schedules (all times UTC):
     - Weekly digest:      every Monday at 08:00
     - Usage aggregation:  every night at 02:00
     - Leaderboard refresh: every hour
+    - Repo index refresh: every night at 03:00 (pre-builds / auto-refreshes
+      repository context indexes so first requests hit the cache)
 """
 
 from celery.schedules import crontab
@@ -64,6 +66,17 @@ BEAT_SCHEDULE = {
         "task": "app.tasks.notification_tasks.check_stale_tasks",
         "schedule": crontab(hour="*/6", minute=0),
         "options": {"queue": "notification-tasks"},
+    },
+
+    # ── Repo Index Refresh ─────────────────────────────────────────────────────
+    # Pre-build / auto-refresh repository context indexes (parse-once stage).
+    # Runs nightly at 03:00 UTC so indexes are warm before the 24h Redis TTL
+    # expires — the first user request hits the cache instead of building.
+    # Enqueue a single repo build on demand via POST /repos/index?async_build=true.
+    "refresh-repo-indexes": {
+        "task": "app.tasks.repo_index_tasks.refresh_repo_indexes",
+        "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "agent-tasks"},
     },
 
 }

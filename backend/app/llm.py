@@ -1,10 +1,26 @@
 import os
 import json
+import re
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 from enum import Enum
 
+from app.services.llm_costs import get_price
+from app.services.llm_cache import (
+    get_cached as llm_cache_get,
+    set_cached as llm_cache_set,
+    get_semantic as llm_cache_get_semantic,
+    set_semantic as llm_cache_set_semantic,
+)
+
 logger = logging.getLogger("onramp.llm")
+
+
+def _qtype_value(qtype) -> str:
+    """QueryType enum (or None) → its string value, for cache keys."""
+    if qtype is None:
+        return "auto"
+    return qtype.value if hasattr(qtype, "value") else str(qtype)
 
 
 class ModelProvider(Enum):
@@ -18,13 +34,186 @@ class ModelProvider(Enum):
     OLLAMA = "ollama"          # Local / self-hosted (no API key required)
 
 
-class LLMRouter:
-    """Multi-provider LLM with fallback chain. Priority: free first, paid second.
+class QueryType(Enum):
+    """Semantic query categories used to route a request to the best model.
 
-    Each provider is called through its official AI SDK (OpenAI SDK for all
-    OpenAI-compatible endpoints, google-genai for Gemini, anthropic for Claude).
-    SDKs are imported lazily inside each call so a missing optional SDK only
-    disables that one provider instead of breaking application startup.
+    Mirrors how OpenRouter picks a model per task: a code-writing prompt
+    should hit a coding-strong model, a quick chat should hit a fast cheap
+    one, a JSON extraction should hit a model with reliable structured
+    output, and so on.
+    """
+
+    CHAT = "chat"                     # General conversation / everyday questions
+    CODE = "code"                     # Code generation, debugging, refactoring
+    REASONING = "reasoning"           # Math, logic, analysis, comparisons
+    STRUCTURED = "structured"         # JSON / tables / data extraction
+    SUMMARIZATION = "summarization"   # Condense long content into key points
+    TRANSLATION = "translation"       # Convert text between languages
+    CREATIVE = "creative"             # Stories, poems, marketing copy, prose
+
+
+QUERY_TYPE_LABELS: Dict[QueryType, str] = {
+    QueryType.CHAT: "General conversation and everyday questions - fastest/cheapest model",
+    QueryType.CODE: "Code generation, debugging, and refactoring - coding-strong models first",
+    QueryType.REASONING: "Math, logic, and analysis - strong reasoning models first",
+    QueryType.STRUCTURED: "JSON, tables, and data extraction - models with reliable structured output",
+    QueryType.SUMMARIZATION: "Condensing long content into key points - fast, long-context models",
+    QueryType.TRANSLATION: "Converting text between languages - multilingual models first",
+    QueryType.CREATIVE: "Stories, poems, and marketing copy - best prose models first",
+}
+
+# Per-query-type provider preference. Entries are tried in order; providers
+# without an API key are skipped, and the remaining global fallback chain is
+# always appended afterwards, so every query type keeps the full resilience
+# of the fallback chain.
+#
+# CHAT intentionally has an empty preference list: it reuses the default
+# free-first fallback chain (OpenRouter -> Gemini -> Groq -> ...) unchanged.
+QUERY_TYPE_ROUTES: Dict[QueryType, List[ModelProvider]] = {
+    QueryType.CHAT: [],
+    QueryType.CODE: [
+        ModelProvider.ANTHROPIC,   # Claude - strongest at code
+        ModelProvider.OPENAI,      # GPT - solid general coder
+        ModelProvider.GEMINI,      # free
+        ModelProvider.GROQ,        # free & fast
+        ModelProvider.OPENROUTER,  # free
+        ModelProvider.NVIDIA,      # free
+        ModelProvider.OLLAMA,      # local
+    ],
+    QueryType.REASONING: [
+        ModelProvider.GEMINI,      # free & strong reasoning
+        ModelProvider.OPENAI,
+        ModelProvider.ANTHROPIC,
+        ModelProvider.GROQ,
+        ModelProvider.OPENROUTER,
+        ModelProvider.NVIDIA,
+        ModelProvider.OLLAMA,
+    ],
+    QueryType.STRUCTURED: [
+        ModelProvider.GROQ,        # fast, reliable JSON output
+        ModelProvider.GEMINI,
+        ModelProvider.OPENROUTER,
+        ModelProvider.OPENAI,
+        ModelProvider.NVIDIA,
+        ModelProvider.ANTHROPIC,
+        ModelProvider.OLLAMA,
+    ],
+    QueryType.SUMMARIZATION: [
+        ModelProvider.GROQ,        # fast + long context
+        ModelProvider.GEMINI,
+        ModelProvider.OPENROUTER,
+        ModelProvider.NVIDIA,
+        ModelProvider.OPENAI,
+        ModelProvider.ANTHROPIC,
+        ModelProvider.OLLAMA,
+    ],
+    QueryType.TRANSLATION: [
+        ModelProvider.GEMINI,      # strong multilingual, free
+        ModelProvider.GROQ,
+        ModelProvider.OPENROUTER,
+        ModelProvider.NVIDIA,
+        ModelProvider.OPENAI,
+        ModelProvider.ANTHROPIC,
+        ModelProvider.OLLAMA,
+    ],
+    QueryType.CREATIVE: [
+        ModelProvider.ANTHROPIC,   # best prose
+        ModelProvider.OPENAI,
+        ModelProvider.GEMINI,
+        ModelProvider.GROQ,
+        ModelProvider.OPENROUTER,
+        ModelProvider.NVIDIA,
+        ModelProvider.OLLAMA,
+    ],
+}
+
+# Lightweight keyword classifier - cheap, deterministic, no extra LLM call.
+# Ties resolve by dict insertion order (CODE > REASONING > STRUCTURED >
+# SUMMARIZATION > TRANSLATION > CREATIVE > CHAT).
+_QUERY_KEYWORDS: Dict[QueryType, List[str]] = {
+    QueryType.CODE: [
+        "code", "function", "method", "class", "bug", "error", "exception",
+        "debug", "refactor", "implement", "script", "syntax", "compile",
+        "api", "endpoint", "sql", "database", "python", "javascript",
+        "typescript", "react", "docker", "git", "regex", "variable",
+        "stack trace", "algorithm", "deploy", "pull request",
+    ],
+    QueryType.REASONING: [
+        "why", "explain", "reason", "logic", "analyze", "compare",
+        "difference", "solve", "calculate", "math", "equation", "prove",
+        "probability", "statistics", "hypothesis", "evaluate", "infer",
+        "deduce", "justify", "pros and cons", "trade-off",
+    ],
+    QueryType.STRUCTURED: [
+        "json", "extract", "table", "csv", "schema", "parse", "array of",
+        "fields", "columns", "output as", "return a dict", "yaml", "xml",
+        "list of", "list the", "list all", "key-value", "structured",
+    ],
+    QueryType.SUMMARIZATION: [
+        "summarize", "summary", "tl;dr", "tldr", "key points",
+        "key takeaways", "bullet points", "condense", "shorten", "overview",
+        "recap", "in brief",
+    ],
+    QueryType.TRANSLATION: [
+        "translate", "translation", "in french", "in spanish", "in german",
+        "in hindi", "in tamil", "in telugu", "to english", "to french",
+        "to spanish", "from english", "from french",
+    ],
+    QueryType.CREATIVE: [
+        "story", "poem", "poetry", "essay", "blog", "article", "marketing",
+        "ad copy", "slogan", "tagline", "novel", "screenplay", "song",
+        "lyrics", "creative", "metaphor", "write a letter",
+    ],
+}
+
+# Cheap syntactic signals that a prompt is about code (in addition to
+# words). Kept to tokens that rarely appear in prose ("return " and
+# "await " are deliberately excluded — too common in everyday language).
+_CODE_MARKERS = (
+    "def ", "import ", "const ", "=>", "console.log", "<div",
+    ".py", ".js", ".ts", "print(", "if __name__",
+)
+
+_WORD_RE = re.compile(r"\b")
+
+
+def _kw_in(text: str, keyword: str) -> bool:
+    """Substring match for phrases, word-boundary match for short tokens."""
+    if len(keyword) >= 6 or " " in keyword:
+        return keyword in text
+    return _WORD_RE.search(keyword) is not None and (
+        re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+    )
+
+
+def classify_query(prompt: str) -> QueryType:
+    """Classify a prompt into a :class:`QueryType` using keyword scoring."""
+    text = prompt.lower()
+    scores: Dict[QueryType, int] = {t: 0 for t in QueryType}
+    for qtype, keywords in _QUERY_KEYWORDS.items():
+        for kw in keywords:
+            if _kw_in(text, kw):
+                scores[qtype] += 1
+
+    # Syntactic markers count toward CODE unconditionally, so a bare code
+    # snippet ("def foo(): return 42") still classifies as CODE without
+    # needing any code-related keywords.
+    scores[QueryType.CODE] += sum(1 for m in _CODE_MARKERS if m in text)
+
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else QueryType.CHAT
+
+
+class LLMRouter:
+    """Multi-provider LLM with query-type routing and fallback chain.
+
+    Each request is classified into a :class:`QueryType` (or the caller may
+    force one), routed to the provider chain best suited for that type
+    (OpenRouter-style), and each provider is called through its official AI
+    SDK (OpenAI SDK for all OpenAI-compatible endpoints, google-genai for
+    Gemini, anthropic for Claude). SDKs are imported lazily inside each call
+    so a missing optional SDK only disables that one provider instead of
+    breaking application startup.
     """
 
     def __init__(self):
@@ -95,6 +284,15 @@ class LLMRouter:
         }
 
         self.current_provider = None
+        # Attribution for the most recent completed call: which provider/model
+        # served it and whether it was free — used for cost-savings tracking.
+        self.last_route: Optional[Dict[str, Any]] = None
+        # True when the most recent call was served from the Redis response
+        # cache (zero tokens, zero cost) instead of a provider.
+        self.last_cache_hit = False
+        # Cosine similarity of the semantic-tier hit (None for exact hits /
+        # provider calls) — lets the gateway report which tier served.
+        self.last_similarity: Optional[float] = None
         self._initialize_providers()
 
     def _initialize_providers(self):
@@ -129,10 +327,324 @@ class LLMRouter:
             f"Fallbacks: {fallback_list if fallback_list else 'none'}"
         )
 
-    async def chat(self, prompt: str, system: str = None, max_tokens: int = 2000) -> str:
-        """Call LLM with automatic fallback on error. Free providers tried first."""
+    # ── Query-type routing (OpenRouter-style) ──────────────────────────────
+
+    @staticmethod
+    def _coerce_query_type(query_type) -> Optional[QueryType]:
+        """Accept a QueryType, its string value, or None; unknown strings fall
+        back to ``None`` so callers auto-classify instead of raising."""
+        if query_type is None or isinstance(query_type, QueryType):
+            return query_type
+        try:
+            return QueryType(query_type)
+        except ValueError:
+            logger.warning("Unknown query type %r, falling back to auto-classification", query_type)
+            return None
+
+    def classify(self, prompt: str) -> QueryType:
+        """Classify a prompt into a query type (heuristic, no extra LLM call)."""
+        return classify_query(prompt)
+
+    def resolve_route(self, query_type) -> List[ModelProvider]:
+        """Ordered provider chain for a query type.
+
+        Type-specific preferences come first; every remaining configured
+        provider is appended afterwards so a query type can never exhaust
+        the router's fallback resilience.
+        """
+        qtype = self._coerce_query_type(query_type) or QueryType.CHAT
+        preferred = [
+            p for p in QUERY_TYPE_ROUTES.get(qtype, [])
+            if self.providers[p]["api_key"]
+        ]
+        seen = set(preferred)
+        rest = [
+            p for p in self.fallback_chain
+            if p not in seen and self.providers[p]["api_key"]
+        ]
+        return preferred + rest
+
+    def list_models(self) -> Dict[str, Any]:
+        """OpenRouter-style model catalog for this router."""
+        return {
+            "router": "onramp-query-router",
+            "query_types": {
+                t.value: {
+                    "description": QUERY_TYPE_LABELS[t],
+                    "preferred_providers": [p.value for p in QUERY_TYPE_ROUTES[t]],
+                }
+                for t in QueryType
+            },
+            "providers": {
+                p.value: {
+                    "model": cfg["model"],
+                    "base_url": cfg["base_url"],
+                    "type": cfg["type"],
+                    "free": cfg["free"],
+                    "available": bool(cfg["api_key"]),
+                }
+                for p, cfg in self.providers.items()
+            },
+        }
+
+    # ── OpenAI-compatible routing (OpenRouter-style) ───────────────────────
+
+    def _chain_starting_with(self, provider: ModelProvider) -> List[ModelProvider]:
+        """Ordered chain with ``provider`` first, then the configured fallbacks."""
+        if not self.providers[provider]["api_key"]:
+            return self.resolve_route(QueryType.CHAT)
+        return [provider] + [
+            p for p in self.fallback_chain
+            if p != provider and self.providers[p]["api_key"]
+        ]
+
+    def provider_chain(
+        self,
+        model: Optional[str] = None,
+        query_type: Optional[QueryType] = None,
+        prompt: Optional[str] = None,
+    ) -> List[ModelProvider]:
+        """Resolve an OpenAI-style ``model`` string to an ordered provider chain.
+
+        Accepted, in order of precedence:
+          - an explicit ``query_type`` (a :class:`QueryType` or its value),
+          - a query-type name ("code", "reasoning", "chat", ...),
+          - a provider name ("openrouter", "gemini", "groq", ...),
+          - a known model id ("gpt-4o-mini", "llama-3.3-70b-versatile", ...),
+          - auto-classification of ``prompt`` if provided,
+          - otherwise the default CHAT chain.
+        """
+        qtype = self._coerce_query_type(query_type)
+        if qtype is not None:
+            return self.resolve_route(qtype)
+        if model:
+            m = model.strip().lower()
+            try:
+                return self.resolve_route(QueryType(m))
+            except ValueError:
+                pass
+            for provider in ModelProvider:
+                if m == provider.value:
+                    return self._chain_starting_with(provider)
+            for provider, cfg in self.providers.items():
+                if cfg["model"] and m == cfg["model"].lower():
+                    return self._chain_starting_with(provider)
+        if prompt:
+            return self.resolve_route(self.classify(prompt))
+        return self.resolve_route(QueryType.CHAT)
+
+    def route_info(
+        self, provider: ModelProvider, query_type: Optional[QueryType] = None
+    ) -> Dict[str, Any]:
+        """Attribution dict for a served call (provider, model, free, price).
+
+        Includes the per-1M-token input/output price (USD) from
+        :mod:`app.services.llm_costs` so the persisted route record is
+        self-contained — cost numbers stay accurate even if the pricing
+        table changes after the request.
+        """
+        cfg = self.providers[provider]
+        price = get_price(cfg["model"])
+        return {
+            "provider": provider.value,
+            "model": cfg["model"],
+            "served": f"{provider.value}/{cfg['model']}",
+            "free": bool(cfg.get("free")),
+            "query_type": query_type.value if query_type is not None else None,
+            "price_in": price["input"],
+            "price_out": price["output"],
+        }
+
+    def _effective_query_type(
+        self,
+        model: Optional[str],
+        query_type: Optional[QueryType],
+        prompt: Optional[str],
+    ) -> Optional[QueryType]:
+        """Query type that routing used, for attribution only."""
+        qtype = self._coerce_query_type(query_type)
+        if qtype is not None:
+            return qtype
+        if model:
+            try:
+                return QueryType(model.strip().lower())
+            except ValueError:
+                pass
+        if prompt:
+            return self.classify(prompt)
+        return QueryType.CHAT
+
+    def served_model(self, provider: ModelProvider) -> str:
+        """Human-readable model id actually served (OpenRouter-style)."""
+        return f"{provider.value}/{self.providers[provider]['model']}"
+
+    def _cache_route(
+        self,
+        qtype: Optional[QueryType],
+        semantic: bool = False,
+        similarity: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Attribution dict for a cache hit (free, $0 cost).
+
+        Two tiers: the exact-match Redis tier (``cache/redis``) and the
+        semantic tier (``cache/semantic``) that serves near-duplicate
+        questions. Both cost nothing and avoided the full baseline cost, so
+        they are recorded with zero price — the cost-savings reports then
+        count them as free requests that avoided the baseline entirely.
+        ``similarity`` (semantic hits only) records the cosine score so the
+        served-route record shows how close the near-duplicate was.
+        """
+        model = "semantic" if semantic else "redis"
+        route = {
+            "provider": "cache",
+            "model": model,
+            "served": f"cache/{model}",
+            "free": True,
+            "query_type": qtype.value if qtype is not None else None,
+            "price_in": 0.0,
+            "price_out": 0.0,
+            "cached": True,
+        }
+        if similarity is not None:
+            route["similarity"] = round(float(similarity), 4)
+        return route
+
+    async def openai_chat(
+        self,
+        prompt: str,
+        system: str = None,
+        max_tokens: int = 2000,
+        model: Optional[str] = None,
+        query_type: Optional[QueryType] = None,
+        cache_scope: str = "global",
+    ) -> tuple[str, str, Dict[str, Any]]:
+        """OpenAI-compatible completion. Returns ``(content, served_model_id, route)``.
+
+        ``cache_scope`` isolates the response cache per tenant (org/uid) so
+        one customer's cached answers are never served to another.
+        """
+        qtype = self._effective_query_type(model, query_type, prompt)
+        cached = await llm_cache_get(_qtype_value(qtype), prompt, system, max_tokens, scope=cache_scope)
+        if cached is not None:
+            route = self._cache_route(qtype)
+            self.last_route = route
+            self.last_cache_hit = True
+            self.last_similarity = None
+            logger.debug("LLM cache hit (%s): %s…", qtype.value if qtype else "auto", cached[:60])
+            return cached, "cache/redis", route
+        # Semantic tier: near-duplicate questions (same content words, high
+        # lexical overlap) are served from the cache without a provider
+        # call. Safe by construction — get_semantic only serves an answer
+        # when the new question introduces no new content words.
+        semantic = await llm_cache_get_semantic(
+            _qtype_value(qtype), prompt, system, max_tokens, scope=cache_scope
+        )
+        if semantic is not None:
+            text, similarity = semantic
+            route = self._cache_route(qtype, semantic=True, similarity=similarity)
+            self.last_route = route
+            self.last_cache_hit = True
+            self.last_similarity = similarity
+            logger.debug(
+                "LLM semantic cache hit (%s, sim=%.3f): %s…",
+                qtype.value if qtype else "auto", similarity, text[:60],
+            )
+            return text, "cache/semantic", route
+        chain = self.provider_chain(model=model, query_type=query_type, prompt=prompt)
+        response, provider = await self._complete(chain, prompt, system, max_tokens)
+        route = self.route_info(provider, query_type=qtype)
+        self.last_route = route
+        self.last_cache_hit = False
+        self.last_similarity = None
+        await llm_cache_set(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
+        await llm_cache_set_semantic(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
+        return response, self.served_model(provider), route
+
+    async def openai_chat_stream(
+        self,
+        prompt: str,
+        system: str = None,
+        max_tokens: int = 2000,
+        model: Optional[str] = None,
+        query_type: Optional[QueryType] = None,
+    ):
+        """OpenAI-compatible streaming completion. Yields
+        ``(token, served_model_id, route)``."""
+        chain = self.provider_chain(model=model, query_type=query_type, prompt=prompt)
+        route_qtype = self._effective_query_type(model, query_type, prompt)
+        served_provider = None
+        async for token, provider in self._stream_complete(chain, prompt, system, max_tokens):
+            if served_provider is None:
+                served_provider = provider
+            yield token, self.served_model(provider), self.route_info(provider, query_type=route_qtype)
+        if served_provider is not None:
+            self.last_route = self.route_info(served_provider, query_type=route_qtype)
+
+    # ── Chat ───────────────────────────────────────────────────────────────
+
+    async def chat(
+        self,
+        prompt: str,
+        system: str = None,
+        max_tokens: int = 2000,
+        query_type: Optional[QueryType] = None,
+        cache_scope: str = "global",
+    ) -> str:
+        """Call LLM with automatic fallback on error. Free providers tried first.
+
+        ``query_type`` may be a :class:`QueryType` or its string value; when
+        omitted the prompt is classified automatically. ``cache_scope``
+        isolates the response cache per tenant (org/uid) — pass the caller's
+        org name for user-facing prompts so cached answers never cross
+        tenants. Repeats are served from the exact-match Redis cache, and
+        near-duplicates from the semantic tier (see
+        :mod:`app.services.llm_cache`) — both record a free ``cache/*``
+        route with zero price.
+        """
+        qtype = self._coerce_query_type(query_type) or self.classify(prompt)
+        cached = await llm_cache_get(_qtype_value(qtype), prompt, system, max_tokens, scope=cache_scope)
+        if cached is not None:
+            self.last_route = self._cache_route(qtype)
+            self.last_cache_hit = True
+            self.last_similarity = None
+            return cached
+        # Semantic tier (see openai_chat for the rationale).
+        semantic = await llm_cache_get_semantic(
+            _qtype_value(qtype), prompt, system, max_tokens, scope=cache_scope
+        )
+        if semantic is not None:
+            text, similarity = semantic
+            route = self._cache_route(qtype, semantic=True, similarity=similarity)
+            self.last_route = route
+            self.last_cache_hit = True
+            self.last_similarity = similarity
+            logger.debug(
+                "LLM semantic cache hit (%s, sim=%.3f): %s…",
+                qtype.value if qtype else "auto", similarity, text[:60],
+            )
+            return text
+        response, provider = await self._complete(
+            self.resolve_route(qtype), prompt, system, max_tokens
+        )
+        # Single assignment (no set-then-patch) so concurrent requests can't
+        # clobber the attribution mid-update.
+        self.last_route = self.route_info(provider, query_type=qtype)
+        self.last_cache_hit = False
+        self.last_similarity = None
+        await llm_cache_set(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
+        await llm_cache_set_semantic(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
+        return response
+
+    async def _complete(
+        self,
+        chain: List[ModelProvider],
+        prompt: str,
+        system: str,
+        max_tokens: int,
+    ) -> tuple[str, ModelProvider]:
+        """Run a completion over an explicit provider chain with fallback."""
         errors = []
-        for provider in self.fallback_chain:
+        for provider in chain:
             config = self.providers[provider]
             if not config["api_key"]:
                 continue
@@ -142,7 +654,7 @@ class LLMRouter:
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider: {provider.value}")
                     self.current_provider = provider
-                return response
+                return response, provider
             except Exception as e:
                 err_msg = f"{provider.value} failed: {str(e)}"
                 logger.warning(err_msg)
@@ -150,9 +662,18 @@ class LLMRouter:
 
         raise RuntimeError(f"All LLM providers exhausted. Errors: {'; '.join(errors)}")
 
-    async def json_chat(self, prompt: str, system: str = None) -> dict:
-        """Call LLM expecting JSON response with automatic fallback."""
-        response = await self.chat(prompt, system)
+    async def json_chat(
+        self,
+        prompt: str,
+        system: str = None,
+        query_type: Optional[QueryType] = QueryType.STRUCTURED,
+    ) -> dict:
+        """Call LLM expecting JSON response with automatic fallback.
+
+        Defaults to the STRUCTURED route (models with reliable JSON output).
+        """
+        qtype = self._coerce_query_type(query_type) or QueryType.STRUCTURED
+        response = await self.chat(prompt, system, query_type=qtype)
         try:
             return json.loads(response)
         except json.JSONDecodeError:
@@ -272,15 +793,40 @@ class LLMRouter:
 
     # ── Streaming ────────────────────────────────────────────────────────────
 
-    async def chat_stream(self, prompt: str, system: str = None, max_tokens: int = 2000):
+    async def chat_stream(
+        self,
+        prompt: str,
+        system: str = None,
+        max_tokens: int = 2000,
+        query_type: Optional[QueryType] = None,
+    ):
         """Stream a response token-by-token with provider fallback.
 
         Fallback only applies *before* the first token of a provider is emitted;
         once a provider starts streaming we commit to it (can't cleanly resume
         a half-emitted answer on another provider).
         """
+        qtype = self._coerce_query_type(query_type) or self.classify(prompt)
+        served_provider = None
+        async for token, provider in self._stream_complete(
+            self.resolve_route(qtype), prompt, system, max_tokens
+        ):
+            if served_provider is None:
+                served_provider = provider
+            yield token
+        if served_provider is not None:
+            self.last_route = self.route_info(served_provider, query_type=qtype)
+
+    async def _stream_complete(
+        self,
+        chain: List[ModelProvider],
+        prompt: str,
+        system: str,
+        max_tokens: int,
+    ):
+        """Shared streaming generator over an explicit provider chain."""
         errors = []
-        for provider in self.fallback_chain:
+        for provider in chain:
             config = self.providers[provider]
             if not config["api_key"]:
                 continue
@@ -288,7 +834,7 @@ class LLMRouter:
             try:
                 async for token in self._stream_provider(provider, prompt, system, max_tokens):
                     yielded = True
-                    yield token
+                    yield token, provider
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider (stream): {provider.value}")
                     self.current_provider = provider

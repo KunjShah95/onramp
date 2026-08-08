@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,38 @@ PATTERN_TEMPLATES = {
 
 
 class PatternRecognition(BaseAgent):
-    async def execute(self, pattern: str, repo_structure: Dict, mode: str = "normal") -> Dict[str, Any]:
-        return await self.find_similar(pattern, repo_structure, mode)
+    query_type = QueryType.REASONING
+    async def execute(
+        self,
+        pattern: str,
+        repo_structure: Dict = None,
+        mode: str = "normal",
+        index_id: str = None,
+        context_max_tokens: int = 2000,
+    ) -> Dict[str, Any]:
+        return await self.find_similar(
+            pattern, repo_structure or {}, mode, index_id=index_id, context_max_tokens=context_max_tokens
+        )
 
-    async def find_similar(self, pattern: str, repo_structure: Dict, mode: str = "normal") -> Dict[str, Any]:
+    async def find_similar(
+        self,
+        pattern: str,
+        repo_structure: Dict,
+        mode: str = "normal",
+        index_id: str = None,
+        context_max_tokens: int = 2000,
+    ) -> Dict[str, Any]:
+        from app.services.repo_context import resolve_for_agent
+
+        full, sliced, context_text = await resolve_for_agent(
+            index_id,
+            repo_structure or {},
+            requirement=f"{pattern} code pattern, implementation, architecture",
+            max_tokens=context_max_tokens,
+            llm=self.llm,
+        )
+        if index_id:
+            repo_structure = full
         pattern_lower = pattern.lower()
 
         detected = self._detect_pattern_from_structure(repo_structure)
@@ -53,7 +82,7 @@ class PatternRecognition(BaseAgent):
                 break
 
         if self.llm:
-            files_summary = "\n".join(
+            files_summary = context_text or "\n".join(
                 f.get("path", "") for f in repo_structure.get("files", [])
             )[:2000]
 

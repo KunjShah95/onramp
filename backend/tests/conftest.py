@@ -86,6 +86,43 @@ def _reset_storage():
     postgres_db._storage = None
 
 
+@pytest.fixture(autouse=True)
+def _reset_inprocess_caches():
+    """Clear the in-process LLM + repo-context caches between tests.
+
+    Without Redis (the default in CI), these caches fall back to module-level
+    dicts; identical prompts across tests (e.g. router tests calling
+    ``chat("Hello")``) would otherwise leak cache entries between tests.
+    """
+    try:
+        import app.services.llm_cache as llm_cache
+
+        llm_cache._LOCAL_CACHE.clear()
+        llm_cache._LOCAL_SEM.clear()
+    except ImportError:
+        pass
+    try:
+        import app.services.repo_context as repo_context
+
+        repo_context._LOCAL_CACHE.clear()
+    except ImportError:
+        pass
+    yield
+    try:
+        import app.services.llm_cache as llm_cache
+
+        llm_cache._LOCAL_CACHE.clear()
+        llm_cache._LOCAL_SEM.clear()
+    except ImportError:
+        pass
+    try:
+        import app.services.repo_context as repo_context
+
+        repo_context._LOCAL_CACHE.clear()
+    except ImportError:
+        pass
+
+
 @pytest.fixture
 def storage():
     from app.services.postgres_db import get_storage

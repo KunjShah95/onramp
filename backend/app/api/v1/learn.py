@@ -12,7 +12,8 @@ COLLECTION = "onramp_learning_paths"
 
 
 class LearnRequest(BaseModel):
-    repo_structure: dict
+    repo_structure: dict | None = None
+    index_id: str | None = None  # reuse a cached repo-context index (parse-once)
     user_level: str
     repo_url: str = ""
 
@@ -29,6 +30,7 @@ async def generate_path(
     try:
         result = await generator.execute(
             repo_structure=request.repo_structure,
+            index_id=request.index_id,
             user_level=request.user_level,
         )
     except Exception as e:

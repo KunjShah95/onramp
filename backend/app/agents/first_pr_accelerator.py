@@ -1,12 +1,14 @@
 import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 from app.services.issue_service import IssueService
 
 logger = logging.getLogger(__name__)
 
 
 class FirstPRAccelerator(BaseAgent):
+    query_type = QueryType.CODE
     """Finds beginner-friendly issues and generates guides for first-time contributors."""
 
     def __init__(self, llm_client, github_token: str = None):

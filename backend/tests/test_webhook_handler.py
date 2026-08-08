@@ -143,7 +143,7 @@ class TestHandlePrEvent:
 
 class TestHandlePushEvent:
     async def test_push_event(self):
-        """A push event is handled with ref and commit count."""
+        """A push event to an UNregistered repo is acknowledged, no rebuild."""
         payload = {
             "ref": "refs/heads/main",
             "repository": {"full_name": "onramp/backend"},
@@ -153,6 +153,7 @@ class TestHandlePushEvent:
         assert result["handled"] is True
         assert result["ref"] == "refs/heads/main"
         assert result["commit_count"] == 2
+        assert result["rebuild_triggered"] is False
 
     async def test_push_no_commits(self):
         """A push event with no commits returns zero count."""
@@ -164,6 +165,62 @@ class TestHandlePushEvent:
         result = await _handle_push_event(payload)
         assert result["handled"] is True
         assert result["commit_count"] == 0
+
+    async def test_push_to_registered_repo_dispatches_rebuild(self, monkeypatch):
+        """A push to a registered repo evicts the cache and dispatches a rebuild."""
+        from app.services.postgres_db import get_storage
+
+        # Register the repo so the handler recognises it.
+        await get_storage().create_document(
+            "repositories",
+            "r1",
+            {"owner": "acme", "name": "app", "url": "https://github.com/acme/app"},
+        )
+
+        # Stale cached answer under the repo's index scope.
+        from app.services import llm_cache
+        from app.services.repo_context import index_id_for
+
+        scope = index_id_for("https://github.com/acme/app", "main")
+        await llm_cache.set_cached("chat", "how does auth work", None, 2000, "stale", scope=scope)
+        assert await llm_cache.get_cached("chat", "how does auth work", None, 2000, scope=scope) == "stale"
+
+        # Patch the celery dispatch to capture the call (no broker in tests).
+        dispatched = {}
+
+        def fake_delay(url, branch="main", force=False, scope=""):
+            dispatched.update(url=url, branch=branch, force=force, scope=scope)
+            return type("R", (), {"id": "task-push-1"})()
+
+        from app.tasks import repo_index_tasks
+
+        monkeypatch.setattr(
+            repo_index_tasks,
+            "build_repo_index",
+            type("T", (), {"delay": staticmethod(fake_delay)})(),
+        )
+
+        payload = {
+            "ref": "refs/heads/main",
+            "repository": {
+                "full_name": "acme/app",
+                "html_url": "https://github.com/acme/app",
+            },
+            "commits": [{"id": "new-sha"}],
+        }
+        result = await _handle_push_event(payload)
+
+        assert result["rebuild_triggered"] is True
+        assert result["task_id"] == "task-push-1"
+        assert result["cache_entries_evicted"] >= 1
+        assert dispatched == {
+            "url": "https://github.com/acme/app",
+            "branch": "main",
+            "force": True,
+            "scope": scope,
+        }
+        # The stale cached answer is gone.
+        assert await llm_cache.get_cached("chat", "how does auth work", None, 2000, scope=scope) is None
 
 
 # ═══════════════════════════════════════════════════════════════

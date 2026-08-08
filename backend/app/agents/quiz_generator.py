@@ -11,10 +11,11 @@ Supports:
 import json
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
-from app.llm import LLMRouter
+from app.llm import LLMRouter, QueryType
 
 
 class QuizGenerator(BaseAgent):
+    query_type = QueryType.STRUCTURED
     """Generates and evaluates knowledge-check quizzes for codebase modules."""
 
     QUESTION_TYPES = [
@@ -30,7 +31,7 @@ class QuizGenerator(BaseAgent):
         super().__init__(llm_client)
         if llm_client is None:
             try:
-                self.llm = LLMRouter()
+                self.llm = self._wrap_llm(LLMRouter())
             except RuntimeError:
                 self.llm = None
 
@@ -41,14 +42,18 @@ class QuizGenerator(BaseAgent):
             return await self.generate_for_module(
                 module_name=kwargs.get("module_name", ""),
                 repo_structure=kwargs.get("repo_structure", {}),
+                index_id=kwargs.get("index_id"),
                 num_questions=kwargs.get("num_questions", 5),
                 difficulty=kwargs.get("difficulty", "mixed"),
+                context_max_tokens=kwargs.get("context_max_tokens", 4000),
             )
         elif mode == "repo":
             return await self.generate_for_repo(
                 repo_structure=kwargs.get("repo_structure", {}),
+                index_id=kwargs.get("index_id"),
                 num_questions=kwargs.get("num_questions", 10),
                 difficulty=kwargs.get("difficulty", "mixed"),
+                context_max_tokens=kwargs.get("context_max_tokens", 4000),
             )
         elif mode == "evaluate":
             return await self.evaluate_answers(
@@ -64,6 +69,8 @@ class QuizGenerator(BaseAgent):
         repo_structure: Dict[str, Any],
         num_questions: int = 5,
         difficulty: str = "mixed",
+        index_id: str = None,
+        context_max_tokens: int = 4000,
     ) -> Dict[str, Any]:
         """Generate a knowledge-check quiz for a specific module.
 
@@ -72,30 +79,68 @@ class QuizGenerator(BaseAgent):
             repo_structure: Parsed repository entities (files, classes, functions)
             num_questions: How many questions to generate
             difficulty: "beginner", "intermediate", "advanced", or "mixed"
+            index_id: Optional repo-context index id — when given, a
+                requirement-sliced, token-budgeted slice replaces the full
+                structure in the LLM prompt.
+            context_max_tokens: Token budget for the index context slice.
 
         Returns:
             Dict with quiz_id, module, questions list, metadata
         """
+        # Resolve the index slice once so both the LLM path and the fallback
+        # generator work from the same requirement-sliced structure.
+        fallback_structure = repo_structure
+        if index_id:
+            from app.services.repo_context import resolve_for_agent
+
+            _full, sliced, _ctx = await resolve_for_agent(
+                index_id, repo_structure,
+                requirement=module_name or "codebase modules, classes, functions",
+                max_tokens=context_max_tokens,
+                llm=self.llm,
+            )
+            if sliced:
+                fallback_structure = sliced
         try:
             if self.llm is None:
-                return self._generate_default_quiz(module_name, repo_structure, num_questions, difficulty)
-            return await self._generate_with_llm(module_name, repo_structure, num_questions, difficulty, mode="module")
+                return self._generate_default_quiz(module_name, fallback_structure, num_questions, difficulty)
+            return await self._generate_with_llm(
+                module_name, repo_structure, num_questions, difficulty, mode="module",
+                index_id=index_id, context_max_tokens=context_max_tokens,
+            )
         except Exception:
-            return self._generate_default_quiz(module_name, repo_structure, num_questions, difficulty)
+            return self._generate_default_quiz(module_name, fallback_structure, num_questions, difficulty)
 
     async def generate_for_repo(
         self,
         repo_structure: Dict[str, Any],
         num_questions: int = 10,
         difficulty: str = "mixed",
+        index_id: str = None,
+        context_max_tokens: int = 4000,
     ) -> Dict[str, Any]:
         """Generate a comprehensive quiz covering the entire codebase."""
+        fallback_structure = repo_structure
+        if index_id:
+            from app.services.repo_context import resolve_for_agent
+
+            _full, sliced, _ctx = await resolve_for_agent(
+                index_id, repo_structure,
+                requirement="codebase modules, classes, functions, architecture, tech stack",
+                max_tokens=context_max_tokens,
+                llm=self.llm,
+            )
+            if sliced:
+                fallback_structure = sliced
         try:
             if self.llm is None:
-                return self._generate_default_quiz("full_codebase", repo_structure, num_questions, difficulty)
-            return await self._generate_with_llm("full_codebase", repo_structure, num_questions, difficulty, mode="repo")
+                return self._generate_default_quiz("full_codebase", fallback_structure, num_questions, difficulty)
+            return await self._generate_with_llm(
+                "full_codebase", repo_structure, num_questions, difficulty, mode="repo",
+                index_id=index_id, context_max_tokens=context_max_tokens,
+            )
         except Exception:
-            return self._generate_default_quiz("full_codebase", repo_structure, num_questions, difficulty)
+            return self._generate_default_quiz("full_codebase", fallback_structure, num_questions, difficulty)
 
     async def evaluate_answers(
         self,
@@ -127,11 +172,33 @@ class QuizGenerator(BaseAgent):
         num_questions: int,
         difficulty: str,
         mode: str,
+        index_id: str = None,
+        context_max_tokens: int = 4000,
     ) -> Dict[str, Any]:
         """Use LLM to generate quiz questions."""
-        files = [f.get("path", "") for f in repo_structure.get("files", [])][:40]
-        classes = [c.get("name", "") for c in repo_structure.get("classes", [])][:25]
-        functions = [f.get("name", "") for f in repo_structure.get("functions", [])][:25]
+        if index_id:
+            from app.services.repo_context import resolve_for_agent
+
+            requirement = module_name if mode == "module" else "codebase modules, classes, functions, architecture, tech stack"
+            _full, sliced_entities, context_text = await resolve_for_agent(
+                index_id, repo_structure, requirement=requirement, max_tokens=context_max_tokens,
+                llm=self.llm,
+            )
+            if context_text:
+                files = []
+                classes = []
+                functions = []
+                context_block = f"\nRepository Context (budgeted):\n{context_text[: int(context_max_tokens * 4)]}\n"
+            else:
+                files = [f.get("path", "") for f in sliced_entities.get("files", [])][:40]
+                classes = [c.get("name", "") for c in sliced_entities.get("classes", [])][:25]
+                functions = [f.get("name", "") for f in sliced_entities.get("functions", [])][:25]
+                context_block = ""
+        else:
+            files = [f.get("path", "") for f in repo_structure.get("files", [])][:40]
+            classes = [c.get("name", "") for c in repo_structure.get("classes", [])][:25]
+            functions = [f.get("name", "") for f in repo_structure.get("functions", [])][:25]
+            context_block = ""
 
         if mode == "module":
             scope_desc = f"the '{module_name}' module/area of the codebase"
@@ -155,7 +222,7 @@ class QuizGenerator(BaseAgent):
 Codebase Context:
 - Key Files: {files}
 - Main Classes: {classes}
-- Main Functions: {functions}
+- Main Functions: {functions}{context_block}
 
 Generate {num_questions} questions with difficulty: {difficulty_desc}
 

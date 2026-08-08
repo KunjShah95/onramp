@@ -515,9 +515,16 @@ function APIPlaygroundSection() {
               ))}
             </div>
             {agent && (
-              <p className="text-[11px] text-text-tertiary mt-2">
-                {agent.description} — costs {agent.credit_cost} credit(s)
-              </p>
+              <div className="text-[11px] text-text-tertiary mt-2 space-y-0.5">
+                <p>
+                  {agent.description} — costs {agent.credit_cost} credit(s)
+                </p>
+                <p className="font-mono text-[10px] text-accent-primary/80">
+                  {agent.model
+                    ? `${agent.query_type} → ${agent.model}`
+                    : 'No LLM — rule-based agent'}
+                </p>
+              </div>
             )}
           </div>
 

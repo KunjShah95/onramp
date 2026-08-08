@@ -151,20 +151,96 @@ async def _handle_pr_event(payload: dict, event: str) -> dict:
 
 
 async def _handle_push_event(payload: dict) -> dict:
-    """Handle a push event (basic logging for now)."""
+    """Handle a push event — the evolution feedback loop.
+
+    For pushes to a *registered* repository's default branch, this:
+
+    1. evicts the repo's LLM cache scope (``evict_scope``) so stale cached
+       answers about the old code are dropped immediately, and
+    2. dispatches ``build_repo_index`` (Celery, async) so the index is
+       rebuilt with the new HEAD and fresh git-evolution data — the next
+       request hits a warm, up-to-date index instead of stale context.
+
+    Pushes to unknown repos / other branches are acknowledged but ignored
+    (the nightly sweep covers unregistered repos).
+    """
     repo = payload.get("repository", {})
     ref = payload.get("ref", "")
     commits = payload.get("commits", [])
+    branch = ref.rsplit("/", 1)[-1] if ref else "main"
+    repo_url = repo.get("html_url") or repo.get("clone_url") or ""
+    full_name = repo.get("full_name", "")
 
     logger.info(
-        "Push to %s ref %s with %d commits",
-        repo.get("full_name", ""), ref, len(commits),
+        "Push to %s ref %s with %d commits", full_name, ref, len(commits),
     )
+
+    # Only registered repos get the rebuild + invalidation treatment.
+    registered = False
+    try:
+        from app.services.postgres_db import get_storage
+
+        rows = await get_storage().list_documents("repositories") or []
+        if repo_url:
+            registered = any((r.get("url") or "").strip() == repo_url for r in rows)
+        if not registered:
+            for r in rows:
+                if (
+                    f"{r.get('owner') or ''}/{r.get('name') or ''}".strip("/")
+                    == full_name.lower()
+                ):
+                    registered = True
+                    break
+    except Exception:
+        logger.exception("Failed to check repositories registry for %s", full_name)
+
+    if not registered:
+        return {
+            "handled": True,
+            "ref": ref,
+            "commit_count": len(commits),
+            "rebuild_triggered": False,
+            "reason": "Repository is not registered for indexing",
+        }
+
+    from app.services.repo_context import index_id_for
+
+    _branch = branch or "main"
+    scope = index_id_for(repo_url, _branch) if repo_url else f"repo:{full_name}"
+
+    # 1) Drop stale cached LLM answers for this repo (exact + semantic tiers).
+    evicted = 0
+    try:
+        from app.services import llm_cache
+
+        evicted = await llm_cache.evict_scope(scope)
+    except Exception:
+        logger.exception("Failed to evict LLM cache scope %s", scope)
+
+    # 2) Rebuild the index async (Celery agent-tasks queue).
+    dispatched = False
+    task_id = ""
+    if repo_url:
+        try:
+            import app.tasks.repo_index_tasks as _repo_index_tasks
+
+            result = _repo_index_tasks.build_repo_index.delay(
+                repo_url, branch=_branch, force=True, scope=scope
+            )
+            task_id = getattr(result, "id", "")
+            dispatched = True
+        except Exception:
+            logger.exception("Failed to dispatch index rebuild for %s", repo_url)
 
     return {
         "handled": True,
         "ref": ref,
+        "branch": _branch,
         "commit_count": len(commits),
+        "repo_url": repo_url,
+        "rebuild_triggered": dispatched,
+        "task_id": task_id,
+        "cache_entries_evicted": evicted,
     }
 
 

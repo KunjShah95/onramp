@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class OnboardingReportGenerator(BaseAgent):
+    # Pure rule-based report generator — no LLM calls, so no query_type.
     async def execute(self, repo_url: str, user_level: str = "junior", repo_structure: Optional[Dict] = None) -> Dict[str, Any]:
         return await self.generate(repo_url, user_level, repo_structure)
 

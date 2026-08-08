@@ -5,8 +5,9 @@ from starlette.responses import JSONResponse
 
 class ResponseWrapperMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Skip streaming routes explicitly — don't buffer SSE or large responses
-        if request.url.path.startswith(("/api/v1/ask/", "/api/v1/explore/")):
+        # Skip streaming routes and the OpenAI-compatible gateway explicitly —
+        # don't buffer SSE or wrap OpenAI-shaped responses in {success, data}.
+        if request.url.path.startswith(("/api/v1/ask/", "/api/v1/explore/", "/v1/")):
             return await call_next(request)
 
         response = await call_next(request)

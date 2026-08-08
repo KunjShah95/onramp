@@ -2,16 +2,29 @@ import logging
 import random
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 
 logger = logging.getLogger(__name__)
 
 
 class HealthScorer(BaseAgent):
+    query_type = QueryType.STRUCTURED
     async def execute(self, **kwargs) -> Dict[str, Any]:
         mode = kwargs.get("mode", "normal")
-        score_result = await self.score(kwargs.get("repo_structure", {}))
+        # Resolve from the repo-context index when an index_id is given;
+        # scoring needs the full structure (ratios), the roast only a slice.
+        from app.services.repo_context import resolve_for_agent
+
+        full, _slice, context_text = await resolve_for_agent(
+            kwargs.get("index_id"),
+            kwargs.get("repo_structure", {}),
+            requirement="repository health, code quality, test coverage, documentation, complexity",
+            max_tokens=kwargs.get("context_max_tokens", 2000),
+            llm=self.llm,
+        )
+        score_result = await self.score(full)
         if mode == "roast" and self.llm:
-            return await self._add_roast(score_result, kwargs.get("repo_structure", {}))
+            return await self._add_roast(score_result, full, context_text)
         return score_result
 
     async def score(self, repo_structure: Dict) -> Dict[str, Any]:
@@ -86,8 +99,13 @@ class HealthScorer(BaseAgent):
             "recommendations": recommendations[:5],
         }
 
-    async def _add_roast(self, score_result: Dict[str, Any], repo_structure: Dict) -> Dict[str, Any]:
-        files_summary = "\n".join(f.get("path", "") for f in repo_structure.get("files", []))[:2000]
+    async def _add_roast(
+        self, score_result: Dict[str, Any], repo_structure: Dict, context_text: str = ""
+    ) -> Dict[str, Any]:
+        # Prefer the token-budgeted index slice for the roast prompt.
+        files_summary = context_text or "\n".join(
+            f.get("path", "") for f in repo_structure.get("files", [])
+        )[:2000]
         scores = f"Overall: {score_result['overall_score']}/100, Tests: {score_result['test_coverage']}%, Docs: {score_result['documentation']}%, Maintainability: {score_result['maintainability']}/10"
         prompt = (
             f"You are 'Health Score Roast Bot' — a sarcastic code health analyst.\n\n"

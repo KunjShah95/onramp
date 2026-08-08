@@ -1,11 +1,12 @@
 import json
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from app.agents import RepoQA
 from app.services.quota import enforce_quota
 from app.services.conversation_service import ConversationService
 from app.api.v1.auth import get_current_user
+from app.api.v1.llm_route import attach_served_route_header, primary_route_header
 
 router = APIRouter(prefix="/ask", tags=["qa"])
 
@@ -45,6 +46,7 @@ async def _get_memory(user_id: str, index_id: str, question: str, use_memory: bo
 async def query_repo(
     request: QueryRequest,
     req: Request,
+    response: Response,
     user: dict = Depends(get_current_user),
     _q=enforce_quota("chat"),
 ):
@@ -54,9 +56,13 @@ async def query_repo(
 
     memory = await _get_memory(user_id, request.index_id, request.question, request.use_memory)
 
+    before_route = getattr(llm, "last_route", None)
     try:
         answer = await qa.ask(request.index_id, request.question, memory, mode=request.mode)
         await _conversation.add_turn(user_id, request.index_id, request.question, answer)
+        # Debug header showing exactly which provider/model served the answer
+        # (only if this request actually hit the LLM — not the fallback path).
+        attach_served_route_header(llm, before_route, response)
         return {"answer": answer}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -76,6 +82,11 @@ async def query_repo_stream(
 
     memory = await _get_memory(user_id, request.index_id, request.question, request.use_memory)
 
+    # Headers must be fixed before the stream starts, so report the expected
+    # primary provider (RepoQA routes via REASONING); the authoritative
+    # served model is reflected in the router's last_route after the stream.
+    route_header = primary_route_header(llm, getattr(qa, "query_type", None), request.question)
+
     async def event_gen():
         full_answer = ""
         try:
@@ -92,7 +103,11 @@ async def query_repo_stream(
     return StreamingResponse(
         event_gen(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "X-LLM-Route": route_header,
+        },
     )
 
 

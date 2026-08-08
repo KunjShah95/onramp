@@ -18,12 +18,14 @@ import tempfile
 from typing import Any, Dict, List, Optional
 
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 from app.services.github_service import GitHubService
 
 logger = logging.getLogger(__name__)
 
 
 class AutonomousCodingAgent(BaseAgent):
+    query_type = QueryType.CODE
     """Agent that autonomously implements code changes from an issue description."""
 
     def __init__(self, llm_client, github_token: str = None):

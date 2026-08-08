@@ -20,7 +20,8 @@ class WalkthroughRequest(BaseModel):
 
 class PatternRequest(BaseModel):
     pattern: str
-    repo_structure: dict
+    repo_structure: dict | None = None
+    index_id: str | None = None  # reuse a cached repo-context index (parse-once)
     mode: str = "normal"
 
 
@@ -35,7 +36,8 @@ class TrailerRequest(BaseModel):
 
 
 class DriftRequest(BaseModel):
-    repo_structure: dict
+    repo_structure: dict | None = None
+    index_id: str | None = None  # reuse a cached repo-context index (parse-once)
     docs: str = ""
 
 
@@ -62,6 +64,7 @@ async def find_patterns(request: PatternRequest, req: Request, _q=enforce_quota(
         result = await agent.find_similar(
             pattern=request.pattern,
             repo_structure=request.repo_structure,
+            index_id=request.index_id,
             mode=request.mode,
         )
         return result
@@ -104,8 +107,9 @@ async def detect_drift(request: DriftRequest, req: Request, _q=enforce_quota("an
     llm = getattr(req.app.state, "llm", None)
     agent = DriftDetector(llm)
     try:
-        return await agent.detect(
+        return await agent.execute(
             repo_structure=request.repo_structure,
+            index_id=request.index_id,
             docs=request.docs,
         )
     except Exception as e:

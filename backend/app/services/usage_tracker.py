@@ -8,6 +8,20 @@ from typing import Optional, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
 
+def route_meta(record: dict) -> dict:
+    """Route metadata from a usage record, across both storage backends.
+
+    ``track_usage`` writes the key as ``usage_metadata``, which the memory
+    backend preserves; PostgresStorage maps it to the ``metadata`` column and
+    ``UsageRecord.to_dict()`` emits it under ``"metadata"``. Normalize so
+    provider attribution is read correctly on both backends.
+    """
+    meta = record.get("usage_metadata")
+    if not meta:
+        meta = record.get("metadata")
+    return meta or {}
+
+
 async def track_usage(
     user_id: Optional[str],
     team_id: Optional[str],
@@ -124,6 +138,108 @@ class UsageTracker:
             "org_name": org_name,
             "credits": credits,
             "endpoint": endpoint
+        }
+
+    async def record_usage(
+        self,
+        org_name: str,
+        endpoint: str,
+        credits: int = 0,
+        cost_usd: float = 0.0,
+        cost_avoided_usd: float = 0.0,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> dict:
+        """Record usage for an org, optionally with provider-route metadata.
+
+        ``metadata`` is stored in the record's ``usage_metadata`` and powers
+        provider attribution (which provider/model served the request, free
+        vs paid) for cost-savings analysis. ``cost_usd`` lands on the record's
+        ``cost_usd`` column; ``cost_avoided_usd`` (the savings from free-first
+        routing) is stored inside the metadata to avoid a schema migration.
+        """
+        meta = dict(metadata or {})
+        meta["cost_avoided_usd"] = float(cost_avoided_usd)
+        await track_usage(
+            user_id=None,
+            team_id=org_name,
+            endpoint=endpoint,
+            method="POST",
+            status_code=200,
+            response_time_ms=0,
+            tokens_used=credits,
+            cost_usd=float(cost_usd),
+            metadata=meta,
+        )
+        return {"org_name": org_name, "credits": credits, "endpoint": endpoint}
+
+    async def get_provider_breakdown(
+        self, org_name: str, period: Optional[str] = None
+    ) -> dict:
+        """Provider attribution for an org — measures free-first routing savings.
+
+        Counts requests per provider/model and splits free vs paid based on
+        the ``usage_metadata`` attached by :meth:`record_usage`.
+        """
+        now = datetime.now(timezone.utc)
+        if period == "month":
+            start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif period == "week":
+            start = now - timedelta(days=7)
+        elif period == "day":
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start = None
+
+        records = await get_usage_by_team(org_name, start_date=start)
+        providers: Dict[str, int] = {}
+        models: Dict[str, int] = {}
+        provider_costs: Dict[str, Dict[str, float]] = {}
+        free_requests = 0
+        paid_requests = 0
+        total_cost_usd = 0.0
+        total_cost_avoided_usd = 0.0
+
+        for r in records:
+            meta = route_meta(r)
+            provider = meta.get("provider")
+            if not provider:
+                continue
+            providers[provider] = providers.get(provider, 0) + 1
+            served = meta.get("served")
+            if served:
+                models[served] = models.get(served, 0) + 1
+            if meta.get("free"):
+                free_requests += 1
+            else:
+                paid_requests += 1
+
+            cost = float(r.get("cost_usd") or 0.0)
+            avoided = float(meta.get("cost_avoided_usd") or 0.0)
+            total_cost_usd += cost
+            total_cost_avoided_usd += avoided
+            pc = provider_costs.setdefault(provider, {
+                "requests": 0, "cost_usd": 0.0, "cost_avoided_usd": 0.0,
+            })
+            pc["requests"] += 1
+            pc["cost_usd"] += cost
+            pc["cost_avoided_usd"] += avoided
+
+        tracked = sum(providers.values())
+        return {
+            "org_name": org_name,
+            "period": period or "all",
+            "total_requests": len(records),
+            "tracked_requests": tracked,
+            "free_requests": free_requests,
+            "paid_requests": paid_requests,
+            "free_pct": round(100.0 * free_requests / tracked, 1) if tracked else 0.0,
+            # Dollar figures: what the requests actually cost vs what they
+            # would have cost on the paid baseline model (free-first savings).
+            "total_cost_usd": round(total_cost_usd, 6),
+            "total_cost_avoided_usd": round(total_cost_avoided_usd, 6),
+            "providers": providers,
+            "models": models,
+            "provider_costs": provider_costs,
         }
 
     async def get_usage(self, org_name: str, period: Optional[str] = None) -> dict:

@@ -1,13 +1,14 @@
 import json
 from typing import Dict, Any, Optional
-from pathlib import Path
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 from app.services.github_service import GitHubService
 from app.services.parser_service import ParserService
 from app.graph import DependencyGraph
 
 
 class ArchitectureExplorer(BaseAgent):
+    query_type = QueryType.REASONING
     """Maps repo structure, dependencies, and services to identify architecture patterns.
 
     This agent orchestrates the full analysis pipeline:
@@ -35,10 +36,13 @@ class ArchitectureExplorer(BaseAgent):
         branch: str = "main",
         max_files: int = 1000,
         max_nodes: int = 150,
+        index_id: Optional[str] = None,
+        context_max_tokens: int = 4000,
     ) -> Dict[str, Any]:
         """Analyze repository and return complete architecture analysis.
 
-        Step 1: Clone repo to temporary directory
+        Step 1: Clone repo to temporary directory (skipped when a cached
+                repo-context ``index_id`` is provided — parse-once reuse)
         Step 2: Parse all entities (files, classes, functions, imports/exports)
         Step 3: Build dependency graph
         Step 4: Use Claude to identify service boundaries and architecture patterns
@@ -49,6 +53,11 @@ class ArchitectureExplorer(BaseAgent):
             branch: Git branch to analyze (default: "main")
             max_files: Maximum number of files to parse
             max_nodes: Maximum number of nodes in graph summary
+            index_id: Optional repo-context index id (see ``POST /repos/index``).
+                When given, the cached entities + graph are reused instead of
+                cloning + parsing again, and the LLM prompt is built from a
+                token-budgeted selection of the index.
+            context_max_tokens: Token budget for the LLM context slice.
 
         Returns:
             Dict containing:
@@ -63,15 +72,28 @@ class ArchitectureExplorer(BaseAgent):
                 - architecture_diagram: Mermaid diagram of architecture
                 - analysis: Claude's architecture analysis in JSON format
         """
-        # Step 1: Clone repository
-        repo_path = await self.github.clone_repo(repo_url, branch)
+        # Step 1: Clone repository (unless we can reuse the parsed index)
+        entities = None
+        result = None
+        if index_id:
+            from app.services.repo_context import repo_context_service
 
-        # Step 2: Parse entities from the repository
-        entities = await self.parser.parse_directory(repo_path, max_files=max_files)
+            cached = await repo_context_service.get(index_id)
+            if cached:
+                entities = cached.get("entities")
+                result = cached.get("graph") or {}
+                if repo_url == "" or repo_url is None:
+                    repo_url = cached.get("repo_url", "")
 
-        # Step 3: Build dependency graph
-        graph = self._build_graph(entities)
-        result = graph.to_dict(max_nodes=max_nodes)
+        if entities is None:
+            repo_path = await self.github.clone_repo(repo_url, branch)
+            # Step 2: Parse entities from the repository
+            entities = await self.parser.parse_directory(repo_path, max_files=max_files)
+
+        # Step 3: Build dependency graph (skip when the cached graph exists)
+        if result is None:
+            graph = self._build_graph(entities)
+            result = graph.to_dict(max_nodes=max_nodes)
 
         # Step 4: Use Claude to analyze structure and identify services
         services = result.get("services", [])
@@ -79,20 +101,39 @@ class ArchitectureExplorer(BaseAgent):
 
         if self.llm:
             try:
-                # Prepare summaries for Claude
-                files_summary = "\n".join(
-                    f"{f['path']} ({f['language']})"
-                    for f in entities["files"][:50]
-                )
-                classes_summary = "\n".join(
-                    f"{c['name']} in {c['file']}"
-                    for c in entities["classes"][:30]
-                )
-                functions_count = len(entities.get("functions", []))
+                # Prepare summaries for Claude. When an index is available,
+                # embed a token-budgeted selection instead of the full dump.
+                if index_id:
+                    from app.services.repo_context import select_context
+
+                    slice_doc = select_context(
+                        {"index_id": index_id, "entities": entities, "graph": result or {}},
+                        requirement="architecture, services, and component boundaries",
+                        max_tokens=context_max_tokens,
+                    )
+                    context_text = slice_doc.get("context_text", "") or ""
+                    files_summary = context_text[: int(context_max_tokens * 4)]
+                    classes_summary = ""
+                    functions_count = slice_doc.get("file_count", len(entities.get("functions", [])))
+                    budget_note = (
+                        f" (context budgeted to {context_max_tokens} tokens: "
+                        f"{slice_doc.get('file_count', 0)} of {len(entities['files'])} files shown)"
+                    )
+                else:
+                    files_summary = "\n".join(
+                        f"{f['path']} ({f['language']})"
+                        for f in entities["files"][:50]
+                    )
+                    classes_summary = "\n".join(
+                        f"{c['name']} in {c['file']}"
+                        for c in entities["classes"][:30]
+                    )
+                    functions_count = len(entities.get("functions", []))
+                    budget_note = ""
 
                 prompt = (
                     f"Analyze this repository and identify meaningful service/component boundaries.\n\n"
-                    f"Files ({len(entities['files'])} total):\n{files_summary}\n\n"
+                    f"Files ({len(entities['files'])} total):\n{files_summary}{budget_note}\n\n"
                     f"Classes ({len(entities['classes'])} total):\n{classes_summary}\n\n"
                     f"Functions: {functions_count} total\n\n"
                     f"Current detected pattern: {result.get('architecture_pattern', 'unknown')}\n"
@@ -137,101 +178,14 @@ class ArchitectureExplorer(BaseAgent):
         }
 
     def _build_graph(self, entities: Dict) -> DependencyGraph:
-        """Build dependency graph from parsed entities.
+        """Build dependency graph from parsed entities (shared implementation).
 
-        Args:
-            entities: Parsed entities from ParserService
-
-        Returns:
-            DependencyGraph with all modules and dependencies
+        Delegates to :func:`app.graph.build_dependency_graph` so the
+        repo-context index and this agent produce identical graphs.
         """
-        graph = DependencyGraph()
-        module_map = entities.get("module_map", {})
-        files = entities["files"]
+        from app.graph import build_dependency_graph as build_graph
 
-        # Add all files as nodes
-        for f in files:
-            graph.add_module(f["path"], {"language": f["language"]})
-
-        # Add import dependencies
-        for imp in entities["imports"]:
-            source = imp["file"]
-            target_mod = imp["module"]
-            resolved = self._resolve_module(target_mod, module_map, Path(source).parent)
-            if resolved:
-                graph.add_dependency(source, resolved)
-
-        # Add file-level dependencies
-        for f in files:
-            for dep in f.get("dependencies", []):
-                resolved = self._resolve_module(dep, module_map, Path(f["path"]).parent)
-                if resolved and resolved != f["path"]:
-                    graph.add_dependency(f["path"], resolved)
-
-        # Mark entry points
-        graph.add_module("__entry__", {"language": "meta"})
-        for f in files:
-            has_exports = len(f.get("exports", [])) > 0
-            is_entry = self._is_entry_point(f["path"])
-            if has_exports or is_entry:
-                graph.add_dependency("__entry__", f["path"])
-
-        return graph
-
-    def _resolve_module(self, mod: str, module_map: Dict, search_dir: Path) -> str:
-        """Resolve import module name to actual file path.
-
-        Args:
-            mod: Import module name (e.g., "services.auth" or "@components/Button")
-            module_map: Mapping of module names to file paths
-            search_dir: Directory to search from (for relative imports)
-
-        Returns:
-            Resolved file path or empty string if not found
-        """
-        # Direct lookup
-        if mod in module_map:
-            return module_map[mod]
-
-        # Try with underscores instead of hyphens
-        dotted_mod = mod.replace("-", "_")
-        if dotted_mod in module_map:
-            return module_map[dotted_mod]
-
-        # Try with path separators instead of dots
-        as_path = mod.replace(".", "/")
-        if as_path in module_map:
-            return module_map[as_path]
-
-        # Try with various extensions
-        for ext in [".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java"]:
-            candidate = str(search_dir / as_path) + ext
-            if candidate in module_map.values():
-                return candidate
-
-        # Try __init__.py pattern
-        init_candidate = str(search_dir / as_path / f"__init__.py")
-        if init_candidate in module_map.values():
-            return init_candidate
-
-        # Try index.* pattern
-        index_candidate = str(search_dir / as_path / f"index.ts")
-        if index_candidate in module_map.values():
-            return index_candidate
-
-        return ""
-
-    def _is_entry_point(self, fpath: str) -> bool:
-        """Determine if a file is an entry point.
-
-        Args:
-            fpath: File path
-
-        Returns:
-            True if file matches entry point pattern
-        """
-        name = Path(fpath).name.lower()
-        return any(kw in name for kw in ["main", "index", "app", "cli", "server", "run", "entry"])
+        return build_graph(entities)
 
     def _parse_llm_analysis(self, llm_result: str) -> Dict[str, Any]:
         """Parse Claude's JSON analysis response.
