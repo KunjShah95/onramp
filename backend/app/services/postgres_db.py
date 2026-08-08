@@ -19,6 +19,20 @@ from app.database import models as db_models
 logger = logging.getLogger("onramp.db")
 
 
+def cosine_similarity(a: List[float], b: List[float]) -> float:
+    """Cosine similarity of two equal-length float vectors (0..1)."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    import math
+
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
 def _is_valid_uuid(value: str) -> bool:
     """Return True if value is a valid UUID string."""
     try:
@@ -487,6 +501,92 @@ class PostgresStorage:
             lambda s: self._query_in_session(s, collection, filters)
         )
 
+    # ── Embedding chunk storage (pgvector) ────────────────────────────────
+
+    async def save_embedding_chunks(self, index_id: str, chunks: list[dict]) -> int:
+        """Upsert embedding chunks for an index.
+
+        ``chunks`` is a list of dicts with keys ``chunk_id``, ``filename``,
+        ``content``, ``doc_type``, ``vector`` (list of floats), ``embedding_model``,
+        ``embedding_dims``. ``vector`` may be ``None`` (keyword-only chunks).
+        """
+        from app.database.models import EmbeddingChunk
+
+        if not chunks:
+            return 0
+
+        async def _save(session: AsyncSession) -> int:
+            for chunk in chunks:
+                data = {
+                    "index_id": index_id,
+                    "filename": chunk.get("filename", ""),
+                    "content": chunk.get("content", ""),
+                    "doc_type": chunk.get("doc_type", "code"),
+                    "vector": chunk.get("vector"),
+                    "embedding_model": chunk.get("embedding_model"),
+                    "embedding_dims": chunk.get("embedding_dims"),
+                }
+                existing = await session.get(EmbeddingChunk, chunk["chunk_id"])
+                if existing is None:
+                    session.add(EmbeddingChunk(chunk_id=chunk["chunk_id"], **data))
+                else:
+                    for key, value in data.items():
+                        setattr(existing, key, value)
+            await session.flush()
+            return len(chunks)
+
+        return await self._run(_save)
+
+    async def vector_search(
+        self, index_id: str, query_vector: List[float], top_k: int = 5
+    ) -> List[dict]:
+        """ANN cosine search over an index's chunks. Returns dicts with a
+        ``similarity`` (0..1) field; empty list when the index has no vectors."""
+        from app.database.models import EmbeddingChunk
+
+        async def _search(session: AsyncSession) -> List[dict]:
+            stmt = (
+                select(EmbeddingChunk)
+                .where(EmbeddingChunk.index_id == index_id)
+                .where(EmbeddingChunk.vector.isnot(None))
+                .order_by(EmbeddingChunk.vector.cosine_distance(query_vector))
+                .limit(top_k)
+            )
+            result = await session.execute(stmt)
+            rows = []
+            for chunk in result.scalars().all():
+                d = chunk.to_dict()
+                if d.get("vector"):
+                    d["similarity"] = round(
+                        cosine_similarity(query_vector, d["vector"]), 4
+                    )
+                rows.append(d)
+            return rows
+
+        return await self._run(_search)
+
+    async def list_embedding_chunks(self, index_id: str) -> List[dict]:
+        """Return every chunk row for an index (without ordering)."""
+        from app.database.models import EmbeddingChunk
+
+        async def _list(session: AsyncSession) -> List[dict]:
+            stmt = select(EmbeddingChunk).where(EmbeddingChunk.index_id == index_id)
+            result = await session.execute(stmt)
+            return [chunk.to_dict() for chunk in result.scalars().all()]
+
+        return await self._run(_list)
+
+    async def delete_index_chunks(self, index_id: str) -> int:
+        """Delete all chunk rows for an index. Returns rows deleted."""
+        from app.database.models import EmbeddingChunk
+
+        async def _delete(session: AsyncSession) -> int:
+            stmt = delete(EmbeddingChunk).where(EmbeddingChunk.index_id == index_id)
+            result = await session.execute(stmt)
+            return result.rowcount or 0
+
+        return await self._run(_delete)
+
 
 class InMemoryStorage:
     """Dict-backed storage with the same async interface as PostgresStorage.
@@ -510,6 +610,7 @@ class InMemoryStorage:
 
     def __init__(self):
         self._data: Dict[str, Dict[str, dict]] = {}
+        self._embedding_chunks: Dict[str, Dict[str, dict]] = {}
 
     @staticmethod
     def _serialize(record: dict) -> dict:
@@ -608,6 +709,33 @@ class InMemoryStorage:
                 continue
             results.append(dict(rec))
         return results
+
+    async def save_embedding_chunks(self, index_id: str, chunks: list[dict]) -> int:
+        coll = self._embedding_chunks.setdefault(index_id, {})
+        for chunk in chunks:
+            coll[chunk["chunk_id"]] = dict(chunk)
+        return len(chunks)
+
+    async def vector_search(
+        self, index_id: str, query_vector: List[float], top_k: int = 5
+    ) -> List[dict]:
+        rows = []
+        for chunk in self._embedding_chunks.get(index_id, {}).values():
+            vec = chunk.get("vector")
+            if not vec:
+                continue
+            row = dict(chunk)
+            row["similarity"] = round(cosine_similarity(query_vector, vec), 4)
+            rows.append(row)
+        rows.sort(key=lambda r: r["similarity"], reverse=True)
+        return rows[:top_k]
+
+    async def list_embedding_chunks(self, index_id: str) -> List[dict]:
+        return [dict(c) for c in self._embedding_chunks.get(index_id, {}).values()]
+
+    async def delete_index_chunks(self, index_id: str) -> int:
+        coll = self._embedding_chunks.pop(index_id, {})
+        return len(coll)
 
 
 _storage = None
