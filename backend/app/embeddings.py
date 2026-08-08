@@ -16,8 +16,6 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.services.llm_costs import get_price
-
 logger = logging.getLogger("onramp.embeddings")
 
 
@@ -213,6 +211,8 @@ class EmbeddingRouter:
 
     def route_info(self, provider: EmbeddingProvider) -> Dict[str, Any]:
         """Attribution dict for a served embedding call (USD + INR pricing)."""
+        from app.services.llm_costs import get_price
+
         cfg = self.providers[provider]
         price = get_price(cfg["model"])
         return {
