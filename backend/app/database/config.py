@@ -6,11 +6,25 @@ Secure connection pooling with asyncpg and SQLAlchemy
 import asyncio
 import os
 from typing import Optional
+from sqlalchemy import event
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, AsyncEngine
 from sqlalchemy.orm import DeclarativeBase
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _register_vector_codec(dbapi_connection, connection_record):
+    """Decode pgvector columns for asyncpg (required by pgvector.sqlalchemy)."""
+    try:
+        import asyncpg
+        import pgvector.asyncpg
+
+        if isinstance(dbapi_connection, asyncpg.Connection):
+            pgvector.asyncpg.register_vector(dbapi_connection)
+    except Exception:  # pragma: no cover - non-Postgres backends (memory) have no dbapi connection
+        pass
 
 
 class Base(DeclarativeBase):
@@ -130,6 +144,7 @@ class DatabaseConfig:
                 self.database_url,
                 **engine_params
             )
+            event.listen(self._engine.sync_engine, "connect", _register_vector_codec)
             logger.info(
                 f"Database engine created with pool_size={self.pool_size}, "
                 f"max_overflow={self.max_overflow}"
@@ -174,13 +189,33 @@ class DatabaseConfig:
         
         return self._session_factory
     
-    async def create_tables(self):
-        """Create all tables (for development only - use migrations in production)"""
+    async def create_tables(self, retries: int = 5, base_delay: float = 1.0):
+        """Create all tables (for development only - use migrations in production).
+
+        Retries with exponential backoff so a transient DNS/network blip on
+        startup (e.g. Neon cold-start, flaky DNS) does not crash the app.
+        """
         from app.database.models import Base
         engine = await self.ensure_engine()
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables created")
+        last_exc: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info("Database tables created")
+                return
+            except (OSError, ConnectionError, asyncio.TimeoutError, SQLAlchemyError) as exc:
+                last_exc = exc
+                if attempt == retries:
+                    break
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.warning(
+                    "DB connect failed (attempt %d/%d): %s. Retrying in %.1fs",
+                    attempt, retries, exc, delay,
+                )
+                await asyncio.sleep(delay)
+        logger.error("DB connect failed after %d attempts", retries)
+        raise last_exc
     
     async def drop_tables(self):
         """Drop all tables (for development only)"""
