@@ -6,11 +6,13 @@ import logging
 import random
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 from app.services.github_service import GitHubService
 
 logger = logging.getLogger(__name__)
 
 class PRReviewAgent(BaseAgent):
+    query_type = QueryType.CODE
     """Agent that reviews GitHub pull requests and provides feedback."""
 
     def __init__(self, llm_client, github_token: str = None):

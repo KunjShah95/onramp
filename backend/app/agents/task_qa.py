@@ -1,11 +1,13 @@
 import logging
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 from app.services.embeddings_service import EmbeddingsService
 
 logger = logging.getLogger(__name__)
 
 class TaskQA(BaseAgent):
+    query_type = QueryType.CODE
     """Specialized QA agent for reviewing agent 1's task completion."""
 
     def __init__(self, llm_client):

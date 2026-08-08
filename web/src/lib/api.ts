@@ -1086,6 +1086,9 @@ export interface AgentInfo {
   description: string
   required_params: string[]
   credit_cost: number
+  // Query-type routing: which model this agent's prompts are routed to.
+  query_type: string | null
+  model: string | null
 }
 
 export async function listAgents(): Promise<{ agents: AgentInfo[]; count: number }> {
@@ -1452,6 +1455,22 @@ export interface AdminUsageResponse {
   total_credits: number
   team_breakdown: Record<string, { requests: number; credits: number }>
   endpoint_breakdown: Record<string, number>
+  // Free-first routing attribution + dollar savings (from route metadata)
+  tracked_requests: number
+  free_requests: number
+  paid_requests: number
+  free_pct: number
+  total_cost_usd: number
+  total_cost_avoided_usd: number
+  provider_series: AdminProviderSeriesPoint[]
+}
+
+export interface AdminProviderSeriesPoint {
+  date: string
+  free: number
+  paid: number
+  cost_usd: number
+  cost_avoided_usd: number
 }
 
 export interface AdminTeamUsage {
@@ -1487,9 +1506,12 @@ export async function adminListApiKeys(includeRevoked = false): Promise<AdminApi
   return get<AdminApiKeysResponse>(`${API_BASE}/admin/keys?include_revoked=${includeRevoked}`)
 }
 
-export async function adminGetUsage(period?: string): Promise<AdminUsageResponse> {
-  const qs = period ? `?period=${period}` : ''
-  return get<AdminUsageResponse>(`${API_BASE}/admin/usage${qs}`)
+export async function adminGetUsage(period?: string, days = 14): Promise<AdminUsageResponse> {
+  const params = new URLSearchParams()
+  if (period) params.set('period', period)
+  params.set('days', String(days))
+  const qs = params.toString()
+  return get<AdminUsageResponse>(`${API_BASE}/admin/usage?${qs}`)
 }
 
 export async function adminGetTeamUsage(): Promise<AdminTeamUsageResponse> {

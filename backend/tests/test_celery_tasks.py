@@ -37,6 +37,7 @@ def _eager_celery():
     importlib.import_module("app.tasks.agent_tasks")
     importlib.import_module("app.tasks.analytics_tasks")
     importlib.import_module("app.tasks.notification_tasks")
+    importlib.import_module("app.tasks.repo_index_tasks")
 
     # Import the celery app module (not the attribute from __init__.py)
     mod = importlib.import_module("app.tasks.celery_app")
@@ -178,6 +179,11 @@ class TestCeleryAppConfig:
         assert "app.tasks.notification_tasks.send_user_digest" in task_names
         assert "app.tasks.notification_tasks.send_all_digests" in task_names
 
+        # Check repo-index tasks (pre-build + scheduled refresh)
+        assert any("repo_index_tasks" in name for name in task_names)
+        assert "app.tasks.repo_index_tasks.build_repo_index" in task_names
+        assert "app.tasks.repo_index_tasks.refresh_repo_indexes" in task_names
+
     def test_queue_routing(self):
         """Each task is routed to its correct queue."""
         from app.tasks import celery_app
@@ -196,6 +202,11 @@ class TestCeleryAppConfig:
         expected_notif_queue = getattr(notif_task, "_queue", None) or \
                                 getattr(notif_task, "queue", None)
         assert expected_notif_queue == "notification-tasks"
+
+        repo_index_task = celery_app.tasks["app.tasks.repo_index_tasks.build_repo_index"]
+        expected_repo_queue = getattr(repo_index_task, "_queue", None) or \
+                              getattr(repo_index_task, "queue", None)
+        assert expected_repo_queue == "agent-tasks"
 
     def test_config_values(self):
         """Key Celery configuration values are set correctly."""
@@ -230,6 +241,7 @@ class TestCeleryAppConfig:
             "send-weekly-digests",
             "aggregate-daily-usage",
             "refresh-all-leaderboards",
+            "refresh-repo-indexes",
         ]
         for task_name in expected_tasks:
             assert task_name in schedule, f"Missing beat task: {task_name}"
@@ -259,6 +271,8 @@ class TestCeleryAppConfig:
         assert "app.tasks.agent_tasks.*" in annotations
         assert annotations["app.tasks.agent_tasks.*"]["rate_limit"] == "10/m"
         assert "app.tasks.notification_tasks.*" in annotations
+        assert "app.tasks.repo_index_tasks.*" in annotations
+        assert annotations["app.tasks.repo_index_tasks.*"]["rate_limit"] == "5/m"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

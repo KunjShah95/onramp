@@ -102,8 +102,16 @@ async def get_user_or_api_key(request: Request) -> dict:
     if user is not None:
         return {**user, "auth_method": "jwt", "tier": user.get("tier", "free")}
 
-    # Fall back to X-API-Key header
+    # Fall back to X-API-Key header, then an OpenAI-style
+    # "Authorization: Bearer <api_key>" (used by OpenAI-SDK clients pointed
+    # at the /v1 gateway — the token prefix disambiguates it from a JWT).
     api_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+    if not api_key:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            candidate = auth_header.split(" ", 1)[1]
+            if candidate.startswith("cf_"):
+                api_key = candidate
     if not api_key:
         raise HTTPException(status_code=401, detail="Not authenticated. Provide a JWT (Authorization) or API key (X-API-Key).")
 

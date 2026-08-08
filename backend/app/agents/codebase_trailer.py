@@ -11,11 +11,13 @@ import logging
 from typing import Any, Dict, Optional
 
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 
 logger = logging.getLogger(__name__)
 
 
 class CodebaseTrailer(BaseAgent):
+    query_type = QueryType.CREATIVE
     async def execute(
         self, repo_url: str, analysis: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:

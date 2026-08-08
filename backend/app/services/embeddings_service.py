@@ -54,8 +54,11 @@ class EmbeddingsService:
     }
     IGNORE_DIRS = {"node_modules", "__pycache__", ".git", "venv", "dist", "build", ".next", "vendor", ".tox", "target", "egg-info"}
 
-    def __init__(self):
+    def __init__(self, embeddings_router=None):
         self.storage = get_storage()
+        from app.embeddings import EmbeddingRouter
+
+        self.embeddings = embeddings_router or EmbeddingRouter()
 
     async def index_documents(self, index_id: str, repo_path: str) -> str:
         """Walk repo_path, parse files, and persist each file as a stored document."""
@@ -108,17 +111,71 @@ class EmbeddingsService:
                 },
             )
 
+        # Persist vector chunks for semantic search (best-effort: a missing
+        # embedding provider just means the index stays keyword-only).
+        try:
+            if getattr(self.embeddings, "is_available", False):
+                chunks = []
+                for doc in documents:
+                    for i, chunk_text in enumerate(doc.chunks):
+                        chunks.append({
+                            "chunk_id": f"{doc.id}:{i}",
+                            "filename": doc.filename,
+                            "content": chunk_text,
+                            "doc_type": doc.doc_type,
+                        })
+                vectors, provider, _route = await self.embeddings.embed_batch(
+                    [c["content"] for c in chunks]
+                )
+                dims = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))
+                stored = 0
+                for chunk, vector in zip(chunks, vectors):
+                    if len(vector) != dims:
+                        logger.warning(
+                            "Skipping chunk %s: model returned %d dims, column expects %d",
+                            chunk["chunk_id"], len(vector), dims,
+                        )
+                        continue
+                    chunk["vector"] = vector
+                    chunk["embedding_model"] = self.embeddings.providers[provider]["model"]
+                    chunk["embedding_dims"] = len(vector)
+                    stored += 1
+                # Only persist chunks that actually got a vector. Skipped
+                # chunks (dimension mismatch) must not be written: their rows
+                # would overwrite existing vectors with NULL in Postgres.
+                vector_chunks = [c for c in chunks if c.get("vector") is not None]
+                if vector_chunks:
+                    await self.storage.save_embedding_chunks(index_id, vector_chunks)
+                logger.info("Indexed %d vector chunks for %s", stored, index_id)
+        except Exception:
+            logger.exception("Embedding index failed for %s, keeping keyword-only", index_id)
+
         return index_id
 
     async def search(self, index_id: str, query: str, top_k: int = 5) -> List[Document]:
-        """Search indexed documents by keyword matching."""
+        """Search indexed documents — vector cosine first, keyword fallback."""
+        # Vector tier: embed the query and ANN-search if the router is available.
+        if getattr(self.embeddings, "is_available", False):
+            try:
+                query_vector, _provider, _route = await self.embeddings.embed(query)
+                rows = await self.storage.vector_search(index_id, query_vector, top_k)
+                threshold = float(os.getenv("EMBEDDINGS_MIN_SIMILARITY", "0.0"))
+                docs = []
+                for row in rows:
+                    if row.get("similarity", 0.0) >= threshold:
+                        docs.append(self._doc_from_row(row))
+                if docs:
+                    return docs
+            except Exception:
+                logger.exception("Vector search failed, falling back to keyword")
+
+        # Keyword tier: existing lexical scoring.
         doc_collection = f"{self.COLLECTION_INDEXES}/{index_id}/docs"
         raw_docs = await self.storage.list_documents(doc_collection)
 
         if not raw_docs:
             return []
 
-        # Rehydrate Document objects
         documents = []
         for raw in raw_docs:
             doc = Document(
@@ -139,6 +196,17 @@ class EmbeddingsService:
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [doc for score, doc in scored[:top_k] if score > 0]
+
+    @staticmethod
+    def _doc_from_row(row: dict) -> Document:
+        """Rehydrate a Document from a vector-search row dict."""
+        doc = Document(
+            filename=row.get("filename", ""),
+            content=row.get("content", ""),
+            doc_type=row.get("doc_type", "code"),
+        )
+        doc.id = row.get("chunk_id", "")
+        return doc
 
     def _score_document(self, doc: Document, query_lower: str, query_tokens: List[str]) -> float:
         score = 0.0
@@ -172,6 +240,10 @@ class EmbeddingsService:
 
     async def delete_index(self, index_id: str) -> None:
         """Remove all documents and the index metadata."""
+        try:
+            await self.storage.delete_index_chunks(index_id)
+        except Exception:
+            logger.exception("Failed to delete embedding chunks for %s", index_id)
         doc_collection = f"{self.COLLECTION_INDEXES}/{index_id}/docs"
         raw_docs = await self.storage.list_documents(doc_collection)
         for raw in raw_docs:

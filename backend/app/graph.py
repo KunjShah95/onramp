@@ -1,8 +1,84 @@
 from typing import Dict, Any, List, Optional
+from pathlib import Path
 import logging
 import networkx as nx
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_module(mod: str, module_map: Dict, search_dir: Path) -> str:
+    """Resolve an import module name to an actual file path.
+
+    Shared by the repo-context index and ArchitectureExplorer so both build
+    the identical graph for the same parsed entities.
+    """
+    if mod in module_map:
+        return module_map[mod]
+
+    dotted_mod = mod.replace("-", "_")
+    if dotted_mod in module_map:
+        return module_map[dotted_mod]
+
+    as_path = mod.replace(".", "/")
+    if as_path in module_map:
+        return module_map[as_path]
+
+    for ext in [".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java"]:
+        candidate = str(search_dir / as_path) + ext
+        if candidate in module_map.values():
+            return candidate
+
+    init_candidate = str(search_dir / as_path / "__init__.py")
+    if init_candidate in module_map.values():
+        return init_candidate
+
+    index_candidate = str(search_dir / as_path / "index.ts")
+    if index_candidate in module_map.values():
+        return index_candidate
+
+    return ""
+
+
+def _is_entry_point(fpath: str) -> bool:
+    """True if the file path matches a conventional entry-point pattern."""
+    name = Path(fpath).name.lower()
+    return any(kw in name for kw in ["main", "index", "app", "cli", "server", "run", "entry"])
+
+
+def build_dependency_graph(entities: Dict) -> "DependencyGraph":
+    """Build a :class:`DependencyGraph` from parsed entities.
+
+    Single shared implementation used by both the repo-context index
+    (parse-once) and ``ArchitectureExplorer`` so cached graphs and live
+    graphs are identical.
+    """
+    graph = DependencyGraph()
+    module_map = entities.get("module_map", {})
+    files = entities["files"]
+
+    for f in files:
+        graph.add_module(f["path"], {"language": f["language"]})
+
+    for imp in entities["imports"]:
+        source = imp["file"]
+        target_mod = imp["module"]
+        resolved = _resolve_module(target_mod, module_map, Path(source).parent)
+        if resolved:
+            graph.add_dependency(source, resolved)
+
+    for f in files:
+        for dep in f.get("dependencies", []):
+            resolved = _resolve_module(dep, module_map, Path(f["path"]).parent)
+            if resolved and resolved != f["path"]:
+                graph.add_dependency(f["path"], resolved)
+
+    graph.add_module("__entry__", {"language": "meta"})
+    for f in files:
+        has_exports = len(f.get("exports", [])) > 0
+        if has_exports or _is_entry_point(f["path"]):
+            graph.add_dependency("__entry__", f["path"])
+
+    return graph
 
 
 class DependencyGraph:

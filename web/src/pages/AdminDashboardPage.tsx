@@ -18,7 +18,32 @@ import {
   adminListApiKeys,
   adminListAuditEvents,
 } from '../lib/api'
-import type { AdminAuditEvent } from '../lib/api'
+import type { AdminAuditEvent, AdminUsageResponse } from '../lib/api'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+
+// Signal palette + tooltip style — consistent with the DORA / CTO dashboards.
+const SIG = {
+  go: '#17A34A',
+  blue: '#2472C4',
+  axis: 'rgb(var(--text-tertiary) / 0.75)',
+  grid: 'rgb(var(--border-rgb) / 0.10)',
+}
+const TOOLTIP = {
+  background: 'rgb(var(--bg-elevated))',
+  border: '1px solid rgb(var(--border-rgb) / 0.18)',
+  borderRadius: '4px',
+  fontSize: '12px',
+  color: 'rgb(var(--text-primary))',
+  boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
+}
 
 const AUDIT_ICON: Record<string, { icon: any; color: string; bg: string }> = {
   auth: { icon: Key, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -46,6 +71,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [usage, setUsage] = useState<number | null>(null)
+  const [usageDetail, setUsageDetail] = useState<AdminUsageResponse | null>(null)
   const [keys, setKeys] = useState<number | null>(null)
   const [teams, setTeams] = useState<number | null>(null)
   const [members, setMembers] = useState<number | null>(null)
@@ -55,7 +81,12 @@ export default function AdminDashboardPage() {
     setLoading(true); setError('')
     try {
       await Promise.all([
-        adminGetUsage().then((u) => setUsage(u.total_requests)).catch(() => {}),
+        adminGetUsage(undefined, 14)
+          .then((u) => {
+            setUsage(u.total_requests)
+            setUsageDetail(u)
+          })
+          .catch(() => {}),
         adminListApiKeys().then((k) => setKeys(k.count)).catch(() => {}),
         adminGetTeamUsage().then((t) => {
           setTeams(t.count)
@@ -73,6 +104,9 @@ export default function AdminDashboardPage() {
   useEffect(() => { fetchAdminData() }, [])
 
   const fmt = (n: number | null) => (n == null ? '—' : n.toLocaleString())
+  const fmtUsd = (n: number) =>
+    n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`
+  const series = usageDetail?.provider_series ?? []
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto space-y-8 relative">
@@ -132,6 +166,96 @@ export default function AdminDashboardPage() {
                 </motion.div>
               ))}
             </div>
+
+            {/* LLM Cost Savings — free vs paid traffic over time */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <CardSpotlight className="p-5">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <ChartBar className="w-4.5 h-4.5 text-emerald-400" weight="fill" />
+                    </div>
+                    <div>
+                      <h3 className="text-body-sm font-medium text-text-primary">LLM Cost Savings</h3>
+                      <p className="text-caption text-text-tertiary">Free vs paid traffic · last {series.length || 14} days</p>
+                    </div>
+                  </div>
+                  {usageDetail && usageDetail.tracked_requests > 0 && (
+                    <div className="flex items-center gap-4 text-caption">
+                      <span className="flex items-center gap-1.5 text-text-tertiary">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: SIG.go }} /> Free
+                      </span>
+                      <span className="flex items-center gap-1.5 text-text-tertiary">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: SIG.blue }} /> Paid
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {!usageDetail || usageDetail.tracked_requests === 0 ? (
+                  <EmptyState
+                    icon={<ChartBar className="w-8 h-8 text-text-tertiary/30" weight="duotone" />}
+                    title="No LLM traffic tracked yet"
+                    description="Gateway and agent requests will appear here once the router starts serving traffic."
+                  />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: 'Free traffic', value: `${usageDetail.free_pct}%`, sub: `${usageDetail.free_requests} free · ${usageDetail.paid_requests} paid`, color: 'text-emerald-400' },
+                        { label: 'Cost avoided', value: fmtUsd(usageDetail.total_cost_avoided_usd), sub: 'vs paid baseline model', color: 'text-emerald-400' },
+                        { label: 'Actual cost', value: fmtUsd(usageDetail.total_cost_usd), sub: `${usageDetail.tracked_requests} tracked requests`, color: 'text-blue-400' },
+                        { label: 'Total requests', value: fmt(usageDetail.total_requests), sub: 'all endpoints', color: 'text-text-primary' },
+                      ].map((stat) => (
+                        <div key={stat.label} className="rounded-lg border border-border bg-bg-secondary/60 p-3 transition-colors hover:border-border-hover">
+                          <p className="text-caption text-text-tertiary">{stat.label}</p>
+                          <p className={`text-display-xs font-display font-medium mt-0.5 ${stat.color}`}>{stat.value}</p>
+                          <p className="text-caption text-text-tertiary/60 mt-0.5">{stat.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="h-52">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={series} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="freeGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={SIG.go} stopOpacity={0.35} />
+                              <stop offset="95%" stopColor={SIG.go} stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="paidGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={SIG.blue} stopOpacity={0.35} />
+                              <stop offset="95%" stopColor={SIG.blue} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v: string) => v.slice(5)}
+                          />
+                          <YAxis
+                            tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                            axisLine={false}
+                            tickLine={false}
+                            allowDecimals={false}
+                          />
+                          <Tooltip
+                            contentStyle={TOOLTIP}
+                            formatter={(value, name) => [value, name === 'free' ? 'Free' : 'Paid']}
+                            labelFormatter={(label) => new Date(label + 'T00:00:00Z').toLocaleDateString()}
+                          />
+                          <Area type="monotone" dataKey="free" stackId="traffic" stroke={SIG.go} fill="url(#freeGrad)" strokeWidth={2} />
+                          <Area type="monotone" dataKey="paid" stackId="traffic" stroke={SIG.blue} fill="url(#paidGrad)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </>
+                )}
+              </CardSpotlight>
+            </motion.div>
 
             {/* Two-column layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:p-6">

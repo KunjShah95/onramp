@@ -14,7 +14,9 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 ### 🧠 AI-Powered Developer Tools
 
 | Tool | Description |
-|------|-------------|
+
+| -----
+ | ------------- |
 | **Architecture Explorer** | Visualize repo structure as an interactive force-directed graph |
 | **First PR Accelerator** | Find beginner-friendly issues with step-by-step contribution guides |
 | **Learning Path Generator** | Generate personalized learning paths from any codebase |
@@ -25,6 +27,126 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 | **Silent Pair Programming** | AI-guided walkthroughs for solving issues |
 | **Quiz Generator** | Module-level quizzes with multiple formats |
 | **Regression Test Generator** | Generate test checklists from PR diffs |
+
+### 🧠 AI Model Routing (Query Types)
+
+Every agent declares what kind of prompt it produces via a `query_type` class
+attribute. The router (`backend/app/llm.py`) uses that to pick the best
+provider chain per task — free-first, with a fallback chain per type:
+
+| Agent | Query type | First provider tried | Cost |
+|---|---|---|---|
+| `PRReviewAgent` | `code` | Claude (Anthropic) | paid |
+| `FirstPRAccelerator` | `code` | Claude (Anthropic) | paid |
+| `AutonomousCodingAgent` | `code` | Claude (Anthropic) | paid |
+| `SilentPairProgramming` | `code` | Claude (Anthropic) | paid |
+| `TaskQA` | `code` | Claude (Anthropic) | paid |
+| `RegressionTestGenerator` | `code` | Claude (Anthropic) | paid |
+| `ArchitectureExplorer` | `reasoning` | Gemini | free |
+| `PatternRecognition` | `reasoning` | Gemini | free |
+| `LearningPathGenerator` | `reasoning` | Gemini | free |
+| `DriftDetector` | `reasoning` | Gemini | free |
+| `RepoQA` | `reasoning` | Gemini | free |
+| `HealthScorer` | `structured` | Groq | free |
+| `QuizGenerator` | `structured` | Groq | free |
+| `CodebaseTrailer` | `creative` | Claude (Anthropic) | paid |
+
+> `OnboardingReportGenerator` is a pure rule-based agent — it makes no LLM
+> calls and declares no query type.
+
+**How the chain is built:** each query type lists preferred providers first,
+and the remaining configured providers are appended afterwards, so any single
+provider outage falls through the whole chain. Providers without an API key
+are skipped. The seven types are `chat`, `code`, `reasoning`, `structured`,
+`summarization`, `translation`, and `creative` (`chat` uses the default
+free-first chain: OpenRouter → Gemini → Groq → NVIDIA → OpenAI → Anthropic →
+Ollama).
+
+**Override per call.** An agent's `query_type` is a *default*, not a law —
+pass `query_type=` explicitly to any LLM call and it wins:
+
+```python
+from app.llm import QueryType
+
+# Default: PRReviewAgent routes via CODE (Claude first, paid)
+await agent.llm.chat(prompt)
+
+# Single-call override — force cheap, JSON-optimized structured output
+await agent.llm.json_chat(prompt, query_type=QueryType.STRUCTURED)
+
+# The underlying router is directly usable too (string values accepted):
+from app.llm import LLMRouter
+router = LLMRouter()
+await router.chat("explain why the sky is blue", query_type="reasoning")
+await router.chat_stream("summarize this", query_type=QueryType.SUMMARIZATION)
+```
+
+> **Trade-off:** `json_chat` on the `code` agents (FirstPR, SilentPair,
+> Autonomous, RegressionTest) routes via CODE (Claude first, paid) because
+the agent declares its content type. If JSON reliability matters more than
+model strength, pass `query_type=QueryType.STRUCTURED` (Groq first, free) as
+shown above.
+
+Every served request also reports its actual provider via the `X-LLM-Route`
+response header and records free-vs-paid attribution + dollar savings in the
+usage logs — see `docs/API.md` (Provider Route Breakdown).
+
+### 💰 Token-Saving Pipeline (parse-once + cache + budgets)
+
+Beyond free-first routing, three more layers keep LLM cost low:
+
+**1. Repo context index — parse once, reuse everywhere, pre-built on a
+schedule.** `POST /repos/index` clones + parses a repo **once** (24h Redis
+TTL) into a compact JSON context document (entities + dependency graph +
+stats) keyed by a stable `index_id` derived from `repo_url@branch`.
+Re-posting returns the cached document with zero cloning/parsing; `DELETE`
+re-indexes. `POST /explore/analyze` accepts the `index_id` to skip its own
+clone/parse. (Redis optional — in-process fallback in dev.) Indexes are
+**pre-built so the first request never waits**: `POST /repos/index` with
+`"async_build": true` dispatches a Celery `build_repo_index` task and
+returns `202` + task id immediately, and the `refresh_repo_indexes` beat
+task runs nightly (03:00 UTC) to rebuild every registered repo whose index
+is missing, older than `REPO_INDEX_MAX_AGE_HOURS` (20h), or within
+`REPO_INDEX_COLD_WINDOW_HOURS` (2h) of the 24h TTL expiring — warm before
+the 24h TTL expires. **Pushes invalidate + rebuild instantly**: a GitHub
+`push` webhook (`POST /webhooks/github`) for a registered repo evicts its
+LLM cache scope (`evict_scope` — both cache tiers) and dispatches
+`build_repo_index` so the next question about that repo sees fresh code.
+Each index also carries an **`evolution` block** (git-history layer): the
+last 50 commits, top contributors, per-file ownership (changes + strongest
+author) and the head commit's changed files — computed deterministically
+from `git log`, never via the LLM.
+
+**2. Requirement-driven context selection.**
+`GET /repos/index/{index_id}/context?requirement=...&max_tokens=4000` scores
+files against the task and returns only the relevant slice, so agents never
+receive the whole repository. Each agent already declares its `query_type`
+(above); now it also pulls just the context it is bound to. All LLM-backed
+agents (health, learn, quiz, drift, patterns, explore) accept `index_id` in
+place of a full `repo_structure` body: whole-repo scoring uses the cached
+entities, while every LLM prompt embeds a token-budgeted requirement slice.
+
+**3. Redis LLM response cache (exact + semantic).** Repeated prompts (same
+query type + normalized prompt + system + max_tokens) are served from Redis
+instead of a provider — keyed via `app/services/llm_cache.py`, TTL 1h
+(`LLM_CACHE_TTL`). Cache hits are attributed as a `cache/redis` route with
+`free=true` and **$0 price**, so they show up in the cost-savings dashboard
+as requests that avoided the full baseline cost. On top of exact matching,
+**near-duplicate questions also hit**: prompts are embedded locally (hashed
+n-grams — no embedding API, so probing stays free) and a stored answer is
+served only when cosine similarity ≥ `LLM_SEMANTIC_THRESHOLD` (0.85) AND
+the new question's content words are a subset of the stored prompt's — the
+subset gate blocks one-word rewrites (`sort`→`reverse`) that raw similarity
+can't tell apart. Semantic hits report as `cache/semantic` (free, $0). The
+`/v1` gateway reports `X-LLM-Cache: HIT/MISS` plus `X-LLM-Cache-Tier`
+(`redis`/`semantic`/`MISS`). Streaming responses are not cached. Disable or
+retune via `LLM_SEMANTIC_CACHE=0`, `LLM_SEMANTIC_THRESHOLD`,
+`LLM_SEMANTIC_BUCKET_CAP`.
+
+**4. Token budgets.** Every selected context slice is trimmed to
+`max_tokens` (~4 chars/token, `app/services/llm_costs.estimate_tokens`)
+before being embedded in a prompt; long files are dropped first, then
+truncated, so prompts stay small.
 
 ### 👥 Onboarding & Learning
 
@@ -96,7 +218,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 ### Backend
 
 | Component | Technology |
-|-----------|-----------|
+| ----------- | ----------- |
 | **Framework** | Python 3.12, FastAPI |
 | **Database** | PostgreSQL 16 (asyncpg, SQLAlchemy 2.0) |
 | **Migrations** | Alembic |
@@ -110,7 +232,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 ### Frontend
 
 | Component | Technology |
-|-----------|-----------|
+| ----------- | ----------- |
 | **Framework** | React 19, TypeScript (strict mode) |
 | **Build** | Vite 6 |
 | **Styling** | Tailwind CSS 3 |
@@ -124,7 +246,7 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 ### Infrastructure
 
 | Component | Technology |
-|-----------|-----------|
+| ----------- | ----------- |
 | **Backend Hosting** | Railway |
 | **Frontend Hosting** | Vercel |
 | **Containerization** | Docker Compose |
@@ -228,7 +350,7 @@ docker compose down
 ### Docker Service Ports
 
 | Service | URL | Description |
-|---------|-----|-------------|
+| --------- | ----- | ------------- |
 | **Frontend** | <http://localhost:8080> | React app (Nginx, proxies `/api` → backend) |
 | **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
 | **Backend API** | <http://localhost:8001> | FastAPI backend |
@@ -293,7 +415,7 @@ python ../scripts/seed_dev_user.py
 All accounts share the same password: **`demo123`**
 
 | Name | Email | Role | Team |
-|------|-------|------|------|
+| ------ | ------- | ------ | ------ |
 | **Kunj Shah** | `kunj@onramp.dev` | Owner (admin) | InnovateHub |
 | **Varad Karandikar** | `varad@onramp.dev` | CTO (admin) | InnovateHub |
 | **Sarah Chen** | `sarah@onramp.dev` | Senior Dev | InnovateHub / Platform Eng |
@@ -490,7 +612,7 @@ onramp/
 ### Backend (`backend/.env`)
 
 | Variable | Required | Description |
-|----------|----------|-------------|
+| ---------- | ---------- | ------------- |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `JWT_SECRET` | ✅ | JWT signing secret (generate with `secrets.token_urlsafe(32)`) |
 | `ENV` | ✅ | `development` or `production` |

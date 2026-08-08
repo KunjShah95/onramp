@@ -1,10 +1,12 @@
 import logging
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 
 logger = logging.getLogger(__name__)
 
 class RegressionTestGenerator(BaseAgent):
+    query_type = QueryType.CODE
     async def execute(self, pr_diff: str, repo_structure: Dict) -> Dict[str, Any]:
         return await self.generate(pr_diff, repo_structure)
 

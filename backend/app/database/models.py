@@ -12,8 +12,10 @@ Root cause is the shared Base instance — consolidation to a single import
 path would eliminate the need. Investigate if time permits.
 """
 
+import os
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 from sqlalchemy import (
     String,
     Text,
@@ -28,6 +30,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, attributes
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from pgvector.sqlalchemy import Vector
 from app.database.config import Base
 
 
@@ -1498,4 +1501,60 @@ class DynamicDocument(Base):
             **self.data,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Embedding chunks (pgvector semantic search)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class EmbeddingChunk(Base):
+    """One vectorized chunk of an indexed repository.
+
+    Fixed-dimension pgvector column: the deployment must set
+    ``EMBEDDING_DIMENSIONS`` (default 1536, OpenAI ``text-embedding-3-small``)
+    to match the model chosen via ``EMBEDDINGS_PROVIDER`` before running the
+    migration. Rows with a ``NULL`` vector are legal — they index keyword-only.
+    """
+
+    __tablename__ = "onramp_embedding_chunks"
+
+    chunk_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    index_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    filename: Mapped[str] = mapped_column(String(1000), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    doc_type: Mapped[str] = mapped_column(String(20), nullable=False, default="code")
+    vector: Mapped[Optional[list]] = mapped_column(
+        Vector(int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))), nullable=True
+    )
+    embedding_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    embedding_dims: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("ix_embedding_chunks_index_id", "index_id"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "chunk_id": self.chunk_id,
+            "index_id": self.index_id,
+            "filename": self.filename,
+            "content": self.content,
+            "doc_type": self.doc_type,
+            "vector": list(self.vector) if self.vector is not None else None,
+            "embedding_model": self.embedding_model,
+            "embedding_dims": self.embedding_dims,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

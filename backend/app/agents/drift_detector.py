@@ -13,6 +13,7 @@ import re
 from typing import Any, Dict, List
 
 from app.agents.base_agent import BaseAgent
+from app.llm import QueryType
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +50,20 @@ _STOPWORDS = {
 
 
 class DriftDetector(BaseAgent):
+    query_type = QueryType.REASONING
     async def execute(self, **kwargs) -> Dict[str, Any]:
-        repo_structure = kwargs.get("repo_structure") or {}
-        docs = kwargs.get("docs") or ""
-        return await self.detect(repo_structure, docs)
+        from app.services.repo_context import resolve_for_agent
 
-    async def detect(self, repo_structure: Dict, docs: str) -> Dict[str, Any]:
+        full, _sliced, context_text = await resolve_for_agent(
+            kwargs.get("index_id"),
+            kwargs.get("repo_structure") or {},
+            requirement="architecture, modules, components, service boundaries, structure",
+            max_tokens=kwargs.get("context_max_tokens", 2500),
+            llm=self.llm,
+        )
+        return await self.detect(full, kwargs.get("docs") or "", context_text=context_text)
+
+    async def detect(self, repo_structure: Dict, docs: str, context_text: str = "") -> Dict[str, Any]:
         code_names = self._code_identifiers(repo_structure)
         doc_names = self._doc_identifiers(docs)
 
@@ -99,7 +108,7 @@ class DriftDetector(BaseAgent):
         }
 
         if self.llm and has_docs and has_code and (documented_but_missing or undocumented_components):
-            await self._enrich_with_llm(result, repo_structure, docs)
+            await self._enrich_with_llm(result, repo_structure, docs, context_text)
         else:
             result["summary"] = self._fallback_summary(result)
 
@@ -224,8 +233,11 @@ class DriftDetector(BaseAgent):
 
     # ── LLM enrichment ──────────────────────────────────────────────────────
 
-    async def _enrich_with_llm(self, result: Dict[str, Any], repo_structure: Dict, docs: str) -> None:
-        files_summary = "\n".join(
+    async def _enrich_with_llm(
+        self, result: Dict[str, Any], repo_structure: Dict, docs: str, context_text: str = ""
+    ) -> None:
+        # Prefer the token-budgeted index slice for the LLM prompt.
+        files_summary = context_text or "\n".join(
             f.get("path", "") for f in repo_structure.get("files", [])[:120]
         )[:2500]
         prompt = (

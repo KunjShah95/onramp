@@ -17,7 +17,8 @@ RESULTS_COLLECTION = "onramp_quiz_results"
 class GenerateQuizRequest(BaseModel):
     mode: str  # "module" or "repo"
     module_name: Optional[str] = None
-    repo_structure: dict
+    repo_structure: Optional[dict] = None
+    index_id: Optional[str] = None  # reuse a cached repo-context index (parse-once)
     num_questions: int = 5
     difficulty: str = "mixed"
 
@@ -44,6 +45,7 @@ async def generate_quiz(
             mode=request.mode,
             module_name=request.module_name,
             repo_structure=request.repo_structure,
+            index_id=request.index_id,
             num_questions=request.num_questions,
             difficulty=request.difficulty,
         )

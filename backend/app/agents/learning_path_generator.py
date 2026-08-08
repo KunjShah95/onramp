@@ -1,9 +1,10 @@
 from typing import Dict, Any, List
 from app.agents.base_agent import BaseAgent
-from app.llm import LLMRouter
+from app.llm import LLMRouter, QueryType
 
 
 class LearningPathGenerator(BaseAgent):
+    query_type = QueryType.REASONING
     """Generates personalized learning paths based on repository structure and user expertise level."""
 
     MODULE_TEMPLATES = [
@@ -81,15 +82,27 @@ class LearningPathGenerator(BaseAgent):
         },
     ]
 
-    def __init__(self):
-        """Initialize LearningPathGenerator with multi-provider LLM router."""
-        super().__init__(None)
-        try:
-            self.llm = LLMRouter()
-        except RuntimeError:
-            self.llm = None
+    def __init__(self, llm_client=None):
+        """Initialize LearningPathGenerator with multi-provider LLM router.
 
-    async def execute(self, repo_structure: Dict, user_level: str = "junior") -> Dict[str, Any]:
+        Accepts an optional router from app.state (like other agents) and
+        falls back to building its own when none is injected — this is what
+        the Celery learning-path task relies on.
+        """
+        super().__init__(llm_client)
+        if llm_client is None:
+            try:
+                self.llm = self._wrap_llm(LLMRouter())
+            except RuntimeError:
+                self.llm = None
+
+    async def execute(
+        self,
+        repo_structure: Dict = None,
+        user_level: str = "junior",
+        index_id: str = None,
+        context_max_tokens: int = 4000,
+    ) -> Dict[str, Any]:
         """
         Generate personalized learning path based on repository structure and user expertise level.
 
@@ -99,6 +112,10 @@ class LearningPathGenerator(BaseAgent):
                 - classes: List of class dicts with 'name' key
                 - functions: List of function dicts with 'name' key
             user_level: Developer expertise level ("junior", "mid", "senior")
+            index_id: Optional repo-context index id — when given, the
+                requirement-sliced entities replace the full repo_structure
+                and the LLM prompt is token-budgeted.
+            context_max_tokens: Token budget for the index context slice.
 
         Returns:
             Dictionary with keys:
@@ -106,33 +123,62 @@ class LearningPathGenerator(BaseAgent):
                 - total_estimated_hours: Sum of all module hours
                 - path: List of module dicts with order, name, files, time_hours, objectives, description
         """
+        from app.services.repo_context import resolve_for_agent
+
+        full, sliced, context_text = await resolve_for_agent(
+            index_id,
+            repo_structure or {},
+            requirement="learning path, onboarding, modules, architecture, tech stack, key files",
+            max_tokens=context_max_tokens,
+            llm=self.llm,
+        )
         try:
-            return await self._generate_with_llm(repo_structure, user_level)
+            return await self._generate_with_llm(sliced, user_level, context_text, context_max_tokens)
         except Exception:
             # Gracefully fall back to default path if LLM fails
-            return self._generate_default(repo_structure, user_level)
+            return self._generate_default(full if index_id else sliced, user_level)
 
-    async def _generate_with_llm(self, repo_structure: Dict, user_level: str) -> Dict:
+    async def generate(self, repo_structure: Dict, role: str = "developer") -> Dict[str, Any]:
+        """Compatibility alias used by the Celery learning-path task.
+
+        Maps the task's ``role`` argument onto ``user_level``.
+        """
+        level = {"developer": "junior", "lead": "mid", "architect": "senior"}.get(role, "junior")
+        return await self.execute(repo_structure=repo_structure, user_level=level)
+
+    async def _generate_with_llm(
+        self, repo_structure: Dict, user_level: str, context_text: str = "", context_max_tokens: int = 4000
+    ) -> Dict:
         """
         Use LLMRouter to generate personalized learning path with multi-provider fallback.
 
         Args:
             repo_structure: Parsed repository entities
             user_level: Developer expertise level
+            context_text: Pre-rendered token-budgeted context (index path)
 
         Returns:
             Dictionary with learning path modules and metadata
         """
-        # Summarize repository structure (limit to first 30/20/30 as per spec)
-        files = [f.get("path", "") for f in repo_structure.get("files", [])][:30]
-        classes = [c.get("name", "") for c in repo_structure.get("classes", [])][:20]
-        functions = [f.get("name", "") for f in repo_structure.get("functions", [])][:30]
+        if context_text:
+            # Token-budgeted slice from the repo-context index — embed directly
+            # (already trimmed to the budget by select_context).
+            files = []
+            classes = []
+            functions = []
+            context_block = f"\nRepository Context (budgeted):\n{context_text[: int(context_max_tokens * 4)]}\n"
+        else:
+            # Summarize repository structure (limit to first 30/20/30 as per spec)
+            files = [f.get("path", "") for f in repo_structure.get("files", [])][:30]
+            classes = [c.get("name", "") for c in repo_structure.get("classes", [])][:20]
+            functions = [f.get("name", "") for f in repo_structure.get("functions", [])][:30]
+            context_block = ""
 
         prompt = f"""You are an expert developer onboarding coach. A {user_level} developer wants to learn this codebase.
 
 Repository Files: {files}
 Main Classes: {classes}
-Main Functions: {functions}
+Main Functions: {functions}{context_block}
 
 Create a personalized learning path with 5-8 modules. For each module:
 1. Name (e.g., "Authentication Module")

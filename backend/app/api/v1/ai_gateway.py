@@ -173,6 +173,21 @@ async def get_usage_summary(
     return await usage.get_org_summary(org_name)
 
 
+@router.get("/usage/{org_name}/providers")
+async def get_provider_usage(
+    org_name: str,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Provider attribution for an org — measures free-first routing savings.
+
+    Counts requests per provider/model and the free vs paid split, based on
+    the route metadata logged by the OpenAI-compatible gateway.
+    """
+    await _ensure_org_access(org_name, user)
+    return await usage.get_provider_breakdown(org_name, period)
+
+
 @router.get("/usage/{org_name}/quota")
 async def check_quota(
     org_name: str,
@@ -188,6 +203,20 @@ async def check_quota(
 @router.get("/tiers")
 async def list_tiers():
     return {"tiers": TIER_LIMITS, "credit_costs": CREDIT_COSTS}
+
+
+@router.get("/models")
+async def list_llm_models(req: Request):
+    """List the LLM router's model catalog (OpenRouter-style).
+
+    Returns the available providers (and whether each is configured) plus
+    the per-query-type routing preferences (code -> Claude, chat -> free
+    fast models, structured -> JSON-capable models, ...).
+    """
+    llm = getattr(req.app.state, "llm", None)
+    if llm is None or not hasattr(llm, "list_models"):
+        raise HTTPException(status_code=503, detail="LLM router not initialized")
+    return llm.list_models()
 
 
 # ── AIaaS Agent Gateway ───────────────────────────────────────────────────────
@@ -260,21 +289,62 @@ _AGENT_REGISTRY = {
 }
 
 
+def _agent_query_type(info: dict) -> Optional[str]:
+    """Query type an agent class declares (``QueryType`` value or None).
+
+    Heuristic-only agents (e.g. ``OnboardingReportGenerator``) have no
+    ``query_type`` attribute and return None. Never raises — a broken agent
+    import must not take down the catalog.
+    """
+    try:
+        import importlib
+        mod = importlib.import_module(info["module"])
+        cls = getattr(mod, info["class"])
+        qtype = getattr(cls, "query_type", None)
+        return qtype.value if qtype is not None else None
+    except Exception:
+        return None
+
+
+def _query_type_model(llm: Any, query_type: Optional[str]) -> Optional[str]:
+    """Primary served model id for a query type, e.g. ``anthropic/claude-...``.
+
+    Resolved from the LLM router's per-type provider chain; None when the
+    router is unavailable or the type is unknown.
+    """
+    if not query_type or llm is None:
+        return None
+    try:
+        from app.llm import QueryType
+        chain = llm.resolve_route(QueryType(query_type))
+        if chain:
+            return llm.route_info(chain[0])["served"]
+    except Exception:
+        pass
+    return None
+
+
 @router.get("/agents")
-async def list_agents():
-    """List all available AI agents and their metadata."""
-    return {
-        "agents": [
-            {
-                "name": name,
-                "description": info["description"],
-                "required_params": info["required_params"],
-                "credit_cost": APIKeyService.get_credit_cost(info["credit_action"]),
-            }
-            for name, info in _AGENT_REGISTRY.items()
-        ],
-        "count": len(_AGENT_REGISTRY),
-    }
+async def list_agents(req: Request):
+    """List all available AI agents and their metadata.
+
+    Each agent reports the query type it routes through (code, reasoning,
+    structured, ...) and the primary model that would serve it, e.g.
+    ``anthropic/claude-3-5-sonnet-20241022``.
+    """
+    llm = getattr(req.app.state, "llm", None)
+    agents = []
+    for name, info in _AGENT_REGISTRY.items():
+        qtype = _agent_query_type(info)
+        agents.append({
+            "name": name,
+            "description": info["description"],
+            "required_params": info["required_params"],
+            "credit_cost": APIKeyService.get_credit_cost(info["credit_action"]),
+            "query_type": qtype,
+            "model": _query_type_model(llm, qtype),
+        })
+    return {"agents": agents, "count": len(agents)}
 
 
 @router.post("/agents/{agent_name}")
@@ -301,9 +371,11 @@ async def execute_agent(
     agent_info = _AGENT_REGISTRY[agent_name]
     llm = getattr(req.app.state, "llm", None)
 
-    # Validate required params
+    # Validate required params. ``index_id`` may substitute for ``repo_structure``
+    # (agents resolve the requirement-slice from the repo-context index instead).
+    has_index = "index_id" in body
     for param in agent_info["required_params"]:
-        if param not in body:
+        if param not in body and not (has_index and param == "repo_structure"):
             raise HTTPException(
                 status_code=400,
                 detail=f"Missing required parameter '{param}'. Required: {agent_info['required_params']}",
@@ -337,7 +409,7 @@ async def execute_agent(
         kwargs = {k: v for k, v in body.items() if k not in ("github_token",)}
         result = await agent.execute(**kwargs)
 
-        # Track usage
+        # Track usage (with provider attribution from the router, if any)
         try:
             uid = auth.get("uid", "unknown")
             org = auth.get("org_name", uid)
@@ -345,6 +417,7 @@ async def execute_agent(
                 org_name=org,
                 endpoint=agent_name,
                 credits=cost,
+                metadata=getattr(llm, "last_route", None),
             )
         except Exception:
             pass  # usage tracking is non-critical
