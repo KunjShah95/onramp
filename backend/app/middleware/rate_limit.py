@@ -236,7 +236,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Falls back to per-process in-memory when Redis is unavailable.
     """
 
-    SKIP_PATHS = frozenset({"/health", "/docs", "/openapi.json"})
+    SKIP_PATHS = frozenset({
+        "/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json",
+    })
 
     def __init__(self, app, requests_per_minute: int = 200):
         super().__init__(app)

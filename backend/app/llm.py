@@ -12,6 +12,26 @@ from app.services.llm_cache import (
     get_semantic as llm_cache_get_semantic,
     set_semantic as llm_cache_set_semantic,
 )
+from app import metrics
+
+
+def _record_cache(outcome: str, tier: str = "redis") -> None:
+    """Record a cache hit/miss into the Prometheus registry (best-effort)."""
+    try:
+        if outcome == "hit":
+            metrics.record_cache_hit(tier=tier)
+        else:
+            metrics.record_cache_miss()
+    except Exception:
+        pass
+
+
+def _record_llm_call(provider, free: bool) -> None:
+    """Record a served provider call into the Prometheus registry."""
+    try:
+        metrics.record_llm_call(provider, free)
+    except Exception:
+        pass
 
 logger = logging.getLogger("onramp.llm")
 
@@ -530,6 +550,7 @@ class LLMRouter:
             self.last_route = route
             self.last_cache_hit = True
             self.last_similarity = None
+            _record_cache("hit", tier="redis")
             logger.debug("LLM cache hit (%s): %s…", qtype.value if qtype else "auto", cached[:60])
             return cached, "cache/redis", route
         # Semantic tier: near-duplicate questions (same content words, high
@@ -545,6 +566,7 @@ class LLMRouter:
             self.last_route = route
             self.last_cache_hit = True
             self.last_similarity = similarity
+            _record_cache("hit", tier="semantic")
             logger.debug(
                 "LLM semantic cache hit (%s, sim=%.3f): %s…",
                 qtype.value if qtype else "auto", similarity, text[:60],
@@ -556,6 +578,8 @@ class LLMRouter:
         self.last_route = route
         self.last_cache_hit = False
         self.last_similarity = None
+        _record_cache("miss")
+        _record_llm_call(provider.value, route["free"])
         await llm_cache_set(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
         await llm_cache_set_semantic(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
         return response, self.served_model(provider), route
@@ -607,6 +631,7 @@ class LLMRouter:
             self.last_route = self._cache_route(qtype)
             self.last_cache_hit = True
             self.last_similarity = None
+            _record_cache("hit", tier="redis")
             return cached
         # Semantic tier (see openai_chat for the rationale).
         semantic = await llm_cache_get_semantic(
@@ -618,6 +643,7 @@ class LLMRouter:
             self.last_route = route
             self.last_cache_hit = True
             self.last_similarity = similarity
+            _record_cache("hit", tier="semantic")
             logger.debug(
                 "LLM semantic cache hit (%s, sim=%.3f): %s…",
                 qtype.value if qtype else "auto", similarity, text[:60],
@@ -631,6 +657,8 @@ class LLMRouter:
         self.last_route = self.route_info(provider, query_type=qtype)
         self.last_cache_hit = False
         self.last_similarity = None
+        _record_cache("miss")
+        _record_llm_call(provider.value, self.last_route["free"])
         await llm_cache_set(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
         await llm_cache_set_semantic(_qtype_value(qtype), prompt, system, max_tokens, response, scope=cache_scope)
         return response

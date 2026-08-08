@@ -181,6 +181,40 @@ truncated, so prompts stay small.
 - Senior developer space for team leads
 - HR dashboard for team health metrics
 
+### 📈 Production Observability & Ops
+
+- **Prometheus `/metrics`** — dependency-free text-format registry with 10 metric
+  families: HTTP request totals/latency/in-flight, LLM calls by provider &
+  free/paid, LLM cache hits (redis/semantic) & misses, embedding calls,
+  WebSocket connections. Scrape with Prometheus + Grafana (docker-compose.prod.yml).
+- **Structured JSON logging** — `LOG_FORMAT=json` emits one JSON object per line
+  (Loki / Datadog / CloudWatch ready). `LOG_LEVEL` controls verbosity.
+- **Request correlation IDs** — every request gets an `X-Request-ID` echoed in
+  the response and logged, so failures trace end-to-end.
+- **Liveness & readiness probes** — `GET /health` (process up) and `GET /ready`
+  (DB + Redis reachable, returns 503 when a dependency is down) for K8s/Docker
+  orchestrators.
+- **Security headers** — HSTS (prod), `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, Referrer-Policy, Permissions-Policy; opt-in CSP via
+  `CSP_HEADER`.
+- **OpenAPI security scheme** — BearerAuth declared so `/docs` has an Authorize
+  button and typed clients can be generated.
+
+### 📱 PWA
+
+- Web app manifest + installable icons (any + maskable)
+- Service worker: app-shell precache, network-first navigations with offline
+  fallback, cache-first hashed assets, network-only API calls
+- Registered only in production builds (dev keeps Vite HMR intact)
+
+### 📦 TypeScript SDK (`@onramp/sdk`)
+
+- Typed client for the OpenAI-compatible gateway: chat, streaming chat, embeddings,
+  model listing
+- AIaaS agent execution, API-key validation/creation, usage + tiers
+- Zero runtime dependencies; works in Node 18+ and browsers
+- `sdk/` package — build with `npm run build`, test with `npm test`
+
 ### 🔐 Enterprise-Grade Security
 
 - JWT-based auth (HS256, 7-day expiry)
@@ -223,6 +257,7 @@ truncated, so prompts stay small.
 | **Database** | PostgreSQL 16 (asyncpg, SQLAlchemy 2.0) |
 | **Migrations** | Alembic |
 | **Cache** | Redis (distributed rate limiting, caching) |
+| **Observability** | Prometheus + Grafana (dependency-free /metrics) |
 | **AI** | Multi-provider: OpenRouter, Gemini, Groq, OpenAI, Anthropic |
 | **Auth** | Custom JWT (bcrypt + Fernet encryption) |
 | **Billing** | Stripe |
@@ -249,8 +284,9 @@ truncated, so prompts stay small.
 | ----------- | ----------- |
 | **Backend Hosting** | Railway |
 | **Frontend Hosting** | Vercel |
-| **Containerization** | Docker Compose |
-| **Reverse Proxy** | Nginx |
+| **Containerization** | Docker Compose (hardened: non-root, healthchecks) |
+| **Reverse Proxy** | Nginx (non-root, port 8080) |
+| **Monitoring** | Prometheus + Grafana (docker-compose.prod.yml) |
 | **CI/CD** | GitHub Actions |
 
 ---
@@ -353,6 +389,8 @@ docker compose down
 | --------- | ----- | ------------- |
 | **Frontend** | <http://localhost:8080> | React app (Nginx, proxies `/api` → backend) |
 | **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
+| **Prometheus** | <http://localhost:9090> | Metrics (scrapes backend `/metrics`, prod compose only) |
+| **Grafana** | <http://localhost:3000> | Dashboards (admin/admin by default, prod compose only) |
 | **Backend API** | <http://localhost:8001> | FastAPI backend |
 | **API Docs** | <http://localhost:8001/docs> | Swagger UI (interactive) |
 | **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |

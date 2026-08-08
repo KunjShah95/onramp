@@ -21,6 +21,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 import logging
 from contextlib import asynccontextmanager
 
+from app.logging_config import configure_logging
 from app.llm import LLMClient
 from app.embeddings import EmbeddingRouter
 from app.api.v1 import (
@@ -31,11 +32,14 @@ from app.api.v1 import (
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
-    dora as dora_router, onboarding_plans as onboarding_plans_router, openai_gateway, playbooks, pr_review,
+    dora as dora_router, onboarding_plans as onboarding_plans_router, openai_gateway, ops as ops_router,
+    playbooks, pr_review,
     quiz as quiz_router, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
     teams, unique, webhook_handler, wiki, ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
+from app.middleware.metrics import MetricsMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
@@ -55,8 +59,8 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
             )
         return await call_next(request)
 
-# Configure basic logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+# Structured logging — JSON in production (LOG_FORMAT=json), text locally.
+configure_logging()
 
 
 _LLM_KEY_VARS = (
@@ -121,6 +125,48 @@ app = FastAPI(
     openapi_url=None if _is_production else "/openapi.json",
 )
 
+# Declare the auth scheme in the OpenAPI document so /docs shows an
+# "Authorize" button and API consumers can generate typed clients. Auth is
+# enforced by AuthMiddleware (JWT) and per-endpoint key checks (get_user_or_api_key).
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends
+from fastapi.openapi.utils import get_openapi
+
+_bearer_scheme = HTTPBearer(
+    auto_error=False,
+    description="JWT access token (Authorization: Bearer <token>) or Onramp API key (cf_...)",
+)
+
+
+def _custom_openapi():
+    """Extend the default OpenAPI schema with the bearer security scheme."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {}).setdefault("securitySchemes", {})
+    schema["components"]["securitySchemes"]["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token (Authorization: Bearer <token>) or Onramp API key.",
+    }
+    # NOTE: we deliberately do NOT apply a global "security: [{BearerAuth: []}]"
+    # requirement — many routes are public (/health, auth, webhooks, billing
+    # webhook, Slack, the OpenAI-compatible gateway which checks keys
+    # in-endpoint). Auth is enforced by AuthMiddleware + per-endpoint key
+    # checks; declaring the scheme in components is enough to give /docs an
+    # Authorize button and let consumers generate typed clients.
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = _custom_openapi
+
 # Middleware is executed in reverse order of addition (last added = outermost)
 # Outermost -> Logging -> ResponseWrapper -> RateLimit -> Auth -> CORS -> Innermost (Router)
 # Allowed CORS origins are configured via the CORS_ALLOWED_ORIGINS env var
@@ -134,7 +180,7 @@ _cors_origins = [
 _doc_paths = [] if _is_production else ["/docs", "/redoc", "/openapi.json"]
 
 app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/health", *_doc_paths,
+    "/", "/health", "/ready", "/metrics", *_doc_paths,
     "/api/v1/auth/register",        # email/password registration
     "/api/v1/auth/login",           # email/password login
     "/api/v1/auth/check-provider",  # public provider lookup by email
@@ -162,6 +208,8 @@ app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 # CORS origin regex — configurable via env var for custom domains.
 # Default matches Vercel preview deployments; override for custom domains.
 _cors_regex = os.getenv(
@@ -239,6 +287,8 @@ app.include_router(ws_router.router, prefix="/api/v1")
 # OpenAI-compatible gateway — mounted at /v1 (no /api/v1 prefix) so OpenAI
 # SDK clients can set base_url="<host>/v1" directly.
 app.include_router(openai_gateway.router)
+# Ops endpoints (/health, /ready, /metrics) — mounted at root, public.
+app.include_router(ops_router.router)
 
 
 @app.get("/")
@@ -251,8 +301,3 @@ async def root():
     }
 
 
-# Named health_check (not health) to avoid shadowing the imported `health`
-# router module used above in include_router(health.router, ...).
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}

@@ -41,10 +41,13 @@ class TestResponseEnvelope:
         assert body["success"] is True
 
     def test_health_envelope(self, client):
+        """Liveness probes stay unwrapped (raw ops shape) so load balancers
+        and K8s healthchecks can parse them without unwrapping."""
         resp = client.get("/health")
         body = resp.json()
-        assert body["success"] is True
-        assert "status" in body["data"]
+        assert body["status"] == "ok"
+        assert "version" in body
+        assert "uptime_seconds" in body
 
     def test_error_envelope_has_error_field(self, client):
         """401 responses should have a consistent error shape."""
@@ -82,9 +85,9 @@ class TestHealthEndpointContract:
 
     def test_health_returns_expected_fields(self, client):
         resp = client.get("/health")
-        data = resp.json()["data"]
+        data = resp.json()
         assert "status" in data
-        assert data["status"] == "healthy"
+        assert data["status"] == "ok"
 
 
 class TestPricingEndpointContract:

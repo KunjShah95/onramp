@@ -61,6 +61,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
@@ -70,11 +76,17 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     ports:
-      - "8080:80"   # host:8080 → container:80 (avoids conflict with local web server)
+      - "8080:8080"   # host:8080 → container:8080 (non-root nginx)
     depends_on:
       backend:
         condition: service_started
-    # API calls from the browser go through Nginx at port 80 (same-origin via /api/* proxy)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # API calls from the browser go through Nginx (same-origin via /api/* proxy)
     # or directly to http://localhost:8000 if VITE_API_URL is absolute.
 
   celery-worker:

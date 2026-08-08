@@ -16,7 +16,17 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+from app import metrics
+
 logger = logging.getLogger("onramp.embeddings")
+
+
+def _record_embedding_call(provider) -> None:
+    """Record a served embedding provider call (best-effort)."""
+    try:
+        metrics.record_embedding_call(provider.value if hasattr(provider, "value") else str(provider))
+    except Exception:
+        pass
 
 
 class EmbeddingProvider(Enum):
@@ -264,6 +274,7 @@ class EmbeddingRouter:
                 vectors = await self._call_provider(provider, texts)
                 self.current_provider = provider
                 self.last_route = self.route_info(provider)
+                _record_embedding_call(provider)
                 return vectors, provider, self.route_info(provider)
             except Exception as exc:
                 err_msg = f"{provider.value} failed: {str(exc)}"

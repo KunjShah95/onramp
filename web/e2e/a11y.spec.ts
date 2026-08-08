@@ -15,8 +15,20 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
+// Framer-motion fades elements in via inline opacity/transform. If axe scans
+// mid-animation, text is semi-transparent and triggers false color-contrast
+// violations. Neutralize animation state so scans see the settled page.
+async function settleAnimations(page: any) {
+  await page.addStyleTag({
+    content:
+      '*, *::before, *::after { opacity: 1 !important; transform: none !important; transition: none !important; animation: none !important; }',
+  })
+  await page.waitForTimeout(50)
+}
+
 // Helper: run axe and assert no critical or serious violations
 async function assertNoCriticalViolations(page: any, pageName: string) {
+  await settleAnimations(page)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()
@@ -202,6 +214,7 @@ test.describe('a11y — Interactive Elements', () => {
   test('color contrast passes for key text elements', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
+    await settleAnimations(page)
 
     // Run axe with color-contrast check specifically
     const results = await new AxeBuilder({ page })
@@ -361,6 +374,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for landing page', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
+    await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
@@ -398,6 +412,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for login page', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
+    await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
@@ -426,6 +441,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for register page', async ({ page }) => {
     await page.goto('/register')
     await page.waitForLoadState('networkidle')
+    await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])

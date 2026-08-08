@@ -10,8 +10,23 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.middleware.auth import verify_session_token
 from app.services.ws_manager import manager
+from app import metrics
 
 logger = logging.getLogger(__name__)
+
+
+def _record_ws_open() -> None:
+    try:
+        metrics.record_ws_open()
+    except Exception:
+        pass
+
+
+def _record_ws_close() -> None:
+    try:
+        metrics.record_ws_close()
+    except Exception:
+        pass
 
 router = APIRouter(tags=["websocket"])
 
@@ -39,6 +54,7 @@ async def websocket_endpoint(
 
     # Register the connection
     await manager.connect(websocket, user_id)
+    _record_ws_open()
 
     try:
         # Send a confirmation message
@@ -63,3 +79,4 @@ async def websocket_endpoint(
         logger.exception("WebSocket error for user %s: %s", user_id[:8], e)
     finally:
         manager.disconnect(websocket, user_id)
+        _record_ws_close()

@@ -1,0 +1,40 @@
+{
+  "name": "@onramp/sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript SDK for the Onramp 2.0 API — multi-provider AI gateway, agents, embeddings, and usage metering.",
+  "keywords": [
+    "onramp",
+    "ai",
+    "llm",
+    "gateway",
+    "sdk",
+    "openai-compatible"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "~5.7.2",
+    "vitest": "^4.1.9"
+  }
+}

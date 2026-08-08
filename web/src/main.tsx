@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App'
+import { registerPwa } from './lib/pwa'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,3 +24,6 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+
+// PWA: register the service worker in production (dev skips it for HMR).
+registerPwa()

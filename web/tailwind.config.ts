@@ -19,7 +19,6 @@ export default {
       colors: {
         // ── Mission-native names (var-driven → real light/dark themes) ──
         room: 'var(--room)',
-        base: 'var(--base)',
         panel: 'var(--panel)',
         'panel-raised': 'var(--panel-raised)',
         well: 'var(--well)',

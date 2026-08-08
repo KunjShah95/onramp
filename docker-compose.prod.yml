@@ -37,12 +37,18 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: production
     restart: unless-stopped
     ports:
       - "8001:8000"   # host:8001 → container:8000 (avoids conflict with local server)
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     environment:
       - ENVIRONMENT=production
       - ENV=production
@@ -92,10 +98,16 @@ services:
       dockerfile: web/Dockerfile
     restart: unless-stopped
     ports:
-      - "8080:80"   # host:8080 → container:80 (avoids conflict with local web server)
+      - "8080:8080"   # host:8080 → container:8080 (non-root nginx)
     depends_on:
       - backend
-    # API calls go through Nginx at port 8080 (same-origin via /api/* proxy)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # API calls go through Nginx (same-origin via /api/* proxy)
     deploy:
       resources:
         limits:
@@ -103,7 +115,7 @@ services:
 
   celery-worker:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
       target: celery-worker
     restart: unless-stopped
@@ -137,6 +149,47 @@ services:
         limits:
           memory: 1G
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
 volumes:
   redis_data:
   postgres_data:
+  prometheus_data:
+  grafana_data:
