@@ -22,14 +22,16 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.llm import LLMClient
+from app.embeddings import EmbeddingRouter
 from app.api.v1 import (
+    repo_index as repo_index,
     accounts as accounts_router, admin as admin_router, ai_gateway, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
-    dora as dora_router, onboarding_plans as onboarding_plans_router, playbooks, pr_review,
+    dora as dora_router, onboarding_plans as onboarding_plans_router, openai_gateway, playbooks, pr_review,
     quiz as quiz_router, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
     teams, unique, webhook_handler, wiki, ws as ws_router
 )
@@ -149,6 +151,8 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
+    "/v1/chat/completions",      # OpenAI-compatible gateway (auth enforced in-endpoint)
+    "/v1/models",                # OpenAI-compatible model list (auth enforced in-endpoint)
     "/api/v1/explore/health",    # public health check for explore service
     "/api/v1/slack/interactive",  # Slack interactive payloads (verified by signing secret)
     "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)
@@ -189,11 +193,15 @@ except ImportError:
 llm_client = LLMClient()
 app.state.llm = llm_client
 
+embeddings = EmbeddingRouter()
+app.state.embeddings = embeddings
+
 app.include_router(explore.router, prefix="/api/v1")
 app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")
 app.include_router(ask.router, prefix="/api/v1")
 app.include_router(repositories.router, prefix="/api/v1")
+app.include_router(repo_index.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(slack.router, prefix="/api/v1")
@@ -227,6 +235,9 @@ app.include_router(dora_router.router, prefix="/api/v1")
 app.include_router(webhook_handler.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")
 app.include_router(ws_router.router, prefix="/api/v1")
+# OpenAI-compatible gateway — mounted at /v1 (no /api/v1 prefix) so OpenAI
+# SDK clients can set base_url="<host>/v1" directly.
+app.include_router(openai_gateway.router)
 
 
 @app.get("/")
