@@ -153,6 +153,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/ai/tiers",          # public tier config
     "/v1/chat/completions",      # OpenAI-compatible gateway (auth enforced in-endpoint)
     "/v1/models",                # OpenAI-compatible model list (auth enforced in-endpoint)
+    "/v1/embeddings",            # OpenAI-compatible embeddings (auth enforced in-endpoint)
     "/api/v1/explore/health",    # public health check for explore service
     "/api/v1/slack/interactive",  # Slack interactive payloads (verified by signing secret)
     "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)

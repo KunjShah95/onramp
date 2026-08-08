@@ -169,13 +169,17 @@ class EmbeddingRouter:
     def primary(self) -> Optional[EmbeddingProvider]:
         return self.current_provider
 
-    def _chain(self) -> List[EmbeddingProvider]:
-        """Chain starting at the current provider, then the rest free-first."""
+    def _chain(self, preferred: Optional[EmbeddingProvider] = None) -> List[EmbeddingProvider]:
+        """Chain starting at ``preferred`` (or the current provider), free-first."""
         if self.current_provider is None:
             return []
-        return [self.current_provider] + [
+        if preferred is not None and self._provider_available(preferred):
+            start = preferred
+        else:
+            start = self.current_provider
+        return [start] + [
             p for p in self.fallback_chain
-            if p != self.current_provider and self._provider_available(p)
+            if p != start and self._provider_available(p)
         ]
 
     def resolve_model(self, model: Optional[str]) -> Optional[EmbeddingProvider]:
@@ -233,16 +237,18 @@ class EmbeddingRouter:
         return vectors[0], provider, route
 
     async def embed_batch(
-        self, texts: List[str]
+        self, texts: List[str], preferred: Optional[EmbeddingProvider] = None
     ) -> Tuple[List[List[float]], EmbeddingProvider, Dict[str, Any]]:
         """Embed a batch of texts with per-provider fallback.
 
+        ``preferred`` biases the provider chain to start with a specific
+        provider (e.g. one resolved from an explicit ``model`` argument).
         Returns ``(vectors, provider, route)``. Raises ``ValueError`` for an
         empty batch and ``RuntimeError`` when every configured provider fails.
         """
         if not texts:
             raise ValueError("texts must not be empty")
-        chain = self._chain()
+        chain = self._chain(preferred)
         if not chain:
             raise RuntimeError(
                 "No embedding providers configured. Set OPENAI_API_KEY, "

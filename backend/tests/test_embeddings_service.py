@@ -22,8 +22,11 @@ class FakeEmbeddingRouter:
 
     @staticmethod
     def _embed(text: str):
+        # 1536-dim bag-of-words vector (matches EMBEDDING_DIMENSIONS default
+        # so indexed chunks pass the dimension guard and get persisted).
         words = set(re.findall(r"\w+", text.lower()))
-        return [1.0 if w in words else 0.0 for w in _VOCAB]
+        vec = [1.0 if w in words else 0.0 for w in _VOCAB]
+        return vec + [0.0] * (1536 - len(vec))
 
     async def embed(self, text):
         return self._embed(text), EmbeddingProvider.OPENAI, {
@@ -75,6 +78,27 @@ class TestIndexAndSearch:
         docs = await svc.search(index_id, "how does auth login work?")
         assert docs, "keyword fallback must still return documents"
         assert docs[0].filename in ("auth.py", "db.py")
+
+    async def test_dimension_mismatch_chunks_not_persisted(self, repo_dir):
+        """Skipped (dimension-mismatched) chunks must not overwrite the index."""
+        class WrongDimsRouter:
+            is_available = True
+            primary = EmbeddingProvider.OPENAI
+            providers = {
+                EmbeddingProvider.OPENAI: {"model": "text-embedding-3-small"},
+            }
+
+            async def embed(self, text):
+                return [1.0, 0.0], EmbeddingProvider.OPENAI, {}
+
+            async def embed_batch(self, texts, preferred=None):
+                return [[1.0, 0.0] for _ in texts], EmbeddingProvider.OPENAI, {}
+
+        svc = EmbeddingsService(embeddings_router=WrongDimsRouter())
+        index_id = await svc.index_documents("idx-dims", repo_dir)
+        # Chunks exist (metadata persisted), but NO vector rows were written
+        # because every vector was 2-dim vs the 1536-dim column.
+        assert await svc.storage.list_embedding_chunks(index_id) == []
 
     async def test_absent_index_returns_empty(self):
         svc = EmbeddingsService(embeddings_router=FakeEmbeddingRouter())

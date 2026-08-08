@@ -313,6 +313,28 @@ class TestChatCompletions:
         assert contents == "Hello world"
         assert body.rstrip().endswith("data: [DONE]")
 
+    def test_over_quota_returns_429(self, client):
+        """Exhaust the free-tier monthly credit quota, then assert the gateway
+        blocks the request (the charge is recorded on success, so over-quota
+        callers must never reach the LLM)."""
+        from app.services.usage_tracker import track_usage
+        import asyncio
+
+        # Free tier allows 500 credits/month; record 500 already-used credits
+        # for the test org (auth org_name="testorg").
+        for _ in range(500):
+            asyncio.run(track_usage(
+                user_id=None, team_id="testorg", endpoint="chat", method="POST",
+                status_code=200, response_time_ms=1, tokens_used=1,
+            ))
+        resp = client.post(
+            "/v1/chat/completions",
+            headers=_headers(),
+            json={"messages": [{"role": "user", "content": "x"}]},
+        )
+        assert resp.status_code == 429
+        assert resp.json()["detail"]["code"] == "QUOTA_EXCEEDED"
+
 
 class TestModels:
     def test_list_models(self, client):
@@ -349,7 +371,7 @@ class TestEmbeddingsEndpoint:
             is_available = True
             providers = {"openai": {"model": "text-embedding-3-small"}}
 
-            async def embed_batch(self, texts):
+            async def embed_batch(self, texts, preferred=None):
                 return [[0.1, 0.2] for _ in texts], "openai", {
                     "provider": "openai", "model": "text-embedding-3-small",
                     "served": "openai/text-embedding-3-small",
@@ -367,6 +389,30 @@ class TestEmbeddingsEndpoint:
         assert body["data"][0]["embedding"] == [0.1, 0.2]
         assert body["usage"]["total_tokens"] > 0
 
+    def test_embeddings_honors_resolved_model(self, monkeypatch):
+        """The resolved provider must be passed to the router as `preferred`."""
+        calls = {}
+
+        class FakeRouter:
+            is_available = True
+            providers = {"openai": {"model": "text-embedding-3-small"}}
+
+            async def embed_batch(self, texts, preferred=None):
+                calls["preferred"] = preferred
+                return [[0.1, 0.2] for _ in texts], "openai", {
+                    "provider": "openai", "model": "text-embedding-3-small",
+                    "served": "openai/text-embedding-3-small",
+                    "price_usd": 0.02, "price_inr": 1.70,
+                }
+
+            def resolve_model(self, model):
+                return "openai"
+
+        client = TestClient(self._app_with_embeddings(monkeypatch, FakeRouter()))
+        resp = client.post("/v1/embeddings", json={"model": "openai", "input": "hi"}, headers=_headers())
+        assert resp.status_code == 200
+        assert calls["preferred"] == "openai"
+
     def test_embeddings_503_when_unavailable(self, monkeypatch):
         class NoRouter:
             is_available = False
@@ -380,7 +426,7 @@ class TestEmbeddingsEndpoint:
             is_available = True
             providers = {"openai": {"model": "text-embedding-3-small"}}
 
-            async def embed_batch(self, texts):
+            async def embed_batch(self, texts, preferred=None):
                 raise ValueError("empty")
 
             def resolve_model(self, model):

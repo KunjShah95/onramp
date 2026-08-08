@@ -33,6 +33,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.v1.auth import get_user_or_api_key
+from app.services.quota import charge_wallet, check_quota
 from app.services.usage_tracker import UsageTracker
 from app.services.llm_costs import (
     calculate_cost,
@@ -101,6 +102,9 @@ async def _track_usage(
     route: Optional[Dict] = None,
     input_tokens: int = 0,
     output_tokens: int = 0,
+    endpoint: str = "chat",
+    cost_usd_override: Optional[float] = None,
+    cost_avoided_override: Optional[float] = None,
 ) -> None:
     """Record gateway usage against the caller's quota (best-effort).
 
@@ -108,7 +112,8 @@ async def _track_usage(
     usage record so free-first routing savings can be measured. The record
     also persists the dollar cost of the request (``cost_usd``) and the
     savings vs the paid baseline model (``cost_avoided_usd``), both computed
-    from per-model token pricing.
+    from per-model token pricing. Callers with an exact cost (e.g. embeddings
+    priced per input token) can pass ``cost_usd_override``.
     """
     try:
         uid = auth.get("uid", "unknown")
@@ -120,18 +125,55 @@ async def _track_usage(
         snapshot = None
         if route and "price_in" in route and "price_out" in route:
             snapshot = {"input": route["price_in"], "output": route["price_out"]}
-        cost = calculate_cost(model, input_tokens, output_tokens, price=snapshot)
-        avoided = calculate_cost_avoided(model, input_tokens, output_tokens, price=snapshot)
+        cost = (
+            cost_usd_override
+            if cost_usd_override is not None
+            else calculate_cost(model, input_tokens, output_tokens, price=snapshot)
+        )
+        avoided = (
+            cost_avoided_override
+            if cost_avoided_override is not None
+            else calculate_cost_avoided(model, input_tokens, output_tokens, price=snapshot)
+        )
         await usage.record_usage(
             org_name=org,
-            endpoint="chat",
+            endpoint=endpoint,
             credits=1,
             cost_usd=cost,
             cost_avoided_usd=avoided,
             metadata=route,
         )
+        # Usage-based callers draw down their prepaid credit wallet on success
+        # (the up-front check only verified the balance, it did not charge).
+        await _charge_usage_based(auth, endpoint)
     except Exception:
         pass  # usage tracking is non-critical
+
+
+async def _charge_usage_based(auth: dict, action: str) -> None:
+    """Best-effort wallet charge for usage_based callers (no-op otherwise)."""
+    scope = auth.get("org_name") or auth.get("uid")
+    if not scope:
+        return
+    await charge_wallet(scope, action)
+
+
+async def _enforce_quota(auth: dict, action: str) -> None:
+    """Block the request up front when the caller is out of quota/credits.
+
+    Enforces without recording — the endpoint records the charge on success,
+    so failed requests never consume quota. Best-effort: a quota infra error
+    fails open so the gateway stays available.
+    """
+    scope = auth.get("org_name") or auth.get("uid")
+    if not scope:
+        return
+    try:
+        await check_quota(scope, action)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Quota check failed for %s; allowing request", scope)
 
 
 def _route_header_for(llm, body: ChatCompletionRequest, prompt: str) -> str:
@@ -199,6 +241,10 @@ async def chat_completions(
     llm = _get_llm(req)
     if not body.messages:
         raise HTTPException(status_code=400, detail="messages must not be empty")
+
+    # Enforce quota up front (without recording); the charge is recorded only
+    # after the LLM call succeeds so failures never consume quota.
+    await _enforce_quota(auth, "chat")
 
     system, prompt = _extract_prompt(body.messages)
     if not prompt.strip():
@@ -361,9 +407,13 @@ async def create_embeddings(
     if not texts:
         raise HTTPException(status_code=400, detail="input must not be empty")
 
+    # Enforce quota up front (without recording); the charge is recorded only
+    # after the embed call succeeds so failures never consume quota.
+    await _enforce_quota(auth, "embed")
+
     provider = embeddings.resolve_model(body.model)
     try:
-        vectors, served_provider, route = await embeddings.embed_batch(texts)
+        vectors, served_provider, route = await embeddings.embed_batch(texts, preferred=provider)
     except RuntimeError as exc:
         logger.warning("Embedding request failed: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc))
@@ -378,6 +428,13 @@ async def create_embeddings(
     model_cfg = embeddings.providers[served_provider]
     tokens = estimate_tokens(" ".join(texts))
     usd, inr = calculate_embedding_cost(model_cfg["model"], tokens)
+
+    # Record usage (with provider attribution + cost) so embed requests count
+    # against the caller's monthly quota like chat requests do.
+    await _track_usage(
+        auth, route, input_tokens=tokens, output_tokens=0, endpoint="embed",
+        cost_usd_override=usd,
+    )
     return {
         "object": "list",
         "data": data,

@@ -140,7 +140,12 @@ class EmbeddingsService:
                     chunk["embedding_model"] = self.embeddings.providers[provider]["model"]
                     chunk["embedding_dims"] = len(vector)
                     stored += 1
-                await self.storage.save_embedding_chunks(index_id, chunks)
+                # Only persist chunks that actually got a vector. Skipped
+                # chunks (dimension mismatch) must not be written: their rows
+                # would overwrite existing vectors with NULL in Postgres.
+                vector_chunks = [c for c in chunks if c.get("vector") is not None]
+                if vector_chunks:
+                    await self.storage.save_embedding_chunks(index_id, vector_chunks)
                 logger.info("Indexed %d vector chunks for %s", stored, index_id)
         except Exception:
             logger.exception("Embedding index failed for %s, keeping keyword-only", index_id)
