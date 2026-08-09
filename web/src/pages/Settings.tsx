@@ -1,4 +1,14 @@
 // @ts-nocheck — Pre-existing auth type narrowing issues (inherited from AuthContext.tsx)
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: Settings is the station engineer's seat — identity, signal routing
+ *   (notifications), outbound links (integrations), federation (SSO) and
+ *   instrument appearance (theme). Same seated-panel language as the mission
+ *   dashboards: console panels with call-sign rails, mono designators, live
+ *   status LEDs, recessed .input wells and signal-only colour.
+ * OWN-WORLD: Daylit ops room, seated panels, signal-only colour, mono telemetry.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
@@ -28,27 +38,63 @@ import {
   configureSso,
   getSsoConfig,
   testSsoConnection,
+  updateProfile,
   type ApiKey,
   type NotificationPreferences,
   type Webhook,
   type GithubTestResult,
 } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 
 import { useToast } from '../context/ToastContext'
 import {
   User, At, Key, Bell, Palette, ShareNetwork,
   ChatCircle, GithubLogo, Check, X, Spinner, Info, Lock,
-  EnvelopeSimple, Sun, Moon, Eye, Code, Trash,
-  Plugs, Fire
+  EnvelopeSimple, Eye, Code, Trash,
+  Plugs, Fire, CaretDown,
 } from '@phosphor-icons/react'
 
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
+const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
+
+/** Signal switch — the one toggle control used across every settings seat. */
+function Toggle({ on, onChange, disabled, danger, label }: {
+  on: boolean
+  onChange: () => void
+  disabled?: boolean
+  danger?: boolean
+  label?: string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label ? `${label} ${on ? 'on' : 'off'}` : on ? 'On' : 'Off'}
+      onClick={onChange}
+      disabled={disabled}
+      className={cn(
+        'w-11 h-6 rounded-pill relative shrink-0 border transition-colors duration-200',
+        on ? (danger ? 'bg-abort border-abort' : 'bg-go border-go') : 'bg-well border-seam',
+        disabled && 'opacity-50 cursor-not-allowed'
+      )}
+    >
+      <span className={cn(
+        'absolute top-0.5 w-5 h-5 rounded-full bg-panel-raised shadow-sm transition-all duration-200',
+        on ? 'left-[22px]' : 'left-[2px]'
+      )} />
+    </button>
+  )
+}
+
 export default function Settings() {
-  const { user } = useAuth()
+  const { user, role, updateUser } = useAuth()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState('account')
 
   const [name, setName] = useState('')
+  const [position, setPosition] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
@@ -127,7 +173,12 @@ export default function Settings() {
     setNotifPrefsLoading(false)
   }, [])
 
-  useEffect(() => { setName(user?.displayName || ''); setEmail(user?.email || '') }, [user])
+  useEffect(() => {
+    setName(user?.name || user?.displayName || '')
+    setPosition(user?.position || '')
+    setAvatarUrl(user?.photoURL || '')
+    setEmail(user?.email || '')
+  }, [user])
 
   const fetchKeys = useCallback(async () => {
     if (!orgName) return
@@ -194,6 +245,12 @@ export default function Settings() {
     if (!token) return
     setSaving(true); setSavedMsg('')
     try {
+      const updated = await updateProfile({
+        name: name.trim(),
+        position: position.trim() || null,
+        avatar_url: avatarUrl.trim() || null,
+      })
+      updateUser({ name: updated.name, displayName: updated.name, position: updated.position || undefined, photoURL: updated.avatar_url || undefined })
       setSavedMsg('Profile saved'); toast.success('Profile saved')
     } catch (e) {
       setSavedMsg(e instanceof Error ? e.message : 'Save failed'); toast.error('Failed to save profile')
@@ -244,13 +301,6 @@ export default function Settings() {
 
   const initial = (name || email || 'U').charAt(0).toUpperCase()
 
-  const containerVariants = {
-    hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-  }
-  const itemVariants = {
-    hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-  }
-
   const tabs = [
     { id: 'account', label: 'Account', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -260,305 +310,333 @@ export default function Settings() {
   ]
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-4xl pt-4 sm:pt-8 pb-12 font-body text-text-primary px-4 sm:px-6 relative">
-      <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
-        {/* Tab bar */}
-        <div className="flex items-center gap-1 border-b border-border mb-8 overflow-x-auto pb-0">
+    <motion.div variants={container} initial="hidden" animate="show" className="w-full max-w-5xl pt-4 sm:pt-8 pb-12 px-4 sm:px-6">
+      {/* ── Station header ── */}
+      <motion.div variants={item} className="mb-6">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <span className="tile tile-go">Settings</span>
+          <span className="designator opacity-50">STATION ENGINEER · CONFIG</span>
+        </div>
+        <h1 className="text-display-md md:text-display-lg text-text-primary">Mission Configuration</h1>
+        <p className="text-body-sm text-text-secondary mt-1 font-code">Identity · signal routing · outbound links · federation · appearance</p>
+      </motion.div>
+
+      {/* ── Seat selector (segmented control) ── */}
+      <motion.div variants={item} className="mb-6">
+        <div className="flex items-center gap-1 rounded-btn border border-seam bg-panel-raised p-1 shadow-card w-fit max-w-full overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
+              aria-pressed={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
-                activeTab === tab.id ? 'text-accent-primary' : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" weight={activeTab === tab.id ? 'fill' : 'regular'} />
-              {tab.label}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 w-full h-[2px] bg-accent-primary" />
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-btn text-caption font-semibold whitespace-nowrap transition-colors',
+                activeTab === tab.id
+                  ? 'bg-go text-[hsl(var(--primary-foreground))] shadow-sm'
+                  : 'text-ink-muted hover:text-ink'
               )}
+            >
+              <tab.icon size={14} weight={activeTab === tab.id ? 'bold' : 'regular'} />
+              {tab.label}
             </button>
           ))}
         </div>
+      </motion.div>
 
-        {/* Account Tab */}
-        {activeTab === 'account' && (
-          <div className="space-y-8">
-            <CardSpotlight className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <User className="w-5 h-5 text-accent-primary" weight="fill" />
-                <h3 className="font-display text-lg font-bold">Profile Information</h3>
-              </div>
-
+      {/* Account Tab */}
+      {activeTab === 'account' && (
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+          <motion.div variants={item}>
+            <ConsolePanel rail="Crew Profile" designator="IDENT" status="go">
               <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-20 h-20 rounded-full overflow-hidden bg-bg-tertiary border border-border flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-well border border-seam flex items-center justify-center">
                     {user?.photoURL ? (
                       <img src={user.photoURL} alt={name || 'Avatar'} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl font-bold text-accent-primary">{initial}</span>
+                      <span className="text-2xl font-bold text-go font-display">{initial}</span>
                     )}
                   </div>
+                  <span className="overline text-ink-muted/60">Call Sign</span>
                 </div>
 
                 <div className="flex-1 space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Display Name</label>
+                    <label className="block overline text-ink-muted mb-2">Display Name</label>
                     <input
                       type="text"
                       value={name}
                       onChange={e => setName(e.target.value)}
-                      className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 transition-colors"
+                      className="input"
+                      placeholder="Your callsign"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Email Address</label>
+                    <label className="block overline text-ink-muted mb-2">Position / Title</label>
+                    <input
+                      type="text"
+                      value={position}
+                      placeholder="e.g. Senior Software Engineer"
+                      onChange={e => setPosition(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block overline text-ink-muted mb-2">Avatar URL</label>
+                    <input
+                      type="text"
+                      value={avatarUrl}
+                      placeholder="https://… (optional)"
+                      onChange={e => setAvatarUrl(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block overline text-ink-muted mb-2">Email Address</label>
                     <div className="relative">
-                      <At className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary/50" />
+                      <At className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-disabled" />
                       <input
                         type="email" value={email} readOnly
                         title="Email is managed by your sign-in provider"
-                        className="w-full bg-bg-primary border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-tertiary cursor-not-allowed focus:outline-none"
+                        className="input pl-10 text-ink-muted cursor-not-allowed"
                       />
                     </div>
+                    <p className="text-caption text-ink-muted mt-1.5">Managed by your sign-in provider — not editable here.</p>
                   </div>
+                  {(role || user?.createdAt) && (
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-ink-muted">
+                      {role && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="capitalize">{role}</span>
+                          <span className="text-ink-muted/60">· Team role</span>
+                        </span>
+                      )}
+                      {user?.createdAt && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span>Member since {new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center justify-end gap-4 pt-2">
-                    {savedMsg && <span className="text-xs text-green-400">{savedMsg}</span>}
+                    {savedMsg && <span className="text-caption text-success">{savedMsg}</span>}
                     <button
                       onClick={handleSaveProfile}
                       disabled={saving || !user}
-                      className="bg-accent-primary hover:bg-accent-primary/90 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50"
+                      className="btn"
                     >
                       {saving ? 'Saving…' : 'Save Changes'}
                     </button>
                   </div>
                 </div>
               </div>
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            {/* API Keys */}
-            <CardSpotlight className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Key className="w-5 h-5 text-accent-primary" weight="fill" />
-                  <div>
-                    <h3 className="font-display text-lg font-bold">API Keys</h3>
-                    <p className="text-sm text-text-secondary">Manage your secret keys for programmatic access.</p>
-                  </div>
-                </div>
-                <button onClick={handleGenerateKey} disabled={!orgName}
-                  className="border border-border bg-transparent hover:bg-bg-tertiary text-text-secondary hover:text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
-                  Generate New Key
+          {/* API Keys */}
+          <motion.div variants={item}>
+            <ConsolePanel
+              rail="API Keys"
+              designator="CREDENTIALS"
+              status="standby"
+              action={
+                <button onClick={handleGenerateKey} disabled={!orgName} className="btn btn-secondary px-3 py-1.5 text-caption">
+                  + Generate Key
                 </button>
-              </div>
+              }
+            >
+              <p className="text-caption text-ink-muted mb-4">Secret keys for programmatic access to the gateway.</p>
 
-              {keyError && <div className="mb-4 text-sm text-red-400">{keyError}</div>}
+              {keyError && <div className="mb-4 text-caption text-error bg-error-muted border border-error/20 rounded-btn px-3 py-2">{keyError}</div>}
 
               {newKey && (
-                <div className="mb-4 bg-yellow-500/10 text-yellow-400 rounded-xl p-4 border border-yellow-500/20">
-                  <p className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                    <Key className="w-4 h-4" weight="fill" />
+                <div className="mb-4 bg-warning-muted border border-warning/25 rounded-card p-4">
+                  <p className="text-caption font-semibold mb-1 flex items-center gap-1.5 text-warning">
+                    <Key size={14} weight="fill" />
                     Save this key — it won't be shown again:
                   </p>
-                  <code className="text-xs bg-bg-primary px-3 py-2 rounded block font-mono break-all select-all">{newKey}</code>
+                  <code className="text-caption bg-panel-raised px-3 py-2 rounded-sm block font-code break-all select-all border border-seam">{newKey}</code>
                 </div>
               )}
 
               {keys.length === 0 ? (
-                <p className="text-sm text-text-tertiary">No API keys yet.</p>
+                <p className="text-caption text-ink-muted italic">No API keys yet.</p>
               ) : (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
+                <motion.div variants={container} initial="hidden" animate="show" className="space-y-2.5">
                   {keys.map(k => (
-                    <motion.div key={k.key_id} variants={itemVariants}
-                      className="flex items-center justify-between bg-bg-primary border border-border rounded-xl px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Key className="w-4 h-4 text-text-tertiary" />
-                        <div>
-                          <span className="font-mono text-sm text-text-secondary">{k.key_id}</span>
-                          <p className="text-xs text-text-tertiary mt-0.5">
+                    <motion.div key={k.key_id} variants={item}
+                      className="flex items-center justify-between bg-well border border-seam rounded-tile px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Key size={16} className="text-ink-muted shrink-0" />
+                        <div className="min-w-0">
+                          <span className="font-code text-body-sm text-ink-secondary truncate block">{k.key_id}</span>
+                          <p className="text-caption text-ink-muted mt-0.5">
                             <span className="capitalize">{k.tier}</span>
-                            {' · '}Used {k.usage_count}x
-                            {!k.is_active && <span className="text-red-400"> · revoked</span>}
+                            {' · '}<span className="readout">{k.usage_count}x used</span>
+                            {!k.is_active && <span className="text-error"> · revoked</span>}
                           </p>
                         </div>
                       </div>
                       {k.is_active && (
                         <button onClick={() => handleRevoke(k.key_id)}
-                          className="p-1.5 text-red-400/70 hover:text-red-400 transition-colors" title="Revoke">
-                          <Trash className="w-4 h-4" />
+                          className="p-1.5 text-error/60 hover:text-error transition-colors" title="Revoke" aria-label="Revoke key">
+                          <Trash size={16} />
                         </button>
                       )}
                     </motion.div>
                   ))}
                 </motion.div>
               )}
-            </CardSpotlight>
-          </div>
-        )}
+            </ConsolePanel>
+          </motion.div>
+        </motion.div>
+      )}
 
-        {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
-          <div className="space-y-8">
-            <CardSpotlight className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Bell className="w-5 h-5 text-accent-primary" weight="fill" />
-                <div>
-                  <h3 className="font-display text-lg font-bold">Notification Channels</h3>
-                  <p className="text-sm text-text-secondary">Choose which types of notifications you receive and through which channels.</p>
-                </div>
-              </div>
+      {/* Notifications Tab */}
+      {activeTab === 'notifications' && (
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+          <motion.div variants={item}>
+            <ConsolePanel rail="Notification Channels" designator="CHANNEL MATRIX" status="go">
+              <p className="text-caption text-ink-muted mb-4">Choose which types of notifications you receive and through which channels.</p>
 
               {notifPrefsLoading && (
                 <div className="flex items-center justify-center py-8">
-                  <Spinner className="w-5 h-5 animate-spin text-accent-primary" />
+                  <Spinner size={20} className="animate-spin text-go" />
                 </div>
               )}
 
               {!notifPrefsLoading && notifPrefs && (
                 <>
-                  <div className="grid grid-cols-[1fr_repeat(3,36px)] sm:grid-cols-[1fr_repeat(3,60px)] gap-1 sm:gap-2 mb-4 px-1">
-                    <div className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">Type</div>
+                  <div className="grid grid-cols-[1fr_repeat(3,52px)] gap-2 mb-2 px-1">
+                    <div className="overline text-ink-muted/70">Type</div>
                     {channels.map((ch) => (
-                      <div key={ch} className="flex flex-col items-center text-[10px] text-text-tertiary">
-                        {ch === 'in_app' && <Bell className="w-4 h-4 mb-0.5" />}
-                        {ch === 'email' && <EnvelopeSimple className="w-4 h-4 mb-0.5" />}
-                        {ch === 'slack' && <ChatCircle className="w-4 h-4 mb-0.5" />}
+                      <div key={ch} className="flex flex-col items-center text-caption text-ink-muted">
+                        {ch === 'in_app' && <Bell size={14} className="mb-0.5" />}
+                        {ch === 'email' && <EnvelopeSimple size={14} className="mb-0.5" />}
+                        {ch === 'slack' && <ChatCircle size={14} className="mb-0.5" />}
                         <span>{channelLabels[ch]}</span>
                       </div>
                     ))}
                   </div>
 
-                  <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border">
+                  <div className="divide-y divide-seam border-t border-seam">
                     {Object.entries(notificationTypes).map(([type, label]) => (
-                      <motion.div key={type} variants={itemVariants}
-                        className="grid grid-cols-[1fr_repeat(3,60px)] gap-2 py-2.5 px-1 items-center hover:bg-bg-tertiary/30 rounded-lg transition-colors">
-                        <span className="text-sm text-text-secondary truncate">{label}</span>
+                      <div key={type}
+                        className="grid grid-cols-[1fr_repeat(3,52px)] gap-2 py-2.5 px-1 items-center hover:bg-well/60 rounded-tile transition-colors">
+                        <span className="text-body-sm text-ink-secondary truncate">{label}</span>
                         {channels.map((ch) => {
                           const enabled = notifPrefs.channels[ch]?.[type] ?? false
                           return (
                             <div key={ch} className="flex justify-center">
-                              <button
-                                onClick={() => handleToggleNotifType(ch, type, !enabled)}
+                              <Toggle
+                                on={enabled}
+                                onChange={() => handleToggleNotifType(ch, type, !enabled)}
                                 disabled={notifPrefsSaving}
-                                className={cn(
-                                  'w-9 h-5 rounded-full transition-all duration-200 relative',
-                                  enabled ? 'bg-accent-primary' : 'bg-bg-tertiary',
-                                  notifPrefsSaving && 'opacity-50 cursor-not-allowed'
-                                )}
-                              >
-                                <div className={cn(
-                                  'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-200 shadow-sm',
-                                  enabled ? 'left-[18px]' : 'left-[2px]'
-                                )} />
-                              </button>
+                                label={`${label} · ${channelLabels[ch]}`}
+                              />
                             </div>
                           )
                         })}
-                      </motion.div>
+                      </div>
                     ))}
-                  </motion.div>
+                  </div>
 
                   <div className="flex items-center justify-end mt-4">
-                    {notifPrefsMsg && <span className="text-xs text-green-400 mr-3">{notifPrefsMsg}</span>}
-                    {notifPrefsSaving && <span className="text-xs text-text-tertiary animate-pulse">Saving…</span>}
+                    {notifPrefsMsg && <span className="text-caption text-success mr-3">{notifPrefsMsg}</span>}
+                    {notifPrefsSaving && <span className="text-caption text-ink-muted animate-pulse">Saving…</span>}
                   </div>
                 </>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CardSpotlight className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <EnvelopeSimple className="w-5 h-5 text-accent-primary" weight="fill" />
-                  <h4 className="font-display font-bold">Email Digest</h4>
-                </div>
-                <p className="text-xs text-text-tertiary mb-4">Receive a summary of unread notifications via email.</p>
-                {notifPrefs && (
-                  <div className="flex gap-2">
-                    {['daily', 'weekly', 'never'].map((opt) => (
-                      <button key={opt}
-                        onClick={() => handleSaveDigestSettings(opt)}
-                        disabled={notifPrefsSaving}
-                        className={cn(
-                          'px-4 py-2 rounded-xl text-xs font-semibold transition-all capitalize',
-                          notifPrefs.digest_frequency === opt
-                            ? 'bg-accent-primary text-white'
-                            : 'bg-bg-tertiary text-text-tertiary hover:text-text-secondary border border-border'
-                        )}>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardSpotlight>
-
-              <CardSpotlight className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Moon className="w-5 h-5 text-accent-primary" weight="fill" />
-                    <h4 className="font-display font-bold">Quiet Hours</h4>
-                  </div>
-                  {notifPrefs && (
-                    <button onClick={() => handleToggleQuietHours(!notifPrefs.quiet_hours_enabled)}
+          <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <ConsolePanel rail="Email Digest" designator="DIGEST" status="standby">
+              <p className="text-caption text-ink-muted mb-4">Receive a summary of unread notifications via email.</p>
+              {notifPrefs && (
+                <div className="flex gap-2">
+                  {['daily', 'weekly', 'never'].map((opt) => (
+                    <button key={opt}
+                      onClick={() => handleSaveDigestSettings(opt)}
                       disabled={notifPrefsSaving}
-                      className={cn('w-11 h-6 rounded-full transition-all duration-200 relative',
-                        notifPrefs.quiet_hours_enabled ? 'bg-accent-primary' : 'bg-bg-tertiary')}>
-                      <div className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 shadow-sm',
-                        notifPrefs.quiet_hours_enabled ? 'left-[22px]' : 'left-[2px]')} />
+                      className={cn(
+                        'px-4 py-2 rounded-btn text-caption font-semibold transition-all capitalize border',
+                        notifPrefs.digest_frequency === opt
+                          ? 'bg-go text-[hsl(var(--primary-foreground))] border-go shadow-sm'
+                          : 'bg-well text-ink-muted hover:text-ink border-seam'
+                      )}>
+                      {opt}
                     </button>
-                  )}
+                  ))}
                 </div>
-                <p className="text-xs text-text-tertiary mb-4">Mute notifications during specified hours.</p>
-                {notifPrefs && notifPrefs.quiet_hours_enabled && (
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-text-tertiary">From</span>
-                    <span className="font-mono text-accent-primary bg-accent-primary/5 px-2.5 py-1 rounded border border-accent-primary/15">
-                      {notifPrefs.quiet_hours_start}
-                    </span>
-                    <span className="text-text-tertiary">to</span>
-                    <span className="font-mono text-accent-primary bg-accent-primary/5 px-2.5 py-1 rounded border border-accent-primary/15">
-                      {notifPrefs.quiet_hours_end}
-                    </span>
-                  </div>
-                )}
-                {notifPrefs && !notifPrefs.quiet_hours_enabled && (
-                  <p className="text-xs text-text-tertiary italic">All hours unmuted.</p>
-                )}
-              </CardSpotlight>
-            </div>
+              )}
+            </ConsolePanel>
 
-            <div className="bg-accent-primary/5 border border-accent-primary/15 rounded-xl p-5">
+            <ConsolePanel rail="Quiet Hours" designator="MUTE WINDOW" status="standby">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-body-sm text-ink-secondary font-medium">Mute during specified hours</p>
+                {notifPrefs && (
+                  <Toggle
+                    on={notifPrefs.quiet_hours_enabled}
+                    onChange={() => handleToggleQuietHours(!notifPrefs.quiet_hours_enabled)}
+                    disabled={notifPrefsSaving}
+                    label="Quiet hours"
+                  />
+                )}
+              </div>
+              <p className="text-caption text-ink-muted mb-4">No signal outside working hours.</p>
+              {notifPrefs && notifPrefs.quiet_hours_enabled && (
+                <div className="flex items-center gap-3 text-caption">
+                  <span className="text-ink-muted">From</span>
+                  <span className="font-code text-go bg-go/5 px-2.5 py-1 rounded-sm border border-go/20">
+                    {notifPrefs.quiet_hours_start}
+                  </span>
+                  <span className="text-ink-muted">to</span>
+                  <span className="font-code text-go bg-go/5 px-2.5 py-1 rounded-sm border border-go/20">
+                    {notifPrefs.quiet_hours_end}
+                  </span>
+                </div>
+              )}
+              {notifPrefs && !notifPrefs.quiet_hours_enabled && (
+                <p className="text-caption text-ink-muted italic">All hours unmuted.</p>
+              )}
+            </ConsolePanel>
+          </motion.div>
+
+          <motion.div variants={item}>
+            <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
-                <div className="text-xs text-text-secondary leading-relaxed">
-                  <p className="font-semibold text-text-secondary mb-1">About notification channels</p>
-                  <p><strong className="text-text-secondary">In-App:</strong> Notifications appear in the bell icon and on the Notifications page.</p>
-                  <p><strong className="text-text-secondary">Email:</strong> Digest emails are sent based on your digest frequency setting.</p>
-                  <p><strong className="text-text-secondary">Slack:</strong> Real-time alerts sent to your connected Slack workspace.</p>
+                <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
+                <div className="text-caption text-ink-secondary leading-relaxed">
+                  <p className="font-semibold text-ink mb-1">About notification channels</p>
+                  <p><strong className="text-ink">In-App:</strong> Notifications appear in the bell icon and on the Notifications page.</p>
+                  <p><strong className="text-ink">Email:</strong> Digest emails are sent based on your digest frequency setting.</p>
+                  <p><strong className="text-ink">Slack:</strong> Real-time alerts sent to your connected Slack workspace.</p>
                 </div>
               </div>
             </div>
+          </motion.div>
 
-            {/* Senior Dev Roast Mode */}
-            <CardSpotlight className="p-6">
-              <div className="flex items-center justify-between mb-3">
+          {/* Senior Dev Roast Mode */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Senior Dev Roast Mode" designator="PERSONA" status="abort">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
-                    <Fire className="w-5 h-5 text-red-400" weight="fill" />
+                  <div className="w-9 h-9 rounded-tile bg-error-muted flex items-center justify-center">
+                    <Fire size={18} className="text-abort" weight="fill" />
                   </div>
                   <div>
-                    <h4 className="font-display font-bold">Senior Dev Roast Mode</h4>
-                    <p className="text-xs text-text-tertiary">Make the AI brutally honest. Code gets roasted, not people.</p>
+                    <p className="font-heading text-body font-semibold text-ink">Roast mode</p>
+                    <p className="text-caption text-ink-muted">Make the AI brutally honest. Code gets roasted, not people.</p>
                   </div>
                 </div>
                 {notifPrefs && (
-                  <button
-                    onClick={async () => {
+                  <Toggle
+                    on={notifPrefs.roast_mode_enabled}
+                    danger
+                    disabled={notifPrefsSaving}
+                    label="Roast mode"
+                    onChange={async () => {
                       if (notifPrefsSaving) return
                       setNotifPrefsSaving(true)
                       const next = !notifPrefs.roast_mode_enabled
@@ -572,194 +650,180 @@ export default function Settings() {
                       }
                       setNotifPrefsSaving(false)
                     }}
-                    disabled={notifPrefsSaving}
-                    className={cn(
-                      'w-11 h-6 rounded-full transition-all duration-200 relative shrink-0',
-                      notifPrefs.roast_mode_enabled ? 'bg-red-500' : 'bg-bg-tertiary'
-                    )}
-                  >
-                    <div className={cn(
-                      'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 shadow-sm',
-                      notifPrefs.roast_mode_enabled ? 'left-[22px]' : 'left-[2px]'
-                    )} />
-                  </button>
+                  />
                 )}
               </div>
               {notifPrefs?.roast_mode_enabled && (
-                <p className="text-xs text-red-400/70 italic mt-2">"Finally, someone who wants the truth. Buckle up." — Senior Dev Roast Bot</p>
+                <p className="text-caption text-abort/70 italic mt-3">"Finally, someone who wants the truth. Buckle up." — Senior Dev Roast Bot</p>
               )}
-            </CardSpotlight>
-          </div>
-        )}
+            </ConsolePanel>
+          </motion.div>
+        </motion.div>
+      )}
 
+      {/* SSO Tab */}
+      {activeTab === 'sso' && <SsoConfigSection />}
 
+      {/* Theme Tab */}
+      {activeTab === 'theme' && <ThemeTabContent />}
 
-        {/* SSO Tab */}
-        {activeTab === 'sso' && <SsoConfigSection />}
-
-        {/* Theme Tab */}
-        {activeTab === 'theme' && <ThemeTabContent />}
-
-        {/* Integrations Tab */}
-        {activeTab === 'integrations' && (
-          <div className="space-y-6">
-            {/* Slack */}
-            <CardSpotlight className="p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30 flex items-center justify-center">
-                    <ChatCircle className="w-5 h-5 text-[#E01E5A]" weight="fill" />
+      {/* Integrations Tab */}
+      {activeTab === 'integrations' && (
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+          {/* Slack */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Slack" designator="CHAT RELAY" status={slackConnected ? 'go' : 'idle'}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+                    <ChatCircle size={20} className="text-ink-secondary" weight="fill" />
                   </div>
                   <div>
-                    <h4 className="font-display font-bold">Slack</h4>
-                    <p className="text-xs text-text-tertiary">Send notifications and digests to Slack</p>
+                    <p className="font-heading font-semibold text-ink">Slack</p>
+                    <p className="text-caption text-ink-muted">Send notifications and digests to Slack</p>
                   </div>
                 </div>
-                {slackConnected && (
-                  <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    Connected
-                  </span>
-                )}
+                {slackConnected && <span className="tile tile-go">Connected</span>}
               </div>
 
               {!slackConnected ? (
                 <div className="space-y-4">
-                  <p className="text-xs text-text-tertiary">Connect a Slack workspace by providing an incoming webhook URL from Slack.</p>
+                  <p className="text-caption text-ink-muted">Connect a Slack workspace by providing an incoming webhook URL from Slack.</p>
                   <div className="flex flex-wrap gap-3">
                     <input value={slackWebhook} onChange={(e) => setSlackWebhook(e.target.value)}
                       placeholder="https://hooks.slack.com/services/..."
-                      className="flex-1 min-w-[200px] bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                      className="input flex-1 min-w-[220px]" />
                     <input value={slackChannel} onChange={(e) => setSlackChannel(e.target.value)}
                       placeholder="#general"
-                      className="w-28 bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
-                    <button onClick={handleSaveSlack} disabled={!slackWebhook.trim()}
-                      className="bg-[#4A154B] hover:bg-[#611f63] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                      className="input w-28" />
+                    <button onClick={handleSaveSlack} disabled={!slackWebhook.trim()} className="btn">
                       Connect
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="text-xs text-text-tertiary">
-                    Connected to <span className="text-text-secondary">{slackChannel}</span>
-                    <p className="mt-0.5 text-text-tertiary/50">{slackWebhook.substring(0, 40)}…</p>
+                  <div className="text-caption text-ink-muted">
+                    Relay to <span className="text-ink font-medium">{slackChannel}</span>
+                    <p className="mt-0.5 text-ink-muted/60 font-code">{slackWebhook.substring(0, 40)}…</p>
                   </div>
-                  <button onClick={handleDisconnectSlack} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+                  <button onClick={handleDisconnectSlack} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
                 </div>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            {/* GitHub */}
-            <CardSpotlight className="p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-                    <GithubLogo className="w-5 h-5 text-text-primary" weight="fill" />
+          {/* GitHub */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="GitHub" designator="REPO ACCESS" status={githubConnected ? 'go' : 'idle'}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+                    <GithubLogo size={20} className="text-ink-secondary" weight="fill" />
                   </div>
                   <div>
-                    <h4 className="font-display font-bold">GitHub</h4>
-                    <p className="text-xs text-text-tertiary">Authenticate to analyze private repositories</p>
+                    <p className="font-heading font-semibold text-ink">GitHub</p>
+                    <p className="text-caption text-ink-muted">Authenticate to analyze private repositories</p>
                   </div>
                 </div>
-                {githubConnected && (
-                  <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Connected
-                  </span>
-                )}
+                {githubConnected && <span className="tile tile-go">Connected</span>}
               </div>
 
               {!githubConnected ? (
                 <div className="space-y-4">
-                  <p className="text-xs text-text-tertiary">Provide a GitHub personal access token to enable private repository analysis and PR operations.</p>
+                  <p className="text-caption text-ink-muted">Provide a GitHub personal access token to enable private repository analysis and PR operations.</p>
                   <div className="flex flex-wrap gap-3">
                     <input value={githubToken} onChange={(e) => setGithubToken(e.target.value)}
                       type="password" placeholder="ghp_... or github_pat_..."
-                      className="flex-1 min-w-[200px] bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                      className="input flex-1 min-w-[220px]" />
                     <button onClick={handleTestGithub} disabled={!githubToken.trim() || githubTesting}
-                      className="bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-tertiary hover:text-text-secondary px-3 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40">
+                      className="btn btn-secondary">
                       {githubTesting ? 'Testing…' : 'Test'}
                     </button>
-                    <button onClick={handleSaveGithub} disabled={!githubToken.trim()}
-                      className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                    <button onClick={handleSaveGithub} disabled={!githubToken.trim()} className="btn">
                       Save
                     </button>
                   </div>
                   {githubTestResult && (
-                    <div className={`text-xs flex items-center gap-2 ${githubTestResult.valid ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={cn('text-caption flex items-center gap-2', githubTestResult.valid ? 'text-success' : 'text-error')}>
                       {githubTestResult.valid ? (
-                        <><Check className="w-4 h-4" weight="bold" /> Valid — {githubTestResult.username} ({githubTestResult.scopes?.join(', ') || ''})</>
+                        <><Check size={16} weight="bold" /> Valid — {githubTestResult.username} ({githubTestResult.scopes?.join(', ') || ''})</>
                       ) : (
-                        <><X className="w-4 h-4" weight="bold" /> {githubTestResult.error}</>
+                        <><X size={16} weight="bold" /> {githubTestResult.error}</>
                       )}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="text-xs text-text-tertiary flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-400" weight="bold" /> Token configured
+                  <div className="text-caption text-ink-muted flex items-center gap-2">
+                    <Check size={16} className="text-success" weight="bold" /> Token configured
                   </div>
-                  <button onClick={handleDisconnectGithub} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+                  <button onClick={handleDisconnectGithub} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
                 </div>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            {/* Jira */}
-            <CardSpotlight className="p-6">
+          {/* Jira */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Jira" designator="TICKET SYNC" status="standby">
               <JiraIntegrationSection />
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            {/* Linear */}
-            <CardSpotlight className="p-6">
+          {/* Linear */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Linear" designator="TICKET SYNC" status="standby">
               <LinearIntegrationSection />
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            {/* Webhooks */}
-            <CardSpotlight className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
-                    <ShareNetwork className="w-5 h-5 text-accent-primary" weight="fill" />
-                  </div>
-                  <div>
-                    <h4 className="font-display font-bold">Webhooks</h4>
-                    <p className="text-xs text-text-tertiary">Send real-time events to external services</p>
-                  </div>
-                </div>
+          {/* Webhooks */}
+          <motion.div variants={item}>
+            <ConsolePanel
+              rail="Webhooks"
+              designator="EVENT BUS"
+              status="standby"
+              action={
                 <button onClick={() => { setShowAddWebhook(!showAddWebhook); setWebhookCreated(null) }}
-                  className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                  className="btn btn-secondary px-3 py-1.5 text-caption">
                   {showAddWebhook ? 'Cancel' : '+ Add Webhook'}
                 </button>
-              </div>
+              }
+            >
+              <p className="text-caption text-ink-muted mb-4">Send real-time events to external services.</p>
 
               {showAddWebhook && (
-                <div className="mb-6 p-5 bg-bg-primary border border-accent-primary/15 rounded-xl space-y-4">
-                  <h4 className="text-sm font-semibold">New Webhook Endpoint</h4>
+                <div className="mb-5 p-5 bg-well border border-seam rounded-card space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="overline text-ink-muted/70">New Endpoint</span>
+                    <span className="designator">INBOUND</span>
+                  </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1.5 block">Payload URL</label>
+                    <label className="overline text-ink-muted mb-1.5 block">Payload URL</label>
                     <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
                       placeholder="https://example.com/webhooks/onramp"
-                      className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                      className="input" />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1.5 block">Description</label>
+                    <label className="overline text-ink-muted mb-1.5 block">Description</label>
                     <input value={webhookDesc} onChange={(e) => setWebhookDesc(e.target.value)}
                       placeholder="e.g., CI pipeline notifications"
-                      className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                      className="input" />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1.5 block">Events</label>
+                    <label className="overline text-ink-muted mb-1.5 block">Events</label>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(eventLabels).map(([evt, label]) => (
                         <button key={evt} onClick={() => {
                           if (evt === '*') { setWebhookEvents(['*']) }
                           else { setWebhookEvents((prev) => prev.includes('*') ? [evt] : prev.includes(evt) ? prev.filter((e) => e !== evt) : [...prev, evt]) }
                         }}
-                          className={cn('px-2.5 py-1 rounded text-[10px] font-mono transition-colors border',
+                          className={cn('px-2.5 py-1 rounded-sm text-caption font-code transition-colors border',
                             webhookEvents.includes(evt) || (evt === '*' && webhookEvents.includes('*'))
-                              ? 'bg-accent-primary/15 text-accent-primary border-accent-primary/30'
-                              : 'bg-bg-tertiary text-text-tertiary border-transparent hover:text-text-secondary')}>
+                              ? 'bg-go/10 text-go border-go/25'
+                              : 'bg-panel-raised text-ink-muted border-seam hover:text-ink')}>
                           {label}
                         </button>
                       ))}
@@ -767,17 +831,18 @@ export default function Settings() {
                   </div>
                   <div className="flex justify-end gap-3 pt-2">
                     <button onClick={() => { setShowAddWebhook(false); setWebhookCreated(null) }}
-                      className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
-                    <button onClick={handleCreateWebhook} disabled={!webhookUrl.trim()}
-                      className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors disabled:opacity-50">Create Webhook</button>
+                      className="btn btn-ghost text-caption">Cancel</button>
+                    <button onClick={handleCreateWebhook} disabled={!webhookUrl.trim()} className="btn text-caption">
+                      Create Webhook
+                    </button>
                   </div>
                   {webhookCreated && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mt-4">
-                      <p className="text-xs text-yellow-400 font-semibold mb-2 flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" weight="fill" />
+                    <div className="bg-warning-muted border border-warning/25 rounded-card p-4 mt-4">
+                      <p className="text-caption text-warning font-semibold mb-2 flex items-center gap-1.5">
+                        <Lock size={14} weight="fill" />
                         Webhook created! Save this secret — it won't be shown again:
                       </p>
-                      <code className="block text-xs font-mono bg-bg-primary px-3 py-2 rounded select-all break-all text-text-secondary border border-border">{webhookCreated.secret}</code>
+                      <code className="block text-caption font-code bg-panel-raised px-3 py-2 rounded-sm select-all break-all text-ink-secondary border border-seam">{webhookCreated.secret}</code>
                     </div>
                   )}
                 </div>
@@ -785,118 +850,102 @@ export default function Settings() {
 
               {webhooksLoading && (
                 <div className="flex items-center justify-center py-8">
-                  <Spinner className="w-5 h-5 animate-spin text-accent-primary" />
+                  <Spinner size={20} className="animate-spin text-go" />
                 </div>
               )}
 
               {!webhooksLoading && webhooks.length === 0 && !showAddWebhook && (
                 <div className="text-center py-6">
-                  <ShareNetwork className="w-8 h-8 mx-auto text-text-tertiary/30 mb-2" weight="fill" />
-                  <p className="text-xs text-text-tertiary">No webhooks configured yet.</p>
+                  <ShareNetwork size={32} className="mx-auto text-ink-disabled/40 mb-2" weight="fill" />
+                  <p className="text-caption text-ink-muted">No webhooks configured yet.</p>
                 </div>
               )}
 
               {webhooks.length > 0 && (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
+                <div className="space-y-2.5">
                   {webhooks.map((wh) => (
-                    <motion.div key={wh.webhook_id} variants={itemVariants}
-                      className="flex items-center gap-4 bg-bg-primary border border-border rounded-xl p-4">
-                      <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', wh.active ? 'bg-green-500' : 'bg-text-tertiary/50')} />
+                    <div key={wh.webhook_id}
+                      className="flex items-center gap-4 bg-well border border-seam rounded-tile p-4">
+                      <span className={cn('w-2 h-2 rounded-pill shrink-0', wh.active ? 'bg-go-lit' : 'bg-ink-disabled')} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-text-primary font-medium truncate">{wh.description || 'Webhook'}</span>
-                          <span className="text-[10px] text-text-tertiary font-mono truncate">{wh.url}</span>
+                          <span className="text-body-sm text-ink font-medium truncate">{wh.description || 'Webhook'}</span>
+                          <span className="text-caption text-ink-muted font-code truncate">{wh.url}</span>
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] text-text-tertiary">
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <span className="text-caption text-ink-muted">
                             {wh.delivery_count} deliveries
-                            {wh.failure_count > 0 && <span className="text-red-400 ml-1">({wh.failure_count} failed)</span>}
+                            {wh.failure_count > 0 && <span className="text-error ml-1">({wh.failure_count} failed)</span>}
                           </span>
                           <div className="flex gap-1 flex-wrap">
                             {wh.events.slice(0, 3).map((evt) => (
-                              <span key={evt} className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-tertiary font-mono">
+                              <span key={evt} className="text-caption px-1.5 py-0.5 rounded-sm bg-panel-raised text-ink-muted font-code border border-seam">
                                 {eventLabels[evt] || evt}
                               </span>
                             ))}
-                            {wh.events.length > 3 && <span className="text-[9px] text-text-tertiary">+{wh.events.length - 3}</span>}
+                            {wh.events.length > 3 && <span className="text-caption text-ink-muted">+{wh.events.length - 3}</span>}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button onClick={() => handleTestWebhook(wh.webhook_id)}
-                          className="text-[10px] text-text-tertiary hover:text-text-secondary px-2 py-1 rounded border border-border transition-colors" title="Test">Ping</button>
+                          className="text-caption text-ink-muted hover:text-ink px-2 py-1 rounded-sm border border-seam transition-colors" title="Test">Ping</button>
                         <button onClick={() => handleDeleteWebhook(wh.webhook_id)}
-                          className="text-red-400/40 hover:text-red-400 transition-colors" title="Delete">
-                          <Trash className="w-4 h-4" />
+                          className="text-error/50 hover:text-error transition-colors" title="Delete" aria-label="Delete webhook">
+                          <Trash size={16} />
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </motion.div>
+                </div>
               )}
 
               {webhookTestResult && (
-                <div className={cn('mt-4 text-xs px-4 py-2 rounded-xl',
+                <div className={cn('mt-4 text-caption px-4 py-2 rounded-btn',
                   webhookTestResult.startsWith('✓')
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                    : 'bg-red-500/10 text-red-400 border border-red-500/20')}>
+                    ? 'bg-success-muted text-success border border-success/20'
+                    : 'bg-error-muted text-error border border-error/20')}>
                   {webhookTestResult}
                 </div>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
+          </motion.div>
 
-            <div className="bg-accent-primary/5 border border-accent-primary/15 rounded-xl p-5">
+          <motion.div variants={item}>
+            <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
               <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
-                <div className="text-xs text-text-secondary leading-relaxed">
-                  <p className="font-semibold text-text-secondary mb-1">Webhook Security</p>
-                  <p>All webhook payloads include a <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary">X-Onramp-Signature</code> header. Verify signatures using the secret shown when creating a webhook.</p>
-                  <p className="mt-1">Headers: <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary">X-Onramp-Event</code>, <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary">X-Onramp-Delivery</code>, <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary">X-Onramp-Signature</code></p>
+                <Lock size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
+                <div className="text-caption text-ink-secondary leading-relaxed">
+                  <p className="font-semibold text-ink mb-1">Webhook Security</p>
+                  <p>All webhook payloads include a <code className="font-code bg-mission/10 px-1 rounded-sm text-mission">X-Onramp-Signature</code> header. Verify signatures using the secret shown when creating a webhook.</p>
+                  <p className="mt-1">Headers: <code className="font-code bg-mission/10 px-1 rounded-sm text-mission">X-Onramp-Event</code>, <code className="font-code bg-mission/10 px-1 rounded-sm text-mission">X-Onramp-Delivery</code>, <code className="font-code bg-mission/10 px-1 rounded-sm text-mission">X-Onramp-Signature</code></p>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }
 
 function ThemeTabContent() {
   const { theme, accentColor, setTheme, setAccentColor, resetAccentColor } = useTheme()
-  const themeContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-  }
-  const themeItemVariants = {
-    hidden: { opacity: 0, y: 16, scale: 0.98 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-  }
 
   return (
-    <motion.div variants={themeContainerVariants} initial="hidden" animate="visible" className="space-y-8 relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
-        {/* Theme Picker */}
-        <CardSpotlight className="p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Sun className="w-5 h-5 text-accent-primary" weight="fill" />
-            <div>
-              <h3 className="font-display text-lg font-bold">Theme</h3>
-              <p className="text-sm text-text-secondary">Choose your preferred color scheme.</p>
-            </div>
-          </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+      {/* Theme Picker */}
+      <motion.div variants={item}>
+        <ConsolePanel rail="Theme" designator="APPEARANCE" status="standby">
+          <p className="text-caption text-ink-muted mb-5">Choose your preferred instrument scheme.</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {THEMES.map((t) => {
               const isActive = theme === t.id
               return (
                 <button key={t.id} onClick={() => setTheme(t.id as Theme)} data-theme={t.id}
-                  className={cn('relative group rounded-xl border-2 transition-all duration-200 overflow-hidden text-left',
-                    isActive ? 'border-accent-primary ring-2 ring-accent-primary/30' : 'border-border hover:border-text-tertiary')}>
+                  className={cn('relative group rounded-card border transition-all duration-200 overflow-hidden text-left',
+                    isActive ? 'border-go ring-1 ring-go/30 shadow-seam' : 'border-seam hover:border-seam-strong')}>
                   <div className="h-24 px-4 pt-4 pb-3">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-5 h-5 rounded-full" style={{
@@ -918,115 +967,109 @@ function ThemeTabContent() {
                       }} />
                     </div>
                   </div>
-                  <div className="px-4 py-3 bg-bg-primary">
-                    <p className="text-sm font-medium text-text-primary">{t.name}</p>
-                    <p className="text-[10px] text-text-tertiary mt-0.5">{t.description}</p>
+                  <div className="px-4 py-3 bg-panel-raised border-t border-seam">
+                    <p className="text-body-sm font-medium text-ink">{t.name}</p>
+                    <p className="text-caption text-ink-muted mt-0.5">{t.description}</p>
                   </div>
                   {isActive && (
-                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent-primary flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" weight="bold" />
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-go flex items-center justify-center">
+                      <Check size={12} className="text-panel-raised" weight="bold" />
                     </div>
                   )}
                 </button>
               )
             })}
           </div>
-        </CardSpotlight>
+        </ConsolePanel>
+      </motion.div>
 
-        {/* Accent Color */}
-        <CardSpotlight className="p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Palette className="w-5 h-5 text-accent-primary" weight="fill" />
-            <div>
-              <h3 className="font-display text-lg font-bold">Accent Color</h3>
-              <p className="text-sm text-text-secondary">Override the theme's accent color with your own preference.</p>
-            </div>
-          </div>
+      {/* Accent Color */}
+      <motion.div variants={item}>
+        <ConsolePanel rail="Accent Color" designator="SIGNAL OVERRIDE" status="standby">
+          <p className="text-caption text-ink-muted mb-5">Override the theme's accent color with your own preference.</p>
 
           <div className="flex flex-wrap gap-3">
             <button onClick={resetAccentColor}
-              className={cn('w-10 h-10 rounded-xl border-2 transition-all duration-200 flex items-center justify-center',
-                !accentColor ? 'border-accent-primary ring-2 ring-accent-primary/30' : 'border-border hover:border-text-tertiary')}
+              className={cn('w-10 h-10 rounded-tile border-2 transition-all duration-200 flex items-center justify-center bg-well',
+                !accentColor ? 'border-go ring-1 ring-go/30' : 'border-seam hover:border-seam-strong')}
               title="Default accent">
-              <Eye className="w-4 h-4 text-text-tertiary" />
+              <Eye size={16} className="text-ink-muted" />
             </button>
             {ACCENT_COLORS.map((c) => {
               const isActive = accentColor === c.value
               return (
                 <button key={c.value} onClick={() => setAccentColor(c.value)}
-                  className={cn('w-10 h-10 rounded-xl border-2 transition-all duration-200',
-                    isActive ? 'border-accent-primary ring-2 ring-accent-primary/30' : 'border-border hover:border-text-tertiary')}
-                  style={{ backgroundColor: c.value }} title={c.name} />
+                  className={cn('w-10 h-10 rounded-tile border-2 transition-all duration-200',
+                    isActive ? 'border-go ring-1 ring-go/30' : 'border-seam hover:border-seam-strong')}
+                  style={{ backgroundColor: c.value }} title={c.name} aria-label={c.name} />
               )
             })}
           </div>
-          <p className="text-xs text-text-tertiary mt-4">
+          <p className="text-caption text-ink-muted mt-4">
             {accentColor ? `Custom accent applied: ${ACCENT_COLORS.find(c => c.value === accentColor)?.name || accentColor}` : 'Using theme default accent'}
           </p>
-        </CardSpotlight>
+        </ConsolePanel>
+      </motion.div>
 
-        {/* Preview */}
-        <CardSpotlight className="p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <Code className="w-5 h-5 text-accent-primary" weight="fill" />
-            <div>
-              <h3 className="font-display text-lg font-bold">Preview</h3>
-              <p className="text-sm text-text-secondary">Sample UI elements with your selected theme.</p>
-            </div>
-          </div>
+      {/* Preview */}
+      <motion.div variants={item}>
+        <ConsolePanel rail="Preview" designator="SAMPLE RIG" status="go">
+          <p className="text-caption text-ink-muted mb-5">Sample UI elements with your selected theme.</p>
 
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3">
-              <button className="px-5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-semibold shadow-lg">Primary Button</button>
-              <button className="px-5 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Secondary</button>
-              <button className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold">Success</button>
-              <button className="px-5 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold">Danger</button>
+              <button className="btn">Primary Button</button>
+              <button className="btn btn-secondary">Secondary</button>
+              <button className="btn" style={{ background: 'var(--success)', color: 'var(--panel-raised)' }}>Success</button>
+              <button className="btn" style={{ background: 'var(--abort)', color: 'var(--panel-raised)' }}>Danger</button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-border p-5 bg-bg-secondary">
+              <div className="rounded-card border border-seam p-5 bg-panel">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-accent-primary/15 flex items-center justify-center">
-                    <Code className="w-4 h-4 text-accent-primary" />
+                  <div className="w-8 h-8 rounded-tile bg-go/10 flex items-center justify-center">
+                    <Code size={16} className="text-go" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-text-primary">Sample Card</p>
-                    <p className="text-[10px] text-text-tertiary">With description text</p>
+                    <p className="text-body-sm font-medium text-ink">Sample Card</p>
+                    <p className="text-caption text-ink-muted">With description text</p>
                   </div>
                 </div>
-                <p className="text-xs text-text-secondary">This is how cards, text, and borders render with your current theme settings.</p>
+                <p className="text-caption text-ink-secondary">This is how cards, text, and borders render with your current theme settings.</p>
               </div>
 
-              <div className="rounded-xl border border-border p-5 bg-bg-primary">
+              <div className="rounded-card border border-seam p-5 bg-panel-raised">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-xs font-mono text-text-secondary">Status: Active</span>
+                  <span className="w-2 h-2 rounded-pill bg-go-lit" />
+                  <span className="text-caption font-code text-ink-secondary">Status: Active</span>
                 </div>
                 <div className="flex gap-1 mb-3">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-accent-primary/15 text-accent-primary border border-accent-primary/30">badge</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-green-500/10 text-green-400 border border-green-500/20">active</span>
+                  <span className="px-2 py-0.5 rounded-sm text-caption font-code bg-go/10 text-go border border-go/25">badge</span>
+                  <span className="px-2 py-0.5 rounded-sm text-caption font-code bg-success-muted text-success border border-success/20">active</span>
                 </div>
-                <p className="text-xs text-text-tertiary">Badges and status indicators.</p>
+                <p className="text-caption text-ink-muted">Badges and status indicators.</p>
               </div>
             </div>
 
             <div>
-              <input readOnly value="Sample input field"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm bg-bg-primary border border-border text-text-primary" />
+              <input readOnly value="Sample input field" className="input" />
             </div>
           </div>
-        </CardSpotlight>
+        </ConsolePanel>
+      </motion.div>
 
-        <div className="bg-accent-primary/5 border border-accent-primary/15 rounded-xl p-5">
+      <motion.div variants={item}>
+        <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
-            <div className="text-xs text-text-secondary leading-relaxed">
-              <p className="font-semibold text-text-secondary mb-1">Theme Notes</p>
+            <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
+            <div className="text-caption text-ink-secondary leading-relaxed">
+              <p className="font-semibold text-ink mb-1">Theme Notes</p>
               <p>The accent color override applies on top of your chosen theme. Themes affect all backgrounds, borders, and text colors.</p>
               <p className="mt-1">Settings are saved to local storage and persist across sessions.</p>
             </div>
           </div>
         </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -1105,122 +1148,121 @@ function SsoConfigSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-5 h-5 animate-spin text-accent-primary" />
+        <Spinner size={20} className="animate-spin text-go" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <CardSpotlight className="p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Lock className="w-5 h-5 text-accent-primary" weight="fill" />
-          <div>
-            <h3 className="font-display text-lg font-bold">SSO / SAML Configuration</h3>
-            <p className="text-sm text-text-secondary">Configure single sign-on via SAML 2.0 identity providers.</p>
-          </div>
-        </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+      <motion.div variants={item}>
+        <ConsolePanel rail="SSO / SAML" designator="FEDERATION" status="standby">
+          <p className="text-caption text-ink-muted mb-5">Configure single sign-on via SAML 2.0 identity providers.</p>
 
-        {message && (
-          <div className={cn('mb-4 px-4 py-3 rounded-xl text-sm border',
-            message.includes('OK') || message.includes('saved')
-              ? 'bg-green-500/10 text-green-400 border-green-500/20'
-              : 'bg-red-500/10 text-red-400 border-red-500/20'
-          )}>
-            {message}
-          </div>
-        )}
-
-        {existingConfig && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-accent-primary/5 border border-accent-primary/15 text-sm text-text-secondary">
-            <p className="font-semibold text-accent-primary mb-1">✓ Currently configured</p>
-            <p className="text-xs">IdP: {existingConfig.idp_type} · Domain: {existingConfig.domain}</p>
-          </div>
-        )}
-
-        <div className="space-y-5">
-          <div>
-            <label className="text-xs text-text-secondary font-medium mb-1.5 block">Identity Provider</label>
-            <select value={idpType} onChange={(e) => setIdpType(e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 transition-colors">
-              <option value="okta">Okta</option>
-              <option value="azure_ad">Azure AD / Entra ID</option>
-              <option value="google_workspace">Google Workspace</option>
-              <option value="onelogin">OneLogin</option>
-              <option value="custom">Custom SAML 2.0</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs text-text-secondary font-medium mb-1.5 block">Domain (e.g., company.com)</label>
-            <input value={domain} onChange={(e) => setDomain(e.target.value)}
-              placeholder="company.com"
-              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
-            <p className="text-[10px] text-text-tertiary mt-1">Users with this email domain will be redirected for SSO login.</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={useMetadata} onChange={() => setUseMetadata(!useMetadata)}
-                className="w-4 h-4 rounded accent-accent-primary" />
-              <span className="text-xs text-text-secondary">Use metadata XML</span>
-            </label>
-          </div>
-
-          {useMetadata ? (
-            <div>
-              <label className="text-xs text-text-secondary font-medium mb-1.5 block">IdP Metadata XML</label>
-              <textarea value={metadataXml} onChange={(e) => setMetadataXml(e.target.value)}
-                rows={6} placeholder="Paste IdP metadata XML here..."
-                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+          {message && (
+            <div className={cn('mb-4 px-4 py-3 rounded-btn text-caption border',
+              message.includes('OK') || message.includes('saved')
+                ? 'bg-success-muted text-success border-success/20'
+                : 'bg-error-muted text-error border-error/20'
+            )}>
+              {message}
             </div>
-          ) : (
-            <>
-              <div>
-                <label className="text-xs text-text-secondary font-medium mb-1.5 block">Entity ID / Issuer</label>
-                <input value={entityId} onChange={(e) => setEntityId(e.target.value)}
-                  placeholder="https://idp.company.com/saml/metadata"
-                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary font-medium mb-1.5 block">SSO URL</label>
-                <input value={ssoUrl} onChange={(e) => setSsoUrl(e.target.value)}
-                  placeholder="https://idp.company.com/saml/sso"
-                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary font-medium mb-1.5 block">X.509 Certificate</label>
-                <textarea value={x509Cert} onChange={(e) => setX509Cert(e.target.value)}
-                  rows={4} placeholder="-----BEGIN CERTIFICATE-----\n..."
-                  className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
-              </div>
-            </>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button onClick={handleTest} disabled={!teamId || testing}
-              className="border border-border text-text-secondary hover:text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
-              {testing ? 'Testing...' : 'Test Connection'}
-            </button>
-            <button onClick={handleSave} disabled={!teamId || saving || !domain.trim()}
-              className="bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save Configuration'}
-            </button>
-          </div>
-        </div>
-      </CardSpotlight>
+          {existingConfig && (
+            <div className="mb-5 px-4 py-3 rounded-btn bg-go/5 border border-go/20 text-caption text-ink-secondary">
+              <p className="font-semibold text-go mb-1">✓ Currently configured</p>
+              <p className="text-caption text-ink-muted">IdP: {existingConfig.idp_type} · Domain: {existingConfig.domain}</p>
+            </div>
+          )}
 
-      <div className="bg-accent-primary/5 border border-accent-primary/15 rounded-xl p-5">
-        <div className="flex items-start gap-3">
-          <Info className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
-          <div className="text-xs text-text-secondary leading-relaxed">
-            <p className="font-semibold text-text-secondary mb-1">About SSO / SAML</p>
-            <p>Onramp supports SAML 2.0 federation with major identity providers. Once configured, users with matching email domains are automatically redirected to your IdP for authentication.</p>
-            <p className="mt-1">The ACS (Assertion Consumer Service) URL is: <code className="font-mono bg-accent-primary/10 px-1 rounded text-accent-primary text-[10px]">{API_BASE}/auth/sso/callback</code></p>
+          <div className="space-y-5">
+            <div>
+              <label className="overline text-ink-muted mb-1.5 block">Identity Provider</label>
+              <div className="relative">
+                <select value={idpType} onChange={(e) => setIdpType(e.target.value)}
+                  className="input appearance-none pr-8">
+                  <option value="okta">Okta</option>
+                  <option value="azure_ad">Azure AD / Entra ID</option>
+                  <option value="google_workspace">Google Workspace</option>
+                  <option value="onelogin">OneLogin</option>
+                  <option value="custom">Custom SAML 2.0</option>
+                </select>
+                <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="overline text-ink-muted mb-1.5 block">Domain (e.g., company.com)</label>
+              <input value={domain} onChange={(e) => setDomain(e.target.value)}
+                placeholder="company.com"
+                className="input" />
+              <p className="text-caption text-ink-muted mt-1">Users with this email domain will be redirected for SSO login.</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={useMetadata} onChange={() => setUseMetadata(!useMetadata)}
+                  className="w-4 h-4 rounded-sm accent-[var(--go)]" />
+                <span className="text-caption text-ink-secondary">Use metadata XML</span>
+              </label>
+            </div>
+
+            {useMetadata ? (
+              <div>
+                <label className="overline text-ink-muted mb-1.5 block">IdP Metadata XML</label>
+                <textarea value={metadataXml} onChange={(e) => setMetadataXml(e.target.value)}
+                  rows={6} placeholder="Paste IdP metadata XML here..."
+                  className="input font-code" />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="overline text-ink-muted mb-1.5 block">Entity ID / Issuer</label>
+                  <input value={entityId} onChange={(e) => setEntityId(e.target.value)}
+                    placeholder="https://idp.company.com/saml/metadata"
+                    className="input" />
+                </div>
+                <div>
+                  <label className="overline text-ink-muted mb-1.5 block">SSO URL</label>
+                  <input value={ssoUrl} onChange={(e) => setSsoUrl(e.target.value)}
+                    placeholder="https://idp.company.com/saml/sso"
+                    className="input" />
+                </div>
+                <div>
+                  <label className="overline text-ink-muted mb-1.5 block">X.509 Certificate</label>
+                  <textarea value={x509Cert} onChange={(e) => setX509Cert(e.target.value)}
+                    rows={4} placeholder="-----BEGIN CERTIFICATE-----\n..."
+                    className="input font-code" />
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button onClick={handleTest} disabled={!teamId || testing} className="btn btn-secondary">
+                {testing ? 'Testing...' : 'Test Connection'}
+              </button>
+              <button onClick={handleSave} disabled={!teamId || saving || !domain.trim()} className="btn">
+                {saving ? 'Saving...' : 'Save Configuration'}
+              </button>
+            </div>
+          </div>
+        </ConsolePanel>
+      </motion.div>
+
+      <motion.div variants={item}>
+        <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
+          <div className="flex items-start gap-3">
+            <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
+            <div className="text-caption text-ink-secondary leading-relaxed">
+              <p className="font-semibold text-ink mb-1">About SSO / SAML</p>
+              <p>Onramp supports SAML 2.0 federation with major identity providers. Once configured, users with matching email domains are automatically redirected to your IdP for authentication.</p>
+              <p className="mt-1">The ACS (Assertion Consumer Service) URL is: <code className="font-code bg-mission/10 px-1 rounded-sm text-mission text-caption">{API_BASE}/auth/sso/callback</code></p>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -1308,81 +1350,80 @@ function JiraIntegrationSection() {
 
   return (
     <>
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-            <span className="text-blue-400 text-sm font-bold">J</span>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+            <span className="font-heading text-ink-secondary font-bold">J</span>
           </div>
           <div>
-            <h4 className="font-display font-bold">Jira</h4>
-            <p className="text-xs text-text-tertiary">Sync tasks as Jira issues</p>
+            <p className="font-heading font-semibold text-ink">Jira</p>
+            <p className="text-caption text-ink-muted">Sync tasks as Jira issues</p>
           </div>
         </div>
-        {connected && (
-          <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Connected
-          </span>
-        )}
+        {connected && <span className="tile tile-go">Connected</span>}
       </div>
 
       {!connected ? (
         <div className="space-y-4">
-          <p className="text-xs text-text-tertiary">Enter your Jira Cloud credentials. You'll need an <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline">API token</a> from Atlassian.</p>
+          <p className="text-caption text-ink-muted">Enter your Jira Cloud credentials. You'll need an <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer" className="text-go hover:underline">API token</a> from Atlassian.</p>
           <div className="space-y-3">
             <input value={config.base_url} onChange={(e) => setConfig(p => ({ ...p, base_url: e.target.value }))}
               placeholder="https://your-domain.atlassian.net"
-              className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+              className="input" />
             <div className="flex gap-3">
               <input value={config.email} onChange={(e) => setConfig(p => ({ ...p, email: e.target.value }))}
                 placeholder="you@company.com"
-                className="flex-1 bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                className="input flex-1" />
               <input value={config.api_token} onChange={(e) => setConfig(p => ({ ...p, api_token: e.target.value }))}
                 type="password" placeholder="API token"
-                className="flex-1 bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+                className="input flex-1" />
             </div>
           </div>
           <div className="flex gap-3">
             <button onClick={handleTest} disabled={!config.base_url || !config.email || !config.api_token || testing}
-              className="bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-tertiary hover:text-text-secondary px-3 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40">
+              className="btn btn-secondary">
               {testing ? 'Testing…' : 'Test & Fetch Projects'}
             </button>
           </div>
           {testResult && (
-            <div className={`text-xs flex items-center gap-2 ${testResult.valid ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-success' : 'text-error')}>
               {testResult.valid ? (
-                <><Check className="w-4 h-4" weight="bold" /> Connected as {testResult.display_name}</>
+                <><Check size={16} weight="bold" /> Connected as {testResult.display_name}</>
               ) : (
-                <><X className="w-4 h-4" weight="bold" /> {testResult.error}</>
+                <><X size={16} weight="bold" /> {testResult.error}</>
               )}
             </div>
           )}
           {showProjects && projects.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-wider text-text-tertiary">Project</label>
-              <select value={config.project_key}
-                onChange={(e) => setConfig(p => ({ ...p, project_key: e.target.value, issue_type: 'Task' }))}
-                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50">
-                <option value="">Select a project…</option>
-                {projects.map((p: any) => (
-                  <option key={p.key} value={p.key}>{p.name} ({p.key})</option>
-                ))}
-              </select>
+              <label className="overline text-ink-muted">Project</label>
+              <div className="relative">
+                <select value={config.project_key}
+                  onChange={(e) => setConfig(p => ({ ...p, project_key: e.target.value, issue_type: 'Task' }))}
+                  className="input appearance-none pr-8">
+                  <option value="">Select a project…</option>
+                  {projects.map((p: any) => (
+                    <option key={p.key} value={p.key}>{p.name} ({p.key})</option>
+                  ))}
+                </select>
+                <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              </div>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={handleConnect} disabled={!config.project_key}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              className="btn">
               Connect Jira
             </button>
           </div>
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <div className="text-xs text-text-tertiary flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-400" weight="bold" /> Connected to {config.base_url || 'Jira'}
-            {config.project_key && <span className="text-text-secondary ml-1">({config.project_key})</span>}
+          <div className="text-caption text-ink-muted flex items-center gap-2">
+            <Check size={16} className="text-success" weight="bold" /> Connected to {config.base_url || 'Jira'}
+            {config.project_key && <span className="text-ink-secondary ml-1">({config.project_key})</span>}
           </div>
-          <button onClick={handleDisconnect} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+          <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
         </div>
       )}
     </>
@@ -1461,71 +1502,70 @@ function LinearIntegrationSection() {
 
   return (
     <>
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-            <span className="text-purple-400 text-sm font-bold">L</span>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+            <span className="font-heading text-ink-secondary font-bold">L</span>
           </div>
           <div>
-            <h4 className="font-display font-bold">Linear</h4>
-            <p className="text-xs text-text-tertiary">Sync tasks as Linear issues</p>
+            <p className="font-heading font-semibold text-ink">Linear</p>
+            <p className="text-caption text-ink-muted">Sync tasks as Linear issues</p>
           </div>
         </div>
-        {connected && (
-          <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Connected
-          </span>
-        )}
+        {connected && <span className="tile tile-go">Connected</span>}
       </div>
 
       {!connected ? (
         <div className="space-y-4">
-          <p className="text-xs text-text-tertiary">Enter your Linear API key. Generate one from <span className="text-text-secondary">Settings → API → Personal API keys</span> in Linear.</p>
+          <p className="text-caption text-ink-muted">Enter your Linear API key. Generate one from <span className="text-ink-secondary">Settings → API → Personal API keys</span> in Linear.</p>
           <input value={apiKey} onChange={(e) => setApiKey(e.target.value)}
             type="password" placeholder="lin_api_..."
-            className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50 placeholder:text-text-tertiary/50" />
+            className="input" />
           <div className="flex gap-3">
             <button onClick={handleTest} disabled={!apiKey || testing}
-              className="bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-tertiary hover:text-text-secondary px-3 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-40">
+              className="btn btn-secondary">
               {testing ? 'Testing…' : 'Test & Fetch Teams'}
             </button>
           </div>
           {testResult && (
-            <div className={`text-xs flex items-center gap-2 ${testResult.valid ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-success' : 'text-error')}>
               {testResult.valid ? (
-                <><Check className="w-4 h-4" weight="bold" /> Connected as {testResult.name} ({testResult.email})</>
+                <><Check size={16} weight="bold" /> Connected as {testResult.name} ({testResult.email})</>
               ) : (
-                <><X className="w-4 h-4" weight="bold" /> {testResult.error}</>
+                <><X size={16} weight="bold" /> {testResult.error}</>
               )}
             </div>
           )}
           {showTeams && teams.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-wider text-text-tertiary">Team</label>
-              <select value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="w-full bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent-primary/50">
-                <option value="">Select a team…</option>
-                {teams.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.key})</option>
-                ))}
-              </select>
+              <label className="overline text-ink-muted">Team</label>
+              <div className="relative">
+                <select value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="input appearance-none pr-8">
+                  <option value="">Select a team…</option>
+                  {teams.map((t: any) => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.key})</option>
+                  ))}
+                </select>
+                <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              </div>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={handleConnect} disabled={!teamId}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+              className="btn">
               Connect Linear
             </button>
           </div>
         </div>
       ) : (
         <div className="flex items-center justify-between">
-          <div className="text-xs text-text-tertiary flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-400" weight="bold" /> Connected to Linear
-            {teamId && <span className="text-text-secondary ml-1">(team: {teams.find((t: any) => t.id === teamId)?.name || teamId})</span>}
+          <div className="text-caption text-ink-muted flex items-center gap-2">
+            <Check size={16} className="text-success" weight="bold" /> Connected to Linear
+            {teamId && <span className="text-ink-secondary ml-1">(team: {teams.find((t: any) => t.id === teamId)?.name || teamId})</span>}
           </div>
-          <button onClick={handleDisconnect} className="text-xs text-red-400/60 hover:text-red-400 transition-colors">Disconnect</button>
+          <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
         </div>
       )}
     </>
