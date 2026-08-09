@@ -40,6 +40,8 @@ async def create_user(
     record = {
         "email": encrypt_field(email),
         "name": encrypt_field(name),
+        "position": None,
+        "avatar_url": None,
         "email_hash": email_hash(email),
         "provider": provider,
         "created_at": now,
