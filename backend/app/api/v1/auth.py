@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import select
 
 from app.database.config import db_config
@@ -17,6 +17,7 @@ from app.services.user_service import (
     get_user_by_uid,
     get_user_by_email,
     deactivate_user,
+    update_user_profile,
 )
 from app.services.postgres_db import get_storage
 from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
@@ -70,6 +71,8 @@ class MeResponse(BaseModel):
     email: str
     name: str
     provider: str
+    position: str | None = None
+    avatar_url: str | None = None
 
 
 class ProviderCheckResponse(BaseModel):
@@ -500,6 +503,64 @@ async def me(user: dict = Depends(get_current_user)):
         email=record["email"],
         name=record["name"],
         provider=record["provider"],
+        position=record.get("position"),
+        avatar_url=record.get("avatar_url"),
+    )
+
+
+class UpdateProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    position: str | None = None
+    avatar_url: str | None = None
+    email: str | None = None  # accepted in schema but rejected in the handler
+
+
+@router.patch("/me", response_model=MeResponse)
+async def update_me(
+    body: UpdateProfileRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Update the current user's own profile (name, position, avatar_url).
+
+    Email is provider-managed and cannot be changed here — the frontend never
+    sends it, and this endpoint rejects it to avoid implying it is editable.
+    """
+    uid = user.get("uid", "")
+
+    if body.email is not None:
+        raise HTTPException(status_code=400, detail="Email is managed by your sign-in provider")
+
+    data = {}
+    if body.name is not None:
+        if not body.name.strip():
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        data["name"] = body.name.strip()
+    if body.position is not None:
+        if len(body.position) > 255:
+            raise HTTPException(status_code=400, detail="Position must be 255 characters or fewer")
+        data["position"] = body.position
+    if body.avatar_url is not None:
+        if len(body.avatar_url) > 2048:
+            raise HTTPException(status_code=400, detail="Avatar URL must be 2048 characters or fewer")
+        data["avatar_url"] = body.avatar_url
+
+    try:
+        updated = await update_user_profile(uid, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if updated is None:
+        raise HTTPException(status_code=404, detail="User not found in backend")
+
+    return MeResponse(
+        uid=updated["uid"],
+        email=updated["email"],
+        name=updated["name"],
+        provider=updated["provider"],
+        position=updated.get("position"),
+        avatar_url=updated.get("avatar_url"),
     )
 
 
