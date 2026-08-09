@@ -2,13 +2,12 @@
 
 import pytest
 
-from app.services.postgres_db import get_storage, generate_id
+from app.services.postgres_db import generate_id
 from app.services.user_service import create_user, get_user_by_uid
 
 
 @pytest.mark.asyncio
 async def test_new_user_profile_fields_default_to_none():
-    s = get_storage()
     uid = generate_id()
     await create_user(uid=uid, email="pos@example.com", name="Pos", provider="password")
 
