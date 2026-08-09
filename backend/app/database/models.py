@@ -52,6 +52,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    position: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -93,6 +95,8 @@ class User(Base):
             "id": self.id,
             "email": self.email,
             "name": self.name,
+            "position": self.position,
+            "avatar_url": self.avatar_url,
             "provider": self.provider,
             "email_verified": self.email_verified,
             "email_hash": self.email_hash,
