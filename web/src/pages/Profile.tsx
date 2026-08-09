@@ -45,6 +45,7 @@ export default function Profile() {
   if (loading) return <ProfileSkeleton />
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'User'
+  const position = user?.position || ''
   const email = user?.email || '—'
   const initial = displayName.charAt(0).toUpperCase()
   const memberSince = user?.metadata?.creationTime
@@ -78,6 +79,12 @@ export default function Profile() {
                   <Envelope size={12} className="text-text-muted/30" />
                   <p className="text-body-xs text-text-muted/60 truncate">{email}</p>
                 </div>
+                {position && (
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <IdentificationBadge size={12} className="text-text-muted/30" />
+                    <p className="text-body-xs text-text-secondary">{position}</p>
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 mt-1 text-caption text-text-muted/30">
                   <CalendarBlank size={11} />
                   <span>Member since {memberSince}</span>
