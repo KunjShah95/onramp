@@ -8,12 +8,16 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   pre-deploy-check:
     name: Validate production env vars
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Actions pinned to commit SHA (supply-chain hardening); the tag is in a comment.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Check required secrets are configured
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -46,13 +50,13 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Skip notice
         if: env.VERCEL_TOKEN == ''
         run: echo "VERCEL_TOKEN not configured — skipping Vercel deploy. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets to enable."
 
-      - uses: amondnet/vercel-action@v25
+      - uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25.2.0
         if: env.VERCEL_TOKEN != ''
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}

@@ -41,6 +41,11 @@ spec:
                 secretKeyRef:
                   name: onramp-secrets
                   key: REDIS_PASSWORD
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: REDIS_URL
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -153,22 +158,24 @@ spec:
             limits:
               memory: "2Gi"
               cpu: "1"
+          # Probes hit the ops router mounted at the root of the API:
+          # /health (liveness) and /ready (readiness, checks DB + Redis).
           startupProbe:
             httpGet:
-              path: /api/v1/observability/health/live
+              path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 30
           livenessProbe:
             httpGet:
-              path: /api/v1/observability/health/live
+              path: /health
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
-              path: /api/v1/observability/health/ready
+              path: /ready
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
