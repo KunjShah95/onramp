@@ -21,6 +21,8 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import StatusBadge from '../components/ui/status-badge'
+import ConsolePanel from '../components/ui/console-panel'
+import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, SkeletonCard } from '../components/ui/Skeleton'
 import {
@@ -30,7 +32,7 @@ import {
 } from 'recharts'
 import {
   CheckCircle, WarningCircle,
-  ArrowRight, ArrowUpRight, Lock,
+  ArrowRight, Lock,
 } from '@phosphor-icons/react'
 
 // Signal palette (recharts + tints) — see DESIGN.md
@@ -61,20 +63,14 @@ const item = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
 }
 
-/** Console panel with a call-sign rail. */
+/** Console panel with a call-sign rail — thin wrapper over the shared kit. */
 function Panel({ callsign, designator, action, className, children }: {
   callsign: string; designator?: string; action?: ReactNode; className?: string; children: ReactNode
 }) {
   return (
-    <div className={cn('rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden', className)}>
-      <div className="console-rail">
-        <span className="callsign opacity-50">{callsign}</span>
-        {designator && <span className="designator">{designator}</span>}
-        <span className="led ml-auto" />
-        {action && <div className="ml-2">{action}</div>}
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
+    <ConsolePanel rail={callsign} designator={designator} status="go" live action={action} className={className}>
+      {children}
+    </ConsolePanel>
   )
 }
 
@@ -206,14 +202,14 @@ export default function DashboardPage() {
     { key: 'dora' as const, label: 'DORA', count: null },
   ]
 
-  const metrics = [
+  const readouts: Readout[] = [
     { label: 'Tasks · Total', value: total_tasks, color: 'text-text-primary' },
     { label: 'Completed', value: completed_tasks, color: 'text-success' },
     { label: 'In Progress', value: in_progress_tasks, color: 'text-info' },
     { label: 'Pending Review', value: pending_review_tasks, color: 'text-warning' },
     { label: 'Blocked', value: blocked_tasks, color: 'text-error' },
-    { label: 'Completion', value: `${completion_rate}%`, color: 'text-info' },
-    { label: 'Code Health', value: codeHealth !== null ? `${codeHealth}%` : '—', link: '/code-health',
+    { label: 'Completion', value: completion_rate, suffix: '%', color: 'text-info' },
+    { label: 'Code Health', value: codeHealth ?? '—', suffix: codeHealth !== null ? '%' : '', link: '/code-health',
       color: codeHealth !== null && codeHealth >= 70 ? 'text-success' : codeHealth !== null && codeHealth >= 50 ? 'text-warning' : 'text-text-primary' },
   ]
 
@@ -268,27 +264,9 @@ export default function DashboardPage() {
 
       {activeTab === 'overview' && (
         <>
-          {/* ── Hero readout bank ── */}
-          <motion.div variants={item} className="rounded-lg border border-border/60 overflow-hidden mb-6 bg-gradient-to-b from-bg-elevated to-bg-secondary/40 shadow-sm">
-            <div className="px-5 pt-4 pb-1">
-              <span className="callsign opacity-40">MISSION TELEMETRY</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 divide-x divide-y xl:divide-y-0 divide-border/50">
-              {metrics.map((m) => {
-                const body = (
-                  <div className="px-4 py-5 h-full transition-colors hover:bg-bg-tertiary/40">
-                    <div className={cn('text-3xl md:text-4xl font-bold leading-none tracking-tight', m.color)}>{m.value}</div>
-                    <div className="overline text-text-muted/50 mt-2.5 flex items-center gap-1">
-                      {m.label}
-                      {m.link && <ArrowUpRight size={11} weight="bold" className="text-text-muted/40" />}
-                    </div>
-                  </div>
-                )
-                return m.link
-                  ? <Link key={m.label} to={m.link} className="block">{body}</Link>
-                  : <div key={m.label}>{body}</div>
-              })}
-            </div>
+          {/* ── Hero readout bank (Big Board) ── */}
+          <motion.div variants={item} className="mb-6">
+            <ReadoutBank callsign="MISSION TELEMETRY" items={readouts} columns={7} />
           </motion.div>
 
           {/* ── Row 1: distribution + velocity ── */}
