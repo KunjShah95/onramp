@@ -86,7 +86,17 @@ async function request<T>(url: string, body?: unknown, method?: string, retried 
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return unwrap<T>(await res.json())
 }
@@ -111,7 +121,17 @@ async function get<T>(url: string, retried = false): Promise<T> {
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return unwrap<T>(await res.json())
 }
@@ -795,7 +815,17 @@ export async function addTeamMember(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -806,7 +836,17 @@ export async function getTeamMembers(teamId: string): Promise<{ user_id: string;
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1187,7 +1227,17 @@ export async function executeAgent(
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1758,7 +1808,17 @@ export async function adminDeleteWebhook(webhookId: string): Promise<{ deleted: 
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1820,7 +1880,17 @@ export async function clearAskHistory(
   )
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1882,7 +1952,17 @@ export async function grantModuleAccess(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -1898,7 +1978,17 @@ export async function revokeModuleAccess(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -1916,7 +2006,17 @@ export async function revokeAllModuleAccess(
   )
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2259,7 +2359,17 @@ export async function deleteTaskTemplate(templateId: string): Promise<{ deleted:
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2356,7 +2466,17 @@ export async function deleteNotification(notificationId: string): Promise<{ dele
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2475,7 +2595,17 @@ export async function deleteWebhook(webhookId: string): Promise<{ deleted: boole
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2505,7 +2635,17 @@ export async function deleteIntegration(integrationType: string): Promise<{ dele
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
