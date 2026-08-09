@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
   createTask, listTasks, assignTask, startTask, submitTask, reviewTask,
-  approveTask, completeTask, cancelTask, deleteTask, getTeamProgress,
+  approveTask, completeTask, cancelTask, deleteTask, transitionTask, getTeamProgress,
   listTeams, getTeamModulePermissions,
   getTeamTimeStats, logActualHours, importIssueToTask, peerReviewTask, claimPeerReview,
   getQuizGateStatus,

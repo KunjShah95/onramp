@@ -35,7 +35,7 @@ const buildItems = [
   { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['new_dev', 'member'] },
   { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },

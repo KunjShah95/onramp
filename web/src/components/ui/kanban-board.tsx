@@ -66,14 +66,22 @@ export default function KanbanBoard({
   const [moving, setMoving] = useState(false)
   const [dropError, setDropError] = useState<string | null>(null)
   const movedRef = useRef(false)
+  // Set right after a drop so the click that follows the drag is suppressed.
+  const justDraggedAtRef = useRef(0)
+  // Skip prop re-sync while a move is in flight so the optimistic update
+  // isn't clobbered by a stale filtered-tasks snapshot from the parent.
+  const movingRef = useRef(false)
 
-  useEffect(() => { setLocalTasks(tasks) }, [tasks])
+  useEffect(() => {
+    if (!movingRef.current) setLocalTasks(tasks)
+  }, [tasks])
 
   async function handleDrop(taskId: string, toState: string) {
     const task = localTasks.find((t) => t.task_id === taskId)
     if (!task || task.state === toState) return
 
     movedRef.current = true
+    movingRef.current = true
     setMoving(true)
     setDropError(null)
     setLocalTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, state: toState } : t)))
@@ -84,6 +92,8 @@ export default function KanbanBoard({
       setDropError(e instanceof Error ? e.message : 'Move failed — reverted')
       setLocalTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, state: task.state } : t)))
     } finally {
+      justDraggedAtRef.current = Date.now()
+      movingRef.current = false
       setMoving(false)
       setDraggingId(null)
       setDragOverState(null)
@@ -161,12 +171,26 @@ export default function KanbanBoard({
                         }
                         movedRef.current = false
                       }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Task: ${task.title} (${task.state.replace(/_/g, ' ')})`}
                       className={cn(
                         'group relative cursor-grab rounded-md border border-border bg-bg-secondary p-3 shadow-sm',
                         'transition-colors hover:border-accent-primary/40 active:cursor-grabbing',
+                        'focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary/50',
                         draggingId === task.task_id && 'opacity-40'
                       )}
-                      onClick={() => onTaskClick?.(task)}
+                      onClick={() => {
+                        // Suppress the click that fires right after a drag-drop.
+                        if (Date.now() - justDraggedAtRef.current < 350) return
+                        onTaskClick?.(task)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onTaskClick?.(task)
+                        }
+                      }}
                     >
                       {/* top hairline — lights up on hover */}
                       <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

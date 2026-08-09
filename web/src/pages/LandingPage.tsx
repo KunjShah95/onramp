@@ -250,9 +250,38 @@ export default function LandingPageV3() {
 
       {/* ── Hero — one composition ──────────────────────────────────────── */}
       <section ref={heroRef} className="relative mkt-floor overflow-hidden pt-28 pb-0 sm:pt-32">
+        {/* Animated mesh-gradient orbs — shader-as-CSS */}
         <motion.div style={{ opacity: atmosphereOpacity }} className="pointer-events-none absolute inset-0" aria-hidden>
-          <div className="absolute left-1/2 top-[18%] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-go/[0.06] blur-3xl" />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], opacity: [0.35, 0.6, 0.35] }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute left-[15%] top-[10%] h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-go/[0.08] blur-[100px]"
+          />
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.5, 0.25] }}
+            transition={{ duration: 13, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+            className="absolute right-[10%] top-[20%] h-[400px] w-[400px] translate-x-1/3 -translate-y-1/4 rounded-full bg-mission/[0.07] blur-[90px]"
+          />
+          <motion.div
+            animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+            className="absolute left-1/2 top-[40%] h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-go/[0.05] blur-[120px]"
+          />
         </motion.div>
+
+        {/* Film-grain noise overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 z-20 opacity-[0.035] mix-blend-overlay"
+          style={{
+            backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.7%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E")',
+            backgroundRepeat: 'repeat',
+            backgroundSize: '128px 128px',
+          }}
+          aria-hidden
+        />
+
+        {/* Cursor-tracked hero spotlight */}
+        <HeroSpotlight heroRef={heroRef} />
 
         <div className="relative z-10 mx-auto max-w-[980px] px-6 text-center lg:px-10">
           {/* Brand as hero-level signal */}
@@ -290,18 +319,24 @@ export default function LandingPageV3() {
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="group inline-flex items-center gap-2 rounded-btn bg-go px-6 py-3.5 text-[15px] font-semibold text-white shadow-lit transition-all hover:bg-go-lit hover:shadow-lift active:translate-y-px"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-btn bg-go px-6 py-3.5 text-[15px] font-semibold text-white shadow-lit transition-all hover:bg-go-lit hover:shadow-lift active:translate-y-px"
             >
-              Start free
-              <ArrowRight size={15} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+              <span className="absolute inset-[-1px] -z-10 rounded-[inherit] bg-gradient-to-r from-go-lit to-mission opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="relative z-10 flex items-center gap-2">
+                Start free
+                <ArrowRight size={15} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+              </span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/explore')}
-              className="inline-flex items-center gap-2 rounded-btn border border-seam-strong bg-panel-raised px-6 py-3.5 text-[15px] font-semibold text-ink transition-all hover:border-go/35 active:translate-y-px"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-btn border border-seam-strong bg-panel-raised px-6 py-3.5 text-[15px] font-semibold text-ink transition-all hover:border-go/35 active:translate-y-px"
             >
-              <Play size={14} weight="fill" className="text-go" />
-              Watch demo
+              <span className="absolute inset-[-1px] -z-10 rounded-[inherit] bg-gradient-to-r from-go/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="relative z-10 flex items-center gap-2">
+                <Play size={14} weight="fill" className="text-go" />
+                Watch demo
+              </span>
             </button>
           </motion.div>
         </div>
@@ -374,6 +409,32 @@ export default function LandingPageV3() {
       <FinalCTA />
       <Footer />
     </main>
+  )
+}
+
+/* ── Cursor-tracked hero spotlight (brand hero) ────────────────────────── */
+function HeroSpotlight({ heroRef }: { heroRef: React.RefObject<HTMLElement | null> }) {
+  const mx = useMotionValue(0.5)
+  const my = useMotionValue(0.35)
+  const sx = useSpring(mx, { stiffness: 120, damping: 28, mass: 0.4 })
+  const sy = useSpring(my, { stiffness: 120, damping: 28, mass: 0.4 })
+  const x = useTransform(sx, (v) => `${v * 100}%`)
+  const y = useTransform(sy, (v) => `${v * 100}%`)
+  const bg = useMotionTemplate`radial-gradient(700px circle at ${x} ${y}, rgba(14,122,60,0.12), transparent 45%)`
+
+  return (
+    <motion.div
+      onMouseMove={(e) => {
+        const el = heroRef.current
+        if (!el) return
+        const r = el.getBoundingClientRect()
+        mx.set((e.clientX - r.left) / r.width)
+        my.set((e.clientY - r.top) / r.height)
+      }}
+      className="pointer-events-none absolute inset-0 z-[15]"
+      aria-hidden
+      style={{ background: bg }}
+    />
   )
 }
 
@@ -693,39 +754,51 @@ function WhyOnramp() {
           viewport={{ once: true, amount: 0.2 }}
           className="mt-14 overflow-hidden rounded-sm border border-seam bg-panel-raised"
         >
-          <div className="hidden grid-cols-[1.1fr_1.1fr_1.4fr_1.6fr] gap-0 border-b border-seam bg-well px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted md:grid">
-            <span>Tool</span>
-            <span>Built for</span>
-            <span>Where it shines</span>
-            <span>The gap</span>
+          <div className="overflow-x-auto">
+            <table className="border-collapse text-left w-full table-auto">
+              <thead>
+                <tr className="border-b border-seam bg-well sticky top-0 z-10">
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted align-middle">Tool</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted align-middle hidden md:table-cell">Built for</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted align-middle hidden md:table-cell">Where it shines</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted align-middle">The gap</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-seam">
+                {rows.map((r) => (
+                  <motion.tr
+                    variants={item}
+                    key={r.tool}
+                    className={`${r.ours ? 'bg-go/[0.04]' : ''}`}
+                  >
+                    <td className="px-5 py-5 align-middle">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-sm ${
+                            r.ours ? 'bg-go text-white' : 'bg-well text-ink-secondary'
+                          }`}
+                        >
+                          <r.icon size={16} weight={r.ours ? 'bold' : 'duotone'} />
+                        </span>
+                        <span className={`font-heading text-[15px] font-semibold ${r.ours ? 'text-go' : 'text-ink'}`}>
+                          {r.tool}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-5 align-middle hidden md:table-cell">
+                      <p className="text-[14px] text-ink-secondary md:pt-1.5">{r.job}</p>
+                    </td>
+                    <td className="px-5 py-5 align-middle hidden md:table-cell">
+                      <p className="text-[14px] leading-[1.55] text-ink-tertiary md:pt-1.5">{r.good}</p>
+                    </td>
+                    <td className={`px-5 py-5 align-middle ${r.ours ? 'text-ink-secondary' : 'text-ink-tertiary'}`}>
+                      <p className="text-[14px] leading-[1.55] md:pt-1.5">{r.miss}</p>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {rows.map((r) => (
-            <motion.div
-              variants={item}
-              key={r.tool}
-              className={`grid grid-cols-1 gap-3 border-b border-seam px-5 py-5 last:border-b-0 md:grid-cols-[1.1fr_1.1fr_1.4fr_1.6fr] md:items-start md:gap-4 ${
-                r.ours ? 'bg-go/[0.04]' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-sm ${
-                    r.ours ? 'bg-go text-white' : 'bg-well text-ink-secondary'
-                  }`}
-                >
-                  <r.icon size={16} weight={r.ours ? 'bold' : 'duotone'} />
-                </span>
-                <span className={`font-heading text-[15px] font-semibold ${r.ours ? 'text-go' : 'text-ink'}`}>
-                  {r.tool}
-                </span>
-              </div>
-              <p className="text-[14px] text-ink-secondary md:pt-1.5">{r.job}</p>
-              <p className="text-[14px] leading-[1.55] text-ink-tertiary md:pt-1.5">{r.good}</p>
-              <p className={`text-[14px] leading-[1.55] md:pt-1.5 ${r.ours ? 'text-ink-secondary' : 'text-ink-tertiary'}`}>
-                {r.miss}
-              </p>
-            </motion.div>
-          ))}
         </motion.div>
 
         <motion.div
@@ -1168,7 +1241,7 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`relative flex h-full flex-col overflow-hidden rounded-sm p-7 transition-all duration-300 ${
+      className={`relative flex h-full flex-col rounded-sm p-7 transition-all duration-300 ${
         featured
           ? 'border border-go/35 bg-panel-raised shadow-[0_24px_60px_-28px_rgba(14,122,60,.45)] hover:-translate-y-0.5'
           : 'border border-seam bg-panel-raised/80 shadow-seam hover:-translate-y-0.5 hover:bg-panel-raised hover:shadow-lift'
@@ -1176,6 +1249,12 @@ function PlanCard({
     >
       {featured && (
         <>
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute -inset-1 -z-10 rounded-[5px] bg-gradient-to-r from-go/25 via-mission/15 to-transparent opacity-50 blur-2xl"
+            animate={{ opacity: [0.35, 0.7, 0.35] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          />
           <span className="absolute inset-x-0 top-0 h-0.5 bg-go" />
           <span className="absolute right-5 top-5 inline-flex items-center gap-1 rounded-sm bg-go/10 px-2 py-1 text-[11px] font-semibold text-go">
             <Sparkle size={11} weight="fill" /> Recommended

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
  * THESIS: The CTO dashboard is a flight director's console, not a SaaS card grid.
  *   It refuses the hero-metric template (big number + label + accent, repeated).
@@ -22,17 +22,18 @@ import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import StatusBadge from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
-import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
+import { ScrollProgress } from '../components/ui/landing-motion'
+import { type Readout } from '../components/ui/readout-bank'
 import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import { StatsGridSkeleton, SkeletonHeading, SkeletonText, SkeletonBase, SkeletonCard } from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  XAxis, YAxis, CartesianGrid,
   AreaChart, Area, Line,
 } from 'recharts'
 import {
-  CheckCircle, WarningCircle,
-  ArrowRight, Lock,
+  WarningCircle,
+  ArrowRight, ArrowUpRight,
 } from '@phosphor-icons/react'
 
 // Signal palette (recharts + tints) — see DESIGN.md
@@ -56,19 +57,21 @@ const TOOLTIP = {
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
 }
 const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 80, damping: 16 } },
 }
 
-/** Console panel with a call-sign rail — thin wrapper over the shared kit. */
-function Panel({ callsign, designator, action, className, children }: {
-  callsign: string; designator?: string; action?: ReactNode; className?: string; children: ReactNode
+/**
+ * Console panel with a call-sign rail — thin wrapper over the shared kit.
+ */
+function Panel({ callsign, designator, action, className, children, status = 'go' as const }: {
+  callsign: string; designator?: string; action?: ReactNode; className?: string; status?: 'go' | 'standby' | 'caution' | 'abort' | 'idle'; children: ReactNode
 }) {
   return (
-    <ConsolePanel rail={callsign} designator={designator} status="go" live action={action} className={className}>
+    <ConsolePanel rail={callsign} designator={designator} status={status} action={action} className={className}>
       {children}
     </ConsolePanel>
   )
@@ -121,17 +124,6 @@ export default function DashboardPage() {
     { name: 'Pending Review', value: pending_review_tasks, color: SIG.amber },
     { name: 'Blocked', value: blocked_tasks, color: SIG.red },
   ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks])
-
-  const memberBarData = useMemo(() =>
-    member_progress.map(m => ({
-      name: m.name.length > 10 ? m.name.slice(0, 10) + '…' : m.name,
-      completed: m.completed,
-      inProgress: m.in_progress,
-      pending: m.pending_review,
-      completionRate: m.completion_rate,
-    })).reverse(),
-    [member_progress]
-  )
 
   const activityTrendData = useMemo(() => {
     const grouped: Record<string, { date: string; completed: number; submitted: number; started: number }> = {}
@@ -215,7 +207,9 @@ export default function DashboardPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
-      {/* ── Mission header ── */}
+      <ScrollProgress />
+
+      {/* ── Mission header ─────────────────────────────────────────────── */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
@@ -264,182 +258,293 @@ export default function DashboardPage() {
 
       {activeTab === 'overview' && (
         <>
-          {/* ── Hero readout bank (Big Board) ── */}
-          <motion.div variants={item} className="mb-6">
-            <ReadoutBank callsign="MISSION TELEMETRY" items={readouts} columns={7} />
+          {/* ── Row 1: Hero + Telemetry ─────────────────────────────────── */}
+          <motion.div variants={item} className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-5 mb-4 sm:mb-5">
+            {/* Hero cell */}
+            <div className="xl:col-span-5 bento-hero">
+              <div className="bento-hero-border" />
+              <div className="bento-rail mb-4">
+                <span className={cn(
+                  'w-2 h-2 rounded-full shrink-0',
+                  missionGo ? 'bg-go-lit motion-safe:animate-pulse-glow' : 'bg-abort-lit motion-safe:animate-pulse-glow'
+                )} />
+                <span className="bento-rail-label">Mission Status</span>
+                <span className="bento-rail-designator">FLIGHT · CTO CONSOLE</span>
+              </div>
+              <div className="space-y-3">
+                <div className={cn(
+                  'text-4xl sm:text-5xl font-display font-extrabold tracking-tight leading-none',
+                  missionGo ? 'text-go' : 'text-abort'
+                )}>
+                  {missionGo ? 'GO' : 'HOLD'}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-seam bg-bg-secondary/80 p-3">
+                    <div className="text-2xl font-code font-semibold text-text-primary">{total_members}</div>
+                    <div className="text-[11px] font-display uppercase tracking-wider text-text-muted/70 mt-0.5">Crew</div>
+                  </div>
+                  <div className="rounded-lg border border-seam bg-bg-secondary/80 p-3">
+                    <div className="text-2xl font-code font-semibold text-text-primary">{first_prs_merged}</div>
+                    <div className="text-[11px] font-display uppercase tracking-wider text-text-muted/70 mt-0.5">PRs Merged</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Telemetry strip */}
+            <div className="xl:col-span-7 bento-telemetry">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Telemetry Bank</span>
+                <span className="bento-rail-designator">7 READOUTS</span>
+              </div>
+              <div className="bento-telemetry-track p-4">
+                {readouts.map((r) => (
+                  <Link key={r.label} to={r.link || '#'} className={cn('bento-telemetry-tick group/cell', !r.link && 'pointer-events-none')}>
+                    <div className={cn('font-code tabular-nums text-2xl font-semibold leading-none tracking-tight', r.color ?? 'text-ink')}>
+                      {r.link && <ArrowUpRight size={12} weight="bold" className="inline-block mr-1 text-ink-muted/40" />}
+                      {typeof r.value === 'number' ? r.value.toLocaleString() : r.value}{r.suffix ?? ''}
+                    </div>
+                    <div className="text-[11px] font-display uppercase tracking-wider text-text-muted/60 mt-2">{r.label}</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </motion.div>
 
-          {/* ── Row 1: distribution + velocity ── */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
-            <Panel callsign="Task Distribution" designator="FIDO" className="lg:col-span-2">
-              {total_tasks === 0 ? (
-                <div className="text-center py-8 text-text-muted text-body-sm">No tasks on station.</div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <div className="w-36 h-36 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={taskDistribution} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={2} dataKey="value" stroke="none">
-                          {taskDistribution.map((d) => <Cell key={d.name} fill={d.color} />)}
-                        </Pie>
-                        <Tooltip contentStyle={TOOLTIP} formatter={(value) => [value]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    {taskDistribution.map((d) => (
-                      <div key={d.name} className="flex items-center justify-between text-caption">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-tile" style={{ backgroundColor: d.color }} />
-                          <span className="text-text-secondary">{d.name}</span>
+          {/* ── Row 2: Distribution + Trend ─────────────────────────────── */}
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 mb-4 sm:mb-5">
+            {/* Task distribution — matrix cell */}
+            <div className="lg:col-span-4 bento-matrix">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Signal Matrix</span>
+                <span className="bento-rail-designator">FIDO</span>
+              </div>
+              <div className="p-5">
+                {total_tasks === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-body-sm">No tasks on station.</div>
+                ) : (
+                  <div className="flex items-center gap-5">
+                    <div className="w-32 h-32 shrink-0 relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={taskDistribution} cx="50%" cy="50%" innerRadius={32} outerRadius={56} paddingAngle={2} dataKey="value" stroke="none">
+                            {taskDistribution.map((d) => <Cell key={d.name} fill={d.color} />)}
+                          </Pie>
+                          <Tooltip contentStyle={TOOLTIP} formatter={(value) => [value]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      {taskDistribution.map((d) => (
+                        <div key={d.name} className="flex items-center justify-between text-caption">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color }} />
+                            <span className="text-text-secondary">{d.name}</span>
+                          </div>
+                          <span className="font-code tabular-nums text-text-primary">{d.value}</span>
                         </div>
-                        <span className="readout">{d.value}</span>
+                      ))}
+                      <div className="pt-2 mt-2 border-t border-border flex items-center justify-between text-caption">
+                        <span className="text-text-muted">Total</span>
+                        <span className="font-code tabular-nums text-text-primary font-semibold">{total_tasks}</span>
                       </div>
-                    ))}
-                    <div className="pt-2 mt-2 border-t border-border flex items-center justify-between text-caption">
-                      <span className="text-text-muted">Total</span>
-                      <span className="readout font-semibold">{total_tasks}</span>
                     </div>
                   </div>
-                </div>
-              )}
-            </Panel>
+                )}
+              </div>
+            </div>
 
-            <Panel callsign="Activity Trend" designator="TRAJ · 7-DAY" className="lg:col-span-3">
-              {activityTrendData.length === 0 ? (
-                <div className="text-center py-8 text-text-muted text-body-sm">No trajectory yet.</div>
-              ) : (
-                <div className="h-40 bg-plot-grid rounded-tile">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={SIG.go} stopOpacity={0.28} />
-                          <stop offset="95%" stopColor={SIG.go} stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorSubmitted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={SIG.amber} stopOpacity={0.28} />
-                          <stop offset="95%" stopColor={SIG.amber} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
-                      <XAxis dataKey="date" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={TOOLTIP} />
-                      <Area type="monotone" dataKey="completed" stroke={SIG.go} fill="url(#colorCompleted)" strokeWidth={2} dot={false} />
-                      <Area type="monotone" dataKey="submitted" stroke={SIG.amber} fill="url(#colorSubmitted)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="velocity" stroke={SIG.blue} strokeWidth={2} dot={false} strokeDasharray="4 3" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Panel>
+            {/* Activity trend */}
+            <div className="lg:col-span-8 bento-cell">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Velocity Trend</span>
+                <span className="bento-rail-designator">TRAJ · 7-DAY</span>
+              </div>
+              <div className="p-5">
+                {activityTrendData.length === 0 ? (
+                  <div className="text-center py-8 text-text-muted text-body-sm">No trajectory yet.</div>
+                ) : (
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SIG.go} stopOpacity={0.28} />
+                            <stop offset="95%" stopColor={SIG.go} stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="colorSubmitted" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SIG.amber} stopOpacity={0.22} />
+                            <stop offset="95%" stopColor={SIG.amber} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={SIG.grid} vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} dy={6} />
+                        <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} dx={-6} />
+                        <Tooltip contentStyle={TOOLTIP} cursor={{ stroke: SIG.grid, strokeDasharray: '2 2' }} />
+                        <Area type="monotone" dataKey="completed" stroke={SIG.go} strokeWidth={2} fill="url(#colorCompleted)" />
+                        <Area type="monotone" dataKey="submitted" stroke={SIG.amber} strokeWidth={2} fill="url(#colorSubmitted)" />
+                        <Line type="monotone" dataKey="velocity" stroke={SIG.blue} strokeWidth={2} dot={false} strokeDasharray="4 2" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
 
-          {/* ── Row 2: crew completion + attention ── */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-5">
-            <Panel callsign="Crew Completion" designator="EECOM"
-              action={<button onClick={() => setActiveTab('trainees')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">All crew <ArrowRight size={12} weight="bold" /></button>}
-              className="lg:col-span-3">
-              {memberBarData.length === 0 ? (
-                <div className="text-center py-8 text-text-muted text-body-sm">No crew assigned.</div>
-              ) : (
-                <div className="h-52">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={memberBarData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} barCategoryGap="22%">
-                      <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} horizontal={false} />
-                      <XAxis type="number" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} domain={[0, (dataMax: number) => Math.max(Math.ceil(dataMax * 1.2), 10)]} />
-                      <YAxis type="category" dataKey="name" tick={{ fill: SIG.ink, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-                      <Tooltip contentStyle={TOOLTIP} cursor={{ fill: 'rgb(var(--border-rgb) / 0.06)' }}
-                        formatter={(value, name) => {
-                          const labels: Record<string, string> = { completed: 'Completed', inProgress: 'In Progress', pending: 'Pending Review', completionRate: 'Rate' }
-                          return [`${value}`, labels[String(name)] || String(name)]
-                        }} />
-                      <Bar dataKey="completed" stackId="a" fill={SIG.go} />
-                      <Bar dataKey="inProgress" stackId="a" fill={SIG.blue} />
-                      <Bar dataKey="pending" stackId="a" fill={SIG.amber} radius={[0, 2, 2, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Panel>
+          {/* ── Row 3: Event Stream + Queue Radar + Actions ────────────── */}
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 mb-4 sm:mb-5">
+            {/* Event stream */}
+            <div className="lg:col-span-5 bento-stream">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Event Stream</span>
+                <span className="bento-rail-designator">{recent_activity.length} EVENTS</span>
+              </div>
+              <div className="relative px-5 py-4">
+                <div className="bento-stream-line" />
+                {recent_activity.length === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-body-sm">No events logged.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {recent_activity.slice(0, 7).map((a, i) => (
+                      <motion.div key={`${a.task_id}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                        className="relative flex gap-4 pl-10 hover:bg-bg-tertiary/40 rounded-lg p-2 -mx-2 transition-colors">
+                        <div className={cn('absolute left-[11px] w-4 h-4 rounded-sm border-2 flex items-center justify-center bg-bg-secondary',
+                          a.state === 'completed' ? 'border-success' :
+                          a.state === 'in_progress' ? 'border-info' :
+                          a.state === 'submitted' || a.state === 'under_review' ? 'border-warning' :
+                          a.state === 'needs_changes' ? 'border-error' : 'border-border')}>
+                          <div className={cn('w-1.5 h-1.5 rounded-[1px]',
+                            a.state === 'completed' ? 'bg-success' :
+                            a.state === 'in_progress' ? 'bg-info' :
+                            a.state === 'submitted' || a.state === 'under_review' ? 'bg-warning' :
+                            a.state === 'needs_changes' ? 'bg-error' : 'bg-text-disabled')} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-body-sm text-text-primary font-medium truncate">{a.title}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <StatusBadge state={a.state} />
+                            {a.module && <span className="text-caption text-text-muted font-code">{a.module}</span>}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-            <Panel callsign="Requires Attention" designator="CAPCOM" className="lg:col-span-2">
-              {actions.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle size={22} className="text-success mx-auto mb-2" weight="fill" />
-                  <p className="text-text-muted text-body-sm">All stations nominal.</p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {actions.slice(0, 6).map((action, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                      className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border hover:border-border-hover transition-colors">
-                      <span className={cn('w-1.5 h-4 rounded-[1px] mt-0.5 shrink-0',
-                        action.severity === 'warning' ? 'bg-error' : action.severity === 'info' ? 'bg-info' : 'bg-text-muted/40')} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-body-xs text-text-primary font-medium">{action.title}</div>
-                        <div className="text-caption text-text-muted mt-0.5">{action.subtitle}</div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </Panel>
+            {/* Queue radar */}
+            <div className="lg:col-span-4 bento-queue">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Queue Radar</span>
+                <span className="bento-rail-designator">{pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}</span>
+              </div>
+              <div className="px-5 py-3 space-y-2">
+                {pending_reviews.length === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
+                ) : (
+                  pending_reviews.slice(0, 6).map((pr, i) => {
+                    const priority = pr.state === 'needs_changes' ? 'bg-error' : pr.state === 'submitted' || pr.state === 'under_review' ? 'bg-warning' : 'bg-info'
+                    return (
+                      <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                        onClick={() => navigate('/reviews')}
+                        className="bento-queue-item">
+                        <div className={cn('bento-queue-item-priority', priority)} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-body-xs text-text-primary font-medium truncate">{pr.title}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <StatusBadge state={pr.state} />
+                            {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
+                            {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Actions console */}
+            <div className="lg:col-span-3 bento-actions">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Actions</span>
+                <span className="bento-rail-designator">CAPCOM</span>
+              </div>
+              <div className="px-5 py-3 space-y-2">
+                {actions.length === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-body-sm">All stations nominal.</div>
+                ) : (
+                  actions.slice(0, 5).map((action, i) => {
+                    return (
+                      <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                        className="bento-action-row" style={{ borderLeftColor: action.severity === 'warning' ? 'rgb(var(--error-lit))' : action.severity === 'info' ? 'rgb(var(--info-lit))' : 'rgb(var(--text-muted))' }}>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-body-xs text-text-primary font-medium">{action.title}</div>
+                          <div className="text-caption text-text-muted mt-0.5">{action.subtitle}</div>
+                        </div>
+                      </motion.div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </motion.div>
 
-          {/* ── Row 3: activity log + review queue ── */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <Panel callsign="Recent Activity" designator="EVENT LOG"
-              action={<button onClick={() => setActiveTab('activity')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">All <ArrowRight size={12} weight="bold" /></button>}>
-              {recent_activity.length === 0 ? (
-                <div className="text-center py-6 text-text-muted text-body-sm">No events logged.</div>
-              ) : (
-                <div className="space-y-0.5">
-                  {recent_activity.slice(0, 6).map((a, i) => (
-                    <motion.div key={`${a.task_id}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
-                      className="flex items-start gap-3 text-body-sm p-2 rounded-tile hover:bg-bg-tertiary/60 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-body-xs text-text-primary truncate font-medium">{a.title}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <StatusBadge state={a.state} />
-                          {a.module && <span className="text-caption text-text-muted font-code">{a.module}</span>}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </Panel>
+          {/* ── Row 4: DORA + Crew ──────────────────────────────────────── */}
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+            {/* DORA telemetry */}
+            <div className="lg:col-span-7 bento-dora">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">DORA Telemetry</span>
+                <span className="bento-rail-designator">DEVOPS RESEARCH & ASSESSMENT</span>
+              </div>
+              <div className="p-5">
+                <DoraMetricsPanel />
+              </div>
+            </div>
 
-            <Panel callsign="Pending Reviews" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
-              action={<button onClick={() => navigate('/reviews')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
-              {pending_reviews.length === 0 ? (
-                <div className="text-center py-6 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
-              ) : (
-                <div className="space-y-2">
-                  {pending_reviews.slice(0, 5).map((pr, i) => (
-                    <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
-                      onClick={() => navigate('/reviews')}
-                      className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border cursor-pointer hover:border-warning/40 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-body-xs text-text-primary font-medium truncate">{pr.title}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <StatusBadge state={pr.state} />
-                          {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
-                          {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
+            {/* Crew grid */}
+            <div className="lg:col-span-5 bento-crew">
+              <div className="bento-rail px-5 pt-4 pb-1">
+                <span className="bento-rail-label">Crew Grid</span>
+                <span className="bento-rail-designator">{member_progress.length} ON STATION</span>
+              </div>
+              <div className="px-5 py-3">
+                {member_progress.length === 0 ? (
+                  <div className="text-center py-6 text-text-muted text-body-sm">No crew found.</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {member_progress.slice(0, 6).map((member, i) => (
+                      <motion.div key={member.user_id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                        className="bento-crew-card">
+                        <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/25 flex items-center justify-center text-caption font-bold text-accent-from font-display flex-shrink-0">
+                          {member.name.charAt(0).toUpperCase()}
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </Panel>
+                        <div className="flex-1 min-w-0">
+                          <Link to={`/member/${member.user_id}`} className="text-body-sm text-text-primary font-medium hover:text-accent-from transition-colors block truncate">{member.name}</Link>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-1 rounded-full bg-bg-tertiary overflow-hidden border border-border">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${member.completion_rate}%` }} transition={{ duration: 0.5, delay: i * 0.03 }}
+                                className={cn('h-full', member.completion_rate >= 80 ? 'bg-success' : member.completion_rate >= 50 ? 'bg-info' : 'bg-error')} />
+                            </div>
+                            <span className={cn('font-code text-[11px] tabular-nums', member.completion_rate >= 80 ? 'text-success' : member.completion_rate >= 50 ? 'text-info' : 'text-error')}>
+                              {member.completion_rate}%
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
         </>
       )}
 
-      {/* ── Crew tab ── */}
+      {/* ── Crew tab ───────────────────────────────────────────────────── */}
       {activeTab === 'trainees' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Panel callsign="Crew Roster" designator={`${member_progress.length} ON STATION`}>
@@ -449,7 +554,7 @@ export default function DashboardPage() {
               <div className="overflow-x-auto -m-5">
                 <table className="border-collapse text-left w-full table-auto text-body-sm">
                   <thead>
-                    <tr className="border-b border-border bg-panel/80 sticky top-0 z-10 backdrop-blur-sm">
+                    <tr className="border-b border-border bg-panel sticky top-0 z-10 backdrop-blur-sm">
                       {['Crew', 'Total', 'Done', 'Active', 'Review', 'Rate', 'Modules'].map((h) => (
                         <th key={h} className="text-left px-5 py-3 overline text-text-muted/80 align-middle">{h}</th>
                       ))}
@@ -485,19 +590,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 align-middle">
-                          <div className="flex flex-wrap gap-1">
-                            {member.modules_unlocked.length > 0 ? (
-                              member.modules_unlocked.map((mod: string, mi: number) => (
-                                <Link key={mi} to={`/module/${encodeURIComponent(mod)}`} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-tile bg-success-muted text-success text-caption font-code border border-success/20 hover:bg-success-muted/70 transition-colors">
-                                  <Lock size={10} weight="fill" />{mod}
-                                </Link>
-                              ))
-                            ) : (
-                              <span className="text-text-disabled text-caption">—</span>
-                            )}
-                          </div>
-                        </td>
+                        <td className="px-5 py-3.5 readout text-text-primary align-middle">{member.modules_completed ?? 0}</td>
                       </motion.tr>
                     ))}
                   </tbody>
@@ -508,30 +601,33 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ── Reviews tab ── */}
+      {/* ── Reviews tab ────────────────────────────────────────────────── */}
       {activeTab === 'reviews' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <Panel callsign="Pending Reviews" designator={`${pending_reviews.length} ITEMS`}
-            action={<button onClick={() => navigate('/tasks')} className="btn-glass !px-3 !py-1.5 text-[11px]">Go to Tasks</button>}>
+          <Panel callsign="Pending Reviews" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
+            action={<button onClick={() => navigate('/reviews')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
             {pending_reviews.length === 0 ? (
-              <div className="p-8 text-center text-text-muted text-body-sm">Review queue clear.</div>
+              <div className="text-center py-8 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
             ) : (
-              <div className="divide-y divide-border -m-5">
+              <div className="space-y-2">
                 {pending_reviews.map((pr, i) => (
-                  <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.035 }}
-                    onClick={() => navigate('/tasks')} className="flex items-center gap-4 px-5 py-3.5 hover:bg-bg-tertiary/40 cursor-pointer transition-colors">
+                  <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                    onClick={() => navigate('/reviews')}
+                    className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border cursor-pointer hover:border-warning/40 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <div className="text-body-sm text-text-primary font-medium truncate">{pr.title}</div>
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="text-body-xs text-text-primary font-medium truncate">{pr.title}</div>
+                      <div className="flex items-center gap-2 mt-1">
                         <StatusBadge state={pr.state} />
-                        {pr.module && <span className="text-caption text-text-muted font-code">{pr.module}</span>}
-                        {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to}</span>}
-                        {pr.pr_url && (
-                          <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit hover:underline">View PR →</a>
-                        )}
+                        {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
+                        {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
                       </div>
                     </div>
-                    <span className="text-caption text-text-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
+                    <div className="flex flex-col items-end gap-1">
+                      {pr.pr_url && (
+                        <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit hover:underline">View PR →</a>
+                      )}
+                      <span className="text-caption text-text-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -540,7 +636,7 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ── DORA tab ── */}
+      {/* ── DORA tab ──────────────────────────────────────────────────── */}
       {activeTab === 'dora' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Panel callsign="DORA Metrics" designator="DEVOPS RESEARCH & ASSESSMENT">
@@ -549,7 +645,7 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ── Log tab ── */}
+      {/* ── Log tab ───────────────────────────────────────────────────── */}
       {activeTab === 'activity' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Panel callsign="Event Log" designator={`${recent_activity.length} EVENTS`}>

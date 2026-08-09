@@ -494,7 +494,7 @@ export default function TeamPage() {
                 <div className="overflow-x-auto">
                   <table className="border-collapse text-left w-full table-auto text-sm">
                     <thead>
-                      <tr className="border-b border-border sticky top-0 z-10 bg-panel/80 backdrop-blur-sm">
+                      <tr className="border-b border-border bg-panel sticky top-0 z-10 backdrop-blur-sm">
                         {['User', 'Module', 'Source', 'Granted', ''].map((h, i) => (
                           <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-text-tertiary font-semibold align-middle', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
                         ))}
