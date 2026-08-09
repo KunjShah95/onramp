@@ -1126,3 +1126,49 @@
     min-width: 120px;
   }
 }
+
+/* -- Wrapper classes -- */
+.bento-telemetry, .bento-stream, .bento-actions, .bento-dora, .bento-crew {
+  border: 1px solid rgba(var(--border-rgb), 0.12);
+  background: rgba(var(--bg-secondary), 0.95);
+  box-shadow: 0 1px 2px rgba(var(--border-rgb), 0.06), 0 0 0 1px rgba(var(--border-rgb), 0.08);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.bento-telemetry {
+  background:
+    linear-gradient(rgba(var(--bg-tertiary), 1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--bg-tertiary), 1) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(var(--bg-secondary), 1) 0%, rgba(var(--panel-raised), 1) 100%);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  background-position: -1px -1px, -1px -1px, 0 0;
+}
+
+.bento-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bento-rail-label {
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: rgb(var(--text-muted));
+  opacity: 0.7;
+}
+
+.bento-rail-designator {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.6875rem;
+  color: rgb(var(--text-muted));
+  opacity: 0.6;
+}
+
+.bento-rail-action {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
