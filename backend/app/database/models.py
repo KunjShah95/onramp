@@ -661,8 +661,9 @@ class Subscription(Base):
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     current_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    razorpay_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    razorpay_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -685,8 +686,9 @@ class Subscription(Base):
             "status": self.status,
             "current_period_start": self.current_period_start.isoformat() if self.current_period_start else None,
             "current_period_end": self.current_period_end.isoformat() if self.current_period_end else None,
-            "stripe_customer_id": self.stripe_customer_id,
-            "stripe_subscription_id": self.stripe_subscription_id,
+            "razorpay_customer_id": self.razorpay_customer_id,
+            "razorpay_subscription_id": self.razorpay_subscription_id,
+            "razorpay_payment_id": self.razorpay_payment_id,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
