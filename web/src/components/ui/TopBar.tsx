@@ -4,14 +4,17 @@ import { UserCircle, Sun, Moon } from '@phosphor-icons/react'
 import NotificationBell from './NotificationBell'
 import RoastModeToggle from './RoastModeToggle'
 import UserMenu from './UserMenu'
+import MissionClock from './mission-clock'
 import { cn } from '../../lib/utils'
 import type { ShortcutEvent } from '../../hooks/useKeyboardShortcuts'
 
 interface TopBarProps {
   lastShortcut?: ShortcutEvent
+  /** Current console call-sign shown in the mission clock. */
+  callsign?: string
 }
 
-export default function TopBar({ lastShortcut }: TopBarProps) {
+export default function TopBar({ lastShortcut, callsign }: TopBarProps) {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const isDark = theme !== 'light'
@@ -19,15 +22,16 @@ export default function TopBar({ lastShortcut }: TopBarProps) {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-40 h-12 border-b border-border bg-bg-primary/60 backdrop-blur-md flex items-center justify-between px-5"
+      className="sticky top-0 z-40 h-12 border-b border-border bg-bg-primary/70 backdrop-blur-md flex items-center justify-between px-5"
     >
-      {/* Left: shortcut hint with feedback */}
+      {/* Left: live mission clock + shortcut feedback */}
       <div className="flex items-center gap-3 min-w-0">
-        <span className="relative px-1.5 py-0.5 rounded bg-bg-tertiary border border-border text-text-muted font-code text-[10px] cursor-default">
+        <MissionClock callsign={callsign} />
+        <span
+          className="relative px-1.5 py-0.5 rounded bg-bg-tertiary border border-border text-text-muted font-code text-[10px] cursor-default hidden lg:inline"
+          title="Keyboard shortcuts"
+        >
           ?
-        </span>
-        <span className="text-caption text-text-muted hidden sm:block">
-          Keyboard shortcuts
         </span>
         {lastShortcut && (
           <span
@@ -57,7 +61,7 @@ export default function TopBar({ lastShortcut }: TopBarProps) {
               onClick={toggleTheme}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-7 h-7 rounded-lg border border-border text-text-tertiary hover:text-accent-primary hover:border-accent-primary/40 hover:bg-accent-primary/5 flex items-center justify-center transition-colors duration-150 shrink-0"
+              className="w-7 h-7 rounded-btn border border-border text-text-tertiary hover:text-accent-primary hover:border-accent-primary/40 hover:bg-accent-primary/5 flex items-center justify-center transition-all duration-150 active:scale-95 shrink-0"
             >
               {isDark ? <Sun size={15} weight="regular" /> : <Moon size={15} weight="regular" />}
             </button>

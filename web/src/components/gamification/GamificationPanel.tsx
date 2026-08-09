@@ -17,20 +17,21 @@ import {
 } from '../../lib/api'
 import type { GamificationSummary, LeaderboardEntry, BadgeInfo } from '../../lib/api'
 
-// ── Level color progression ───────────────────────────────────
+// ── Level color progression (within the 4-signal console palette) ──
+// Blue (recruit) → green (operative) → amber (veteran) → filled GO tile (ace).
 
 function getLevelColor(level: number): string {
-  if (level >= 20) return 'text-purple-400'
-  if (level >= 10) return 'text-amber-400'
-  if (level >= 5) return 'text-emerald-400'
-  return 'text-blue-400'
+  if (level >= 20) return 'text-white'
+  if (level >= 10) return 'text-warning'
+  if (level >= 5) return 'text-success'
+  return 'text-info'
 }
 
 function getLevelBg(level: number): string {
-  if (level >= 20) return 'bg-purple-500/10'
-  if (level >= 10) return 'bg-amber-500/10'
-  if (level >= 5) return 'bg-emerald-500/10'
-  return 'bg-blue-500/10'
+  if (level >= 20) return 'bg-gradient-to-br from-go to-go-lit shadow-lit'
+  if (level >= 10) return 'bg-warning/10'
+  if (level >= 5) return 'bg-success/10'
+  return 'bg-info/10'
 }
 
 function getProgressColor(xp: number, needed: number): string {

@@ -6,7 +6,6 @@ import type { ArchitectureResult } from '../lib/types'
 import { StatCard } from '../components/ui/stat-card'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/utils'
@@ -138,16 +137,14 @@ export default function ExplorePage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body max-w-full overflow-x-hidden relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-from" />
-      </svg>
         {/* ── Header ──────────────────────────────────────── */}
         <div className="mb-8 relative">
-          <GradientHeading as="h1" className="mb-2">Architecture Explorer</GradientHeading>
-          <p className="text-body-sm text-text-muted mb-6 max-w-2xl">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Explorer</span>
+            <span className="designator opacity-50">ARCHITECTURE · GRAPH</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">Architecture Explorer</h1>
+          <p className="text-body-sm text-text-secondary font-code mb-6 max-w-2xl">
             Deep codebase analysis — dependency graph, service map, circular deps detection
           </p>
 
@@ -179,16 +176,18 @@ export default function ExplorePage() {
         {/* ── Metric cards ────────────────────────────────── */}
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {([
-            { label: 'Total Files', value: result?.entities.files.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#1A5FA8' },
-            { label: 'Classes', value: result?.entities.classes.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#BE3A2E' },
-            { label: 'Functions', value: result?.entities.functions.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#1A5FA8' },
+            { label: 'Total Files', value: result?.entities.files.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#A7ABA4' },
+            { label: 'Classes', value: result?.entities.classes.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#A7ABA4' },
+            { label: 'Functions', value: result?.entities.functions.length ?? '—', color: result ? 'text-text-primary' : 'text-text-disabled/40', accent: '#A7ABA4' },
             {
               label: 'Circular Deps',
               value: result?.circular_dependencies.length ?? '—',
               color: result
                 ? (result.circular_dependencies.length > 0 ? 'text-error' : 'text-success')
                 : 'text-text-disabled/40',
-              accent: result && result.circular_dependencies.length > 0 ? '#BE3A2E' : '#A7ABA4',
+              accent: result
+                ? (result.circular_dependencies.length > 0 ? 'rgb(var(--error))' : 'rgb(var(--success))')
+                : 'rgb(var(--border-rgb))',
             },
           ] as const).map((stat, i) => (
             <motion.div key={i} variants={itemVariants}>
@@ -222,7 +221,7 @@ export default function ExplorePage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium border transition-all',
                 showFilters
-                  ? 'bg-accent-from/10 border-accent-from/30 text-accent-from'
+                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
                   : 'bg-bg-tertiary/30 border-border text-text-muted hover:text-text-secondary'
               )}
             >
@@ -243,10 +242,10 @@ export default function ExplorePage() {
 
             {/* Selected node badge */}
             {selectedNode && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-from/10 border border-accent-from/20 text-accent-from text-caption font-medium">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-500 text-caption font-medium">
                 <Cube size={14} weight="fill" />
                 {selectedNode.id.length > 18 ? selectedNode.id.slice(0, 16) + '…' : selectedNode.id}
-                <button onClick={() => setSelectedNode(null)} className="ml-1 hover:text-white transition-colors">
+                <button onClick={() => setSelectedNode(null)} className="ml-1 hover:text-text-secondary transition-colors">
                   <X size={12} weight="bold" />
                 </button>
               </div>
@@ -268,9 +267,9 @@ export default function ExplorePage() {
                   key={group}
                   onClick={() => toggleGroup(group)}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium border transition-all',
+                    'px-2.5 py-1 rounded-md text-[11px] font-mono font-medium border transition-all',
                     (!activeGroups || activeGroups.has(group))
-                      ? 'bg-accent-from/10 border-accent-from/25 text-accent-from'
+                      ? 'bg-blue-500/10 border-blue-500/25 text-blue-500'
                       : 'bg-transparent border-border/50 text-text-muted/40 hover:text-text-muted'
                   )}
                 >
@@ -450,7 +449,7 @@ export default function ExplorePage() {
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <motion.div variants={itemVariants} className="bg-bg-secondary border border-border rounded-card p-4 hover:border-border-hover transition-colors">
               <div className="text-overline text-text-muted/50 font-semibold mb-2">Pattern</div>
-              <div className="text-accent-from font-code text-body-sm font-medium">{result.architecture_pattern}</div>
+              <div className="text-text-primary readout text-body-sm font-medium">{result.architecture_pattern}</div>
               <div className="text-caption text-text-muted/40 mt-1">
                 {allNodes.length} services · {allEdges.length} dep edges
               </div>
@@ -467,7 +466,7 @@ export default function ExplorePage() {
                         const node = allNodes.find((n) => n.id === srv.name)
                         if (node) setSelectedNode(node)
                       }}
-                      className="bg-bg-tertiary/60 border border-border rounded-lg px-3 py-1.5 text-body-xs hover:border-accent-from/30 hover:bg-accent-from/5 transition-colors cursor-pointer"
+                      className="bg-bg-tertiary/60 border border-border rounded-md px-3 py-1.5 text-body-xs hover:border-blue-500/40 hover:bg-blue-500/5 transition-colors cursor-pointer"
                     >
                       <span className="text-text-primary/75 font-medium">{srv.name}</span>
                       <span className="text-text-muted/40 ml-1.5 font-code">{srv.files.length}f</span>
@@ -483,8 +482,8 @@ export default function ExplorePage() {
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgb(var(--border-rgb) / 0.18); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgb(var(--border-rgb) / 0.30); }
       `}</style>
     </motion.div>
   )

@@ -4,10 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { generateWiki } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import {
   FileCode, GitFork, Star, Bug, BookOpen, Copy, Check,
-  Sparkle, CaretRight, ArrowLineRight, Terminal,
+  Sparkle, CaretRight, ArrowLineRight,
   Book,
 } from '@phosphor-icons/react'
 
@@ -124,14 +123,12 @@ export default function WikiPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <Terminal size={16} className="text-amber-400" />
-            </div>
-            <span className="text-overline text-amber-400/80">Codebase Archive</span>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Onboarding Wiki</span>
+            <span className="designator opacity-50">CODEBASE ARCHIVE</span>
           </div>
-          <GradientHeading as="h1" className="text-display-md mb-1">Onboarding Wiki</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Generate an onboarding guide from any GitHub repository</p>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Onboarding Wiki</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Generate an onboarding guide from any GitHub repository</p>
         </motion.div>
 
         {/* Repo Input */}
@@ -154,7 +151,7 @@ export default function WikiPage() {
               <button
                 onClick={() => mutation.mutate(repoUrl)}
                 disabled={!repoUrl || mutation.isPending}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-[#09090B] px-4 py-2 rounded-xl text-body-xs font-semibold transition-all disabled:opacity-40 whitespace-nowrap">
+                className="flex items-center gap-2 bg-warning hover:bg-warning-lit text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-btn text-body-xs font-semibold transition-all disabled:opacity-40 whitespace-nowrap">
                 <Sparkle size={14} weight="fill" />
                 {mutation.isPending ? 'Reading...' : 'Generate'}
               </button>

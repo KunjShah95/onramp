@@ -110,21 +110,17 @@ export default function OnboardingReportPage() {
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between gap-3 mb-2 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-accent-primary" weight="duotone" />
-          </div>
           <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
-              Onboarding Report
-            </h1>
-            <p className="text-body-sm text-text-tertiary">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="tile tile-go">
+                <FileText size={11} weight="fill" className="mr-1.5" />
+                Report
+              </span>
+              <span className="designator opacity-50">ONBOARDING BRIEF</span>
+            </div>
+            <h1 className="text-display-md md:text-display-lg text-text-primary">Onboarding Report</h1>
+            <p className="text-body-sm text-text-secondary mt-1 font-code">
               Generate a professional onboarding report for any repository.
             </p>
           </div>
@@ -152,7 +148,7 @@ export default function OnboardingReportPage() {
             onChange={(e) => setRepoUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
             placeholder="github.com/owner/repo"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
           />
         </div>
         <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
@@ -175,7 +171,7 @@ export default function OnboardingReportPage() {
           whileTap={{ scale: 0.97 }}
           onClick={handleGenerate}
           disabled={loading || !repoUrl.trim()}
-          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
+          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-go hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
         >
           <BookOpenText className="w-3.5 h-3.5" weight="fill" />
           {loading ? 'Generating…' : 'Generate'}
@@ -193,7 +189,7 @@ export default function OnboardingReportPage() {
 
       {!loading && !result && (
         <motion.div variants={itemVariants}>
-          <CardSpotlight className="border border-accent-primary/10">
+          <CardSpotlight className="border border-go/10">
             <EmptyState
               icon={<FileText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
               title="Enter a GitHub repository above"

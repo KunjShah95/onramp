@@ -57,11 +57,11 @@ export default function AuthCallback() {
         className="w-full max-w-[400px] z-10 text-center"
       >
         <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-4">
-            <span className="text-xl font-display font-bold text-[hsl(var(--accent))]">✦</span>
+          <div className="w-12 h-12 rounded-card bg-accent-from shadow-lit flex items-center justify-center mb-4">
+            <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
           </div>
           <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-            Nexora
+            Onramp
           </h1>
         </motion.div>
 

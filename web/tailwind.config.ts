@@ -1,6 +1,26 @@
 import type { Config } from 'tailwindcss'
 
 /**
+ * Legacy signal ramp — maps the stock Tailwind palette hues onto the
+ * Mission Control 4-signal tokens so any component written against the
+ * default palette still inherits the console language (GO green /
+ * mission blue / caution amber / abort red) in every theme.
+ */
+const signalRamp = (base: string, lit: string) => ({
+  '50': `rgb(var(${base}) / 0.06)`,
+  '100': `rgb(var(${base}) / 0.12)`,
+  '200': `rgb(var(${base}) / 0.22)`,
+  '300': `rgb(var(${lit}) / 0.85)`,
+  '400': `rgb(var(${lit}) / <alpha-value>)`,
+  '500': `rgb(var(${base}) / <alpha-value>)`,
+  '600': `rgb(var(${base}) / <alpha-value>)`,
+  '700': `rgb(var(${base}) / 0.88)`,
+  '800': `rgb(var(${base}) / 0.75)`,
+  '900': `rgb(var(${base}) / 0.6)`,
+  '950': `rgb(var(${base}) / 0.5)`,
+})
+
+/**
  * ONRAMP MISSION CONTROL — token layer (superset).
  * The Flight Operations Room: a daylit console floor. Cool gray-green ground,
  * near-white instrument panels seamed by hairlines, ink nomenclature, strict
@@ -17,6 +37,25 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ── Legacy signal bridge: stock hues → Mission Control signals ──
+        red: signalRamp('--error', '--error-lit'),
+        rose: signalRamp('--error', '--error-lit'),
+        amber: signalRamp('--warning', '--warning-lit'),
+        yellow: signalRamp('--warning', '--warning-lit'),
+        orange: signalRamp('--warning', '--warning-lit'),
+        emerald: signalRamp('--success', '--success-lit'),
+        green: signalRamp('--success', '--success-lit'),
+        lime: signalRamp('--success', '--success-lit'),
+        teal: signalRamp('--success', '--success-lit'),
+        blue: signalRamp('--info', '--info-lit'),
+        sky: signalRamp('--info', '--info-lit'),
+        cyan: signalRamp('--info', '--info-lit'),
+        indigo: signalRamp('--info', '--info-lit'),
+        violet: signalRamp('--info', '--info-lit'),
+        purple: signalRamp('--info', '--info-lit'),
+        pink: signalRamp('--info', '--info-lit'),
+        fuchsia: signalRamp('--info', '--info-lit'),
+
         // ── Mission-native names (var-driven → real light/dark themes) ──
         room: 'var(--room)',
         panel: 'var(--panel)',
@@ -124,6 +163,13 @@ export default {
         btn: '3px',
         input: '3px',
         pill: '9999px',
+        // Enforce the console radius language site-wide: everything that
+        // was written against the stock ramp (rounded-lg/xl/2xl/3xl)
+        // resolves to the instrument panel radius instead of soft corners.
+        lg: '4px',
+        xl: '4px',
+        '2xl': '4px',
+        '3xl': '4px',
       },
       boxShadow: {
         // Mission-native

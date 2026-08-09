@@ -14,6 +14,7 @@ interface User {
   email: string
   name: string
   displayName?: string
+  position?: string
   photoURL?: string
   emailVerified: boolean
   createdAt: Date | string
@@ -38,6 +39,9 @@ interface AuthState {
 
 export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr'
 
+/** Roles allowed to create & manage team API keys (Settings + Developer Portal). */
+export const KEY_MANAGER_ROLES: TeamRole[] = ['ceo', 'cto', 'owner', 'senior', 'senior_dev', 'developer', 'tester']
+
 /** Role-appropriate landing page after login/register. */
 export function homeForRole(role: TeamRole | null | undefined): string {
   if (role === 'hr') return '/hr/people'
@@ -54,6 +58,7 @@ interface AuthContextValue extends AuthState {
   getIdToken: () => string | null
   switchTeam: (teamId: string) => Promise<void>
   refreshRole: () => Promise<void>
+  updateUser: (user: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -63,6 +68,9 @@ function mapUser(raw: Record<string, unknown>): User {
     id: (raw.uid as string) || '',
     email: (raw.email as string) || '',
     name: (raw.name as string) || '',
+    displayName: (raw.name as string) || '',
+    position: (raw.position as string) || undefined,
+    photoURL: (raw.avatar_url as string) || undefined,
     emailVerified: true,
     createdAt: (raw.createdAt as string) || new Date().toISOString(),
     updatedAt: (raw.updatedAt as string) || new Date().toISOString(),
@@ -265,6 +273,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setState((prev) => (prev.user ? { ...prev, user: { ...prev.user, ...patch } } : prev))
+  }, [])
+
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }))
   }, [])
@@ -297,6 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getIdToken,
         switchTeam,
         refreshRole,
+        updateUser,
       }}
     >
       {children}

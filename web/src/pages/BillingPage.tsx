@@ -3,9 +3,7 @@ import { motion } from 'framer-motion'
 import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, topUpCredits, getCreditLedger, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
-import { PageHeader } from '../components/ui/page-header'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import ConsolePanel from '../components/ui/console-panel'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { useFeatureFlag } from '../context/FeatureFlagContext'
@@ -119,51 +117,43 @@ export default function BillingPage() {
   }
 
   const isUsageBased = subscription?.tier === 'usage_based'
+  const planStatus: 'go' | 'caution' | 'standby' = subscription?.status === 'active' ? 'go' : subscription ? 'caution' : 'standby'
 
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="relative w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary"
+      className="relative w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink"
     >
-      <div className="relative">
-        <svg className="absolute -top-10 -right-10 w-72 h-72 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.4" strokeDasharray="3 5" />
-          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
-      </div>
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          title="Billing & Plans"
-          subtitle="Manage your subscription and team quota"
-          pills={subscription ? [
-            { label: 'plan', value: subscription.tier, color: 'text-accent-primary' },
-            { label: 'status', value: subscription.status, color: subscription.status === 'active' ? 'text-green-400' : 'text-text-tertiary' },
-          ] : undefined}
-        />
+      {/* ── Mission header ── */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <span className="tile tile-go">Billing</span>
+          <span className="designator opacity-50">STATION ENGINEER · FINANCE</span>
+        </div>
+        <h1 className="text-display-md md:text-display-lg text-text-primary">Billing &amp; Plans</h1>
+        <p className="text-body-sm text-text-secondary mt-1 font-code">Manage your subscription and team quota</p>
       </motion.div>
 
-      {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</motion.div>)}
+      {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}
 
       {/* Team Selection */}
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-bg-secondary p-4 rounded-xl border border-border">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-well p-4 rounded-card border border-seam">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">Active Team Workspace</label>
+          <label className="overline text-ink-muted">Active Team Workspace</label>
           <div className="flex items-center gap-2">
             {teams.length > 0 ? (
               <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
-                className="bg-bg-primary border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary/40 outline-none min-w-[200px]">
+                className="bg-panel border border-seam rounded-input px-4 py-2.5 text-sm text-ink focus:border-go/40 outline-none min-w-[200px]">
                 {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>))}
               </select>
-            ) : (<div className="text-sm text-text-tertiary">No teams found. <a href="/team" className="underline text-accent-primary hover:text-accent-primary/80">Create one</a>.</div>)}
+            ) : (<div className="text-sm text-ink-muted">No teams found. <a href="/team" className="underline text-go hover:text-go/80">Create one</a>.</div>)}
           </div>
         </div>
         {subscription && (
           <button onClick={handleCancel} disabled={role !== 'owner'}
-            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-500/20 transition-colors disabled:opacity-40"
+            className="btn btn-danger px-4 py-2.5 text-sm font-medium disabled:opacity-40"
             title={role !== 'owner' ? 'Only the team owner can cancel' : ''}>
             Cancel Subscription
           </button>
@@ -173,65 +163,65 @@ export default function BillingPage() {
       {/* Current plan banner */}
       {subscription && (
         <motion.div variants={itemVariants}>
-          <CardSpotlight className="p-5 mb-8">
+          <ConsolePanel rail="Current Plan" designator="SUBSCRIPTION" status={planStatus} className="p-5 mb-8">
             <div className="flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-accent-primary shrink-0 mt-0.5" weight="fill" />
+              <CreditCard className="w-5 h-5 text-go shrink-0 mt-0.5" weight="fill" />
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Current Plan</div>
+                <div className="overline text-ink-muted mb-2">Plan Status</div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-3 py-1 rounded-lg bg-accent-primary/15 text-accent-primary text-sm font-bold capitalize border border-accent-primary/25">{subscription.tier}</span>
-                  <span className="text-sm text-text-secondary">${subscription.price}/mo</span>
-                  <span className="text-sm text-text-tertiary capitalize">{subscription.billing_cycle}</span>
-                  <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-full font-mono border',
-                    subscription.status === 'active' ? 'text-green-400 bg-green-500/10 border-green-500/20' : 'text-text-tertiary bg-bg-tertiary border-border')}>
+                  <span className="px-3 py-1 rounded-tile bg-go/15 text-go text-sm font-bold capitalize border border-go/25">{subscription.tier}</span>
+                  <span className="text-sm text-ink-secondary">${subscription.price}/mo</span>
+                  <span className="text-sm text-ink-muted capitalize">{subscription.billing_cycle}</span>
+                  <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-pill font-mono border',
+                    subscription.status === 'active' ? 'text-go bg-go/10 border-go/20' : 'text-ink-muted bg-well border-seam')}>
                     {subscription.status}
                   </span>
                 </div>
               </div>
             </div>
-          </CardSpotlight>
+          </ConsolePanel>
         </motion.div>
       )}
 
       {/* Usage-Based Wallet Section */}
       {isUsageBased && (
         <motion.div variants={itemVariants} className="mb-8">
-          <CardSpotlight className="p-5">
+          <ConsolePanel rail="Credit Wallet" designator="PREPAID" status="go" className="p-5">
             <div className="flex items-start gap-3 mb-4">
-              <Coins className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" weight="fill" />
+              <Coins className="w-5 h-5 text-go shrink-0 mt-0.5" weight="fill" />
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Prepaid Credit Wallet</div>
+                <div className="overline text-ink-muted mb-2">Prepaid Credit Wallet</div>
                 {walletLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-text-tertiary">
+                  <div className="flex items-center gap-2 text-sm text-ink-muted">
                     <Spinner className="w-4 h-4 animate-spin" />
                     Loading wallet…
                   </div>
                 ) : wallet ? (
                   <>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="font-display text-3xl font-bold text-amber-400">{wallet.balance.toLocaleString()}</span>
-                      <span className="text-sm text-text-tertiary">credits available</span>
+                      <span className="font-display text-3xl font-bold text-go">{wallet.balance.toLocaleString()}</span>
+                      <span className="text-sm text-ink-muted">credits available</span>
                     </div>
-                    <div className="flex gap-4 text-xs text-text-tertiary mb-4">
-                      <span>Purchased: <span className="font-mono text-text-secondary">{wallet.lifetime_purchased.toLocaleString()}</span></span>
-                      <span>Spent: <span className="font-mono text-text-secondary">{wallet.lifetime_spent.toLocaleString()}</span></span>
+                    <div className="flex gap-4 text-xs text-ink-muted mb-4">
+                      <span>Purchased: <span className="font-mono text-ink-secondary">{wallet.lifetime_purchased.toLocaleString()}</span></span>
+                      <span>Spent: <span className="font-mono text-ink-secondary">{wallet.lifetime_spent.toLocaleString()}</span></span>
                     </div>
 
                     {/* Top-up */}
-                    <div className="flex items-center gap-3 p-3 bg-bg-secondary rounded-xl border border-border mb-4">
-                      <CurrencyDollar className="w-4 h-4 text-emerald-400" weight="fill" />
+                    <div className="flex items-center gap-3 p-3 bg-well rounded-card border border-seam mb-4">
+                      <CurrencyDollar className="w-4 h-4 text-go" weight="fill" />
                       <input
                         type="number"
                         min={10}
                         max={100000}
                         value={topUpAmount}
                         onChange={(e) => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 10))}
-                        className="w-24 bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary font-mono focus:outline-none focus:border-accent-primary/60"
+                        className="input w-24 font-mono"
                       />
-                      <span className="text-xs text-text-tertiary">credits</span>
+                      <span className="text-xs text-ink-muted">credits</span>
                       <button
                         onClick={handleTopUp}
-                        className="ml-auto bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-lg text-xs font-semibold border border-emerald-500/20 transition-colors"
+                        className="ml-auto btn btn-primary px-4 py-1.5 text-xs font-semibold"
                       >
                         <ArrowDown size={14} className="inline mr-1" weight="bold" />
                         Add Credits
@@ -239,15 +229,15 @@ export default function BillingPage() {
                     </div>
 
                     {/* Cost breakdown */}
-                    <h4 className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Credit Costs per Action</h4>
+                    <h4 className="overline text-ink-muted mb-2">Credit Costs per Action</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                       {CREDIT_COSTS_LIST.map((item) => (
-                        <div key={item.action} className="bg-bg-primary border border-border rounded-lg p-2.5">
+                        <div key={item.action} className="bg-well border border-seam rounded-card p-2.5">
                           <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[10px] font-mono text-text-secondary uppercase">{item.action}</span>
-                            <span className="font-mono text-[11px] font-bold text-amber-400">{item.cost}</span>
+                            <span className="text-[10px] font-mono text-ink-secondary uppercase">{item.action}</span>
+                            <span className="font-mono text-[11px] font-bold text-go">{item.cost}</span>
                           </div>
-                          <p className="text-[9px] text-text-tertiary leading-tight">{item.description}</p>
+                          <p className="text-[9px] text-ink-muted leading-tight">{item.description}</p>
                         </div>
                       ))}
                     </div>
@@ -255,18 +245,18 @@ export default function BillingPage() {
                     {/* Ledger */}
                     {ledger.length > 0 && (
                       <>
-                        <h4 className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-2">Recent Activity</h4>
+                        <h4 className="overline text-ink-muted mb-2">Recent Activity</h4>
                         <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                           {ledger.map((entry) => (
-                            <div key={entry.entry_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-primary border border-border text-xs">
+                            <div key={entry.entry_id} className="flex items-center gap-3 px-3 py-2 rounded-tile bg-well border border-seam text-xs">
                               {entry.delta > 0 ? (
-                                <ArrowDown size={12} className="text-emerald-400 shrink-0" weight="bold" />
+                                <ArrowDown size={12} className="text-go shrink-0" weight="bold" />
                               ) : (
-                                <ArrowUp size={12} className="text-red-400 shrink-0" weight="bold" />
+                                <ArrowUp size={12} className="text-abort shrink-0" weight="bold" />
                               )}
-                              <span className="font-mono text-text-secondary">{entry.delta > 0 ? '+' : ''}{entry.delta}</span>
-                              <span className="text-text-tertiary flex-1 capitalize">{entry.reason.replace('charge:', '')}</span>
-                              <span className="text-[10px] text-text-muted/50">{new Date(entry.created_at).toLocaleDateString()}</span>
+                              <span className="font-mono text-ink-secondary">{entry.delta > 0 ? '+' : ''}{entry.delta}</span>
+                              <span className="text-ink-muted flex-1 capitalize">{entry.reason.replace('charge:', '')}</span>
+                              <span className="text-[10px] text-ink-disabled/60">{new Date(entry.created_at).toLocaleDateString()}</span>
                             </div>
                           ))}
                         </div>
@@ -274,30 +264,33 @@ export default function BillingPage() {
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-text-tertiary">No wallet created yet. Usage will be tracked as you use the platform.</p>
+                  <p className="text-sm text-ink-muted">No wallet created yet. Usage will be tracked as you use the platform.</p>
                 )}
               </div>
             </div>
-          </CardSpotlight>
+          </ConsolePanel>
         </motion.div>
       )}
 
       {/* Tier cards */}
-      <motion.div variants={itemVariants}>
-        <GradientHeading as="h2" className="text-lg mb-4">Available Plans</GradientHeading>
+      <motion.div variants={itemVariants} className="mb-4">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <span className="tile tile-observe">Plans</span>
+          <span className="designator opacity-50">TIER MATRIX</span>
+        </div>
       </motion.div>
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {tiers.map((tier) => {
           const isCurrent = selectedTier === tier.id
           return (
             <motion.div key={tier.id} variants={itemVariants}>
-              <CardSpotlight className={cn('relative p-5 flex flex-col h-full group',
-                isCurrent ? 'border-accent-primary/30 ring-1 ring-accent-primary/15' : tier.popular ? 'hover:border-accent-primary/30' : '')}>
-                {tier.popular && <span className="text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-3">Most Popular</span>}
-                <h3 className="font-display text-base font-bold text-text-primary capitalize mb-1">{tier.label}</h3>
+              <div className={cn('relative rounded-card border bg-panel p-5 flex flex-col h-full group transition-colors',
+                isCurrent ? 'border-go/30 ring-1 ring-go/15' : tier.popular ? 'hover:border-go/30' : 'border-seam hover:border-seam-strong')}>
+                {tier.popular && <span className="overline text-go font-bold mb-3">Most Popular</span>}
+                <h3 className="font-heading text-base font-bold text-ink capitalize mb-1">{tier.label}</h3>
                 <div className="mb-4">
                   {tier.price > 0 ? (
-                    <span className="font-display text-2xl font-bold text-text-primary">
+                    <span className="font-display text-2xl font-bold text-ink">
                       <motion.span
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -305,24 +298,24 @@ export default function BillingPage() {
                       >
                         ${tier.price}
                       </motion.span>
-                      <span className="text-sm text-text-tertiary font-normal">/mo</span>
+                      <span className="text-sm text-ink-muted font-normal">/mo</span>
                     </span>
                   ) : (
-                    <span className="font-display text-lg text-text-tertiary">{tier.id === 'enterprise' ? 'Custom' : 'Free'}</span>
+                    <span className="font-display text-lg text-ink-muted">{tier.id === 'enterprise' ? 'Custom' : 'Free'}</span>
                   )}
                 </div>
-                <ul className="space-y-2 text-xs text-text-secondary flex-1 mb-5">
-                  {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-accent-primary mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
+                <ul className="space-y-2 text-xs text-ink-secondary flex-1 mb-5">
+                  {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-go mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
                 </ul>
                 <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'owner'}
                   title={role !== 'owner' ? 'Only the team owner can change plans' : ''}
-                  className={cn('w-full py-2 rounded-xl text-xs font-bold transition-all',
-                    isCurrent ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/20 cursor-default' :
-                    tier.popular ? 'bg-accent-primary hover:bg-accent-primary/90 text-white disabled:opacity-40' :
-                    'bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-secondary hover:text-text-primary border border-border disabled:opacity-40')}>
+                  className={cn('w-full py-2 rounded-btn text-xs font-bold transition-all',
+                    isCurrent ? 'bg-go/10 text-go border border-go/20 cursor-default' :
+                    tier.popular ? 'bg-go hover:bg-go-lit text-white disabled:opacity-40' :
+                    'bg-well hover:bg-well/80 text-ink-secondary hover:text-ink border border-seam disabled:opacity-40')}>
                   {isCurrent ? 'Current Plan' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
                 </button>
-              </CardSpotlight>
+              </div>
             </motion.div>
           )
         })}

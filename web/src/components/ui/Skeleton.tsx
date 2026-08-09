@@ -90,26 +90,51 @@ export function SkeletonProgressBar({ className }: SkeletonProps) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="animate-in max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <SkeletonHeading />
-        <SkeletonButton />
+    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <SkeletonHeading />
+          <SkeletonText className="w-48" />
+        </div>
+        <SkeletonBase className="h-9 w-32 rounded-btn" />
       </div>
-      <div className="mb-6">
-        <SkeletonInput className="w-full" />
-      </div>
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="card border-border/30">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2 flex-1 mr-4">
-                <SkeletonTitle />
-                <SkeletonText className="w-1/3 h-3" />
-              </div>
-              <SkeletonBadge />
+
+      {/* Verdict bar */}
+      <SkeletonBase className="h-20 rounded-card" />
+
+      {/* Four readout cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-card border border-seam bg-panel overflow-hidden">
+            <div className="px-5 pt-4 pb-3 border-b border-seam">
+              <SkeletonText className="h-3 w-24" />
+            </div>
+            <div className="p-5 space-y-2">
+              <SkeletonBase className="h-8 w-16" />
+              <SkeletonText className="h-3 w-20" />
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Charts: 8-col velocity + 4-col matrix */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+        <div className="lg:col-span-8 rounded-card border border-seam bg-panel overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b border-seam"><SkeletonText className="h-3 w-24" /></div>
+          <div className="p-5"><SkeletonBase className="h-52 w-full" /></div>
+        </div>
+        <div className="lg:col-span-4 rounded-card border border-seam bg-panel overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b border-seam"><SkeletonText className="h-3 w-24" /></div>
+          <div className="p-5"><SkeletonBase className="h-52 w-full" /></div>
+        </div>
+      </div>
+
+      {/* Review rail */}
+      <div className="rounded-card border border-seam bg-panel overflow-hidden">
+        <div className="px-5 pt-4 pb-3 border-b border-seam"><SkeletonText className="h-3 w-24" /></div>
+        <div className="p-5 space-y-3">
+          {[...Array(3)].map((_, i) => <SkeletonText key={i} className="h-6" />)}
+        </div>
       </div>
     </div>
   )

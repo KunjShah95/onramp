@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
 
 interface StatCardProps {
@@ -23,14 +24,21 @@ export function StatCard({
   onClick,
 }: StatCardProps) {
   return (
-    <div
+    <motion.div
       onClick={onClick}
+      whileHover="hover"
+      whileTap={onClick ? 'tap' : undefined}
+      initial="rest"
+      animate="rest"
+      variants={{
+        rest: { y: 0 },
+        hover: { y: -2, transition: { type: 'spring', stiffness: 320, damping: 24 } },
+        tap: { scale: 0.985 },
+      }}
       className={cn(
         'relative rounded-card border border-border bg-bg-secondary p-5 overflow-hidden',
-        'transition-all duration-300',
-        onClick
-          ? 'cursor-pointer hover:border-border-hover'
-          : '',
+        'transition-colors duration-200',
+        onClick && 'cursor-pointer hover:border-border-hover',
         className
       )}
     >
@@ -56,6 +64,6 @@ export function StatCard({
           <div className="ml-3 shrink-0 text-text-muted/30">{icon}</div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

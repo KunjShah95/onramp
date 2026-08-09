@@ -407,6 +407,11 @@ async def start_task(task_id: str, user_id: str) -> dict:
     Raises:
         ValueError: If the quiz gate or a dependency is not satisfied.
     """
+    # Idempotent start — a task that is already in_progress is left as-is so a
+    # double-click / retried Start request doesn't fail the state machine.
+    existing = await get_task(task_id)
+    if existing and existing.get("state") == "in_progress":
+        return existing
     gate = await check_quiz_gate(task_id, user_id)
     if gate.get("required") and not gate.get("passed"):
         raise ValueError(

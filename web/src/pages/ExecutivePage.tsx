@@ -1,34 +1,50 @@
-import { useState, useEffect } from 'react'
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: The executive seat stands at FLIGHT with the big board overhead —
+ *   revenue trajectory, fleet status, treasury. Leadership metrics render as a
+ *   plotboard + mono readouts, never a row of identical hero cards.
+ * OWN-WORLD: Daylit ops room, seated panels, signal-only colour, mono telemetry.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
+import { TrendUp, CaretUp, CaretDown } from '@phosphor-icons/react'
 import {
-  ChartBar, Users, CurrencyDollar, CreditCard, TrendUp,
-  Building, Bell, ShieldCheck, GitPullRequest,
-} from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
+import ConsolePanel from '../components/ui/console-panel'
+import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
+import StatusTile from '../components/ui/status-tile'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
+import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 
-const containerVariants = {
+const SIG = {
+  go: '#17A34A',
+  blue: '#2472C4',
+  grid: 'rgb(var(--border-rgb) / 0.10)',
+  axis: 'rgb(var(--text-tertiary) / 0.75)',
+}
+const TOOLTIP = {
+  background: 'rgb(var(--bg-elevated))',
+  border: '1px solid rgb(var(--border-rgb) / 0.18)',
+  borderRadius: '4px',
+  fontSize: '12px',
+  color: 'rgb(var(--text-primary))',
+  boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
+}
+
+const container = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
-
-const statCardVariants = {
-  hidden: { opacity: 0, scale: 0.92 },
-  visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
 }
 
-const AUDIT_STYLES: Record<string, { icon: any; color: string; bg: string }> = {
-  auth: { icon: ShieldCheck, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  config: { icon: Bell, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  access: { icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  deploy: { icon: GitPullRequest, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-}
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function ExecutivePage() {
   const [loading, setLoading] = useState(true)
@@ -44,231 +60,205 @@ export default function ExecutivePage() {
   }, [])
 
   const d = seedData
-  const metrics = [
-    { label: 'Monthly Revenue (MRR)', value: d ? `$${d.mrr?.toLocaleString() ?? '0'}` : '$0', icon: CurrencyDollar, color: 'text-emerald-400' },
-    { label: 'Active Teams', value: d ? `${d.stats?.active_teams ?? 0}` : '0', icon: Building, color: 'text-blue-400' },
-    { label: 'Active Users', value: d ? `${d.stats?.total_users ?? 0}` : '0', icon: Users, color: 'text-purple-400' },
-    { label: 'Credits Used (24h)', value: d ? `${(d.stats?.api_calls_24h ?? 0).toLocaleString()}` : '0', icon: CreditCard, color: 'text-amber-400' },
+  const mrr = d?.mrr ?? 0
+  const growth = d?.mrr_growth ?? 0
+
+  // Trailing MRR trajectory reconstructed from current MRR + MoM growth rate.
+  const trajectory = useMemo(() => {
+    const g = growth / 100
+    const now = new Date().getMonth()
+    return Array.from({ length: 6 }).map((_, k) => {
+      const back = 5 - k
+      const val = g > -1 ? mrr / Math.pow(1 + g, back) : mrr
+      return { month: MONTHS[(now - back + 12) % 12], mrr: Math.round(val) }
+    })
+  }, [mrr, growth])
+
+  const readouts: Readout[] = [
+    { label: 'Monthly Revenue', value: mrr, prefix: '$', color: 'text-success', delta: growth },
+    { label: 'Active Teams', value: d?.stats?.active_teams ?? 0, color: 'text-info' },
+    { label: 'Active Users', value: d?.stats?.total_users ?? 0, color: 'text-text-primary' },
+    { label: 'Credits · 24h', value: d?.stats?.api_calls_24h ?? 0, color: 'text-info' },
   ]
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8 relative"
-    >
+    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
-        <svg className="absolute -top-8 -right-4 w-56 h-56 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-emerald-400" />
-        </svg>
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-          <ChartBar className="w-5 h-5 text-emerald-400" weight="duotone" />
-        </div>
+      <motion.div variants={item} className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-display-sm font-display font-medium text-text-primary">Executive Dashboard</h1>
-          <p className="text-body-sm text-text-tertiary">CTO/CEO overview of organization metrics.</p>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Flight · Executive</span>
+            <span className="designator opacity-50">BIG BOARD · ORG</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Executive Console</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Revenue trajectory · fleet status · treasury.</p>
         </div>
       </motion.div>
 
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">{error}</div>
-        )}
+      {error && (
+        <motion.div variants={item}>
+          <ConsolePanel rail="Signal Lost" designator="ORG" status="abort">
+            <p className="text-error text-body-sm font-code">{error}</p>
+          </ConsolePanel>
+        </motion.div>
+      )}
 
-        {loading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-              ))}
-            </div>
-            <div className="h-48 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="h-64 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-              <div className="h-64 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-            </div>
+      {loading ? (
+        <div className="space-y-6">
+          <div className="h-28 rounded-card bg-panel border border-seam animate-skeleton" />
+          <div className="h-56 rounded-card bg-panel border border-seam animate-skeleton" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-64 rounded-card bg-panel border border-seam animate-skeleton" />
+            <div className="h-64 rounded-card bg-panel border border-seam animate-skeleton" />
           </div>
-        ) : (
-          <>
-            {/* Stats row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {metrics.map((metric, i) => (
-                <motion.div key={metric.label} custom={i} variants={statCardVariants} initial="hidden" animate="visible">
-                  <CardSpotlight className="p-4 group">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110', metric.color.replace('text', 'bg'), '/10')}>
-                        <metric.icon className={cn('w-4 h-4', metric.color)} weight="fill" />
-                      </div>
-                      <span className="text-caption text-text-tertiary">{metric.label}</span>
-                    </div>
-                    <p className="text-display-xs font-display font-medium text-text-primary">{metric.value}</p>
-                  </CardSpotlight>
-                </motion.div>
-              ))}
-            </div>
+        </div>
+      ) : (
+        <>
+          {/* Big board readouts */}
+          <motion.div variants={item}>
+            <ReadoutBank callsign="ORG TELEMETRY" items={readouts} columns={4} />
+          </motion.div>
 
-            {/* Two-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* Revenue Overview */}
-              <motion.div variants={itemVariants} className="lg:col-span-3">
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                      <TrendUp className="w-4 h-4 text-emerald-400" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Revenue Overview</h2>
-                  </div>
-                    <div className="h-48 rounded-xl bg-bg-tertiary/40 border border-border border-dashed flex items-center justify-center">
-                      <div className="text-center">
-                        <CurrencyDollar className="w-8 h-8 text-text-tertiary/30 mx-auto mb-2" weight="duotone" />
-                        <p className="text-caption text-text-tertiary/60">Revenue Overview</p>
-                        <p className="text-display-xs font-display font-medium text-text-primary mt-2">${(d?.mrr ?? 0).toLocaleString()} MRR</p>
-                        <div className="flex items-center justify-center gap-4 mt-2 text-caption text-text-tertiary/50">
-                          <span>↑ {d?.mrr_growth ?? 0}% MoM</span>
-                          <span>·</span>
-                          <span>{d?.active_subscriptions ?? 0} active subscriptions</span>
+          {/* Revenue trajectory + fleet */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            <motion.div variants={item} className="lg:col-span-3">
+              <ConsolePanel rail="Revenue Trajectory" designator="MRR · 6-MO" status="go" live>
+                <div className="flex items-baseline gap-3 mb-3">
+                  <span className="font-code tabular-nums text-3xl md:text-4xl font-semibold text-success leading-none">
+                    ${mrr.toLocaleString()}
+                  </span>
+                  <span className={cn('inline-flex items-center gap-0.5 font-code text-caption tabular-nums', growth >= 0 ? 'text-go' : 'text-abort')}>
+                    {growth >= 0 ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
+                    {Math.abs(growth)}% MoM
+                  </span>
+                  <span className="text-caption text-text-muted">· {d?.active_subscriptions ?? 0} active subs</span>
+                </div>
+                <div className="h-48 bg-plot-grid rounded-tile">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trajectory} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="mrrFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={SIG.go} stopOpacity={0.26} />
+                          <stop offset="95%" stopColor={SIG.go} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
+                      <XAxis dataKey="month" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={44}
+                        tickFormatter={(v) => `$${v >= 1000 ? `${Math.round(v / 1000)}k` : v}`} />
+                      <Tooltip contentStyle={TOOLTIP} formatter={(v) => [`$${Number(v).toLocaleString()}`, 'MRR']} />
+                      <Area type="monotone" dataKey="mrr" stroke={SIG.go} fill="url(#mrrFill)" strokeWidth={2} dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </ConsolePanel>
+            </motion.div>
+
+            {/* Top Teams */}
+            <motion.div variants={item} className="lg:col-span-2">
+              <ConsolePanel rail="Fleet · Top Teams" designator={`${d?.top_teams?.length ?? 0} TRACKED`} status="standby">
+                {!d?.top_teams?.length ? (
+                  <EmptyState title="No teams" description="Teams will appear once created." />
+                ) : (
+                  <div className="space-y-2.5">
+                    {d.top_teams.map((team: any, i: number) => (
+                      <motion.div key={team.name} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                        className="p-2.5 rounded-tile bg-well border border-seam">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-body-xs font-medium text-text-primary truncate">{team.name}</span>
+                          <span className="text-caption text-text-muted font-code">{team.members} crew</span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${team.completion_rate}%` }} transition={{ duration: 0.7, delay: i * 0.05 }}
+                              className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} />
+                          </div>
+                          <span className={cn('readout text-caption tabular-nums', team.completion_rate >= 80 ? 'text-success' : team.completion_rate >= 60 ? 'text-info' : 'text-error')}>
+                            {team.completion_rate}%
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1 text-caption text-text-muted">
+                          <TrendUp size={11} weight="bold" /> <span className="font-code">Velocity {team.velocity}x</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </ConsolePanel>
+            </motion.div>
+          </div>
+
+          {/* Treasury + audit */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Billing */}
+            <motion.div variants={item}>
+              <ConsolePanel rail="Treasury · Billing" designator={`${d?.active_subscriptions ?? 0} SUBS`} status="go">
+                <div className="space-y-2.5">
+                  {[
+                    { tier: 'Active', key: 'active', bar: 'bg-success', tone: 'go' as const },
+                    { tier: 'Past Due', key: 'past_due', bar: 'bg-error', tone: 'abort' as const },
+                    { tier: 'Trialing', key: 'trialing', bar: 'bg-info', tone: 'standby' as const },
+                    { tier: 'Canceled', key: 'canceled', bar: 'bg-ink-disabled', tone: 'idle' as const },
+                  ].map((t) => {
+                    const count = d?.billing_summary?.[t.key] ?? 0
+                    const total = d?.active_subscriptions ?? 1
+                    const pct = Math.round((count / Math.max(total, 1)) * 100)
+                    return (
+                      <div key={t.key} className="flex items-center gap-3">
+                        <span className="w-20 shrink-0"><StatusTile status={t.tone} label={t.tier} /></span>
+                        <div className="flex-1 h-2 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className={cn('h-full', t.bar)} />
+                        </div>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <span className="readout text-text-primary tabular-nums">{count}</span>
+                          <span className="text-caption text-text-muted">{pct}%</span>
+                        </span>
                       </div>
-                    </div>
-                </CardSpotlight>
-              </motion.div>
+                    )
+                  })}
+                </div>
+              </ConsolePanel>
+            </motion.div>
 
-              {/* Top Teams */}
-              <motion.div variants={itemVariants} className="lg:col-span-2">
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-blue-400" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Top Teams</h2>
-                  </div>
-                  {!d?.top_teams?.length ? (
-                    <EmptyState icon={<Users className="w-8 h-8 text-text-tertiary/30" weight="duotone" />} title="No teams" description="Teams will appear once created." />
-                  ) : (
-                    <div className="space-y-3">
-                      {d.top_teams.map((team: any, i: number) => (
-                        <motion.div
-                          key={team.name}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className="p-3 rounded-lg bg-bg-tertiary/20 border border-border hover:bg-bg-tertiary/40 transition-colors"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-body-xs font-medium text-text-primary">{team.name}</span>
-                            <span className="text-caption text-text-tertiary/60">{team.members} members</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-                              <div
-                                className={cn('h-full rounded-full transition-all duration-700', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-accent-from' : 'bg-error')}
-                                style={{ width: `${team.completion_rate}%` }}
-                              />
-                            </div>
-                            <span className={cn('text-caption font-code tabular-nums', team.completion_rate >= 80 ? 'text-success' : team.completion_rate >= 60 ? 'text-accent-from' : 'text-error')}>{team.completion_rate}%</span>
-                          </div>
-                          <div className="mt-1.5 flex items-center gap-1 text-caption text-text-tertiary/50">
-                            <TrendUp size={12} weight="bold" />
-                            <span>Velocity {team.velocity}x</span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </CardSpotlight>
-              </motion.div>
-            </div>
-
-            {/* Bottom row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Billing Summary */}
-              <motion.div variants={itemVariants}>
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                      <CreditCard className="w-4 h-4 text-amber-400" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Billing Summary</h2>
-                  </div>
-                  <div className="space-y-3">
-                    {[
-                      { tier: 'Active', key: 'active', color: 'bg-success' },
-                      { tier: 'Past Due', key: 'past_due', color: 'bg-error' },
-                      { tier: 'Trialing', key: 'trialing', color: 'bg-accent-from' },
-                      { tier: 'Canceled', key: 'canceled', color: 'bg-text-tertiary/40' },
-                    ].map((t) => {
-                      const count = d?.billing_summary?.[t.key] ?? 0
-                      const total = d?.active_subscriptions ?? 1
-                      const pct = Math.round((count / Math.max(total, 1)) * 100)
+            {/* Audit */}
+            <motion.div variants={item}>
+              <ConsolePanel rail="Event Log · Audit" designator={`${d?.recent_audit_events?.length ?? 0} EVENTS`} status="standby">
+                {!d?.recent_audit_events?.length ? (
+                  <EmptyState title="No audit events" description="Security events will appear here." />
+                ) : (
+                  <div className="space-y-0.5">
+                    {d.recent_audit_events.map((event: any, i: number) => {
+                      const isDeploy = (event.action ?? '').toLowerCase().includes('deploy')
                       return (
-                        <div key={t.key} className="flex items-center gap-3">
-                          <div className="w-20 text-caption text-text-tertiary shrink-0">{t.tier}</div>
-                          <div className="flex-1 h-2 rounded-full bg-bg-tertiary overflow-hidden">
-                            <div className={cn('h-full rounded-full', t.color)} style={{ width: `${pct}%` }} />
+                        <motion.div key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                          className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
+                          <StatusTile status={isDeploy ? 'go' : 'standby'} label={isDeploy ? 'Deploy' : 'Auth'} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-xs text-text-primary truncate">
+                              <span className="font-medium">{event.actor}</span> <span className="text-text-muted">{event.action}</span>
+                            </p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-body-xs font-code tabular-nums text-text-primary">{count}</span>
-                            <span className="text-caption text-text-tertiary/50">{pct}%</span>
-                          </div>
-                        </div>
+                          <span className="text-caption text-text-muted readout shrink-0">{event.time}</span>
+                        </motion.div>
                       )
                     })}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-caption">
-                    <span className="text-text-tertiary/60">Total subscriptions</span>
-                    <span className="text-text-primary font-code font-medium">{d?.active_subscriptions ?? 0}</span>
-                  </div>
-                </CardSpotlight>
-              </motion.div>
+                )}
+              </ConsolePanel>
+            </motion.div>
+          </div>
 
-              {/* Recent Audit Events */}
-              <motion.div variants={itemVariants}>
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                      <Bell className="w-4 h-4 text-red-400" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Recent Audit Events</h2>
-                  </div>
-                  {!d?.recent_audit_events?.length ? (
-                    <EmptyState icon={<Bell className="w-8 h-8 text-text-tertiary/30" weight="duotone" />} title="No audit events" description="Security events will appear here." />
-                  ) : (
-                    <div className="space-y-2">
-                      {d.recent_audit_events.map((event: any, i: number) => {
-                        const type = (event.action ?? '').toLowerCase().includes('deploy') ? 'deploy' : 'auth'
-                        const style = AUDIT_STYLES[type] ?? { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
-                        return (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-bg-tertiary/10 transition-colors"
-                          >
-                            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', style.bg)}>
-                              <style.icon className={cn('w-3.5 h-3.5', style.color)} weight="fill" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-body-xs text-text-primary font-medium capitalize">{type}</p>
-                              <p className="text-caption text-text-tertiary/70">
-                                {event.actor} <span className="text-text-tertiary/40">{event.action}</span>
-                              </p>
-                              <p className="text-[11px] text-text-tertiary/40">{event.time}</p>
-                            </div>
-                          </motion.div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </CardSpotlight>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </motion.div>
+          {/* Credential cost tracking — live API key budgets for the C-suite */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Credential Cost · Tracking" designator="COST TELEMETRY" status="go">
+              <p className="text-caption text-text-muted mb-4 font-code">
+                API key spend vs. budget — live from the gateway.
+              </p>
+              <ApiCostTracking />
+            </ConsolePanel>
+          </motion.div>
+        </>
+      )}
+    </motion.div>
   )
 }

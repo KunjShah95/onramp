@@ -35,7 +35,7 @@ const buildItems = [
   { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['new_dev', 'member'] },
   { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
+  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
   { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
@@ -81,12 +81,12 @@ function NavItem({ to, label, Icon, collapsed }: NavItemData & { collapsed: bool
       aria-label={label}
       className={({ isActive }) =>
         cn(
-          'relative flex items-center rounded-lg text-[13px] transition-all duration-150',
+          'relative flex items-center text-[13px] transition-all duration-150',
           collapsed
-            ? 'justify-center h-9 w-9 mx-auto'
-            : 'gap-2.5 px-2.5 py-1.5 w-full',
+            ? 'justify-center h-9 w-9 mx-auto rounded-btn'
+            : 'gap-2.5 px-2.5 py-1.5 w-full rounded-btn',
           isActive
-            ? 'text-text-primary font-medium bg-accent-muted'
+            ? 'text-text-primary font-medium bg-accent-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
             : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/40'
         )
       }
@@ -169,8 +169,9 @@ export default function Sidebar() {
           title={collapsed ? 'Onramp' : undefined}
           aria-label="Onramp home"
         >
-          <div className="w-7 h-7 rounded-tile bg-accent-from flex items-center justify-center shadow-lit transition-transform duration-200 group-hover:scale-105">
-            <span className="text-[11px] font-bold text-white font-display tracking-tight">OR</span>
+          <div className="relative w-7 h-7 rounded-tile bg-accent-from flex items-center justify-center shadow-lit transition-transform duration-200 group-hover:scale-105">
+            <span className="absolute inset-0 rounded-tile bg-accent-to opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <span className="relative text-[11px] font-bold text-white font-display tracking-tight">OR</span>
           </div>
           {!collapsed && (
             <span className="font-display text-sm font-bold text-text-primary tracking-tight uppercase">

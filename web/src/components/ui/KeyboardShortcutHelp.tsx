@@ -14,7 +14,7 @@ export default function KeyboardShortcutHelp({ shortcuts, onClose }: Props) {
       role="presentation"
     >
       <div
-        className="bg-[#0D1225] border border-white/10 rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl"
+        className="bg-[#0D1225] border border-white/10 rounded-md p-6 max-w-lg w-full mx-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-label="Keyboard shortcuts reference"
@@ -30,7 +30,7 @@ export default function KeyboardShortcutHelp({ shortcuts, onClose }: Props) {
           {shortcuts.map(s => (
             <div key={s.key} className="flex items-center justify-between text-sm">
               <span className="text-white/70">{s.description}</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/5 text-[#FF8C00] font-mono text-[11px] border border-white/10">
+              <kbd className="px-2 py-0.5 rounded bg-white/5 text-warning-lit font-mono text-[11px] border border-white/10">
                 {s.key === 'Escape' ? 'Esc' : s.key.startsWith('g ') ? s.key : `g ${s.key}`}
               </kbd>
             </div>

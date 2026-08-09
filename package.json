@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@vercel/analytics": "^1.6.1"
   }
 }

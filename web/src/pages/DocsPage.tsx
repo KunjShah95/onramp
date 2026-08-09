@@ -68,10 +68,10 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
         <p>
-          Nexora turns any GitHub repository into an interactive knowledge map. Paste a URL, and within 2 minutes you get a live dependency graph, a searchable codebase, and a guided onboarding path — all derived from the actual source code, not documentation.
+          Onramp turns any GitHub repository into an interactive knowledge map. Paste a URL, and within 2 minutes you get a live dependency graph, a searchable codebase, and a guided onboarding path, all derived from the actual source code, not documentation.
         </p>
         <h2 className="font-semibold text-base font-display">How it works</h2>
-        <p>Nexora runs a 3-stage pipeline on your repository:</p>
+        <p>Onramp runs a 3-stage pipeline on your repository:</p>
         <ol className="space-y-3 list-none">
           {[
             ['Clone', 'Repository is cloned and cached. Only the diff is re-processed on updates.'],
@@ -104,7 +104,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
         <p>Go to the <strong className="text-[hsl(var(--foreground))]">Explore</strong> tab and paste a public GitHub URL.</p>
         {codeBlock('Input', `https://github.com/vercel/next.js`)}
-        <p>Nexora clones, parses, and builds the graph. Analysis time depends on repo size:</p>
+        <p>Onramp clones, parses, and builds the graph. Analysis time depends on repo size:</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[['Small', '< 500 files', '~30s'], ['Medium', '< 5k files', '~90s'], ['Large', '5k+ files', '2–4 min']].map(([size, files, time]) => (
             <div key={size} className="bg-[hsl(var(--secondary))]/60 border border-[hsl(var(--border))] rounded-xl p-3 text-center">
@@ -121,7 +121,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'Ask your codebase',
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        <p>After indexing, go to <strong className="text-[hsl(var(--foreground))]">Ask Codebase</strong>. Ask questions in plain English — Nexora returns exact file paths and line numbers.</p>
+        <p>After indexing, go to <strong className="text-[hsl(var(--foreground))]">Ask Codebase</strong>. Ask questions in plain English, and Onramp returns exact file paths and line numbers.</p>
         <p>Example questions:</p>
         <div className="space-y-2">
           {[
@@ -180,8 +180,8 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'Docker Compose',
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        <p>Self-host Nexora with Docker Compose. Requires Docker 24+ and 4GB RAM minimum.</p>
-        {codeBlock('Terminal', `git clone https://github.com/nexora/nexora\ncd nexora\ncp .env.example .env\n# Edit .env with your API keys\ndocker compose up -d`)}
+        <p>Self-host Onramp with Docker Compose. Requires Docker 24+ and 4GB RAM minimum.</p>
+        {codeBlock('Terminal', `git clone https://github.com/onramp/onramp\ncd onramp\ncp .env.example .env\n# Edit .env with your API keys\ndocker compose up -d`)}
         <p>Services started:</p>
         <div className="space-y-2">
           {[
@@ -203,7 +203,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'Environment variables',
     body: (
       <div className="space-y-4 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        {codeBlock('.env', `# LLM\nLLM_ENABLED=true\nLLM_PROVIDER=openai          # openai | azure | ollama\nOPENAI_API_KEY=sk-...\n\n# Database\nDATABASE_URL=postgresql://user:pass@localhost:5432/nexora\n\n# Auth\nJWT_SECRET=your-secret-here\n\n# GitHub (for private repos)\nGITHUB_TOKEN=ghp_...`)}
+        {codeBlock('.env', `# LLM\nLLM_ENABLED=true\nLLM_PROVIDER=openai          # openai | azure | ollama\nOPENAI_API_KEY=sk-...\n\n# Database\nDATABASE_URL=postgresql://user:pass@localhost:5432/onramp\n\n# Auth\nJWT_SECRET=your-secret-here\n\n# GitHub (for private repos)\nGITHUB_TOKEN=ghp_...`)}
       </div>
     ),
   },
@@ -211,7 +211,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'LLM providers',
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        <p>Nexora supports three LLM backends. Set <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">LLM_PROVIDER</code> in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">.env</code>.</p>
+        <p>Onramp supports three LLM backends. Set <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">LLM_PROVIDER</code> in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">.env</code>.</p>
         <div className="space-y-3">
           {[
             { provider: 'openai', vars: 'OPENAI_API_KEY', note: 'Recommended for best quality.' },

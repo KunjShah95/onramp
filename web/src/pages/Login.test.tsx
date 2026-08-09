@@ -24,18 +24,21 @@ describe('Login', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the login form', () => {
+  it('renders the login form (two-stage: email → password)', () => {
     render(<Login />)
-    expect(screen.getByRole('heading', { name: /onramp/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+    // Stage 1: email prompt + continue CTA
+    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument()
   })
 
   it('calls auth login on valid submit', async () => {
     const user = userEvent.setup()
     render(<Login />)
+    // Stage 1 — submit email to advance to password
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+    // Stage 2 — password + final sign-in
     await user.type(screen.getByLabelText(/password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     await waitFor(() => {
@@ -45,6 +48,6 @@ describe('Login', () => {
 
   it('navigates to register page link', () => {
     render(<Login />)
-    expect(screen.getByRole('link', { name: /register/i })).toHaveAttribute('href', '/register')
+    expect(screen.getByRole('link', { name: /create an account/i })).toHaveAttribute('href', '/register')
   })
 })

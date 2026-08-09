@@ -17,6 +17,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { adminListAuditEvents, exportAuditEvents } from '../lib/api'
 import type { AdminAuditEvent } from '../lib/api'
+import { formatInIST, formatKeyDate } from '../lib/utils'
 
 const EVENT_TYPE_ICONS: Record<string, { icon: typeof ShieldCheck; color: string; bg: string }> = {
   auth: { icon: User, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -38,7 +39,7 @@ function relativeTime(iso: string): string {
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   if (d < 30) return `${d}d ago`
-  return new Date(iso).toLocaleDateString()
+  return formatKeyDate(iso)
 }
 
 const PAGE_SIZE = 25
@@ -110,12 +111,6 @@ export default function AuditLogPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -149,7 +144,7 @@ export default function AuditLogPage() {
             onClick={() => setFilterVisible(!filterVisible)}
             className={`px-3 py-2 rounded-lg text-caption font-medium border transition-colors flex items-center gap-1.5 ${
               filterVisible || filterType || filterActor
-                ? 'border-accent-primary/40 text-accent-from bg-accent-primary/5'
+                ? 'border-go/40 text-accent-from bg-go/5'
                 : 'border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70'
             }`}
           >
@@ -191,7 +186,7 @@ export default function AuditLogPage() {
                     onClick={() => { setFilterType(t); setPage(0) }}
                     className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors ${
                       filterType === t
-                        ? 'bg-accent-primary/10 text-accent-from border border-accent-primary/20'
+                        ? 'bg-go/10 text-accent-from border border-go/20'
                         : 'bg-bg-tertiary/20 text-text-secondary border border-transparent hover:bg-bg-tertiary/40'
                     }`}
                   >
@@ -209,7 +204,7 @@ export default function AuditLogPage() {
                   value={filterActor}
                   onChange={(e) => { setFilterActor(e.target.value); setPage(0) }}
                   placeholder="Search by actor ID…"
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-tertiary/20 border border-border text-body-sm text-text-primary placeholder:text-text-tertiary/50 focus:outline-none focus:border-accent-primary/40 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-tertiary/20 border border-border text-body-sm text-text-primary placeholder:text-text-tertiary/50 focus:outline-none focus:border-go/40 transition-colors"
                 />
                 {filterActor && (
                   <button onClick={() => setFilterActor('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary">
@@ -254,17 +249,17 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="border-collapse text-left w-full table-auto">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Event</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Actor</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Target</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Team</th>
-                  <th className="text-right px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Time</th>
+                <tr className="border-b border-border sticky top-0 z-10 bg-panel">
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Event</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Actor</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Target</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Team</th>
+                  <th className="text-right px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Time</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/20">
                 {pageEvents.map((entry, i) => {
                   const style = EVENT_TYPE_ICONS[entry.event_type] ?? { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
                   const Icon = style.icon
@@ -274,9 +269,9 @@ export default function AuditLogPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.025 }}
-                      className="border-b border-border/20 hover:bg-bg-tertiary/10 transition-colors group"
+                      className="hover:bg-bg-tertiary/10 transition-colors group"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${style.bg}`}>
                             <Icon className={`w-3.5 h-3.5 ${style.color}`} weight="fill" />
@@ -291,23 +286,23 @@ export default function AuditLogPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <code className="text-body-xs text-text-secondary font-mono bg-bg-tertiary/20 px-1.5 py-0.5 rounded text-[12px]">
                           {entry.actor_id?.slice(0, 12)}…
                         </code>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
                           {entry.target_id ? `${entry.target_id.slice(0, 12)}…` : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
                           {entry.team_id ? `${entry.team_id.slice(0, 8)}…` : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={new Date(entry.timestamp).toLocaleString()}>
+                      <td className="px-4 py-3 text-right align-middle">
+                        <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
                           {relativeTime(entry.timestamp)}
                         </span>
                       </td>
@@ -342,7 +337,7 @@ export default function AuditLogPage() {
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-caption font-medium transition-colors ${
                       p === page
-                        ? 'bg-accent-primary/10 text-accent-from'
+                        ? 'bg-go/10 text-accent-from'
                         : 'text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/20'
                     }`}
                   >

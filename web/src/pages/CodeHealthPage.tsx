@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '../lib/utils'
 import {
-  Heartbeat, WarningCircle, Bug, Code, GitBranch, Sparkle,
-  CaretRight, Lightbulb,
+  Heartbeat, Code, WarningCircle, Bug, GitBranch, Sparkle,
+  CaretRight, ArrowUpRight,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import { cn } from '../lib/utils'
+import ConsolePanel from '../components/ui/console-panel'
+import InputField from '../components/ui/first-principles/InputField'
 import { useToast } from '../context/ToastContext'
 import { fetchHealthScore } from '../lib/api'
 import type { HealthScoreResult } from '../lib/api'
@@ -19,34 +19,33 @@ function parseRepo(input: string): { owner: string; repo: string } | null {
   return { owner: parts[0], repo: parts[1] }
 }
 
-function ScoreRing({ score, size = 100 }: { score: number; size?: number }) {
+function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
   const r = size * 0.42
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
-  const color = score >= 80 ? '#0E7A3C' : score >= 60 ? '#B5710A' : '#BE3A2E'
+  const color = score >= 80 ? 'var(--go)' : score >= 60 ? 'var(--caution)' : 'var(--abort)'
   return (
-    <svg width={size} height={size} className="ring-progress drop-shadow-glow shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.04)" strokeWidth={6} />
+    <svg width={size} height={size} className="drop-shadow-glow shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} stroke="hsl(var(--seam))" strokeWidth={6} fill="none" />
       <motion.circle
         cx={size / 2} cy={size / 2} r={r}
         stroke={color}
         strokeWidth={6}
+        fill="none"
+        strokeLinecap="round"
         strokeDasharray={circ}
         initial={{ strokeDashoffset: circ }}
         animate={{ strokeDashoffset: offset }}
         transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
       />
     </svg>
   )
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+const fade = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 export default function CodeHealthPage() {
@@ -70,43 +69,64 @@ export default function CodeHealthPage() {
   }
 
   const score = result?.overall_score ?? 0
-  const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-amber-400' : 'text-red-400'
+  const verdict = score >= 80 ? 'go' as const : score >= 60 ? 'standby' as const : 'abort' as const
   const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Needs Work' : 'Critical'
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <Heartbeat size={16} className="text-amber-400" weight="duotone" />
-            </div>
-            <span className="text-overline text-amber-400/80">Repository Health</span>
-          </div>
-          <GradientHeading as="h1" className="text-display-md mb-1">Code Health</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Monitor code quality metrics for any GitHub repository</p>
-        </motion.div>
+    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 
-        {/* Repo Input */}
-        <motion.div variants={item} className="mb-8">
-          <div className="max-w-xl relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/8 to-emerald-500/8 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity blur-sm" />
-            <div className="relative flex items-center bg-bg-secondary border border-border group-focus-within:border-amber-400/20 rounded-xl px-3.5 py-2.5 transition-all">
-              <GitBranch size={16} className="text-text-muted/30 shrink-0" />
-              <input value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+        {/* Hero — thesis + verb */}
+        <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="designator opacity-50">FLIGHT · TELEMETRY</span>
+            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+            <span className="designator opacity-50">REPO HEALTH</span>
+          </div>
+          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
+            One score, four signals.
+          </h1>
+          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
+            Score a GitHub repo on test coverage, maintainability, complexity, and overall health.
+            One dominant read. Drill down if you need to.
+          </p>
+        </motion.header>
+
+        {/* Action row */}
+        <motion.div initial="hidden" animate="show" variants={fade} className="mb-10">
+          <ConsolePanel pad="dense" className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
+            <div className="flex-1">
+              <InputField
+                label="Repository"
+                icon={<GitBranch size={14} weight="bold" />}
                 placeholder="github.com/owner/repo"
-                className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-muted/20 outline-none border-none ml-2.5" />
-              <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-[#09090B] px-3.5 py-1.5 rounded-lg text-caption font-semibold transition-all whitespace-nowrap">
-                {loading ? <span className="w-3.5 h-3.5 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" /> : <Sparkle size={12} weight="fill" />}
-                {loading ? 'Scoring' : 'Analyze'}
-              </button>
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+              />
             </div>
-          </div>
+            <button
+              onClick={handleAnalyze}
+              disabled={loading || !repoUrl.trim()}
+              className={cn(
+                'inline-flex items-center justify-center gap-2 rounded-[3px] bg-go px-5 py-2.5',
+                'text-[13px] font-semibold text-white shadow-lit transition-all',
+                'hover:bg-go-lit active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed',
+                'sm:mb-0.5'
+              )}
+            >
+              {loading ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Sparkle size={12} weight="fill" />
+              )}
+              {loading ? 'Scoring' : 'Analyze'}
+              <ArrowUpRight size={12} weight="bold" />
+            </button>
+          </ConsolePanel>
         </motion.div>
 
+        {/* Error */}
         <AnimatePresence>
           {error && (
             <motion.div
@@ -115,14 +135,30 @@ export default function CodeHealthPage() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden mb-6"
             >
-              <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/15">
-                <span className="text-body-xs text-red-300">{error}</span>
-                <button onClick={handleAnalyze} disabled={loading}
-                  className="text-caption text-red-400/60 hover:text-red-400 underline ml-4">Retry</button>
-              </div>
+              <ConsolePanel pad="dense" className="flex items-center justify-between">
+                <span className="text-[13px] text-abort">{error}</span>
+                <button onClick={handleAnalyze} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
+                  Retry
+                </button>
+              </ConsolePanel>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Empty */}
+        {!loading && !result && (
+          <motion.div initial="hidden" animate="show" variants={fade}>
+            <ConsolePanel rail="Awaiting" designator="NO TELEMETRY" status="idle" className="py-16 text-center">
+              <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
+                <Heartbeat size={26} className="text-ink-disabled" weight="duotone" />
+              </div>
+              <p className="font-display text-lg text-ink font-semibold mb-1">Enter a repository</p>
+              <p className="text-[13px] text-ink-tertiary max-w-sm mx-auto">
+                We'll score it on test coverage, maintainability, complexity, and overall health.
+              </p>
+            </ConsolePanel>
+          </motion.div>
+        )}
 
         {/* Loading */}
         <AnimatePresence>
@@ -134,107 +170,107 @@ export default function CodeHealthPage() {
               className="flex items-center justify-center py-20"
             >
               <div className="text-center">
-                <div className="w-14 h-14 rounded-2xl bg-amber-400/8 border border-amber-400/15 flex items-center justify-center mx-auto mb-3">
-                  <div className="w-6 h-6 border-2 border-border rounded-full border-t-amber-400 animate-spin" />
+                <div className="w-14 h-14 rounded-[3px] bg-caution/8 border border-caution/20 flex items-center justify-center mx-auto mb-3">
+                  <div className="w-6 h-6 border-2 border-seam rounded-full border-t-caution animate-spin" />
                 </div>
-                <p className="text-body-sm text-text-muted/60">Computing health score...</p>
-                <p className="text-caption text-text-muted/20 mt-1">Analyzing repository metrics</p>
+                <p className="font-code text-[13px] text-ink-secondary">Computing health score...</p>
+                <p className="font-code text-[11px] text-ink-tertiary mt-1">Analyzing repository metrics</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Empty State */}
-        {!loading && !result && (
-          <motion.div variants={item}>
-            <CardSpotlight className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-4">
-                <Heartbeat size={26} className="text-text-muted/20" />
-              </div>
-              <p className="text-body-sm text-text-muted/40 font-medium mb-1">Enter a repository</p>
-              <p className="text-caption text-text-muted/20 max-w-sm">We'll score it on test coverage, maintainability, complexity, and more.</p>
-            </CardSpotlight>
-          </motion.div>
-        )}
-
         {/* Results */}
         <AnimatePresence>
           {!loading && result && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-            >
-              {/* Score Hero */}
-              <motion.div variants={item} className="flex items-center gap-6 mb-6 p-5 rounded-2xl border border-border bg-gradient-to-r from-amber-500/[0.03] to-emerald-500/[0.03]">
-                <div className="relative">
-                  <ScoreRing score={score} size={100} />
-                  <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="font-display text-display-sm font-bold text-text-primary tabular-nums">{score}</span>
-                    <span className="text-[7px] text-text-muted/40 tracking-widest uppercase">/100</span>
+            <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }} className="space-y-6">
+
+              {/* Verdict hero — the single dominant read */}
+              <motion.div variants={fade}>
+                <ConsolePanel rail="Verdict" designator="OVERALL" status={verdict === 'standby' ? 'caution' : verdict} live={verdict === 'go'}>
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                    <div className="relative shrink-0">
+                      <ScoreRing score={score} size={120} />
+                      <div className="absolute inset-0 flex items-center justify-center flex-col">
+                        <span className="font-display text-3xl font-bold text-ink tabular-nums">{score}</span>
+                        <span className="font-code text-[9px] text-ink-tertiary tracking-widest">/100</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="callsign text-ink mb-1.5">{scoreLabel.toUpperCase()}</div>
+                      <p className="font-body text-[14px] text-ink-secondary leading-relaxed">
+                        {score >= 80 && 'Tests run. Code reads clean. Complexity stays inside the lines.'}
+                        {score < 80 && score >= 60 && 'Some drift. Coverage or complexity needs attention before the next push.'}
+                        {score < 60 && 'Red flags. Review recommendations below before merging further changes.'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={cn('font-display text-body font-bold', scoreColor)}>{scoreLabel}</span>
-                    <div className={cn('w-2 h-2 rounded-full', score >= 80 ? 'bg-emerald-400' : score >= 60 ? 'bg-amber-400' : 'bg-red-400')} />
-                  </div>
-                  <p className="text-caption text-text-muted/40">Overall code health score</p>
-                </div>
+                </ConsolePanel>
               </motion.div>
 
-              {/* Metrics Grid */}
-              <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+              {/* Sub-signals — the four tiles that feed the score */}
+              <motion.div variants={fade} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { label: 'Test Coverage', value: `${result.test_coverage}%`, icon: Code, color: result.test_coverage >= 70 ? 'text-emerald-400' : 'text-amber-400', bg: 'bg-emerald-400/8 border-emerald-400/15' },
-                  { label: 'Maintainability', value: String(result.maintainability), icon: WarningCircle, color: 'text-purple-400', bg: 'bg-purple-400/8 border-purple-400/15' },
-                  { label: 'Complexity', value: result.complexity, icon: Bug, color: 'text-cyan-400', bg: 'bg-cyan-400/8 border-cyan-400/15' },
-                  { label: 'Overall Score', value: String(score), icon: Heartbeat, color: scoreColor, bg: score >= 80 ? 'bg-emerald-400/8 border-emerald-400/15' : 'bg-amber-400/8 border-amber-400/15' },
-                ].map((m, i) => (
-                  <motion.div
-                    key={m.label}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + i * 0.05, duration: 0.35 }}
-                  >
-                    <div className={cn('p-4 rounded-xl border', m.bg)}>
-                      <m.icon size={16} className={cn(m.color, 'mb-2')} weight="fill" />
-                      <div className={cn('font-display text-display-sm font-bold tabular-nums', m.color)}>{m.value}</div>
-                      <div className="text-caption text-text-muted/40 mt-0.5">{m.label}</div>
+                  { label: 'Test Coverage', value: `${result.test_coverage}%`, icon: Code, tone: result.test_coverage >= 70 ? 'go' : 'caution' },
+                  { label: 'Maintainability', value: String(result.maintainability), icon: WarningCircle, tone: 'mission' as const },
+                  { label: 'Complexity', value: result.complexity, icon: Bug, tone: 'mission' as const },
+                  { label: 'Overall', value: String(score), icon: Heartbeat, tone: verdict === 'go' ? 'go' as const : verdict === 'standby' ? 'caution' as const : 'abort' as const },
+                ].map((s) => (
+                  <ConsolePanel key={s.label} pad="dense" className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-3">
+                      <s.icon size={14} weight="fill" className={cn(
+                        s.tone === 'go' && 'text-go',
+                        s.tone === 'caution' && 'text-caution',
+                        s.tone === 'abort' && 'text-abort',
+                        s.tone === 'mission' && 'text-mission',
+                      )} />
+                      <span className="designator opacity-60">{s.label.toUpperCase()}</span>
                     </div>
-                  </motion.div>
+                    <div className={cn('font-display text-3xl font-bold tabular-nums',
+                      s.tone === 'go' && 'text-go',
+                      s.tone === 'caution' && 'text-caution',
+                      s.tone === 'abort' && 'text-abort',
+                      s.tone === 'mission' && 'text-ink',
+                    )}>{s.value}</div>
+                  </ConsolePanel>
                 ))}
               </motion.div>
 
-              {/* Recommendations */}
-              {result.recommendations?.length > 0 && (
-                <motion.div variants={item}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Lightbulb size={14} className="text-amber-400" weight="fill" />
-                    <span className="text-body-xs font-semibold text-text-primary">Recommendations ({result.recommendations.length})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {result.recommendations.map((rec, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-bg-tertiary/30 border border-border hover:border-border-hover transition-all"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-amber-400/8 border border-amber-400/10 flex items-center justify-center shrink-0">
-                          <CaretRight size={12} className="text-amber-400" />
-                        </div>
-                        <p className="text-body-xs text-text-muted/60 leading-relaxed">{rec}</p>
-                      </motion.div>
-                    ))}
-                  </div>
+              {/* Recommendations — only if they exist */}
+              {result.recommendations && result.recommendations.length > 0 && (
+                <motion.div variants={fade}>
+                  <ConsolePanel
+                    rail="Recommendations"
+                    designator={`${result.recommendations.length} ACTIONS`}
+                    status="caution"
+                  >
+                    <div className="space-y-2">
+                      {result.recommendations.map((rec, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          className={cn(
+                            'flex items-start gap-3 px-3 py-2.5 rounded-[3px]',
+                            'bg-base border border-seam hover:border-seam-strong transition-colors'
+                          )}
+                        >
+                          <span className="font-code text-[11px] text-ink-tertiary tabular-nums mt-0.5 shrink-0 w-6">
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <CaretRight size={12} className="text-caution mt-1 shrink-0" weight="bold" />
+                          <p className="font-body text-[13px] text-ink-secondary leading-relaxed flex-1">{rec}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ConsolePanel>
                 </motion.div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -46,7 +46,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const COLOR_MAP: Record<string, string> = {
   task_assigned: 'text-blue-400',
-  task_started: 'text-accent-primary',
+  task_started: 'text-go',
   task_submitted: 'text-purple-400',
   task_reviewed: 'text-yellow-400',
   task_approved: 'text-emerald-400',
@@ -57,13 +57,13 @@ const COLOR_MAP: Record<string, string> = {
   team_invite: 'text-pink-400',
   system_alert: 'text-red-400',
   pr_merged: 'text-cyan-400',
-  milestone_reached: 'text-accent-primary',
+  milestone_reached: 'text-go',
   quiz_graded: 'text-amber-400',
 }
 
 const BG_MAP: Record<string, string> = {
   task_assigned: 'bg-blue-500/10',
-  task_started: 'bg-accent-primary/10',
+  task_started: 'bg-go/10',
   task_submitted: 'bg-purple-500/10',
   task_reviewed: 'bg-yellow-500/10',
   task_approved: 'bg-emerald-500/10',
@@ -74,7 +74,7 @@ const BG_MAP: Record<string, string> = {
   team_invite: 'bg-pink-500/10',
   system_alert: 'bg-red-500/10',
   pr_merged: 'bg-cyan-500/10',
-  milestone_reached: 'bg-accent-primary/10',
+  milestone_reached: 'bg-go/10',
   quiz_graded: 'bg-amber-500/10',
 }
 
@@ -184,31 +184,25 @@ export default function NotificationsPage() {
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <Bell className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
-            <h1 className="text-xl sm:text-display-sm font-display font-medium text-text-primary">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <Bell size={11} weight="fill" className="mr-1.5" />
               Notifications
-            </h1>
+            </span>
+            <span className="designator opacity-50">EVENT BUS</span>
             {unreadCount > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                className="px-2 py-0.5 rounded-full bg-accent-primary/15 text-accent-primary text-caption font-medium"
+                className="px-2 py-0.5 rounded-pill bg-go/15 text-go text-caption font-medium"
               >
                 {unreadCount} new
               </motion.span>
             )}
           </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Notifications</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {unreadCount > 0 && (
@@ -288,12 +282,12 @@ export default function NotificationsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: 20, scale: 0.95 }}
                     className={`group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer hover:bg-bg-tertiary/20 ${
-                      !notification.read ? 'bg-accent-primary/[0.03]' : ''
+                      !notification.read ? 'bg-go/[0.03]' : ''
                     }`}
                     onClick={() => !notification.read && markRead(notification.notification_id)}
                   >
                     {!notification.read && (
-                      <span className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-accent-primary" />
+                      <span className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-go" />
                     )}
                     <div className={`w-9 h-9 rounded-lg ${BG_MAP[key] ?? 'bg-bg-tertiary/40'} flex items-center justify-center shrink-0`}>
                       <Icon className={`w-4.5 h-4.5 ${COLOR_MAP[key] ?? 'text-text-tertiary'}`} weight="fill" />

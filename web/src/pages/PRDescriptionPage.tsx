@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  GitPullRequest, Code, GithubLogo, Warning, Check, Fire,
+  Code, GithubLogo, Warning, Check, Fire,
   Sparkle, ArrowRight, CopySimple, GitBranch, CaretDown,
   SealCheck, LinkSimple,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { useToast } from '../context/ToastContext'
 import { describePR, autoApplySuggestions, type AutoApplySuggestion, type AutoApplyResult } from '../lib/api'
 
@@ -99,16 +98,14 @@ export default function PRDescriptionPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
         {/* Hero */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <GitPullRequest size={16} className="text-amber-400" weight="duotone" />
-            </div>
-            <span className="text-overline text-amber-400/80">PR Assistant</span>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">PR Description</span>
+            <span className="designator opacity-50">PR ASSISTANT</span>
           </div>
           <div className="flex items-end justify-between gap-6">
             <div>
-              <GradientHeading as="h1" className="text-display-md mb-1">PR Description</GradientHeading>
-              <p className="text-body-sm text-text-muted/60">Generate AI-powered pull request descriptions from your changes</p>
+              <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">PR Description</h1>
+              <p className="text-body-sm text-text-secondary mt-1 font-code">Generate AI-powered pull request descriptions from your changes</p>
             </div>
           </div>
         </motion.div>
@@ -155,9 +152,9 @@ export default function PRDescriptionPage() {
         {/* Actions */}
         <motion.div variants={item} className="flex items-center gap-3 mb-8">
           <button onClick={handleGenerate} disabled={generating || !repoUrl.trim() || !prNumber.trim()}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-[#09090B] px-5 py-2.5 rounded-xl text-body-sm font-semibold transition-all shadow-glow">
+            className="flex items-center gap-2 bg-warning hover:bg-warning-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-5 py-2.5 rounded-btn text-body-sm font-semibold transition-all shadow-glow">
             {generating ? (
-              <span className="w-4 h-4 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-[hsl(var(--primary-foreground))]/30 border-t-[hsl(var(--primary-foreground))] rounded-full animate-spin" />
             ) : <Sparkle size={14} weight="fill" />}
             {generating ? 'Generating...' : 'Generate'}
           </button>
@@ -331,10 +328,10 @@ export default function PRDescriptionPage() {
                     <button
                       onClick={handleApplyAll}
                       disabled={applying}
-                      className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-[#09090B] px-4 py-2 rounded-lg text-caption font-semibold transition-all"
+                      className="flex items-center gap-2 bg-success hover:bg-success-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-btn text-caption font-semibold transition-all"
                     >
                       {applying ? (
-                        <span className="w-3.5 h-3.5 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" />
+                        <span className="w-3.5 h-3.5 border-2 border-[hsl(var(--primary-foreground))]/30 border-t-[hsl(var(--primary-foreground))] rounded-full animate-spin" />
                       ) : (
                         <SealCheck size={14} weight="bold" />
                       )}

@@ -103,12 +103,16 @@ export default function FeatureFlagsPage() {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-3xl mx-auto px-4 sm:px-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-          <Flag className="w-5 h-5 text-accent-primary" weight="duotone" />
-        </div>
         <div>
-          <h1 className="text-display-sm font-display font-medium text-text-primary">Feature Flags</h1>
-          <p className="text-body-xs text-text-tertiary">Toggle team-level features on and off.</p>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <Flag size={11} weight="fill" className="mr-1.5" />
+              Feature Flags
+            </span>
+            <span className="designator opacity-50">CONFIG SWITCHES</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Feature Flags</h1>
+          <p className="text-body-xs text-text-secondary font-code">Toggle team-level features on and off.</p>
         </div>
       </div>
 
@@ -120,7 +124,7 @@ export default function FeatureFlagsPage() {
 
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Spinner className="w-6 h-6 text-accent-primary animate-spin" />
+          <Spinner className="w-6 h-6 text-go animate-spin" />
         </div>
       )}
 
@@ -135,7 +139,7 @@ export default function FeatureFlagsPage() {
                 <motion.div key={preset.name} variants={itemVariants} className="card p-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <code className="text-caption font-code text-accent-primary bg-accent-primary/5 px-2 py-0.5 rounded border border-accent-primary/15">
+                      <code className="text-caption font-code text-go bg-go/5 px-2 py-0.5 rounded border border-go/15">
                         {preset.name}
                       </code>
                       <span className={cn(
@@ -158,12 +162,12 @@ export default function FeatureFlagsPage() {
                     <button
                       onClick={() => handleToggle(preset.name, enabled)}
                       disabled={toggling !== null}
-                      className="text-text-tertiary hover:text-accent-primary transition-colors"
+                      className="text-text-tertiary hover:text-go transition-colors"
                     >
                       {togglingThis ? (
-                        <Spinner className="w-6 h-6 animate-spin text-accent-primary" />
+                        <Spinner className="w-6 h-6 animate-spin text-go" />
                       ) : enabled ? (
-                        <ToggleRight size={24} className="text-accent-primary" weight="fill" />
+                        <ToggleRight size={24} className="text-go" weight="fill" />
                       ) : (
                         <ToggleLeft size={24} />
                       )}
@@ -196,10 +200,10 @@ export default function FeatureFlagsPage() {
                     </button>
                     <button
                       onClick={() => handleToggle(flag.flag_name, flag.enabled)}
-                      className="text-text-tertiary hover:text-accent-primary transition-colors"
+                      className="text-text-tertiary hover:text-go transition-colors"
                     >
                       {flag.enabled ? (
-                        <ToggleRight size={24} className="text-accent-primary" weight="fill" />
+                        <ToggleRight size={24} className="text-go" weight="fill" />
                       ) : (
                         <ToggleLeft size={24} />
                       )}
@@ -216,7 +220,7 @@ export default function FeatureFlagsPage() {
                 onChange={(e) => setCustomName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
                 placeholder="custom_flag_name"
-                className="flex-1 bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3 py-2 focus:outline-none focus:border-accent-primary/60 placeholder:text-text-tertiary/40"
+                className="flex-1 bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3 py-2 focus:outline-none focus:border-go/60 placeholder:text-text-tertiary/40"
               />
               <button
                 onClick={handleAddCustom}

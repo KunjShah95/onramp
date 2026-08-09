@@ -4,12 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchHrDevelopers, fetchHrHeatmap, listTeams } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import {
   Users, MagnifyingGlass, CheckCircle, WarningCircle,
   Fire, Clock, ArrowRight, Code, UserSwitch,
   ChartBar, Hash, CaretCircleRight, User, TrendUp,
-  Sparkle,
 } from '@phosphor-icons/react'
 import type { HrDeveloperOverview, HrDayBucket } from '../lib/api'
 
@@ -365,12 +363,12 @@ export default function HrPeoplePage() {
               <Users size={20} className="text-blue-400" weight="duotone" />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <Sparkle size={12} className="text-amber-400" weight="fill" />
-                <span className="text-overline text-amber-400/80">People Command Center</span>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="tile tile-go">People</span>
+                <span className="designator opacity-50">HR · CREW ROSTER</span>
               </div>
-              <GradientHeading as="h1" className="text-display-md">Developer Onboarding</GradientHeading>
-              <p className="text-body-sm text-text-muted/50">{devData?.developers.length || 0} developers across {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
+              <h1 className="text-display-md md:text-display-lg text-text-primary">Developer Onboarding</h1>
+              <p className="text-body-sm text-text-secondary mt-1 font-code">{devData?.developers.length || 0} developers across {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

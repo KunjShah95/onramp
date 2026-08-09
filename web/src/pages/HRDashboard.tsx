@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, Clock, ChartLineUp, Warning } from '@phosphor-icons/react'
+import { Clock, ChartLineUp, Warning } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
@@ -62,14 +62,13 @@ export default function HRDashboard() {
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-            <Users className="w-5 h-5 text-accent-primary" weight="duotone" />
-          </div>
           <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
-              HR Onboarding Analytics
-            </h1>
-            <p className="text-body-sm text-text-tertiary">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="tile tile-go">HR Analytics</span>
+              <span className="designator opacity-50">PEOPLE TELEMETRY</span>
+            </div>
+            <h1 className="text-display-md md:text-display-lg text-text-primary">HR Onboarding Analytics</h1>
+            <p className="text-body-sm text-text-secondary mt-1 font-code">
               Cohort ramp time, completion, engagement, and attrition risk.
             </p>
           </div>
@@ -141,7 +140,7 @@ export default function HRDashboard() {
                       </div>
                       <div className="h-1.5 rounded-full bg-bg-tertiary/40 overflow-hidden">
                         <motion.div
-                          className="h-full bg-accent-primary rounded-full"
+                          className="h-full bg-go rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${m.completion_pct}%` }}
                           transition={{ duration: 0.5 }}

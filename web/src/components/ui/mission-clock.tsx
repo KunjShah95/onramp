@@ -1,0 +1,49 @@
+import { useEffect, useRef, useState } from 'react'
+import { cn, getISTClockParts } from '../../lib/utils'
+
+interface MissionClockProps {
+  /** Current console call-sign, e.g. "FLIGHT · CTO". */
+  callsign?: string
+  className?: string
+}
+
+function pad(n: number) { return String(n).padStart(2, '0') }
+
+/**
+ * Mission Clock. A live instrument readout in the top bar — India Standard Time
+ * (UTC+5:30) wall time plus a T+ session-elapsed counter — set in JetBrains
+ * Mono, tabular. Replaces the decorative shortcut hint as the bar's primary
+ * telemetry.
+ */
+export default function MissionClock({ callsign, className }: MissionClockProps) {
+  const start = useRef(Date.now())
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const { hours, minutes, seconds } = getISTClockParts(now)
+  const ist = `${hours}:${minutes}:${seconds}`
+  const elapsed = Math.floor((now.getTime() - start.current) / 1000)
+  const h = Math.floor(elapsed / 3600)
+  const m = Math.floor((elapsed % 3600) / 60)
+  const s = elapsed % 60
+  const tplus = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+
+  return (
+    <div className={cn('flex items-center gap-3 min-w-0', className)}>
+      <span className="w-1.5 h-1.5 rounded-full bg-go-lit shrink-0 motion-safe:animate-pulse-glow" aria-hidden />
+      {callsign && (
+        <span className="callsign text-ink-tertiary hidden md:inline truncate">{callsign}</span>
+      )}
+      <span className="readout text-ink-secondary tabular-nums" aria-label="Mission time (IST)">
+        {ist}<span className="text-ink-tertiary ml-1">IST</span>
+      </span>
+      <span className="designator text-ink-tertiary hidden sm:inline" aria-label="Session elapsed">
+        T+{tplus}
+      </span>
+    </div>
+  )
+}

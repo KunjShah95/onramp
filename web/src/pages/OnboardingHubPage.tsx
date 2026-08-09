@@ -69,18 +69,16 @@ export default function OnboardingHubPage() {
     >
       {/* Header with welcome */}
       <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-indigo-400" />
-        </svg>
-        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-          <GraduationCap className="w-5 h-5 text-indigo-400" weight="duotone" />
-        </div>
         <div>
-          <h1 className="text-display-sm font-display font-medium text-text-primary">Your Onboarding Hub</h1>
-          <p className="text-body-sm text-text-tertiary">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <GraduationCap size={11} weight="fill" className="mr-1.5" />
+              Onboarding
+            </span>
+            <span className="designator opacity-50">CREW ORIENTATION</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Your Onboarding Hub</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">
             Welcome{user?.displayName ? `, ${user.displayName}` : ''}. Let's get you up to speed.
           </p>
         </div>

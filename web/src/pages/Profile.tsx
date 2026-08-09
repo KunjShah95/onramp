@@ -4,27 +4,22 @@ import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { fetchRepos } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
-import {
-  CalendarBlank, Lock, Code, Envelope,
-  IdentificationBadge, Clock,
-} from '@phosphor-icons/react'
+import ConsolePanel from '../components/ui/console-panel'
+import { ArrowRight, ArrowUpRight, GithubLogo, SignOut } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const toast = useToast()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [repoCount, setRepoCount] = useState<number | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -34,7 +29,6 @@ export default function Profile() {
         if (active) setRepoCount(repos.length)
       } catch {
         if (active) setRepoCount(null)
-        if (active) toast.error('Failed to load repositories')
       } finally {
         if (active) setLoading(false)
       }
@@ -45,99 +39,102 @@ export default function Profile() {
   if (loading) return <ProfileSkeleton />
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'User'
+  const position = user?.position || ''
   const email = user?.email || '—'
   const initial = displayName.charAt(0).toUpperCase()
   const memberSince = user?.metadata?.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
     : '—'
 
-  return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-        {/* Header */}
-        <motion.div variants={item} className="mb-8">
-          <GradientHeading as="h1" className="text-display-md mb-1">Profile</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Your account details and connected services</p>
-        </motion.div>
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await logout()
+      toast.success('Signed out', 'See you on the next flight.')
+      navigate('/login', { replace: true })
+    } catch {
+      toast.error('Sign-out failed', 'Try again.')
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
-        {/* Identity Card */}
-        <motion.div variants={item} className="mb-5">
-          <CardSpotlight className="p-6">
-            <div className="flex items-center gap-5">
+  const connectGithub = () => {
+    window.location.href = '/repos/connect'
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)]">
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+        <motion.div initial="hidden" animate="show" variants={fadeUp} className="space-y-5">
+          {/* Identity card — one surface, one rail */}
+          <ConsolePanel rail="Identity" designator="ID CARD" status="go">
+            <div className="flex items-start gap-5">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt={displayName}
-                  className="w-16 h-16 rounded-2xl object-cover shrink-0 ring-2 ring-amber-400/15" />
+                  className="w-16 h-16 rounded-[3px] object-cover shrink-0 border border-seam" />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-600/5 border border-amber-400/15 flex items-center justify-center shrink-0">
-                  <span className="font-display text-display-sm font-bold text-amber-400">{initial}</span>
+                <div className="w-16 h-16 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
+                  <span className="font-display text-display-sm font-bold text-go">{initial}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="font-display text-body font-bold text-text-primary truncate">{displayName}</h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Envelope size={12} className="text-text-muted/30" />
-                  <p className="text-body-xs text-text-muted/60 truncate">{email}</p>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-caption text-text-muted/30">
-                  <CalendarBlank size={11} />
-                  <span>Member since {memberSince}</span>
-                </div>
+                <h2 className="font-display text-2xl font-bold text-ink tracking-tight truncate">{displayName}</h2>
+                {position && (
+                  <p className="text-body-sm text-ink-secondary mt-0.5">{position}</p>
+                )}
+                <p className="text-caption text-ink-tertiary font-mono mt-1 truncate">{email}</p>
               </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-abort/40 hover:text-abort transition-colors disabled:opacity-50"
+                aria-label="Sign out"
+              >
+                <SignOut size={13} weight="bold" />
+                {signingOut ? 'Signing out...' : 'Sign out'}
+              </button>
             </div>
-          </CardSpotlight>
-        </motion.div>
+          </ConsolePanel>
 
-        {/* Stats Grid */}
-        <motion.div variants={item} className="grid grid-cols-2 gap-3 mb-5">
-          <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-400/8 border border-amber-400/10 flex items-center justify-center">
-                <Code size={13} className="text-amber-400" />
+          {/* Two readouts — repos, member since */}
+          <div className="grid grid-cols-2 gap-3">
+            <ConsolePanel rail="Repositories" designator="REPOS">
+              <div className="font-mono tabular-nums text-3xl md:text-4xl font-semibold text-ink leading-none">
+                {repoCount ?? '—'}
               </div>
-              <span className="text-caption text-text-muted/50">Repositories</span>
-            </div>
-            <motion.div
-              className="font-display text-display-sm font-bold text-text-primary tabular-nums"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {repoCount ?? '—'}
-            </motion.div>
+              <button
+                onClick={connectGithub}
+                className="mt-3 inline-flex items-center gap-1.5 text-caption text-go hover:underline"
+              >
+                <GithubLogo size={12} weight="fill" />
+                Connect another
+                <ArrowUpRight size={11} weight="bold" />
+              </button>
+            </ConsolePanel>
+
+            <ConsolePanel rail="Member Since" designator="ON STATION">
+              <div className="font-mono text-2xl md:text-3xl font-semibold text-ink leading-none">
+                {memberSince}
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-caption text-ink-tertiary">
+                <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
+                Flight status nominal
+              </div>
+            </ConsolePanel>
           </div>
-          <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-400/8 border border-blue-400/10 flex items-center justify-center">
-                <Clock size={13} className="text-blue-400" />
-              </div>
-              <span className="text-caption text-text-muted/50">Member Since</span>
-            </div>
-            <div className="font-display text-display-sm font-bold text-text-primary">{memberSince}</div>
+
+          {/* Footer rail */}
+          <div className="flex items-center justify-between pt-2 text-caption text-ink-tertiary">
+            <a href="/docs" className="inline-flex items-center gap-1 hover:text-ink transition-colors">
+              Need help with your account?
+              <ArrowRight size={11} weight="bold" />
+            </a>
+            <span className="font-mono">v2.4</span>
           </div>
         </motion.div>
-
-        {/* Provider Info */}
-        {user?.providerData?.[0] && (
-          <motion.div variants={item}>
-            <CardSpotlight className="p-5">
-              <div className="flex items-center gap-1.5 mb-4">
-                <div className="w-7 h-7 rounded-lg bg-bg-tertiary border border-border flex items-center justify-center">
-                  <Lock size={12} className="text-text-muted/40" />
-                </div>
-                <span className="text-overline text-text-muted/40">Authentication</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-bg-tertiary/30 border border-border/40">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-glow" />
-                <div className="flex items-center gap-2 text-body-xs text-text-primary font-code">
-                  <IdentificationBadge size={14} className="text-text-muted/40" />
-                  {user.providerData[0].providerId.replace('.com', '')}
-                </div>
-                <span className="text-caption text-text-muted/20 ml-auto">Connected</span>
-              </div>
-            </CardSpotlight>
-          </motion.div>
-        )}
       </div>
-    </motion.div>
+    </div>
   )
 }

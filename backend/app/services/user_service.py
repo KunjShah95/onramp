@@ -27,6 +27,9 @@ async def create_user(
     """Create a backend user record. Returns the record or raises on duplicate."""
     storage = get_storage()
 
+    if len(name.strip()) > 120:
+        raise ValueError("Name must be 120 characters or fewer")
+
     existing = await get_user_by_email(email)
     if existing:
         if existing["provider"] != provider:
@@ -40,6 +43,8 @@ async def create_user(
     record = {
         "email": encrypt_field(email),
         "name": encrypt_field(name),
+        "position": None,
+        "avatar_url": None,
         "email_hash": email_hash(email),
         "provider": provider,
         "created_at": now,
@@ -169,4 +174,37 @@ async def deactivate_user(uid: str) -> dict:
         "deactivated_at": datetime.now(timezone.utc),
     }
     updated = await storage.update_document(STORAGE_COLLECTION, uid, anonymized)
+    return _normalize(updated)
+
+
+async def update_user_profile(uid: str, data: dict) -> dict | None:
+    """Update a user's own profile fields (name, position, avatar_url).
+
+    ``name`` is PII and is encrypted at rest (matches create_user).
+    ``position``/``avatar_url`` are plaintext. Email is never updated here —
+    it is provider-managed and read-only. Passing ``""`` for position or
+    avatar_url clears the field to NULL.
+    """
+    storage = get_storage()
+    record = await storage.get_document(STORAGE_COLLECTION, uid)
+    if record is None:
+        return None
+
+    update: dict = {}
+    if "name" in data:
+        name = data["name"].strip()
+        if not name:
+            raise ValueError("Name cannot be empty")
+        if len(name) > 120:
+            raise ValueError("Name must be 120 characters or fewer")
+        update["name"] = encrypt_field(name)
+    if "position" in data:
+        update["position"] = data["position"].strip() or None
+    if "avatar_url" in data:
+        update["avatar_url"] = data["avatar_url"].strip() or None
+
+    if not update:
+        return _normalize(record)
+
+    updated = await storage.update_document(STORAGE_COLLECTION, uid, update)
     return _normalize(updated)
