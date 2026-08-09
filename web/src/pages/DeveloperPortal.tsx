@@ -129,7 +129,7 @@ export default function DeveloperPortal() {
             <CardSpotlight className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Key className="w-5 h-5 text-accent-primary" weight="fill" />
+                  <Key className="w-5 h-5 text-go" weight="fill" />
                   <div>
                     <h3 className="font-display font-bold">API Keys</h3>
                     <p className="text-xs text-text-tertiary">Manage API keys for programmatic access</p>
@@ -171,7 +171,7 @@ export default function DeveloperPortal() {
 
               {loading && !keys.length ? (
                 <div className="flex items-center justify-center py-8">
-                  <Spinner className="w-5 h-5 text-accent-primary animate-spin" />
+                  <Spinner className="w-5 h-5 text-go animate-spin" />
                 </div>
               ) : keys.length ? (
                 <div className="space-y-3">
@@ -210,7 +210,7 @@ export default function DeveloperPortal() {
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
               <div className="flex items-start gap-3 mb-4">
-                <ShieldCheck className="w-5 h-5 text-accent-primary" weight="fill" />
+                <ShieldCheck className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Rate Limits</h3>
                   <p className="text-xs text-text-tertiary">API rate limits per tier — live from server</p>
@@ -226,19 +226,19 @@ export default function DeveloperPortal() {
                         <div className="grid grid-cols-2 gap-y-2 gap-x-3">
                           <div>
                             <span className="text-[10px] text-text-tertiary block">Per Minute</span>
-                            <span className="font-mono text-xs text-accent-primary">{limits.requests_per_minute}</span>
+                            <span className="font-mono text-xs text-go">{limits.requests_per_minute}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-text-tertiary block">Per Day</span>
-                            <span className="font-mono text-xs text-accent-primary">{limits.requests_per_day.toLocaleString()}</span>
+                            <span className="font-mono text-xs text-go">{limits.requests_per_day.toLocaleString()}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-text-tertiary block">Credits/Month</span>
-                            <span className="font-mono text-xs text-accent-primary">{limits.credits_per_month > 0 ? limits.credits_per_month.toLocaleString() : 'Unlimited'}</span>
+                            <span className="font-mono text-xs text-go">{limits.credits_per_month > 0 ? limits.credits_per_month.toLocaleString() : 'Unlimited'}</span>
                           </div>
                           <div>
                             <span className="text-[10px] text-text-tertiary block">Max Repos</span>
-                            <span className="font-mono text-xs text-accent-primary">{limits.max_repos < 0 ? 'Unlimited' : limits.max_repos}</span>
+                            <span className="font-mono text-xs text-go">{limits.max_repos < 0 ? 'Unlimited' : limits.max_repos}</span>
                           </div>
                         </div>
                       </div>
@@ -248,8 +248,8 @@ export default function DeveloperPortal() {
                   {/* Route Group Limits */}
                   <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <Lightning className="w-4 h-4 text-accent-primary" />
-                      <span className="font-mono text-[11px] text-accent-primary uppercase tracking-wider">Route-Specific Limits</span>
+                      <Lightning className="w-4 h-4 text-go" />
+                      <span className="font-mono text-[11px] text-go uppercase tracking-wider">Route-Specific Limits</span>
                     </div>
                     <p className="text-xs text-text-tertiary mb-3">Different API routes have independent rate limit buckets:</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -261,7 +261,7 @@ export default function DeveloperPortal() {
                       ].map((r) => (
                         <div key={r.group} className="bg-bg-primary border border-border rounded-lg p-3">
                           <p className="font-bold text-text-primary text-xs mb-1">{r.group}</p>
-                          <p className="font-mono text-[11px] text-accent-primary">{r.limit}</p>
+                          <p className="font-mono text-[11px] text-go">{r.limit}</p>
                           <p className="text-[10px] text-text-tertiary mt-1">{r.routes}</p>
                         </div>
                       ))}
@@ -274,8 +274,8 @@ export default function DeveloperPortal() {
                   {/* Response Headers Documentation */}
                   <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Info className="w-4 h-4 text-accent-primary" />
-                      <span className="font-mono text-[11px] text-accent-primary uppercase tracking-wider">Response Headers</span>
+                      <Info className="w-4 h-4 text-go" />
+                      <span className="font-mono text-[11px] text-go uppercase tracking-wider">Response Headers</span>
                     </div>
                     <p className="text-xs text-text-tertiary mb-3">Every API response includes rate limit headers:</p>
                     {codeBlock('Rate Limit Headers', `X-RateLimit-Limit: 200
@@ -343,7 +343,7 @@ X-RateLimit-Reset: 1704067200`)}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
               <div className="flex items-start gap-3 mb-4">
-                <Clock className="w-5 h-5 text-accent-primary" weight="fill" />
+                <Clock className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Credit Quotas</h3>
                   <p className="text-xs text-text-tertiary">Monthly credit usage by action</p>
@@ -355,7 +355,7 @@ X-RateLimit-Reset: 1704067200`)}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="bg-bg-secondary border border-border rounded-lg p-4">
                       <p className="font-bold text-text-primary mb-1">Total Credits</p>
-                      <p className="text-2xl font-bold text-accent-primary">{usage.total_credits}</p>
+                      <p className="text-2xl font-bold text-go">{usage.total_credits}</p>
                       <p className="text-text-tertiary">/{usage.monthly_limit} credits</p>
                     </div>
                     <div className="bg-bg-secondary border border-border rounded-lg p-4">
@@ -366,8 +366,8 @@ X-RateLimit-Reset: 1704067200`)}
 
                   <div className="bg-bg-secondary border border-border rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <ArrowRight className="w-4 h-4 text-accent-primary" />
-                      <span className="font-mono text-[11px] text-accent-primary uppercase tracking-wider">Usage by Endpoint</span>
+                      <ArrowRight className="w-4 h-4 text-go" />
+                      <span className="font-mono text-[11px] text-go uppercase tracking-wider">Usage by Endpoint</span>
                     </div>
                     <div className="space-y-2">
                       {Object.entries(usage.endpoint_breakdown || {}).map(([endpoint, count]) => (
@@ -391,7 +391,7 @@ X-RateLimit-Reset: 1704067200`)}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
               <div className="flex items-start gap-3 mb-4">
-                <Code className="w-5 h-5 text-accent-primary" weight="fill" />
+                <Code className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">API Documentation</h3>
                   <p className="text-xs text-text-tertiary">Endpoints and usage examples</p>
@@ -426,7 +426,7 @@ X-RateLimit-Reset: 1704067200`)}
                 <div className="text-center mt-6">
                   <a
                     href="/docs#api"
-                    className="inline-flex items-center gap-2 text-accent-primary hover:text-accent-primary/80 transition-colors"
+                    className="inline-flex items-center gap-2 text-go hover:text-go/80 transition-colors"
                   >
                     View full API reference <ArrowRight size={14} />
                   </a>
@@ -489,7 +489,7 @@ function APIPlaygroundSection() {
     <motion.div variants={itemVariants}>
       <CardSpotlight className="p-6">
         <div className="flex items-start gap-3 mb-4">
-          <Play className="w-5 h-5 text-accent-primary" weight="fill" />
+          <Play className="w-5 h-5 text-go" weight="fill" />
           <div>
             <h3 className="font-display font-bold">API Playground</h3>
             <p className="text-xs text-text-tertiary">Test AI agents with an API key or your JWT session</p>
@@ -506,7 +506,7 @@ function APIPlaygroundSection() {
                   onClick={() => setSelectedAgent(a.name)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     selectedAgent === a.name
-                      ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
+                      ? 'bg-go/15 text-go border border-go/30'
                       : 'bg-bg-tertiary/50 text-text-tertiary border border-border hover:border-border-hover'
                   }`}
                 >
@@ -520,7 +520,7 @@ function APIPlaygroundSection() {
                 <p>
                   {agent.description} — costs {agent.credit_cost} credit(s)
                 </p>
-                <p className="font-mono text-[10px] text-accent-primary/80">
+                <p className="font-mono text-[10px] text-go/80">
                   {agent.model
                     ? `${agent.query_type} → ${agent.model}`
                     : 'No LLM — rule-based agent'}
@@ -567,7 +567,7 @@ function APIPlaygroundSection() {
           <button
             onClick={handleRun}
             disabled={testing || !selectedAgent}
-            className="flex items-center gap-2 bg-accent-primary hover:bg-accent-primary/90 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+            className="flex items-center gap-2 bg-go hover:bg-go/90 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all"
           >
             {testing ? (
               <Spinner size={14} className="animate-spin" />

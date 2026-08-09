@@ -4,8 +4,6 @@ import { motion, AnimatePresence, useInView, useMotionValue, useSpring, useTrans
 import { cn } from '../lib/utils'
 import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import StatusTile from '../components/ui/status-tile'
 import {
   Rocket, Target, Users, Fire, Lightbulb,
@@ -377,12 +375,12 @@ export default function OnboardingPlanPage() {
                 )}
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Rocket size={16} className="text-text-tertiary" />
-                  <span className="text-overline text-text-muted">Onboarding Journey</span>
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <span className="tile tile-go">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</span>
+                  <span className="designator opacity-50">ONBOARDING JOURNEY</span>
                 </div>
-                <GradientHeading as="h1" className="text-display-md mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</GradientHeading>
-                <p className="text-body-sm text-text-muted/60">
+                <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</h1>
+                <p className="text-body-sm text-text-secondary font-code">
                   {planToShow
                     ? `${allDone}/${allTotal} milestones · Pre-boarding ${preDone}/${preBoard.length}`
                     : 'Create a 30-60-90 day plan to track your onboarding'}
@@ -430,7 +428,7 @@ export default function OnboardingPlanPage() {
 
         {!planToShow ? (
           <motion.div variants={item}>
-            <CardSpotlight className="p-12 flex items-center justify-center min-h-[400px]">
+            <div className="rounded-card border border-seam bg-panel p-12 flex items-center justify-center min-h-[400px]">
               <div className="text-center max-w-sm">
                 <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-5">
                   <Compass size={30} className="text-text-muted/20" />
@@ -443,7 +441,7 @@ export default function OnboardingPlanPage() {
                   Start Your Journey
                 </button>
               </div>
-            </CardSpotlight>
+            </div>
           </motion.div>
         ) : (
           <>

@@ -31,13 +31,13 @@ import {
 } from '@phosphor-icons/react'
 
 const PRIORITY_DOTS: Record<string, string> = {
-  low: 'bg-green-500', medium: 'bg-accent-primary', high: 'bg-red-400', urgent: 'bg-red-500',
+  low: 'bg-green-500', medium: 'bg-go', high: 'bg-red-400', urgent: 'bg-red-500',
 }
 
 const BOARD_COLUMNS: KanbanColumn[] = [
   { state: 'pending',        label: 'Pending',   dot: 'bg-text-tertiary/50', designator: 'STANDBY' },
   { state: 'assigned',       label: 'Assigned',  dot: 'bg-info',             designator: 'READY' },
-  { state: 'in_progress',    label: 'In Prog.',  dot: 'bg-accent-primary',   designator: 'ACTIVE' },
+  { state: 'in_progress',    label: 'In Prog.',  dot: 'bg-go',   designator: 'ACTIVE' },
   { state: 'submitted',      label: 'Submitted', dot: 'bg-caution',          designator: 'IN QUEUE' },
   { state: 'under_review',   label: 'Review',    dot: 'bg-caution',          designator: 'PEER' },
   { state: 'needs_changes',  label: 'Changes',   dot: 'bg-abort',            designator: 'REWORK' },
@@ -59,13 +59,13 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <input className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-accent-primary/40 transition-colors', className)} {...props} />
+    <input className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors', className)} {...props} />
   )
 }
 
 function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-accent-primary/40 resize-none transition-colors', className)} {...props} />
+    <textarea className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 resize-none transition-colors', className)} {...props} />
   )
 }
 
@@ -385,19 +385,13 @@ export default function TasksPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-text-primary relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary" />
-      </svg>
         <PageHeader
           title="Tasks"
           subtitle="Senior → Trainee workflow — assign, work, review, approve, unlock"
           actions={
             <>
               <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}
-                className="bg-bg-primary border border-border text-text-secondary text-sm rounded-xl px-3 py-1.5 outline-none focus:border-accent-primary/40 transition-colors">
+                className="bg-bg-primary border border-border text-text-secondary text-sm rounded-xl px-3 py-1.5 outline-none focus:border-go/40 transition-colors">
                 <option value="">Select team…</option>
                 {teams.map((t: any) => (<option key={t.team_id || t.id} value={t.team_id || t.id}>{t.name}</option>))}
               </select>
@@ -432,7 +426,7 @@ export default function TasksPage() {
                 CSV
               </button>
               <button onClick={() => setShowCreate(!showCreate)}
-                className="flex items-center gap-1.5 bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-1.5 rounded-xl text-sm font-bold transition-colors">
+                className="flex items-center gap-1.5 bg-go hover:bg-go/90 text-white px-4 py-1.5 rounded-xl text-sm font-bold transition-colors">
                 <Plus className="w-4 h-4" weight="bold" />
                 New Task
               </button>
@@ -461,7 +455,7 @@ export default function TasksPage() {
               <div className="flex justify-end gap-3">
                 <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
                 <button onClick={handleImportIssue} disabled={importing || !importRepoUrl.trim() || !importIssueNumber.trim()}
-                  className="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
                   {importing ? 'Importing…' : 'Import Issue'}
                 </button>
               </div>
@@ -500,12 +494,12 @@ export default function TasksPage() {
                     <div>
                       <FieldLabel>Priority</FieldLabel>
                       <select value={tplPriority} onChange={(e) => setTplPriority(e.target.value)}
-                        className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary/40">
+                        className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40">
                         {['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                       </select>
                     </div>
                     <button onClick={handleCreateTemplate} disabled={tplCreating || !tplName.trim()}
-                      className="w-full bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                      className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
                       {tplCreating ? 'Saving…' : 'Save Template'}
                     </button>
                   </div>
@@ -522,7 +516,7 @@ export default function TasksPage() {
                         {templates.map((tpl) => {
                           const checked = selectedTemplates.has(tpl.template_id)
                           return (
-                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-bg-primary/60 border border-border rounded-lg px-3 py-2 hover:border-accent-primary/30 transition-colors">
+                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-bg-primary/60 border border-border rounded-lg px-3 py-2 hover:border-go/30 transition-colors">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -629,7 +623,7 @@ export default function TasksPage() {
                         </div>
                         <div className="flex items-center gap-2 h-2.5">
                           <div className="flex-1 bg-bg-primary rounded-full h-full overflow-hidden flex">
-                            <div className="bg-accent-primary/50 h-full" style={{ width: `${((t.estimated_hours ?? 0) / maxH) * 100}%` }} title={`Estimated ${t.estimated_hours}h`} />
+                            <div className="bg-go/50 h-full" style={{ width: `${((t.estimated_hours ?? 0) / maxH) * 100}%` }} title={`Estimated ${t.estimated_hours}h`} />
                             <div className={cn('h-full', over ? 'bg-red-400/70' : 'bg-green-400/70')} style={{ width: `${((t.actual_hours ?? 0) / maxH) * 100}%` }} title={`Actual ${t.actual_hours}h`} />
                           </div>
                           <span className="text-[10px] text-text-tertiary font-mono">est {t.estimated_hours ?? '—'}h / {t.actual_hours}h</span>
@@ -688,7 +682,7 @@ export default function TasksPage() {
                 <div>
                   <FieldLabel>Priority</FieldLabel>
                   <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary/40">
+                    className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40">
                     {['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                   </select>
                 </div>
@@ -713,7 +707,7 @@ export default function TasksPage() {
               <div className="flex justify-end gap-3">
                 <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
                 <button onClick={handleCreateTask} disabled={creating || !formTitle.trim()}
-                  className="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
                   {creating ? 'Creating…' : 'Create Task'}
                 </button>
               </div>
@@ -725,7 +719,7 @@ export default function TasksPage() {
           <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary/50 pointer-events-none" />
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by title, state, or assignee…"
-            className="w-full bg-bg-primary border border-border text-text-primary text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-accent-primary/40 placeholder:text-text-tertiary/30 transition-colors" />
+            className="w-full bg-bg-primary border border-border text-text-primary text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-go/40 placeholder:text-text-tertiary/30 transition-colors" />
         </div>
 
         {loading && <TasksPageSkeleton />}
@@ -774,11 +768,11 @@ export default function TasksPage() {
                             role="button"
                             tabIndex={0}
                             aria-label={`Task: ${task.title}`}
-                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-bg-tertiary/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-accent-primary/40 rounded-lg">
+                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-bg-tertiary/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-go/40 rounded-lg">
                             <StatusBadge state={task.state} />
                             <div className="min-w-0">
                               <div className="text-xs sm:text-sm text-text-secondary group-hover:text-text-primary truncate font-medium transition-colors">{task.title}</div>
-                              {task.module && <div className="text-[10px] text-accent-primary/50 font-mono mt-0.5">{task.module}</div>}
+                              {task.module && <div className="text-[10px] text-go/50 font-mono mt-0.5">{task.module}</div>}
                             </div>
                             <div className="text-xs text-text-tertiary truncate flex items-center gap-1">
                               <UserCircle className="w-3 h-3" weight="fill" />
@@ -832,7 +826,7 @@ export default function TasksPage() {
                   {selectedTask.module && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Module</div>
-                      <div className="text-accent-primary font-mono">{selectedTask.module}</div>
+                      <div className="text-go font-mono">{selectedTask.module}</div>
                     </div>
                   )}
                   {selectedTask.assigned_to && (
@@ -876,7 +870,7 @@ export default function TasksPage() {
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <GithubLogo className="w-3 h-3" /> Source Issue
                       </div>
-                      <div className="text-xs text-accent-primary font-mono">#{selectedTask.source_issue}</div>
+                      <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
                     </div>
                   )}
                   {selectedTask.quiz_required && selectedTask.module && (
@@ -951,7 +945,7 @@ export default function TasksPage() {
                         {selectedTask.pr_comments.map((c, i) => (
                           <div key={i} className="text-[11px] bg-bg-primary/60 border border-border rounded-lg p-2.5">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-accent-primary font-mono font-semibold">@{c.user}</span>
+                              <span className="text-go font-mono font-semibold">@{c.user}</span>
                               {c.path && <span className="text-text-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
                             </div>
                             <p className="text-text-secondary leading-relaxed">{c.body}</p>
@@ -968,7 +962,7 @@ export default function TasksPage() {
                         </div>
                         <div className={cn('text-sm font-bold font-mono px-2.5 py-1 rounded-lg',
                           selectedTask.ai_review.score >= 80 ? 'bg-green-500/15 text-green-400' :
-                          selectedTask.ai_review.score >= 60 ? 'bg-accent-primary/15 text-accent-primary' : 'bg-red-500/15 text-red-400')}>
+                          selectedTask.ai_review.score >= 60 ? 'bg-go/15 text-go' : 'bg-red-500/15 text-red-400')}>
                           {selectedTask.ai_review.score}/100
                         </div>
                       </div>
@@ -980,7 +974,7 @@ export default function TasksPage() {
                             {selectedTask.ai_review.issues.map((issue, i) => (
                               <div key={i} className={cn('text-[11px] px-2.5 py-2 rounded-lg border flex items-start gap-2',
                                 issue.severity === 'error' ? 'bg-red-500/5 border-red-500/15 text-red-300' :
-                                issue.severity === 'warning' ? 'bg-accent-primary/5 border-accent-primary/15 text-accent-primary' : 'bg-bg-tertiary/50 border-border text-text-tertiary')}>
+                                issue.severity === 'warning' ? 'bg-go/5 border-go/15 text-go' : 'bg-bg-tertiary/50 border-border text-text-tertiary')}>
                                 <span className="font-mono shrink-0 text-[10px] mt-0.5">{issue.file}:{issue.line}</span>
                                 <span className="flex-1">{issue.message}</span>
                               </div>
@@ -1027,7 +1021,7 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'assigned' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Start Working</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Start Working</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
@@ -1064,7 +1058,7 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'needs_changes' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-accent-primary hover:bg-accent-primary/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Resume Working</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Resume Working</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}

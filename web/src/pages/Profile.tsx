@@ -4,20 +4,19 @@ import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { fetchRepos } from '../lib/api'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import ConsolePanel from '../components/ui/console-panel'
+import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import {
-  CalendarBlank, Lock, Code, Envelope,
-  IdentificationBadge, Clock,
+  Envelope, IdentificationBadge, Clock, Code,
 } from '@phosphor-icons/react'
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
 const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
 }
 
 export default function Profile() {
@@ -52,96 +51,79 @@ export default function Profile() {
     ? new Date(user.metadata.creationTime).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
     : '—'
 
+  const readouts: Readout[] = [
+    { label: 'Repositories', value: repoCount ?? '—', color: 'text-info' },
+    { label: 'Member Since', value: memberSince, color: 'text-ink-secondary' },
+  ]
+
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)]">
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
         {/* Header */}
-        <motion.div variants={item} className="mb-8">
-          <GradientHeading as="h1" className="text-display-md mb-1">Profile</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Your account details and connected services</p>
+        <motion.div variants={item}>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Profile</span>
+            <span className="designator opacity-50">CREW IDENT · ACCOUNT</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Crew Profile</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Account details and connected services</p>
         </motion.div>
 
         {/* Identity Card */}
-        <motion.div variants={item} className="mb-5">
-          <CardSpotlight className="p-6">
+        <motion.div variants={item}>
+          <ConsolePanel rail="Identity" designator="IDENT" status="go">
             <div className="flex items-center gap-5">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt={displayName}
-                  className="w-16 h-16 rounded-2xl object-cover shrink-0 ring-2 ring-amber-400/15" />
+                  className="w-16 h-16 rounded-tile object-cover shrink-0 ring-2 ring-go/15" />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-600/5 border border-amber-400/15 flex items-center justify-center shrink-0">
-                  <span className="font-display text-display-sm font-bold text-amber-400">{initial}</span>
+                <div className="w-16 h-16 rounded-tile bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
+                  <span className="font-display text-display-sm font-bold text-go">{initial}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="font-display text-body font-bold text-text-primary truncate">{displayName}</h2>
+                <h2 className="font-heading text-body font-semibold text-ink truncate">{displayName}</h2>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <Envelope size={12} className="text-text-muted/30" />
-                  <p className="text-body-xs text-text-muted/60 truncate">{email}</p>
+                  <Envelope size={12} className="text-ink-disabled" />
+                  <p className="text-body-xs text-ink-muted truncate">{email}</p>
                 </div>
                 {position && (
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <IdentificationBadge size={12} className="text-text-muted/30" />
-                    <p className="text-body-xs text-text-secondary">{position}</p>
+                    <IdentificationBadge size={12} className="text-ink-disabled" />
+                    <p className="text-body-xs text-ink-secondary">{position}</p>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 mt-1 text-caption text-text-muted/30">
-                  <CalendarBlank size={11} />
+                <div className="flex items-center gap-1.5 mt-1 text-caption text-ink-muted">
+                  <Clock size={11} />
                   <span>Member since {memberSince}</span>
                 </div>
               </div>
             </div>
-          </CardSpotlight>
+          </ConsolePanel>
         </motion.div>
 
-        {/* Stats Grid */}
-        <motion.div variants={item} className="grid grid-cols-2 gap-3 mb-5">
-          <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-400/8 border border-amber-400/10 flex items-center justify-center">
-                <Code size={13} className="text-amber-400" />
-              </div>
-              <span className="text-caption text-text-muted/50">Repositories</span>
-            </div>
-            <motion.div
-              className="font-display text-display-sm font-bold text-text-primary tabular-nums"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {repoCount ?? '—'}
-            </motion.div>
-          </div>
-          <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-400/8 border border-blue-400/10 flex items-center justify-center">
-                <Clock size={13} className="text-blue-400" />
-              </div>
-              <span className="text-caption text-text-muted/50">Member Since</span>
-            </div>
-            <div className="font-display text-display-sm font-bold text-text-primary">{memberSince}</div>
-          </div>
+        {/* Stats */}
+        <motion.div variants={item}>
+          <ReadoutBank callsign="TELEMETRY" items={readouts} columns={4} />
         </motion.div>
 
         {/* Provider Info */}
         {user?.providerData?.[0] && (
           <motion.div variants={item}>
-            <CardSpotlight className="p-5">
-              <div className="flex items-center gap-1.5 mb-4">
-                <div className="w-7 h-7 rounded-lg bg-bg-tertiary border border-border flex items-center justify-center">
-                  <Lock size={12} className="text-text-muted/40" />
-                </div>
-                <span className="text-overline text-text-muted/40">Authentication</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-bg-tertiary/30 border border-border/40">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-glow" />
-                <div className="flex items-center gap-2 text-body-xs text-text-primary font-code">
-                  <IdentificationBadge size={14} className="text-text-muted/40" />
+            <ConsolePanel rail="Authentication" designator="AUTH SOURCE" status="go">
+              <div className="flex items-center gap-3 p-3 rounded-tile bg-well border border-seam">
+                <span className="w-2 h-2 rounded-pill bg-go-lit motion-safe:animate-pulse-glow" />
+                <div className="flex items-center gap-2 text-body-xs text-ink font-code">
+                  <IdentificationBadge size={14} className="text-ink-muted" />
                   {user.providerData[0].providerId.replace('.com', '')}
                 </div>
-                <span className="text-caption text-text-muted/20 ml-auto">Connected</span>
+                <span className="tile tile-go ml-auto">Connected</span>
               </div>
-            </CardSpotlight>
+              <div className="flex items-center gap-1.5 mt-3 text-caption text-ink-muted">
+                <Code size={12} />
+                <span>Sign-in is managed by your identity provider.</span>
+              </div>
+            </ConsolePanel>
           </motion.div>
         )}
       </div>

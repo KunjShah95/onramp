@@ -135,23 +135,19 @@ export default function AskPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
         {/* Header */}
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <ChatCircleDots className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
             <div>
-              <h1 className="text-display-sm font-display font-medium text-text-primary">
-                Ask the Codebase
-              </h1>
-              <p className="text-body-xs text-text-tertiary">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="tile tile-go">
+                  <ChatCircleDots size={11} weight="fill" className="mr-1.5" />
+                  Ask
+                </span>
+                <span className="designator opacity-50">CODEBASE QUERY</span>
+              </div>
+              <h1 className="text-display-md md:text-display-lg text-text-primary">Ask the Codebase</h1>
+              <p className="text-body-xs text-text-secondary font-code">
                 Ask questions about your codebase, PRs, and modules.
               </p>
             </div>
@@ -178,7 +174,7 @@ export default function AskPage() {
             value={repoUrl}
             onChange={(e) => { setRepoUrl(e.target.value); setIndexId(null) }}
             placeholder="github.com/owner/repo (indexed on first question)"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
           />
           {indexId && (
             <span className="absolute right-3 flex items-center gap-1 text-[10px] text-emerald-400">
@@ -198,14 +194,14 @@ export default function AskPage() {
                 className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-xl bg-accent-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Robot className="w-4 h-4 text-accent-primary" weight="fill" />
+                  <div className="w-8 h-8 rounded-xl bg-go/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Robot className="w-4 h-4 text-go" weight="fill" />
                   </div>
                 )}
                 <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-1' : ''}`}>
                   <div className={`rounded-2xl p-4 ${
                     msg.role === 'user'
-                      ? 'bg-accent-primary/10 text-text-primary'
+                      ? 'bg-go/10 text-text-primary'
                       : 'card'
                   }`}>
                     {msg.role === 'assistant' ? (
@@ -267,12 +263,12 @@ export default function AskPage() {
               animate={{ opacity: 1 }}
               className="flex items-center gap-3"
             >
-              <div className="w-8 h-8 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                <Robot className="w-4 h-4 text-accent-primary" weight="fill" />
+              <div className="w-8 h-8 rounded-xl bg-go/10 flex items-center justify-center">
+                <Robot className="w-4 h-4 text-go" weight="fill" />
               </div>
               <div className="card rounded-2xl p-4">
                 <div className="flex items-center gap-2">
-                  <Spinner className="w-4 h-4 text-accent-primary animate-spin" />
+                  <Spinner className="w-4 h-4 text-go animate-spin" />
                   <span className="text-caption text-text-tertiary">{indexing ? 'Indexing repository…' : 'Thinking…'}</span>
                 </div>
               </div>
@@ -308,7 +304,7 @@ export default function AskPage() {
               className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-tertiary/40 outline-none px-2"
               disabled={loading}
             />
-            <button onClick={handleSend} disabled={!input.trim() || loading} className="rounded-xl shrink-0 w-9 h-9 flex items-center justify-center text-accent-primary bg-accent-primary/10">
+            <button onClick={handleSend} disabled={!input.trim() || loading} className="rounded-xl shrink-0 w-9 h-9 flex items-center justify-center text-go bg-go/10">
               {loading ? (
                 <Spinner className="w-4 h-4 animate-spin" />
               ) : (

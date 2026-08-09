@@ -148,7 +148,7 @@ export default function DriftDetectionPage() {
                 onChange={(e) => setRepoUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleDetect()}
                 placeholder="github.com/owner/repo"
-                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-muted/40"
+                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40"
               />
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function DriftDetectionPage() {
                 onChange={(e) => setFilePaths(e.target.value)}
                 placeholder="src/auth_service/login.py&#10;src/billing/payments/invoice.py&#10;src/api/v1/users.py&#10;tests/test_auth.py"
                 rows={4}
-                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-3 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-muted/40 resize-y font-mono text-[13px]"
+                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-3 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40 resize-y font-mono text-[13px]"
               />
             </div>
             <p className="text-[11px] text-text-tertiary/50 mt-1.5">
@@ -183,7 +183,7 @@ export default function DriftDetectionPage() {
               onChange={(e) => setDocs(e.target.value)}
               placeholder="Paste your README, architecture docs, or wiki content here...&#10;&#10;The agent will extract component names, module references,&#10;and service boundaries from this text to compare against the code."
               rows={7}
-              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3.5 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-muted/40 resize-y"
+              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3.5 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40 resize-y"
             />
             <p className="text-[11px] text-text-tertiary/50 mt-1.5">
               Include mentions of modules, services, components, file names, and architecture patterns.
@@ -224,7 +224,7 @@ export default function DriftDetectionPage() {
       {/* Loading */}
       {loading && !result && (
         <motion.div variants={itemVariants} className="text-center py-12">
-          <Spinner className="w-8 h-8 text-accent-primary animate-spin mx-auto mb-3" />
+          <Spinner className="w-8 h-8 text-go animate-spin mx-auto mb-3" />
           <p className="text-text-tertiary text-body-sm">Analyzing architecture documentation against code structure…</p>
         </motion.div>
       )}
@@ -324,7 +324,7 @@ export default function DriftDetectionPage() {
                       </div>
                       <p className="text-body-sm text-text-primary mb-1">{alert.detail}</p>
                       <p className="text-caption text-text-tertiary flex items-start gap-1.5">
-                        <CaretRight size={12} className="mt-0.5 shrink-0 text-accent-primary" />
+                        <CaretRight size={12} className="mt-0.5 shrink-0 text-go" />
                         {alert.recommendation}
                       </p>
                     </div>

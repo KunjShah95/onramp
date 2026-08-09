@@ -117,24 +117,18 @@ export default function FirstIssuePage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative max-w-5xl mx-auto space-y-8">
-      <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                <Bug className="w-5 h-5 text-accent-primary" weight="duotone" />
-              </div>
-              <h1 className="text-display-sm font-display font-medium text-text-primary">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="tile tile-go">
+                <Bug size={11} weight="fill" className="mr-1.5" />
                 First Issues
-              </h1>
+              </span>
+              <span className="designator opacity-50">CONTRIBUTION GATE</span>
             </div>
-            <p className="text-body-sm text-text-tertiary max-w-xl">
+            <h1 className="text-display-md md:text-display-lg text-text-primary">First Issues</h1>
+            <p className="text-body-sm text-text-secondary mt-1 font-code max-w-xl">
               Curated issues perfect for getting started. Pick one and make your first contribution.
             </p>
           </div>
@@ -152,12 +146,12 @@ export default function FirstIssuePage() {
             onChange={(e) => setRepoUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="github.com/owner/repo"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-28 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-28 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
           />
           <button
             onClick={handleSearch}
             disabled={loading || !repoUrl.trim()}
-            className="absolute right-1.5 bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
+            className="absolute right-1.5 bg-go hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
           >
             {loading ? 'Searching…' : 'Find Issues'}
           </button>
@@ -194,7 +188,7 @@ export default function FirstIssuePage() {
         {loading && <FirstIssueSkeleton />}
 
         {!loading && hasSearched && issues.length === 0 && (
-          <CardSpotlight className="border border-accent-primary/10">
+          <CardSpotlight className="border border-go/10">
             <EmptyState
               icon={<Bug size={40} />}
               title="No matching issues found"
@@ -204,7 +198,7 @@ export default function FirstIssuePage() {
         )}
 
         {!loading && !hasSearched && (
-          <CardSpotlight className="border border-accent-primary/10">
+          <CardSpotlight className="border border-go/10">
             <EmptyState
               icon={<Bug size={40} />}
               title="Enter a GitHub repository above"
@@ -229,7 +223,7 @@ export default function FirstIssuePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="card p-5 hover:border-accent-primary/30 transition-all group"
+                  className="card p-5 hover:border-go/30 transition-all group"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -238,7 +232,7 @@ export default function FirstIssuePage() {
                           href={issue.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-body font-medium text-text-primary group-hover:text-accent-primary transition-colors"
+                          className="text-body font-medium text-text-primary group-hover:text-go transition-colors"
                         >
                           {issue.title}
                         </a>
@@ -276,7 +270,7 @@ export default function FirstIssuePage() {
                         href={issue.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2 rounded-xl text-caption font-medium flex items-center gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-all"
+                        className="px-4 py-2 rounded-xl text-caption font-medium flex items-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all"
                       >
                         <GitPullRequest className="w-3.5 h-3.5" weight="bold" />
                         Open
@@ -304,15 +298,15 @@ export default function FirstIssuePage() {
         )}
 
         {/* Tips */}
-        <CardSpotlight className="p-5 border border-accent-primary/10">
+        <CardSpotlight className="p-5 border border-go/10">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Warning className="w-4 h-4 text-accent-primary" weight="duotone" />
+            <div className="w-8 h-8 rounded-lg bg-go/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Warning className="w-4 h-4 text-go" weight="duotone" />
             </div>
             <div>
               <h3 className="text-body-sm font-medium text-text-primary mb-1">Tips for Your First Issue</h3>
               <ul className="text-caption text-text-tertiary space-y-1">
-                <li>• Start with "Easy" issues tagged <span className="text-accent-primary">good-first-issue</span> to build confidence</li>
+                <li>• Start with "Easy" issues tagged <span className="text-go">good-first-issue</span> to build confidence</li>
                 <li>• Read the contributing guidelines before starting</li>
                 <li>• Ask questions in the issue comments — the community is here to help</li>
                 <li>• Don't worry about perfect code — focus on learning and iterating</li>
@@ -359,7 +353,7 @@ export default function FirstIssuePage() {
                       href={pr.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-2 text-caption text-accent-primary hover:underline"
+                      className="flex items-center gap-2 text-caption text-go hover:underline"
                     >
                       <LinkIcon className="w-3.5 h-3.5" />
                       {pr.title} {pr.merged ? '· merged' : ''}

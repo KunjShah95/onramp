@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
-  Code, ShieldCheck, Lock, CheckCircle, User,
+  Code, Lock, CheckCircle, User,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { ModuleAccessSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { getTeamModulePermissions } from '../lib/api'
@@ -50,14 +49,12 @@ export default function ModuleHealthPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <ShieldCheck size={16} className="text-amber-400" weight="duotone" />
-            </div>
-            <span className="text-overline text-amber-400/80">Access Control</span>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Module Access</span>
+            <span className="designator opacity-50">ACCESS CONTROL</span>
           </div>
-          <GradientHeading as="h1" className="text-display-md mb-1">Module Access</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Module-level permissions granted to your team</p>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Module Access</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Module-level permissions granted to your team</p>
         </motion.div>
 
         <AnimatePresence>

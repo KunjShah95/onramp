@@ -284,6 +284,20 @@ export default function LandingPageV3() {
         <HeroSpotlight heroRef={heroRef} />
 
         <div className="relative z-10 mx-auto max-w-[980px] px-6 text-center lg:px-10">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.18, ease: EASE }}
+            className="mx-auto flex flex-wrap items-center justify-center gap-2"
+          >
+            {['Grounded answers', 'Live repo graph', 'No stale docs'].map((item) => (
+              <span key={item} className="editorial-pill">
+                <span className="h-1.5 w-1.5 rounded-full bg-go" />
+                {item}
+              </span>
+            ))}
+          </motion.div>
+
           {/* Brand as hero-level signal */}
           <motion.p
             initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
@@ -466,7 +480,14 @@ function ProductStage() {
       transition={{ duration: 1.05, delay: 0.35, ease: EASE }}
       className="relative mx-auto max-w-[1280px] px-3 sm:px-6 lg:px-10"
     >
-      <div className="relative overflow-hidden rounded-sm border border-seam bg-panel-raised shadow-overhead mkt-reveal">
+      <div className="relative overflow-hidden rounded-[6px] border border-seam bg-panel-raised/95 shadow-overhead mkt-reveal section-surface">
+        <div className="absolute inset-x-4 top-4 z-20 flex items-center justify-between rounded-sm border border-seam bg-panel/80 px-3 py-2 backdrop-blur md:inset-x-6">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-go" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">Mission control · live repo graph</span>
+          </div>
+          <span className="rounded-full border border-seam bg-white/70 px-2.5 py-1 text-[10px] font-medium text-ink-secondary">Updated 2m ago</span>
+        </div>
         {/* Aceternity-style spotlight — soft, GO-tinted, mouse-led */}
         <motion.div
           aria-hidden
@@ -686,12 +707,14 @@ function HowItWorks() {
         <div className="pointer-events-none absolute left-[12%] right-[12%] top-[22px] hidden h-px bg-gradient-to-r from-transparent via-go/25 to-transparent md:block" />
         {steps.map((s) => (
           <motion.div variants={item} key={s.n} className="relative">
-            <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-sm border border-seam bg-panel-raised shadow-seam">
-              <s.icon size={20} weight="duotone" className="text-go" />
+            <div className="relative z-10 rounded-[6px] border border-seam bg-panel-raised/90 p-5 shadow-seam">
+              <div className="flex h-11 w-11 items-center justify-center rounded-sm border border-seam bg-panel shadow-seam">
+                <s.icon size={20} weight="duotone" className="text-go" />
+              </div>
+              <p className="mt-5 font-mono text-[11px] font-medium tracking-[0.14em] text-ink-muted">{s.n}</p>
+              <h3 className="mt-2 font-heading text-[18px] font-semibold text-ink">{s.title}</h3>
+              <p className="mt-2 text-[15px] leading-[1.65] text-ink-tertiary">{s.desc}</p>
             </div>
-            <p className="mt-5 font-mono text-[11px] font-medium tracking-[0.14em] text-ink-muted">{s.n}</p>
-            <h3 className="mt-2 font-heading text-[18px] font-semibold text-ink">{s.title}</h3>
-            <p className="mt-2 text-[15px] leading-[1.65] text-ink-tertiary">{s.desc}</p>
           </motion.div>
         ))}
       </motion.div>
@@ -1030,7 +1053,8 @@ function FeatureCard({
   children?: React.ReactNode
 }) {
   return (
-    <div className="group flex h-full flex-col rounded-sm border border-seam bg-panel-raised p-6 shadow-seam transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-go/30 hover:shadow-lift">
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-[6px] border border-seam bg-panel-raised p-6 shadow-seam transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-go/30 hover:shadow-lift">
+      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-go/0 via-go/50 to-go/0" />
       <div className="flex items-center gap-2.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-well text-go transition-colors duration-300 group-hover:bg-go group-hover:text-white">
           <Icon size={16} weight="duotone" />
@@ -1241,7 +1265,7 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`relative flex h-full flex-col rounded-sm p-7 transition-all duration-300 ${
+      className={`relative flex h-full flex-col overflow-hidden rounded-[6px] p-7 transition-all duration-300 ${
         featured
           ? 'border border-go/35 bg-panel-raised shadow-[0_24px_60px_-28px_rgba(14,122,60,.45)] hover:-translate-y-0.5'
           : 'border border-seam bg-panel-raised/80 shadow-seam hover:-translate-y-0.5 hover:bg-panel-raised hover:shadow-lift'

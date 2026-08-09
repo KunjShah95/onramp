@@ -186,24 +186,18 @@ export default function LearnPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-5xl mx-auto px-4 sm:px-6 space-y-8 relative">
-      <svg className="fixed -top-20 -left-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary" />
-      </svg>
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-md bg-bg-tertiary border border-border flex items-center justify-center">
-                <BookOpenText className="w-5 h-5 text-text-tertiary" />
-              </div>
-              <h1 className="text-display-sm font-display font-medium text-text-primary">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="tile tile-go">
+                <BookOpenText size={11} weight="fill" className="mr-1.5" />
                 Learn
-              </h1>
+              </span>
+              <span className="designator opacity-50">LEARNING PATH</span>
             </div>
-            <p className="text-body-sm text-text-tertiary max-w-xl">
+            <h1 className="text-display-md md:text-display-lg text-text-primary">Learn</h1>
+            <p className="text-body-sm text-text-secondary mt-1 font-code max-w-xl">
               Generate a personalized learning path from any repository, then turn each module into a tracked task.
             </p>
           </div>
@@ -218,7 +212,7 @@ export default function LearnPage() {
               onChange={(e) => setRepoUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
               placeholder="github.com/owner/repo"
-              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-accent-primary/60 focus:ring-1 focus:ring-accent-primary/40 transition-colors placeholder:text-text-tertiary/40"
+              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
             />
           </div>
           <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
@@ -305,7 +299,7 @@ export default function LearnPage() {
                 >
                   <CardSpotlight className="p-5 h-full flex flex-col">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-caption font-mono text-accent-primary/70">Module {mod.order}</span>
+                      <span className="text-caption font-mono text-go/70">Module {mod.order}</span>
                       <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1 text-caption text-text-tertiary">
                           <Clock className="w-3 h-3" />{mod.time_hours}h
@@ -338,7 +332,7 @@ export default function LearnPage() {
                     )}
                     <button
                       onClick={() => openQuiz(mod.name)}
-                      className="flex items-center justify-center gap-1.5 w-full mt-auto px-3 py-2 rounded-lg border border-accent-primary/20 text-caption text-accent-primary font-medium hover:bg-accent-primary/5 transition-colors"
+                      className="flex items-center justify-center gap-1.5 w-full mt-auto px-3 py-2 rounded-lg border border-go/20 text-caption text-go font-medium hover:bg-go/5 transition-colors"
                     >
                       <ClipboardText className="w-3.5 h-3.5" weight="duotone" />
                       Take Quiz
@@ -370,7 +364,7 @@ export default function LearnPage() {
               {/* Modal header */}
               <div className="sticky top-0 z-10 bg-bg-primary border-b border-border px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-go/10 flex items-center justify-center">
                     <ClipboardText className="w-4 h-4 text-text-tertiary" weight="regular" />
                   </div>
                   <div>
@@ -387,7 +381,7 @@ export default function LearnPage() {
                 {/* Loading */}
                 {quizLoading && (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <svg className="w-6 h-6 animate-spin text-accent-primary mb-3" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 animate-spin text-go mb-3" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
@@ -398,7 +392,7 @@ export default function LearnPage() {
                 {/* Intro screen */}
                 {!quizLoading && quizStep === 'intro' && (
                   <div className="flex flex-col items-center text-center py-8">
-                    <div className="w-14 h-14 rounded-2xl bg-accent-primary/10 flex items-center justify-center mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-go/10 flex items-center justify-center mb-4">
                       <ClipboardText className="w-7 h-7 text-text-tertiary" weight="regular" />
                     </div>
                     <h3 className="text-body font-semibold text-text-primary mb-2">Test Your Knowledge</h3>

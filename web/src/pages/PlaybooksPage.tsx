@@ -123,22 +123,16 @@ export default function PlaybooksPage() {
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <BookOpenText size={11} weight="fill" className="mr-1.5" />
               Playbooks
-            </h1>
+            </span>
+            <span className="designator opacity-50">WORKFLOW REGISTRY</span>
           </div>
-          <p className="text-body-sm text-text-tertiary max-w-xl">
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Playbooks</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">
             Automated workflows and guided processes to standardize engineering operations.
           </p>
         </div>
@@ -199,7 +193,7 @@ export default function PlaybooksPage() {
                   onClick={() => setCategory(cat)}
                   className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
                     category === cat
-                      ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
+                      ? 'bg-go/15 text-go border border-go/30'
                       : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:border-border-hover'
                   }`}
                 >
@@ -228,7 +222,7 @@ export default function PlaybooksPage() {
                 >
                   <CardSpotlight className="p-5 h-full flex flex-col group">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-accent-primary/10 text-accent-primary">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-go/10 text-go">
                         {playbook.tags[0] || 'General'}
                       </span>
                       <button
@@ -258,7 +252,7 @@ export default function PlaybooksPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setOpenBook(playbook)}
-                      className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-all"
+                      className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all"
                     >
                       <Play className="w-3.5 h-3.5" weight="fill" />
                       Open

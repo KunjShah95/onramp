@@ -6,7 +6,6 @@ import {
   CaretRight, Lightbulb,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { useToast } from '../context/ToastContext'
 import { fetchHealthScore } from '../lib/api'
 import type { HealthScoreResult } from '../lib/api'
@@ -78,14 +77,12 @@ export default function CodeHealthPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <Heartbeat size={16} className="text-amber-400" weight="duotone" />
-            </div>
-            <span className="text-overline text-amber-400/80">Repository Health</span>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Code Health</span>
+            <span className="designator opacity-50">REPO TELEMETRY</span>
           </div>
-          <GradientHeading as="h1" className="text-display-md mb-1">Code Health</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Monitor code quality metrics for any GitHub repository</p>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Code Health</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Monitor code quality metrics for any GitHub repository</p>
         </motion.div>
 
         {/* Repo Input */}

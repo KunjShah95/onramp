@@ -6,7 +6,6 @@ import type { ArchitectureResult } from '../lib/types'
 import { StatCard } from '../components/ui/stat-card'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { cn } from '../lib/utils'
@@ -138,16 +137,14 @@ export default function ExplorePage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body max-w-full overflow-x-hidden relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary" />
-      </svg>
         {/* ── Header ──────────────────────────────────────── */}
         <div className="mb-8 relative">
-          <GradientHeading as="h1" className="mb-2">Architecture Explorer</GradientHeading>
-          <p className="text-body-sm text-text-muted mb-6 max-w-2xl">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Explorer</span>
+            <span className="designator opacity-50">ARCHITECTURE · GRAPH</span>
+          </div>
+          <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">Architecture Explorer</h1>
+          <p className="text-body-sm text-text-secondary font-code mb-6 max-w-2xl">
             Deep codebase analysis — dependency graph, service map, circular deps detection
           </p>
 

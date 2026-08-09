@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
-  CalendarBlank, GitPullRequest, CheckCircle, Star,
+  CalendarBlank, GitPullRequest, CheckCircle,
   ArrowLeft, ShieldCheck, Code, Bug, User,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import { MemberListSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { fetchTeamAnalytics } from '../lib/api'
@@ -53,14 +52,12 @@ export default function MemberDetailPage() {
 
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border flex items-center justify-center">
-              <Star size={16} className="text-amber-400" />
-            </div>
-            <span className="text-overline text-amber-400/80">Team Roster</span>
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">Team Members</span>
+            <span className="designator opacity-50">TEAM ROSTER</span>
           </div>
-          <GradientHeading as="h1" className="text-display-md mb-1">Team Members</GradientHeading>
-          <p className="text-body-sm text-text-muted/60">Per-member onboarding progress and contribution stats</p>
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Team Members</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">Per-member onboarding progress and contribution stats</p>
         </motion.div>
 
         <AnimatePresence>

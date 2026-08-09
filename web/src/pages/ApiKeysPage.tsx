@@ -12,13 +12,14 @@ import {
   Terminal,
   ShieldCheck,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
 import { ApiKeysSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { listApiKeys, createApiKey, revokeApiKey } from '../lib/api'
 import type { ApiKey } from '../lib/api'
+import { cn } from '../lib/utils'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -101,25 +102,19 @@ export default function ApiKeysPage() {
       animate="visible"
       className="max-w-4xl mx-auto space-y-8 relative"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
+      {/* ── Mission header ── */}
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <Key className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <Key size={11} weight="fill" className="mr-1.5" />
               API Keys
-            </h1>
+            </span>
+            <span className="designator opacity-50">ACCESS · CREDENTIALS</span>
           </div>
-          <p className="text-body-sm text-text-tertiary max-w-xl">
-            Manage API keys for programmatic access. Keep your keys secure — treat them like passwords.
+          <h1 className="text-display-md md:text-display-lg text-text-primary">API Keys</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">
+            Programmatic access — keep keys secure, treat them like passwords.
           </p>
         </div>
         <motion.button
@@ -134,9 +129,9 @@ export default function ApiKeysPage() {
       </motion.div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+        <motion.div variants={itemVariants} className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchKeys} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          <button onClick={fetchKeys} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </motion.div>
       )}
 
@@ -145,7 +140,7 @@ export default function ApiKeysPage() {
       {!loading && keys.length === 0 && (
         <motion.div variants={itemVariants}>
           <EmptyState
-            icon={<Key className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            icon={<Key className="w-10 h-10 text-ink-disabled/40" weight="duotone" />}
             title="No API keys"
             description="Create your first key to get started with API access."
             action={
@@ -166,22 +161,22 @@ export default function ApiKeysPage() {
               initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: 'spring', stiffness: 80, damping: 18 }}
-              className="card p-5 hover:border-accent-primary/20 transition-all"
+              className="rounded-card border border-seam bg-panel p-5 hover:border-go/25 transition-colors"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-body font-medium text-text-primary font-code">
+                    <h3 className="text-body font-medium text-ink font-code">
                       {apiKey.org_name}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-accent-primary/10 text-accent-primary">
+                    <span className="px-2 py-0.5 rounded-tile text-[10px] font-medium uppercase tracking-wider bg-mission/15 text-mission">
                       {apiKey.tier}
                     </span>
                     {!apiKey.is_active && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-bg-tertiary/40 text-text-tertiary">revoked</span>
+                      <span className="px-2 py-0.5 rounded-tile text-[10px] font-medium bg-well text-ink-muted">revoked</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-caption text-text-tertiary">
+                  <div className="flex items-center gap-3 text-caption text-ink-muted">
                     <span className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
                       Created {new Date(apiKey.created_at).toLocaleDateString()}
@@ -195,7 +190,7 @@ export default function ApiKeysPage() {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleRevoke(apiKey.key_id)}
                     disabled={!apiKey.is_active}
-                    className="w-9 h-9 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-red-400 transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
+                    className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
                     title="Revoke"
                   >
                     <Trash className="w-4 h-4" />
@@ -224,15 +219,15 @@ export default function ApiKeysPage() {
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <CardSpotlight className="w-full max-w-md p-6">
+              <ConsolePanel rail="Credentials" designator="CREATE KEY" status="go" className="w-full max-w-md p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-display-xs font-display font-medium text-text-primary">
+                  <h2 className="text-display-xs font-display font-medium text-ink">
                     {revealedRaw ? 'Save your key' : 'Create API Key'}
                   </h2>
                   {!revealedRaw && (
                     <button
                       onClick={() => setShowCreate(false)}
-                      className="w-8 h-8 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors"
+                      className="w-8 h-8 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -241,14 +236,14 @@ export default function ApiKeysPage() {
 
                 {revealedRaw ? (
                   <div className="space-y-4">
-                    <p className="text-caption text-text-tertiary">
+                    <p className="text-caption text-ink-muted">
                       Copy this key now. For security, it will not be shown again.
                     </p>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary/30 font-code text-xs text-text-secondary break-all">
-                      <Terminal className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-tile bg-well border border-seam font-code text-xs text-ink-secondary break-all">
+                      <Terminal className="w-3.5 h-3.5 text-ink-muted shrink-0" />
                       <code className="flex-1">{revealedRaw}</code>
-                      <button onClick={() => handleCopy(revealedRaw)} className="shrink-0 text-text-tertiary hover:text-text-primary">
-                        {copied ? <Check className="w-4 h-4 text-accent-primary" weight="bold" /> : <Copy className="w-4 h-4" />}
+                      <button onClick={() => handleCopy(revealedRaw)} className="shrink-0 text-ink-muted hover:text-ink">
+                        {copied ? <Check className="w-4 h-4 text-go" weight="bold" /> : <Copy className="w-4 h-4" />}
                       </button>
                     </div>
                     <button onClick={() => { setRevealedRaw(null); setShowCreate(false) }} className="btn btn-primary w-full">
@@ -258,7 +253,7 @@ export default function ApiKeysPage() {
                 ) : (
                   <div className="space-y-5">
                     <div>
-                      <label className="block text-caption font-medium text-text-secondary mb-1.5">
+                      <label className="block overline text-ink-muted mb-2">
                         Tier
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -266,11 +261,12 @@ export default function ApiKeysPage() {
                           <button
                             key={tier}
                             onClick={() => setNewTier(tier)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            className={cn(
+                              'px-3 py-1.5 rounded-tile text-xs font-medium transition-all border',
                               newTier === tier
-                                ? 'bg-accent-primary/15 text-accent-primary border border-accent-primary/30'
-                                : 'bg-bg-tertiary/50 text-text-tertiary border border-border hover:border-border-hover'
-                            }`}
+                                ? 'bg-go/15 text-go border-go/30'
+                                : 'bg-well text-ink-muted border-seam hover:border-seam-strong'
+                            )}
                           >
                             {tier}
                           </button>
@@ -289,23 +285,23 @@ export default function ApiKeysPage() {
                     </motion.button>
                   </div>
                 )}
-              </CardSpotlight>
+              </ConsolePanel>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
       {/* Security Note */}
-      <motion.div variants={itemVariants} className="card p-5 border border-accent-primary/10">
+      <motion.div variants={itemVariants} className="rounded-card border border-mission/20 bg-panel p-5">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-            <ShieldCheck className="w-4 h-4 text-accent-primary" weight="fill" />
+          <div className="w-8 h-8 rounded-tile bg-mission/10 flex items-center justify-center shrink-0 mt-0.5">
+            <ShieldCheck className="w-4 h-4 text-mission" weight="fill" />
           </div>
           <div>
-            <h3 className="text-body-sm font-medium text-text-primary mb-1">
+            <h3 className="text-body-sm font-medium text-ink mb-1">
               Security Best Practices
             </h3>
-            <ul className="text-caption text-text-tertiary space-y-1">
+            <ul className="text-caption text-ink-muted space-y-1">
               <li>• Use specific tiers — grant only the permissions needed</li>
               <li>• Rotate keys regularly, especially for production use</li>
               <li>• Never share keys in client-side code or version control</li>

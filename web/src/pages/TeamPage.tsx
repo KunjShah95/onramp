@@ -30,7 +30,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input className={cn(
-      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-accent-primary/40 transition-colors',
+      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors',
       className
     )} {...props} />
   )
@@ -39,7 +39,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select className={cn(
-      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary/40 transition-colors',
+      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40 transition-colors',
       className
     )} {...props} />
   )
@@ -187,18 +187,12 @@ export default function TeamPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}
           pills={teamId && currentTeam ? [
             { label: 'members', value: currentTeam.members?.length || 0 },
-            { label: 'tier', value: TIER_LABELS[currentTeam.tier] || currentTeam.tier, color: 'text-accent-primary' },
+            { label: 'tier', value: TIER_LABELS[currentTeam.tier] || currentTeam.tier, color: 'text-go' },
           ] : undefined}
           actions={teamId ? (
             <div className="flex bg-bg-primary border border-border rounded-xl overflow-hidden p-0.5 gap-0.5">
@@ -206,7 +200,7 @@ export default function TeamPage() {
                 <button key={tab} onClick={() => setActiveSection(tab)}
                   className={cn(
                     'px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-150',
-                    activeSection === tab ? 'bg-bg-tertiary text-accent-primary shadow-sm' : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/50'
+                    activeSection === tab ? 'bg-bg-tertiary text-go shadow-sm' : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/50'
                   )}>
                   {tab === 'teams' ? 'Team' : 'Module Access'}
                 </button>
@@ -230,7 +224,7 @@ export default function TeamPage() {
               {/* Create team */}
               <CardSpotlight className="p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <UserPlus className="w-4 h-4 text-accent-primary" weight="fill" />
+                  <UserPlus className="w-4 h-4 text-go" weight="fill" />
                   <GradientHeading as="h3" className="text-sm font-bold">Create Team</GradientHeading>
                 </div>
                 <div className="space-y-3">
@@ -247,7 +241,7 @@ export default function TeamPage() {
                     </Select>
                   </Field>
                   <button onClick={handleCreateTeam} disabled={loading || !teamName.trim()}
-                    className="w-full bg-accent-primary hover:bg-accent-primary/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                    className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
                     {loading ? 'Creating…' : 'Create Team'}
                   </button>
                 </div>
@@ -257,7 +251,7 @@ export default function TeamPage() {
               {teamId ? (
                 <CardSpotlight className="p-5 space-y-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <UserPlus className="w-4 h-4 text-accent-primary" weight="fill" />
+                    <UserPlus className="w-4 h-4 text-go" weight="fill" />
                     <GradientHeading as="h3" className="text-sm font-bold">Add Member</GradientHeading>
                   </div>
                   <div className="space-y-3">
@@ -281,10 +275,10 @@ export default function TeamPage() {
                     <div className="flex gap-2">
                       <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                         placeholder="newmember@company.com"
-                        className="flex-1 bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-accent-primary/40"
+                        className="flex-1 bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40"
                         onKeyDown={e => e.key === 'Enter' && handleCreateInvite()} />
                       <button onClick={handleCreateInvite} disabled={inviteLoading || !inviteEmail.trim()}
-                        className="px-4 py-2 bg-accent-primary text-white text-sm font-bold rounded-xl hover:bg-accent-primary/90 disabled:opacity-40 transition-colors">
+                        className="px-4 py-2 bg-go text-white text-sm font-bold rounded-xl hover:bg-go/90 disabled:opacity-40 transition-colors">
                         {inviteLoading ? 'Sending...' : 'Send Invite'}
                       </button>
                     </div>
@@ -300,7 +294,7 @@ export default function TeamPage() {
                             <div className="flex items-center gap-2">
                               <EnvelopeSimple className="w-3.5 h-3.5 text-text-tertiary" />
                               <span className="text-sm text-text-primary">{inv.email}</span>
-                              <span className="ml-1 text-[10px] uppercase tracking-wider text-accent-primary/60">{inv.role}</span>
+                              <span className="ml-1 text-[10px] uppercase tracking-wider text-go/60">{inv.role}</span>
                             </div>
                             <button onClick={() => handleCancelInvite(inv.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">Cancel</button>
                           </div>
@@ -320,7 +314,7 @@ export default function TeamPage() {
             {teamId && (
               <CardSpotlight className="p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-4 h-4 text-accent-primary" weight="fill" />
+                  <Star className="w-4 h-4 text-go" weight="fill" />
                   <GradientHeading as="h3" className="text-sm font-bold">Subscription Tier</GradientHeading>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -329,7 +323,7 @@ export default function TeamPage() {
                       className={cn(
                         'px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all',
                         tier === t
-                          ? 'bg-accent-primary text-white shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                          ? 'bg-go text-white shadow-[0_0_12px_rgba(245,158,11,0.2)]'
                           : 'bg-bg-tertiary text-text-tertiary hover:bg-bg-tertiary/80 hover:text-text-secondary border border-border'
                       )}>
                       {t}
@@ -344,17 +338,17 @@ export default function TeamPage() {
               <CardSpotlight className="overflow-hidden">
                 <div className="px-5 py-4 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-accent-primary" weight="fill" />
+                    <Users className="w-4 h-4 text-go" weight="fill" />
                     <GradientHeading as="h3" className="text-sm font-bold">Your Teams</GradientHeading>
                   </div>
                 </div>
                 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
                   {teams.map((t: any) => (
                     <motion.div key={t.team_id} variants={itemVariants}
-                      className={cn('flex items-center justify-between px-5 py-4 hover:bg-bg-tertiary/30 transition-colors', teamId === t.team_id && 'bg-accent-primary/3')}>
+                      className={cn('flex items-center justify-between px-5 py-4 hover:bg-bg-tertiary/30 transition-colors', teamId === t.team_id && 'bg-go/3')}>
                       <div className="flex items-center gap-3">
                         <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold',
-                          teamId === t.team_id ? 'bg-accent-primary/20 text-accent-primary' : 'bg-bg-tertiary text-text-tertiary')}>
+                          teamId === t.team_id ? 'bg-go/20 text-go' : 'bg-bg-tertiary text-text-tertiary')}>
                           {t.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -365,7 +359,7 @@ export default function TeamPage() {
                         </div>
                       </div>
                       <button onClick={() => { setTeamId(t.team_id); setTier(t.tier || 'free'); setActiveSection('modules') }}
-                        className="text-xs text-accent-primary hover:text-accent-primary/80 transition-colors font-medium flex items-center gap-1">
+                        className="text-xs text-go hover:text-go/80 transition-colors font-medium flex items-center gap-1">
                         Manage
                         <ArrowRight className="w-3 h-3" weight="bold" />
                       </button>
@@ -393,12 +387,12 @@ export default function TeamPage() {
             {/* Grant form */}
             <CardSpotlight className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Lock className="w-4 h-4 text-accent-primary" weight="fill" />
+                <Lock className="w-4 h-4 text-go" weight="fill" />
                 <GradientHeading as="h3" className="text-sm font-bold">Grant Module Access</GradientHeading>
               </div>
               <p className="text-xs text-text-tertiary mb-4 leading-relaxed">
-                Grant access to a codebase module (e.g. <code className="text-accent-primary bg-accent-primary/8 px-1 rounded">api-core</code>).
-                Also auto-granted when a task with <code className="text-accent-primary/70 bg-accent-primary/8 px-1 rounded">unlock_modules</code> completes.
+                Grant access to a codebase module (e.g. <code className="text-go bg-go/8 px-1 rounded">api-core</code>).
+                Also auto-granted when a task with <code className="text-go/70 bg-go/8 px-1 rounded">unlock_modules</code> completes.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Field label="Team Member">
@@ -427,7 +421,7 @@ export default function TeamPage() {
             <CardSpotlight className="overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-accent-primary" weight="fill" />
+                  <Shield className="w-4 h-4 text-go" weight="fill" />
                   <GradientHeading as="h3" className="text-sm font-bold">
                     Module Permissions
                     <span className="ml-2 text-text-tertiary font-mono">{permissions.length} grants</span>
@@ -449,14 +443,14 @@ export default function TeamPage() {
                     <motion.div key={uid} variants={itemVariants} className="px-5 py-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-accent-primary/15 text-accent-primary flex items-center justify-center text-[11px] font-bold">
+                          <div className="w-7 h-7 rounded-full bg-go/15 text-go flex items-center justify-center text-[11px] font-bold">
                             {(info.name || uid).charAt(0).toUpperCase()}
                           </div>
                           <span className="text-sm font-medium text-text-primary">{info.name || uid}</span>
                           <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-mono border',
                             info.sources.includes('task_completion')
                               ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                              : 'bg-accent-primary/10 text-accent-primary border-accent-primary/20'
+                              : 'bg-go/10 text-go border-go/20'
                           )}>
                             {info.sources.includes('task_completion') ? 'Auto' : 'Manual'}
                           </span>
@@ -465,7 +459,7 @@ export default function TeamPage() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {info.modules.map((mod) => (
-                          <span key={mod} className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-primary/8 border border-accent-primary/15 text-accent-primary text-[11px] font-mono">
+                          <span key={mod} className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-go/8 border border-go/15 text-go text-[11px] font-mono">
                             {mod}
                             <button onClick={() => handleRevokeModule(uid, mod)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all leading-none">
                               <X className="w-2.5 h-2.5" weight="bold" />
@@ -484,7 +478,7 @@ export default function TeamPage() {
               <CardSpotlight className="overflow-hidden">
                 <div className="px-5 py-4 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4 text-accent-primary" weight="fill" />
+                    <Key className="w-4 h-4 text-go" weight="fill" />
                     <GradientHeading as="h3" className="text-sm font-bold">
                       All Grants
                       <span className="ml-2 text-text-tertiary font-mono">{permissions.length} total</span>
@@ -505,11 +499,11 @@ export default function TeamPage() {
                         <motion.tr key={p.id} variants={itemVariants} className="hover:bg-bg-tertiary/30 transition-colors">
                           <td className="px-5 py-3 text-sm text-text-secondary align-middle">{p.user_name || p.user_id}</td>
                           <td className="px-4 py-3 align-middle">
-                            <span className="px-2 py-0.5 rounded-lg bg-accent-primary/8 text-accent-primary text-[11px] font-mono border border-accent-primary/15">{p.module}</span>
+                            <span className="px-2 py-0.5 rounded-lg bg-go/8 text-go text-[11px] font-mono border border-go/15">{p.module}</span>
                           </td>
                           <td className="px-4 py-3 align-middle">
                             <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium',
-                              p.source === 'task_completion' ? 'bg-green-500/10 text-green-400' : 'bg-accent-primary/10 text-accent-primary')}>
+                              p.source === 'task_completion' ? 'bg-green-500/10 text-green-400' : 'bg-go/10 text-go')}>
                               {p.source === 'task_completion' ? 'Task Auto' : 'Manual'}
                             </span>
                           </td>

@@ -115,22 +115,16 @@ export default function ReviewQueuePage() {
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <svg className="absolute -top-6 -left-6 w-44 h-44 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="85" stroke="currentColor" strokeWidth="0.4" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="35" stroke="currentColor" strokeWidth="0.4" />
-          <path d="M100 15 A85 85 0 0 1 185 100" stroke="currentColor" strokeWidth="1" className="text-accent-primary" />
-        </svg>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-              <GitPullRequest className="w-5 h-5 text-accent-primary" weight="duotone" />
-            </div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <span className="tile tile-go">
+              <GitPullRequest size={11} weight="fill" className="mr-1.5" />
               Review Queue
-            </h1>
+            </span>
+            <span className="designator opacity-50">PR GATE</span>
           </div>
-          <p className="text-body-sm text-text-tertiary max-w-xl">
+          <h1 className="text-display-md md:text-display-lg text-text-primary">Review Queue</h1>
+          <p className="text-body-sm text-text-secondary mt-1 font-code">
             Review pending pull requests and provide feedback.
           </p>
         </div>
@@ -207,12 +201,12 @@ export default function ReviewQueuePage() {
                 initial={{ opacity: 0, y: 16, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
-                className={`card p-4 border-l-2 ${priorityStyle.border} hover:border-l-accent-primary transition-all cursor-pointer group`}
+                className={`card p-4 border-l-2 ${priorityStyle.border} hover:border-l-go transition-all cursor-pointer group`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3 mb-1.5">
-                      <h3 className="text-body font-medium text-text-primary group-hover:text-accent-primary transition-colors">
+                      <h3 className="text-body font-medium text-text-primary group-hover:text-go transition-colors">
                         {task.title}
                       </h3>
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${statusStyle.bg} ${statusStyle.color}`}>
@@ -247,7 +241,7 @@ export default function ReviewQueuePage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {status === 'pending' && (
-                      <button className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center text-accent-primary hover:bg-accent-primary/20 transition-all group/btn hover:scale-110">
+                      <button className="w-8 h-8 rounded-lg bg-go/10 flex items-center justify-center text-go hover:bg-go/20 transition-all group/btn hover:scale-110">
                         <Eye className="w-4 h-4" />
                       </button>
                     )}

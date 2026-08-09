@@ -110,12 +110,6 @@ export default function AuditLogPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 relative">
-      <svg className="fixed -top-20 -right-20 w-80 h-80 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-        <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-        <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
-      </svg>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -149,7 +143,7 @@ export default function AuditLogPage() {
             onClick={() => setFilterVisible(!filterVisible)}
             className={`px-3 py-2 rounded-lg text-caption font-medium border transition-colors flex items-center gap-1.5 ${
               filterVisible || filterType || filterActor
-                ? 'border-accent-primary/40 text-accent-from bg-accent-primary/5'
+                ? 'border-go/40 text-accent-from bg-go/5'
                 : 'border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70'
             }`}
           >
@@ -191,7 +185,7 @@ export default function AuditLogPage() {
                     onClick={() => { setFilterType(t); setPage(0) }}
                     className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors ${
                       filterType === t
-                        ? 'bg-accent-primary/10 text-accent-from border border-accent-primary/20'
+                        ? 'bg-go/10 text-accent-from border border-go/20'
                         : 'bg-bg-tertiary/20 text-text-secondary border border-transparent hover:bg-bg-tertiary/40'
                     }`}
                   >
@@ -209,7 +203,7 @@ export default function AuditLogPage() {
                   value={filterActor}
                   onChange={(e) => { setFilterActor(e.target.value); setPage(0) }}
                   placeholder="Search by actor ID…"
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-tertiary/20 border border-border text-body-sm text-text-primary placeholder:text-text-tertiary/50 focus:outline-none focus:border-accent-primary/40 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-tertiary/20 border border-border text-body-sm text-text-primary placeholder:text-text-tertiary/50 focus:outline-none focus:border-go/40 transition-colors"
                 />
                 {filterActor && (
                   <button onClick={() => setFilterActor('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary">
@@ -342,7 +336,7 @@ export default function AuditLogPage() {
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-caption font-medium transition-colors ${
                       p === page
-                        ? 'bg-accent-primary/10 text-accent-from'
+                        ? 'bg-go/10 text-accent-from'
                         : 'text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/20'
                     }`}
                   >
