@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
+import ConsolePanel from '../ui/console-panel'
 import { fetchDoraSummary, fetchVelocityTrends, fetchTeamThroughput, listTeams } from '../../lib/api'
 import type { DoraSummary, VelocityTrend, MemberThroughput } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -13,10 +14,9 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transiti
 
 function Panel({ callsign, designator, className, children }: { callsign: string; designator?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn('rounded-card border border-border bg-bg-secondary shadow-card overflow-hidden', className)}>
-      <div className="console-rail"><span className="callsign">{callsign}</span>{designator && <span className="designator">{designator}</span>}<span className="led ml-auto" /></div>
-      <div className="p-5">{children}</div>
-    </div>
+    <ConsolePanel rail={callsign} designator={designator} status="standby" className={className}>
+      {children}
+    </ConsolePanel>
   )
 }
 
@@ -26,7 +26,7 @@ const TOOLTIP = { background: 'rgb(var(--bg-elevated))', border: '1px solid rgb(
 
 function MetricBadge({ classification, value, label }: { classification: string; value: string; label: string }) {
   return (
-    <div className={cn('rounded-xl border p-4', CLASS_BG[classification] || CLASS_BG.none)}>
+    <div className={cn('rounded-tile border p-4', CLASS_BG[classification] || CLASS_BG.none)}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-caption text-text-muted font-code">{label}</span>
         <span className={cn('text-[10px] font-semibold uppercase tracking-wider', CLASS_COLORS[classification] || CLASS_COLORS.none)}>{classification}</span>
