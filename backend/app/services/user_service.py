@@ -45,6 +45,8 @@ async def create_user(
         "name": encrypt_field(name),
         "position": None,
         "avatar_url": None,
+        "github_username": None,
+        "github_id": None,
         "email_hash": email_hash(email),
         "provider": provider,
         "created_at": now,
@@ -64,6 +66,38 @@ def _decrypt_pii(record: dict) -> dict:
     if "name" in record:
         record["name"] = decrypt_field(record["name"])
     return record
+
+
+def _decrypt_pii(record: dict) -> dict:
+    if record is None:
+        return None
+    record = dict(record)
+    if "email" in record:
+        record["email"] = decrypt_field(record["email"])
+    if "name" in record:
+        record["name"] = decrypt_field(record["name"])
+    return record
+
+
+def _clean_github_username(value: str) -> str | None:
+    """Validate and normalize a GitHub username.
+
+    GitHub usernames are 1-39 chars, alphanumeric plus single hyphens,
+    and cannot start or end with a hyphen.
+    """
+    value = (value or "").strip()
+    if not value:
+        return None
+    if len(value) > 39:
+        raise ValueError("GitHub username must be 39 characters or fewer")
+    import re
+
+    if not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}", value):
+        raise ValueError(
+            "Invalid GitHub username — use 1-39 letters/numbers with single hyphens, "
+            "not starting or ending with a hyphen."
+        )
+    return value
 
 
 def _normalize(record: dict | None) -> dict | None:
@@ -169,6 +203,8 @@ async def deactivate_user(uid: str) -> dict:
         "email": encrypt_field(f"deleted-{uid[:8]}@onramp.ai"),
         "name": encrypt_field("Deleted User"),
         "email_hash": email_hash(f"deleted-{uid[:8]}@onramp.ai"),
+        "github_username": None,
+        "github_id": None,
         "is_active": False,
         "updated_at": datetime.now(timezone.utc),
         "deactivated_at": datetime.now(timezone.utc),
@@ -202,6 +238,10 @@ async def update_user_profile(uid: str, data: dict) -> dict | None:
         update["position"] = data["position"].strip() or None
     if "avatar_url" in data:
         update["avatar_url"] = data["avatar_url"].strip() or None
+    if "github_username" in data:
+        update["github_username"] = _clean_github_username(data["github_username"])
+    if "github_id" in data:
+        update["github_id"] = data["github_id"].strip() or None
 
     if not update:
         return _normalize(record)

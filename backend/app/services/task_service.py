@@ -44,9 +44,9 @@ async def _broadcast_task_update(task: dict, event_type: str = "updated") -> Non
             },
             user_ids=list(user_ids),
         )
-    except Exception:
-        import logging
-        logging.getLogger(__name__).debug("Failed to broadcast WS task update", exc_info=True)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to broadcast WS task update for task {task.get('task_id')}: {e}", exc_info=True)
 
 
 async def _sync_task_to_jira(task: dict) -> None:
@@ -93,9 +93,9 @@ async def _sync_task_to_jira(task: dict) -> None:
                         )
                     except Exception:
                         pass
-    except Exception:
-        import logging
-        logging.getLogger(__name__).debug("Jira sync error", exc_info=True)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Jira sync failed for task {task.get('task_id')} (team {task.get('team_id')}): {e}", exc_info=True)
 
 
 async def _sync_task_to_linear(task: dict) -> None:
