@@ -186,6 +186,22 @@ async def _top_teams(storage) -> list:
     return result
 
 
+async def _sum_team_progress(team_ids: list, key: str) -> int:
+    """Sum a progress metric (e.g. pending_review, in_progress) across teams.
+
+    Iterates with an explicit async loop rather than ``sum`` over a generator
+    expression — a generator containing ``await`` is an async generator, which
+    ``sum`` cannot consume.
+    """
+    total = 0
+    for tid in team_ids:
+        try:
+            total += (await task_service.get_team_progress(tid)).get(key, 0)
+        except Exception:
+            logger.exception("Failed to load team progress for %s", tid)
+    return total
+
+
 async def _review_items(storage, team_ids: list) -> list:
     """Real tasks awaiting review across the user's teams."""
     items = []
@@ -241,10 +257,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
             **base_data,
             "recent_activity": await _recent_activity(uid),
             "system_health": await _system_health(storage),
-            "pending_reviews": sum(
-                (await task_service.get_team_progress(tid)).get("pending_review", 0)
-                for tid in team_ids
-            ) if team_ids else 0,
+            "pending_reviews": await _sum_team_progress(team_ids, "pending_review"),
             "open_incidents": 0,
         }
         portal = "dev"
@@ -293,10 +306,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
             "repo_health_scores": await _repo_health_scores(storage),
             "team_progress": team_progress,
             "active_mentees": len(team_progress),
-            "open_tasks": sum(
-                (await task_service.get_team_progress(tid)).get("in_progress", 0)
-                for tid in team_ids
-            ) if team_ids else 0,
+            "open_tasks": await _sum_team_progress(team_ids, "in_progress"),
         }
         portal = "senior"
 

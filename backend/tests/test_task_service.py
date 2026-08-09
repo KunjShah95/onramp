@@ -324,6 +324,23 @@ class TestStateMachine:
         assert task["state"] == "completed"
         assert task["completed_at"] is not None
 
+    async def test_start_is_idempotent(self, sample_task):
+        """Starting an already in_progress task is a no-op, not an error.
+
+        A double-click on the Start button must not raise (the UI refreshes
+        after the first click, so a second request can race the transition).
+        """
+        task = await ts.create_task(**sample_task)
+        assert task["state"] == "assigned"
+
+        task = await ts.start_task(task["task_id"], TUID_USER_JUNIOR1)
+        assert task["state"] == "in_progress"
+
+        started_at = task["started_at"]
+        task = await ts.start_task(task["task_id"], TUID_USER_JUNIOR1)
+        assert task["state"] == "in_progress"
+        assert task["started_at"] == started_at
+
     async def test_assign_pending_task(self, sample_task):
         """A task created without assignee can be assigned."""
         del sample_task["assigned_to"]
