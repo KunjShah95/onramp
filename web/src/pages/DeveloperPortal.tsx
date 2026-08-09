@@ -6,6 +6,7 @@ import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, li
 import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
+import CodeEditor from '../components/ui/monaco-editor'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -555,14 +556,13 @@ function APIPlaygroundSection() {
               </span>
             )}
           </div>
-          <textarea
+          <CodeEditor
             value={paramsInput}
-            onChange={(e) => setParamsInput(e.target.value)}
-            rows={6}
-            className="w-full bg-bg-secondary border border-border rounded-xl px-3.5 py-2.5 font-mono text-xs text-text-primary placeholder:text-text-tertiary/20 focus:outline-none focus:border-accent-primary/30 transition-all resize-y"
+            onChange={setParamsInput}
+            language="json"
+            height={180}
           />
         </div>
-
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={handleRun}

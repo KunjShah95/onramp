@@ -18,6 +18,7 @@ import {
 import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
 import { executeAutonomousCoding, type AutonomousCodingResult } from '../lib/api'
+import CodeEditor from '../components/ui/monaco-editor'
 
 type StageState = 'pending' | 'active' | 'done' | 'failed'
 const STAGES = ['Clone workspace', 'Analyse codebase', 'Generate patches', 'Open pull request'] as const
@@ -47,18 +48,10 @@ export default function AutonomousCodingPage() {
   const [runs, setRuns] = useState<RunRecord[]>([])
 
   const toast = useToast()
-  const gutterRef = useRef<HTMLDivElement>(null)
-  const taRef = useRef<HTMLTextAreaElement>(null)
   const stageTimer = useRef<number | undefined>(undefined)
-
-  // Keep the gutter scroll locked to the editor.
-  const onEditorScroll = () => {
-    if (gutterRef.current && taRef.current) gutterRef.current.scrollTop = taRef.current.scrollTop
-  }
 
   useEffect(() => () => { if (stageTimer.current) window.clearInterval(stageTimer.current) }, [])
 
-  const lineCount = Math.max(issue.split('\n').length, 24)
   const canRun = repoUrl.trim() && issue.trim() && !running
 
   async function handleRun() {
@@ -241,27 +234,15 @@ export default function AutonomousCodingPage() {
             </div>
           </div>
 
-          {/* Editor body: gutter + textarea */}
-          <div className="flex-1 flex min-h-0">
-            <div
-              ref={gutterRef}
-              aria-hidden
-              className="shrink-0 overflow-hidden bg-well border-r border-seam text-right py-3 select-none"
-              style={{ width: 52 }}
-            >
-              {Array.from({ length: lineCount }).map((_, i) => (
-                <div key={i} className="px-3 leading-6 text-[13px] font-code text-ink-disabled tabular-nums">{i + 1}</div>
-              ))}
-            </div>
-            <textarea
-              ref={taRef}
+          {/* Editor body */}
+          <div className="flex-1 min-h-0">
+            <CodeEditor
               value={issue}
-              onChange={(e) => setIssue(e.target.value)}
-              onScroll={onEditorScroll}
-              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); handleRun() } }}
-              spellCheck={false}
-              placeholder={'# Describe the issue or feature\n\nExpected behaviour, edge cases, relevant files or functions.\nThe agent implements it against the workspace and opens a PR.\n\nPress Ctrl+Enter to launch the run.'}
-              className="flex-1 resize-none bg-panel-raised outline-none border-none py-3 px-4 leading-6 text-[13px] font-code text-ink placeholder:text-ink-disabled selection:bg-go/20"
+              onChange={setIssue}
+              language="markdown"
+              height="100%"
+              showLineNumbers
+              onRun={handleRun}
             />
           </div>
 
