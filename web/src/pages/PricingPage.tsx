@@ -1,245 +1,265 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Check, ArrowRight, Star, Lightning, Users, ShieldCheck } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Check, ArrowRight, Lightning, Users, ShieldCheck, Sparkle } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
-import CardSpotlight from '../components/ui/card-spotlight'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 24, scale: 0.97 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 20 } },
+  hidden: { opacity: 0, y: 20, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 90, damping: 20 } },
 }
 
-const plans = [
-  {
-    name: 'Free',
-    desc: 'For individuals and small teams exploring Nexora.',
-    price: { monthly: 0, annual: 0 },
-    cta: 'Get Started',
-    href: '/register',
-    popular: false,
-    features: [
-      { text: '1 team member', included: true },
-      { text: '1 repository', included: true },
-      { text: '50 credits/month', included: true },
-      { text: 'Community support', included: true },
-      { text: 'AI codebase Q&A', included: false },
-      { text: 'Auto PR descriptions', included: false },
-      { text: 'Priority analysis', included: false },
-    ],
-  },
-  {
-    name: 'Startup',
-    desc: 'For scaling engineering teams.',
-    price: { monthly: 49, annual: 39 },
-    cta: 'Start 14-day trial',
-    href: '/register',
-    popular: true,
-    features: [
-      { text: '5 team members', included: true },
-      { text: '10 repositories', included: true },
-      { text: '5,000 credits/month', included: true },
-      { text: 'Email support', included: true },
-      { text: 'AI codebase Q&A', included: true },
-      { text: 'Auto PR descriptions', included: true },
-      { text: 'Priority analysis', included: true },
-    ],
-  },
-  {
-    name: 'Enterprise',
-    desc: 'For enterprise environments requiring SOC2 compliance and SSO.',
-    price: { monthly: null, annual: null },
-    priceLabel: 'Custom',
-    cta: 'Contact Sales',
-    href: '#contact',
-    popular: false,
-    features: [
-      { text: 'Unlimited members', included: true },
-      { text: 'Unlimited repos', included: true },
-      { text: 'Unlimited credits', included: true },
-      { text: 'Dedicated support', included: true },
-      { text: 'SSO / SAML', included: true },
-      { text: 'SLA guarantee', included: true },
-      { text: 'Custom integrations', included: true },
-    ],
-  },
-]
+/* — Pricing mirrors the landing page: one flat per-workspace price, USD/INR. — */
+type Currency = 'USD' | 'INR'
+const PRICES: Record<Currency, { sym: string; monthly: number; annual: number; roi: string }> = {
+  USD: { sym: '$', monthly: 99, annual: 82, roi: '$8,000' },
+  INR: { sym: '\u20B9', monthly: 2999, annual: 2499, roi: '\u20B96,00,000' },
+}
+
+const STARTER_FEATURES = ['1 repository', 'Live architecture map', 'AI mentor - 100 questions / mo', 'Auto-generated docs', 'Community support']
+const TEAM_FEATURES = ['Unlimited repositories', 'Unlimited AI mentor', 'Guided onboarding paths', 'Ramp-up & time-to-PR insights', 'GitHub, Slack & Linear sync', 'Priority support']
+const ENTERPRISE_FEATURES = ['SSO / SAML & SCIM provisioning', 'Self-hosted or private cloud', 'Audit logs & SOC 2 Type II', 'Dedicated success engineer', 'Custom onboarding modules', '99.9% uptime SLA']
 
 const faqs = [
-  { question: 'How do credits work?', answer: 'Credits are consumed when you generate learning paths, query your codebase, or perform deep architectural analysis. 1 credit roughly equals 1 query.' },
-  { question: 'Can I switch plans later?', answer: 'Yes, you can upgrade or downgrade your plan at any time. Prorated charges will be applied automatically.' },
-  { question: 'Do you offer a discount for open-source projects?', answer: 'We love open-source! Contact us for a special open-source license that grants you Enterprise features for free.' },
-  { question: 'Is there a free trial?', answer: 'Yes! The Startup plan includes a 14-day free trial with full access to all features. No credit card required.' },
+  { question: 'How long does setup take?', answer: 'Under two minutes. Install the GitHub app, pick a repository, and Onramp indexes it in the background. You get a live architecture map and docs while your coffee cools.' },
+  { question: 'Is my source code stored anywhere?', answer: 'No. Onramp reads your code to build an analysis graph and metadata, then discards the raw source. Nothing is used to train shared models. Self-hosting is available on Enterprise.' },
+  { question: 'How does the AI mentor stay accurate?', answer: 'Every answer is grounded in your indexed code with file and line references, and the index refreshes on each push, so answers track the codebase instead of a stale wiki.' },
+  { question: 'Is there a free trial?', answer: 'Yes. The Team plan includes a 14-day free trial with full access to every feature. No credit card required to start.' },
 ]
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing', active: true },
   { label: 'Changelog', href: '/changelog' },
+  { label: 'Pricing', href: '/pricing', active: true },
 ]
 
+function Segmented({ options, value, onChange, pillId }: {
+  options: readonly string[]
+  value: string
+  onChange: (v: string) => void
+  pillId: string
+}) {
+  return (
+    <div className="relative flex items-center rounded-btn border border-seam bg-panel-raised p-1 shadow-card">
+      {options.map((label) => {
+        const active = value === label
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onChange(label)}
+            className={cn(
+              'relative z-10 rounded-[3px] px-5 py-1.5 text-[13.5px] font-medium transition-colors',
+              active ? 'text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+            )}
+          >
+            {active && (
+              <motion.span
+                layoutId={pillId}
+                className="absolute inset-0 -z-10 rounded-[3px] bg-accent-from shadow-lit"
+                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              />
+            )}
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function PricingPage() {
-  const [isAnnual, setIsAnnual] = useState(false)
+  const [isAnnual, setIsAnnual] = useState(true)
+  const [currency, setCurrency] = useState<Currency>(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata' ? 'INR' : 'USD'
+    } catch {
+      return 'USD'
+    }
+  })
+
+  const c = PRICES[currency]
+  const teamPrice = isAnnual ? c.annual : c.monthly
+  const fmt = (n: number) => n.toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')
+
+  const plans = [
+    {
+      name: 'Free',
+      blurb: 'For a solo dev getting the lay of the land.',
+      price: (
+        <div className="flex items-baseline gap-1">
+          <span className="mt-1 self-start font-display text-[22px] text-[hsl(var(--foreground))]">{c.sym}</span>
+          <span className="font-display text-[52px] leading-none tracking-tight text-[hsl(var(--foreground))]">0</span>
+          <span className="ml-1 text-[13px] text-[hsl(var(--muted-foreground))]">forever</span>
+        </div>
+      ),
+      sub: 'No card required.',
+      cta: 'Start free',
+      href: '/register',
+      featured: false,
+      features: STARTER_FEATURES,
+    },
+    {
+      name: 'Team',
+      blurb: 'Everything your team needs to onboard fast.',
+      price: (
+        <div className="flex items-baseline gap-1">
+          <span className="mt-1 self-start font-display text-[22px] text-[hsl(var(--foreground))]">{c.sym}</span>
+          <span className="relative inline-flex h-[52px] items-end overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={`${currency}-${teamPrice}`}
+                initial={{ y: '60%', opacity: 0 }}
+                animate={{ y: '0%', opacity: 1 }}
+                exit={{ y: '-60%', opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                className="font-display text-[52px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums"
+              >
+                {fmt(teamPrice)}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <span className="ml-1 text-[13px] text-[hsl(var(--muted-foreground))]">/ mo</span>
+        </div>
+      ),
+      sub: isAnnual
+        ? (<><span className="text-[hsl(var(--muted-foreground))] line-through">{c.sym}{fmt(c.monthly)}</span> billed annually · unlimited engineers</>)
+        : 'per workspace · unlimited engineers',
+      cta: 'Start 14-day trial',
+      href: '/register',
+      featured: true,
+      features: TEAM_FEATURES,
+    },
+    {
+      name: 'Enterprise',
+      blurb: 'For orgs that need control, security, and scale.',
+      price: <span className="font-display text-[52px] leading-none tracking-tight text-[hsl(var(--foreground))]">Custom</span>,
+      sub: 'Volume & fresher-batch pricing.',
+      cta: 'Contact sales',
+      href: '#contact',
+      featured: false,
+      features: ENTERPRISE_FEATURES,
+    },
+  ]
 
   return (
     <MarketingLayout navLinks={navLinks}>
-      {/* Hero Section */}
-      <div className="relative pt-20 pb-14 px-6 text-center max-w-3xl mx-auto">
-        <svg className="absolute top-10 right-0 w-64 h-64 opacity-[0.04] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="0.5" />
-          <circle cx="100" cy="100" r="60" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 6" />
-          <circle cx="100" cy="100" r="40" stroke="currentColor" strokeWidth="0.5" />
-          <path d="M100 20 A80 80 0 0 1 180 100" stroke="currentColor" strokeWidth="1.5" className="text-[hsl(var(--accent))]" />
-        </svg>
-        <svg className="absolute bottom-0 left-0 w-48 h-48 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-          <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.3" />
-          <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" />
-          <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.3" strokeDasharray="3 5" />
-        </svg>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: 'easeOut' }}
-        >
-          <div className="flex items-center justify-center gap-2 text-[hsl(var(--accent))] mb-4">
-            <Lightning className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest font-bold text-[hsl(var(--foreground))]">Pricing</span>
-          </div>
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]"
-        >
-          Simple, transparent pricing
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-[hsl(var(--muted-foreground))] text-base mb-8 max-w-xl mx-auto font-body"
-        >
-          Deploy for free, scale when your infrastructure demands it. All plans include core features.
-        </motion.p>
-
-        {/* Toggle */}
+      {/* Hero */}
+      <div className="relative pt-16 pb-12 px-6 text-center max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="inline-flex items-center gap-3 p-1 rounded-xl bg-[hsl(var(--secondary))] border border-[hsl(var(--border))]"
+          transition={{ duration: 0.5 }}
         >
-          <button
-            onClick={() => setIsAnnual(false)}
-            className={cn(
-              "px-5 py-2 rounded-lg text-sm font-medium transition-all font-body",
-              !isAnnual ? "bg-bg-secondary text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-            )}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setIsAnnual(true)}
-            className={cn(
-              "px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 font-body",
-              isAnnual ? "bg-bg-secondary text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-            )}
-          >
-            Annually
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300, delay: 0.4 }}
-              className="text-[10px] uppercase tracking-wider text-[hsl(var(--accent))] font-bold bg-[hsl(var(--accent))]/10 px-2 py-0.5 rounded-full"
-            >
-              Save 20%
-            </motion.span>
-          </button>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-go/25 bg-success-muted px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-go">
+            <Sparkle size={12} weight="fill" /> Pricing
+          </span>
+          <h1 className="font-display text-4xl md:text-5xl mt-5 mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
+            One flat price. Your <span className="italic text-go">whole team.</span>
+          </h1>
+          <p className="text-[hsl(var(--muted-foreground))] text-base mb-6 max-w-xl mx-auto font-body">
+            No per-seat math. Every engineer can ask, explore, and onboard. You pay one price per workspace.
+          </p>
+          <p className="mx-auto flex max-w-xl items-center justify-center gap-2 rounded-full border border-go/20 bg-success-muted px-4 py-2 text-center text-[13.5px] text-[hsl(var(--muted-foreground))]">
+            <Sparkle size={14} weight="fill" className="shrink-0 text-go" />
+            <span>
+              One slow onboarding costs <span className="font-semibold text-[hsl(var(--foreground))]">~{c.roi}</span>. Onramp starts at {c.sym}{fmt(c.annual)}/mo.
+            </span>
+          </p>
+
+          {/* Toggles */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Segmented
+              options={['Monthly', 'Annual']}
+              value={isAnnual ? 'Annual' : 'Monthly'}
+              onChange={(v) => setIsAnnual(v === 'Annual')}
+              pillId="billpill"
+            />
+            <span className="inline-flex items-center gap-1 rounded-full bg-well px-2.5 py-1 text-[12px] font-semibold text-go">
+              <Sparkle size={11} weight="fill" /> 2 months free
+            </span>
+            <span className="hidden h-5 w-px bg-border sm:block" />
+            <Segmented
+              options={['USD', 'INR']}
+              value={currency}
+              onChange={(v) => setCurrency(v as Currency)}
+              pillId="curpill"
+            />
+          </div>
         </motion.div>
       </div>
 
-      {/* Pricing Cards */}
+      {/* Pricing cards */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6 pb-20"
+        className="relative max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start pb-20"
       >
         {plans.map((plan) => (
-          <motion.div key={plan.name} variants={itemVariants} className="relative">
-            <CardSpotlight
+          <motion.div key={plan.name} variants={itemVariants} className={cn(plan.featured && 'md:-mt-4')}>
+            <div
               className={cn(
-                "p-8 flex flex-col h-full border",
-                plan.popular
-                  ? "border-[hsl(var(--accent))]/30 bg-bg-secondary shadow-[0_0_30px_rgba(99,102,241,0.08)]"
-                  : "border-[hsl(var(--border))] bg-bg-secondary"
+                'relative flex h-full flex-col overflow-hidden rounded-card p-8 transition-all duration-300',
+                plan.featured
+                  ? 'border border-go/35 bg-bg-secondary shadow-overhead hover:-translate-y-0.5'
+                  : 'border border-border bg-bg-secondary/60 shadow-card hover:-translate-y-0.5 hover:bg-bg-secondary'
               )}
             >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] text-[10px] font-bold uppercase tracking-widest px-4 py-1 rounded-full flex items-center gap-1">
-                  <Star className="w-3 h-3" weight="fill" />
-                  Most Popular
-                </div>
+              {plan.featured && (
+                <>
+                  <span className="absolute inset-x-0 top-0 h-1 bg-gradient-accent" />
+                  <span className="absolute right-6 top-6 inline-flex items-center gap-1 rounded-full bg-go/10 px-2.5 py-1 text-[11px] font-semibold text-go">
+                    <Sparkle size={11} weight="fill" /> Recommended
+                  </span>
+                </>
               )}
 
-              <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-1.5">{plan.name}</h2>
-              <p className="text-[hsl(var(--muted-foreground))] text-sm mb-6 font-body">{plan.desc}</p>
-
-              <div className="mb-6">
-                {plan.price.monthly !== null ? (
-                  <>
-                    <span className="text-4xl font-bold font-display text-[hsl(var(--foreground))]">
-                      ${isAnnual ? plan.price.annual : plan.price.monthly}
-                    </span>
-                    <span className="text-[hsl(var(--muted-foreground))] text-sm font-body">/mo</span>
-                  </>
-                ) : (
-                  <span className="text-4xl font-bold font-display text-[hsl(var(--foreground))]">{plan.priceLabel}</span>
-                )}
-              </div>
+              <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[hsl(var(--muted-foreground))]">{plan.name}</div>
+              <p className="mt-1.5 min-h-[38px] max-w-[220px] text-[13.5px] leading-[1.5] text-[hsl(var(--muted-foreground))]">{plan.blurb}</p>
+              <div className="mt-5">{plan.price}</div>
+              <p className="mt-3 h-[18px] text-[13px] text-[hsl(var(--muted-foreground))]">{plan.sub}</p>
 
               <Link
                 to={plan.href}
                 className={cn(
-                  "w-full py-2.5 rounded-xl text-center text-sm font-semibold mb-8 flex items-center justify-center gap-2 transition-all font-body",
-                  plan.popular
-                    ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:opacity-90"
-                    : "border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))]"
+                  'mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-btn px-6 py-3 text-[15px] font-medium transition-all active:scale-[0.98]',
+                  plan.featured
+                    ? 'bg-go text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_rgba(24,27,24,0.18)] hover:bg-go-lit'
+                    : 'border border-seam bg-panel-raised text-[hsl(var(--foreground))] hover:border-go/30'
                 )}
               >
                 {plan.cta}
-                {plan.popular && <ArrowRight className="w-4 h-4" weight="bold" />}
+                <ArrowRight size={15} weight="bold" />
               </Link>
 
-              <ul className="space-y-3.5 text-sm flex-1">
-                {plan.features.map((feat) => (
-                  <li key={feat.text} className="flex items-center gap-3 font-body">
-                    {feat.included ? (
-                      <Check className="w-4 h-4 text-[hsl(var(--accent))] shrink-0" weight="bold" />
-                    ) : (
-                      <Check className="w-4 h-4 text-[hsl(var(--muted-foreground))]/20 shrink-0" weight="bold" />
-                    )}
-                    <span className={feat.included ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}>
-                      {feat.text}
+              <ul className="mt-7 space-y-3 border-t border-border pt-6 text-sm flex-1">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5 text-[14px] leading-[1.4] text-[hsl(var(--muted-foreground))] font-body">
+                    <span className={cn(
+                      'mt-px flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full',
+                      plan.featured ? 'bg-go text-white' : 'bg-well text-go'
+                    )}>
+                      <Check size={10} weight="bold" />
                     </span>
+                    <span className={plan.featured ? 'text-[hsl(var(--foreground))]' : undefined}>{f}</span>
                   </li>
                 ))}
               </ul>
-            </CardSpotlight>
+            </div>
           </motion.div>
         ))}
       </motion.div>
 
-      {/* Feature comparison */}
+      {/* Everything included */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
@@ -257,14 +277,14 @@ export default function PricingPage() {
           ].map((feature, i) => (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
-              className="bg-bg-secondary border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/20 hover:shadow-[0_0_20px_rgba(99,102,241,0.04)] transition-all"
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+              className="rounded-card border border-border bg-bg-secondary/60 p-5 hover:border-go/25 transition-all"
             >
-              <div className="w-9 h-9 rounded-lg bg-[hsl(var(--accent))]/10 flex items-center justify-center mb-3">
-                <feature.icon className="w-4 h-4 text-[hsl(var(--accent))]" weight="fill" />
+              <div className="w-9 h-9 rounded-tile bg-go/10 flex items-center justify-center mb-3">
+                <feature.icon className="w-4 h-4 text-go" weight="fill" />
               </div>
               <h3 className="font-display font-bold text-sm text-[hsl(var(--foreground))] mb-1">{feature.title}</h3>
               <p className="text-[hsl(var(--muted-foreground))] text-xs font-body">{feature.desc}</p>
@@ -275,7 +295,7 @@ export default function PricingPage() {
 
       {/* FAQs */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
@@ -288,11 +308,11 @@ export default function PricingPage() {
           {faqs.map((faq, i) => (
             <motion.div
               key={faq.question}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.4 }}
-              className="bg-bg-secondary border border-[hsl(var(--border))] rounded-xl p-5 hover:border-[hsl(var(--accent))]/15 transition-all"
+              transition={{ delay: i * 0.06, duration: 0.4 }}
+              className="rounded-card border border-border bg-bg-secondary/60 p-5 hover:border-go/20 transition-all"
             >
               <h3 className="font-semibold text-sm text-[hsl(var(--foreground))] mb-1.5 font-body">{faq.question}</h3>
               <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed font-body">{faq.answer}</p>

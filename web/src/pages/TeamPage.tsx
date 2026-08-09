@@ -492,29 +492,29 @@ export default function TeamPage() {
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="border-collapse text-left w-full table-auto text-sm">
                     <thead>
-                      <tr className="border-b border-border">
+                      <tr className="border-b border-border sticky top-0 z-10 bg-panel/80 backdrop-blur-sm">
                         {['User', 'Module', 'Source', 'Granted', ''].map((h, i) => (
-                          <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-text-tertiary font-semibold', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
+                          <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-text-tertiary font-semibold align-middle', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <motion.tbody variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
                       {permissions.map((p) => (
                         <motion.tr key={p.id} variants={itemVariants} className="hover:bg-bg-tertiary/30 transition-colors">
-                          <td className="px-5 py-3 text-sm text-text-secondary">{p.user_name || p.user_id}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-5 py-3 text-sm text-text-secondary align-middle">{p.user_name || p.user_id}</td>
+                          <td className="px-4 py-3 align-middle">
                             <span className="px-2 py-0.5 rounded-lg bg-accent-primary/8 text-accent-primary text-[11px] font-mono border border-accent-primary/15">{p.module}</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 align-middle">
                             <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium',
                               p.source === 'task_completion' ? 'bg-green-500/10 text-green-400' : 'bg-accent-primary/10 text-accent-primary')}>
                               {p.source === 'task_completion' ? 'Task Auto' : 'Manual'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-[11px] text-text-tertiary font-mono">{new Date(p.granted_at).toLocaleDateString()}</td>
-                          <td className="px-5 py-3 text-right">
+                          <td className="px-4 py-3 text-[11px] text-text-tertiary font-mono align-middle">{new Date(p.granted_at).toLocaleDateString()}</td>
+                          <td className="px-5 py-3 text-right align-middle">
                             <button onClick={() => handleRevokeModule(p.user_id, p.module)} className="text-[10px] text-red-400/40 hover:text-red-400 transition-colors">Revoke</button>
                           </td>
                         </motion.tr>

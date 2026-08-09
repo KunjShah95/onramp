@@ -154,7 +154,7 @@ export default function WikiPage() {
               <button
                 onClick={() => mutation.mutate(repoUrl)}
                 disabled={!repoUrl || mutation.isPending}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-[#09090B] px-4 py-2 rounded-xl text-body-xs font-semibold transition-all disabled:opacity-40 whitespace-nowrap">
+                className="flex items-center gap-2 bg-warning hover:bg-warning-lit text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-btn text-body-xs font-semibold transition-all disabled:opacity-40 whitespace-nowrap">
                 <Sparkle size={14} weight="fill" />
                 {mutation.isPending ? 'Reading...' : 'Generate'}
               </button>

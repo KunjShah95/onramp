@@ -190,14 +190,14 @@ export default function LearnPage() {
         <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
         <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
         <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary" />
       </svg>
         {/* Header */}
         <div className="flex items-start justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                <BookOpenText className="w-5 h-5 text-accent-primary" weight="duotone" />
+              <div className="w-10 h-10 rounded-md bg-bg-tertiary border border-border flex items-center justify-center">
+                <BookOpenText className="w-5 h-5 text-text-tertiary" />
               </div>
               <h1 className="text-display-sm font-display font-medium text-text-primary">
                 Learn
@@ -239,7 +239,7 @@ export default function LearnPage() {
           <button
             onClick={handleGenerate}
             disabled={loading || !repoUrl.trim()}
-            className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
+            className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
           >
             <Play className="w-3.5 h-3.5" weight="fill" />
             {loading ? 'Generating…' : 'Generate Path'}
@@ -256,7 +256,7 @@ export default function LearnPage() {
         {loading && <LearningPathSkeleton />}
 
         {!loading && !path && (
-          <CardSpotlight className="border border-accent-primary/10">
+          <CardSpotlight>
             <EmptyState
               icon={<BookOpenText size={40} />}
               title="Enter a GitHub repository above"
@@ -275,16 +275,16 @@ export default function LearnPage() {
             <CardSpotlight className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Lightning className="w-4 h-4 text-amber-400" weight="fill" />
+                  <Lightning className="w-4 h-4 text-text-tertiary" />
                   <span className="text-body-sm font-medium text-text-primary">
-                    {path.path.length} modules · ~{path.total_estimated_hours}h · {userLevel} level
+                    <span className="readout font-code">{path.path.length} modules</span> · <span className="readout font-code">~{path.total_estimated_hours}h</span> · {userLevel} level
                   </span>
                 </div>
                 <button
                   onClick={handleStartLearning}
                   disabled={creating || !activeTeamId}
                   title={activeTeamId ? 'Create a task per module' : 'Join a team first'}
-                  className="px-4 py-2 rounded-xl text-caption font-semibold bg-accent-primary hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2"
+                  className="btn btn-primary flex items-center gap-2 disabled:opacity-40"
                 >
                   <Target className="w-3.5 h-3.5" weight="fill" />
                   {creating ? 'Creating tasks…' : 'Start Learning'}
@@ -371,7 +371,7 @@ export default function LearnPage() {
               <div className="sticky top-0 z-10 bg-bg-primary border-b border-border px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-accent-primary/10 flex items-center justify-center">
-                    <ClipboardText className="w-4 h-4 text-accent-primary" weight="duotone" />
+                    <ClipboardText className="w-4 h-4 text-text-tertiary" weight="regular" />
                   </div>
                   <div>
                     <h2 className="text-body-sm font-semibold text-text-primary">Knowledge Check</h2>
@@ -399,18 +399,18 @@ export default function LearnPage() {
                 {!quizLoading && quizStep === 'intro' && (
                   <div className="flex flex-col items-center text-center py-8">
                     <div className="w-14 h-14 rounded-2xl bg-accent-primary/10 flex items-center justify-center mb-4">
-                      <ClipboardText className="w-7 h-7 text-accent-primary" weight="duotone" />
+                      <ClipboardText className="w-7 h-7 text-text-tertiary" weight="regular" />
                     </div>
                     <h3 className="text-body font-semibold text-text-primary mb-2">Test Your Knowledge</h3>
                     <p className="text-caption text-text-tertiary max-w-sm mb-1">
                       Answer {quizQuestions.length} questions about <strong>{quizModule}</strong> to check your understanding.
                     </p>
                     <p className="text-caption text-text-tertiary/50 mb-6">
-                      You need <strong className="text-accent-primary">70%</strong> to pass.
+                      You need <strong className="text-go">70%</strong> to pass.
                     </p>
                     <button
                       onClick={startQuiz}
-                      className="px-6 py-2.5 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 transition-all"
+                      className="btn btn-primary"
                     >
                       Start Quiz
                     </button>
@@ -422,9 +422,9 @@ export default function LearnPage() {
                   <div>
                     {/* Progress bar */}
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="flex-1 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-bg-tertiary rounded-sm overflow-hidden">
                         <div
-                          className="h-full bg-accent-primary rounded-full transition-all duration-300"
+                          className="h-full bg-go rounded-sm transition-all duration-300"
                           style={{ width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` }}
                         />
                       </div>
@@ -443,7 +443,7 @@ export default function LearnPage() {
                         className="space-y-4"
                       >
                         <div className="flex items-start gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-accent-primary/10 flex items-center justify-center text-[11px] font-mono text-accent-primary shrink-0 mt-0.5">
+                          <span className="w-6 h-6 rounded bg-bg-tertiary border border-border flex items-center justify-center text-[11px] font-mono text-text-secondary shrink-0 mt-0.5">
                             {currentQuestion + 1}
                           </span>
                           <div>
@@ -464,9 +464,9 @@ export default function LearnPage() {
                                 key={opt}
                                 onClick={() => selectAnswer(quizQuestions[currentQuestion].question_id, opt)}
                                 className={cn(
-                                  'w-full text-left px-4 py-3 rounded-xl border text-caption transition-all',
+                                  'w-full text-left px-4 py-3 rounded-md border text-caption transition-all',
                                   quizAnswers[quizQuestions[currentQuestion].question_id] === opt
-                                    ? 'border-accent-primary/50 bg-accent-primary/10 text-accent-primary'
+                                    ? 'border-blue-500/50 bg-blue-500/10 text-blue-500'
                                     : 'border-border bg-bg-secondary text-text-secondary hover:border-border-hover'
                                 )}
                               >
@@ -479,9 +479,9 @@ export default function LearnPage() {
                                 key={oi}
                                 onClick={() => selectAnswer(quizQuestions[currentQuestion].question_id, opt)}
                                 className={cn(
-                                  'w-full text-left px-4 py-3 rounded-xl border text-caption transition-all',
+                                  'w-full text-left px-4 py-3 rounded-md border text-caption transition-all',
                                   quizAnswers[quizQuestions[currentQuestion].question_id] === opt
-                                    ? 'border-accent-primary/50 bg-accent-primary/10 text-accent-primary'
+                                    ? 'border-blue-500/50 bg-blue-500/10 text-blue-500'
                                     : 'border-border bg-bg-secondary text-text-secondary hover:border-border-hover'
                                 )}
                               >
@@ -513,11 +513,11 @@ export default function LearnPage() {
                             key={i}
                             onClick={() => setCurrentQuestion(i)}
                             className={cn(
-                              'w-2 h-2 rounded-full transition-all',
+                              'w-2 h-2 rounded-[2px] transition-all',
                               i === currentQuestion
-                                ? 'bg-accent-primary w-5'
+                                ? 'bg-go w-5'
                                 : quizAnswers[quizQuestions[i].question_id]
-                                  ? 'bg-accent-primary/40'
+                                  ? 'bg-blue-500/50'
                                   : 'bg-bg-tertiary'
                             )}
                           />
@@ -536,7 +536,7 @@ export default function LearnPage() {
                         <button
                           onClick={handleSubmitQuiz}
                           disabled={submitting || Object.keys(quizAnswers).length < quizQuestions.length}
-                          className="px-5 py-2 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 disabled:opacity-40 transition-all"
+                          className="btn btn-primary disabled:opacity-40"
                         >
                           {submitting ? 'Submitting…' : 'Submit Quiz'}
                         </button>
@@ -551,25 +551,25 @@ export default function LearnPage() {
                     {/* Score card */}
                     <div className="flex flex-col items-center py-6">
                       <div className={cn(
-                        'w-20 h-20 rounded-full flex items-center justify-center mb-4',
-                        quizResult.passed ? 'bg-green-500/15' : 'bg-red-500/15'
+                        'w-20 h-20 rounded-full flex items-center justify-center mb-4 border-2',
+                        quizResult.passed ? 'border-go bg-emerald-500/10' : 'border-abort bg-red-500/10'
                       )}>
                         {quizResult.passed ? (
-                          <CheckCircle className="w-9 h-9 text-green-400" weight="fill" />
+                          <CheckCircle className="w-9 h-9 text-emerald-500" weight="fill" />
                         ) : (
-                          <XCircle className="w-9 h-9 text-red-400" weight="fill" />
+                          <XCircle className="w-9 h-9 text-red-500" weight="fill" />
                         )}
                       </div>
-                      <h3 className="text-display-sm font-display font-bold text-text-primary mb-1">
+                      <h3 className="text-display-sm font-display font-bold text-text-primary mb-1 readout">
                         {quizResult.percentage}%
                       </h3>
                       <p className={cn(
                         'text-body-sm font-medium mb-1',
-                        quizResult.passed ? 'text-green-400' : 'text-red-400'
+                        quizResult.passed ? 'text-emerald-500' : 'text-red-500'
                       )}>
                         {quizResult.passed ? 'Passed!' : 'Needs Improvement'}
                       </p>
-                      <p className="text-caption text-text-tertiary">
+                      <p className="text-caption text-text-tertiary readout">
                         {quizResult.score} / {quizResult.total} correct
                       </p>
                       <p className="text-caption text-text-tertiary/50 mt-1">
@@ -583,28 +583,28 @@ export default function LearnPage() {
                         <div
                           key={r.question_id}
                           className={cn(
-                            'rounded-xl border p-4',
+                            'rounded-md border p-4',
                             r.correct
-                              ? 'border-green-500/20 bg-green-500/5'
+                              ? 'border-emerald-500/20 bg-emerald-500/5'
                               : 'border-red-500/20 bg-red-500/5'
                           )}
                         >
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5">
                               {r.correct ? (
-                                <CheckCircle className="w-4 h-4 text-green-400" weight="fill" />
+                                <CheckCircle className="w-4 h-4 text-emerald-500" weight="fill" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-red-400" weight="fill" />
+                                <XCircle className="w-4 h-4 text-red-500" weight="fill" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-caption text-text-primary font-medium mb-1">
+                              <p className="text-caption text-text-primary font-medium mb-1 readout">
                                 Question {i + 1}
                               </p>
                               {!r.correct && (
                                 <p className="text-[11px] text-text-secondary">
                                   <span className="text-text-tertiary">Correct answer: </span>
-                                  <span className="text-green-400 font-mono">{r.correct_answer}</span>
+                                  <span className="text-emerald-500 font-mono">{r.correct_answer}</span>
                                 </p>
                               )}
                               <p className="text-[11px] text-text-tertiary mt-1">{r.feedback}</p>
@@ -618,13 +618,13 @@ export default function LearnPage() {
                     <div className="flex items-center justify-center gap-3 pt-2">
                       <button
                         onClick={() => openQuiz(quizModule!)}
-                        className="px-5 py-2 rounded-xl border border-accent-primary/30 text-caption text-accent-primary font-medium hover:bg-accent-primary/5 transition-all"
+                        className="px-5 py-2 rounded-md border border-border text-caption text-text-secondary font-medium hover:bg-bg-tertiary transition-all"
                       >
                         Retry Quiz
                       </button>
                       <button
                         onClick={closeQuiz}
-                        className="px-5 py-2 rounded-xl bg-accent-primary text-[hsl(var(--accent-foreground))] text-caption font-semibold hover:brightness-110 transition-all"
+                        className="btn btn-primary"
                       >
                         Close
                       </button>

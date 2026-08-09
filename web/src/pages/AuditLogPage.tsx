@@ -254,17 +254,17 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="border-collapse text-left w-full table-auto">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Event</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Actor</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Target</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Team</th>
-                  <th className="text-right px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider">Time</th>
+                <tr className="border-b border-border sticky top-0 z-10 bg-panel">
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Event</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Actor</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Target</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Team</th>
+                  <th className="text-right px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Time</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/20">
                 {pageEvents.map((entry, i) => {
                   const style = EVENT_TYPE_ICONS[entry.event_type] ?? { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
                   const Icon = style.icon
@@ -274,9 +274,9 @@ export default function AuditLogPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.025 }}
-                      className="border-b border-border/20 hover:bg-bg-tertiary/10 transition-colors group"
+                      className="hover:bg-bg-tertiary/10 transition-colors group"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${style.bg}`}>
                             <Icon className={`w-3.5 h-3.5 ${style.color}`} weight="fill" />
@@ -291,22 +291,22 @@ export default function AuditLogPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <code className="text-body-xs text-text-secondary font-mono bg-bg-tertiary/20 px-1.5 py-0.5 rounded text-[12px]">
                           {entry.actor_id?.slice(0, 12)}…
                         </code>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
                           {entry.target_id ? `${entry.target_id.slice(0, 12)}…` : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-middle">
                         <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
                           {entry.team_id ? `${entry.team_id.slice(0, 8)}…` : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right align-middle">
                         <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={new Date(entry.timestamp).toLocaleString()}>
                           {relativeTime(entry.timestamp)}
                         </span>

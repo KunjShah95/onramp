@@ -11,7 +11,7 @@ const entries = [
     icon: GitPullRequest,
     title: 'PR Description Generator',
     items: [
-      'Generate full PR descriptions from GitHub diffs — title, summary, file-by-file changes, testing notes, checklist.',
+      'Generate full PR descriptions from GitHub diffs. Title, summary, file-by-file changes, testing notes, checklist.',
       'Diff stats bar: files changed, additions, deletions.',
       'One-click copy to clipboard in GitHub Markdown format.',
     ],
@@ -23,7 +23,7 @@ const entries = [
     icon: ChartBar,
     title: 'Streaming Q&A + Conversation Memory',
     items: [
-      'Ask Codebase now streams responses token-by-token — no more waiting for full answer.',
+      'Ask Codebase now streams responses token-by-token. No more waiting for full answer.',
       'Conversation history persisted per repo index. Restore any previous session.',
       'Roast Mode: ask for brutal honest critique of the codebase.',
       'History sidebar with restore and continue actions.',
@@ -70,7 +70,7 @@ const entries = [
     date: 'January 2026',
     tag: 'major' as const,
     icon: Star,
-    title: 'Nexora 2.0 — full rewrite',
+    title: 'Onramp 2.0 - full rewrite',
     items: [
       'Multi-tenant architecture with per-org isolation.',
       'AST parsing for Python, JS, TS, Go, Rust, Java.',
@@ -81,15 +81,15 @@ const entries = [
 ]
 
 const tagStyles: Record<string, string> = {
-    major:       'bg-[hsl(var(--accent))]/10 text-[hsl(var(--foreground))] border-[hsl(var(--accent))]/25',
-  feature:     'bg-blue-50 text-blue-700 border-blue-200',
-  improvement: 'bg-purple-50 text-purple-700 border-purple-200',
-  fix:         'bg-green-50 text-green-700 border-green-200',
+    major:       'bg-accent-muted text-foreground border-accent/25',
+  feature:     'bg-info/10 text-info border-info/25',
+  improvement: 'bg-info/10 text-info border-info/25',
+  fix:         'bg-success/10 text-success border-success/25',
 }
 
 const tagIcons: Record<string, string> = {
   major: '●',
-  feature: '✦',
+  feature: '+',
   improvement: '▲',
   fix: '⬡',
 }
@@ -120,10 +120,10 @@ export default function ChangelogPage() {
             <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Changelog</span>
           </div>
           <h1 className="font-display text-3xl md:text-4xl mb-3 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            What's new in Nexora
+            What's new in Onramp
           </h1>
           <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed font-body">
-            Every release, every fix, every improvement — in one place. Subscribe to{' '}
+            Every release, every fix, every improvement, in one place. Subscribe to{' '}
             <a href="#" className="text-[hsl(var(--foreground))] hover:underline font-medium">release notes</a> to stay current.
           </p>
         </div>

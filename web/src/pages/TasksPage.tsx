@@ -20,6 +20,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import Pagination from '../components/ui/Pagination'
+import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
 import { useToast } from '../context/ToastContext'
 import { TasksPageSkeleton } from '../components/ui/Skeleton'
 import {
@@ -33,16 +34,16 @@ const PRIORITY_DOTS: Record<string, string> = {
   low: 'bg-green-500', medium: 'bg-accent-primary', high: 'bg-red-400', urgent: 'bg-red-500',
 }
 
-const BOARD_COLUMNS = [
-  { state: 'pending',        label: 'Pending',   dot: 'bg-text-tertiary/50' },
-  { state: 'assigned',       label: 'Assigned',  dot: 'bg-blue-400' },
-  { state: 'in_progress',    label: 'In Prog.',  dot: 'bg-accent-primary' },
-  { state: 'submitted',      label: 'Submitted', dot: 'bg-purple-400' },
-  { state: 'under_review',   label: 'Review',    dot: 'bg-yellow-400' },
-  { state: 'needs_changes',  label: 'Changes',   dot: 'bg-red-400' },
-  { state: 'product_review', label: 'Product',   dot: 'bg-pink-400' },
-  { state: 'approved',       label: 'Approved',  dot: 'bg-green-400' },
-  { state: 'completed',      label: 'Done',      dot: 'bg-green-500' },
+const BOARD_COLUMNS: KanbanColumn[] = [
+  { state: 'pending',        label: 'Pending',   dot: 'bg-text-tertiary/50', designator: 'STANDBY' },
+  { state: 'assigned',       label: 'Assigned',  dot: 'bg-info',             designator: 'READY' },
+  { state: 'in_progress',    label: 'In Prog.',  dot: 'bg-accent-primary',   designator: 'ACTIVE' },
+  { state: 'submitted',      label: 'Submitted', dot: 'bg-caution',          designator: 'IN QUEUE' },
+  { state: 'under_review',   label: 'Review',    dot: 'bg-caution',          designator: 'PEER' },
+  { state: 'needs_changes',  label: 'Changes',   dot: 'bg-abort',            designator: 'REWORK' },
+  { state: 'product_review', label: 'Product',   dot: 'bg-caution',          designator: 'SIGNOFF' },
+  { state: 'approved',       label: 'Approved',  dot: 'bg-go',               designator: 'GO' },
+  { state: 'completed',      label: 'Done',      dot: 'bg-go',               designator: 'LANDED' },
 ]
 
 const containerVariants = {
@@ -357,6 +358,19 @@ export default function TasksPage() {
     catch { toast.error('Failed to delete task') }
   }
 
+  /** Kanban drag-and-drop persistence — transition the task to its new state. */
+  async function handleKanbanMove(taskId: string, newState: string) {
+    try {
+      await transitionTask(taskId, newState)
+      const task = tasks.find((t) => t.task_id === taskId)
+      toast.success('Task moved', `${task?.title?.slice(0, 40) ?? 'Task'} → ${newState.replace(/_/g, ' ')}`)
+      void fetchProgress()
+    } catch (e: any) {
+      toast.error('Move failed', e?.message || 'State transition rejected')
+      throw e // let the board roll back its optimistic update
+    }
+  }
+
   const filteredTasks = tasks.filter((t) => {
     if (!filter) return true
     const q = filter.toLowerCase()
@@ -375,7 +389,7 @@ export default function TasksPage() {
         <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
         <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
         <circle cx="100" cy="100" r="50" stroke="currentColor" strokeWidth="0.4" />
-        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-accent-primary" />
+        <path d="M100 10 A90 90 0 0 1 190 100" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary" />
       </svg>
         <PageHeader
           title="Tasks"
@@ -390,8 +404,8 @@ export default function TasksPage() {
               <div className="flex bg-bg-primary border border-border rounded-xl overflow-hidden p-0.5 gap-0.5">
                 {(['board', 'list'] as const).map((v) => (
                   <button key={v} onClick={() => setView(v)}
-                    className={cn('px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 capitalize',
-                      view === v ? 'bg-bg-tertiary text-accent-primary shadow-sm' : 'text-text-tertiary hover:text-text-secondary')}>
+                    className={cn('px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 capitalize',
+                      view === v ? 'bg-bg-tertiary text-text-primary shadow-sm' : 'text-text-tertiary hover:text-text-secondary')}>
                     {v === 'board' ? <SquaresFour className="w-3.5 h-3.5" weight={view === v ? 'fill' : 'regular'} /> : <ListBullets className="w-3.5 h-3.5" weight={view === v ? 'fill' : 'regular'} />}
                   </button>
                 ))}
@@ -429,9 +443,9 @@ export default function TasksPage() {
         {showImportIssue && (
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <GithubLogo className="w-4 h-4 text-accent-primary" weight="bold" />
+                <GithubLogo className="w-4 h-4 text-text-tertiary" weight="bold" />
                 <GradientHeading as="h3">Import GitHub Issue as Task</GradientHeading>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -458,9 +472,9 @@ export default function TasksPage() {
         {showTemplates && (
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-5">
-                <Copy className="w-4 h-4 text-accent-primary" weight="bold" />
+                <Copy className="w-4 h-4 text-text-tertiary" weight="bold" />
                 <GradientHeading as="h3">Task Templates &amp; Plan Assignment</GradientHeading>
               </div>
 
@@ -550,7 +564,7 @@ export default function TasksPage() {
                 {/* Auto starter assignment */}
                 <div className="bg-bg-secondary rounded-xl p-4 border border-border">
                   <div className="text-xs font-semibold text-text-secondary mb-3 flex items-center gap-1.5">
-                    <Lightning className="w-3.5 h-3.5 text-accent-primary" weight="fill" />
+                    <Lightning className="w-3.5 h-3.5 text-text-tertiary" weight="fill" />
                     Auto-assign starter tasks
                   </div>
                   <p className="text-[11px] text-text-tertiary mb-3 leading-relaxed">
@@ -566,7 +580,7 @@ export default function TasksPage() {
                       <Input value={starterRepo} onChange={(e) => setStarterRepo(e.target.value)} placeholder="https://github.com/owner/repo" />
                     </div>
                     <button onClick={handleAutoStarter} disabled={busy || !starterRepo.trim() || !starterUserId.trim()}
-                      className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
                       <Lightning className="w-3.5 h-3.5" weight="fill" />
                       {busy ? 'Assigning…' : 'Generate Starter Tasks'}
                     </button>
@@ -580,9 +594,9 @@ export default function TasksPage() {
         {showTimeStats && timeStats && (
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-accent-primary" weight="bold" />
+                <Clock className="w-4 h-4 text-text-tertiary" weight="bold" />
                 <GradientHeading as="h3">Time Tracking — Estimated vs Actual</GradientHeading>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -641,15 +655,15 @@ export default function TasksPage() {
         {progress && (
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-6">
             {[
-              { label: 'Total', value: progress.total, color: 'text-text-primary', accent: undefined },
-              { label: 'Completed', value: progress.completed, color: 'text-green-400', accent: '#22c55e' },
-              { label: 'In Progress', value: progress.in_progress, color: 'text-mission', accent: '#1A5FA8' },
-              { label: 'Pending Rev.', value: progress.pending_review, color: 'text-yellow-400', accent: '#eab308' },
-              { label: 'Blocked', value: progress.blocked, color: 'text-red-400', accent: '#ef4444' },
+              { label: 'Total', value: progress.total, color: 'text-text-primary' },
+              { label: 'Completed', value: progress.completed, color: 'text-emerald-500' },
+              { label: 'In Progress', value: progress.in_progress, color: 'text-mission' },
+              { label: 'Pending Rev.', value: progress.pending_review, color: 'text-caution' },
+              { label: 'Blocked', value: progress.blocked, color: 'text-abort' },
             ].map((stat) => (
               <motion.div key={stat.label} variants={itemVariants}>
                 <CardSpotlight>
-                  <StatCard label={stat.label} value={stat.value} color={stat.color} accentColor={stat.accent} />
+                  <StatCard label={stat.label} value={stat.value} color={stat.color} />
                 </CardSpotlight>
               </motion.div>
             ))}
@@ -661,9 +675,9 @@ export default function TasksPage() {
         {showCreate && (
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <Plus className="w-4 h-4 text-accent-primary" weight="bold" />
+                <Plus className="w-4 h-4 text-text-tertiary" weight="bold" />
                 <GradientHeading as="h3">Create New Task</GradientHeading>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -717,74 +731,22 @@ export default function TasksPage() {
         {loading && <TasksPageSkeleton />}
 
         {!loading && view === 'board' && (
-          <div className="overflow-x-auto pb-4">
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex gap-3 min-w-max">
-              {BOARD_COLUMNS.map((col) => {
-                const colTasks = filteredTasks.filter((t) => t.state === col.state)
-                return (
-                  <motion.div key={col.state} className="w-60 shrink-0" variants={itemVariants}>
-                    <div className="flex items-center gap-2 mb-3 px-1">
-                      <span className={cn('w-1.5 h-1.5 rounded-full', col.dot)} />
-                      <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider flex-1">{col.label}</h3>
-                      <span className="text-[10px] text-text-tertiary/40 font-mono tabular-nums">{colTasks.length}</span>
-                    </div>
-                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-2 min-h-[120px]">
-                      {colTasks.length > 0 ? colTasks.map((task) => (
-                        <motion.div key={task.task_id} variants={itemVariants}>
-                          <CardSpotlight>
-                            <div
-                              onClick={() => setSelectedTask(task)}
-                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTask(task) } }}
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`Task: ${task.title}`}
-                              className="p-3.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-accent-primary/40 rounded-lg"
-                            >
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <StatusBadge state={task.state} className="flex-1" />
-                                <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
-                              </div>
-                              <h4 className="text-sm font-display font-medium text-text-secondary hover:text-text-primary transition-colors mb-2 line-clamp-2 leading-snug">
-                                {task.title}
-                              </h4>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {task.module && (
-                                  <span className="text-[10px] text-accent-primary/60 font-mono bg-accent-primary/5 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
-                                    {task.assigned_to && moduleAccessMap[task.assigned_to]?.has(task.module) ? (
-                                      <Lock className="w-2.5 h-2.5 text-green-400" weight="fill" />
-                                    ) : null}
-                                    {task.module}
-                                  </span>
-                                )}
-                                {task.estimated_hours && <span className="text-[10px] text-text-tertiary font-mono">~{task.estimated_hours}h</span>}
-                                {task.depends_on && (
-                                  <span className="text-[10px] text-blue-400/70 font-mono bg-blue-500/5 px-1.5 py-0.5 rounded inline-flex items-center gap-1" title="Blocked until dependency is completed">
-                                    <Lock className="w-2.5 h-2.5" weight="fill" />
-                                    dep
-                                  </span>
-                                )}
-                                {task.actual_hours != null && task.estimated_hours != null && task.actual_hours > task.estimated_hours + 0.01 && (
-                                  <span className="text-[10px] text-red-400/80 font-mono bg-red-500/5 px-1.5 py-0.5 rounded" title="Over estimated time">
-                                    overrun
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </CardSpotlight>
-                        </motion.div>
-                      )) : (
-                        <motion.div variants={itemVariants}>
-                          <div className="border border-dashed border-border rounded-xl py-8 text-center">
-                            <p className="text-[10px] text-text-tertiary/30">Empty</p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                )
-              })}
-            </motion.div>
-          </div>
+          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="overflow-x-auto pb-4">
+            <KanbanBoard
+              columns={BOARD_COLUMNS}
+              tasks={filteredTasks as KanbanTask[]}
+              priorityDot={PRIORITY_DOTS}
+              onMoveTask={handleKanbanMove}
+              onTaskClick={(task) => setSelectedTask(task as any)}
+              renderCardMeta={(task) =>
+                task.actual_hours != null && task.estimated_hours != null && task.actual_hours > task.estimated_hours + 0.01 ? (
+                  <span className="rounded-sm border border-abort/20 bg-abort/5 px-1.5 py-0.5 font-code text-[10px] text-abort" title="Over estimated time">
+                    overrun
+                  </span>
+                ) : null
+              }
+            />
+          </motion.div>
         )}
 
         {!loading && view === 'list' && (
@@ -848,7 +810,7 @@ export default function TasksPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedTask(null)} role="presentation">
             <div className="bg-bg-primary border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 shadow-2xl relative"
               onClick={(e) => e.stopPropagation()}>
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent rounded-t-2xl" />
+              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
 
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1073,7 +1035,7 @@ export default function TasksPage() {
                     <div className="flex gap-2">
                       <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Paste PR URL…" className="flex-1" />
                       <button onClick={() => handleSubmit(selectedTask.task_id, prUrlInput)} disabled={!prUrlInput.trim()}
-                        className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
                     </div>
                   )}
                   {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review' || selectedTask.state === 'peer_review') && (
@@ -1091,7 +1053,7 @@ export default function TasksPage() {
                             <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
                             <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
                             <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
-                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-purple-500/80 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1.5">
                               <UsersThree className="w-3.5 h-3.5" /> Peer Review
                             </button>
                           </>

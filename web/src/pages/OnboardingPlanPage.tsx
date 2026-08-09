@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useInView, useMotionValue, useSpring, useTransform, animate } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
+import StatusTile from '../components/ui/status-tile'
 import {
   Rocket, Target, Users, Fire, Lightbulb,
   Handshake, Code, TrendUp, X, ListChecks,
@@ -14,11 +15,13 @@ import {
 } from '@phosphor-icons/react'
 
 const CATEGORY_CONFIG: Record<string, { label: string; hue: string; icon: any }> = {
-  technical: { label: 'Technical', hue: 'from-amber-400/80 to-amber-500/40', icon: Code },
-  cultural: { label: 'Cultural', hue: 'from-blue-400/80 to-blue-500/40', icon: Handshake },
-  process: { label: 'Process', hue: 'from-orange-400/80 to-orange-500/40', icon: ListChecks },
-  product: { label: 'Product', hue: 'from-emerald-400/80 to-emerald-500/40', icon: Lightbulb },
-  social: { label: 'Social', hue: 'from-pink-400/80 to-pink-500/40', icon: Users },
+  // Mission Control: category identity is carried by the label + mono designator,
+  // never by decorative color. Every chip seats on the neutral room surface.
+  technical: { label: 'Technical', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Code },
+  cultural: { label: 'Cultural', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Handshake },
+  process: { label: 'Process', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: ListChecks },
+  product: { label: 'Product', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Lightbulb },
+  social: { label: 'Social', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Users },
 }
 
 const SENTIMENT = [
@@ -34,36 +37,50 @@ const ASSIGNEE: Record<string, string> = {
 }
 
 const ASSIGNEE_COLORS: Record<string, string> = {
-  developer: 'text-amber-400 border-amber-400/30 bg-amber-400/8',
-  hr: 'text-blue-400 border-blue-400/30 bg-blue-400/8',
-  it: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/8',
-  manager: 'text-purple-400 border-purple-400/30 bg-purple-400/8',
-  buddy: 'text-pink-400 border-pink-400/30 bg-pink-400/8',
+  developer: 'text-text-tertiary border-seam bg-bg-tertiary',
+  hr: 'text-text-tertiary border-seam bg-bg-tertiary',
+  it: 'text-text-tertiary border-seam bg-bg-tertiary',
+  manager: 'text-text-tertiary border-seam bg-bg-tertiary',
+  buddy: 'text-text-tertiary border-seam bg-bg-tertiary',
 }
 
-function ProgressRing({ pct, size = 96 }: { pct: number; size?: number }) {
+function ProgressRing({ pct, size = 88 }: { pct: number; size?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-40px' })
   const r = size * 0.42
   const circ = 2 * Math.PI * r
-  const offset = circ - (pct / 100) * circ
+  // A single spring drives the live arc AND the readout, so the number
+  // settles in lock-step with the ring — a weighted instrument, not a spinner.
+  const mv = useMotionValue(0)
+  const spring = useSpring(mv, { stiffness: 90, damping: 26, mass: 0.8 })
+  const dash = useTransform(spring, (v) => circ - (v / 100) * circ)
+  const [display, setDisplay] = useState(0)
+
+  useEffect(() => {
+    if (!inView) return
+    const controls = animate(mv, pct, { duration: 1.2, ease: [0.16, 1, 0.3, 1] })
+    const unsub = spring.on('change', (v) => setDisplay(Math.round(v)))
+    return () => { controls.stop(); unsub() }
+  }, [inView, pct, mv, spring])
+
   return (
-    <svg width={size} height={size} className="ring-progress drop-shadow-glow">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.04)" strokeWidth={5} />
-      <motion.circle
-        cx={size / 2} cy={size / 2} r={r}
-        stroke="url(#ringGrad)"
-        strokeWidth={5}
-        strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-      />
-      <defs>
-        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#0E7A3C" />
-          <stop offset="100%" stopColor="#17A34A" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <div ref={ref} className="relative">
+      <svg width={size} height={size} className="block -rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(24,27,24,0.10)" strokeWidth={5} fill="none" />
+        <motion.circle
+          cx={size / 2} cy={size / 2} r={r}
+          stroke="var(--go)"
+          strokeWidth={5}
+          strokeLinecap="butt"
+          strokeDasharray={circ}
+          style={{ strokeDashoffset: dash }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-display-sm font-bold text-text-primary tabular-nums leading-none">{display}</span>
+        <span className="text-[8px] text-text-muted/40 tracking-widest uppercase mt-0.5">pct</span>
+      </div>
+    </div>
   )
 }
 
@@ -106,7 +123,7 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
         <div className="relative p-6 pb-0">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-accent-soft border border-accent/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-md bg-bg-tertiary border border-border flex items-center justify-center">
                 <Waveform size={18} className="text-amber-400" weight="fill" />
               </div>
               <div>
@@ -125,8 +142,8 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
             <div className="flex gap-1">
               {[1,2,4,6,8,12].map(w => (
                 <button key={w} onClick={() => setWeek(w)}
-                  className={cn('px-3 py-1.5 rounded-lg text-caption font-code transition-all',
-                    week === w ? 'bg-amber-400/15 text-amber-400 border border-amber-400/20' : 'text-text-muted/40 hover:text-text-muted')}>
+                  className={cn('px-3 py-1.5 rounded-md text-caption font-code transition-all',
+                    week === w ? 'bg-bg-tertiary text-text-primary border border-seam-strong' : 'text-text-muted/40 hover:text-text-muted')}>
                   {w}
                 </button>
               ))}
@@ -141,9 +158,9 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
                 <span className="text-text-muted/60 capitalize">{key}</span>
                 <span className={cn('font-code text-sm tabular-nums', avgColor)}>{scores[key]}/10</span>
               </div>
-              <div className="relative h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+              <div className="relative h-1.5 rounded bg-bg-tertiary overflow-hidden">
                 <motion.div
-                  className={cn('h-full rounded-full', key === 'workload' ? 'bg-amber-400' : 'bg-gradient-to-r from-amber-500 to-emerald-400')}
+                  className={cn('h-full rounded', key === 'workload' ? 'bg-caution' : 'bg-mission')}
                   initial={{ width: 0 }}
                   animate={{ width: `${scores[key] * 10}%` }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -165,10 +182,10 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
           <div className="flex gap-2">
             {SENTIMENT.map(s => (
               <button key={s.value} onClick={() => setSentiment(s.value)}
-                className={cn('flex-1 py-2.5 rounded-xl border text-center transition-all',
+                className={cn('flex-1 py-2.5 rounded-md border text-center transition-all',
                   sentiment === s.value
-                    ? 'bg-amber-400/10 border-amber-400/30 text-amber-400'
-                    : 'border-border text-text-muted/30 hover:text-text-muted/60 bg-bg-tertiary')}>
+                    ? 'bg-bg-tertiary border-seam-strong text-text-primary'
+                    : 'border-border text-text-muted/30 hover:text-text-muted/60 bg-bg-tertiary/40')}>
                 <s.icon size={16} className="mx-auto mb-0.5" weight={sentiment === s.value ? 'fill' : 'regular'} />
                 <span className="text-[9px] block font-medium">{s.label}</span>
               </button>
@@ -179,13 +196,13 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
         <div className="px-6 pt-4 pb-6">
           <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)}
             placeholder="Anything on your mind? Blockers, wins, questions..."
-            className="w-full bg-bg-tertiary border border-border rounded-xl px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400/30 transition-all"
+            className="w-full bg-bg-tertiary border border-border rounded-md px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/30 transition-all"
           />
         </div>
 
         <div className="px-6 pb-6">
           <button onClick={() => pulseMutation.mutate()} disabled={pulseMutation.isPending}
-            className="w-full bg-gradient-to-r from-amber-500 to-emerald-500 hover:brightness-110 text-[#09090B] py-3 rounded-xl text-body-sm font-semibold transition-all shadow-glow disabled:opacity-50">
+            className="btn btn-primary w-full py-3 text-sm font-semibold disabled:opacity-50">
             {pulseMutation.isPending ? (
               <span className="flex items-center justify-center gap-2"><span className="loader w-4 h-4" /> Submitting...</span>
             ) : 'Submit Pulse'}
@@ -230,19 +247,21 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
               return (
                 <motion.div
                   key={m.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.35 }}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  whileHover={{ y: -2 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className={cn(
                     'relative group pb-3',
                     m.is_completed ? 'opacity-50' : ''
                   )}
                 >
                   <div className={cn(
-                    'absolute -left-[25px] top-2.5 w-2 h-2 rounded-full border-2 transition-all',
+                    'absolute -left-[25px] top-2.5 w-2 h-2 rounded-[2px] border transition-all',
                     m.is_completed
-                      ? 'bg-emerald-400 border-emerald-400/40'
-                      : 'bg-bg-tertiary border-border group-hover:border-amber-400/30'
+                      ? 'bg-go border-go'
+                      : 'bg-bg-tertiary border-border group-hover:border-emerald-500/40'
                   )} />
                   <div className={cn(
                     'p-3 rounded-xl border transition-all',
@@ -254,10 +273,10 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
                       <button onClick={() => !m.is_completed && completeMutation.mutate(m.id)}
                         disabled={m.is_completed}
                         className={cn(
-                          'w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all',
+                          'w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 transition-all',
                           m.is_completed
-                            ? 'bg-emerald-400 text-[#09090B]'
-                            : 'bg-bg-tertiary border border-border text-text-muted/20 hover:border-amber-400/30 hover:text-amber-400'
+                            ? 'bg-go text-[var(--panel-raised)]'
+                            : 'bg-bg-tertiary border border-border text-text-muted/20 hover:border-emerald-500/40 hover:text-emerald-500'
                         )}>
                         {m.is_completed ? <Check size={10} weight="bold" /> : <Circle size={10} />}
                       </button>
@@ -349,15 +368,8 @@ export default function OnboardingPlanPage() {
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="flex items-center gap-6">
               <div className="relative shrink-0">
-                <div className="absolute inset-0 bg-gradient-accent/10 rounded-full blur-2xl" />
                 {planToShow ? (
-                  <div className="relative">
-                    <ProgressRing pct={progressPct} size={88} />
-                    <div className="absolute inset-0 flex items-center justify-center flex-col">
-                      <span className="font-display text-display-sm font-bold text-text-primary tabular-nums leading-none">{progressPct}</span>
-                      <span className="text-[8px] text-text-muted/40 tracking-widest uppercase mt-0.5">pct</span>
-                    </div>
-                  </div>
+                  <ProgressRing pct={progressPct} />
                 ) : (
                   <div className="w-[88px] h-[88px] rounded-full bg-bg-tertiary border border-border flex items-center justify-center">
                     <Target size={32} className="text-text-muted/30" />
@@ -366,8 +378,8 @@ export default function OnboardingPlanPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Rocket size={16} className="text-amber-400" weight="duotone" />
-                  <span className="text-overline text-amber-400/80">Onboarding Journey</span>
+                  <Rocket size={16} className="text-text-tertiary" />
+                  <span className="text-overline text-text-muted">Onboarding Journey</span>
                 </div>
                 <GradientHeading as="h1" className="text-display-md mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</GradientHeading>
                 <p className="text-body-sm text-text-muted/60">
@@ -380,11 +392,8 @@ export default function OnboardingPlanPage() {
             <div className="flex items-center gap-3">
               {planToShow ? (
                 <button onClick={() => setShowPulse(true)}
-                  className="group flex items-center gap-2.5 bg-bg-tertiary hover:bg-bg-elevated border border-border px-4 py-2.5 rounded-xl text-body-xs font-medium text-text-primary transition-all">
-                  <span className="relative flex w-2 h-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                  </span>
+                  className="group flex items-center gap-2.5 bg-bg-tertiary hover:bg-bg-elevated border border-border px-4 py-2.5 rounded-md text-body-xs font-medium text-text-primary transition-all">
+                  <span aria-hidden="true" className="w-2 h-2 rounded-[2px] bg-go" />
                   Pulse Check
                 </button>
               ) : (
@@ -397,6 +406,27 @@ export default function OnboardingPlanPage() {
             </div>
           </div>
         </motion.div>
+
+        {planToShow && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            className="mb-9 flex items-center gap-3"
+          >
+            <div className="flex-1 h-px bg-border/60 relative overflow-hidden">
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-go"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+              />
+            </div>
+            <span className="readout text-[10px] text-text-muted/60 tabular-nums uppercase tracking-wider shrink-0">
+              OVERALL · {progressPct}%
+            </span>
+          </motion.div>
+        )}
 
         {!planToShow ? (
           <motion.div variants={item}>
@@ -420,24 +450,23 @@ export default function OnboardingPlanPage() {
             {/* Pulse trend bar */}
             {pulses.length > 0 && (
               <motion.div variants={item} className="mb-8">
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-amber-500/[0.04] via-transparent to-emerald-500/[0.04] p-5">
-                  <div className="absolute inset-0 dot-grid opacity-30" />
+                <div className="relative overflow-hidden rounded-md border border-border bg-bg-secondary shadow-card p-5">
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-4">
-                      <Fire size={14} className="text-amber-400" weight="fill" />
+                      <Fire size={14} className="text-text-tertiary" weight="fill" />
                       <span className="text-body-xs font-semibold text-text-primary">Wellness Trend</span>
-                      <span className="text-caption text-text-muted/30 tabular-nums">{pulses.length} check-ins</span>
+                      <span className="text-caption text-text-muted/30 tabular-nums readout">{pulses.length} check-ins</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {([
-                        { label: 'Confidence', val: trends.confidence_avg, color: 'text-emerald-400' },
-                        { label: 'Clarity', val: trends.clarity_avg, color: 'text-amber-400' },
-                        { label: 'Support', val: trends.support_avg, color: 'text-blue-400' },
-                        { label: 'Workload', val: trends.workload_avg, color: 'text-purple-400' },
+                        { label: 'Confidence', val: trends.confidence_avg, color: 'text-text-primary' },
+                        { label: 'Clarity', val: trends.clarity_avg, color: 'text-text-primary' },
+                        { label: 'Support', val: trends.support_avg, color: 'text-text-primary' },
+                        { label: 'Workload', val: trends.workload_avg, color: 'text-text-primary' },
                       ] as const).map(t => (
-                        <div key={t.label} className="text-center p-2.5 rounded-xl bg-bg-tertiary/40 border border-border/40">
+                        <div key={t.label} className="text-center p-2.5 rounded-md bg-bg-tertiary/40 border border-border/40">
                           <motion.div
-                            className={cn('font-display text-display-sm font-bold tabular-nums', t.color)}
+                            className={cn('font-code text-display-sm font-bold tabular-nums', t.color)}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.1 }}
@@ -457,7 +486,7 @@ export default function OnboardingPlanPage() {
             {preBoard.length > 0 && (
               <motion.div variants={item} className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <ListChecks size={14} className="text-amber-400" />
+                  <ListChecks size={14} className="text-text-tertiary" />
                   <h2 className="text-body-sm font-bold text-text-primary">Pre-Boarding</h2>
                   <span className="text-caption text-text-muted/30 tabular-nums">{preDone}/{preBoard.length}</span>
                 </div>
@@ -493,7 +522,7 @@ export default function OnboardingPlanPage() {
             {roadmap && roadmap.milestones.length > 0 && (
               <motion.div variants={item} className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <ListChecks size={14} className="text-emerald-400" />
+                  <ListChecks size={14} className="text-text-tertiary" />
                   <h2 className="text-body-sm font-bold text-text-primary">Roadmap</h2>
                   <span className="text-caption text-text-muted/30 tabular-nums">
                     {roadmap.milestones.filter((m) => m.is_completed).length}/{roadmap.milestones.length} · statuses from milestone dependencies
@@ -506,12 +535,14 @@ export default function OnboardingPlanPage() {
                       <div key={m.id} className="flex items-stretch gap-2">
                         <motion.div
                           initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          whileHover={{ y: -2 }}
+                          viewport={{ once: true, margin: '-40px' }}
+                          transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                           className={cn(
-                            'w-44 p-3 rounded-xl border transition-all',
-                            m.status === 'completed' && 'bg-emerald-500/[0.06] border-emerald-500/20',
-                            m.status === 'in_progress' && 'bg-amber-500/[0.08] border-amber-500/30 shadow-glow',
+                            'w-44 p-3 rounded-md border transition-all',
+                            m.status === 'completed' && 'bg-bg-tertiary/30 border-border',
+                            m.status === 'in_progress' && 'bg-bg-secondary border-go',
                             m.status === 'available' && 'bg-bg-secondary border-border hover:border-border-hover',
                             m.status === 'locked' && 'bg-bg-tertiary/40 border-border/50 opacity-50'
                           )}
@@ -526,16 +557,14 @@ export default function OnboardingPlanPage() {
                             {m.title}
                           </p>
                           <div className={cn(
-                            'inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-md uppercase tracking-wider',
-                            m.status === 'completed' && 'bg-emerald-500/15 text-emerald-400',
-                            m.status === 'in_progress' && 'bg-amber-500/15 text-amber-400',
-                            m.status === 'available' && 'bg-blue-500/15 text-blue-400',
-                            m.status === 'locked' && 'bg-bg-tertiary text-text-muted/40'
+                            'inline-flex items-center',
+                            m.status === 'locked' && 'opacity-60'
                           )}>
-                            {m.status === 'completed' ? <Check size={8} weight="bold" /> : null}
-                            {m.status === 'locked' ? '🔒 ' : null}
-                            {m.status === 'in_progress' ? '▶ ' : null}
-                            {m.status}
+                            <StatusTile
+                              status={m.status === 'completed' ? 'go' : m.status === 'in_progress' ? 'standby' : 'idle'}
+                              label={m.status === 'in_progress' ? 'ACTIVE' : m.status === 'available' ? 'AVAILABLE' : m.status}
+                              designator={m.status === 'locked' ? 'LOCKED' : undefined}
+                            />
                           </div>
                           {m.depends_on.length > 0 && (
                             <div className="mt-2 text-[9px] text-text-muted/30 font-code truncate">
@@ -558,14 +587,14 @@ export default function OnboardingPlanPage() {
             {/* 30-60-90 Day Phases */}
             <motion.div variants={item}>
               <div className="relative flex items-center gap-2 mb-6">
-                <div className="flex-1 h-px bg-gradient-to-r from-amber-500/30 via-transparent to-transparent" />
-                <CaretDoubleDown size={14} className="text-amber-400/50" />
-                <span className="text-overline text-amber-400/60">Milestone Plan</span>
+                <div className="flex-1 h-px bg-border" />
+                <CaretDoubleDown size={14} className="text-text-muted/40" />
+                <span className="text-overline text-text-muted/60">Milestone Plan</span>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <PhaseColumn label="30 Days — Foundation" data={milestones30} icon={Compass} hue="text-amber-400 border-amber-400/20 bg-amber-400/8" />
-                <PhaseColumn label="60 Days — Growth" data={milestones60} icon={Target} hue="text-blue-400 border-blue-400/20 bg-blue-400/8" />
-                <PhaseColumn label="90 Days — Flight" data={milestones90} icon={Rocket} hue="text-emerald-400 border-emerald-400/20 bg-emerald-400/8" />
+                <PhaseColumn label="30 Days — Foundation" data={milestones30} icon={Compass} hue="text-text-secondary border-border bg-bg-tertiary" />
+                <PhaseColumn label="60 Days — Growth" data={milestones60} icon={Target} hue="text-text-secondary border-border bg-bg-tertiary" />
+                <PhaseColumn label="90 Days — Flight" data={milestones90} icon={Rocket} hue="text-text-secondary border-border bg-bg-tertiary" />
               </div>
             </motion.div>
           </>

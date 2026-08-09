@@ -99,8 +99,8 @@ export default function CodeHealthPage() {
                 placeholder="github.com/owner/repo"
                 className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-muted/20 outline-none border-none ml-2.5" />
               <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-[#09090B] px-3.5 py-1.5 rounded-lg text-caption font-semibold transition-all whitespace-nowrap">
-                {loading ? <span className="w-3.5 h-3.5 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" /> : <Sparkle size={12} weight="fill" />}
+                className="flex items-center gap-1.5 bg-warning hover:bg-warning-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-3.5 py-1.5 rounded-btn text-caption font-semibold transition-all whitespace-nowrap">
+                {loading ? <span className="w-3.5 h-3.5 border-2 border-[hsl(var(--primary-foreground))]/30 border-t-[hsl(var(--primary-foreground))] rounded-full animate-spin" /> : <Sparkle size={12} weight="fill" />}
                 {loading ? 'Scoring' : 'Analyze'}
               </button>
             </div>

@@ -45,6 +45,10 @@
     --border: 24 6% 84%;
     --ring: 145 79% 27%;
     --radius: 0.25rem;
+    --card: 96 8% 97%;
+    --card-foreground: 120 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 6% 10%;
     --shadow-dashboard: 0 1px 2px rgba(24,27,24,0.06), 0 0 0 1px rgba(24,27,24,0.08);
 
     /* Semantic token bridge (RGB triplets for bg/text/border/accent tokens) */
@@ -125,6 +129,10 @@
     --error-lit: 210 76 63;
     --info: 26 95 168;
     --info-lit: 36 114 196;
+    --card: 96 8% 97%;
+    --card-foreground: 120 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 6% 10%;
   }
 
   /* ── Dark themes ─────────────────────────────── */
@@ -189,6 +197,10 @@
     --accent-foreground: 0 0% 8%;
     --border: 222 40% 20%;
     --ring: 36 98% 50%;
+    --card: 222 40% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 222 44% 11%;
+    --popover-foreground: 0 0% 95%;
   }
 
   /* Midnight — cool indigo-dark with violet-blue accents */
@@ -252,6 +264,10 @@
     --accent-foreground: 0 0% 8%;
     --border: 232 40% 22%;
     --ring: 239 84% 67%;
+    --card: 232 44% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 232 46% 11%;
+    --popover-foreground: 0 0% 95%;
   }
 
   /* Forest — earthy green-dark with fresh green accents */
@@ -315,6 +331,10 @@
     --accent-foreground: 0 0% 8%;
     --border: 120 22% 20%;
     --ring: 142 71% 45%;
+    --card: 120 30% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 120 32% 11%;
+    --popover-foreground: 0 0% 95%;
   }
 
   /* Purple — deep violet-dark with vibrant purple accents */
@@ -378,6 +398,10 @@
     --accent-foreground: 0 0% 8%;
     --border: 264 38% 22%;
     --ring: 271 91% 65%;
+    --card: 264 42% 16%;
+    --card-foreground: 0 0% 95%;
+    --popover: 264 44% 12%;
+    --popover-foreground: 0 0% 95%;
   }
 
   * {
@@ -464,7 +488,7 @@
     border-radius: 4px;
     padding: 20px;
     box-shadow: 0 0 0 1px rgba(24,27,24,0.02), 0 1px 2px rgba(24,27,24,0.06);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   }
 
   .console-panel:hover {
@@ -610,10 +634,13 @@
     color: var(--panel-raised);
   }
 
-  .btn:hover { background: var(--go-lit); }
-  .btn:active { transform: translateY(1px); }
+  .btn {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 1px 2px rgba(24,27,24,0.12);
+  }
+  .btn:hover { background: var(--go-lit); box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 2px 6px rgba(24,27,24,0.14); }
+  .btn:active { transform: translateY(1px); box-shadow: inset 0 1px 2px rgba(24,27,24,0.20); }
   .btn:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .btn-primary { background: var(--go); color: var(--panel-raised); }
   .btn-primary:hover { background: var(--go-lit); }
@@ -621,15 +648,42 @@
   .btn-secondary {
     background: var(--panel);
     color: var(--ink);
-    box-shadow: 0 0 0 1px var(--seam);
+    box-shadow: 0 0 0 1px var(--seam), 0 1px 2px rgba(24,27,24,0.04);
   }
-  .btn-secondary:hover { background: var(--well); box-shadow: 0 0 0 1px var(--seam-strong); }
+  .btn-secondary:hover { background: var(--well); box-shadow: 0 0 0 1px var(--seam-strong), 0 2px 6px rgba(24,27,24,0.08); }
 
   .btn-ghost { background: transparent; color: var(--ink-secondary); }
   .btn-ghost:hover { background: var(--panel); color: var(--ink); }
 
   .btn-danger { background: rgba(190, 58, 46, 0.10); color: var(--abort); }
   .btn-danger:hover { background: rgba(190, 58, 46, 0.18); }
+
+  /* ── Global focus ring — consistent instrument focus across every control ── */
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--go);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  /* ── Micro-interaction: universal active press on interactive tiles ── */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .btn, .btn-glass, .status-tile, .tile, a[class*='rounded'], button[class*='rounded'] {
+      transition: transform 0.12s ease, box-shadow 0.2s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .btn:active, .btn-glass:active {
+      transform: translateY(1px) scale(0.99);
+    }
+  }
+
+  /* ── Reduced motion: collapse ambient animations ── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 
   .btn-glass {
     display: inline-flex;
@@ -663,11 +717,12 @@
     font-family: 'Public Sans', Inter, system-ui, sans-serif;
     font-size: 0.875rem;
     color: var(--ink);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
     outline: none;
   }
   .input::placeholder { color: var(--ink-disabled); }
-  .input:focus { border-color: var(--go); box-shadow: 0 0 0 1px var(--go); }
+  .input:hover:not(:focus) { border-color: var(--seam-strong); }
+  .input:focus { border-color: var(--go); box-shadow: 0 0 0 1px var(--go), 0 2px 8px rgba(14,122,60,0.10); }
   .input.error { border-color: var(--abort); box-shadow: 0 0 0 1px var(--abort); }
 
   /* ── Section label — call-sign nomenclature ────── */
@@ -701,6 +756,16 @@
   /* ── Entrance / loaders ────────────────────────── */
   .animate-in { animation: fadeIn 0.35s ease-out; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Marquee drift (logo/wordmark rail) ────────── */
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%);
+  }
+  @keyframes marquee-x {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
 
   .loader {
     width: 20px; height: 20px;
@@ -794,6 +859,45 @@
      Public marketing pages are designed as a daylit canvas and stay light
      even when the app is in a dark theme. Pin the full light palette scoped
      to the subtree so every var-driven component inside renders correctly. */
+  /* Marketing motion: instrument floor + reveal masks */
+  .mkt-floor {
+    background-color: #DDE1DD;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -10%, rgba(14, 122, 60, 0.09), transparent 55%),
+      linear-gradient(rgba(24, 27, 24, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(24, 27, 24, 0.045) 1px, transparent 1px);
+    background-size: auto, 56px 56px, 56px 56px;
+    background-position: center, center, center;
+  }
+
+  .mkt-reveal {
+    clip-path: inset(0 0 100% 0);
+    animation: mktReveal 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+  }
+
+  @keyframes mktReveal {
+    to { clip-path: inset(0 0 0% 0); }
+  }
+
+  .mkt-beam {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(14, 122, 60, 0.0) 20%,
+      rgba(14, 122, 60, 0.55) 50%,
+      rgba(14, 122, 60, 0.0) 80%,
+      transparent 100%
+    );
+    animation: mktBeam 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+
+  @keyframes mktBeam {
+    0% { transform: translateX(-120%); opacity: 0; }
+    15% { opacity: 1; }
+    55% { opacity: 1; }
+    100% { transform: translateX(120%); opacity: 0; }
+  }
+
   .marketing-surface {
     background-color: #DDE1DD;
     color: #181B18;
@@ -844,6 +948,10 @@
     --error-lit: 210 76 63;
     --info: 26 95 168;
     --info-lit: 36 114 196;
+    --card: 96 8% 97%;
+    --card-foreground: 120 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 6% 10%;
   }
 
   /* ── Toast Animations ──────────────────────────── */

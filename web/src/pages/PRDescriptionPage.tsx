@@ -155,9 +155,9 @@ export default function PRDescriptionPage() {
         {/* Actions */}
         <motion.div variants={item} className="flex items-center gap-3 mb-8">
           <button onClick={handleGenerate} disabled={generating || !repoUrl.trim() || !prNumber.trim()}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-[#09090B] px-5 py-2.5 rounded-xl text-body-sm font-semibold transition-all shadow-glow">
+            className="flex items-center gap-2 bg-warning hover:bg-warning-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-5 py-2.5 rounded-btn text-body-sm font-semibold transition-all shadow-glow">
             {generating ? (
-              <span className="w-4 h-4 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-[hsl(var(--primary-foreground))]/30 border-t-[hsl(var(--primary-foreground))] rounded-full animate-spin" />
             ) : <Sparkle size={14} weight="fill" />}
             {generating ? 'Generating...' : 'Generate'}
           </button>
@@ -331,10 +331,10 @@ export default function PRDescriptionPage() {
                     <button
                       onClick={handleApplyAll}
                       disabled={applying}
-                      className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-[#09090B] px-4 py-2 rounded-lg text-caption font-semibold transition-all"
+                      className="flex items-center gap-2 bg-success hover:bg-success-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-btn text-caption font-semibold transition-all"
                     >
                       {applying ? (
-                        <span className="w-3.5 h-3.5 border-2 border-[#09090B]/30 border-t-[#09090B] rounded-full animate-spin" />
+                        <span className="w-3.5 h-3.5 border-2 border-[hsl(var(--primary-foreground))]/30 border-t-[hsl(var(--primary-foreground))] rounded-full animate-spin" />
                       ) : (
                         <SealCheck size={14} weight="bold" />
                       )}

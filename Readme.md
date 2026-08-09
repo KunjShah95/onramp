@@ -35,7 +35,7 @@ attribute. The router (`backend/app/llm.py`) uses that to pick the best
 provider chain per task — free-first, with a fallback chain per type:
 
 | Agent | Query type | First provider tried | Cost |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `PRReviewAgent` | `code` | Claude (Anthropic) | paid |
 | `FirstPRAccelerator` | `code` | Claude (Anthropic) | paid |
 | `AutonomousCodingAgent` | `code` | Claude (Anthropic) | paid |

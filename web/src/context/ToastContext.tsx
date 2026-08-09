@@ -148,38 +148,38 @@ export function useToast() {
 const TYPE_STYLES: Record<ToastType, { bg: string; border: string; icon: string; iconBg: string; iconColor: string }> = {
   success: {
     bg: 'bg-[#0D1F11]',
-    border: 'border-green-500/25',
+    border: 'border-success-lit/30',
     icon: 'check_circle',
-    iconBg: 'bg-green-500/15',
-    iconColor: 'text-green-400',
+    iconBg: 'bg-success-lit/15',
+    iconColor: 'text-success-lit',
   },
   error: {
     bg: 'bg-[#1F0D0D]',
-    border: 'border-red-500/25',
+    border: 'border-error-lit/30',
     icon: 'error',
-    iconBg: 'bg-red-500/15',
-    iconColor: 'text-red-400',
+    iconBg: 'bg-error-lit/15',
+    iconColor: 'text-error-lit',
   },
   info: {
     bg: 'bg-[#0D1420]',
-    border: 'border-[#4DA8DA]/25',
+    border: 'border-info-lit/30',
     icon: 'info',
-    iconBg: 'bg-[#4DA8DA]/15',
-    iconColor: 'text-[#4DA8DA]',
+    iconBg: 'bg-info-lit/15',
+    iconColor: 'text-info-lit',
   },
   warning: {
     bg: 'bg-[#1F180D]',
-    border: 'border-yellow-500/25',
+    border: 'border-warning-lit/30',
     icon: 'warning',
-    iconBg: 'bg-yellow-500/15',
-    iconColor: 'text-yellow-400',
+    iconBg: 'bg-warning-lit/15',
+    iconColor: 'text-warning-lit',
   },
   loading: {
     bg: 'bg-[#14100C]',
-    border: 'border-[#FF8C00]/25',
+    border: 'border-info-lit/30',
     icon: 'loading',
-    iconBg: 'bg-[#FF8C00]/15',
-    iconColor: 'text-[#FF8C00]',
+    iconBg: 'bg-info-lit/15',
+    iconColor: 'text-info-lit',
   },
 }
 
@@ -201,7 +201,7 @@ function ToastContainer({
           <div
             key={t.id}
             className={cn(
-              'pointer-events-auto rounded-xl border p-4 shadow-2xl backdrop-blur-xl',
+              'pointer-events-auto rounded-md border p-4 shadow-2xl backdrop-blur-xl',
               style.bg,
               style.border,
               isExiting ? 'toast-exit' : 'toast-enter'
@@ -210,7 +210,7 @@ function ToastContainer({
             <div className="flex items-start gap-3">
               <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', style.iconBg)}>
                 {t.type === 'loading' ? (
-                  <svg className="w-4 h-4 animate-spin text-[#FF8C00]" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 animate-spin text-info-lit" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>

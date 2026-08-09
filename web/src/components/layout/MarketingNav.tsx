@@ -32,9 +32,13 @@ export default function MarketingNav({
       ].join(' ')}
     >
       {/* Logo */}
-      <Link to="/" className="flex items-center gap-2">          <span className="text-xl font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-            Onramp
-          </span>
+      <Link to="/" className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-tile bg-accent-from shadow-lit">
+          <span className="text-[11px] font-bold text-white font-display tracking-tight">OR</span>
+        </span>
+        <span className="text-xl font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
+          Onramp
+        </span>
       </Link>
 
       {/* Center nav links */}
@@ -69,9 +73,9 @@ export default function MarketingNav({
         </Link>
         <Link
           to="/register"
-          className="px-4 py-2 rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold hover:opacity-90 transition-all font-body"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-btn bg-go text-[hsl(var(--primary-foreground))] text-sm font-semibold shadow-card transition-all hover:bg-go-lit active:scale-[0.98] font-body"
         >
-          Get Started Free
+          Start free
         </Link>
       </div>
     </nav>

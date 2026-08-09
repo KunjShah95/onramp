@@ -41,8 +41,13 @@ export default function MarketingFooter() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
-            <span className="text-lg font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-              Onramp
+            <span className="inline-flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-tile bg-accent-from shadow-lit">
+                <span className="text-[10px] font-bold text-white font-display tracking-tight">OR</span>
+              </span>
+              <span className="text-lg font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
+                Onramp
+              </span>
             </span>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 leading-relaxed max-w-[200px] font-body">
               AI-powered developer onboarding for modern engineering teams.

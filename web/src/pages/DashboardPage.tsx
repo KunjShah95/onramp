@@ -447,11 +447,11 @@ export default function DashboardPage() {
               <div className="p-8 text-center text-text-muted text-body-sm">No crew found.</div>
             ) : (
               <div className="overflow-x-auto -m-5">
-                <table className="w-full text-body-sm">
+                <table className="border-collapse text-left w-full table-auto text-body-sm">
                   <thead>
-                    <tr className="border-b border-border bg-bg-tertiary/50">
+                    <tr className="border-b border-border bg-panel/80 sticky top-0 z-10 backdrop-blur-sm">
                       {['Crew', 'Total', 'Done', 'Active', 'Review', 'Rate', 'Modules'].map((h) => (
-                        <th key={h} className="text-left px-5 py-3 overline text-text-muted/80">{h}</th>
+                        <th key={h} className="text-left px-5 py-3 overline text-text-muted/80 align-middle">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                     {member_progress.map((member, i) => (
                       <motion.tr key={member.user_id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025 }}
                         className="hover:bg-bg-tertiary/40 transition-colors">
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-3.5 align-middle">
                           <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-tile bg-accent-muted border border-accent/25 flex items-center justify-center text-caption font-bold text-accent-from font-display">
                               {member.name.charAt(0).toUpperCase()}
@@ -470,11 +470,11 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 readout text-text-primary">{member.total}</td>
-                        <td className="px-5 py-3.5 readout text-success">{member.completed}</td>
-                        <td className="px-5 py-3.5 readout text-info">{member.in_progress}</td>
-                        <td className="px-5 py-3.5 readout text-warning">{member.pending_review}</td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-3.5 readout text-text-primary align-middle">{member.total}</td>
+                        <td className="px-5 py-3.5 readout text-success align-middle">{member.completed}</td>
+                        <td className="px-5 py-3.5 readout text-info align-middle">{member.in_progress}</td>
+                        <td className="px-5 py-3.5 readout text-warning align-middle">{member.pending_review}</td>
+                        <td className="px-5 py-3.5 align-middle">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-border">
                               <motion.div initial={{ width: 0 }} animate={{ width: `${member.completion_rate}%` }} transition={{ duration: 0.6, delay: i * 0.03 }}
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-3.5 align-middle">
                           <div className="flex flex-wrap gap-1">
                             {member.modules_unlocked.length > 0 ? (
                               member.modules_unlocked.map((mod: string, mi: number) => (
