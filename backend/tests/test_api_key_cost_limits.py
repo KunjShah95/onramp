@@ -16,6 +16,31 @@ from fastapi.testclient import TestClient
 
 API_PREFIX = "/api/v1"
 
+# The key-management endpoints enforced RBAC (CEO/CTO/senior/HR) against
+# live team membership in `ai_gateway._require_key_manager_role`. These tests
+# exercise key CRUD/budget/expiry logic, not team auth, so they mock the team
+# layer deterministically instead of coupling to a database.
+TEST_UID = "u-cost-limit-test"
+
+
+@pytest.fixture(autouse=True)
+def _mock_team_rbac(monkeypatch):
+    """Grant TEST_UID owner role for any org, bypassing DB team lookups."""
+    from app.api.v1 import ai_gateway
+
+    async def _member_of_any_org(team_id):
+        return [{"id": TEST_UID, "user_id": TEST_UID, "role": "owner"}]
+
+    async def _teams_for_user(user_id):
+        return [{"id": "acme", "team_id": "acme", "role": "owner"}]
+
+    async def _add_member(team_id, user_id, role="new_dev"):
+        return {"id": team_id, "team_id": team_id, "user_id": user_id, "role": role}
+
+    monkeypatch.setattr(ai_gateway, "get_team_members", _member_of_any_org)
+    monkeypatch.setattr(ai_gateway, "get_user_teams", _teams_for_user)
+    monkeypatch.setattr(ai_gateway, "add_member", _add_member)
+
 
 def _app(user: bool = True):
     """FastAPI app with the ai-gateway router.

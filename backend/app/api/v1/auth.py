@@ -73,6 +73,8 @@ class MeResponse(BaseModel):
     provider: str
     position: str | None = None
     avatar_url: str | None = None
+    github_username: str | None = None
+    github_id: str | None = None
 
 
 class ProviderCheckResponse(BaseModel):
@@ -511,6 +513,8 @@ async def me(user: dict = Depends(get_current_user)):
         provider=record["provider"],
         position=record.get("position"),
         avatar_url=record.get("avatar_url"),
+        github_username=record.get("github_username"),
+        github_id=record.get("github_id"),
     )
 
 
@@ -520,6 +524,7 @@ class UpdateProfileRequest(BaseModel):
     name: str | None = None
     position: str | None = None
     avatar_url: str | None = None
+    github_username: str | None = None
     email: str | None = None  # accepted in schema but rejected in the handler
 
 
@@ -554,6 +559,8 @@ async def update_me(
         if len(body.avatar_url) > 2048:
             raise HTTPException(status_code=400, detail="Avatar URL must be 2048 characters or fewer")
         data["avatar_url"] = body.avatar_url
+    if body.github_username is not None:
+        data["github_username"] = body.github_username
 
     try:
         updated = await update_user_profile(uid, data)
@@ -570,6 +577,8 @@ async def update_me(
         provider=updated["provider"],
         position=updated.get("position"),
         avatar_url=updated.get("avatar_url"),
+        github_username=updated.get("github_username"),
+        github_id=updated.get("github_id"),
     )
 
 

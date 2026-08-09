@@ -36,6 +36,26 @@ class TestInit:
         router = LLMRouter()
         assert router.current_provider == ModelProvider.OPENROUTER
 
+    async def test_timeout_config_defaults(self, monkeypatch):
+        monkeypatch.setenv("GROQ_API_KEY", "sk-groq-test")
+        router = LLMRouter()
+        assert router.openai_timeout == 30.0
+        assert router.anthropic_timeout == 30.0
+        assert router.openai_stream_timeout == 60.0
+        assert router.anthropic_stream_timeout == 60.0
+
+    async def test_timeout_config_from_env(self, monkeypatch):
+        monkeypatch.setenv("GROQ_API_KEY", "sk-groq-test")
+        monkeypatch.setenv("LLM_TIMEOUT_OPENROUTER", "15.5")
+        monkeypatch.setenv("LLM_TIMEOUT_ANTHROPIC", "20")
+        monkeypatch.setenv("LLM_TIMEOUT_OPENROUTER_STREAM", "90")
+        monkeypatch.setenv("LLM_TIMEOUT_ANTHROPIC_STREAM", "120")
+        router = LLMRouter()
+        assert router.openai_timeout == 15.5
+        assert router.anthropic_timeout == 20.0
+        assert router.openai_stream_timeout == 90.0
+        assert router.anthropic_stream_timeout == 120.0
+
     async def test_fallback_list_logged(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or")
         monkeypatch.setenv("GROQ_API_KEY", "sk-groq")

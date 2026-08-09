@@ -604,6 +604,47 @@ async def get_task_by_pr_url(pr_url: str) -> Optional[dict]:
     return None
 
 
+async def find_tasks_by_source_issue(repo_url: str, issue_number: int) -> List[dict]:
+    """Find non-terminal tasks assigned from a given GitHub issue/repo.
+
+    Matches each task's ``source_issue`` = ``{number, url, repo_url}`` against a
+    repo URL + issue number, so PR webhooks can auto-link a PR to the task that
+    issued from it without the developer ever pasting a URL.
+
+    The repo URL is normalized (scheme/host lowercased, trailing slash trimmed)
+    before matching so ``https://github.com/o/r/`` and ``https://GITHUB.com/O/R``
+    both resolve to the same task.
+    """
+    storage = get_storage()
+    tasks = await storage.list_documents(COLLECTION)
+    target = _normalize_repo_url(repo_url)
+    matches = []
+    for t in tasks:
+        src = t.get("source_issue")
+        if not isinstance(src, dict):
+            continue
+        try:
+            src_num = int(src.get("number"))
+        except (TypeError, ValueError):
+            src_num = None
+        if src_num is None or src_num != int(issue_number):
+            continue
+        src_repo = src.get("repo_url")
+        if not src_repo:
+            continue
+        if _normalize_repo_url(src_repo) == target:
+            matches.append(t)
+    return matches
+
+
+def _normalize_repo_url(repo_url: str) -> str:
+    """Lowercase scheme+host and strip trailing slash/git suffix for comparisons."""
+    url = (repo_url or "").strip().rstrip("/")
+    if url.endswith(".git"):
+        url = url[:-4]
+    return url.lower()
+
+
 async def get_team_time_stats(team_id: str) -> Dict[str, Any]:
     """Estimated vs actual hours per completed/assigned task, plus variance.
 

@@ -2056,7 +2056,7 @@ export interface WorkflowTask {
   peer_reviewed_by: string | null
   quiz_required: boolean
   depends_on: string | null
-  source_issue: number | null
+  source_issue: { number: number; url?: string; repo_url?: string } | number | null
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -2864,6 +2864,8 @@ export interface AuthMeResponse {
   provider: string
   position?: string | null
   avatar_url?: string | null
+  github_username?: string | null
+  github_id?: string | null
 }
 
 export interface ProviderCheckResponse {
@@ -2934,6 +2936,7 @@ export interface UpdateProfileRequest {
   name?: string
   position?: string | null
   avatar_url?: string | null
+  github_username?: string | null
 }
 
 export async function updateProfile(payload: UpdateProfileRequest): Promise<AuthMeResponse> {

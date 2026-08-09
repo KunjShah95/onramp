@@ -252,14 +252,17 @@ async def handle_github_callback(code: str, state: str) -> dict:
         raise ValueError("GitHub did not provide an email address. Make sure your GitHub email is public or grant email permission.")
 
     github_id = str(user_info.get("id", ""))
-    return await _find_or_create_oauth_user(email, name, "github.com", github_id)
+    github_username = user_info.get("login", "") or None
+    return await _find_or_create_oauth_user(
+        email, name, "github.com", github_id, github_username=github_username
+    )
 
 
 # ── Shared ──────────────────────────────────────────────────────────────────
 
 
 async def _find_or_create_oauth_user(
-    email: str, name: str, provider: str, provider_id: str
+    email: str, name: str, provider: str, provider_id: str, github_username: str | None = None
 ) -> dict:
     """Find existing user by email or create a new one for OAuth login.
 
@@ -293,6 +296,20 @@ async def _find_or_create_oauth_user(
             if raw_email.startswith("gAAAAA"):
                 raw_email = decrypt_field(raw_email)
                 raw_name = decrypt_field(raw_name)
+
+            # Sync GitHub identity on every GitHub sign-in so username changes
+            # propagate and the column is backfilled for existing accounts.
+            if github_username:
+                changed = False
+                if user_row.github_username != github_username:
+                    user_row.github_username = github_username
+                    user_row.updated_at = datetime.now(timezone.utc)
+                    changed = True
+                if provider_id and user_row.github_id != provider_id:
+                    user_row.github_id = provider_id
+                    changed = True
+                if changed:
+                    session.add(user_row)
         else:
             # Create new user
             uid = str(uuid.uuid4())
@@ -311,6 +328,8 @@ async def _find_or_create_oauth_user(
                 created_at=now,
                 updated_at=now,
                 last_login_at=now,
+                github_username=github_username if provider == "github.com" else None,
+                github_id=(provider_id if provider == "github.com" else None),
             )
             session.add(new_user)
             await session.flush()

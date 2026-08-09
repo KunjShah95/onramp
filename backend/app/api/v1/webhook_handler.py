@@ -11,6 +11,7 @@ import hmac
 import json
 import logging
 import os
+import re
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -36,6 +37,143 @@ def _get_webhook_secret() -> str:
     return os.environ.get("GITHUB_WEBHOOK_SECRET", "dev-secret")
 
 
+def _extract_issue_refs(payload: dict) -> set:
+    """Parse GitHub issue numbers referenced from a PR title/body.
+
+    Recognizes GitHub's closing keywords (``closes #12``, ``fixes #12`` …) plus
+    bare ``#123`` references. PRs inherit the number space of issues, so a PR
+    that fixes ``#41`` can be matched straight back to the Onramp task that
+    seeded issue ``#41`` in the same repository.
+    """
+    pr = payload.get("pull_request", {})
+    body = pr.get("body") or ""
+    title = pr.get("title") or ""
+    refs = set()
+    closing = re.findall(r"(?i)\b(?:clos(?:e|es|ed)|f(?:i)x(?:es)?ed?|resolve[sd]?)\s+#?(\d+)", body)
+    refs.update(int(n) for n in closing)
+    bare = re.findall(r"#(\d+)", body + " " + title)
+    refs.update(int(n) for n in bare)
+    return refs
+
+
+def _repo_url_from_payload(payload: dict) -> str:
+    repo = payload.get("repository", {})
+    return (repo.get("html_url") or repo.get("clone_url") or "").strip().rstrip("/").lower()
+
+
+def _pr_author_login(payload: dict) -> str:
+    pr = payload.get("pull_request", {}) or {}
+    return (pr.get("user") or {}).get("login", "") or (payload.get("sender") or {}).get("login", "")
+
+
+async def _find_tasks_by_author(repo_url: str, login: str) -> list:
+    """Return tasks assigned to the GitHub user ``login`` for ``repo_url``.
+
+    Looks up the developer by their stored ``github_username`` (persisted during
+    GitHub OAuth / account linking) and returns every task whose
+    ``source_issue.repo_url`` matches, regardless of state.
+    """
+    if not login:
+        return []
+    try:
+        from app.services.postgres_db import get_storage
+
+        storage = get_storage()
+        users = await storage.query_documents("users", [("github_username", "==", login)])
+    except Exception:
+        logger.exception("Failed to look up github identity for %s", login)
+        return []
+
+    tasks = []
+    seen = set()
+    for u in users:
+        uid = u.get("id") or u.get("uid")
+        if not uid:
+            continue
+        try:
+            owned = await storage.query_documents("onramp_tasks", [("assigned_to", "==", uid)])
+        except Exception:
+            logger.exception("Failed to query tasks assigned to %s", uid)
+            continue
+        for t in owned:
+            src = t.get("source_issue")
+            if not isinstance(src, dict):
+                continue
+            if (src.get("repo_url") or "").strip().rstrip("/").lower() == repo_url:
+                tid = t.get("task_id")
+                if tid and tid not in seen:
+                    seen.add(tid)
+                    tasks.append(t)
+    return tasks
+
+
+async def _find_matching_tasks(payload: dict) -> list[dict]:
+    """Associate a PR with the Onramp tasks it belongs to.
+
+    Tier 1 — source-issue match: the PR title/body references ``#N`` and a task
+    was seeded from that same issue in this repo (unambiguous).
+    Tier 2 — author match: the PR author's GitHub identity maps to a user with
+    exactly one candidate task in this repo (unambiguous).
+    """
+    repo_url = _repo_url_from_payload(payload)
+    if not repo_url:
+        return []
+
+    from app.services.task_service import find_tasks_by_source_issue
+
+    matched = []
+    seen = set()
+    for issue_num in _extract_issue_refs(payload):
+        for t in await find_tasks_by_source_issue(repo_url, issue_num):
+            tid = t.get("task_id")
+            if tid and tid not in seen:
+                seen.add(tid)
+                matched.append(t)
+    if matched:
+        return matched
+
+    author_tasks = await _find_tasks_by_author(repo_url, _pr_author_login(payload))
+    return author_tasks if len(author_tasks) == 1 else []
+
+
+async def _link_pr_to_tasks(payload: dict) -> dict:
+    """Auto-link an opened/synchronized PR to matching tasks.
+
+    Stores the PR URL (plus author + PR number) on every matching non-terminal
+    task, so the developer never needs to paste a PR link — the merge webhook
+    later resolves the task by ``pr_url``.
+    """
+    pr = payload.get("pull_request", {})
+    pr_url = pr.get("html_url", "")
+    pr_number = pr.get("number")
+    author = _pr_author_login(payload)
+
+    if not pr_url:
+        return {"linked": 0}
+
+    from app.services.task_service import update_task
+
+    tasks = await _find_matching_tasks(payload)
+    linked = 0
+    linked_ids = []
+    for t in tasks:
+        if t.get("state") in ("completed", "cancelled"):
+            continue
+        tid = t.get("task_id")
+        if not tid:
+            continue
+        updates = {"pr_url": pr_url, "github_pr_author": author}
+        if pr_number is not None:
+            updates["github_pr_number"] = pr_number
+        try:
+            await update_task(tid, updates)
+            linked += 1
+            linked_ids.append(tid)
+        except Exception:
+            logger.exception("Failed to auto-link PR %s to task %s", pr_url, tid)
+    return {"linked": linked, "task_ids": linked_ids}
+
+
 async def _handle_pr_merged(payload: dict) -> dict:
     """Handle a merged pull_request (action=closed + merged=true).
 
@@ -54,6 +192,15 @@ async def _handle_pr_merged(payload: dict) -> dict:
     from app.services.task_service import get_task_by_pr_url, complete_task
 
     task = await get_task_by_pr_url(pr_url)
+
+    # No pasted/auto-linked PR URL yet — fall back to issue/author matching so
+    # tasks from the first-PR flow can still auto-complete on merge.
+    if not task:
+        matches = await _find_matching_tasks(payload)
+        uncompleted = [t for t in matches if t.get("state") not in ("completed", "cancelled")]
+        if len(uncompleted) == 1:
+            task = uncompleted[0]
+
     if not task:
         return {
             "handled": True,
@@ -134,6 +281,10 @@ async def _handle_pr_event(payload: dict, event: str) -> dict:
         "head_branch": (pr.get("head") or {}).get("ref", ""),
     }
 
+    # Auto-link the PR to any Onramp task seeded from a matching issue, so the
+    # developer never needs to paste their PR URL (merge webhook uses it later).
+    link_result = await _link_pr_to_tasks(payload)
+
     # In production, this would trigger an async celery task for AI review
     logger.info(
         "PR %s #%d in %s (%s → %s) by %s",
@@ -147,6 +298,7 @@ async def _handle_pr_event(payload: dict, event: str) -> dict:
         "action": action,
         "pr_data": pr_data,
         "review_triggered": True,
+        "auto_linked_tasks": link_result.get("task_ids", []),
     }
 
 

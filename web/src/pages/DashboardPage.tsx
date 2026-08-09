@@ -106,6 +106,17 @@ export default function DashboardPage() {
     pending_reviews = [], recent_activity = [],
   } = dashboard ?? defaultDash
 
+  // Map user UUID → display name for "by <name>" attribution in review rails.
+  const memberNames = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const m of dashboard?.member_progress ?? []) {
+      if (m.user_id && m.name) map[m.user_id] = m.name
+    }
+    return map
+  }, [dashboard?.member_progress])
+  const memberName = (uid: string | null | undefined) =>
+    (uid && memberNames[uid]) || (uid ? uid.slice(0, 8) : '')
+
   const taskDistribution = useMemo(() => [
     { name: 'Completed', value: completed_tasks, color: SIG.go },
     { name: 'In Progress', value: in_progress_tasks, color: SIG.blue },
@@ -362,7 +373,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2 mt-1">
                             <StatusBadge state={pr.state} />
                             {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
-                            {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
+                            {pr.assigned_to && <span className="text-caption text-text-muted">by {memberName(pr.assigned_to)}</span>}
                           </div>
                         </div>
                       </motion.div>
@@ -400,7 +411,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <StatusBadge state={pr.state} />
                         {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
-                        {pr.assigned_to && <span className="text-caption text-text-muted">by {pr.assigned_to.slice(0, 8)}</span>}
+                        {pr.assigned_to && <span className="text-caption text-text-muted">by {memberName(pr.assigned_to)}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">

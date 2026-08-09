@@ -13,7 +13,7 @@ import {
 } from '@phosphor-icons/react'
 import { ReviewQueueSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
-import { listTeams, listTasks } from '../lib/api'
+import { listTeams, listTasks, getTeamMembers } from '../lib/api'
 import type { WorkflowTask, TeamsResponse } from '../lib/api'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
@@ -67,6 +67,7 @@ const TABS = [
 export default function ReviewQueuePage() {
   const [teamId, setTeamId] = useState('')
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
+  const [members, setMembers] = useState<{ user_id: string; name: string; role: string }[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -103,6 +104,17 @@ export default function ReviewQueuePage() {
   }
 
   useEffect(() => { fetchTasks() }, [teamId])
+
+  useEffect(() => {
+    if (!teamId) { setMembers([]); return }
+    getTeamMembers(teamId).then(setMembers).catch(() => setMembers([]))
+  }, [teamId])
+
+  const memberName = (uid: string | null | undefined) => {
+    if (!uid) return ''
+    const m = members.find((x) => x.user_id === uid)
+    return m?.name || uid
+  }
 
   const reviewItems = tasks.map((t) => ({ task: t, status: tabForState(t.state) }))
   const filtered = filter === 'all' ? reviewItems : reviewItems.filter((r) => r.status === filter)
@@ -279,7 +291,7 @@ export default function ReviewQueuePage() {
                       {task.assigned_to && (
                         <span className="inline-flex items-center gap-1">
                           <UserCircle size={11} weight="fill" />
-                          {task.assigned_to}
+                          {memberName(task.assigned_to)}
                         </span>
                       )}
                       {task.module && (

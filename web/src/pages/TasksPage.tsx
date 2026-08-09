@@ -93,6 +93,14 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select member�
   )
 }
 
+/** Resolve a user UUID to a human-readable name for display in task lists/modals. */
+function memberName(members: TeamMember[], uid: string | null | undefined): string {
+  if (!uid) return '—'
+  const member = members.find((m) => m.user_id === uid)
+  if (member?.name) return member.name
+  return uid
+}
+
 export default function TasksPage() {
   const toast = useToast()
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
@@ -880,7 +888,7 @@ export default function TasksPage() {
                             </div>
                             <div className="text-xs text-text-tertiary truncate flex items-center gap-1">
                               <UserCircle className="w-3 h-3" weight="fill" />
-                              {task.assigned_to || '—'}
+                              {memberName(members, task.assigned_to)}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
@@ -936,9 +944,9 @@ export default function TasksPage() {
                   {selectedTask.assigned_to && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Assigned To</div>
-                      <div className="text-text-primary flex items-center gap-1.5">
+                      <div className="text-text-primary flex items-center gap-1.5" title={selectedTask.assigned_to}>
                         <UserCircle className="w-3.5 h-3.5" weight="fill" />
-                        {selectedTask.assigned_to}
+                        {memberName(members, selectedTask.assigned_to)}
                       </div>
                     </div>
                   )}
@@ -969,12 +977,22 @@ export default function TasksPage() {
                       <div className="text-xs text-blue-400 font-mono">Blocked until {selectedTask.depends_on} completes</div>
                     </div>
                   )}
-                  {selectedTask.source_issue != null && (
+                  {selectedTask.source_issue && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <GithubLogo className="w-3 h-3" /> Source Issue
                       </div>
-                      <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
+                      {(typeof selectedTask.source_issue === 'object'
+                        ? <a
+                            href={(selectedTask.source_issue as { url?: string }).url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-go font-mono hover:underline inline-flex items-center gap-1"
+                          >
+                            <GithubLogo className="w-3 h-3" />#{selectedTask.source_issue.number}
+                          </a>
+                        : <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
+                      )}
                     </div>
                   )}
                   {selectedTask.quiz_required && selectedTask.module && (

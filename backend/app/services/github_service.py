@@ -695,30 +695,6 @@ class GitHubService:
             logger.exception("Failed to create PR %s/%s %s->%s", owner, repo, head, base)
             return None
 
-    async def get_pr_info(self, repo_url: str, pr_number: int) -> Optional[dict]:
-        """Get PR metadata — head ref, head SHA, base repo full_name."""
-        cleaned = repo_url.strip().rstrip("/")
-        if cleaned.endswith(".git"):
-            cleaned = cleaned[:-4]
-        parts = cleaned.split("/")
-        if len(parts) < 2:
-            return None
-        owner, repo = parts[-2], parts[-1]
-        try:
-            data = await self._gh_request("GET", f"/repos/{owner}/{repo}/pulls/{pr_number}")
-            return {
-                "owner": owner,
-                "repo": repo,
-                "head_ref": data["head"]["ref"],
-                "head_sha": data["head"]["sha"],
-                "base_ref": data["base"]["ref"],
-                "base_repo_full_name": data["base"]["repo"]["full_name"],
-                "title": data.get("title", ""),
-            }
-        except Exception:
-            logger.exception(f"Failed to fetch PR info for {repo_url}#{pr_number}")
-            return None
-
     async def apply_suggestions_bulk(
         self,
         repo_url: str,
