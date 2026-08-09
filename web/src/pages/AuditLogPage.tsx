@@ -17,6 +17,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { adminListAuditEvents, exportAuditEvents } from '../lib/api'
 import type { AdminAuditEvent } from '../lib/api'
+import { formatInIST, formatKeyDate } from '../lib/utils'
 
 const EVENT_TYPE_ICONS: Record<string, { icon: typeof ShieldCheck; color: string; bg: string }> = {
   auth: { icon: User, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -38,7 +39,7 @@ function relativeTime(iso: string): string {
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   if (d < 30) return `${d}d ago`
-  return new Date(iso).toLocaleDateString()
+  return formatKeyDate(iso)
 }
 
 const PAGE_SIZE = 25
@@ -301,7 +302,7 @@ export default function AuditLogPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right align-middle">
-                        <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={new Date(entry.timestamp).toLocaleString()}>
+                        <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
                           {relativeTime(entry.timestamp)}
                         </span>
                       </td>

@@ -39,6 +39,9 @@ interface AuthState {
 
 export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr'
 
+/** Roles allowed to create & manage team API keys (Settings + Developer Portal). */
+export const KEY_MANAGER_ROLES: TeamRole[] = ['ceo', 'cto', 'owner', 'senior', 'senior_dev', 'developer', 'tester']
+
 /** Role-appropriate landing page after login/register. */
 export function homeForRole(role: TeamRole | null | undefined): string {
   if (role === 'hr') return '/hr/people'

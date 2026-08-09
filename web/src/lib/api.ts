@@ -984,19 +984,44 @@ export interface ApiKey {
   created_at: string
   usage_count: number
   is_active: boolean
+  /** Optional per-key cost budget in credits — the key stops at this limit. */
+  credit_limit?: number | null
+  /** Cumulative credits charged to this key. */
+  credits_used?: number
+  /** When the key was last used (ISO) or null if never. */
+  last_used_at?: string | null
+  /** When the key auto-expires (ISO) or null if it never expires. */
+  expires_at?: string | null
 }
 
 export interface ApiKeysResponse {
   keys: ApiKey[]
 }
 
+export interface CreateApiKeyResult {
+  raw_key: string
+  key_id: string
+  name?: string
+  credit_limit?: number | null
+  expires_at?: string | null
+}
+
 export async function createApiKey(
   orgName: string,
-  tier = 'free'
-): Promise<{ raw_key: string; key_id: string }> {
-  return request<{ raw_key: string; key_id: string }>(
+  tier = 'free',
+  name?: string,
+  creditLimit?: number,
+  expiresInDays?: number
+): Promise<CreateApiKeyResult> {
+  return request<CreateApiKeyResult>(
     `${API_BASE}/ai/keys`,
-    { org_name: orgName, tier }
+    {
+      org_name: orgName,
+      tier,
+      name: name || undefined,
+      credit_limit: creditLimit,
+      expires_in_days: expiresInDays,
+    }
   )
 }
 
@@ -1039,10 +1064,46 @@ export async function getUsage(
   return get<UsageRecord>(`${API_BASE}/ai/usage/${orgName}`)
 }
 
+export interface UsageSummary {
+  org_name: string
+  total_requests: number
+  total_credits: number
+  endpoint_breakdown: Record<string, number>
+}
+
 export async function getUsageSummary(
   orgName: string
-): Promise<{ summary: any }> {
-  return get<{ summary: any }>(`${API_BASE}/ai/usage/${orgName}/summary`)
+): Promise<UsageSummary> {
+  return get<UsageSummary>(`${API_BASE}/ai/usage/${orgName}/summary`)
+}
+
+export interface ProviderCost {
+  requests: number
+  cost_usd: number
+  cost_avoided_usd: number
+}
+
+export interface ProviderUsage {
+  org_name: string
+  period: string
+  total_requests: number
+  tracked_requests: number
+  free_requests: number
+  paid_requests: number
+  free_pct: number
+  total_cost_usd: number
+  total_cost_avoided_usd: number
+  providers: Record<string, number>
+  models: Record<string, number>
+  provider_costs: Record<string, ProviderCost>
+}
+
+export async function getProviderUsage(
+  orgName: string,
+  period?: string
+): Promise<ProviderUsage> {
+  const qs = period ? `?period=${period}` : ''
+  return get<ProviderUsage>(`${API_BASE}/ai/usage/${orgName}/providers${qs}`)
 }
 
 export async function getQuota(

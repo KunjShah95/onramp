@@ -1,37 +1,29 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
-import { EnvelopeSimple, Lock, ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
-
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
-}
+import InputField from '../components/ui/first-principles/InputField'
+import { cn } from '../lib/utils'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [stage, setStage] = useState<'email' | 'password'>('email')
 
   const { login, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const emailRef = useRef<HTMLInputElement>(null)
 
-  // Explicit deep-link target (set by ProtectedRoute), or a role-appropriate home
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname
 
-  // Only auto-redirect if already authenticated AND role is synced (not loading)
   useEffect(() => {
     if (user && !loading) navigate(from || homeForRole(role), { replace: true })
   }, [user, loading, navigate, from, role])
@@ -40,160 +32,189 @@ export default function Login() {
     return () => clearError()
   }, [clearError])
 
+  useEffect(() => {
+    emailRef.current?.focus()
+  }, [stage])
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email) return
+    setStage('password')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (isSubmitting || !password) return
     setIsSubmitting(true)
     try {
       await login(email, password, rememberMe)
       toast.success('Signed in', 'Welcome back!')
-      // Redirect happens via the effect above once the role has synced.
     } catch {
-      // Error displayed inline via AuthContext
+      // inline error
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const goBack = () => {
+    setStage('email')
+    clearError()
+  }
+
   return (
     <PageTransition>
-      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-        />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
-
-        <motion.main
-          variants={stagger}
-          initial="hidden"
-          animate="visible"
-          className="w-full max-w-[400px] z-10"
+      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative">
+        {/* Split card — left brand, right form */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 rounded-card border border-seam bg-panel overflow-hidden shadow-seam"
         >
-          {/* Brand Header */}
-          <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-card bg-accent-from shadow-lit flex items-center justify-center mb-4">
-              <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
+          {/* LEFT — brand panel */}
+          <aside className="hidden lg:flex flex-col justify-between p-10 bg-base border-r border-seam relative">
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 rounded-[3px] bg-accent-from shadow-lit flex items-center justify-center">
+                <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
+              </div>
+              <span className="font-display text-sm font-bold text-ink tracking-tight">Onramp</span>
+            </Link>
+
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
+                <span className="designator opacity-50">FLIGHT · CONSOLE</span>
+              </div>
+              <h1 className="font-display text-4xl xl:text-5xl text-ink tracking-tight leading-[1.05] font-bold">
+                Skip the docs.
+                <br />
+                <span className="text-go">Read the code.</span>
+              </h1>
+              <p className="text-ink-secondary text-[14px] leading-relaxed max-w-sm">
+                Your team indexes a repo in two minutes and answers ramp-up questions grounded in the actual code — file, line, commit.
+              </p>
             </div>
-            <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-              Onramp
-            </h1>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Log in to your workspace</p>
-          </motion.div>
 
-          {error && (
-            <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25" role="alert" aria-atomic="true">
-              {error}
-            </motion.div>
-          )}
+            <div className="flex items-center gap-4 text-caption text-ink-tertiary">
+              <span className="font-code">v2.4</span>
+              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+              <span>SOC 2</span>
+              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+              <span>SAML</span>
+            </div>
+          </aside>
 
-          {/* Auth Card */}
-          <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
-            {/* Top decorative line */}
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
+          {/* RIGHT — form panel */}
+          <main className="p-7 sm:p-10 flex flex-col justify-center min-h-[520px]">
+            {/* Mobile-only brand */}
+            <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-6">
+              <div className="w-9 h-9 rounded-[3px] bg-accent-from shadow-lit flex items-center justify-center">
+                <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
+              </div>
+              <span className="font-display text-sm font-bold text-ink tracking-tight">Onramp</span>
+            </Link>
 
-            {/* Social Login Buttons */}
-            <div className="space-y-3 mb-5">
+            <div className="mb-6">
+              <span className="designator opacity-50">{stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}</span>
+              <h2 className="font-display text-2xl md:text-3xl text-ink font-bold tracking-tight mt-2">
+                {stage === 'email' ? 'Sign in' : 'Enter your password'}
+              </h2>
+              <p className="text-ink-secondary text-[13.5px] mt-1.5">
+                {stage === 'email' ? "We'll check your email, then ask for your password." :
+                  <>Signing in as <span className="font-code text-ink">{email}</span> · <button type="button" onClick={goBack} className="text-go hover:underline">change</button></>}
+              </p>
+            </div>
+
+            {error && (
+              <div className="bg-error/10 text-error rounded-[3px] px-4 py-2.5 mb-4 text-[13px] border border-error/25" role="alert" aria-atomic="true">
+                {error}
+              </div>
+            )}
+
+            {/* OAuth — equal weight, monogrammed */}
+            <div className="grid grid-cols-2 gap-2.5 mb-5">
               <a
                 href={getGoogleLoginUrl()}
                 aria-label="Continue with Google"
-                className="w-full flex items-center justify-center gap-2.5 bg-bg-secondary border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
+                className="group flex items-center justify-center gap-2 bg-panel-raised border border-seam rounded-[3px] py-2.5 text-[13.5px] font-medium text-ink hover:border-go/40 active:scale-[0.98] transition-all"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
+                <span className="w-5 h-5 rounded-[2px] bg-base border border-seam flex items-center justify-center font-code font-bold text-[11px] text-ink-secondary group-hover:text-go">G</span>
                 Continue with Google
               </a>
-
               <a
                 href={getGithubLoginUrl()}
                 aria-label="Continue with GitHub"
-                className="w-full flex items-center justify-center gap-2.5 bg-[#24292F] border border-[#1B1F23] rounded-xl py-2.5 text-sm text-white font-medium hover:bg-[#1B1F23] active:scale-[0.98] transition-all font-body"
+                className="group flex items-center justify-center gap-2 bg-[hsl(var(--foreground))] border border-[hsl(var(--foreground))] rounded-[3px] py-2.5 text-[13.5px] font-medium text-[hsl(var(--background))] hover:opacity-90 active:scale-[0.98] transition-all"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-                </svg>
+                <span className="w-5 h-5 rounded-[2px] bg-[hsl(var(--background))] flex items-center justify-center font-code font-bold text-[11px] text-[hsl(var(--foreground))]">GH</span>
                 Continue with GitHub
               </a>
             </div>
 
             {/* Divider */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-[hsl(var(--border))]" />
-              <span className="text-xs text-[hsl(var(--muted-foreground))] font-body">or sign in with email</span>
-              <div className="flex-1 h-px bg-[hsl(var(--border))]" />
+              <div className="flex-1 h-px bg-seam" />
+              <span className="text-[11px] text-ink-tertiary uppercase tracking-[0.1em] font-semibold">or email</span>
+              <div className="flex-1 h-px bg-seam" />
             </div>
 
-            {/* Email/Password Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Email Address</label>
-                <div className="relative">
-                  <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="developer@company.com"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); clearError() }}
-                    required
-                    autoComplete="email"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Password</label>
-                  <Link to="/forgot-password" className="text-xs text-[hsl(var(--accent))] hover:opacity-80 transition-colors font-body">Forgot?</Link>
-                </div>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
-                  <input
-                    id="password"
+            <form onSubmit={stage === 'email' ? handleEmailSubmit : handleSubmit} className="space-y-4">
+              {stage === 'email' ? (
+                <InputField
+                  ref={emailRef}
+                  label="Email"
+                  type="email"
+                  placeholder="developer@company.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); clearError() }}
+                  required
+                  autoComplete="email"
+                />
+              ) : (
+                <>
+                  <InputField
+                    label="Password"
                     type="password"
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); clearError() }}
                     required
                     autoComplete="current-password"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    autoFocus
                   />
-                </div>
-              </div>
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded-[2px] border-seam text-go focus:ring-go/30 bg-base"
+                    />
+                    <span className="text-[12px] text-ink-secondary group-hover:text-ink transition-colors">Remember me</span>
+                  </label>
+                </>
+              )}
 
-              {/* Remember me */}
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-[hsl(var(--border))] text-[hsl(var(--accent))] focus:ring-[hsl(var(--accent))]/30 bg-[hsl(var(--secondary))]"
-                />
-                <span className="text-xs text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors">Remember me</span>
-              </label>
-
-              <button type="submit" disabled={isSubmitting || !email || !password} className="w-full bg-accent-from hover:bg-accent-to text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" aria-label={isSubmitting ? 'Signing in' : 'Sign In'}>
-                {isSubmitting ? 'Signing in...' : 'Sign In'}
+              <button
+                type="submit"
+                disabled={isSubmitting || (stage === 'email' ? !email : !password)}
+                className={cn(
+                  'w-full bg-go hover:bg-go-lit text-[hsl(var(--primary-foreground))] font-semibold text-[14px] py-3 rounded-[3px] flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                )}
+                aria-label={isSubmitting ? 'Signing in' : stage === 'email' ? 'Continue' : 'Sign In'}
+              >
+                {isSubmitting ? 'Signing in...' : stage === 'email' ? 'Continue' : 'Sign In'}
                 <ArrowRight size={16} weight="bold" />
               </button>
             </form>
-          </motion.div>
 
-          {/* Footer */}
-          <motion.div variants={fadeUp} className="mt-6 text-center">
-            <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-[hsl(var(--accent))] font-medium hover:opacity-80 transition-colors font-body">
-                Register
+            <div className="mt-6 pt-5 border-t border-seam flex items-center justify-between text-[12px] text-ink-tertiary">
+              <span>New here?</span>
+              <Link to="/register" className="text-go font-medium hover:underline inline-flex items-center gap-1">
+                Create an account <ArrowUpRight size={12} weight="bold" />
               </Link>
-            </p>
-          </motion.div>
-        </motion.main>
+            </div>
+          </main>
+        </motion.div>
       </div>
     </PageTransition>
   )

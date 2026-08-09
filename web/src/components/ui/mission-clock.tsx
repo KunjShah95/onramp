@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { cn } from '../../lib/utils'
+import { cn, getISTClockParts } from '../../lib/utils'
 
 interface MissionClockProps {
   /** Current console call-sign, e.g. "FLIGHT · CTO". */
@@ -10,9 +10,10 @@ interface MissionClockProps {
 function pad(n: number) { return String(n).padStart(2, '0') }
 
 /**
- * Mission Clock. A live instrument readout in the top bar — UTC wall time plus
- * a T+ session-elapsed counter — set in JetBrains Mono, tabular. Replaces the
- * decorative shortcut hint as the bar's primary telemetry.
+ * Mission Clock. A live instrument readout in the top bar — India Standard Time
+ * (UTC+5:30) wall time plus a T+ session-elapsed counter — set in JetBrains
+ * Mono, tabular. Replaces the decorative shortcut hint as the bar's primary
+ * telemetry.
  */
 export default function MissionClock({ callsign, className }: MissionClockProps) {
   const start = useRef(Date.now())
@@ -23,7 +24,8 @@ export default function MissionClock({ callsign, className }: MissionClockProps)
     return () => clearInterval(id)
   }, [])
 
-  const utc = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`
+  const { hours, minutes, seconds } = getISTClockParts(now)
+  const ist = `${hours}:${minutes}:${seconds}`
   const elapsed = Math.floor((now.getTime() - start.current) / 1000)
   const h = Math.floor(elapsed / 3600)
   const m = Math.floor((elapsed % 3600) / 60)
@@ -36,8 +38,8 @@ export default function MissionClock({ callsign, className }: MissionClockProps)
       {callsign && (
         <span className="callsign text-ink-muted hidden md:inline truncate">{callsign}</span>
       )}
-      <span className="readout text-ink-secondary tabular-nums" aria-label="Mission time (UTC)">
-        {utc}<span className="text-ink-muted ml-1">UTC</span>
+      <span className="readout text-ink-secondary tabular-nums" aria-label="Mission time (IST)">
+        {ist}<span className="text-ink-muted ml-1">IST</span>
       </span>
       <span className="designator hidden sm:inline" aria-label="Session elapsed">
         T+{tplus}

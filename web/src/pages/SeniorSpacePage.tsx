@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   ShieldCheck, Eye, Heartbeat, Users, ListChecks,
-  CheckCircle,
+  CheckCircle, Key,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard } from '../lib/api'
+import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -318,6 +319,22 @@ export default function SeniorSpacePage() {
                 </CardSpotlight>
               </motion.div>
             </div>
+
+            {/* API Cost Tracking */}
+            <motion.div variants={itemVariants}>
+              <CardSpotlight className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-go/10 border border-go/20 flex items-center justify-center">
+                      <Key className="w-4 h-4 text-go" weight="fill" />
+                    </div>
+                    <h2 className="font-display text-body-sm font-bold text-text-primary">API Cost Tracking</h2>
+                  </div>
+                  <span className="text-caption text-text-tertiary font-code">per key · budget</span>
+                </div>
+                <ApiCostTracking />
+              </CardSpotlight>
+            </motion.div>
           </>
         )}
       </motion.div>

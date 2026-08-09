@@ -18,6 +18,7 @@ import StatusTile from '../components/ui/status-tile'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
+import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 
 const SIG = {
   go: '#17A34A',
@@ -246,6 +247,16 @@ export default function ExecutivePage() {
               </ConsolePanel>
             </motion.div>
           </div>
+
+          {/* Credential cost tracking — live API key budgets for the C-suite */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Credential Cost · Tracking" designator="COST TELEMETRY" status="go">
+              <p className="text-caption text-text-muted mb-4 font-code">
+                API key spend vs. budget — live from the gateway.
+              </p>
+              <ApiCostTracking />
+            </ConsolePanel>
+          </motion.div>
         </>
       )}
     </motion.div>

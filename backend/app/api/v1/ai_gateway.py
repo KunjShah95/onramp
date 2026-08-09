@@ -34,6 +34,13 @@ async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = Fal
 class CreateKeyRequest(BaseModel):
     org_name: str
     tier: str = "free"
+    # Human-friendly label for the key (defaults to the org name server-side).
+    name: Optional[str] = None
+    # Optional per-key cost budget in credits — the key stops working once its
+    # cumulative usage reaches this limit.
+    credit_limit: Optional[int] = None
+    # Optional key lifetime: days until the key auto-expires (blank = never).
+    expires_in_days: Optional[int] = None
     # NOTE: created_by is intentionally NOT accepted from the client. The
     # creating user is taken from the authenticated session (server-side) to
     # prevent attribution spoofing / IDOR.
@@ -48,6 +55,9 @@ class CreateKeyResponse(BaseModel):
     key_id: str
     org_name: str
     tier: str
+    name: Optional[str] = None
+    credit_limit: Optional[int] = None
+    expires_at: Optional[str] = None
 
 
 class UsageResponse(BaseModel):
@@ -66,10 +76,17 @@ async def create_api_key(
     # Attribution is taken from the authenticated session, never the client body.
     # Caller must belong to the org (or becomes its owner if the org is new).
     await _ensure_org_access(request.org_name, user, allow_create=True)
+    if request.credit_limit is not None and request.credit_limit < 0:
+        raise HTTPException(status_code=400, detail="credit_limit cannot be negative")
+    if request.expires_in_days is not None and request.expires_in_days < 1:
+        raise HTTPException(status_code=400, detail="expires_in_days must be a positive number of days")
     result = await key_service.create_key(
         org_name=request.org_name,
         tier=request.tier,
         created_by=user["uid"],
+        name=request.name,
+        credit_limit=request.credit_limit,
+        expires_in_days=request.expires_in_days,
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -78,6 +95,9 @@ async def create_api_key(
         key_id=result["key_id"],
         org_name=result["org_name"],
         tier=result["tier"],
+        name=result.get("name"),
+        credit_limit=result.get("credit_limit"),
+        expires_at=result.get("expires_at"),
     )
 
 
@@ -393,6 +413,23 @@ async def execute_agent(
         # usage_based tier — check wallet later
         pass
 
+    # Per-key cost budget: reject the call when charging this action's credits
+    # would push the key past its configured credit_limit. The counter is
+    # checked against the value captured at request start and charged after
+    # execution — best-effort enforcement, not a hard concurrency guarantee
+    # (two parallel calls near the limit can both pass this gate).
+    if auth.get("auth_method") == "api_key":
+        key_credit_limit = auth.get("credit_limit")
+        key_credits_used = int(auth.get("credits_used", 0) or 0)
+        if APIKeyService.cost_limit_reached(key_credit_limit, key_credits_used, cost):
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    f"API key cost limit reached ({key_credits_used}/{key_credit_limit} "
+                    f"credits). Raise the key's cost limit in Settings to continue."
+                ),
+            )
+
     # Get GitHub token for agents that might need it
     github_token = None
     if "repo_url" in body:
@@ -409,7 +446,7 @@ async def execute_agent(
         kwargs = {k: v for k, v in body.items() if k not in ("github_token",)}
         result = await agent.execute(**kwargs)
 
-        # Track usage (with provider attribution from the router, if any)
+        # Track usage (with provider attribution from the router, if any).
         try:
             uid = auth.get("uid", "unknown")
             org = auth.get("org_name", uid)
@@ -421,6 +458,15 @@ async def execute_agent(
             )
         except Exception:
             pass  # usage tracking is non-critical
+
+        # Charge the per-key cost budget when the call was made with an API key
+        # (JWT sessions are covered by the org-level quota). Kept in its own
+        # guard so a telemetry failure can never skip the budget accounting.
+        if auth.get("auth_method") == "api_key" and auth.get("key_id"):
+            try:
+                await key_service.increment_credits_used(auth["key_id"], cost)
+            except Exception:
+                pass  # best-effort counter; enforcement re-checks on next call
 
         return {
             "agent": agent_name,

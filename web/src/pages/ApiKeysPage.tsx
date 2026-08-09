@@ -19,7 +19,7 @@ import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { listApiKeys, createApiKey, revokeApiKey } from '../lib/api'
 import type { ApiKey } from '../lib/api'
-import { cn } from '../lib/utils'
+import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,9 +38,15 @@ export default function ApiKeysPage() {
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [newTier, setNewTier] = useState('free')
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
+  const [newKeyExpiry, setNewKeyExpiry] = useState('')
   const [creating, setCreating] = useState(false)
   const [revealedRaw, setRevealedRaw] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Earliest selectable expiry date (today) — past dates mean "no expiry".
+  const today = new Date().toISOString().split('T')[0]
 
   const toast = useToast()
   const { activeTeamId } = useAuth()
@@ -65,8 +71,10 @@ export default function ApiKeysPage() {
 
   const handleCreate = async () => {
     setCreating(true)
+    const raw = Number(newKeyCostLimit.trim() || '')
+    const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
     try {
-      const res = await createApiKey(orgName, newTier)
+      const res = await createApiKey(orgName, newTier, newKeyName.trim() || undefined, costLimit, daysUntilExpiry(newKeyExpiry))
       setRevealedRaw(res.raw_key)
       await fetchKeys()
       toast.success('API key created', 'Copy it now — it will not be shown again.')
@@ -176,12 +184,18 @@ export default function ApiKeysPage() {
                       <span className="px-2 py-0.5 rounded-tile text-[10px] font-medium bg-well text-ink-muted">revoked</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-caption text-ink-muted">
+                  <div className="flex items-center gap-3 text-caption text-ink-muted flex-wrap">
                     <span className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
-                      Created {new Date(apiKey.created_at).toLocaleDateString()}
+                      Created {formatKeyDate(apiKey.created_at)}
                     </span>
-                    <span>{apiKey.usage_count} calls</span>
+                    <span>{apiKey.usage_count} credits used</span>
+                    {apiKey.last_used_at && (
+                      <span>· last used {formatKeyDate(apiKey.last_used_at)}</span>
+                    )}
+                    {apiKey.expires_at && (
+                      <span>· expires {formatKeyDate(apiKey.expires_at)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -253,6 +267,15 @@ export default function ApiKeysPage() {
                 ) : (
                   <div className="space-y-5">
                     <div>
+                      <label className="block overline text-ink-muted mb-2">Key Name</label>
+                      <input
+                        value={newKeyName}
+                        onChange={(e) => setNewKeyName(e.target.value)}
+                        placeholder="e.g., CI pipeline, staging, prod"
+                        className="input"
+                      />
+                    </div>
+                    <div>
                       <label className="block overline text-ink-muted mb-2">
                         Tier
                       </label>
@@ -272,6 +295,26 @@ export default function ApiKeysPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                    <div>
+                      <label className="block overline text-ink-muted mb-2">Cost Limit <span className="text-ink-muted/60 normal-case">(credits / month, optional)</span></label>
+                      <input
+                        value={newKeyCostLimit}
+                        onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
+                        type="number" min={0}
+                        placeholder="e.g., 5000 — blank for no limit"
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block overline text-ink-muted mb-2">Expires On <span className="text-ink-muted/60 normal-case">(optional)</span></label>
+                      <input
+                        value={newKeyExpiry}
+                        onChange={(e) => setNewKeyExpiry(e.target.value)}
+                        type="date" min={today}
+                        className="input"
+                      />
+                      <p className="text-caption text-ink-muted mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.02 }}

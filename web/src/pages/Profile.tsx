@@ -5,25 +5,21 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { fetchRepos } from '../lib/api'
 import ConsolePanel from '../components/ui/console-panel'
-import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
-import {
-  Envelope, IdentificationBadge, Clock, Code,
-} from '@phosphor-icons/react'
+import { ArrowRight, ArrowUpRight, GithubLogo, SignOut } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const toast = useToast()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [repoCount, setRepoCount] = useState<number | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -33,7 +29,6 @@ export default function Profile() {
         if (active) setRepoCount(repos.length)
       } catch {
         if (active) setRepoCount(null)
-        if (active) toast.error('Failed to load repositories')
       } finally {
         if (active) setLoading(false)
       }
@@ -51,82 +46,95 @@ export default function Profile() {
     ? new Date(user.metadata.creationTime).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
     : '—'
 
-  const readouts: Readout[] = [
-    { label: 'Repositories', value: repoCount ?? '—', color: 'text-info' },
-    { label: 'Member Since', value: memberSince, color: 'text-ink-secondary' },
-  ]
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await logout()
+      toast.success('Signed out', 'See you on the next flight.')
+      navigate('/login', { replace: true })
+    } catch {
+      toast.error('Sign-out failed', 'Try again.')
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
+  const connectGithub = () => {
+    window.location.href = '/repos/connect'
+  }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)]">
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-        {/* Header */}
-        <motion.div variants={item}>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Profile</span>
-            <span className="designator opacity-50">CREW IDENT · ACCOUNT</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Crew Profile</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">Account details and connected services</p>
-        </motion.div>
-
-        {/* Identity Card */}
-        <motion.div variants={item}>
-          <ConsolePanel rail="Identity" designator="IDENT" status="go">
-            <div className="flex items-center gap-5">
+    <div className="min-h-[calc(100vh-4rem)]">
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+        <motion.div initial="hidden" animate="show" variants={fadeUp} className="space-y-5">
+          {/* Identity card — one surface, one rail */}
+          <ConsolePanel rail="Identity" designator="ID CARD" status="go">
+            <div className="flex items-start gap-5">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt={displayName}
-                  className="w-16 h-16 rounded-tile object-cover shrink-0 ring-2 ring-go/15" />
+                  className="w-16 h-16 rounded-[3px] object-cover shrink-0 border border-seam" />
               ) : (
-                <div className="w-16 h-16 rounded-tile bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
+                <div className="w-16 h-16 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
                   <span className="font-display text-display-sm font-bold text-go">{initial}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="font-heading text-body font-semibold text-ink truncate">{displayName}</h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Envelope size={12} className="text-ink-disabled" />
-                  <p className="text-body-xs text-ink-muted truncate">{email}</p>
-                </div>
+                <h2 className="font-display text-2xl font-bold text-ink tracking-tight truncate">{displayName}</h2>
                 {position && (
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <IdentificationBadge size={12} className="text-ink-disabled" />
-                    <p className="text-body-xs text-ink-secondary">{position}</p>
-                  </div>
+                  <p className="text-body-sm text-ink-secondary mt-0.5">{position}</p>
                 )}
-                <div className="flex items-center gap-1.5 mt-1 text-caption text-ink-muted">
-                  <Clock size={11} />
-                  <span>Member since {memberSince}</span>
-                </div>
+                <p className="text-caption text-ink-tertiary font-mono mt-1 truncate">{email}</p>
               </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-abort/40 hover:text-abort transition-colors disabled:opacity-50"
+                aria-label="Sign out"
+              >
+                <SignOut size={13} weight="bold" />
+                {signingOut ? 'Signing out...' : 'Sign out'}
+              </button>
             </div>
           </ConsolePanel>
-        </motion.div>
 
-        {/* Stats */}
-        <motion.div variants={item}>
-          <ReadoutBank callsign="TELEMETRY" items={readouts} columns={4} />
-        </motion.div>
-
-        {/* Provider Info */}
-        {user?.providerData?.[0] && (
-          <motion.div variants={item}>
-            <ConsolePanel rail="Authentication" designator="AUTH SOURCE" status="go">
-              <div className="flex items-center gap-3 p-3 rounded-tile bg-well border border-seam">
-                <span className="w-2 h-2 rounded-pill bg-go-lit motion-safe:animate-pulse-glow" />
-                <div className="flex items-center gap-2 text-body-xs text-ink font-code">
-                  <IdentificationBadge size={14} className="text-ink-muted" />
-                  {user.providerData[0].providerId.replace('.com', '')}
-                </div>
-                <span className="tile tile-go ml-auto">Connected</span>
+          {/* Two readouts — repos, member since */}
+          <div className="grid grid-cols-2 gap-3">
+            <ConsolePanel rail="Repositories" designator="REPOS">
+              <div className="font-mono tabular-nums text-3xl md:text-4xl font-semibold text-ink leading-none">
+                {repoCount ?? '—'}
               </div>
-              <div className="flex items-center gap-1.5 mt-3 text-caption text-ink-muted">
-                <Code size={12} />
-                <span>Sign-in is managed by your identity provider.</span>
+              <button
+                onClick={connectGithub}
+                className="mt-3 inline-flex items-center gap-1.5 text-caption text-go hover:underline"
+              >
+                <GithubLogo size={12} weight="fill" />
+                Connect another
+                <ArrowUpRight size={11} weight="bold" />
+              </button>
+            </ConsolePanel>
+
+            <ConsolePanel rail="Member Since" designator="ON STATION">
+              <div className="font-mono text-2xl md:text-3xl font-semibold text-ink leading-none">
+                {memberSince}
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-caption text-ink-tertiary">
+                <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
+                Flight status nominal
               </div>
             </ConsolePanel>
-          </motion.div>
-        )}
+          </div>
+
+          {/* Footer rail */}
+          <div className="flex items-center justify-between pt-2 text-caption text-ink-tertiary">
+            <a href="/docs" className="inline-flex items-center gap-1 hover:text-ink transition-colors">
+              Need help with your account?
+              <ArrowRight size={11} weight="bold" />
+            </a>
+            <span className="font-mono">v2.4</span>
+          </div>
+        </motion.div>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, type ApiKey, type RateLimitInfo, type AgentInfo } from '../lib/api'
+import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
 import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
@@ -38,6 +39,19 @@ export default function DeveloperPortal() {
   const [usage, setUsage] = useState<any>(null)
   const [tierInfo, setTierInfo] = useState<RateLimitInfo | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyTier, setNewKeyTier] = useState('pro')
+  const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
+  const [newKeyExpiry, setNewKeyExpiry] = useState('')
+  const [creatingKey, setCreatingKey] = useState(false)
+
+  // Earliest selectable expiry date (today) — past dates mean "no expiry".
+  const today = new Date().toISOString().split('T')[0]
+
+  // Engineering + executive seats may issue credentials; other roles see the
+  // roster read-only (matches the Settings API Keys panel).
+  const canManageKeys = !!role && KEY_MANAGER_ROLES.includes(role)
 
   useEffect(() => {
     if (!activeTeamId) return
@@ -79,15 +93,21 @@ export default function DeveloperPortal() {
 
   async function handleCreateKey() {
     if (!activeTeamId) return
-    setLoading(true)
+    setCreatingKey(true); setKeyError('')
+    // 0/empty = no limit (matches backend semantics where a 0 budget is free).
+    const raw = Number(newKeyCostLimit.trim() || '')
+    const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
+    const expiresInDays = daysUntilExpiry(newKeyExpiry)
     try {
-      const data = await createApiKey(activeTeamId, 'pro')
+      const data = await createApiKey(activeTeamId, newKeyTier, newKeyName.trim() || undefined, costLimit, expiresInDays)
       setNewKey(data.raw_key)
+      setShowCreateForm(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyExpiry('')
       await fetchKeys()
+      toast.success('Created', 'API key created — copy it now')
     } catch (err: any) {
       setKeyError(err.message || 'Failed to create API key')
     }
-    setLoading(false)
+    setCreatingKey(false)
   }
 
   async function handleRevokeKey(keyId: string) {
@@ -136,15 +156,90 @@ export default function DeveloperPortal() {
                   </div>
                 </div>
                 <button
-                  onClick={handleCreateKey}
-                  disabled={loading || role !== 'owner'}
-                  className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5"
-                  title={role !== 'owner' ? 'Only team owners can create API keys' : ''}
+                  onClick={() => { setNewKey(null); setShowCreateForm(!showCreateForm) }}
+                  disabled={!canManageKeys}
+                  className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40"
+                  title={canManageKeys ? (showCreateForm ? 'Cancel' : 'Create a new API key') : 'Key creation is restricted to engineering & executive seats'}
                 >
                   <Key size={14} />
-                  New Key
+                  {showCreateForm ? 'Cancel' : 'New Key'}
                 </button>
               </div>
+
+              {showCreateForm && canManageKeys && (
+                <div className="mb-5 p-5 rounded-xl bg-bg-secondary border border-border space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-4 h-4 text-go" weight="fill" />
+                    <span className="font-mono text-[11px] text-go uppercase tracking-wider">New Credential</span>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Key Name</label>
+                    <input
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      placeholder="e.g., CI pipeline, staging, prod"
+                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Tier</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['free', 'pro', 'team', 'enterprise'].map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setNewKeyTier(t)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+                            newKeyTier === t
+                              ? 'bg-go/15 text-go border border-go/30'
+                              : 'bg-bg-tertiary/50 text-text-tertiary border border-border hover:border-border-hover'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
+                      Cost Limit <span className="text-text-tertiary/30 normal-case">(credits / month)</span>
+                    </label>
+                    <input
+                      value={newKeyCostLimit}
+                      onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
+                      type="number"
+                      min={0}
+                      placeholder="e.g., 5000 — leave blank for no limit"
+                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                    />
+                    <p className="text-[10px] text-text-tertiary mt-1.5">The key stops working once its usage reaches this budget.</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
+                      Expires On <span className="text-text-tertiary/30 normal-case">(optional)</span>
+                    </label>
+                    <input
+                      value={newKeyExpiry}
+                      onChange={(e) => setNewKeyExpiry(e.target.value)}
+                      type="date" min={today}
+                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                    />
+                    <p className="text-[10px] text-text-tertiary mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
+                  </div>
+                  <div className="flex justify-end gap-3 pt-1">
+                    <button onClick={() => setShowCreateForm(false)} className="px-3 py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-primary transition-colors">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateKey}
+                      disabled={creatingKey}
+                      className="btn btn-primary text-caption px-4 py-1.5 flex items-center gap-1.5"
+                    >
+                      {creatingKey && <Spinner className="w-3.5 h-3.5 animate-spin" />}
+                      {creatingKey ? 'Creating…' : 'Create Key'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {keyError && (
                 <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{keyError}</div>
@@ -175,28 +270,52 @@ export default function DeveloperPortal() {
                 </div>
               ) : keys.length ? (
                 <div className="space-y-3">
-                  {keys.map((key) => (
-                    <div key={key.key_id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-bg-secondary border border-border">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Key className="w-4 h-4 text-text-tertiary shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-medium text-text-primary truncate">{key.name || 'Unnamed Key'}</p>
-                          <p className="font-mono text-[10px] text-text-tertiary truncate">
-                            {key.key_id} • {key.tier} • {key.is_active ? 'Active' : 'Revoked'}
-                          </p>
+                  {keys.map((key) => {
+                    const limit = key.credit_limit ?? 0
+                    const used = key.credits_used ?? key.usage_count ?? 0
+                    const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
+                    const exhausted = limit > 0 && used >= limit
+                    return (
+                      <div key={key.key_id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-bg-secondary border border-border">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <Key className="w-4 h-4 text-text-tertiary shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-text-primary truncate">{key.name || 'Unnamed Key'}</p>
+                            <p className="font-mono text-[10px] text-text-tertiary truncate">
+                              {key.key_id} • {key.tier} • {key.is_active ? 'Active' : 'Revoked'}
+                            </p>
+                            <p className="font-mono text-[10px] text-text-tertiary/60 mt-0.5">
+                              Created {formatKeyDate(key.created_at)}
+                              {key.last_used_at && <> · last used {formatKeyDate(key.last_used_at)}</>}
+                              {key.expires_at && <> · expires {formatKeyDate(key.expires_at)}</>}
+                            </p>
+                            {key.credit_limit != null && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <div className="h-1.5 w-24 rounded-full bg-bg-tertiary/50 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${exhausted ? 'bg-red-500' : 'bg-go'}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className={`font-mono text-[10px] ${exhausted ? 'text-red-400' : 'text-text-tertiary'}`}>
+                                  {used}/{key.credit_limit} credits{exhausted ? ' • limit reached' : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleRevokeKey(key.key_id)}
+                            disabled={!key.is_active || loading || !canManageKeys}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-error hover:bg-error/10 transition-all disabled:opacity-30"
+                          >
+                            <Trash size={14} />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleRevokeKey(key.key_id)}
-                          disabled={!key.is_active || loading}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-error hover:bg-error/10 transition-all"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-text-tertiary text-sm">

@@ -136,6 +136,10 @@ async def get_user_or_api_key(request: Request) -> dict:
         "tier": tier,
         "org_name": org_name,
         "raw_key_record": key,
+        # Per-key cost budget surfaced so gateway handlers can enforce limits.
+        "key_id": key.get("key_id") or key.get("id"),
+        "credit_limit": key.get("credit_limit"),
+        "credits_used": key.get("credits_used", 0),
     }
 
 
