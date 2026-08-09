@@ -9,6 +9,8 @@ export interface Readout {
   label: string
   /** Displayed value. Numbers animate up on mount; strings render as-is. */
   value: number | string
+  /** Prefix rendered before a numeric value (e.g. "$"). */
+  prefix?: string
   /** Suffix appended to a numeric value once it settles (e.g. "%"). */
   suffix?: string
   /** Value text colour token class. Defaults to ink. */
@@ -53,14 +55,14 @@ function Cell({ item, animate }: { item: Readout; animate: boolean }) {
   const numeric = typeof item.value === 'number'
   const counted = useCountUp(numeric ? (item.value as number) : 0, animate && numeric)
   const shown = numeric
-    ? `${Math.round(counted).toLocaleString()}${item.suffix ?? ''}`
+    ? `${item.prefix ?? ''}${Math.round(counted).toLocaleString()}${item.suffix ?? ''}`
     : item.value
 
   const body = (
     <div className="px-4 py-5 h-full transition-colors duration-150 group-hover/cell:bg-well/60">
       <div className="flex items-baseline gap-2">
         <span className={cn(
-          'font-code tabular-nums text-3xl md:text-[2.35rem] font-semibold leading-none tracking-tight',
+          'font-code tabular-nums text-3xl md:text-4xl font-semibold leading-none tracking-tight',
           item.color ?? 'text-ink',
         )}>
           {shown}
