@@ -2649,6 +2649,8 @@ export interface AuthMeResponse {
   email: string
   name: string
   provider: string
+  position?: string | null
+  avatar_url?: string | null
 }
 
 export interface ProviderCheckResponse {
@@ -2713,6 +2715,16 @@ export async function authRegister(
 
 export async function authMe(): Promise<AuthMeResponse> {
   return get<AuthMeResponse>(`${API_BASE}/auth/me`)
+}
+
+export interface UpdateProfileRequest {
+  name?: string
+  position?: string | null
+  avatar_url?: string | null
+}
+
+export async function updateProfile(payload: UpdateProfileRequest): Promise<AuthMeResponse> {
+  return request<AuthMeResponse>(`${API_BASE}/auth/me`, payload, 'PATCH')
 }
 
 export async function checkProvider(
