@@ -695,30 +695,6 @@ class GitHubService:
             logger.exception("Failed to create PR %s/%s %s->%s", owner, repo, head, base)
             return None
 
-    async def get_pr_info(self, repo_url: str, pr_number: int) -> Optional[dict]:
-        """Get PR metadata — head ref, head SHA, base repo full_name."""
-        cleaned = repo_url.strip().rstrip("/")
-        if cleaned.endswith(".git"):
-            cleaned = cleaned[:-4]
-        parts = cleaned.split("/")
-        if len(parts) < 2:
-            return None
-        owner, repo = parts[-2], parts[-1]
-        try:
-            data = await self._gh_request("GET", f"/repos/{owner}/{repo}/pulls/{pr_number}")
-            return {
-                "owner": owner,
-                "repo": repo,
-                "head_ref": data["head"]["ref"],
-                "head_sha": data["head"]["sha"],
-                "base_ref": data["base"]["ref"],
-                "base_repo_full_name": data["base"]["repo"]["full_name"],
-                "title": data.get("title", ""),
-            }
-        except Exception:
-            logger.exception(f"Failed to fetch PR info for {repo_url}#{pr_number}")
-            return None
-
     async def apply_suggestions_bulk(
         self,
         repo_url: str,
@@ -899,6 +875,110 @@ class GitHubService:
         except Exception as e:
             logger.exception(f"Error in get_issues for {repo_url}: {e}")
             return []
+
+    async def search_issues(self, repo_url: str, query: str, limit: int = 20) -> List[Issue]:
+        """Search a repo's open issues by title/keyword via the GitHub Search API.
+
+        ``query`` is matched against issue titles (and optionally body). Returns
+        a list of ``Issue`` objects sorted by best match, capped at ``limit``.
+        """
+        try:
+            cleaned_url = repo_url.strip()
+            if not _is_valid_github_url(cleaned_url):
+                logger.warning(f"Invalid repository URL passed to search_issues: {repo_url!r}")
+                return []
+            if cleaned_url.endswith(".git"):
+                cleaned_url = cleaned_url[:-4]
+            parts = cleaned_url.rstrip("/").split("/")
+            if len(parts) < 2:
+                return []
+            owner, repo = parts[-2], parts[-1]
+
+            cache_key = f"search:{owner}/{repo}:{query.strip().lower().replace(' ', '_')}"
+            if cache_key in _issues_cache:
+                return _issues_cache[cache_key]
+
+            q = f'repo:{owner}/{repo} state:open ({query.strip()})'
+            url = "https://api.github.com/search/issues"
+
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Onramp-2.0",
+            }
+            if self.github_token:
+                headers["Authorization"] = f"Bearer {self.github_token}"
+
+            params = {"q": q, "per_page": min(limit, 100), "sort": "best match"}
+
+            issues: List[Issue] = []
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                try:
+                    response = await self._fetch_page(client, url, headers, params)
+                    data = response.json()
+                    for item in data.get("items", []):
+                        if "pull_request" in item:
+                            continue
+                        labels_list = [l["name"] for l in item.get("labels", [])]
+                        issues.append(Issue(
+                            id=item.get("id"),
+                            number=item.get("number"),
+                            title=item.get("title", ""),
+                            body=item.get("body", ""),
+                            url=item.get("html_url", ""),
+                            labels=labels_list,
+                            state=item.get("state", "open"),
+                        ))
+                        if len(issues) >= limit:
+                            break
+                except Exception as e:
+                    logger.exception(f"Error searching issues for {repo_url}: {e}")
+
+            _issues_cache[cache_key] = issues
+            return issues
+        except Exception as e:
+            logger.exception(f"Error in search_issues for {repo_url}: {e}")
+            return []
+
+    async def get_issue(self, repo_url: str, issue_number: int) -> Optional[Issue]:
+        """Fetch a single issue by number from the GitHub API."""
+        try:
+            cleaned_url = repo_url.strip()
+            if not _is_valid_github_url(cleaned_url):
+                logger.warning(f"Invalid repository URL passed to get_issue: {repo_url!r}")
+                return None
+            if cleaned_url.endswith(".git"):
+                cleaned_url = cleaned_url[:-4]
+            parts = cleaned_url.rstrip("/").split("/")
+            if len(parts) < 2:
+                return None
+            owner, repo = parts[-2], parts[-1]
+
+            url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Onramp-2.0",
+            }
+            if self.github_token:
+                headers["Authorization"] = f"Bearer {self.github_token}"
+
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                response = await self._fetch_page(client, url, headers)
+                item = response.json()
+                if "pull_request" in item:
+                    return None
+                labels_list = [l["name"] for l in item.get("labels", [])]
+                return Issue(
+                    id=item.get("id"),
+                    number=item.get("number"),
+                    title=item.get("title", ""),
+                    body=item.get("body", ""),
+                    url=item.get("html_url", ""),
+                    labels=labels_list,
+                    state=item.get("state", "open"),
+                )
+        except Exception as e:
+            logger.exception(f"Error fetching issue #{issue_number} for {repo_url}: {e}")
+            return None
 
     async def get_pr_diff(self, repo_url: str, pr_number: int) -> str:
         """Fetch PR diff from GitHub API."""

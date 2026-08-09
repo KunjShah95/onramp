@@ -4,9 +4,9 @@ import { cn } from '../lib/utils'
 import {
   createTask, listTasks, assignTask, startTask, submitTask, reviewTask,
   approveTask, completeTask, cancelTask, deleteTask, transitionTask, getTeamProgress,
-  listTeams, getTeamModulePermissions,
+  listTeams, getTeamModulePermissions, getTeamMembers,
   getTeamTimeStats, logActualHours, importIssueToTask, peerReviewTask, claimPeerReview,
-  getQuizGateStatus,
+  getQuizGateStatus, searchIssues,
   listTaskTemplates, createTaskTemplate, deleteTaskTemplate,
   bulkAssignTemplates, autoAssignStarterTasks,
   exportTasksCsv, exportTimeStatsCsv,
@@ -69,6 +69,38 @@ function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLText
   )
 }
 
+type TeamMember = { user_id: string; name: string; role: string }
+
+/** Deterministic order: seniors first, then by name. */
+const TECH_ROLES_ORDER = ['owner', 'ceo', 'cto', 'senior_dev', 'senior', 'developer', 'tester', 'new_dev', 'member', 'hr']
+
+function sortMembers(members: TeamMember[]): TeamMember[] {
+  const roleIdx = (r: string) => { const i = TECH_ROLES_ORDER.indexOf(r); return i === -1 ? TECH_ROLES_ORDER.length : i }
+  return [...members].sort((a, b) => roleIdx(a.role) - roleIdx(b.role) || (a.name || a.user_id).localeCompare(b.name || b.user_id))
+}
+
+function MemberSelect({ members, value, onChange, placeholder = 'Select member…', className }: {
+  members: TeamMember[]; value: string; onChange: (v: string) => void; placeholder?: string; className?: string
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}
+      className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40 transition-colors', className)}>
+      <option value="">{placeholder}</option>
+      {sortMembers(members).map((m) => (
+        <option key={m.user_id} value={m.user_id}>{m.name || m.user_id} ({m.role})</option>
+      ))}
+    </select>
+  )
+}
+
+/** Resolve a user UUID to a human-readable name for display in task lists/modals. */
+function memberName(members: TeamMember[], uid: string | null | undefined): string {
+  if (!uid) return '—'
+  const member = members.find((m) => m.user_id === uid)
+  if (member?.name) return member.name
+  return uid
+}
+
 export default function TasksPage() {
   const toast = useToast()
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
@@ -94,9 +126,12 @@ export default function TasksPage() {
   const [formEstHours, setFormEstHours] = useState('')
   const [creating, setCreating] = useState(false)
 
+  const [members, setMembers] = useState<TeamMember[]>([])
+
   const [moduleAccessMap, setModuleAccessMap] = useState<Record<string, Set<string>>>({})
   const [selectedTask, setSelectedTask] = useState<WorkflowTask | null>(null)
   const [prUrlInput, setPrUrlInput] = useState('')
+  const [assignUserId, setAssignUserId] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
 
   // Time tracking
@@ -109,6 +144,10 @@ export default function TasksPage() {
   const [importRepoUrl, setImportRepoUrl] = useState('')
   const [importIssueNumber, setImportIssueNumber] = useState('')
   const [importing, setImporting] = useState(false)
+  const [issueQuery, setIssueQuery] = useState('')
+  const [issueResults, setIssueResults] = useState<{ number: number; title: string; url: string; labels: string[] }[]>([])
+  const [issueSearching, setIssueSearching] = useState(false)
+  const [importAssignee, setImportAssignee] = useState('')
 
   // Quiz gates
   const [quizGateMap, setQuizGateMap] = useState<Record<string, QuizGateStatus>>({})
@@ -179,12 +218,18 @@ export default function TasksPage() {
     } catch { /* ignore */ }
   }, [selectedTeam])
 
+  const fetchMembers = useCallback(async () => {
+    if (!selectedTeam) { setMembers([]); return }
+    try { setMembers(await getTeamMembers(selectedTeam)) } catch { setMembers([]) }
+  }, [selectedTeam])
+
   useEffect(() => { fetchTeams() }, [])
   useEffect(() => {
     fetchTasks(); fetchProgress(); fetchModulePermissions(); fetchTimeStats(); fetchQuizGates()
   }, [selectedTeam, fetchTasks, fetchProgress, fetchModulePermissions, fetchTimeStats, fetchQuizGates])
 
   useEffect(() => { fetchTemplates() }, [selectedTeam, fetchTemplates])
+  useEffect(() => { fetchMembers() }, [selectedTeam, fetchMembers])
 
   async function handleCreateTask() {
     if (!formTitle.trim() || !selectedTeam) return
@@ -231,12 +276,26 @@ export default function TasksPage() {
         team_id: selectedTeam,
         repo_url: importRepoUrl.trim(),
         issue_number: issueNumber,
+        assigned_to: importAssignee.trim() || undefined,
       })
-      setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('')
+      setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber(''); setImportAssignee(''); setIssueQuery(''); setIssueResults([])
       await fetchTasks(); await fetchProgress()
       toast.success('Issue imported', `Task created from issue #${issueNumber}`)
     } catch (e: any) { setError(e.message || 'Failed to import issue'); toast.error('Failed to import issue') }
     setImporting(false)
+  }
+
+  async function handleSearchIssues() {
+    const repo = importRepoUrl.trim()
+    const q = issueQuery.trim()
+    if (!repo || !q) return
+    setIssueSearching(true); setError('')
+    try {
+      const res = await searchIssues(repo, q, 20)
+      setIssueResults(res.issues ?? [])
+      if ((res.issues ?? []).length === 0) setError('No open issues match that search.')
+    } catch (e: any) { setError(e.message || 'Failed to search issues'); toast.error('Failed to search issues') }
+    setIssueSearching(false)
   }
 
   async function handleLogActualHours(taskId: string) {
@@ -448,8 +507,56 @@ export default function TasksPage() {
                   <Input value={importRepoUrl} onChange={(e) => setImportRepoUrl(e.target.value)} placeholder="https://github.com/owner/repo" />
                 </div>
                 <div>
+                  <FieldLabel>Assignee (optional)</FieldLabel>
+                  <MemberSelect members={members} value={importAssignee} onChange={setImportAssignee} />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <FieldLabel>Search issues by name</FieldLabel>
+                <div className="flex gap-2">
+                  <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or auth…" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
+                  <button onClick={handleSearchIssues} disabled={issueSearching || !importRepoUrl.trim() || !issueQuery.trim()}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-45 whitespace-nowrap">
+                    {issueSearching ? 'Searching…' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
+                  </button>
+                </div>
+              </div>
+
+              {issueResults.length > 0 && (
+                <div className="mb-4">
+                  <FieldLabel>Select an issue {issueResults.length > 0 && `— ${issueResults.length} match${issueResults.length === 1 ? '' : 'es'}`}</FieldLabel>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {issueResults.map((iss) => {
+                      const selected = importIssueNumber === String(iss.number)
+                      return (
+                        <button key={iss.number} onClick={() => { setImportIssueNumber(String(iss.number)); setImportAssignee(importAssignee) }}
+                          className={`flex items-center gap-2.5 w-full text-left bg-bg-primary/60 border rounded-lg px-3 py-2 transition-colors ${selected ? 'border-go/60 bg-go/5' : 'border-border hover:border-go/30'}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${selected ? 'border-go bg-go' : 'border-border'}`}>
+                            {selected && <Check className="w-2.5 h-2.5 text-white" weight="bold" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs text-text-secondary truncate">{iss.title}</div>
+                            <div className="text-[10px] text-text-tertiary font-mono">
+                              #{iss.number}
+                              {iss.labels && iss.labels.length > 0 && ` · ${iss.labels.slice(0, 3).join(', ')}`}
+                            </div>
+                          </div>
+                          <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-text-tertiary/50 hover:text-go text-[10px] shrink-0">View ↗</a>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
                   <FieldLabel>Issue Number *</FieldLabel>
                   <Input value={importIssueNumber} onChange={(e) => setImportIssueNumber(e.target.value)} placeholder="e.g., 42" type="number" />
+                </div>
+                <div className="md:col-span-2 self-end text-[11px] text-text-tertiary italic leading-relaxed">
+                  Search above to find an issue by title and pick it — then it&apos;s ready to import.
                 </div>
               </div>
               <div className="flex justify-end gap-3">
@@ -544,8 +651,8 @@ export default function TasksPage() {
                         })}
                       </div>
                       <div className="mb-3">
-                        <FieldLabel>Assign to (user ID)</FieldLabel>
-                        <Input value={bulkAssignee} onChange={(e) => setBulkAssignee(e.target.value)} placeholder="User ID" />
+                        <FieldLabel>Assign to</FieldLabel>
+                        <MemberSelect members={members} value={bulkAssignee} onChange={setBulkAssignee} />
                       </div>
                       <button onClick={handleBulkAssign} disabled={busy || selectedTemplates.size === 0 || !bulkAssignee.trim()}
                         className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
@@ -566,8 +673,8 @@ export default function TasksPage() {
                   </p>
                   <div className="space-y-3">
                     <div>
-                      <FieldLabel>Dev user ID *</FieldLabel>
-                      <Input value={starterUserId} onChange={(e) => setStarterUserId(e.target.value)} placeholder="User ID" />
+                      <FieldLabel>Dev *</FieldLabel>
+                      <MemberSelect members={members} value={starterUserId} onChange={setStarterUserId} />
                     </div>
                     <div>
                       <FieldLabel>Repo URL *</FieldLabel>
@@ -692,17 +799,22 @@ export default function TasksPage() {
                 <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe the task in detail…" rows={3} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
-                {[
-                  { label: 'Module', val: formModule, set: setFormModule, ph: 'e.g., auth' },
-                  { label: 'Assignee', val: formAssignee, set: setFormAssignee, ph: 'User ID' },
-                  { label: 'Repo URL', val: formRepoUrl, set: setFormRepoUrl, ph: 'https://github.com/…' },
-                  { label: 'Unlock Modules', val: formUnlockModules, set: setFormUnlockModules, ph: 'auth, api, payments' },
-                ].map(({ label, val, set, ph }) => (
-                  <div key={label}>
-                    <FieldLabel>{label}</FieldLabel>
-                    <Input value={val} onChange={(e) => set(e.target.value)} placeholder={ph} />
-                  </div>
-                ))}
+                <div>
+                  <FieldLabel>Module</FieldLabel>
+                  <Input value={formModule} onChange={(e) => setFormModule(e.target.value)} placeholder="e.g., auth" />
+                </div>
+                <div>
+                  <FieldLabel>Assignee</FieldLabel>
+                  <MemberSelect members={members} value={formAssignee} onChange={setFormAssignee} placeholder="Unassigned" />
+                </div>
+                <div>
+                  <FieldLabel>Repo URL</FieldLabel>
+                  <Input value={formRepoUrl} onChange={(e) => setFormRepoUrl(e.target.value)} placeholder="https://github.com/…" />
+                </div>
+                <div>
+                  <FieldLabel>Unlock Modules</FieldLabel>
+                  <Input value={formUnlockModules} onChange={(e) => setFormUnlockModules(e.target.value)} placeholder="auth, api, payments" />
+                </div>
               </div>
               <div className="flex justify-end gap-3">
                 <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
@@ -776,7 +888,7 @@ export default function TasksPage() {
                             </div>
                             <div className="text-xs text-text-tertiary truncate flex items-center gap-1">
                               <UserCircle className="w-3 h-3" weight="fill" />
-                              {task.assigned_to || '—'}
+                              {memberName(members, task.assigned_to)}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
@@ -832,9 +944,9 @@ export default function TasksPage() {
                   {selectedTask.assigned_to && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Assigned To</div>
-                      <div className="text-text-primary flex items-center gap-1.5">
+                      <div className="text-text-primary flex items-center gap-1.5" title={selectedTask.assigned_to}>
                         <UserCircle className="w-3.5 h-3.5" weight="fill" />
-                        {selectedTask.assigned_to}
+                        {memberName(members, selectedTask.assigned_to)}
                       </div>
                     </div>
                   )}
@@ -865,12 +977,22 @@ export default function TasksPage() {
                       <div className="text-xs text-blue-400 font-mono">Blocked until {selectedTask.depends_on} completes</div>
                     </div>
                   )}
-                  {selectedTask.source_issue != null && (
+                  {selectedTask.source_issue && (
                     <div className="bg-bg-secondary rounded-xl p-3 border border-border">
                       <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <GithubLogo className="w-3 h-3" /> Source Issue
                       </div>
-                      <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
+                      {(typeof selectedTask.source_issue === 'object'
+                        ? <a
+                            href={(selectedTask.source_issue as { url?: string }).url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-go font-mono hover:underline inline-flex items-center gap-1"
+                          >
+                            <GithubLogo className="w-3 h-3" />#{selectedTask.source_issue.number}
+                          </a>
+                        : <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
+                      )}
                     </div>
                   )}
                   {selectedTask.quiz_required && selectedTask.module && (
@@ -1012,10 +1134,10 @@ export default function TasksPage() {
 
                 <div className="border-t border-border pt-4 space-y-3">
                   {selectedTask.state === 'pending' && (
-                    <div className="flex gap-2">
-                      <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Enter user ID to assign…" className="flex-1" />
-                      <button onClick={() => handleAssign(selectedTask.task_id, prUrlInput)} disabled={!prUrlInput.trim()}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">Assign</button>
+                    <div className="flex gap-2 items-center">
+                      <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a member…" className="flex-1" />
+                      <button onClick={() => handleAssign(selectedTask.task_id, assignUserId)} disabled={!assignUserId.trim()}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap">Assign</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}

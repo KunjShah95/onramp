@@ -69,6 +69,10 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # GitHub identity — the developer's GitHub username and numeric account id.
+    # Used to link issues/PRs to the right developer (source_issue matching).
+    github_username: Mapped[str | None] = mapped_column(String(39), nullable=True, index=True)
+    github_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     
     teams: Mapped[list["Team"]] = relationship(
         "Team", secondary="team_members", back_populates="members"
@@ -106,6 +110,8 @@ class User(Base):
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
+            "github_username": self.github_username,
+            "github_id": self.github_id,
         }
 
 

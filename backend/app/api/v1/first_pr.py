@@ -1,9 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from app.agents import FirstPRAccelerator
 from app.services.quota import enforce_quota
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/first-pr", tags=["onboarding"])
 
 
@@ -20,15 +22,23 @@ class GuideRequest(BaseModel):
 
 
 def extract_github_token(request_body: BaseModel, req: Request) -> Optional[str]:
-    """Extract token from request body or Authorization header."""
+    """Extract token from request body or Authorization header.
+
+    Returns None if no GitHub token found; caller should expect this and use
+    GitHub API without authentication (subject to rate limits).
+    """
     if getattr(request_body, "github_token", None):
-        return request_body.github_token
+        token = request_body.github_token
+        logger.debug("Using GitHub token from request body")
+        return token
     auth_header = req.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ", 1)[1]
         # Only use it if it looks like a GitHub token (not an auth JWT)
         if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "github_pat_")):
+            logger.debug("Using GitHub token from Authorization header")
             return token
+    logger.info("No GitHub token provided; GitHub API calls will use unauthenticated rate limit")
     return None
 
 

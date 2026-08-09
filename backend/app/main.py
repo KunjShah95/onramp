@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from app.logging_config import configure_logging
 from app.llm import LLMClient
@@ -69,6 +70,32 @@ _LLM_KEY_VARS = (
     "OLLAMA_BASE_URL",
 )
 
+# Fernet keys are 32-byte urlsafe-base64 — the cryptography lib base64-decodes
+# and enforces the 32-byte payload length, so a structurally wrong key fails
+# here instead of on the first encrypt/decrypt.
+_FERNET_KEY_VARS = ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY")
+
+
+def _is_valid_fernet_key(value: Optional[str]) -> bool:
+    """Return True if ``value`` parses as a Fernet-compatible key."""
+    if not value:
+        return False
+    try:
+        from cryptography.fernet import Fernet
+
+        Fernet(value.encode() if isinstance(value, str) else value)
+        return True
+    except Exception:
+        return False
+
+
+def _is_valid_postgres_url(value: Optional[str]) -> bool:
+    """Return True if ``value`` looks like a usable asyncpg PostgreSQL URL."""
+    if not value:
+        return False
+    scheme = value.lower().split("://", 1)[0]
+    return scheme in ("postgresql", "postgres", "postgresql+asyncpg")
+
 
 def _validate_production_env() -> None:
     """Fail fast on boot if production is missing config it needs at runtime.
@@ -79,24 +106,88 @@ def _validate_production_env() -> None:
     """
     if os.getenv("ENV") != "production":
         return
-    missing = [
-        var for var in (
-            "DATABASE_URL", "STRIPE_WEBHOOK_SECRET",
-            "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL",
-            "JWT_SECRET", "PII_ENCRYPTION_KEY",
-            "API_KEY_HMAC_SECRET",
-        )
-        if not os.getenv(var)
+    
+    errors = []
+    warnings = []
+    
+    # Required environment variables
+    required_vars = [
+        "DATABASE_URL", "STRIPE_WEBHOOK_SECRET",
+        "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL",
+        "JWT_SECRET", "PII_ENCRYPTION_KEY",
+        "API_KEY_HMAC_SECRET",
     ]
-    # Also verify JWT_SECRET isn't the insecure default
-    if os.getenv("JWT_SECRET") == "dev-jwt-secret-change-in-production":
-        missing.append("JWT_SECRET (still using insecure default — generate a real secret)")
+    
+    for var in required_vars:
+        value = os.getenv(var)
+        if not value:
+            errors.append(f"{var} is required in production")
+        elif var == "JWT_SECRET" and value == "dev-jwt-secret-change-in-production":
+            errors.append("JWT_SECRET is using the insecure default value - must be changed in production")
+    
+    # At least one LLM provider must be configured
     if not any(os.getenv(var) for var in _LLM_KEY_VARS):
-        missing.append("at least one of " + "/".join(_LLM_KEY_VARS))
-    if missing:
+        errors.append(f"At least one LLM provider API key is required: {', '.join(_LLM_KEY_VARS)}")
+    
+    # Validate DATABASE_URL format
+    database_url = os.getenv("DATABASE_URL")
+    if database_url and not _is_valid_postgres_url(database_url):
+        errors.append("DATABASE_URL must be a PostgreSQL connection string")
+    
+    # Validate Redis URL format if provided
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        if not redis_url.startswith(("redis://", "rediss://")):
+            errors.append("REDIS_URL must be a valid Redis connection string")
+    
+    # Fernet keys must be structurally valid — an invalid key fails on the
+    # first encrypt/decrypt, which is worse to discover at request time.
+    for var in _FERNET_KEY_VARS:
+        value = os.getenv(var)
+        if value and not _is_valid_fernet_key(value):
+            errors.append(
+                f"{var} is not a valid Fernet key — generate with: "
+                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
+    
+    # Validate numeric environment variables
+    numeric_vars = {
+        "DB_POOL_SIZE": (1, 100),
+        "DB_MAX_OVERFLOW": (0, 50),
+        "DB_POOL_TIMEOUT": (1, 300),
+        "RATE_LIMIT_REQUESTS_PER_MINUTE": (1, 10000),
+    }
+    
+    for var, (min_val, max_val) in numeric_vars.items():
+        value = os.getenv(var)
+        if value:
+            try:
+                num_value = int(value)
+                if num_value < min_val or num_value > max_val:
+                    errors.append(f"{var} must be between {min_val} and {max_val}")
+            except ValueError:
+                errors.append(f"{var} must be a valid integer")
+    
+    # Validate CORS origins
+    cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if cors_origins:
+        origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+        for origin in origins:
+            if origin and not origin.startswith(("http://", "https://")):
+                warnings.append(f"CORS origin '{origin}' should use http:// or https:// scheme")
+    
+    # Log warnings but don't fail on them
+    if warnings:
+        import logging
+        logger = logging.getLogger("onramp.startup")
+        for warning in warnings:
+            logger.warning(f"Production configuration warning: {warning}")
+    
+    # Fail if there are any errors
+    if errors:
         raise RuntimeError(
-            "Refusing to start with ENV=production — missing required config: "
-            + ", ".join(missing)
+            "Refusing to start with ENV=production — configuration errors:\n"
+            + "\n".join(f"  - {error}" for error in errors)
         )
 
 

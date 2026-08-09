@@ -188,7 +188,7 @@ _QUERY_KEYWORDS: Dict[QueryType, List[str]] = {
 
 # Cheap syntactic signals that a prompt is about code (in addition to
 # words). Kept to tokens that rarely appear in prose ("return " and
-# "await " are deliberately excluded — too common in everyday language).
+# "await " are deliberately excluded - too common in everyday language).
 _CODE_MARKERS = (
     "def ", "import ", "const ", "=>", "console.log", "<div",
     ".py", ".js", ".ts", "print(", "if __name__",
@@ -248,6 +248,12 @@ class LLMRouter:
             ModelProvider.OLLAMA,
         ]
 
+        # Timeout configuration from environment variables
+        self.openai_timeout = float(os.getenv("LLM_TIMEOUT_OPENROUTER", "30.0"))
+        self.anthropic_timeout = float(os.getenv("LLM_TIMEOUT_ANTHROPIC", "30.0"))
+        self.openai_stream_timeout = float(os.getenv("LLM_TIMEOUT_OPENROUTER_STREAM", "60.0"))
+        self.anthropic_stream_timeout = float(os.getenv("LLM_TIMEOUT_ANTHROPIC_STREAM", "60.0"))
+
         # Provider config: api_key, model, base_url (for OpenAI-compatible), type, free flag
         # Ollama uses OLLAMA_BASE_URL (not an API key) as the availability signal.
         _ollama_base_url = os.getenv("OLLAMA_BASE_URL", "")
@@ -305,14 +311,22 @@ class LLMRouter:
 
         self.current_provider = None
         # Attribution for the most recent completed call: which provider/model
-        # served it and whether it was free — used for cost-savings tracking.
+        # served it and whether it was free - used for cost-savings tracking.
         self.last_route: Optional[Dict[str, Any]] = None
         # True when the most recent call was served from the Redis response
         # cache (zero tokens, zero cost) instead of a provider.
         self.last_cache_hit = False
         # Cosine similarity of the semantic-tier hit (None for exact hits /
-        # provider calls) — lets the gateway report which tier served.
+        # provider calls) - lets the gateway report which tier served.
         self.last_similarity: Optional[float] = None
+
+        # Cache and graceful degradation behavior:
+        # - Exact matches are served from Redis cache (zero latency, zero cost)
+        # - Semantic cache serves near-duplicate questions (same meaning, different wording)
+        # - Provider fallback chain ensures high availability (free → paid → local)
+        # - If all providers fail, a clear error is raised
+        # - Streaming responses have separate timeout configuration
+
         self._initialize_providers()
 
     def _initialize_providers(self):
@@ -322,7 +336,7 @@ class LLMRouter:
         - It has an ``api_key`` configured (all cloud providers), OR
         - It has ``OLLAMA_BASE_URL`` set or a default local Ollama at
           ``http://localhost:11434/v1`` (checked at call time by sniffing
-          the endpoint — we always include Ollama in the chain; if the
+          the endpoint - we always include Ollama in the chain; if the
           server isn't running the request will fail and the router falls
           through to the next provider).
         """
@@ -460,7 +474,7 @@ class LLMRouter:
 
         Includes the per-1M-token input/output price (USD) from
         :mod:`app.services.llm_costs` so the persisted route record is
-        self-contained — cost numbers stay accurate even if the pricing
+        self-contained - cost numbers stay accurate even if the pricing
         table changes after the request.
         """
         cfg = self.providers[provider]
@@ -509,7 +523,7 @@ class LLMRouter:
         Two tiers: the exact-match Redis tier (``cache/redis``) and the
         semantic tier (``cache/semantic``) that serves near-duplicate
         questions. Both cost nothing and avoided the full baseline cost, so
-        they are recorded with zero price — the cost-savings reports then
+        they are recorded with zero price - the cost-savings reports then
         count them as free requests that avoided the baseline entirely.
         ``similarity`` (semantic hits only) records the cosine score so the
         served-route record shows how close the near-duplicate was.
@@ -538,7 +552,13 @@ class LLMRouter:
         query_type: Optional[QueryType] = None,
         cache_scope: str = "global",
     ) -> tuple[str, str, Dict[str, Any]]:
-        """OpenAI-compatible completion. Returns ``(content, served_model_id, route)``.
+        """OpenAI-compatible completion with caching and graceful degradation.
+
+        Features:
+        - Two-tier caching: exact-match (Redis) and near-duplicate (semantic)
+        - Provider fallback chain for high availability
+        - Configurable timeouts to prevent hanging requests
+        - Graceful degradation to local/Ollama providers when cloud services unavailable
 
         ``cache_scope`` isolates the response cache per tenant (org/uid) so
         one customer's cached answers are never served to another.
@@ -551,11 +571,11 @@ class LLMRouter:
             self.last_cache_hit = True
             self.last_similarity = None
             _record_cache("hit", tier="redis")
-            logger.debug("LLM cache hit (%s): %s…", qtype.value if qtype else "auto", cached[:60])
+            logger.debug("LLM cache hit (%s): %s...", qtype.value if qtype else "auto", cached[:60])
             return cached, "cache/redis", route
         # Semantic tier: near-duplicate questions (same content words, high
         # lexical overlap) are served from the cache without a provider
-        # call. Safe by construction — get_semantic only serves an answer
+        # call. Safe by construction - get_semantic only serves an answer
         # when the new question introduces no new content words.
         semantic = await llm_cache_get_semantic(
             _qtype_value(qtype), prompt, system, max_tokens, scope=cache_scope
@@ -568,7 +588,7 @@ class LLMRouter:
             self.last_similarity = similarity
             _record_cache("hit", tier="semantic")
             logger.debug(
-                "LLM semantic cache hit (%s, sim=%.3f): %s…",
+                "LLM semantic cache hit (%s, sim=%.3f): %s...",
                 qtype.value if qtype else "auto", similarity, text[:60],
             )
             return text, "cache/semantic", route
@@ -614,15 +634,22 @@ class LLMRouter:
         query_type: Optional[QueryType] = None,
         cache_scope: str = "global",
     ) -> str:
-        """Call LLM with automatic fallback on error. Free providers tried first.
-
+        """Call LLM with automatic fallback, caching, and graceful degradation.
+        
+        Features:
+        - Two-tier caching: exact-match (Redis) and near-duplicate (semantic)  
+        - Provider fallback chain ensures service availability
+        - Configurable timeouts prevent hanging requests
+        - Automatic fallback from free → paid → local providers
+        - Graceful degradation preserves functionality during provider issues
+        
         ``query_type`` may be a :class:`QueryType` or its string value; when
         omitted the prompt is classified automatically. ``cache_scope``
-        isolates the response cache per tenant (org/uid) — pass the caller's
+        isolates the response cache per tenant (org/uid) - pass the caller's
         org name for user-facing prompts so cached answers never cross
         tenants. Repeats are served from the exact-match Redis cache, and
         near-duplicates from the semantic tier (see
-        :mod:`app.services.llm_cache`) — both record a free ``cache/*``
+        :mod:`app.services.llm_cache`) - both record a free ``cache/*``
         route with zero price.
         """
         qtype = self._coerce_query_type(query_type) or self.classify(prompt)
@@ -645,7 +672,7 @@ class LLMRouter:
             self.last_similarity = similarity
             _record_cache("hit", tier="semantic")
             logger.debug(
-                "LLM semantic cache hit (%s, sim=%.3f): %s…",
+                "LLM semantic cache hit (%s, sim=%.3f): %s...",
                 qtype.value if qtype else "auto", similarity, text[:60],
             )
             return text
@@ -741,7 +768,7 @@ class LLMRouter:
         system: str,
         max_tokens: int,
     ) -> str:
-        """OpenAI Python SDK — covers OpenAI, OpenRouter, Groq, NVIDIA (OpenAI-compatible)."""
+        """OpenAI Python SDK - covers OpenAI, OpenRouter, Groq, NVIDIA (OpenAI-compatible)."""
         from openai import AsyncOpenAI
 
         default_headers = None
@@ -756,7 +783,7 @@ class LLMRouter:
             api_key=config["api_key"],
             base_url=config["base_url"],
             default_headers=default_headers,
-            timeout=30.0,
+            timeout=self.openai_timeout,
         )
 
         messages = []
@@ -805,7 +832,7 @@ class LLMRouter:
         """Anthropic SDK (Claude)."""
         from anthropic import AsyncAnthropic
 
-        client = AsyncAnthropic(api_key=config["api_key"], timeout=30.0)
+        client = AsyncAnthropic(api_key=config["api_key"], timeout=self.anthropic_timeout)
 
         kwargs = {
             "model": config["model"],
@@ -903,7 +930,7 @@ class LLMRouter:
             api_key=config["api_key"],
             base_url=config["base_url"],
             default_headers=default_headers,
-            timeout=60.0,
+            timeout=self.openai_stream_timeout,
         )
         messages = []
         if system:
@@ -933,7 +960,7 @@ class LLMRouter:
     async def _stream_anthropic_sdk(self, config, prompt, system, max_tokens):
         from anthropic import AsyncAnthropic
 
-        client = AsyncAnthropic(api_key=config["api_key"], timeout=60.0)
+        client = AsyncAnthropic(api_key=config["api_key"], timeout=self.anthropic_stream_timeout)
         kwargs = {
             "model": config["model"],
             "max_tokens": max_tokens,

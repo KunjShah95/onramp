@@ -182,7 +182,7 @@ class FirstPRAccelerator(BaseAgent):
                 f"Title: {title}\n"
                 f"Body: {body}\n\n"
                 f"Available codebase files:\n{', '.join(files[:30])}\n\n"
-                f"Generate an onboarding guide for this fix. Under `files_to_touch`, list up to 3 files. Under `steps`, provide at least 3 concrete, step-by-step instructions. Under `similar_prs`, mock 1-2 URLs representing similar merged PRs.\n\n"
+                f"Generate an onboarding guide for this fix. Under `files_to_touch`, list up to 3 files. Under `steps`, provide at least 3 concrete, step-by-step instructions. Under `similar_prs`, list 1-2 real, similar merged pull requests from \"similar_merged_prs\" if provided — otherwise return an empty array. Never invent URLs.\n\n"
                 f"Return as JSON:\n"
                 f"{{\n"
                 f'  "issue_id": {issue_id},\n'
@@ -233,11 +233,5 @@ class FirstPRAccelerator(BaseAgent):
             "issue_id": issue_id,
             "files_to_touch": files_to_touch,
             "steps": steps,
-            "similar_prs": [
-                {
-                    "url": "https://github.com/example/repo/pull/1",
-                    "title": f"Refactored {file_desc.split('/')[-1] if '/' in file_desc else file_desc} behavior",
-                    "merged": True
-                }
-            ]
+            "similar_prs": [],
         }

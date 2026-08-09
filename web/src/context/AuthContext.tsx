@@ -16,6 +16,7 @@ interface User {
   displayName?: string
   position?: string
   photoURL?: string
+  githubUsername?: string
   emailVerified: boolean
   createdAt: Date | string
   updatedAt: Date | string
@@ -71,6 +72,7 @@ function mapUser(raw: Record<string, unknown>): User {
     displayName: (raw.name as string) || '',
     position: (raw.position as string) || undefined,
     photoURL: (raw.avatar_url as string) || undefined,
+    githubUsername: (raw.github_username as string) || undefined,
     emailVerified: true,
     createdAt: (raw.createdAt as string) || new Date().toISOString(),
     updatedAt: (raw.updatedAt as string) || new Date().toISOString(),

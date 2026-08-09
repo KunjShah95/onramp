@@ -95,6 +95,7 @@ export default function Settings() {
   const [name, setName] = useState('')
   const [position, setPosition] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [githubUsername, setGithubUsername] = useState('')
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
@@ -193,6 +194,7 @@ export default function Settings() {
     setName(user?.name || user?.displayName || '')
     setPosition(user?.position || '')
     setAvatarUrl(user?.photoURL || '')
+    setGithubUsername(user?.githubUsername || '')
     setEmail(user?.email || '')
   }, [user])
 
@@ -265,8 +267,9 @@ export default function Settings() {
         name: name.trim(),
         position: position.trim() || null,
         avatar_url: avatarUrl.trim() || null,
+        github_username: githubUsername.trim() || null,
       })
-      updateUser({ name: updated.name, displayName: updated.name, position: updated.position || undefined, photoURL: updated.avatar_url || undefined })
+      updateUser({ name: updated.name, displayName: updated.name, position: updated.position || undefined, photoURL: updated.avatar_url || undefined, githubUsername: updated.github_username || undefined })
       setSavedMsg('Profile saved'); toast.success('Profile saved')
     } catch (e) {
       setSavedMsg(e instanceof Error ? e.message : 'Save failed'); toast.error('Failed to save profile')
@@ -416,6 +419,24 @@ export default function Settings() {
                       onChange={e => setAvatarUrl(e.target.value)}
                       className="input"
                     />
+                  </div>
+                  <div>
+                    <label className="block overline text-ink-muted mb-2">GitHub Username</label>
+                    <div className="relative">
+                      <GithubLogo className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-disabled" />
+                      <input
+                        type="text"
+                        value={githubUsername}
+                        onChange={e => setGithubUsername(e.target.value)}
+                        className="input pl-10"
+                        placeholder="octocat"
+                        maxLength={39}
+                      />
+                    </div>
+                    <p className="text-caption text-ink-muted mt-1.5">
+                      Used to connect your account to GitHub issues and PRs so your work is
+                      auto-linked and recognized.
+                    </p>
                   </div>
                   <div>
                     <label className="block overline text-ink-muted mb-2">Email Address</label>

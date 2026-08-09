@@ -23,11 +23,22 @@ def _clear_env(monkeypatch):
         monkeypatch.delenv(key, raising=False)
 
 
+def _valid_fernet_key() -> str:
+    from cryptography.fernet import Fernet
+    return Fernet.generate_key().decode()
+
+
 def _set_all_required(monkeypatch, llm_key="OPENAI_API_KEY"):
     for var in REQUIRED_VARS:
         if var == "JWT_SECRET":
             # Must not equal the insecure default
             monkeypatch.setenv(var, "real-production-secret-xxxxxxxxxxxx")
+        elif var == "DATABASE_URL":
+            monkeypatch.setenv(var, "postgresql+asyncpg://user:pass@localhost:5432/onramp")
+        elif var == "REDIS_URL":
+            monkeypatch.setenv(var, "redis://localhost:6379/1")
+        elif var in ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY"):
+            monkeypatch.setenv(var, _valid_fernet_key())
         else:
             monkeypatch.setenv(var, "x")
     monkeypatch.setenv(llm_key, "sk-x")
@@ -57,7 +68,14 @@ def test_production_missing_one_required_var_fails(monkeypatch, missing_var):
 def test_production_without_any_llm_key_fails(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     for var in REQUIRED_VARS:
-        monkeypatch.setenv(var, "x")
+        if var == "DATABASE_URL":
+            monkeypatch.setenv(var, "postgresql+asyncpg://user:pass@localhost:5432/onramp")
+        elif var == "REDIS_URL":
+            monkeypatch.setenv(var, "redis://localhost:6379/1")
+        elif var in ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY"):
+            monkeypatch.setenv(var, _valid_fernet_key())
+        elif var != "JWT_SECRET":
+            monkeypatch.setenv(var, "x")
 
     with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
         _validate_production_env()
@@ -66,7 +84,14 @@ def test_production_without_any_llm_key_fails(monkeypatch):
 def test_production_with_any_single_llm_key_passes(monkeypatch):
     monkeypatch.setenv("ENV", "production")
     for var in REQUIRED_VARS:
-        monkeypatch.setenv(var, "x")
+        if var == "DATABASE_URL":
+            monkeypatch.setenv(var, "postgresql+asyncpg://user:pass@localhost:5432/onramp")
+        elif var == "REDIS_URL":
+            monkeypatch.setenv(var, "redis://localhost:6379/1")
+        elif var in ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY"):
+            monkeypatch.setenv(var, _valid_fernet_key())
+        else:
+            monkeypatch.setenv(var, "x")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_x")
 
     _validate_production_env()  # must not raise

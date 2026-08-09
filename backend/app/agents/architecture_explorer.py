@@ -1,10 +1,53 @@
 import json
+import urllib.parse
 from typing import Dict, Any, Optional
 from app.agents.base_agent import BaseAgent
 from app.llm import QueryType
 from app.services.github_service import GitHubService
 from app.services.parser_service import ParserService
 from app.graph import DependencyGraph
+
+
+# Reasonable input ceilings, so a stray huge number from a caller can't make
+# the agent request an absurd parse/graph build. Realistic repos are tiny
+# compared to these; they exist to reject obvious nonsense, not to throttle.
+_MAX_FILES = 500_000
+_MAX_NODES = 50_000
+_MAX_CONTEXT_MAX_TOKENS = 100_000
+_ALLOWED_GITHUB_HOSTS = ("github.com", "www.github.com")
+
+
+def _validate_positive_int(value: Any, name: str, maximum: int) -> int:
+    """Validate an int parameter (coerce where safe) and return it."""
+    if value is None:
+        raise ValueError(f"{name} is required")
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a positive integer, got a boolean")
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError(f"{name} must be an integer, got {value!r}")
+    try:
+        ival = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be an integer, got {value!r}")
+    if ival < 1:
+        raise ValueError(f"{name} must be a positive integer, got {ival}")
+    if ival > maximum:
+        raise ValueError(f"{name} exceeds maximum of {maximum}, got {ival}")
+    return ival
+
+
+def _is_valid_github_url(repo_url: str) -> bool:
+    """Return True if repo_url is a strict GitHub https URL with owner/repo."""
+    if not isinstance(repo_url, str) or not repo_url.strip():
+        return False
+    try:
+        parsed = urllib.parse.urlparse(repo_url.strip())
+    except ValueError:
+        return False
+    if parsed.scheme != "https" or parsed.hostname not in _ALLOWED_GITHUB_HOSTS:
+        return False
+    parts = [p for p in parsed.path.split("/") if p]
+    return len(parts) >= 2
 
 
 class ArchitectureExplorer(BaseAgent):
@@ -48,30 +91,18 @@ class ArchitectureExplorer(BaseAgent):
         Step 4: Use Claude to identify service boundaries and architecture patterns
         Step 5: Return combined analysis
 
-        Args:
-            repo_url: GitHub repository URL (e.g., "https://github.com/owner/repo")
-            branch: Git branch to analyze (default: "main")
-            max_files: Maximum number of files to parse
-            max_nodes: Maximum number of nodes in graph summary
-            index_id: Optional repo-context index id (see ``POST /repos/index``).
-                When given, the cached entities + graph are reused instead of
-                cloning + parsing again, and the LLM prompt is built from a
-                token-budgeted selection of the index.
-            context_max_tokens: Token budget for the LLM context slice.
-
-        Returns:
-            Dict containing:
-                - repo: Repository URL
-                - branch: Branch name
-                - entities: Parsed code entities (files, classes, functions, imports)
-                - graph: Dependency graph serialized to dict
-                - services: Identified services/components with boundaries
-                - dependencies: Module-to-module dependencies
-                - circular_dependencies: Detected circular import cycles
-                - architecture_pattern: Detected pattern (monolith/microservices/modular)
-                - architecture_diagram: Mermaid diagram of architecture
-                - analysis: Claude's architecture analysis in JSON format
+        Parameters are validated up front so malformed calls fail fast with a
+        ``ValueError`` instead of surfacing an obscure downstream error.
         """
+        # Step 0: Validate inputs before doing any work.
+        max_files = _validate_positive_int(max_files, "max_files", _MAX_FILES)
+        max_nodes = _validate_positive_int(max_nodes, "max_nodes", _MAX_NODES)
+        context_max_tokens = _validate_positive_int(
+            context_max_tokens, "context_max_tokens", _MAX_CONTEXT_MAX_TOKENS
+        )
+        if not isinstance(branch, str) or not branch.strip():
+            raise ValueError("branch must be a non-empty string")
+
         # Step 1: Clone repository (unless we can reuse the parsed index)
         entities = None
         result = None
@@ -86,6 +117,11 @@ class ArchitectureExplorer(BaseAgent):
                     repo_url = cached.get("repo_url", "")
 
         if entities is None:
+            if not isinstance(repo_url, str) or not _is_valid_github_url(repo_url):
+                raise ValueError(
+                    f"Invalid repository URL: {repo_url!r}. "
+                    "Expected an https GitHub URL (e.g. https://github.com/owner/repo)."
+                )
             repo_path = await self.github.clone_repo(repo_url, branch)
             # Step 2: Parse entities from the repository
             entities = await self.parser.parse_directory(repo_path, max_files=max_files)

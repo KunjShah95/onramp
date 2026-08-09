@@ -86,7 +86,17 @@ async function request<T>(url: string, body?: unknown, method?: string, retried 
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return unwrap<T>(await res.json())
 }
@@ -111,7 +121,17 @@ async function get<T>(url: string, retried = false): Promise<T> {
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return unwrap<T>(await res.json())
 }
@@ -795,7 +815,17 @@ export async function addTeamMember(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -806,7 +836,17 @@ export async function getTeamMembers(teamId: string): Promise<{ user_id: string;
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1187,7 +1227,17 @@ export async function executeAgent(
   }
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1758,7 +1808,17 @@ export async function adminDeleteWebhook(webhookId: string): Promise<{ deleted: 
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1820,7 +1880,17 @@ export async function clearAskHistory(
   )
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1882,7 +1952,17 @@ export async function grantModuleAccess(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -1898,7 +1978,17 @@ export async function revokeModuleAccess(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
 }
 
@@ -1916,7 +2006,17 @@ export async function revokeAllModuleAccess(
   )
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -1956,7 +2056,7 @@ export interface WorkflowTask {
   peer_reviewed_by: string | null
   quiz_required: boolean
   depends_on: string | null
-  source_issue: number | null
+  source_issue: { number: number; url?: string; repo_url?: string } | number | null
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -2160,6 +2260,18 @@ export async function importIssueToTask(data: {
   return request<WorkflowTask>(`${API_BASE}/tasks/import-issue`, data)
 }
 
+export async function searchIssues(
+  repoUrl: string,
+  query: string,
+  limit = 20
+): Promise<{ issues: { number: number; title: string; url: string; labels: string[]; state: string }[]; count: number; query: string }> {
+  return request(`${API_BASE}/tasks/search-issues`, {
+    repo_url: repoUrl,
+    query,
+    limit,
+  })
+}
+
 // ─── Peer Review ─────────────────────────────────────────────
 
 export async function peerReviewTask(taskId: string, data: {
@@ -2247,7 +2359,17 @@ export async function deleteTaskTemplate(templateId: string): Promise<{ deleted:
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2344,7 +2466,17 @@ export async function deleteNotification(notificationId: string): Promise<{ dele
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2463,7 +2595,17 @@ export async function deleteWebhook(webhookId: string): Promise<{ deleted: boole
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2493,7 +2635,17 @@ export async function deleteIntegration(integrationType: string): Promise<{ dele
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API error ${res.status}: ${text}`)
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
   }
   return res.json()
 }
@@ -2712,6 +2864,8 @@ export interface AuthMeResponse {
   provider: string
   position?: string | null
   avatar_url?: string | null
+  github_username?: string | null
+  github_id?: string | null
 }
 
 export interface ProviderCheckResponse {
@@ -2782,6 +2936,7 @@ export interface UpdateProfileRequest {
   name?: string
   position?: string | null
   avatar_url?: string | null
+  github_username?: string | null
 }
 
 export async function updateProfile(payload: UpdateProfileRequest): Promise<AuthMeResponse> {
