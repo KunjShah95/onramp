@@ -15,6 +15,18 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _no_redis_env(monkeypatch):
+    """Keep readiness tests hermetic.
+
+    app.main calls load_dotenv(), which imports backend/.env and sets
+    REDIS_URL even in tests. When no Redis server is running, the /ready
+    probe then correctly reports redis=error and returns 503. These tests
+    assert the "no Redis configured" path, so remove REDIS_URL for them.
+    """
+    monkeypatch.delenv("REDIS_URL", raising=False)
+
+
 def test_health_liveness(client):
     resp = client.get("/health")
     assert resp.status_code == 200

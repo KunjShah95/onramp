@@ -110,13 +110,20 @@ def _validate_production_env() -> None:
     errors = []
     warnings = []
     
-    # Required environment variables
+    # Required environment variables. STRIPE_WEBHOOK_SECRET is only required
+    # when billing is actually enabled — without STRIPE_SECRET_KEY the billing
+    # service runs in metadata-only stub mode and never verifies a signature.
     required_vars = [
-        "DATABASE_URL", "STRIPE_WEBHOOK_SECRET",
+        "DATABASE_URL",
         "GITHUB_TOKEN_ENCRYPTION_KEY", "REDIS_URL",
         "JWT_SECRET", "PII_ENCRYPTION_KEY",
         "API_KEY_HMAC_SECRET",
     ]
+    stripe_enabled = any(
+        os.getenv(v) for v in ("STRIPE_SECRET_KEY", "STRIPE_PRICE_STARTUP", "STRIPE_PRICE_PROFESSIONAL")
+    )
+    if stripe_enabled:
+        required_vars.append("STRIPE_WEBHOOK_SECRET")
     
     for var in required_vars:
         value = os.getenv(var)
@@ -139,7 +146,48 @@ def _validate_production_env() -> None:
     if redis_url:
         if not redis_url.startswith(("redis://", "rediss://")):
             errors.append("REDIS_URL must be a valid Redis connection string")
-    
+
+    # OAuth social login (optional — email/password auth works without it) but
+    # when enabled the client id/secret pair must be configured together and
+    # the callback URLs must be reachable. Warnings, not errors: OAuth is a
+    # feature toggle and its absence must not block booting the API.
+    for var in ("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"):
+        if os.getenv(var):
+            break
+    else:
+        warnings.append(
+            "GitHub OAuth login is not configured (GITHUB_CLIENT_ID / "
+            "GITHUB_CLIENT_SECRET unset) — GitHub sign-in and account linking "
+            "will be unavailable"
+        )
+    if bool(os.getenv("GITHUB_CLIENT_ID")) != bool(os.getenv("GITHUB_CLIENT_SECRET")):
+        warnings.append("GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET must be configured together")
+
+    for var in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"):
+        if os.getenv(var):
+            break
+    else:
+        warnings.append(
+            "Google OAuth login is not configured (GOOGLE_CLIENT_ID / "
+            "GOOGLE_CLIENT_SECRET unset)"
+        )
+    if bool(os.getenv("GOOGLE_CLIENT_ID")) != bool(os.getenv("GOOGLE_CLIENT_SECRET")):
+        warnings.append("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together")
+
+    # OAuth redirect URIs must exactly match what is registered in the GitHub /
+    # Google app: ``{BACKEND_URL}/api/v1/auth/oauth/{provider}/callback``. A
+    # plain-http backend URL (or a missing FRONTEND_URL for the post-consent
+    # redirect) silently breaks the whole flow, so surface it at boot.
+    backend_url = os.getenv("BACKEND_URL", "")
+    if backend_url and not backend_url.startswith("https://"):
+        warnings.append(
+            "BACKEND_URL should use https:// in production — OAuth callback "
+            "URLs must match the registered redirect URI exactly"
+        )
+    frontend_url = os.getenv("FRONTEND_URL", "")
+    if frontend_url and not frontend_url.startswith("https://"):
+        warnings.append("FRONTEND_URL should use https:// in production")
+
     # Fernet keys must be structurally valid — an invalid key fails on the
     # first encrypt/decrypt, which is worse to discover at request time.
     for var in _FERNET_KEY_VARS:
@@ -206,14 +254,20 @@ async def lifespan(app: FastAPI):
 
 _is_production = os.getenv("ENV") == "production"
 
+# Dev-only surfaces (Swagger docs, the demo/seed router) are OFF in production
+# by default but can be opted back in explicitly (staging, ops debugging) via
+# ENABLE_API_DOCS=true / ENABLE_SEED_ROUTER=true.
+_show_api_docs = (not _is_production) or os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
+_show_seed_router = (not _is_production) or os.getenv("ENABLE_SEED_ROUTER", "").lower() in ("1", "true", "yes")
+
 app = FastAPI(
     title="Onramp 2.0 API",
     version="1.0.0",
     description="AI-powered developer onboarding platform",
     lifespan=lifespan,
-    docs_url=None if _is_production else "/docs",
-    redoc_url=None if _is_production else "/redoc",
-    openapi_url=None if _is_production else "/openapi.json",
+    docs_url="/docs" if _show_api_docs else None,
+    redoc_url="/redoc" if _show_api_docs else None,
+    openapi_url="/openapi.json" if _show_api_docs else None,
 )
 
 # Declare the auth scheme in the OpenAPI document so /docs shows an
@@ -268,7 +322,7 @@ _cors_origins = [
     if origin.strip()
 ]
 
-_doc_paths = [] if _is_production else ["/docs", "/redoc", "/openapi.json"]
+_doc_paths = ["/docs", "/redoc", "/openapi.json"] if _show_api_docs else []
 
 app.add_middleware(AuthMiddleware, public_paths=[
     "/", "/health", "/ready", "/metrics", *_doc_paths,
@@ -364,7 +418,7 @@ app.include_router(accounts_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
-if not _is_production:
+if _show_seed_router:
     app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(feature_flags_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")

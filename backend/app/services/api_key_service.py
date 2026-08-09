@@ -5,11 +5,14 @@ Manages API key creation, validation, and rotation
 
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
+
+logger = logging.getLogger(__name__)
 
 
 def _coerce_aware_datetime(value: Any) -> Optional[datetime]:
@@ -30,8 +33,37 @@ def _coerce_aware_datetime(value: Any) -> Optional[datetime]:
     return dt
 
 
+# ── Pepper versioning ──────────────────────────────────────────────────────────
+#
+# API keys are stored only as HMAC-SHA256 hashes (never plaintext), so a pepper
+# rotation cannot re-hash existing keys in place. To keep pre-rotation keys
+# working through a transition window, every key records which pepper version
+# hashed it (``permissions.pepper_version``) and ``validate_api_key`` falls back
+# to the known legacy peppers when the current-pepper lookup misses.
+#
+# Keys created before versioning existed (hashed with the dev default pepper
+# because API_KEY_HMAC_SECRET was unset) carry no version and are matched via
+# the legacy fallback below. Regenerate them (create_api_key) to move them to
+# the current pepper, then set API_KEY_ALLOW_LEGACY_PEPPER=false to turn the
+# fallback off.
+
+_DEV_DEFAULT_PEPPER = "dev-pepper-not-secure"
+# Version label for keys hashed with the pepper configured in the environment.
+CURRENT_PEPPER_VERSION = "v1"
+# Known historical peppers, keyed by version label. The dev default was used
+# whenever API_KEY_HMAC_SECRET was unset (any non-production ENV value).
+_LEGACY_PEPPERS = {
+    "legacy-dev": _DEV_DEFAULT_PEPPER,
+}
+
+
+def _legacy_fallback_enabled() -> bool:
+    """Whether legacy-pepper validation is allowed during the rotation window."""
+    return os.getenv("API_KEY_ALLOW_LEGACY_PEPPER", "true").lower() in ("1", "true", "yes")
+
+
 def get_pepper() -> str:
-    """Get the API key HMAC pepper from environment.
+    """Get the current API key HMAC pepper from environment.
 
     In production this MUST be set. Falls back to a dev default only
     when ENV is not 'production'.
@@ -43,38 +75,85 @@ def get_pepper() -> str:
             "API_KEY_HMAC_SECRET is required in production. "
             "Generate one: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
-    return pepper or "dev-pepper-not-secure"
+    return pepper or _DEV_DEFAULT_PEPPER
 
 
 def hash_api_key(key: str) -> str:
-    """Hash an API key using HMAC-SHA256 with a server-side pepper.
+    """Hash an API key using HMAC-SHA256 with the current server-side pepper.
 
     The pepper (API_KEY_HMAC_SECRET) adds defense-in-depth: even if the
     hash column is leaked, keys cannot be brute-forced without the pepper.
     HMAC-SHA256 is ALWAYS used — no fallback to raw SHA-256.
     """
-    pepper = get_pepper()
+    return _hash_with_pepper(key, get_pepper())
+
+
+def _hash_with_pepper(key: str, pepper: str) -> str:
+    """HMAC-SHA256 hash of a key with an explicit pepper (for legacy matching)."""
     return hmac.new(pepper.encode(), key.encode(), hashlib.sha256).hexdigest()
 
 
-async def rehash_existing_keys(new_pepper: str) -> dict:
-    """Re-hash all existing API keys using a new HMAC pepper.
+async def _find_key_record(storage, plain_key: str) -> Optional[dict]:
+    """Locate the key record for a plaintext key.
 
-    This is a migration operation that requires the original plaintext keys
-    (which are not stored). To rotate the pepper, keys must be regenerated
-    via create_api_key(). This function validates that all existing hashes
-    can be verified with the current pepper.
+    Looks up the hash under the current pepper first, then (during the
+    rotation window) under each known legacy pepper. Logs a warning when a
+    key validates via a legacy pepper so operators know to regenerate it.
+    """
+    current_pepper = get_pepper()
+    current_hash = _hash_with_pepper(plain_key, current_pepper)
+    results = await storage.query_documents(
+        "api_keys", [("key_hash", "==", current_hash)]
+    )
+    if results:
+        return results[0]
+
+    if not _legacy_fallback_enabled():
+        return None
+
+    for version, pepper in _LEGACY_PEPPERS.items():
+        if pepper == current_pepper:
+            continue
+        legacy_hash = _hash_with_pepper(plain_key, pepper)
+        results = await storage.query_documents(
+            "api_keys", [("key_hash", "==", legacy_hash)]
+        )
+        if results:
+            logger.warning(
+                "API key %s authenticated via legacy pepper '%s' — regenerate the "
+                "key to move it to the current pepper, then set "
+                "API_KEY_ALLOW_LEGACY_PEPPER=false",
+                results[0].get("id"), version,
+            )
+            return results[0]
+    return None
+
+
+async def rehash_existing_keys() -> dict:
+    """Report API key hashing status and classify keys by pepper version.
+
+    Plaintext keys are never stored, so existing hashes cannot be re-computed
+    in place. Keys created before pepper versioning was added carry no
+    ``permissions.pepper_version`` and are authenticated via the legacy
+    fallback (see :func:`validate_api_key`). Regenerate them via
+    ``create_api_key()`` to move them onto the current pepper.
     """
     storage = get_storage()
     keys = await storage.list_documents("api_keys")
-    validated = 0
-    for k in keys:
-        if k.get("is_active", False):
-            validated += 1
+    total = len(keys)
+    active = sum(1 for k in keys if k.get("is_active", False))
+    versioned = sum(
+        1 for k in keys if (k.get("permissions") or {}).get("pepper_version")
+    )
     return {
-        "total_keys": len(keys),
-        "active_keys_validated": validated,
-        "note": "Re-hashing requires key regeneration. Use the key rotation endpoint to issue new keys.",
+        "total_keys": total,
+        "active_keys": active,
+        "keys_on_current_pepper": versioned,
+        "legacy_keys": max(total - versioned, 0),
+        "note": "Plaintext keys are not stored, so hashes cannot be re-hashed in "
+                "place. Keys without a pepper_version authenticate via the legacy "
+                "fallback; regenerate them through the key creation endpoint to move "
+                "them onto the current pepper, then set API_KEY_ALLOW_LEGACY_PEPPER=false.",
     }
 
 
@@ -152,6 +231,9 @@ async def create_api_key(
     if credit_limit is not None:
         perms["credit_limit"] = int(credit_limit)
     perms.setdefault("credits_used", 0)
+    # Record which pepper hashed this key so future rotations can distinguish
+    # current-pepper keys from legacy ones (see _find_key_record).
+    perms["pepper_version"] = CURRENT_PEPPER_VERSION
 
     data = {
         "key_hash": key_hash,
@@ -176,17 +258,10 @@ async def get_api_key(key_id: str) -> Optional[dict]:
 async def validate_api_key(plain_key: str) -> Optional[dict]:
     """Validate an API key and return the key record if valid"""
     storage = get_storage()
-    key_hash = hash_api_key(plain_key)
+    key_record = await _find_key_record(storage, plain_key)
 
-    results = await storage.query_documents(
-        "api_keys",
-        [("key_hash", "==", key_hash)]
-    )
-
-    if not results:
+    if key_record is None:
         return None
-
-    key_record = results[0]
 
     if not key_record.get("is_active", False):
         return None

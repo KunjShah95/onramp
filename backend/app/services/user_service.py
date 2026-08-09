@@ -68,17 +68,6 @@ def _decrypt_pii(record: dict) -> dict:
     return record
 
 
-def _decrypt_pii(record: dict) -> dict:
-    if record is None:
-        return None
-    record = dict(record)
-    if "email" in record:
-        record["email"] = decrypt_field(record["email"])
-    if "name" in record:
-        record["name"] = decrypt_field(record["name"])
-    return record
-
-
 def _clean_github_username(value: str) -> str | None:
     """Validate and normalize a GitHub username.
 

@@ -130,7 +130,8 @@ export default function TraineeDashboard() {
   }
 
   const { progress, modules, recent_tasks } = data
-  const completionPct = Math.round((progress.completion_rate ?? 0) * 100)
+  // Backend completion_rate is already a percentage (0–100) — do NOT multiply.
+  const completionPct = Math.round(progress.completion_rate ?? 0)
 
   const readouts: Readout[] = [
     { label: 'Completion', value: completionPct, suffix: '%', color: completionPct >= 80 ? 'text-success' : completionPct >= 50 ? 'text-info' : 'text-text-primary' },

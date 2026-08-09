@@ -370,10 +370,12 @@ async def transition_task(
         updates["reviewed_by"] = user_id
     elif new_state in ("product_review", "approved"):
         updates["reviewed_at"] = now
-    elif new_state == "product_review":
-        updates["product_signoff"] = False
-    elif new_state == "approved" and feedback:
-        updates["review_feedback"] = feedback
+        if new_state == "approved":
+            if feedback:
+                updates["review_feedback"] = feedback
+        else:
+            # product_review resets the sign-off flag until product approves.
+            updates["product_signoff"] = False
     elif new_state == "assigned":
         updates["assigned_to"] = user_id
 

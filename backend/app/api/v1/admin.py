@@ -47,11 +47,15 @@ async def rehash_all_api_keys(
     that all active keys were hashed with the current pepper. New keys
     are always created with HMAC-SHA256.
     """
-    from app.services.api_key_service import rehash_existing_keys, get_pepper
+    from app.services.api_key_service import (
+        rehash_existing_keys, get_pepper, CURRENT_PEPPER_VERSION, _legacy_fallback_enabled,
+    )
 
     pepper_status = "configured" if os.getenv("API_KEY_HMAC_SECRET") else "using dev default"
-    result = await rehash_existing_keys(os.getenv("API_KEY_HMAC_SECRET", ""))
+    result = await rehash_existing_keys()
     result["pepper_status"] = pepper_status
+    result["current_pepper_version"] = CURRENT_PEPPER_VERSION
+    result["legacy_fallback_enabled"] = _legacy_fallback_enabled()
     return result
 
 
@@ -391,7 +395,7 @@ async def get_webhook_deliveries(
 
 @router.get("/audit/export")
 async def export_audit_events(
-    format: str = Query("json", regex="^(json|csv)$"),
+    format: str = Query("json", pattern="^(json|csv)$"),
     event_type: Optional[str] = Query(None),
     actor_id: Optional[str] = Query(None),
     limit: int = Query(1000, ge=1, le=10000),

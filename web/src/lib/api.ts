@@ -3025,6 +3025,17 @@ export function getGithubLoginUrl(): string {
   return `${API_BASE}/auth/oauth/github/login`
 }
 
+/**
+ * Start the GitHub *account-linking* flow for the currently signed-in user.
+ * Unlike the public login URL, this calls the authenticated backend endpoint,
+ * which bakes the user's uid into the OAuth state token — so the callback
+ * attaches the GitHub identity to this account instead of erroring with a
+ * provider mismatch. Returns the GitHub consent URL to redirect to.
+ */
+export async function getGithubLinkUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>(`${API_BASE}/auth/oauth/github/link`, {})
+}
+
 // ── SSO / SAML ──────────────────────────────────────────────────────────────
 
 export interface SsoProvider {

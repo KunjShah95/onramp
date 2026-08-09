@@ -9,10 +9,22 @@ export default function AuthCallback() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [errorMsg, setErrorMsg] = useState('')
+  const [isLinkFlow, setIsLinkFlow] = useState(false)
 
   useEffect(() => {
     const token = searchParams.get('token')
     const error = searchParams.get('error')
+    // True when this callback completes a GitHub *account-link* flow started
+    // from the Profile page (flagged in sessionStorage before the redirect),
+    // as opposed to a fresh sign-in. After a successful link the user should
+    // land back on their profile, not the dashboard. The flag carries a
+    // timestamp so a stale flag left over from an aborted flow (closed tab,
+    // backend error, back button) is ignored rather than hijacking a later
+    // OAuth sign-in in the same tab.
+    const rawLinkFlow = sessionStorage.getItem('ghLinkFlow')
+    const linkFlow = rawLinkFlow !== null && Date.now() - Number(rawLinkFlow) < 15 * 60 * 1000
+    if (rawLinkFlow !== null) sessionStorage.removeItem('ghLinkFlow')
+    setIsLinkFlow(linkFlow)
 
     if (error) {
       setStatus('error')
@@ -26,12 +38,12 @@ export default function AuthCallback() {
       return
     }
 
-    // Store the JWT and redirect to dashboard
+    // Store the JWT and redirect to the right landing page
     try {
       setToken(token)
       setStatus('success')
       setTimeout(() => {
-        navigate('/dashboard', { replace: true })
+        navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
       }, 500)
     } catch (err) {
       setStatus('error')
@@ -85,10 +97,10 @@ export default function AuthCallback() {
                 </svg>
               </div>
               <p className="text-sm font-medium text-[hsl(var(--foreground))] font-body">
-                Signed in successfully!
+                {isLinkFlow ? 'GitHub account linked!' : 'Signed in successfully!'}
               </p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body flex items-center gap-1">
-                Redirecting to dashboard <ArrowRight size={12} className="inline animate-pulse" />
+                {isLinkFlow ? 'Redirecting to your profile' : 'Redirecting to dashboard'} <ArrowRight size={12} className="inline animate-pulse" />
               </p>
             </div>
           )}
@@ -101,16 +113,16 @@ export default function AuthCallback() {
                 </svg>
               </div>
               <p className="text-sm text-error font-medium font-body">
-                Sign in failed
+                {isLinkFlow ? 'GitHub link failed' : 'Sign in failed'}
               </p>
               <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body mb-2">
                 {errorMsg}
               </p>
               <button
-                onClick={() => navigate('/login', { replace: true })}
+                onClick={() => navigate(isLinkFlow ? '/profile' : '/login', { replace: true })}
                 className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 px-5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all font-body"
               >
-                Back to Sign In
+                {isLinkFlow ? 'Back to Profile' : 'Back to Sign In'}
               </button>
             </div>
           )}

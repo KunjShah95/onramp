@@ -101,11 +101,46 @@ spec:
                 secretKeyRef:
                   name: onramp-secrets
                   key: JWT_SECRET
-            - name: API_KEY_ENCRYPTION_KEY
+            - name: API_KEY_HMAC_SECRET
               valueFrom:
                 secretKeyRef:
                   name: onramp-secrets
-                  key: API_KEY_ENCRYPTION_KEY
+                  key: API_KEY_HMAC_SECRET
+            - name: PII_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: PII_ENCRYPTION_KEY
+            - name: GITHUB_TOKEN_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: GITHUB_TOKEN_ENCRYPTION_KEY
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: GITHUB_CLIENT_ID
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: GITHUB_CLIENT_SECRET
+            - name: GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: GITHUB_WEBHOOK_SECRET
+            - name: BACKEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: BACKEND_URL
+            - name: FRONTEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: FRONTEND_URL
             - name: SENTRY_DSN
               valueFrom:
                 secretKeyRef:

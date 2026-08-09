@@ -264,6 +264,8 @@ class PostgresStorage:
                     query = query.where(col == value)
                 elif op == "in":
                     query = query.where(col.in_(value or []))
+                elif op in (">=", "<=", ">", "<"):
+                    query = query.where(col.op(op)(value))
                 else:
                     logger.warning("Unsupported filter operator '%s' for key '%s'", op, key)
         return query

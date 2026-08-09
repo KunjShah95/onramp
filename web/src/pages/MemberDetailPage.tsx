@@ -41,7 +41,7 @@ export default function MemberDetailPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Back */}
         <motion.div variants={item} className="mb-6">
           <button className="flex items-center gap-1.5 text-caption text-text-muted/40 hover:text-text-primary transition-colors group">
@@ -93,7 +93,8 @@ export default function MemberDetailPage() {
           <motion.div variants={item} className="space-y-3">
             {members.map((m, i) => {
               const initials = (m.name || m.user_id || '?').slice(0, 2).toUpperCase()
-              const rate = Math.round((m.completion_rate ?? 0) * 100)
+              // Backend completion_rate is already a percentage (0–100) — do NOT multiply.
+              const rate = Math.round(m.completion_rate ?? 0)
               const rateColor = rate >= 70 ? 'text-emerald-400' : rate >= 40 ? 'text-amber-400' : 'text-red-400'
               return (
                 <motion.div

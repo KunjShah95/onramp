@@ -283,12 +283,32 @@ def _decode_jwt(token: str) -> dict | None:
 from app.services.oauth_service import get_google_login_url, handle_google_callback
 from app.services.oauth_service import get_github_login_url, handle_github_callback
 from fastapi.responses import RedirectResponse
+from urllib.parse import urlencode
+
+
+def _oauth_redirect(token: str | None = None, error: str | None = None) -> RedirectResponse:
+    """Redirect back to the frontend OAuth callback with a token or an error.
+
+    Errors (invalid/expired state, provider mismatch, denied consent, …) are
+    delivered to ``/auth/callback?error=...`` so the frontend can render its
+    friendly error screen instead of the browser showing a raw API 400 page.
+    """
+    frontend_url = os.getenv(
+        "FRONTEND_URL",
+        os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
+    )
+    params: dict[str, str] = {}
+    if token:
+        params["token"] = token
+    if error:
+        params["error"] = error
+    return RedirectResponse(url=f"{frontend_url}/auth/callback?{urlencode(params)}")
 
 
 @router.get("/oauth/google/login")
 async def google_login():
     """Redirect to Google OAuth consent screen."""
-    url = get_google_login_url()
+    url = await get_google_login_url()
     return RedirectResponse(url=url)
 
 
@@ -297,21 +317,38 @@ async def google_callback(code: str, state: str):
     """Handle Google OAuth callback."""
     try:
         result = await handle_google_callback(code, state)
-        frontend_url = os.getenv(
-            "FRONTEND_URL",
-            os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-        )
-        redirect_url = f"{frontend_url}/auth/callback?token={result['token']}"
-        return RedirectResponse(url=redirect_url)
+        return _oauth_redirect(token=result["token"])
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("Google OAuth callback failed: %s", e)
+        return _oauth_redirect(error=str(e))
 
 
 @router.get("/oauth/github/login")
 async def github_login():
     """Redirect to GitHub OAuth consent screen."""
-    url = get_github_login_url()
+    url = await get_github_login_url()
     return RedirectResponse(url=url)
+
+
+class GithubLinkResponse(BaseModel):
+    url: str
+
+
+@router.post("/oauth/github/link", response_model=GithubLinkResponse)
+async def github_link(user: dict = Depends(get_current_user)):
+    """Start the GitHub account-linking flow for the authenticated user.
+
+    Returns the GitHub OAuth authorization URL with the user's uid baked
+    into the (server-side) state token. The callback then attaches the
+    GitHub identity to *this* account rather than erroring with "already
+    registered with password" — letting email/password users connect their
+    GitHub identity without creating a second account.
+
+    This endpoint requires a valid session (unlike the public login route),
+    so only an authenticated user can initiate linking for their own account.
+    """
+    uid = user.get("uid", "")
+    return GithubLinkResponse(url=await get_github_login_url(mode="link", uid=uid))
 
 
 @router.get("/oauth/github/callback")
@@ -319,14 +356,10 @@ async def github_callback(code: str, state: str):
     """Handle GitHub OAuth callback."""
     try:
         result = await handle_github_callback(code, state)
-        frontend_url = os.getenv(
-            "FRONTEND_URL",
-            os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-        )
-        redirect_url = f"{frontend_url}/auth/callback?token={result['token']}"
-        return RedirectResponse(url=redirect_url)
+        return _oauth_redirect(token=result["token"])
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("GitHub OAuth callback failed: %s", e)
+        return _oauth_redirect(error=str(e))
 
 
 @router.post("/register", response_model=AuthResponse)

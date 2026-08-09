@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { fetchRepos } from '../lib/api'
+import { fetchRepos, getGithubLinkUrl } from '../lib/api'
 import ConsolePanel from '../components/ui/console-panel'
 import { ArrowRight, ArrowUpRight, GithubLogo, SignOut } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
@@ -60,8 +60,23 @@ export default function Profile() {
     }
   }
 
-  const connectGithub = () => {
-    window.location.href = '/repos/connect'
+  const connectGithub = async () => {
+    // Start the account-linking OAuth flow — the callback lands on
+    // /auth/callback with a fresh session and attaches the GitHub identity
+    // to this (already signed-in) account instead of creating a second one.
+    try {
+      const { url } = await getGithubLinkUrl()
+      // Remember this was an account-link flow (not a fresh sign-in) so the
+      // OAuth callback can return the user to their profile afterwards. The
+      // value is a timestamp so a stale flag from an aborted flow is ignored.
+      sessionStorage.setItem('ghLinkFlow', String(Date.now()))
+      window.location.href = url
+    } catch (err) {
+      toast.error(
+        'GitHub link failed',
+        err instanceof Error ? err.message : 'Could not start the link flow.'
+      )
+    }
   }
 
   return (
@@ -109,7 +124,7 @@ export default function Profile() {
                 className="mt-3 inline-flex items-center gap-1.5 text-caption text-go hover:underline"
               >
                 <GithubLogo size={12} weight="fill" />
-                Connect another
+                {user?.githubUsername ? `Linked as @${user.githubUsername}` : 'Connect GitHub'}
                 <ArrowUpRight size={11} weight="bold" />
               </button>
             </ConsolePanel>

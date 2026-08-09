@@ -73,6 +73,8 @@ class User(Base):
     # Used to link issues/PRs to the right developer (source_issue matching).
     github_username: Mapped[str | None] = mapped_column(String(39), nullable=True, index=True)
     github_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Account deactivation timestamp — set by deactivate_user (GDPR account deletion)
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
     teams: Mapped[list["Team"]] = relationship(
         "Team", secondary="team_members", back_populates="members"
@@ -112,6 +114,7 @@ class User(Base):
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "github_username": self.github_username,
             "github_id": self.github_id,
+            "deactivated_at": self.deactivated_at.isoformat() if self.deactivated_at else None,
         }
 
 
@@ -395,6 +398,10 @@ class Task(Base):
     # Source GitHub issue for imported/starter tasks (dedicated field so the
     # PR review agent can't clobber it on submit)
     source_issue: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # GitHub PR auto-link metadata — set by the PR webhook when it matches a
+    # task to an opened PR (github_pr_author + github_pr_number).
+    github_pr_author: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    github_pr_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Task dependency DAG — prerequisite task_ids that must be completed before
     # this task can be started (start_task blocks until they are)
     depends_on: Mapped[list | None] = mapped_column(JSONB, nullable=True)
@@ -440,6 +447,8 @@ class Task(Base):
             "peer_reviewed_by": self.peer_reviewed_by,
             "quiz_required": self.quiz_required,
             "source_issue": self.source_issue,
+            "github_pr_author": self.github_pr_author,
+            "github_pr_number": self.github_pr_number,
             "depends_on": self.depends_on,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
