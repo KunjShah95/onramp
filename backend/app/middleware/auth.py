@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 
 import jwt
 from fastapi import Request
@@ -69,6 +70,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.public_paths = set(public_paths or ["/", "/docs", "/openapi.json", "/health"])
 
+    def _cors_error_response(self, request: Request, status_code: int, detail: str):
+        """Return error response with CORS headers."""
+        origin = request.headers.get("origin")
+        response = JSONResponse(status_code=status_code, content={"detail": detail})
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
     async def dispatch(self, request: Request, call_next):
         if request.method == "OPTIONS":
             return await call_next(request)
@@ -80,19 +90,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization")
 
         if not auth_header or not auth_header.startswith("Bearer "):
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Missing or invalid Authorization header. Use: Bearer <token>"}
-            )
+            return self._cors_error_response(request, 401, "Missing or invalid Authorization header. Use: Bearer <token>")
 
         token = auth_header.split(" ", 1)[1]
         decoded = await verify_session_token(token)
 
         if decoded is None:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Invalid or expired authentication token"}
-            )
+            return self._cors_error_response(request, 401, "Invalid or expired authentication token")
 
         request.state.user = {
             "uid": decoded.get("uid", "unknown"),

@@ -10,6 +10,7 @@ import hmac
 import json
 import logging
 import os
+import httpx
 from cryptography.fernet import Fernet
 from datetime import datetime, timezone
 from typing import Optional, List
@@ -200,8 +201,6 @@ async def rotate_secret(webhook_id: str, user_id: str) -> Optional[dict]:
 
 async def test_webhook(webhook_id: str, user_id: str) -> dict:
     """Send a test event to a webhook to verify it works."""
-    import httpx
-
     webhook = await get_webhook(webhook_id)
     if not webhook or webhook.get("user_id") != user_id:
         return {"success": False, "error": "Webhook not found"}
@@ -329,3 +328,38 @@ async def list_integrations(user_id: str) -> List[dict]:
         INTEGRATION_CONFIG_COLLECTION,
         [("user_id", "==", user_id)],
     )
+
+
+# ── API key event webhooks ─────────────────────────────────
+
+async def send_webhook(
+    webhook_url: str,
+    event_type: str,
+    key_id: str,
+    org_name: str,
+    details: dict,
+) -> bool:
+    """Send webhook notification asynchronously.
+
+    Returns True if successful, False otherwise. Failures are logged
+    but do not block the main operation.
+    """
+    if not webhook_url:
+        return True
+
+    payload = {
+        "event": event_type,
+        "key_id": key_id,
+        "org_name": org_name,
+        "timestamp": details.get("timestamp"),
+        "details": details,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(webhook_url, json=payload)
+            response.raise_for_status()
+            return True
+    except Exception as e:
+        logger.error(f"Webhook delivery failed to {webhook_url}: {e}")
+        return False

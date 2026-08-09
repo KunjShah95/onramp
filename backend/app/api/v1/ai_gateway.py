@@ -7,6 +7,8 @@ from app.services.usage_tracker import UsageTracker
 from app.api.v1.auth import get_current_user, get_user_or_api_key
 from app.services.team_service import get_team_members, add_member, get_user_teams
 from app.middleware.access_guard import ROLE_HIERARCHY
+from app.services.audit_log_service import log_key_action, get_audit_logs
+from app.services.webhook_service import send_webhook
 
 router = APIRouter(prefix="/ai", tags=["ai-gateway"])
 key_service = APIKeyService()
@@ -32,15 +34,14 @@ async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = Fal
     raise HTTPException(status_code=403, detail="Not a member of this organization")
 
 
-async def _require_org_role(org_name: str, user: dict, min_role: str = "developer") -> None:
-    """Enforce minimum team role for API key management operations.
+async def _require_key_manager_role(org_name: str, user: dict) -> str:
+    """Enforce API key manager role: CEO, CTO, senior_dev, senior, or hr only.
 
-    Checks that the user is a member of the org AND has a role at or above min_role
-    in the role hierarchy (e.g., developer >= tester >= new_dev).
-
-    If the org has no members yet, the caller becomes owner (first-touch).
-    Otherwise raises 403 if not a member or role is insufficient.
+    Returns the user's verified role. Raises 403 if not authorized.
+    First-touch: if org has no members, caller becomes owner.
     """
+    KEY_MANAGER_ROLES = {"ceo", "cto", "owner", "senior_dev", "senior", "hr"}
+
     uid = user["uid"]
     members = await get_team_members(org_name)
     member_ids = {m.get("id") or m.get("user_id") for m in members}
@@ -48,7 +49,7 @@ async def _require_org_role(org_name: str, user: dict, min_role: str = "develope
     if uid not in member_ids:
         if not members:
             await add_member(org_name, uid, role="owner")
-            return
+            return "owner"
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
     teams = await get_user_teams(uid)
@@ -61,29 +62,44 @@ async def _require_org_role(org_name: str, user: dict, min_role: str = "develope
     if user_role is None:
         raise HTTPException(status_code=403, detail="Role information not found")
 
-    min_level = ROLE_HIERARCHY.get(min_role, 0)
-    user_level = ROLE_HIERARCHY.get(user_role, 0)
-
-    if user_level < min_level:
+    if user_role not in KEY_MANAGER_ROLES:
         raise HTTPException(
             status_code=403,
-            detail=f"Insufficient role to manage API keys. Required: {min_role}, current: {user_role}",
+            detail=f"Only CEO, CTO, senior, or HR can manage API keys. Your role: {user_role}",
         )
+
+    return user_role
 
 
 class CreateKeyRequest(BaseModel):
     org_name: str
     tier: str = "free"
-    # Human-friendly label for the key (defaults to the org name server-side).
     name: Optional[str] = None
-    # Optional per-key cost budget in credits — the key stops working once its
-    # cumulative usage reaches this limit.
     credit_limit: Optional[int] = None
-    # Optional key lifetime: days until the key auto-expires (blank = never).
     expires_in_days: Optional[int] = None
-    # NOTE: created_by is intentionally NOT accepted from the client. The
-    # creating user is taken from the authenticated session (server-side) to
-    # prevent attribution spoofing / IDOR.
+    webhook_url: Optional[str] = None
+    # NOTE: created_by is intentionally NOT accepted from the client.
+
+
+class RotateKeyRequest(BaseModel):
+    key_id: str
+    webhook_url: Optional[str] = None
+
+
+class AuditLogEntry(BaseModel):
+    id: str
+    org_name: str
+    action: str  # created, rotated, revoked, listed
+    user_id: str
+    user_role: str
+    key_id: Optional[str] = None
+    timestamp: str
+    details: Optional[Dict[str, Any]] = None
+
+
+class WebhookConfig(BaseModel):
+    url: str
+    events: list[str] = ["key_created", "key_rotated", "key_revoked"]
 
 
 class ValidateKeyRequest(BaseModel):
@@ -114,8 +130,8 @@ async def create_api_key(
     user: dict = Depends(get_current_user),
 ):
     # Attribution is taken from the authenticated session, never the client body.
-    # Caller must have developer+ role in the org to create keys.
-    await _require_org_role(request.org_name, user, min_role="developer")
+    # Caller must be CEO, CTO, senior, or HR to manage keys.
+    user_role = await _require_key_manager_role(request.org_name, user)
     if request.credit_limit is not None and request.credit_limit < 0:
         raise HTTPException(status_code=400, detail="credit_limit cannot be negative")
     if request.expires_in_days is not None and request.expires_in_days < 1:
@@ -130,6 +146,32 @@ async def create_api_key(
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+
+    await log_key_action(
+        org_name=request.org_name,
+        action="created",
+        user_id=user["uid"],
+        user_role=user_role,
+        key_id=result["key_id"],
+        details={
+            "tier": request.tier,
+            "credit_limit": request.credit_limit,
+            "expires_in_days": request.expires_in_days,
+        },
+    )
+
+    if request.webhook_url:
+        await send_webhook(
+            webhook_url=request.webhook_url,
+            event_type="key_created",
+            key_id=result["key_id"],
+            org_name=request.org_name,
+            details={
+                "tier": request.tier,
+                "timestamp": result.get("created_at"),
+            },
+        )
+
     return CreateKeyResponse(
         raw_key=result["raw_key"],
         key_id=result["key_id"],
@@ -147,10 +189,17 @@ async def list_api_keys(
     user: dict = Depends(get_current_user),
 ):
     # Never list all keys across tenants. Scope to an org (with membership
-    # verification and minimum role) or fall back to the caller's own user-scoped keys.
+    # verification and key manager role) or fall back to the caller's own user-scoped keys.
     if org_name:
-        await _require_org_role(org_name, user, min_role="developer")
+        user_role = await _require_key_manager_role(org_name, user)
         keys = await key_service.list_keys(org_name, owner_type="team")
+        await log_key_action(
+            org_name=org_name,
+            action="listed",
+            user_id=user["uid"],
+            user_role=user_role,
+            details={"key_count": len(keys)},
+        )
     else:
         keys = await key_service.list_keys(user["uid"], owner_type="user")
     return {"keys": keys, "count": len(keys)}
@@ -171,18 +220,123 @@ async def revoke_api_key(
         key.get("user_id") == uid
         or perms.get("created_by") == uid
     )
-    # team_id stores the org scope in this model — org members with developer+ role may also revoke.
+    # team_id stores the org scope in this model — key managers may also revoke.
     if not owns_key:
         org_scope = key.get("team_id")
         if org_scope:
-            await _require_org_role(org_scope, user, min_role="developer")
+            await _require_key_manager_role(org_scope, user)
         else:
             raise HTTPException(status_code=403, detail="Not authorized to revoke this key")
 
     success = await key_service.revoke_key(key_id)
     if not success:
         raise HTTPException(status_code=404, detail="Key not found")
+
+    await log_key_action(
+        org_name=key.get("team_id", ""),
+        action="revoked",
+        user_id=uid,
+        user_role=user.get("role", "unknown"),
+        key_id=key_id,
+    )
+
     return {"revoked": True, "key_id": key_id}
+
+
+@router.post("/keys/{key_id}/rotate", response_model=CreateKeyResponse)
+async def rotate_api_key(
+    key_id: str,
+    request: RotateKeyRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Rotate an API key — revokes old key, generates new one with same settings.
+
+    Only key creators or key managers can rotate. Old key is immediately revoked.
+    Returns new raw key (never retrievable again).
+    """
+    key = await key_service.get_key(key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail="Key not found")
+
+    uid = user["uid"]
+    perms = key.get("permissions") or {}
+    owns_key = key.get("user_id") == uid or perms.get("created_by") == uid
+
+    if not owns_key:
+        org_scope = key.get("team_id")
+        if org_scope:
+            await _require_key_manager_role(org_scope, user)
+        else:
+            raise HTTPException(status_code=403, detail="Not authorized to rotate this key")
+
+    org_name = key.get("team_id") or key.get("org_name")
+    tier = perms.get("tier", key.get("tier", "free"))
+    credit_limit = perms.get("credit_limit")
+    name = key.get("name")
+
+    await key_service.revoke_key(key_id)
+
+    result = await key_service.create_key(
+        org_name=org_name,
+        tier=tier,
+        created_by=uid,
+        name=f"{name} (rotated)" if name else None,
+        credit_limit=credit_limit,
+    )
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    await log_key_action(
+        org_name=org_name,
+        action="rotated",
+        user_id=uid,
+        user_role=user.get("role", "unknown"),
+        key_id=result["key_id"],
+        details={"old_key_id": key_id},
+    )
+
+    if request.webhook_url:
+        await send_webhook(
+            webhook_url=request.webhook_url,
+            event_type="key_rotated",
+            key_id=result["key_id"],
+            org_name=org_name,
+            details={"old_key_id": key_id, "timestamp": result.get("created_at")},
+        )
+
+    return CreateKeyResponse(
+        raw_key=result["raw_key"],
+        key_id=result["key_id"],
+        org_name=result["org_name"],
+        tier=result["tier"],
+        name=result.get("name"),
+        credit_limit=result.get("credit_limit"),
+        expires_at=result.get("expires_at"),
+    )
+
+
+@router.get("/audit-logs/{org_name}")
+async def get_key_audit_logs(
+    org_name: str,
+    limit: int = 50,
+    action: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Fetch API key audit logs for an org.
+
+    Only key managers can view audit logs. Logs all creation, rotation,
+    and revocation events with user attribution.
+    """
+    await _require_key_manager_role(org_name, user)
+
+    logs = await get_audit_logs(org_name, limit=min(limit, 100), action_filter=action)
+
+    return {
+        "org_name": org_name,
+        "logs": logs,
+        "count": len(logs),
+    }
 
 
 @router.post("/keys/validate")

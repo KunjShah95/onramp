@@ -2160,6 +2160,18 @@ export async function importIssueToTask(data: {
   return request<WorkflowTask>(`${API_BASE}/tasks/import-issue`, data)
 }
 
+export async function searchIssues(
+  repoUrl: string,
+  query: string,
+  limit = 20
+): Promise<{ issues: { number: number; title: string; url: string; labels: string[]; state: string }[]; count: number; query: string }> {
+  return request(`${API_BASE}/tasks/search-issues`, {
+    repo_url: repoUrl,
+    query,
+    limit,
+  })
+}
+
 // ─── Peer Review ─────────────────────────────────────────────
 
 export async function peerReviewTask(taskId: string, data: {

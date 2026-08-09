@@ -10,42 +10,50 @@ test.describe('Login Page', () => {
 
   test('renders all login form elements', async ({ page }) => {
     // Brand header — page shows "Onramp"
-    await expect(page.getByText('Onramp')).toBeVisible()
-    await expect(page.getByText('Log in to your workspace')).toBeVisible()
+    await expect(page.getByText('Onramp').first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible()
 
     // Social login — rendered as <a> tags with text content
     await expect(page.getByText('Continue with Google')).toBeVisible()
     await expect(page.getByText('Continue with GitHub')).toBeVisible()
 
-    // Email/password form
+    // Stage 1 — email only
     await expect(page.locator('input#email')).toBeVisible()
+    await expect(page.getByRole('button', { name: /continue/i })).toBeVisible()
+
+    // Advance to stage 2 — password + final submit + links
+    await page.fill('input#email', 'test@example.com')
+    await page.getByRole('button', { name: /continue/i }).click()
     await expect(page.locator('input#password')).toBeVisible()
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
-
-    // Navigation links
     await expect(page.getByRole('link', { name: /forgot\?/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: /register/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /create an account/i })).toBeVisible()
   })
 
   test('shows validation errors on empty submit', async ({ page }) => {
-    // The submit button should be disabled when fields are empty
-    const submitBtn = page.getByRole('button', { name: /sign in/i })
-    await expect(submitBtn).toBeDisabled()
+    // Stage 1 continue button is disabled while email is empty
+    const continueBtn = page.getByRole('button', { name: /continue/i })
+    await expect(continueBtn).toBeDisabled()
   })
 
   test('submit button enables when fields are filled', async ({ page }) => {
     await page.fill('input#email', 'test@example.com')
-    await page.fill('input#password', 'password123')
+    await page.getByRole('button', { name: /continue/i }).click()
     const submitBtn = page.getByRole('button', { name: /sign in/i })
+    // Disabled until a password is entered
+    await expect(submitBtn).toBeDisabled()
+    await page.fill('input#password', 'password123')
     await expect(submitBtn).toBeEnabled()
   })
 
   test('navigates to register page', async ({ page }) => {
-    await page.getByRole('link', { name: /register/i }).click()
+    await page.getByRole('link', { name: /create an account/i }).click()
     await expect(page).toHaveURL(/\/register/)
   })
 
   test('navigates to forgot password page', async ({ page }) => {
+    await page.fill('input#email', 'test@example.com')
+    await page.getByRole('button', { name: /continue/i }).click()
     await page.getByRole('link', { name: /forgot\?/i }).click()
     await expect(page).toHaveURL(/\/forgot-password/)
   })
@@ -69,7 +77,12 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
 
+    // Stage 1 — submit email to advance
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
+
+    // Stage 2 — password + final submit
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
 
@@ -87,6 +100,8 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })

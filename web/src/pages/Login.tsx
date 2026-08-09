@@ -183,6 +183,11 @@ export default function Login() {
                     required
                     autoComplete="current-password"
                     autoFocus
+                    trailing={
+                      <Link to="/forgot-password" className="text-[11px] font-medium text-go hover:underline">
+                        Forgot?
+                      </Link>
+                    }
                   />
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input

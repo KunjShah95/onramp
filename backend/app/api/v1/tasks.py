@@ -133,6 +133,12 @@ class ImportIssueRequest(BaseModel):
     quiz_required: bool = False
 
 
+class SearchIssuesRequest(BaseModel):
+    repo_url: str
+    query: str
+    limit: int = 20
+
+
 class ActualHoursRequest(BaseModel):
     hours: float
 
@@ -687,8 +693,7 @@ async def import_issue_endpoint(
 
     github_token = os.getenv("GITHUB_TOKEN")
     gh = GitHubService(github_token)
-    issues = await gh.get_issues(request.repo_url, limit=100)
-    issue = next((i for i in issues if i.number == request.issue_number), None)
+    issue = await gh.get_issue(request.repo_url, request.issue_number)
     if not issue:
         raise HTTPException(status_code=404, detail=f"Issue #{request.issue_number} not found in {request.repo_url}")
 
@@ -736,6 +741,33 @@ async def import_issue_endpoint(
         logger.exception("Failed to log issue import audit event")
     await invalidate_prefix("tasks")
     return task
+
+
+@router.post("/search-issues")
+async def search_issues_endpoint(
+    request: SearchIssuesRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Search a GitHub repo's open issues by title/keyword.
+
+    Returns matching issues so seniors can find new issues by name and import
+    the one they want (via the import-issue endpoint).
+    """
+    from app.services.github_service import GitHubService as _GitHubService
+
+    uid = user.get("uid", "")
+    gh = _GitHubService(os.getenv("GITHUB_TOKEN"))
+    issues = await gh.search_issues(request.repo_url, request.query, limit=request.limit)
+    payload = []
+    for i in issues:
+        payload.append({
+            "number": i.number,
+            "title": i.title,
+            "url": i.url,
+            "labels": i.labels,
+            "state": i.state,
+        })
+    return {"issues": payload, "count": len(payload), "query": request.query}
 
 
 # ── Time Tracking ────────────────────────────────────────────
