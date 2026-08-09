@@ -27,6 +27,9 @@ async def create_user(
     """Create a backend user record. Returns the record or raises on duplicate."""
     storage = get_storage()
 
+    if len(name.strip()) > 120:
+        raise ValueError("Name must be 120 characters or fewer")
+
     existing = await get_user_by_email(email)
     if existing:
         if existing["provider"] != provider:
@@ -192,6 +195,8 @@ async def update_user_profile(uid: str, data: dict) -> dict | None:
         name = data["name"].strip()
         if not name:
             raise ValueError("Name cannot be empty")
+        if len(name) > 120:
+            raise ValueError("Name must be 120 characters or fewer")
         update["name"] = encrypt_field(name)
     if "position" in data:
         update["position"] = data["position"].strip() or None

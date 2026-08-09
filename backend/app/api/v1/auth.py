@@ -334,6 +334,8 @@ async def register(body: RegisterRequest):
         raise HTTPException(status_code=400, detail="email, password, and name are required")
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(body.name.strip()) > 120:
+        raise HTTPException(status_code=400, detail="Name must be 120 characters or fewer")
 
     existing = await get_user_by_email(body.email)
     if existing:
@@ -538,9 +540,12 @@ async def update_me(
 
     data = {}
     if body.name is not None:
-        if not body.name.strip():
+        stripped_name = body.name.strip()
+        if not stripped_name:
             raise HTTPException(status_code=400, detail="Name cannot be empty")
-        data["name"] = body.name.strip()
+        if len(stripped_name) > 120:
+            raise HTTPException(status_code=400, detail="Name must be 120 characters or fewer")
+        data["name"] = stripped_name
     if body.position is not None:
         if len(body.position) > 255:
             raise HTTPException(status_code=400, detail="Position must be 255 characters or fewer")

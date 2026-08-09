@@ -5,7 +5,8 @@ from typing import Optional, Dict, Any
 from app.services.api_key_service import APIKeyService, TIER_LIMITS, CREDIT_COSTS
 from app.services.usage_tracker import UsageTracker
 from app.api.v1.auth import get_current_user, get_user_or_api_key
-from app.services.team_service import get_team_members, add_member
+from app.services.team_service import get_team_members, add_member, get_user_teams
+from app.middleware.access_guard import ROLE_HIERARCHY
 
 router = APIRouter(prefix="/ai", tags=["ai-gateway"])
 key_service = APIKeyService()
@@ -29,6 +30,45 @@ async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = Fal
         await add_member(org_name, user["uid"], role="owner")
         return
     raise HTTPException(status_code=403, detail="Not a member of this organization")
+
+
+async def _require_org_role(org_name: str, user: dict, min_role: str = "developer") -> None:
+    """Enforce minimum team role for API key management operations.
+
+    Checks that the user is a member of the org AND has a role at or above min_role
+    in the role hierarchy (e.g., developer >= tester >= new_dev).
+
+    If the org has no members yet, the caller becomes owner (first-touch).
+    Otherwise raises 403 if not a member or role is insufficient.
+    """
+    uid = user["uid"]
+    members = await get_team_members(org_name)
+    member_ids = {m.get("id") or m.get("user_id") for m in members}
+
+    if uid not in member_ids:
+        if not members:
+            await add_member(org_name, uid, role="owner")
+            return
+        raise HTTPException(status_code=403, detail="Not a member of this organization")
+
+    teams = await get_user_teams(uid)
+    user_role = None
+    for team in teams:
+        if (team.get("team_id") or team.get("id")) == org_name:
+            user_role = team.get("role")
+            break
+
+    if user_role is None:
+        raise HTTPException(status_code=403, detail="Role information not found")
+
+    min_level = ROLE_HIERARCHY.get(min_role, 0)
+    user_level = ROLE_HIERARCHY.get(user_role, 0)
+
+    if user_level < min_level:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Insufficient role to manage API keys. Required: {min_role}, current: {user_role}",
+        )
 
 
 class CreateKeyRequest(BaseModel):
@@ -74,8 +114,8 @@ async def create_api_key(
     user: dict = Depends(get_current_user),
 ):
     # Attribution is taken from the authenticated session, never the client body.
-    # Caller must belong to the org (or becomes its owner if the org is new).
-    await _ensure_org_access(request.org_name, user, allow_create=True)
+    # Caller must have developer+ role in the org to create keys.
+    await _require_org_role(request.org_name, user, min_role="developer")
     if request.credit_limit is not None and request.credit_limit < 0:
         raise HTTPException(status_code=400, detail="credit_limit cannot be negative")
     if request.expires_in_days is not None and request.expires_in_days < 1:
@@ -107,9 +147,9 @@ async def list_api_keys(
     user: dict = Depends(get_current_user),
 ):
     # Never list all keys across tenants. Scope to an org (with membership
-    # verification) or fall back to the caller's own user-scoped keys.
+    # verification and minimum role) or fall back to the caller's own user-scoped keys.
     if org_name:
-        await _ensure_org_access(org_name, user)
+        await _require_org_role(org_name, user, min_role="developer")
         keys = await key_service.list_keys(org_name, owner_type="team")
     else:
         keys = await key_service.list_keys(user["uid"], owner_type="user")
@@ -131,12 +171,12 @@ async def revoke_api_key(
         key.get("user_id") == uid
         or perms.get("created_by") == uid
     )
-    # team_id stores the org scope in this model — org members may also revoke.
+    # team_id stores the org scope in this model — org members with developer+ role may also revoke.
     if not owns_key:
         org_scope = key.get("team_id")
-        members = await get_team_members(org_scope) if org_scope else []
-        member_ids = {m.get("id") or m.get("user_id") for m in members}
-        if uid not in member_ids:
+        if org_scope:
+            await _require_org_role(org_scope, user, min_role="developer")
+        else:
             raise HTTPException(status_code=403, detail="Not authorized to revoke this key")
 
     success = await key_service.revoke_key(key_id)
