@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   GitPullRequest,
   Clock,
@@ -12,35 +12,40 @@ import {
   WarningCircle,
 } from '@phosphor-icons/react'
 import { ReviewQueueSkeleton } from '../components/ui/Skeleton'
-import { EmptyState } from '../components/ui/empty-state'
 import { useAuth } from '../context/AuthContext'
 import { listTeams, listTasks } from '../lib/api'
 import type { WorkflowTask, TeamsResponse } from '../lib/api'
+import { cn } from '../lib/utils'
+import ConsolePanel from '../components/ui/console-panel'
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  submitted: { label: 'Pending', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  under_review: { label: 'In Review', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  product_review: { label: 'In Review', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  approved: { label: 'Approved', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  completed: { label: 'Approved', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  needs_changes: { label: 'Changes Requested', color: 'text-red-400', bg: 'bg-red-500/10' },
-  pending: { label: 'Pending', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  in_progress: { label: 'In Progress', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+const STATUS_CONFIG: Record<string, { label: string; tone: 'go' | 'mission' | 'caution' | 'abort' | 'idle' }> = {
+  submitted: { label: 'Pending', tone: 'caution' },
+  under_review: { label: 'In Review', tone: 'mission' },
+  product_review: { label: 'In Review', tone: 'mission' },
+  approved: { label: 'Approved', tone: 'go' },
+  completed: { label: 'Approved', tone: 'go' },
+  needs_changes: { label: 'Changes Requested', tone: 'abort' },
+  pending: { label: 'Pending', tone: 'caution' },
+  in_progress: { label: 'In Progress', tone: 'mission' },
 }
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string; border: string }> = {
-  high: { label: 'High', color: 'text-red-400', border: 'border-l-red-500/50' },
-  medium: { label: 'Medium', color: 'text-amber-400', border: 'border-l-amber-500/50' },
-  low: { label: 'Low', color: 'text-text-tertiary', border: 'border-l-text-tertiary/30' },
-}
+const TONE_CLASS = {
+  go: 'bg-go/10 text-go border-go/30',
+  mission: 'bg-mission/10 text-mission border-mission/30',
+  caution: 'bg-caution/10 text-caution border-caution/30',
+  abort: 'bg-abort/10 text-abort border-abort/30',
+  idle: 'bg-base text-ink-tertiary border-seam',
+} as const
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+const PRIORITY_BAR = {
+  high: 'bg-abort',
+  medium: 'bg-caution',
+  low: 'bg-ink-disabled',
+} as const
+
+const fade = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 function tabForState(state: string): string {
@@ -50,6 +55,14 @@ function tabForState(state: string): string {
   if (state === 'needs_changes') return 'changes'
   return 'pending'
 }
+
+const TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'in-progress', label: 'In Review' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'changes', label: 'Changes' },
+] as const
 
 export default function ReviewQueuePage() {
   const [teamId, setTeamId] = useState('')
@@ -89,14 +102,9 @@ export default function ReviewQueuePage() {
     }
   }
 
-  useEffect(() => {
-    fetchTasks()
-  }, [teamId])
+  useEffect(() => { fetchTasks() }, [teamId])
 
-  const reviewItems = tasks.map((t) => {
-    const status = tabForState(t.state)
-    return { task: t, status }
-  })
+  const reviewItems = tasks.map((t) => ({ task: t, status: tabForState(t.state) }))
   const filtered = filter === 'all' ? reviewItems : reviewItems.filter((r) => r.status === filter)
 
   const counts = {
@@ -106,181 +114,212 @@ export default function ReviewQueuePage() {
     changes: reviewItems.filter((r) => r.status === 'changes').length,
   }
 
+  const pendingTotal = counts.pending + counts['in-progress'] + counts.changes
+  const verdictTone = counts.changes > 0 ? 'hold' : counts.pending > 0 ? 'standby' : 'go'
+
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-5xl mx-auto space-y-6 relative"
-    >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <GitPullRequest size={11} weight="fill" className="mr-1.5" />
-              Review Queue
-            </span>
+    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+
+        {/* Header */}
+        <motion.header initial="hidden" animate="show" variants={fade}>
+          <div className="flex items-center gap-2.5 mb-2">
             <span className="designator opacity-50">PR GATE</span>
+            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+            <span className="designator opacity-50">FLIGHT · REVIEW</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Review Queue</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">
-            Review pending pull requests and provide feedback.
+          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
+            Triage by state. Act by row.
+          </h1>
+          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
+            Pending PRs in one place. Filter by state, take action on the row that needs it.
           </p>
-        </div>
-        {teamId && (
-          <select
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
-            className="bg-bg-secondary border border-border text-text-primary text-caption rounded-lg px-3 py-2"
-          >
-            <option value={teamId}>{teamId}</option>
-          </select>
-        )}
-      </motion.div>
+        </motion.header>
 
-      {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchTasks} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
-        </motion.div>
-      )}
-
-      {/* Filter Tabs */}
-      <motion.div variants={itemVariants} className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit flex-wrap">
-        {[
-          { key: 'all', label: 'All' },
-          { key: 'pending', label: 'Pending' },
-          { key: 'in-progress', label: 'In Review' },
-          { key: 'approved', label: 'Approved' },
-          { key: 'changes', label: 'Changes' },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
-              filter === f.key
-                ? 'bg-bg-primary text-text-primary shadow-sm'
-                : 'text-text-tertiary hover:text-text-secondary'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </motion.div>
-
-      {/* Queue */}
-      {loading ? (
-        <motion.div variants={itemVariants}><ReviewQueueSkeleton /></motion.div>
-      ) : filtered.length === 0 ? (
-        <motion.div variants={itemVariants}>
-          <EmptyState
-            icon={<GitPullRequest className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
-            title="Queue is clear"
-            description="No pull requests match this filter."
-          />
-        </motion.div>
-      ) : (
-        <motion.div variants={itemVariants} className="space-y-2">
-          {filtered.map(({ task, status }, i) => {
-            // STATUS_CONFIG is keyed by task state (e.g. needs_changes, in_progress),
-            // NOT by tab keys (changes, in-progress). Look up by the task's own state
-            // first, fall back to the tab key, then a neutral default so a new/unknown
-            // state can never crash the queue.
-            const statusStyle =
-              STATUS_CONFIG[task.state] ??
-              STATUS_CONFIG[status] ?? {
-                label: task.state,
-                color: 'text-text-tertiary',
-                bg: 'bg-bg-tertiary/50',
-              }
-            const priorityStyle = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.low
-            return (
-              <motion.div
-                key={task.task_id}
-                initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
-                className={`card p-4 border-l-2 ${priorityStyle.border} hover:border-l-go transition-all cursor-pointer group`}
+        {/* Verdict bar */}
+        <motion.div initial="hidden" animate="show" variants={fade}>
+          <ConsolePanel
+            rail={verdictTone === 'hold' ? 'Hold' : verdictTone === 'standby' ? 'Awaiting review' : 'Clear'}
+            designator={`${pendingTotal} ACTIONABLE`}
+            status={verdictTone === 'hold' ? 'caution' : verdictTone === 'standby' ? 'standby' : 'go'}
+            live={verdictTone !== 'hold'}
+            action={
+              <button
+                onClick={fetchTasks}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-base transition-colors disabled:opacity-40"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3 mb-1.5">
-                      <h3 className="text-body font-medium text-text-primary group-hover:text-go transition-colors">
+                Refresh
+              </button>
+            }
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Pending', value: counts.pending, icon: Clock, tone: 'caution' as const },
+                { label: 'In Review', value: counts['in-progress'], icon: Eye, tone: 'mission' as const },
+                { label: 'Approved', value: counts.approved, icon: CheckCircle, tone: 'go' as const },
+                { label: 'Changes', value: counts.changes, icon: WarningCircle, tone: 'abort' as const },
+              ].map((stat) => (
+                <div key={stat.label} className="flex items-center gap-2.5">
+                  <div className={cn('w-7 h-7 rounded-[3px] border flex items-center justify-center',
+                    stat.tone === 'go' && 'bg-go/10 border-go/20',
+                    stat.tone === 'mission' && 'bg-mission/10 border-mission/20',
+                    stat.tone === 'caution' && 'bg-caution/10 border-caution/20',
+                    stat.tone === 'abort' && 'bg-abort/10 border-abort/20',
+                  )}>
+                    <stat.icon size={12} weight="fill" className={cn(
+                      stat.tone === 'go' && 'text-go',
+                      stat.tone === 'mission' && 'text-mission',
+                      stat.tone === 'caution' && 'text-caution',
+                      stat.tone === 'abort' && 'text-abort',
+                    )} />
+                  </div>
+                  <div>
+                    <p className="font-mono text-lg font-semibold text-ink tabular-nums leading-none">{stat.value}</p>
+                    <p className="text-[10px] text-ink-tertiary uppercase tracking-wider mt-0.5">{stat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ConsolePanel>
+        </motion.div>
+
+        {/* Error */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <ConsolePanel pad="dense" status="abort" className="flex items-center justify-between">
+                <span className="text-[13px] text-abort">{error}</span>
+                <button onClick={fetchTasks} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">Retry</button>
+              </ConsolePanel>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Filter tabs */}
+        <motion.div initial="hidden" animate="show" variants={fade}>
+          <ConsolePanel pad="dense">
+            <div className="flex items-center gap-1 flex-wrap">
+              {TABS.map((f) => {
+                const active = filter === f.key
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-[2px] text-[12px] font-semibold transition-colors',
+                      active
+                        ? 'bg-go text-white'
+                        : 'text-ink-secondary hover:text-ink'
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          </ConsolePanel>
+        </motion.div>
+
+        {/* Queue */}
+        {loading ? (
+          <ReviewQueueSkeleton />
+        ) : filtered.length === 0 ? (
+          <motion.div initial="hidden" animate="show" variants={fade}>
+            <ConsolePanel rail="Queue" designator="EMPTY" status="go" className="py-16 text-center">
+              <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
+                <GitPullRequest size={26} className="text-ink-disabled" weight="duotone" />
+              </div>
+              <p className="font-display text-lg text-ink font-semibold mb-1">Queue is clear</p>
+              <p className="text-[13px] text-ink-tertiary max-w-sm mx-auto">
+                No pull requests match this filter.
+              </p>
+            </ConsolePanel>
+          </motion.div>
+        ) : (
+          <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.04 } } }} className="space-y-2">
+            {filtered.map(({ task, status }) => {
+              const style =
+                STATUS_CONFIG[task.state] ??
+                STATUS_CONFIG[status] ??
+                { label: task.state, tone: 'idle' as const }
+              const priorityBar = PRIORITY_BAR[(task.priority as keyof typeof PRIORITY_BAR) ?? 'low']
+              return (
+                <motion.div
+                  key={task.task_id}
+                  variants={fade}
+                  className={cn(
+                    'group flex items-start gap-3 rounded-[3px] bg-panel border border-seam px-4 py-3',
+                    'hover:border-seam-strong transition-colors cursor-pointer'
+                  )}
+                >
+                  {/* Priority bar */}
+                  <span className={cn('w-0.5 self-stretch rounded-full shrink-0', priorityBar)} aria-hidden />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                      <h3 className="font-display text-[14px] text-ink font-semibold group-hover:text-go transition-colors truncate">
                         {task.title}
                       </h3>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${statusStyle.bg} ${statusStyle.color}`}>
-                        {statusStyle.label}
+                      <span className={cn('px-2 py-0.5 rounded-[2px] text-[10px] font-semibold uppercase tracking-wider border', TONE_CLASS[style.tone])}>
+                        {style.label}
                       </span>
-                      <span className="text-caption text-text-tertiary/60">{priorityStyle.label}</span>
+                      {task.priority && (
+                        <span className="font-code text-[10px] text-ink-tertiary uppercase tracking-wider">
+                          {task.priority}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3 text-caption text-text-tertiary flex-wrap">
+                    <div className="flex items-center gap-3 text-[11px] text-ink-tertiary flex-wrap font-code">
                       {task.assigned_to && (
-                        <span className="flex items-center gap-1.5">
-                          <UserCircle className="w-3.5 h-3.5" weight="fill" />
+                        <span className="inline-flex items-center gap-1">
+                          <UserCircle size={11} weight="fill" />
                           {task.assigned_to}
                         </span>
                       )}
                       {task.module && (
-                        <span className="flex items-center gap-1">
-                          <Code className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1">
+                          <Code size={10} />
                           {task.module}
                         </span>
                       )}
                       {task.ai_review && (
-                        <span className="flex items-center gap-1">
-                          <ChatCircleDots className="w-3 h-3" />
-                          AI score {task.ai_review.score}
+                        <span className="inline-flex items-center gap-1">
+                          <ChatCircleDots size={10} />
+                          AI {task.ai_review.score}
                         </span>
                       )}
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(task.updated_at).toLocaleDateString()}
-                      </span>
+                      {task.updated_at && (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock size={10} />
+                          {new Date(task.updated_at).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {status === 'pending' && (
-                      <button className="w-8 h-8 rounded-lg bg-go/10 flex items-center justify-center text-go hover:bg-go/20 transition-all group/btn hover:scale-110">
-                        <Eye className="w-4 h-4" />
+                      <button className="inline-flex items-center gap-1 rounded-[3px] bg-go text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-go-lit transition-colors">
+                        <Eye size={11} weight="bold" />
+                        Review
                       </button>
                     )}
-                    <button className="w-8 h-8 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-all opacity-0 group-hover:opacity-100 hover:scale-110">
-                      <ArrowRight className="w-4 h-4" />
+                    <button className="w-7 h-7 rounded-[3px] border border-seam-strong bg-base text-ink-tertiary hover:text-ink hover:border-seam-strong transition-colors opacity-0 group-hover:opacity-100" aria-label="Open">
+                      <ArrowRight size={11} weight="bold" className="mx-auto" />
                     </button>
                   </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </motion.div>
-      )}
-
-      {/* Quick Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Pending', value: counts.pending, icon: Clock, color: 'text-amber-400' },
-          { label: 'In Review', value: counts['in-progress'], icon: Eye, color: 'text-blue-400' },
-          { label: 'Approved', value: counts.approved, icon: CheckCircle, color: 'text-emerald-400' },
-          { label: 'Changes', value: counts.changes, icon: WarningCircle, color: 'text-red-400' },
-        ].map((stat, idx) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.06, type: 'spring', stiffness: 100, damping: 16 }}
-            className="card p-3 flex items-center gap-3 group"
-          >
-            <div className="transition-transform group-hover:scale-110">
-              <stat.icon className={`w-4 h-4 ${stat.color}`} weight="fill" />
-            </div>
-            <div>
-              <p className="text-body font-medium text-text-primary">{stat.value}</p>
-              <p className="text-caption text-text-tertiary">{stat.label}</p>
-            </div>
+                </motion.div>
+              )
+            })}
           </motion.div>
-        ))}
-      </motion.div>
-    </motion.div>
+        )}
+      </div>
+    </div>
   )
 }

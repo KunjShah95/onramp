@@ -1,12 +1,32 @@
-import { useState, useEffect } from 'react'
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: Account provisioning lives on the admin seat — a console form with
+ *   a clear status rail, a temp-password reveal panel, and copy-to-clipboard
+ *   with a mission-control chip.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useToast } from '../context/ToastContext'
 import { createAccount, listTeams } from '../lib/api'
-import PageTransition from '../components/ui/page-transition'
-import { UserPlus, Copy, Check, ArrowLeft } from '@phosphor-icons/react'
+import ConsolePanel from '../components/ui/console-panel'
+import StatusTile from '../components/ui/status-tile'
+import {
+  UserPlus, Copy, Check, ArrowLeft, IdentificationCard, EnvelopeSimple,
+  ShieldCheck, UsersThree, ChatText,
+} from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 
 type TeamOption = { team_id: string; name: string }
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+}
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
+}
 
 export default function AdminCreateAccount() {
   const toast = useToast()
@@ -72,143 +92,210 @@ export default function AdminCreateAccount() {
     setCopied(false)
   }
 
+  const roleLabel = (r: typeof role) =>
+    r === 'new_dev' ? 'New Developer'
+    : r === 'developer' ? 'Developer'
+    : r === 'tester' ? 'Tester' : 'HR'
+
   return (
-    <PageTransition>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 p-6">
-        <Link to="/admin" className="inline-flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] mb-6 transition-colors">
-          <ArrowLeft size={16} /> Back to Admin
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-2xl mx-auto space-y-6"
+    >
+      {/* Back link */}
+      <motion.div variants={item}>
+        <Link
+          to="/admin"
+          className="inline-flex items-center gap-1.5 text-caption text-ink-muted hover:text-ink transition-colors font-code"
+        >
+          <ArrowLeft size={13} weight="bold" /> Back to Admin
         </Link>
+      </motion.div>
 
-        <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-1">Create Developer Account</h1>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-8">
-          Provision a new developer account with a temporary password
+      {/* Header */}
+      <motion.div variants={item}>
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <span className="tile tile-go">Provisioning</span>
+          <span className="designator opacity-50">CAPCOM · ACCOUNT</span>
+        </div>
+        <h1 className="text-display-md md:text-display-lg text-text-primary flex items-center gap-3">
+          <UserPlus size={26} weight="fill" className="text-go shrink-0" />
+          Create Developer Account
+        </h1>
+        <p className="text-body-sm text-text-secondary mt-1 font-code">
+          Provision a new developer account with a temporary password.
         </p>
+      </motion.div>
 
-        {result ? (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard"
+      {result ? (
+        <motion.div variants={item} className="space-y-5">
+          <ConsolePanel
+            rail="Account Created"
+            designator={result.email}
+            status="go"
+            live
+            action={<StatusTile status="go" label="PROVISIONED" />}
           >
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-3">
-                <UserPlus size={24} className="text-success" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-tile bg-go-muted border border-go/30 flex items-center justify-center text-go shrink-0">
+                  <Check size={18} weight="bold" />
+                </span>
+                <div>
+                  <p className="text-body-sm text-ink font-medium">Account is live.</p>
+                  <p className="text-caption text-ink-muted font-code">{result.email}</p>
+                </div>
               </div>
-              <h2 className="font-display text-lg font-bold">Account Created</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">{result.email}</p>
-            </div>
 
-            <div className="bg-warning/10 border border-warning/25 rounded-xl p-4 mb-6">
-              <p className="text-xs font-semibold text-warning mb-1">Temporary Password — Copy it now</p>
-              <p className="text-xs text-warning/90 mb-3">This password will only be shown once. Share it securely with the developer.</p>
-              <div className="flex items-center gap-2 bg-bg-elevated border border-warning/25 rounded-lg px-3 py-2">
-                <code className="flex-1 text-sm font-mono select-all">{result.temp_password}</code>
-                <button
-                  onClick={handleCopyPassword}
-                  className="p-1.5 rounded-lg hover:bg-warning/10 transition-colors"
-                  title="Copy password"
-                >
-                  {copied ? <Check size={16} className="text-success" /> : <Copy size={16} />}
-                </button>
+              {/* Temp password reveal */}
+              <div className="rounded-tile border border-caution/30 bg-caution-muted/40 p-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <StatusTile status="caution" label="TEMPORARY PASSWORD" />
+                  <span className="text-caption text-caution font-code">shown once · copy now</span>
+                </div>
+                <p className="text-caption text-ink-secondary mb-3">
+                  Share this securely with the developer. It cannot be recovered after this view.
+                </p>
+                <div className="flex items-center gap-2 bg-panel border border-seam rounded-tile px-3 py-2">
+                  <code className="flex-1 text-body-sm font-code text-ink select-all break-all">
+                    {result.temp_password}
+                  </code>
+                  <button
+                    onClick={handleCopyPassword}
+                    aria-label={copied ? 'Password copied' : 'Copy password'}
+                    className="p-1.5 rounded-tile border border-seam hover:border-seam-strong bg-panel transition-colors"
+                    title="Copy password"
+                  >
+                    {copied
+                      ? <Check size={14} weight="bold" className="text-go" />
+                      : <Copy size={14} className="text-ink-secondary" />}
+                  </button>
+                </div>
+                {copied && (
+                  <p className="text-caption text-go font-code mt-2">Copied to clipboard.</p>
+                )}
               </div>
             </div>
+          </ConsolePanel>
 
-            <div className="flex gap-3">
-              <button
-                onClick={handleReset}
-                className="flex-1 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 transition-opacity"
-              >
-                Create Another Account
-              </button>
-              <Link
-                to="/admin"
-                className="flex-1 bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] font-semibold text-sm py-2.5 rounded-xl text-center hover:opacity-80 transition-opacity"
-              >
-                Back to Admin
-              </Link>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.form
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleSubmit}
-            className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard space-y-4"
-          >
-            <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                placeholder="John Doe"
-                className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="developer@company.com"
-                className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as any)}
-                className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--accent))]/60 transition-all"
-              >
-                <option value="new_dev">New Developer</option>
-                <option value="developer">Developer</option>
-                <option value="tester">Tester</option>
-                <option value="hr">HR</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Team (optional)</label>
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] focus:outline-none focus:border-[hsl(var(--accent))]/60 transition-all"
-              >
-                <option value="">No team (will create account only)</option>
-                {teams.map((t) => (
-                  <option key={t.team_id} value={t.team_id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium">Welcome Message (optional)</label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Brief welcome note..."
-                rows={2}
-                className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl px-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 resize-none focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting || !name || !email}
-              className="w-full bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-opacity"
-            >
-              {submitting ? 'Creating Account...' : 'Create Account'}
-              <UserPlus size={16} />
+          <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleReset} className="btn flex-1 gap-2">
+              <UserPlus size={14} weight="bold" />
+              Provision Another
             </button>
-          </motion.form>
-        )}
-      </div>
-    </PageTransition>
+            <Link to="/admin" className="btn-secondary flex-1 text-center gap-2">
+              Back to Admin
+            </Link>
+          </motion.div>
+        </motion.div>
+      ) : (
+        <motion.form variants={item} onSubmit={handleSubmit}>
+          <ConsolePanel
+            rail="Account Provisioning"
+            designator="FORM · READY"
+            status={submitting ? 'standby' : 'go'}
+          >
+            <div className="space-y-4">
+              {/* Name */}
+              <label className="block">
+                <span className="flex items-center gap-1.5 overline text-ink-muted/70 mb-1.5">
+                  <IdentificationCard size={11} weight="bold" />
+                  Full Name
+                </span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="John Doe"
+                  className="input w-full"
+                />
+              </label>
+
+              {/* Email */}
+              <label className="block">
+                <span className="flex items-center gap-1.5 overline text-ink-muted/70 mb-1.5">
+                  <EnvelopeSimple size={11} weight="bold" />
+                  Email
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="developer@company.com"
+                  className="input w-full"
+                />
+              </label>
+
+              {/* Role */}
+              <label className="block">
+                <span className="flex items-center gap-1.5 overline text-ink-muted/70 mb-1.5">
+                  <ShieldCheck size={11} weight="bold" />
+                  Role
+                </span>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as any)}
+                  className="input w-full"
+                >
+                  <option value="new_dev">New Developer</option>
+                  <option value="developer">Developer</option>
+                  <option value="tester">Tester</option>
+                  <option value="hr">HR</option>
+                </select>
+                <p className="text-caption text-ink-muted mt-1.5 font-code">
+                  Active role · {roleLabel(role)}
+                </p>
+              </label>
+
+              {/* Team */}
+              <label className="block">
+                <span className="flex items-center gap-1.5 overline text-ink-muted/70 mb-1.5">
+                  <UsersThree size={11} weight="bold" />
+                  Team (optional)
+                </span>
+                <select
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="input w-full"
+                >
+                  <option value="">No team (account only)</option>
+                  {teams.map((t) => (
+                    <option key={t.team_id} value={t.team_id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Welcome message */}
+              <label className="block">
+                <span className="flex items-center gap-1.5 overline text-ink-muted/70 mb-1.5">
+                  <ChatText size={11} weight="bold" />
+                  Welcome Message (optional)
+                </span>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Brief welcome note…"
+                  rows={3}
+                  className="input w-full resize-none"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={submitting || !name || !email}
+                className="btn w-full gap-2 mt-2"
+              >
+                {submitting ? 'Creating Account…' : 'Create Account'}
+                <UserPlus size={14} weight="bold" />
+              </button>
+            </div>
+          </ConsolePanel>
+        </motion.form>
+      )}
+    </motion.div>
   )
 }

@@ -145,25 +145,19 @@ test.describe('a11y — Interactive Elements', () => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
 
-    // Check that all form inputs have accessible labels
+    // Stage 1 — email field with its associated label
     const emailInput = page.locator('input#email')
-    const passwordInput = page.locator('input#password')
-
-    // Verify inputs exist
     await expect(emailInput).toBeVisible()
+    await expect(page.locator('label[for="email"]')).toBeVisible()
+
+    // Advance to stage 2 to reach the password field
+    await emailInput.fill('dev@company.com')
+    await page.getByRole('button', { name: /continue/i }).click()
+
+    // Stage 2 — password field with its associated label
+    const passwordInput = page.locator('input#password')
     await expect(passwordInput).toBeVisible()
-
-    // Check ARIA attributes or associated labels
-    const emailLabel = page.locator('label[for="email"]')
-    const passwordLabel = page.locator('label[for="password"]')
-
-    // If labels exist, verify they're visible
-    if (await emailLabel.count() > 0) {
-      await expect(emailLabel).toBeVisible()
-    }
-    if (await passwordLabel.count() > 0) {
-      await expect(passwordLabel).toBeVisible()
-    }
+    await expect(page.locator('label[for="password"]')).toBeVisible()
 
     // Submit button should be focusable
     const submitBtn = page.locator('button[type="submit"]')
@@ -278,22 +272,17 @@ test.describe('a11y — Keyboard & Focus', () => {
     await page.waitForTimeout(500)
 
     // Check form container has focusable elements
-    await checkFocusable(page, 'form', 3)
+    await checkFocusable(page, 'form', 1)
 
-    // Check that the form has proper focus management
+    // Stage 1 — email autofocuses on mount
     const emailInput = page.locator('input#email')
-    await emailInput.focus()
     await expect(emailInput).toBeFocused()
 
-    // Tab to next field (password) — multiple tabs needed because framer-motion
-    // animations may inject focusable placeholders
-    for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('Tab')
-      const focused = await page.evaluate(() => document.activeElement?.id || '')
-      if (focused === 'password') break
-    }
-    const passwordInput = page.locator('input#password')
-    await expect(passwordInput).toBeFocused()
+    // Advance to stage 2 — password input autofocuses
+    await emailInput.fill('dev@company.com')
+    await page.getByRole('button', { name: /continue/i }).click()
+    await page.waitForSelector('input#password', { timeout: 10_000 })
+    await expect(page.locator('input#password')).toBeFocused()
   })
 })
 

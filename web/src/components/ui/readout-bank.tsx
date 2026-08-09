@@ -77,7 +77,7 @@ function Cell({ item, animate }: { item: Readout; animate: boolean }) {
           </span>
         )}
       </div>
-      <div className="overline text-ink-muted/60 mt-2.5 flex items-center gap-1">
+      <div className="overline text-ink-tertiary mt-2.5 flex items-center gap-1">
         {item.label}
         {item.link && <ArrowUpRight size={11} weight="bold" className="text-ink-muted/40" />}
       </div>

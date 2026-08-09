@@ -36,12 +36,12 @@ export default function MissionClock({ callsign, className }: MissionClockProps)
     <div className={cn('flex items-center gap-3 min-w-0', className)}>
       <span className="w-1.5 h-1.5 rounded-full bg-go-lit shrink-0 motion-safe:animate-pulse-glow" aria-hidden />
       {callsign && (
-        <span className="callsign text-ink-muted hidden md:inline truncate">{callsign}</span>
+        <span className="callsign text-ink-tertiary hidden md:inline truncate">{callsign}</span>
       )}
       <span className="readout text-ink-secondary tabular-nums" aria-label="Mission time (IST)">
-        {ist}<span className="text-ink-muted ml-1">IST</span>
+        {ist}<span className="text-ink-tertiary ml-1">IST</span>
       </span>
-      <span className="designator hidden sm:inline" aria-label="Session elapsed">
+      <span className="designator text-ink-tertiary hidden sm:inline" aria-label="Session elapsed">
         T+{tplus}
       </span>
     </div>

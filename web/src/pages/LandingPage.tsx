@@ -15,8 +15,15 @@ import {
   MagnifyingGlass,
   CheckCircle,
   Cube,
+  Cursor,
+  TerminalWindow,
+  Brain,
 } from '@phosphor-icons/react'
 import { HeroLockup } from '../components/ui/first-principles'
+import ConsolePanel from '../components/ui/console-panel'
+import ReadoutBank from '../components/ui/readout-bank'
+import StatusBadge from '../components/ui/status-badge'
+import MissionClock from '../components/ui/mission-clock'
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Landing — first principles, second pass
@@ -56,7 +63,8 @@ export default function LandingPage() {
       />
 
       {/* ── Section 2 — what it does (concrete, not aspirational) ─────── */}
-      <section id="what-it-does" className="bg-base">
+      {/* bg-panel (not bg-base): keeps small muted text + green callsigns above the 4.5:1 contrast floor */}
+      <section id="what-it-does" className="bg-panel">
         <div className="mx-auto max-w-[1120px] px-6 py-24 lg:px-10">
           <motion.div {...fadeUp(0)} className="max-w-2xl">
             <p className="callsign text-go">What it does</p>
@@ -171,12 +179,18 @@ export default function LandingPage() {
             >
               See pricing
             </Link>
-            <span className="text-caption text-ink-muted sm:ml-2">
+            <span className="text-caption text-ink-tertiary sm:ml-2">
               14-day Team trial · no credit card
             </span>
           </motion.div>
         </div>
       </section>
+
+      {/* ── Section 4 — Mission Control (the real dashboard kit, live) ── */}
+      <MissionControlKit />
+
+      {/* ── Section 5 — why us vs terminal coding agents ──────────────── */}
+      <WhyOnramp />
 
       <Footer />
     </>
@@ -462,7 +476,7 @@ function FeatureCard({
         <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-well text-go transition-colors duration-300 group-hover:bg-go group-hover:text-white">
           <Icon size={16} weight="duotone" />
         </span>
-        <span className="callsign text-ink-disabled">{tag}</span>
+        <span className="callsign text-ink-tertiary">{tag}</span>
       </div>
       <h3 className="mt-4 font-heading text-display-xs font-bold text-ink">{title}</h3>
       <p className="mt-2 max-w-[34ch] text-body-sm leading-[1.6] text-ink-tertiary">{body}</p>
@@ -519,6 +533,242 @@ function SearchPreview() {
   )
 }
 
+/* ── Mission Control — the real dashboard kit, live on this page ──────── */
+function MissionControlKit() {
+  const signals: {
+    rail: string
+    state: string
+    title: string
+    body: string
+  }[] = [
+    {
+      rail: 'FRESHNESS',
+      state: 'completed',
+      title: 'Map fresh',
+      body: 'Redrawn on every push from HEAD. The link you share is the map of this week\u2019s code.',
+    },
+    {
+      rail: 'SEARCH',
+      state: 'approved',
+      title: 'Grounded answers',
+      body: 'Queries run against the parsed graph, with file-and-line citations — not vibes.',
+    },
+    {
+      rail: 'ONBOARDING',
+      state: 'in_progress',
+      title: 'Hires navigated',
+      body: 'New engineers get a map and a ramp path on day one, not a scavenger hunt.',
+    },
+  ]
+
+  return (
+    <section id="mission-control" className="border-t border-seam bg-panel">
+      <div className="mx-auto max-w-[1120px] px-6 py-24 lg:px-10">
+        <motion.div {...fadeUp(0)} className="max-w-2xl">
+          <p className="callsign text-go">Mission Control</p>
+          <h2 className="mt-4 font-display text-display-lg leading-[1.08] tracking-[-0.02em] text-ink">
+            The dashboard reads like an <span className="italic text-go">instrument panel</span> — not a feed.
+          </h2>
+          <p className="mt-4 max-w-xl text-body-lg leading-[1.65] text-ink-tertiary">
+            Mono readouts, status LEDs, and call-sign rails. This section is built from the
+            same component kit that ships inside the dashboard.
+          </p>
+        </motion.div>
+
+        {/* Live clock — real and ticking */}
+        <motion.div
+          {...fadeUp(0.08)}
+          className="mt-14 flex flex-wrap items-center justify-between gap-4 rounded-card border border-seam bg-panel px-5 py-4 shadow-seam"
+        >
+          <div className="flex items-center gap-3">
+            <span className="callsign text-ink-tertiary">FLIGHT DECK</span>
+            <span className="designator text-ink-secondary">STATION ACTIVE</span>
+          </div>
+          <MissionClock callsign="ONRAMP · LIVE" />
+        </motion.div>
+
+        {/* Readout bank — labelled demo telemetry */}
+        <motion.div {...fadeUp(0.12)} className="mt-4">
+          <ReadoutBank
+            callsign="ORGANIZATION TELEMETRY · DEMO READINGS"
+            columns={4}
+            items={[
+              { label: 'Services indexed', value: 128, color: 'text-go' },
+              { label: 'Dependencies mapped', value: 942 },
+              { label: 'Deploys this month', value: 57, delta: 12 },
+              { label: 'Hires onboarded', value: 14, delta: 3 },
+            ]}
+          />
+        </motion.div>
+
+        {/* Signal row */}
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {signals.map((s, i) => (
+            <motion.div key={s.rail} {...fadeUp(0.14 + i * 0.06)}>
+              <ConsolePanel
+                rail={s.rail}
+                designator="SIGNAL"
+                status={s.state === 'completed' || s.state === 'approved' ? 'go' : 'standby'}
+                action={<StatusBadge state={s.state} />}
+              >
+                <h3 className="font-heading text-body font-semibold text-ink">{s.title}</h3>
+                <p className="mt-1.5 text-body-sm leading-[1.6] text-ink-tertiary">{s.body}</p>
+              </ConsolePanel>
+            </motion.div>
+          ))}
+        </div>
+
+        <p className="mt-6 text-caption font-mono text-ink-tertiary">
+          Illustrative demo readings — the first index replaces them with your repo\u2019s numbers.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/* ── Why Onramp vs coding agents & raw LLMs ───────────────────────────── */
+function WhyOnramp() {
+  const rows: {
+    icon: typeof TreeStructure
+    tool: string
+    job: string
+    good: string
+    miss: string
+    ours?: boolean
+  }[] = [
+    {
+      icon: Cursor,
+      tool: 'Cursor',
+      job: 'Personal IDE agent',
+      good: 'Writes and refactors code in your editor.',
+      miss: 'Optimizes one engineer\u2019s flow — not a team\u2019s first 30 days.',
+    },
+    {
+      icon: TerminalWindow,
+      tool: 'Claude Code',
+      job: 'Terminal coding agent',
+      good: 'Autonomous edits across a local working tree.',
+      miss: 'No living architecture map, ramp paths, or shared onboarding memory.',
+    },
+    {
+      icon: Brain,
+      tool: 'ChatGPT / Claude / Gemini',
+      job: 'General LLM chat',
+      good: 'Great at reasoning when you paste the right context.',
+      miss: 'You become the indexer — paste files, burn tokens, lose grounding.',
+    },
+    {
+      icon: TreeStructure,
+      tool: 'Onramp',
+      job: 'Team onboarding OS',
+      good: 'Indexes once, maps architecture, mentors every hire from your real graph.',
+      miss: 'Not a replacement for day-to-day coding in your IDE — it makes that IDE useful sooner.',
+      ours: true,
+    },
+  ]
+
+  return (
+    <section id="why" className="border-t border-seam bg-panel">
+      <div className="mx-auto max-w-[1120px] px-6 py-24 lg:px-10">
+        <motion.div {...fadeUp(0)} className="max-w-2xl">
+          <p className="callsign text-go">Why Onramp</p>
+          <h2 className="mt-4 font-display text-display-lg leading-[1.08] tracking-[-0.02em] text-ink">
+            Coding agents write code. <span className="italic text-go">We make the codebase teachable.</span>
+          </h2>
+          <p className="mt-4 max-w-xl text-body-lg leading-[1.65] text-ink-tertiary">
+            Cursor and Claude Code are brilliant copilots for people who already know where to
+            look. Onramp is for the weeks before that — when the map, the mentors, and the
+            tribal knowledge are the bottleneck.
+          </p>
+        </motion.div>
+
+        <motion.div
+          {...fadeUp(0.1)}
+          className="mt-14 overflow-hidden rounded-card border border-seam bg-panel-raised"
+        >
+          <div className="overflow-x-auto">
+            <table className="border-collapse text-left w-full table-auto">
+              <thead>
+                <tr className="border-b border-seam bg-well sticky top-0 z-10">
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary align-middle">Tool</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary align-middle hidden md:table-cell">Built for</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary align-middle hidden md:table-cell">Where it shines</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-secondary align-middle">The gap</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-seam">
+                {rows.map((r, i) => (
+                  <motion.tr
+                    key={r.tool}
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.5, delay: 0.12 + i * 0.05, ease: EASE }}
+                    className={r.ours ? 'bg-go/[0.04]' : undefined}
+                  >
+                    <td className="px-5 py-5 align-middle">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`flex h-8 w-8 items-center justify-center rounded-sm ${
+                            r.ours ? 'bg-go text-white' : 'bg-well text-ink-secondary'
+                          }`}
+                        >
+                          <r.icon size={16} weight={r.ours ? 'bold' : 'duotone'} />
+                        </span>
+                        <span className={`font-heading text-[15px] font-semibold ${r.ours ? 'text-go' : 'text-ink'}`}>
+                          {r.tool}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-5 align-middle hidden md:table-cell">
+                      <p className="text-body-sm text-ink-secondary">{r.job}</p>
+                    </td>
+                    <td className="px-5 py-5 align-middle hidden md:table-cell">
+                      <p className="text-body-sm leading-[1.55] text-ink-tertiary">{r.good}</p>
+                    </td>
+                    <td className={`px-5 py-5 align-middle ${r.ours ? 'text-ink-secondary' : 'text-ink-tertiary'}`}>
+                      <p className="text-body-sm leading-[1.55]">{r.miss}</p>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        <motion.div
+          {...fadeUp(0.15)}
+          className="mt-10 grid grid-cols-1 gap-0 border-t border-seam md:grid-cols-3"
+        >
+          {[
+            {
+              title: 'Shared memory',
+              desc: 'One indexed graph for the whole team — not twenty private chat threads that evaporate.',
+            },
+            {
+              title: 'Grounded answers',
+              desc: 'File and line citations from your repo. No vibes-based architecture advice.',
+            },
+            {
+              title: 'Complementary, not competing',
+              desc: 'Use Cursor to ship. Use Onramp so every new hire knows what to ship — and where.',
+            },
+          ].map((p) => (
+            <motion.div
+              {...fadeUp(0.2)}
+              key={p.title}
+              className="border-b border-seam py-7 md:border-b-0 md:border-r md:px-8 md:last:border-r-0 md:first:pl-0"
+            >
+              <h3 className="font-heading text-body font-semibold text-ink">{p.title}</h3>
+              <p className="mt-2 max-w-[34ch] text-body-sm leading-[1.6] text-ink-tertiary">{p.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
 /* ── Footer — single row, no fake status pill ─────────────────────────── */
 function Footer() {
   return (
@@ -529,7 +779,7 @@ function Footer() {
             <TreeStructure size={13} weight="bold" />
           </span>
           <span className="font-heading text-body-sm font-semibold text-ink">Onramp</span>
-          <span className="ml-3 text-caption text-ink-muted">
+          <span className="ml-3 text-caption text-ink-secondary">
             © {new Date().getFullYear()} Onramp, Inc.
           </span>
         </div>

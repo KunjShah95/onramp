@@ -1,17 +1,10 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '../context/ToastContext'
-import CardSpotlight from '../components/ui/card-spotlight'
-import { PageHeader } from '../components/ui/page-header'
-import { EmptyState } from '../components/ui/empty-state'
 import { detectArchitectureDrift, type DriftResult } from '../lib/api'
 import {
   GitBranch,
-  FileCode,
   Warning,
-  CheckCircle,
-  WarningCircle,
-  Info,
   MagnifyingGlass,
   Spinner,
   CaretRight,
@@ -19,30 +12,30 @@ import {
   Copy,
   Check,
   Files,
+  TextT,
+  FileCode,
 } from '@phosphor-icons/react'
+import { cn } from '../lib/utils'
+import ConsolePanel from '../components/ui/console-panel'
+import InputField from '../components/ui/first-principles/InputField'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+const STATUS_CONFIG: Record<string, { label: string; tone: 'go' | 'caution' | 'abort' | 'mission' | 'idle' }> = {
+  aligned: { label: 'Aligned', tone: 'go' },
+  minor_drift: { label: 'Minor Drift', tone: 'caution' },
+  major_drift: { label: 'Major Drift', tone: 'abort' },
+  undocumented: { label: 'Undocumented', tone: 'mission' },
+  no_code: { label: 'No Code', tone: 'idle' },
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+const SEVERITY_TONE: Record<string, 'abort' | 'caution' | 'mission'> = {
+  high: 'abort',
+  medium: 'caution',
+  low: 'mission',
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  aligned: { label: 'Aligned', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25', icon: CheckCircle },
-  minor_drift: { label: 'Minor Drift', color: 'text-amber-400 bg-amber-500/10 border-amber-500/25', icon: WarningCircle },
-  major_drift: { label: 'Major Drift', color: 'text-red-400 bg-red-500/10 border-red-500/25', icon: Warning },
-  undocumented: { label: 'Undocumented', color: 'text-blue-400 bg-blue-500/10 border-blue-500/25', icon: Info },
-  no_code: { label: 'No Code', color: 'text-text-muted bg-bg-tertiary/20 border-border', icon: Info },
-}
-
-const SEVERITY_COLORS: Record<string, string> = {
-  high: 'text-red-400 bg-red-500/10 border-red-500/20',
-  medium: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  low: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+const fade = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 export default function DriftDetectionPage() {
@@ -60,25 +53,17 @@ export default function DriftDetectionPage() {
       toast.error('Docs required', 'Paste architecture documentation to compare against.')
       return
     }
-
-    setLoading(true)
-    setError('')
-    setResult(null)
-
+    setLoading(true); setError(''); setResult(null)
     try {
-      // Build repo structure from file paths if provided
       const files = filePaths
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean)
         .map((path) => ({ path }))
-
-      // If repo URL provided, add it as a basic file entry
       if (repoUrl.trim() && files.length === 0) {
         const repoName = repoUrl.split('/').pop() || 'repo'
         files.push({ path: `${repoName}/` })
       }
-
       const repoStructure = { files }
       const data = await detectArchitectureDrift(repoStructure, docs)
       setResult(data)
@@ -113,295 +98,327 @@ export default function DriftDetectionPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const statusCfg = STATUS_CONFIG[result?.status || 'undocumented']
-  const StatusIcon = statusCfg?.icon || Info
+  const statusCfg = STATUS_CONFIG[result?.status ?? ''] ?? { label: result?.status ?? 'Unknown', tone: 'idle' as const }
+  const verdict = (result?.drift_score ?? 0) < 15 ? 'go' : (result?.drift_score ?? 0) < 40 ? 'standby' : 'hold'
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-4xl mx-auto"
-    >
-      <PageHeader
-        title="Architecture Drift Detection"
-        subtitle="Compare your documented architecture against actual code structure to find divergence"
-      />
+    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
 
-      {/* Input Section */}
-      <motion.div variants={itemVariants} className="space-y-4 mb-8">
-        <CardSpotlight className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Warning className="w-5 h-5 text-amber-400" weight="fill" />
-            <h3 className="font-display font-bold">Detection Input</h3>
+        {/* Header */}
+        <motion.header initial="hidden" animate="show" variants={fade}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="designator opacity-50">DRIFT DETECTION</span>
+            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+            <span className="designator opacity-50">DOCS × CODE</span>
           </div>
+          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
+            One verdict. Two lists.
+          </h1>
+          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
+            Paste your architecture docs. Optionally list code paths. Find what's missing,
+            what's undocumented, and how far the codebase has drifted.
+          </p>
+        </motion.header>
 
-          {/* Repo URL */}
-          <div className="mb-4">
-            <label className="block text-caption text-text-tertiary mb-1.5 font-medium">
-              Repository URL <span className="text-text-muted/50">(optional)</span>
-            </label>
-            <div className="relative flex items-center">
-              <GitBranch size={16} className="absolute left-3.5 text-text-muted/40 pointer-events-none" />
-              <input
+        {/* Input panel */}
+        <motion.div initial="hidden" animate="show" variants={fade}>
+          <ConsolePanel rail="Inputs" designator="DOCS + CODE" status="standby">
+            <div className="space-y-4">
+              <InputField
+                label="Repository URL (optional)"
+                icon={<GitBranch size={14} weight="bold" />}
+                placeholder="github.com/owner/repo"
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleDetect()}
-                placeholder="github.com/owner/repo"
-                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40"
               />
-            </div>
-          </div>
 
-          {/* File Paths */}
-          <div className="mb-4">
-            <label className="block text-caption text-text-tertiary mb-1.5 font-medium">
-              Code Structure — File Paths <span className="text-text-muted/50">(optional — one per line)</span>
-            </label>
-            <div className="relative">
-              <Files size={16} className="absolute left-3.5 top-3 text-text-muted/40 pointer-events-none" />
-              <textarea
-                value={filePaths}
-                onChange={(e) => setFilePaths(e.target.value)}
-                placeholder="src/auth_service/login.py&#10;src/billing/payments/invoice.py&#10;src/api/v1/users.py&#10;tests/test_auth.py"
-                rows={4}
-                className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-3 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40 resize-y font-mono text-[13px]"
-              />
-            </div>
-            <p className="text-[11px] text-text-tertiary/50 mt-1.5">
-              For best results, paste your repo's file tree or run Architecture Explorer first to get real file paths.
-            </p>
-          </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary mb-1.5">
+                  Code Structure · File Paths <span className="text-ink-disabled normal-case font-normal tracking-normal">(optional, one per line)</span>
+                </label>
+                <div className="relative">
+                  <Files size={14} className="absolute left-3 top-3 text-ink-tertiary pointer-events-none" weight="bold" />
+                  <textarea
+                    value={filePaths}
+                    onChange={(e) => setFilePaths(e.target.value)}
+                    placeholder={'src/auth_service/login.py\nsrc/billing/payments/invoice.py\nsrc/api/v1/users.py'}
+                    rows={4}
+                    className={cn(
+                      'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled',
+                      'pl-10 pr-3.5 py-2.5 text-[13px] font-code rounded-[3px] resize-y',
+                      'transition-[border-color,box-shadow] duration-150',
+                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]'
+                    )}
+                  />
+                </div>
+                <p className="font-code text-[10px] text-ink-tertiary mt-1.5">
+                  For best results, paste your repo's file tree or run Architecture Explorer first.
+                </p>
+              </div>
 
-          {/* Docs Input */}
-          <div className="mb-4">
-            <label className="block text-caption text-text-tertiary mb-1.5 font-medium">
-              Architecture Documentation
-            </label>
-            <textarea
-              value={docs}
-              onChange={(e) => setDocs(e.target.value)}
-              placeholder="Paste your README, architecture docs, or wiki content here...&#10;&#10;The agent will extract component names, module references,&#10;and service boundaries from this text to compare against the code."
-              rows={7}
-              className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3.5 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-muted/40 resize-y"
-            />
-            <p className="text-[11px] text-text-tertiary/50 mt-1.5">
-              Include mentions of modules, services, components, file names, and architecture patterns.
-            </p>
-          </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary mb-1.5">
+                  Architecture Documentation
+                </label>
+                <div className="relative">
+                  <TextT size={14} className="absolute left-3 top-3 text-ink-tertiary pointer-events-none" weight="bold" />
+                  <textarea
+                    value={docs}
+                    onChange={(e) => setDocs(e.target.value)}
+                    placeholder={'Paste your README, architecture docs, or wiki content here.\n\nThe agent will extract component names, module references,\nand service boundaries from this text.'}
+                    rows={7}
+                    className={cn(
+                      'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled',
+                      'pl-10 pr-3.5 py-2.5 text-[13px] font-body rounded-[3px] resize-y',
+                      'transition-[border-color,box-shadow] duration-150',
+                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]'
+                    )}
+                  />
+                </div>
+                <p className="font-code text-[10px] text-ink-tertiary mt-1.5">
+                  Include mentions of modules, services, components, file names, and architecture patterns.
+                </p>
+              </div>
 
-          {/* Detect Button */}
-          <button
-            onClick={handleDetect}
-            disabled={loading || !docs.trim()}
-            className="btn btn-primary text-caption px-5 py-2.5 flex items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Spinner className="w-4 h-4 animate-spin" />
-                Analyzing…
-              </>
-            ) : (
-              <>
-                <MagnifyingGlass size={16} weight="bold" />
-                Detect Drift
-              </>
-            )}
-          </button>
-        </CardSpotlight>
-      </motion.div>
-
-      {/* Error */}
-      {error && (
-        <motion.div variants={itemVariants} className="mb-6 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-body-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={handleDetect} className="text-caption underline ml-4 text-red-400/70 hover:text-red-400">
-            Retry
-          </button>
-        </motion.div>
-      )}
-
-      {/* Loading */}
-      {loading && !result && (
-        <motion.div variants={itemVariants} className="text-center py-12">
-          <Spinner className="w-8 h-8 text-go animate-spin mx-auto mb-3" />
-          <p className="text-text-tertiary text-body-sm">Analyzing architecture documentation against code structure…</p>
-        </motion.div>
-      )}
-
-      {/* Results */}
-      {result && (
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-          {/* Score + Status */}
-          <motion.div variants={itemVariants}>
-            <CardSpotlight className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-display font-bold">Drift Assessment</h3>
+              <div className="flex items-center justify-between pt-1">
                 <button
-                  onClick={copyResult}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/30 transition-all"
+                  onClick={handleDetect}
+                  disabled={loading || !docs.trim()}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-[3px] bg-go px-5 py-2.5',
+                    'text-[13px] font-semibold text-white shadow-lit transition-all',
+                    'hover:bg-go-lit active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed'
+                  )}
                 >
-                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                  {copied ? 'Copied' : 'Copy Report'}
+                  {loading ? (
+                    <>
+                      <Spinner size={14} className="animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <MagnifyingGlass size={14} weight="bold" />
+                      Detect Drift
+                    </>
+                  )}
                 </button>
+                {result && (
+                  <button
+                    onClick={copyResult}
+                    className="inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-base transition-colors"
+                  >
+                    {copied ? <Check size={12} weight="bold" className="text-go" /> : <Copy size={12} />}
+                    {copied ? 'Copied' : 'Copy Report'}
+                  </button>
+                )}
               </div>
+            </div>
+          </ConsolePanel>
+        </motion.div>
 
-              {/* Score gauge */}
-              <div className="flex items-center gap-6 mb-4">
-                <div className="relative w-24 h-24">
-                  <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" className="text-bg-tertiary/30" strokeWidth="8" />
-                    <circle
-                      cx="50" cy="50" r="42" fill="none"
-                      stroke="currentColor"
-                      className={
-                        result.drift_score < 15 ? 'text-emerald-400' :
-                        result.drift_score < 40 ? 'text-amber-400' :
-                        'text-red-400'
-                      }
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={`${(100 - result.drift_score) * 2.64} 264`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-display-sm font-bold">{result.drift_score}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusCfg?.color || ''}`}>
-                      <StatusIcon size={12} weight="fill" />
-                      {statusCfg?.label || result.status}
-                    </span>
-                  </div>
-                  <p className="text-body-sm text-text-secondary leading-relaxed">{result.summary}</p>
-                </div>
-              </div>
-
-              {/* Metric cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-bg-secondary border border-border rounded-lg p-3 text-center">
-                  <div className="text-display-sm font-bold text-text-primary">{result.code_component_count}</div>
-                  <div className="text-[10px] text-text-tertiary mt-0.5 uppercase tracking-wider">Code Components</div>
-                </div>
-                <div className="bg-bg-secondary border border-border rounded-lg p-3 text-center">
-                  <div className="text-display-sm font-bold text-text-primary">{result.documented_component_count}</div>
-                  <div className="text-[10px] text-text-tertiary mt-0.5 uppercase tracking-wider">Doc References</div>
-                </div>
-                <div className="bg-bg-secondary border border-border rounded-lg p-3 text-center">
-                  <div className="text-display-sm font-bold text-red-400">{result.documented_but_missing.length}</div>
-                  <div className="text-[10px] text-text-tertiary mt-0.5 uppercase tracking-wider">Missing From Code</div>
-                </div>
-                <div className="bg-bg-secondary border border-border rounded-lg p-3 text-center">
-                  <div className="text-display-sm font-bold text-amber-400">{result.undocumented_components.length}</div>
-                  <div className="text-[10px] text-text-tertiary mt-0.5 uppercase tracking-wider">Undocumented</div>
-                </div>
-              </div>
-            </CardSpotlight>
-          </motion.div>
-
-          {/* Alerts */}
-          {result.alerts.length > 0 && (
-            <motion.div variants={itemVariants}>
-              <CardSpotlight className="p-5">
-                <h3 className="font-display font-bold mb-3 flex items-center gap-2">
-                  <Warning size={16} className="text-amber-400" weight="fill" />
-                  Alerts ({result.alerts.length})
-                </h3>
-                <div className="space-y-3">
-                  {result.alerts.map((alert, i) => (
-                    <div key={i} className={`rounded-xl border p-4 ${SEVERITY_COLORS[alert.severity] || 'bg-bg-secondary border-border'}`}>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          alert.severity === 'high' ? 'text-red-400 bg-red-500/10' :
-                          alert.severity === 'medium' ? 'text-amber-400 bg-amber-500/10' :
-                          'text-blue-400 bg-blue-500/10'
-                        }`}>
-                          {alert.severity}
-                        </span>
-                        <span className="text-[10px] font-mono text-text-tertiary uppercase">{alert.type.replace(/_/g, ' ')}</span>
-                      </div>
-                      <p className="text-body-sm text-text-primary mb-1">{alert.detail}</p>
-                      <p className="text-caption text-text-tertiary flex items-start gap-1.5">
-                        <CaretRight size={12} className="mt-0.5 shrink-0 text-go" />
-                        {alert.recommendation}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </CardSpotlight>
-            </motion.div>
-          )}
-
-          {/* Documented but Missing */}
-          {result.documented_but_missing.length > 0 && (
-            <motion.div variants={itemVariants}>
-              <CardSpotlight className="p-5">
-                <h3 className="font-display font-bold mb-3 flex items-center gap-2">
-                  <WarningCircle size={16} className="text-red-400" weight="fill" />
-                  Documented But Missing ({result.documented_but_missing.length})
-                </h3>
-                <p className="text-caption text-text-tertiary mb-3">Components described in docs but absent from the codebase.</p>
-                <div className="flex flex-wrap gap-2">
-                  {result.documented_but_missing.map((name, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500/8 border border-red-500/20 text-red-400 text-[11px] font-mono">
-                      <Warning size={10} weight="fill" />
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              </CardSpotlight>
-            </motion.div>
-          )}
-
-          {/* Undocumented Components */}
-          {result.undocumented_components.length > 0 && (
-            <motion.div variants={itemVariants}>
-              <CardSpotlight className="p-5">
-                <h3 className="font-display font-bold mb-3 flex items-center gap-2">
-                  <FileCode size={16} className="text-amber-400" weight="fill" />
-                  Undocumented Components ({result.undocumented_components.length})
-                </h3>
-                <p className="text-caption text-text-tertiary mb-3">Code components not mentioned in the architecture docs.</p>
-                <div className="flex flex-wrap gap-2">
-                  {result.undocumented_components.map((name, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/8 border border-amber-500/20 text-amber-400 text-[11px] font-mono">
-                      <FileCode size={10} />
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              </CardSpotlight>
-            </motion.div>
-          )}
-
-          {/* Re-run */}
-          <motion.div variants={itemVariants} className="text-center pb-8">
-            <button
-              onClick={handleDetect}
-              disabled={loading}
-              className="btn btn-secondary text-caption px-5 py-2.5 flex items-center gap-2 mx-auto"
+        {/* Error */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
             >
-              <ArrowsClockwise size={16} className={loading ? 'animate-spin' : ''} />
-              Re-run Detection
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
+              <ConsolePanel pad="dense" status="abort" className="flex items-center justify-between">
+                <span className="text-[13px] text-abort">{error}</span>
+                <button onClick={handleDetect} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
+                  Retry
+                </button>
+              </ConsolePanel>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Empty State */}
-      {!result && !loading && !error && (
-        <motion.div variants={itemVariants}>
-          <CardSpotlight className="p-10">
-            <EmptyState
-              title="No drift analysis yet"
-              description="Paste your architecture docs above, optionally add file paths from your codebase, then click 'Detect Drift' to compare them."
-              icon={<Warning size={40} />}
-            />
-          </CardSpotlight>
-        </motion.div>
-      )}
-    </motion.div>
+        {/* Loading */}
+        <AnimatePresence>
+          {loading && !result && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-12"
+            >
+              <Spinner size={28} className="text-go animate-spin mb-3" />
+              <p className="font-body text-[13px] text-ink-secondary">Analyzing documentation against code structure…</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Results */}
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+              className="space-y-6"
+            >
+              {/* Verdict */}
+              <motion.div variants={fade}>
+                <ConsolePanel
+                  rail={statusCfg.label}
+                  designator={`DRIFT ${result.drift_score}/100`}
+                  status={verdict === 'hold' ? 'caution' : verdict === 'standby' ? 'standby' : 'go'}
+                  live={verdict === 'go'}
+                >
+                  <div className="flex flex-col sm:flex-row gap-5">
+                    <div className="font-display text-5xl font-bold tabular-nums text-ink leading-none">
+                      {result.drift_score}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-body text-[14px] text-ink-secondary leading-relaxed">
+                        {result.summary}
+                      </p>
+                      <div className="flex items-center gap-4 mt-3 font-code text-[12px] text-ink-tertiary">
+                        <span><span className="text-ink">{result.code_component_count}</span> in code</span>
+                        <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+                        <span><span className="text-ink">{result.documented_component_count}</span> in docs</span>
+                        {result.documented_but_missing.length > 0 && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+                            <span className="text-abort">{result.documented_but_missing.length} missing</span>
+                          </>
+                        )}
+                        {result.undocumented_components.length > 0 && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+                            <span className="text-caution">{result.undocumented_components.length} undocumented</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </ConsolePanel>
+              </motion.div>
+
+              {/* Alerts */}
+              {result.alerts.length > 0 && (
+                <motion.div variants={fade}>
+                  <ConsolePanel rail="Alerts" designator={`${result.alerts.length} SIGNALS`} status="caution">
+                    <div className="space-y-2">
+                      {result.alerts.map((alert, i) => {
+                        const tone = SEVERITY_TONE[alert.severity] ?? 'mission'
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className={cn(
+                              'rounded-[3px] border px-3.5 py-3',
+                              tone === 'abort' && 'bg-abort/5 border-abort/20',
+                              tone === 'caution' && 'bg-caution/5 border-caution/20',
+                              tone === 'mission' && 'bg-mission/5 border-mission/20',
+                            )}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={cn(
+                                'px-2 py-0.5 rounded-[2px] text-[10px] font-semibold uppercase tracking-wider',
+                                tone === 'abort' && 'bg-abort/10 text-abort',
+                                tone === 'caution' && 'bg-caution/10 text-caution',
+                                tone === 'mission' && 'bg-mission/10 text-mission',
+                              )}>
+                                {alert.severity}
+                              </span>
+                              <span className="font-code text-[10px] text-ink-tertiary uppercase tracking-wider">
+                                {alert.type.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            <p className="font-body text-[13px] text-ink leading-relaxed mb-1">{alert.detail}</p>
+                            <p className="font-body text-[12px] text-ink-secondary flex items-start gap-1.5">
+                              <CaretRight size={11} className="mt-0.5 shrink-0 text-go" weight="bold" />
+                              {alert.recommendation}
+                            </p>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
+                  </ConsolePanel>
+                </motion.div>
+              )}
+
+              {/* Documented but missing */}
+              {result.documented_but_missing.length > 0 && (
+                <motion.div variants={fade}>
+                  <ConsolePanel rail="Documented but missing" designator={`${result.documented_but_missing.length} COMPONENTS`} status="abort">
+                    <p className="font-body text-[13px] text-ink-secondary mb-3">
+                      Components described in docs but absent from the codebase.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.documented_but_missing.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[3px] bg-abort/10 border border-abort/20 text-abort text-[11px] font-code"
+                        >
+                          <Warning size={10} weight="fill" />
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </ConsolePanel>
+                </motion.div>
+              )}
+
+              {/* Undocumented */}
+              {result.undocumented_components.length > 0 && (
+                <motion.div variants={fade}>
+                  <ConsolePanel rail="Undocumented" designator={`${result.undocumented_components.length} COMPONENTS`} status="caution">
+                    <p className="font-body text-[13px] text-ink-secondary mb-3">
+                      Code components not mentioned in the architecture docs.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.undocumented_components.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[3px] bg-caution/10 border border-caution/20 text-caution text-[11px] font-code"
+                        >
+                          <FileCode size={10} weight="bold" />
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </ConsolePanel>
+                </motion.div>
+              )}
+
+              {/* Re-run */}
+              <motion.div variants={fade} className="text-center pb-2">
+                <button
+                  onClick={handleDetect}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-4 py-2 text-[12px] font-medium text-ink hover:bg-base transition-colors disabled:opacity-40"
+                >
+                  <ArrowsClockwise size={12} className={cn(loading && 'animate-spin')} />
+                  Re-run Detection
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Empty */}
+        {!result && !loading && !error && (
+          <motion.div initial="hidden" animate="show" variants={fade}>
+            <ConsolePanel rail="Awaiting" designator="NO ANALYSIS" status="idle" className="py-16 text-center">
+              <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
+                <Warning size={26} className="text-ink-disabled" weight="duotone" />
+              </div>
+              <p className="font-display text-lg text-ink font-semibold mb-1">No drift analysis yet</p>
+              <p className="text-[13px] text-ink-tertiary max-w-md mx-auto">
+                Paste your architecture docs above, optionally add file paths from your codebase,
+                then click <span className="font-code text-ink">Detect Drift</span> to compare them.
+              </p>
+            </ConsolePanel>
+          </motion.div>
+        )}
+      </div>
+    </div>
   )
 }

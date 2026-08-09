@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
-  Code, Lock, CheckCircle, User,
+  Code, Lock, CheckCircle,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
 import { ModuleAccessSkeleton } from '../components/ui/Skeleton'
+import ConsolePanel from '../components/ui/console-panel'
 import { useAuth } from '../context/AuthContext'
 import { getTeamModulePermissions } from '../lib/api'
 import type { ModulePermission } from '../lib/api'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+const fade = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 export default function ModuleHealthPage() {
@@ -43,142 +39,167 @@ export default function ModuleHealthPage() {
   const grantedModules = new Set(permissions.map((p) => p.module))
   const granted = permissions.length
   const total = modules.length
+  const grantedAll = total > 0 && granted === total
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
-        {/* Header */}
-        <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Module Access</span>
-            <span className="designator opacity-50">ACCESS CONTROL</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Module Access</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">Module-level permissions granted to your team</p>
-        </motion.div>
+    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-6"
-            >
-              <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/15">
-                <span className="text-body-xs text-red-300">{error}</span>
-                <button onClick={fetchModules} disabled={loading}
-                  className="text-caption text-red-400/60 hover:text-red-400 underline">Retry</button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Header */}
+        <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="designator opacity-50">ACCESS CONTROL</span>
+            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+            <span className="designator opacity-50">TEAM SCOPE</span>
+          </div>
+          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
+            Granted at a glance.
+          </h1>
+          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
+            Module-level permissions your team holds. Each module unlocks as trainees
+            complete onboarding tasks.
+          </p>
+        </motion.header>
+
+        {/* Error */}
+        {error && (
+          <ConsolePanel pad="dense" status="abort" className="mb-6 flex items-center justify-between">
+            <span className="text-[13px] text-abort">{error}</span>
+            <button onClick={fetchModules} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
+              Retry
+            </button>
+          </ConsolePanel>
+        )}
 
         {loading ? (
           <div className="py-8"><ModuleAccessSkeleton /></div>
-        ) : (
-          <>
-            {/* Summary Bar */}
-            {modules.length > 0 && (
-              <motion.div variants={item} className="flex items-center gap-4 p-4 mb-6 rounded-xl border border-border bg-gradient-to-r from-emerald-500/[0.03] to-blue-500/[0.03]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-400/8 border border-emerald-400/15 flex items-center justify-center">
-                    <CheckCircle size={16} className="text-emerald-400" weight="fill" />
-                  </div>
-                  <div>
-                    <div className="text-body-xs font-semibold text-text-primary tabular-nums">{granted}/{total} modules</div>
-                    <div className="text-caption text-text-muted/40">access granted</div>
-                  </div>
-                </div>
-                <div className="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden max-w-xs">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${total > 0 ? (granted / total) * 100 : 0}%` }}
-                    transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-blue-400"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Module Grid */}
-            {modules.length > 0 && (
-              <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 mb-8">
-                {modules.map((mod, i) => {
-                  const granted = grantedModules.has(mod)
-                  return (
-                    <motion.div
-                      key={mod}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.025 }}
-                      whileHover={{ y: -1 }}
-                      className={cn(
-                        'p-3.5 rounded-xl border flex items-center justify-between transition-all',
-                        granted
-                          ? 'bg-emerald-400/5 border-emerald-400/15'
-                          : 'bg-bg-tertiary/30 border-border/50'
-                      )}
-                    >
-                      <span className={cn(
-                        'text-body-xs font-code truncate',
-                        granted ? 'text-text-primary' : 'text-text-muted/40'
-                      )}>{mod}</span>
-                      {granted ? (
-                        <CheckCircle size={14} className="text-emerald-400 shrink-0 ml-2" weight="fill" />
-                      ) : (
-                        <Lock size={12} className="text-text-muted/20 shrink-0 ml-2" />
-                      )}
-                    </motion.div>
-                  )
-                })}
-              </motion.div>
-            )}
-
-            {/* Access Grants */}
-            <motion.div variants={item}>
-              <div className="flex items-center gap-2 mb-3">
-                <User size={14} className="text-amber-400" />
-                <span className="text-body-xs font-semibold text-text-primary">Access Grants ({granted})</span>
+        ) : modules.length === 0 && permissions.length === 0 ? (
+          <motion.div initial="hidden" animate="show" variants={fade}>
+            <ConsolePanel rail="No access" designator="AWAITING GRANTS" status="idle" className="py-16 text-center">
+              <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
+                <Lock size={26} className="text-ink-disabled" weight="duotone" />
               </div>
-              {permissions.length === 0 ? (
-                <CardSpotlight className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-3">
-                    <Lock size={22} className="text-text-muted/20" />
-                  </div>
-                  <p className="text-body-sm text-text-muted/40 font-medium mb-1">No module grants yet</p>
-                  <p className="text-caption text-text-muted/20">Modules unlock automatically as trainees complete onboarding tasks.</p>
-                </CardSpotlight>
-              ) : (
-                <div className="space-y-1.5">
-                  {permissions.map((p, i) => (
+              <p className="font-display text-lg text-ink font-semibold mb-1">No module grants yet</p>
+              <p className="text-[13px] text-ink-tertiary max-w-sm mx-auto">
+                Modules unlock automatically as trainees complete onboarding tasks.
+              </p>
+            </ConsolePanel>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.06 } } }}
+            className="space-y-6"
+          >
+            {/* Verdict bar — the single dominant read */}
+            <motion.div variants={fade}>
+              <ConsolePanel
+                rail={grantedAll ? 'All granted' : 'Partial access'}
+                designator={`${granted} / ${total}`}
+                status={grantedAll ? 'go' : granted > 0 ? 'standby' : 'idle'}
+                live={grantedAll}
+                action={
+                  total > 0 && (
+                    <span className="font-mono text-[12px] text-ink-tertiary tabular-nums">
+                      {Math.round((granted / total) * 100)}%
+                    </span>
+                  )
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-1 rounded-full bg-base overflow-hidden">
                     <motion.div
-                      key={p.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="flex items-center gap-3.5 p-3.5 rounded-xl bg-bg-tertiary/20 border border-border hover:border-border-hover transition-all"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-emerald-400/8 border border-emerald-400/15 flex items-center justify-center shrink-0">
-                        <CheckCircle size={14} className="text-emerald-400" weight="fill" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-body-xs font-medium text-text-primary font-code">{p.module}</p>
-                        <p className="text-caption text-text-muted/30 mt-0.5">
-                          Granted to {p.user_name || p.user_id}
-                          {p.granted_at ? ` · ${new Date(p.granted_at).toLocaleDateString()}` : ''}
-                          {p.source ? ` · ${p.source}` : ''}
-                        </p>
-                      </div>
-                      <Code size={14} className="text-text-muted/20 shrink-0" />
-                    </motion.div>
-                  ))}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${total > 0 ? (granted / total) * 100 : 0}%` }}
+                      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                      className="h-full bg-go"
+                    />
+                  </div>
+                  <span className="font-code text-[11px] text-ink-tertiary shrink-0">
+                    {granted} of {total} unlocked
+                  </span>
                 </div>
-              )}
+              </ConsolePanel>
             </motion.div>
-          </>
+
+            {/* Module grid */}
+            {modules.length > 0 && (
+              <motion.div variants={fade}>
+                <ConsolePanel rail="Modules" designator={`${total} TOTAL`}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {modules.map((mod, i) => {
+                      const isGranted = grantedModules.has(mod)
+                      return (
+                        <motion.div
+                          key={mod}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.02 }}
+                          className={cn(
+                            'flex items-center justify-between px-3 py-2.5 rounded-[3px] border transition-colors',
+                            isGranted
+                              ? 'bg-go/5 border-go/20'
+                              : 'bg-base border-seam',
+                          )}
+                        >
+                          <span className={cn(
+                            'font-code text-[12px] truncate',
+                            isGranted ? 'text-ink' : 'text-ink-tertiary',
+                          )}>{mod}</span>
+                          {isGranted ? (
+                            <CheckCircle size={12} className="text-go shrink-0 ml-2" weight="fill" />
+                          ) : (
+                            <Lock size={11} className="text-ink-disabled shrink-0 ml-2" />
+                          )}
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </ConsolePanel>
+              </motion.div>
+            )}
+
+            {/* Access grants */}
+            <motion.div variants={fade}>
+              <ConsolePanel rail="Access Grants" designator={`${granted} ENTRIES`} status="standby">
+                {permissions.length === 0 ? (
+                  <div className="py-6 text-center">
+                    <p className="font-body text-[13px] text-ink-tertiary">
+                      Modules unlock automatically as trainees complete onboarding tasks.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-seam">
+                    {permissions.map((p, i) => (
+                      <motion.div
+                        key={p.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                      >
+                        <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
+                          <CheckCircle size={12} className="text-go" weight="fill" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-code text-[13px] text-ink truncate">{p.module}</p>
+                          <p className="font-code text-[11px] text-ink-tertiary mt-0.5">
+                            Granted to {p.user_name || p.user_id}
+                            {p.granted_at ? ` · ${new Date(p.granted_at).toLocaleDateString()}` : ''}
+                            {p.source ? ` · ${p.source}` : ''}
+                          </p>
+                        </div>
+                        <Code size={12} className="text-ink-disabled shrink-0" />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </ConsolePanel>
+            </motion.div>
+          </motion.div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

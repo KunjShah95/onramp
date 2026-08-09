@@ -83,7 +83,7 @@ export default function Login() {
             <div className="space-y-5">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
-                <span className="designator opacity-50">FLIGHT · CONSOLE</span>
+                <span className="designator text-ink-secondary">FLIGHT · CONSOLE</span>
               </div>
               <h1 className="font-display text-4xl xl:text-5xl text-ink tracking-tight leading-[1.05] font-bold">
                 Skip the docs.
@@ -115,7 +115,7 @@ export default function Login() {
             </Link>
 
             <div className="mb-6">
-              <span className="designator opacity-50">{stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}</span>
+              <span className="designator text-ink-secondary">{stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}</span>
               <h2 className="font-display text-2xl md:text-3xl text-ink font-bold tracking-tight mt-2">
                 {stage === 'email' ? 'Sign in' : 'Enter your password'}
               </h2>
@@ -163,6 +163,7 @@ export default function Login() {
                 <InputField
                   ref={emailRef}
                   label="Email"
+                  name="email"
                   type="email"
                   placeholder="developer@company.com"
                   value={email}
@@ -174,6 +175,7 @@ export default function Login() {
                 <>
                   <InputField
                     label="Password"
+                    name="password"
                     type="password"
                     placeholder="••••••••••••"
                     value={password}

@@ -65,8 +65,8 @@ export default function ConsolePanel({
               )}
             />
           )}
-          {rail && <span className="callsign opacity-60">{rail}</span>}
-          {designator && <span className="designator">{designator}</span>}
+          {rail && <span className="callsign text-ink-secondary">{rail}</span>}
+          {designator && <span className="designator text-ink-secondary">{designator}</span>}
           {action && <div className="ml-auto flex items-center">{action}</div>}
         </div>
       )}

@@ -9,7 +9,7 @@
  */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Lock } from '@phosphor-icons/react'
+import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import MissionTimeline, { type Stage } from '../components/ui/mission-timeline'
@@ -200,7 +200,7 @@ export default function TraineeDashboard() {
                     )}
                   >
                     <span className="w-7 h-7 rounded-tile bg-success-muted border border-success/25 flex items-center justify-center shrink-0 text-success">
-                      <Lock size={13} weight="fill" />
+                      <Check size={13} weight="bold" />
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-body-sm font-medium text-text-primary font-code truncate">{mod.module}</p>
@@ -216,7 +216,7 @@ export default function TraineeDashboard() {
 
         {/* Recent Tasks */}
         <motion.div variants={item}>
-          <ConsolePanel rail="Recent Tasks" designator="EVENT LOG" status="standby">
+          <ConsolePanel rail="Recent Tasks" designator="EVENT LOG" status="standby" live>
             {recent_tasks.length === 0 ? (
               <EmptyState icon={<GitPullRequest className="w-10 h-10 text-text-tertiary/30" weight="fill" />} title="No tasks yet" description="Tasks from your learning path will appear here." />
             ) : (

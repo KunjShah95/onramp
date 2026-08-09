@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ChatCircleDots,
   PaperPlaneRight,
   Spinner,
   Robot,
@@ -11,14 +10,16 @@ import {
   Trash,
   GitBranch,
 } from '@phosphor-icons/react'
+import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
 import { useRoastMode } from '../context/RoastModeContext'
 import { indexRepo, askQuestionStream } from '../lib/api'
 import RoastModeToggle from '../components/ui/RoastModeToggle'
+import ConsolePanel from '../components/ui/console-panel'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+const fade = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
 interface Message {
@@ -134,157 +135,174 @@ export default function AskPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col">
+    <div className="bg-[hsl(var(--background))]">
+      <div className="max-w-4xl mx-auto h-[calc(100vh-4rem)] flex flex-col px-4 sm:px-6 py-6">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div>
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <span className="tile tile-go">
-                  <ChatCircleDots size={11} weight="fill" className="mr-1.5" />
-                  Ask
-                </span>
-                <span className="designator opacity-50">CODEBASE QUERY</span>
-              </div>
-              <h1 className="text-display-md md:text-display-lg text-text-primary">Ask the Codebase</h1>
-              <p className="text-body-xs text-text-secondary font-code">
-                Ask questions about your codebase, PRs, and modules.
-              </p>
+        <motion.header initial="hidden" animate="show" variants={fade} className="mb-4 shrink-0 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="designator opacity-50">CODEBASE QUERY</span>
+              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
+              <span className="designator opacity-50">FLIGHT · DIALOG</span>
             </div>
+            <h1 className="font-display text-3xl md:text-4xl text-ink font-bold tracking-tight leading-[1.05]">
+              One anchor. One stream.
+            </h1>
+            <p className="font-body text-[13.5px] text-ink-secondary mt-1.5">
+              Pin a repo. Ask the code. The repo indexes on first question.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Roast Mode Toggle */}
+          <div className="flex items-center gap-2 shrink-0 mt-2">
             <RoastModeToggle />
             {messages.length > 1 && (
               <button
                 onClick={handleClear}
-                className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:border-seam-strong hover:bg-base transition-colors"
               >
                 <Trash className="w-3.5 h-3.5" />
                 Clear
               </button>
             )}
           </div>
-        </div>
+        </motion.header>
 
-        {/* Repo input */}
-        <div className="relative flex items-center w-full md:w-[440px] mb-4 shrink-0">
-          <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
-          <input
-            value={repoUrl}
-            onChange={(e) => { setRepoUrl(e.target.value); setIndexId(null) }}
-            placeholder="github.com/owner/repo (indexed on first question)"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
-          />
-          {indexId && (
-            <span className="absolute right-3 flex items-center gap-1 text-[10px] text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />indexed
-            </span>
-          )}
-        </div>
+        {/* Anchor — repo input (status panel, not just a field) */}
+        <motion.div initial="hidden" animate="show" variants={fade} className="mb-4 shrink-0">
+          <ConsolePanel
+            rail={indexId ? 'Indexed' : 'Anchor'}
+            designator="REPO"
+            status={indexId ? 'go' : 'standby'}
+            live={!!indexId}
+            pad="dense"
+          >
+            <div className="relative flex items-center gap-2">
+              <GitBranch size={14} className="text-ink-tertiary shrink-0" weight="bold" />
+              <input
+                value={repoUrl}
+                onChange={(e) => { setRepoUrl(e.target.value); setIndexId(null) }}
+                placeholder="github.com/owner/repo"
+                className="flex-1 bg-transparent text-[13.5px] font-code text-ink placeholder:text-ink-disabled outline-none"
+              />
+              {indexId && (
+                <span className="font-code text-[10px] text-go uppercase tracking-wider shrink-0">
+                  Ready
+                </span>
+              )}
+            </div>
+          </ConsolePanel>
+        </motion.div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
-          <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-xl bg-go/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Robot className="w-4 h-4 text-go" weight="fill" />
+        <div className="flex-1 overflow-y-auto rounded-[3px] border border-seam bg-panel">
+          <div className="p-4 space-y-4">
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    'flex items-start gap-3',
+                    msg.role === 'user' ? 'justify-end' : ''
+                  )}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <Robot className="w-3.5 h-3.5 text-go" weight="fill" />
+                    </div>
+                  )}
+                  <div className={cn('max-w-[80%]', msg.role === 'user' ? 'order-1' : '')}>
+                    <div className={cn(
+                      'rounded-[3px] px-4 py-3 border',
+                      msg.role === 'user'
+                        ? 'bg-go/10 border-go/20'
+                        : 'bg-base border-seam',
+                    )}>
+                      {msg.role === 'assistant' ? (
+                        <div className="font-body text-[13.5px] text-ink-secondary leading-relaxed space-y-1">
+                          {msg.content.split('\n').map((line, i) => {
+                            if (line.startsWith('|')) return null
+                            if (line.startsWith('```') || line.startsWith('``')) return null
+                            if (line.startsWith('**')) {
+                              return <p key={i} className="text-ink font-semibold mb-1">{line.replace(/\*\*/g, '')}</p>
+                            }
+                            if (line.startsWith('-') || line.startsWith('•')) {
+                              return <p key={i} className="pl-3 text-ink-secondary">{line}</p>
+                            }
+                            if (line.match(/^\d+\./)) {
+                              return <p key={i} className="ml-2 text-ink-secondary">{line}</p>
+                            }
+                            if (line.trim()) {
+                              return <p key={i} className="text-ink-secondary">{line}</p>
+                            }
+                            return <br key={i} />
+                          })}
+                          {!msg.content && (
+                            <p className="text-ink-tertiary italic">…</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="font-body text-[13.5px] text-ink">{msg.content}</p>
+                      )}
+                    </div>
+                    <div className={cn('flex items-center gap-2 mt-1', msg.role === 'user' ? 'justify-end' : '')}>
+                      <span className="font-code text-[10px] text-ink-tertiary">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {msg.role === 'assistant' && msg.id !== 'welcome' && msg.content && (
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="text-ink-tertiary hover:text-ink transition-colors"
+                          aria-label="Copy message"
+                        >
+                          {copiedId === msg.id ? (
+                            <Check className="w-3 h-3 text-go" weight="bold" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-1' : ''}`}>
-                  <div className={`rounded-2xl p-4 ${
-                    msg.role === 'user'
-                      ? 'bg-go/10 text-text-primary'
-                      : 'card'
-                  }`}>
-                    {msg.role === 'assistant' ? (
-                      <div className="prose prose-invert prose-sm max-w-none">
-                        {msg.content.split('\n').map((line, i) => {
-                          if (line.startsWith('|')) return null // skip table rendering
-                          if (line.startsWith('**')) {
-                            return <p key={i} className="text-body-sm font-medium text-text-primary mb-1">{line.replace(/\*\*/g, '')}</p>
-                          }
-                          if (line.startsWith('-') || line.startsWith('•')) {
-                            return <p key={i} className="text-caption text-text-secondary pl-3 mb-0.5">{line}</p>
-                          }
-                          if (line.match(/^\d+\./)) {
-                            return <p key={i} className="text-caption text-text-secondary ml-2 mb-1">{line}</p>
-                          }
-                          if (line.startsWith('```') || line.startsWith('``')) {
-                            return null
-                          }
-                          if (line.trim()) {
-                            return <p key={i} className="text-caption text-text-secondary mb-1">{line}</p>
-                          }
-                          return <br key={i} />
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-body-sm text-text-primary">{msg.content}</p>
-                    )}
-                  </div>
-                  <div className={`flex items-center gap-2 mt-1 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                    <span className="text-[11px] text-text-tertiary/40">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {msg.role === 'assistant' && msg.id !== 'welcome' && (
-                      <button
-                        onClick={() => handleCopy(msg.id, msg.content)}
-                        className="text-text-tertiary/40 hover:text-text-tertiary transition-colors"
-                      >
-                        {copiedId === msg.id ? (
-                          <Check className="w-3 h-3 text-emerald-400" weight="bold" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="w-4 h-4 text-blue-400" weight="fill" />
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  {msg.role === 'user' && (
+                    <div className="w-7 h-7 rounded-[3px] bg-mission/10 border border-mission/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-mission" weight="fill" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-3"
-            >
-              <div className="w-8 h-8 rounded-xl bg-go/10 flex items-center justify-center">
-                <Robot className="w-4 h-4 text-go" weight="fill" />
-              </div>
-              <div className="card rounded-2xl p-4">
-                <div className="flex items-center gap-2">
-                  <Spinner className="w-4 h-4 text-go animate-spin" />
-                  <span className="text-caption text-text-tertiary">{indexing ? 'Indexing repository…' : 'Thinking…'}</span>
+            {loading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-3"
+              >
+                <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
+                  <Robot className="w-3.5 h-3.5 text-go" weight="fill" />
                 </div>
-              </div>
-            </motion.div>
-          )}
-          <div ref={bottomRef} />
+                <div className="rounded-[3px] bg-base border border-seam px-4 py-3 flex items-center gap-2">
+                  <Spinner className="w-3.5 h-3.5 text-go animate-spin" />
+                  <span className="font-code text-[12px] text-ink-tertiary">
+                    {indexing ? 'Indexing repository…' : 'Thinking…'}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+            <div ref={bottomRef} />
+          </div>
         </div>
 
-        {/* Suggestions */}
+        {/* Suggestions — appear only when there's nothing asked yet */}
         {messages.length === 1 && (
-          <div className="flex flex-wrap gap-2 mt-4 shrink-0">
+          <div className="flex flex-wrap gap-1.5 mt-3 shrink-0">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => { setInput(s); handleSend() }}
-                className="px-3 py-1.5 rounded-xl bg-bg-tertiary/30 text-caption text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/50 border border-border transition-all"
+                className="px-3 py-1.5 rounded-[3px] bg-base border border-seam text-[12px] font-body text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors"
               >
                 {s}
               </button>
@@ -293,30 +311,35 @@ export default function AskPage() {
         )}
 
         {/* Input */}
-        <div className="mt-4 shrink-0">
-          <div className="flex items-center gap-2 card p-2">
+        <div className="mt-3 shrink-0">
+          <div className="flex items-center gap-2 bg-panel border border-seam rounded-[3px] px-3 py-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask a question about the codebase..."
-              className="flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-tertiary/40 outline-none px-2"
+              placeholder="Ask a question about the codebase…"
+              className="flex-1 bg-transparent font-body text-[13.5px] text-ink placeholder:text-ink-disabled outline-none px-1"
               disabled={loading}
             />
-            <button onClick={handleSend} disabled={!input.trim() || loading} className="rounded-xl shrink-0 w-9 h-9 flex items-center justify-center text-go bg-go/10">
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              className="shrink-0 w-8 h-8 rounded-[3px] bg-go text-white flex items-center justify-center transition-colors hover:bg-go-lit disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Send"
+            >
               {loading ? (
-                <Spinner className="w-4 h-4 animate-spin" />
+                <Spinner className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <PaperPlaneRight className="w-4 h-4" weight="fill" />
+                <PaperPlaneRight className="w-3.5 h-3.5" weight="fill" />
               )}
             </button>
           </div>
-          <p className="text-caption text-text-tertiary/40 mt-1.5 text-center">
+          <p className="font-code text-[10px] text-ink-tertiary mt-1.5 text-center">
             AI responses are generated based on codebase analysis
           </p>
         </div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
-

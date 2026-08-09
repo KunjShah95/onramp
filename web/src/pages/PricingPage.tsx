@@ -133,7 +133,7 @@ export default function PricingPage() {
       {/* Hero — one line, one anchor */}
       <div className="relative pt-16 pb-10 px-6 text-center max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-          <span className="designator opacity-50">FLIGHT · PRICING</span>
+          <span className="designator text-ink-secondary">FLIGHT · PRICING</span>
           <h1 className="font-display text-4xl md:text-5xl mt-3 mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
             One flat price. Your whole team.
           </h1>
@@ -206,7 +206,7 @@ export default function PricingPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
                 <span className="callsign text-go">TEAM · RECOMMENDED</span>
               </div>
-              <span className="designator opacity-50">{isAnnual ? 'ANNUAL · 17% OFF' : 'MONTHLY'}</span>
+              <span className="designator text-ink-secondary">{isAnnual ? 'ANNUAL · 17% OFF' : 'MONTHLY'}</span>
             </div>
 
             <h2 className="mt-3 font-display text-2xl md:text-3xl text-[hsl(var(--foreground))] font-bold tracking-tight">

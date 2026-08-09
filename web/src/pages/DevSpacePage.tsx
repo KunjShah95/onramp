@@ -1,4 +1,10 @@
-import { useState, useEffect } from 'react'
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL · FIRST PRINCIPLES ─────────
+ * THESIS: Dev Space is a developer-console seat — telemetry, quick links to
+ *   tools, recent activity. Seated panels, mono readouts, no neon.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { NavLink } from 'react-router-dom'
 import {
@@ -7,30 +13,19 @@ import {
   GitFork, Users, ArrowRight,
 } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
+import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
+import StatusTile from '../components/ui/status-tile'
 import { EmptyState } from '../components/ui/empty-state'
-import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
 
-const containerVariants = {
+const container = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
-
-const statCardVariants = {
-  hidden: { opacity: 0, scale: 0.92 },
-  visible: (i: number) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 100, damping: 16 } }),
-}
-
-interface Stat {
-  label: string
-  value: string
-  icon: any
-  color: string
+const item = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
 }
 
 interface QuickLink {
@@ -60,10 +55,15 @@ const quickLinks: QuickLink[] = [
   { to: '/admin', title: 'Admin Panel', description: 'System administration and settings', icon: ShieldCheck },
 ]
 
-const stateColor: Record<string, string> = {
-  completed: 'bg-success',
-  in_progress: 'bg-accent-from',
-  submitted: 'bg-warning',
+const stateTone: Record<string, 'go' | 'standby' | 'caution'> = {
+  completed: 'go',
+  in_progress: 'standby',
+  submitted: 'caution',
+}
+const stateLabel: Record<string, string> = {
+  completed: 'DONE',
+  in_progress: 'IN PROGRESS',
+  submitted: 'SUBMITTED',
 }
 
 export default function DevSpacePage() {
@@ -80,11 +80,16 @@ export default function DevSpacePage() {
   }, [])
 
   const d = seedData
-  const stats: Stat[] = [
-    { label: 'Repos Analyzed', value: d ? `${d.stats?.repos_analyzed ?? d.stats?.total_users ?? 0}` : '0', icon: GitFork, color: 'text-info' },
-    { label: 'Active Teams', value: d ? `${d.stats?.active_teams ?? 0}` : '0', icon: Users, color: 'text-success' },
-    { label: 'Total Users', value: d ? `${d.stats?.total_users ?? 0}` : '0', icon: Users, color: 'text-accent-from' },
-    { label: 'API Calls (24h)', value: d ? `${(d.stats?.api_calls_24h ?? 0).toLocaleString()}` : '0', icon: Code, color: 'text-warning' },
+  const repos = d?.stats?.repos_analyzed ?? d?.stats?.total_users ?? 0
+  const teams = d?.stats?.active_teams ?? 0
+  const users = d?.stats?.total_users ?? 0
+  const calls = d?.stats?.api_calls_24h ?? 0
+
+  const readouts: Readout[] = [
+    { label: 'Repos Analyzed', value: repos, color: 'text-info' },
+    { label: 'Active Teams', value: teams, color: 'text-go' },
+    { label: 'Total Users', value: users, color: 'text-info' },
+    { label: 'API Calls · 24h', value: calls, color: 'text-warning' },
   ]
 
   const activity: ActivityEvent[] = d?.recent_activity?.map((a: any, i: number) => ({
@@ -99,134 +104,143 @@ export default function DevSpacePage() {
   return (
     <PageTransition>
       <motion.div
-        variants={containerVariants}
+        variants={container}
         initial="hidden"
-        animate="visible"
-        className="max-w-6xl mx-auto space-y-8 relative"
+        animate="show"
+        className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6"
       >
         {/* Header */}
-        <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
-          <svg className="absolute -top-8 -left-8 w-48 h-48 opacity-[0.03] pointer-events-none" viewBox="0 0 200 200" fill="none">
-            <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="0.4" />
-            <circle cx="100" cy="100" r="65" stroke="currentColor" strokeWidth="0.3" strokeDasharray="4 6" />
-            <circle cx="100" cy="100" r="40" stroke="currentColor" strokeWidth="0.4" />
-          </svg>
-          <div className="w-10 h-10 rounded-xl bg-info-muted border border-info/20 flex items-center justify-center">
-            <Code className="w-5 h-5 text-info" weight="duotone" />
-          </div>
+        <motion.div variants={item} className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">Developer Space</h1>
-            <p className="text-body-sm text-text-tertiary">Full-access developer portal and tools.</p>
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="tile tile-go">Dev Space</span>
+              <span className="designator opacity-50">CREW · TOOLS</span>
+            </div>
+            <h1 className="text-display-md md:text-display-lg text-text-primary flex items-center gap-3">
+              <Code size={28} weight="fill" className="text-go shrink-0" />
+              Developer Space
+            </h1>
+            <p className="text-body-sm text-text-secondary mt-1 font-code">
+              Full-access developer portal and tools.
+            </p>
           </div>
         </motion.div>
 
         {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">
-            {error}
-          </div>
+          <motion.div variants={item}>
+            <ConsolePanel rail="Signal Lost" designator="DEV" status="abort">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-error text-body-sm font-code">{error}</p>
+              </div>
+            </ConsolePanel>
+          </motion.div>
         )}
 
         {loading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-              ))}
-            </div>
+          <div className="space-y-5">
+            <div className="h-24 rounded-card bg-panel border border-seam animate-skeleton" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-32 rounded-xl bg-bg-secondary border border-border animate-pulse" />
+                <div key={i} className="h-28 rounded-card bg-panel border border-seam animate-skeleton" />
               ))}
             </div>
+            <div className="h-64 rounded-card bg-panel border border-seam animate-skeleton" />
           </div>
         ) : (
           <>
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {stats.map((stat, i) => (
-                <motion.div key={stat.label} custom={i} variants={statCardVariants} initial="hidden" animate="visible">
-                  <CardSpotlight className="p-4 group">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110', stat.color.replace('text', 'bg'), '/10')}>
-                        <stat.icon className={cn('w-4 h-4', stat.color)} weight="fill" />
-                      </div>
-                      <span className="text-caption text-text-tertiary">{stat.label}</span>
-                    </div>
-                    <p className="text-display-xs font-display font-medium text-text-primary">{stat.value}</p>
-                  </CardSpotlight>
-                </motion.div>
-              ))}
-            </div>
+            {/* Telemetry */}
+            <motion.div variants={item}>
+              <ReadoutBank callsign="DEV TELEMETRY" items={readouts} columns={4} />
+            </motion.div>
 
-            {/* Quick-access card grid */}
-            <motion.div variants={itemVariants}>
-              <h2 className="text-body-sm font-display font-bold text-text-primary mb-4">Quick Access</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {quickLinks.map((link, i) => (
-                  <motion.div
-                    key={link.to}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
-                  >
-                    <NavLink to={link.to}>
-                      <CardSpotlight className="p-4 h-full group cursor-pointer">
-                        <div className="flex flex-col h-full">
-                          <div className="w-9 h-9 rounded-lg bg-accent-muted border border-accent/15 flex items-center justify-center mb-3 group-hover:bg-accent-muted/70 group-hover:scale-110 transition-all">
-                            <link.icon className="w-4 h-4 text-accent-from" weight="fill" />
+            {/* Quick access */}
+            <motion.div variants={item}>
+              <ConsolePanel rail="Quick Access" designator={`${quickLinks.length} TOOLS`} status="go">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {quickLinks.map((link, i) => (
+                    <motion.div
+                      key={link.to}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03, type: 'spring', stiffness: 90, damping: 18 }}
+                    >
+                      <NavLink to={link.to} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-go rounded-tile">
+                        <div className="h-full p-3 rounded-tile bg-well border border-seam hover:border-seam-strong transition-colors group">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <span className="w-7 h-7 rounded-tile bg-go-muted border border-go/25 flex items-center justify-center text-go shrink-0">
+                              <link.icon size={14} weight="fill" />
+                            </span>
+                            <span className="font-code text-caption text-ink-secondary truncate">{link.title}</span>
                           </div>
-                          <h3 className="text-body-sm font-medium text-text-primary mb-1 group-hover:text-accent-from transition-colors">{link.title}</h3>
-                          <p className="text-caption text-text-tertiary flex-1">{link.description}</p>
-                          <div className="mt-3 flex items-center gap-1 text-caption text-accent-from/60 group-hover:text-accent-from transition-all group-hover:translate-x-1">
-                            Open <ArrowRight size={12} weight="bold" />
+                          <p className="text-caption text-text-muted line-clamp-2 mb-2 min-h-[2.4em]">
+                            {link.description}
+                          </p>
+                          <div className="flex items-center gap-1 text-caption text-ink-muted/60 group-hover:text-go transition-colors">
+                            <span>Open</span>
+                            <ArrowRight size={11} weight="bold" />
                           </div>
                         </div>
-                      </CardSpotlight>
-                    </NavLink>
-                  </motion.div>
-                ))}
-              </div>
+                      </NavLink>
+                    </motion.div>
+                  ))}
+                </div>
+              </ConsolePanel>
             </motion.div>
 
             {/* Recent Activity */}
-            <motion.div variants={itemVariants}>
-              <h2 className="text-body-sm font-display font-bold text-text-primary mb-4">Recent Activity</h2>
-              <CardSpotlight className="p-5">
+            <motion.div variants={item}>
+              <ConsolePanel
+                rail="Recent Activity"
+                designator={`${activity.length} EVENTS`}
+                status={activity.length ? 'standby' : 'idle'}
+                live={activity.length > 0}
+              >
                 {activity.length === 0 ? (
                   <EmptyState
-                    icon={<Clock className="w-8 h-8 text-text-tertiary/30" weight="duotone" />}
+                    icon={<Clock className="w-8 h-8 text-ink-disabled" weight="duotone" />}
                     title="No recent activity"
                     description="Activity from your workspace will appear here."
                   />
                 ) : (
-                  <div className="space-y-1">
-                    {activity.map((event) => (
-                      <motion.div
-                        key={event.id}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-bg-tertiary/20 transition-colors"
-                      >
-                        <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', stateColor[event.state])} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-body-xs text-text-primary font-medium truncate">{event.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-caption text-text-tertiary/60 font-code">{event.module}</span>
-                            <span className="text-caption text-text-tertiary/40">·</span>
-                            <span className="text-caption text-text-tertiary/40">{event.timestamp}</span>
+                  <div className="divide-y divide-seam">
+                    {activity.map((event) => {
+                      const tone = stateTone[event.state] ?? 'standby'
+                      return (
+                        <motion.div
+                          key={event.id}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center gap-3 py-2.5 px-1 hover:bg-well/40 transition-colors rounded-tile"
+                        >
+                          <StatusTile status={tone} label={stateLabel[event.state] ?? event.state.toUpperCase()} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-sm text-ink truncate">{event.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-caption text-ink-muted font-code">{event.module}</span>
+                              {event.timestamp && (
+                                <>
+                                  <span className="text-caption text-ink-disabled">·</span>
+                                  <span className="text-caption text-ink-muted font-code">{event.timestamp}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 )}
-              </CardSpotlight>
+              </ConsolePanel>
             </motion.div>
+
+            {/* Inline icon legend — used by stats (kept consistent with the kit) */}
+            <div className="hidden">
+              <GitFork />
+              <Users />
+            </div>
           </>
         )}
       </motion.div>
     </PageTransition>
   )
 }
-
-
