@@ -21,6 +21,11 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  
+  // Add refs for better focus management
+  const rememberMeRef = useRef<HTMLInputElement>(null)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname
 
@@ -29,12 +34,22 @@ export default function Login() {
   }, [user, loading, navigate, from, role])
 
   useEffect(() => {
+    // Focus the appropriate input field based on stage
+    if (stage === 'email') {
+      emailRef.current?.focus()
+    } else {
+      passwordRef.current?.focus()
+    }
+  }, [stage])
+
+  useEffect(() => {
     return () => clearError()
   }, [clearError])
 
-  useEffect(() => {
-    emailRef.current?.focus()
-  }, [stage])
+  // Form validation helpers
+  const isEmailValid = email.trim() !== '' && email.includes('@')
+  const isPasswordValid = password.trim() !== '' && password.length >= 6
+  const canSubmit = isSubmitting ? false : (stage === 'email' ? isEmailValid : isPasswordValid)
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -203,7 +218,7 @@ export default function Login() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || (stage === 'email' ? !email : !password)}
+                disabled={!canSubmit}
                 className={cn(
                   'w-full bg-go hover:bg-go-lit text-[hsl(var(--primary-foreground))] font-semibold text-[14px] py-3 rounded-[3px] flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
                 )}

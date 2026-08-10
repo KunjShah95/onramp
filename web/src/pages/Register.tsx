@@ -1,11 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import { EnvelopeSimple, Lock, User, ArrowRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
+import InputField from '../components/ui/first-principles/InputField'
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -24,15 +25,33 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
+  const nameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmPasswordRef = useRef<HTMLInputElement>(null)
 
   const { register, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  
+  // Form validation helpers
+  const isNameValid = name.trim() !== '' && name.length >= 2
+  const isEmailValid = email.trim() !== '' && email.includes('@')
+  const isPasswordValid = password.trim() !== '' && password.length >= 6
+  const isConfirmPasswordValid = confirmPassword.trim() !== '' && confirmPassword === password
+  const canSubmit = isSubmitting ? false : (isNameValid && isEmailValid && isPasswordValid && isConfirmPasswordValid)
 
   useEffect(() => {
     // Wait for role sync before redirecting to the role-appropriate home
     if (user && !loading) navigate(homeForRole(role), { replace: true })
   }, [user, loading, navigate, role])
+
+  useEffect(() => {
+    // Focus the first input field on mount
+    if (!loading) {
+      nameRef.current?.focus()
+    }
+  }, [loading])
 
   useEffect(() => {
     return () => clearError()
