@@ -10,7 +10,7 @@
  *
  * The version below is bumped on each deploy so users pick up new builds.
  */
-const VERSION = 'onramp-v1.0.0';
+const VERSION = 'onramp-v1.0.1';
 const APP_SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
