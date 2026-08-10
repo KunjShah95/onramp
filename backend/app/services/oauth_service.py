@@ -24,6 +24,7 @@ from urllib.parse import urlencode
 import httpx
 
 from app.services.user_service import create_user, get_user_by_email
+from app.services.team_service import create_personal_team
 from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
 from app.database.config import db_config
 from app.database.models import User as UserModel
@@ -493,6 +494,7 @@ async def _find_or_create_oauth_user(
 
     await db_config.ensure_engine()
     factory = db_config.get_session_factory()
+    created_new_user = False
 
     async with factory() as session:
         result = await session.execute(
@@ -532,6 +534,7 @@ async def _find_or_create_oauth_user(
                     session.add(user_row)
         else:
             # Create new user
+            created_new_user = True
             uid = str(uuid.uuid4())
             now = datetime.now(timezone.utc)
             hashed_email = encrypt_field(email)
@@ -560,6 +563,16 @@ async def _find_or_create_oauth_user(
         # session rolls back on block exit and the OAuth user is never saved,
         # so the issued token points at a uid that doesn't exist.
         await session.commit()
+
+    # New OAuth accounts get a personal team + minimal role just like
+    # email/password registrations, so they're never teamless on first login.
+    if created_new_user:
+        try:
+            await create_personal_team(uid, raw_name)
+        except Exception:
+            logger.exception(
+                "Failed to auto-create personal team for OAuth user %s", uid
+            )
 
     token = _generate_jwt(uid, raw_email, raw_name, provider)
     return {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { homeForRole } from '../context/AuthContext'
+import { resolveGuardAccess } from '../components/auth/RoleGuard'
+import type { TeamRole } from '../context/AuthContext'
 
 describe('homeForRole (post-login landing page)', () => {
   it('sends HR to their people page', () => {
@@ -17,5 +19,27 @@ describe('homeForRole (post-login landing page)', () => {
     }
     expect(homeForRole(null)).toBe('/dashboard')
     expect(homeForRole(undefined)).toBe('/dashboard')
+  })
+})
+
+describe('resolveGuardAccess (route permission check)', () => {
+  const LEADERSHIP: TeamRole[] = ['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto']
+
+  it('denies no-team users by default', () => {
+    expect(resolveGuardAccess({ role: null, allowedRoles: LEADERSHIP })).toBe(false)
+  })
+
+  it('admits no-team users when allowNoTeam is set (first-run dashboard)', () => {
+    expect(resolveGuardAccess({ role: null, allowedRoles: LEADERSHIP, allowNoTeam: true })).toBe(true)
+  })
+
+  it('keeps real roles working', () => {
+    expect(resolveGuardAccess({ role: 'ceo', allowedRoles: LEADERSHIP })).toBe(true)
+    expect(resolveGuardAccess({ role: 'new_dev', allowedRoles: LEADERSHIP })).toBe(false)
+  })
+
+  it('honours minRole', () => {
+    expect(resolveGuardAccess({ role: 'developer', minRole: 'senior' })).toBe(false)
+    expect(resolveGuardAccess({ role: 'ceo', minRole: 'senior' })).toBe(true)
   })
 })

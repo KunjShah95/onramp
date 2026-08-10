@@ -329,8 +329,10 @@ export default function App() {
                     } />
                   </Route>
 
-                  {/* Tester / Developer + Pages (hr deliberately excluded) */}
-                  <Route element={<RoleGuard allowedRoles={['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto']} />}>
+                  {/* Tester / Developer + Pages (hr deliberately excluded).
+                      allowNoTeam: brand-new users (role null, no team) land here
+                      and see the first-run welcome instead of the mission console. */}
+                  <Route element={<RoleGuard allowedRoles={['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto']} allowNoTeam />}>
                     <Route path="/dashboard" element={
                       <Suspense fallback={<DashboardSkeleton />}>
                         <ErrorBoundary><DashboardPage /></ErrorBoundary>

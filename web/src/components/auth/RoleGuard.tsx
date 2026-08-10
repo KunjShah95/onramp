@@ -6,6 +6,9 @@ import type { TeamRole } from '../../context/AuthContext'
 interface RoleGuardProps {
   allowedRoles?: TeamRole[]
   minRole?: TeamRole
+  /** Allow users with no team membership (role === null) through. Used on
+   *  /dashboard, where a first-run welcome replaces the mission console. */
+  allowNoTeam?: boolean
 }
 
 const ROLE_LEVELS: Partial<Record<TeamRole, number>> = {
@@ -21,7 +24,26 @@ const ROLE_LEVELS: Partial<Record<TeamRole, number>> = {
   owner: 5,
 }
 
-export default function RoleGuard({ allowedRoles, minRole }: RoleGuardProps) {
+const roleLevel = (r: string | null): number => (r ? ROLE_LEVELS[r as TeamRole] ?? 0 : 0)
+
+/** Pure access decision — exported for unit tests. */
+export function resolveGuardAccess(opts: {
+  role: string | null
+  allowedRoles?: TeamRole[]
+  minRole?: TeamRole
+  allowNoTeam?: boolean
+}): boolean {
+  const { role, allowedRoles, minRole, allowNoTeam } = opts
+  if (allowedRoles) {
+    return role ? allowedRoles.includes(role as TeamRole) : !!allowNoTeam
+  }
+  if (minRole) {
+    return roleLevel(role) >= roleLevel(minRole)
+  }
+  return true
+}
+
+export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGuardProps) {
   const { role, loading, user } = useAuth()
 
   if (loading) {
@@ -36,29 +58,15 @@ export default function RoleGuard({ allowedRoles, minRole }: RoleGuardProps) {
     return <Navigate to="/login" replace />
   }
 
-  const roleLevel = (r: string | null): number => (r ? ROLE_LEVELS[r as TeamRole] ?? 0 : 0)
-
-  let hasAccess = false
-
-  if (allowedRoles) {
-    hasAccess = role ? allowedRoles.includes(role) : false
-  } else if (minRole) {
-    hasAccess = roleLevel(role) >= roleLevel(minRole)
-  } else {
-    hasAccess = true
-  }
-
-  if (!hasAccess) {
+  if (!resolveGuardAccess({ role, allowedRoles, minRole, allowNoTeam })) {
     if (role === 'new_dev' || role === 'member') {
       return <Navigate to="/my-progress" replace />
     }
     if (role === 'hr') {
       return <Navigate to="/hr/people" replace />
     }
-    // No team / unknown role — send to an ungated page instead of looping on /dashboard
-    if (!role) {
-      return <Navigate to="/explore" replace />
-    }
+    // No team / unknown role — /dashboard is allowNoTeam and renders the
+    // first-run welcome, so send them there instead of an ungated page.
     return <Navigate to="/dashboard" replace />
   }
 

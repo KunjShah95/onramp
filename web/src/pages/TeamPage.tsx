@@ -12,6 +12,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import GradientHeading from '../components/ui/gradient-heading'
 import { useToast } from '../context/ToastContext'
+import { useAuth } from '../context/AuthContext'
 import { TeamSettingsSkeleton } from '../components/ui/Skeleton'
 import {
   Users, UserPlus, EnvelopeSimple, X, ArrowRight,
@@ -60,6 +61,7 @@ const itemVariants = {
 
 export default function TeamPage() {
   const toast = useToast()
+  const { refreshRole } = useAuth()
   const [teamName, setTeamName] = useState('')
   const [teamId, setTeamId] = useState<string | null>(null)
   const [teams, setTeams] = useState<any[]>([])
@@ -111,6 +113,7 @@ export default function TeamPage() {
     try {
       const data = await createTeam(teamName.trim(), 'current-user', tier)
       setTeamId(data.team_id); setTeamName(''); await fetchTeams()
+      await refreshRole() // make role/activeTeamId reflect the new team immediately
       toast.success('Team created', teamName.trim())
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create team'); toast.error('Failed to create team') }
     setLoading(false)

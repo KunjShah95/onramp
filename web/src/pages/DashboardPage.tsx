@@ -13,12 +13,14 @@ import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import StatusBadge from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
 import { ScrollProgress } from '../components/ui/landing-motion'
 import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
 import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
+import FirstRunDashboard from '../components/dashboard/FirstRunDashboard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -68,6 +70,7 @@ function Panel({ callsign, designator, action, className, children }: {
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'dora'>('overview')
+  const { role, activeTeamId } = useAuth()
 
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['ctoDashboard'],
@@ -156,6 +159,15 @@ export default function DashboardPage() {
         </div>
       </div>
     )
+  }
+
+  // Brand-new user (no team membership) or a fresh team with zero data gets
+  // the first-run experience instead of a zero-filled mission console.
+  const isEmptyWorkspace =
+    (total_members ?? 0) === 0 && (total_tasks ?? 0) === 0 && (reposData?.repos?.length ?? 0) === 0
+  const showFirstRun = isEmptyWorkspace && (!activeTeamId || !role)
+  if (showFirstRun) {
+    return <FirstRunDashboard hasTeam={!!activeTeamId} />
   }
 
   // Verdict logic — HOLD if blocked, STANDBY if many pending reviews, GO otherwise

@@ -24,6 +24,7 @@ from app.services.field_encryption import email_hash, encrypt_field, decrypt_fie
 from app.services.email_service import is_enabled as email_is_enabled
 from app.services.email_service import send_email
 from app.services.api_key_service import APIKeyService
+from app.services.team_service import create_personal_team
 
 logger = logging.getLogger(__name__)
 
@@ -432,6 +433,15 @@ async def register(body: RegisterRequest):
             logger.info("=" * 60)
     except Exception:
         logger.exception("Failed to send verification email to %s", body.email)
+
+    # Every new account gets a personal team + minimal role from day one so
+    # the frontend can derive role/activeTeamId from membership (no more
+    # teamless "no access" accounts). Best-effort: a failure here must never
+    # block registration.
+    try:
+        await create_personal_team(uid, body.name)
+    except Exception:
+        logger.exception("Failed to auto-create personal team for new user %s", uid)
 
     tokens = await _issue_tokens(uid, body.email, body.name, "password", remember_me=False)
 

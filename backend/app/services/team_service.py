@@ -21,6 +21,28 @@ async def create_team(name: str, description: Optional[str] = None) -> dict:
     return team
 
 
+async def create_personal_team(
+    user_id: str, display_name: str, role: str = "new_dev"
+) -> dict:
+    """Create a personal team for a user and add them as its first member.
+
+    Called at registration so every new account has a team + role from day
+    one (the frontend derives ``role``/``activeTeamId`` from membership).
+    ``new_dev`` is the minimal role — same as demo "New Dev" accounts.
+    """
+    clean_name = " ".join((display_name or "").strip().split())
+    if not clean_name:
+        team_name, description = "My Team", None
+    else:
+        team_name, description = (
+            f"{clean_name[:60]}'s Team",
+            f"Personal workspace for {clean_name}",
+        )
+    team = await create_team(name=team_name, description=description)
+    await add_member(team["id"], user_id, role=role)
+    return team
+
+
 async def get_team(team_id: str) -> Optional[dict]:
     """Get team by ID"""
     storage = get_storage()
