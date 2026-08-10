@@ -174,10 +174,16 @@ class BillingService:
         )
 
     async def _log_event(self, event_id: str, event_type: str, status: str, details: Optional[dict] = None) -> None:
-        """Persist a webhook event record for audit trail."""
+        """Persist a webhook event record for audit trail.
+
+        Known event ids key the log row (one row per Razorpay event). Events
+        without an id fall back to a generated key so distinct id-less events
+        never collide on the ``evt_unknown`` fallback (PostgreSQL duplicate-key).
+        """
+        doc_id = event_id if (event_id and event_id != "evt_unknown") else generate_id()
         await self.storage.create_document(
             EVENT_LOG_COLLECTION,
-            event_id,
+            doc_id,
             {
                 "event_id": event_id,
                 "event_type": event_type,
@@ -536,8 +542,32 @@ class BillingService:
             logger.warning(f"Razorpay payment signature verification failed: {exc}")
             return {"error": "Invalid payment signature"}
 
+        # Fetch the actual captured payment amount from Razorpay and validate it
+        # against the stored order amount before crediting. The payment signature
+        # only binds order_id + payment_id, NOT the amount — a caller could pay a
+        # different amount and still produce a valid signature, so passing the
+        # stored order amount here would make _credit_topup's mismatch check
+        # trivially pass. Fail closed when the payment can't be fetched.
+        try:
+            payment = await asyncio.to_thread(client.payment.fetch, payment_id)
+            actual_amount_paise = int(payment.get("amount") or 0)
+        except Exception as exc:
+            logger.warning(f"Could not fetch payment {payment_id} to verify amount: {exc}")
+            _sentry_report(exc, {"order_id": order_id, "payment_id": payment_id, "phase": "topup_amount_check"})
+            return {"error": "Could not verify payment amount"}
+        if actual_amount_paise <= 0:
+            logger.warning(f"Payment {payment_id} has no captured amount — refusing credit")
+            return {"error": "Could not verify payment amount"}
+        # Only credit captured payments — mirrors the webhook path, which acts on
+        # payment.captured (an authorized-but-uncaptured payment may still fail).
+        if payment.get("status") != "captured":
+            logger.warning(
+                f"Payment {payment_id} is not captured (status={payment.get('status')}) — refusing credit"
+            )
+            return {"error": "Could not verify payment amount"}
+
         credits = orders[0].get("amount_inr", 0)
-        credited = await self._credit_topup(order_id, payment_id, orders[0].get("amount_paise", 0))
+        credited = await self._credit_topup(order_id, payment_id, actual_amount_paise)
         if not credited:
             return {"error": "Could not credit wallet"}
         await self.storage.update_document("credit_topup_orders", order_id, {"status": "paid"})

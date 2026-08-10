@@ -130,16 +130,22 @@ export default function BillingPage() {
         description: `Credit top-up of ₹${topUpAmount}`,
         order_id: order.order_id,
         handler: async (response: any) => {
-          const res = await verifyCreditOrder({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          })
-          if (res.credited) {
-            toast.success('Credits added', `${res.credits} credits added to wallet`)
-            await fetchWallet()
-          } else {
-            toast.error('Payment verification failed')
+          try {
+            const res = await verifyCreditOrder({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            })
+            if (res.credited) {
+              toast.success('Credits added', `${res.credits} credits added to wallet`)
+              await fetchWallet()
+            } else {
+              toast.error('Payment verification failed')
+            }
+          } catch (e) {
+            // API failures must not become unhandled rejections — the user
+            // sees a clear error and can retry from the wallet section.
+            toast.error('Payment verification failed', e instanceof Error ? e.message : 'Unknown error')
           }
         },
         modal: { ondismiss: () => { /* no-op; user cancelled */ } },

@@ -43,6 +43,7 @@ class TestVerifyPaymentOrder:
         })
         mock_client = MagicMock()
         mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {"id": "pay_1", "amount": 50000, "status": "captured"}  # 500 INR
         with patch.object(service, "_razorpay", return_value=mock_client):
             result = await service.verify_payment_order("order_1", "pay_1", "sig_1")
         assert result == {"credited": True, "credits": 500}
@@ -84,6 +85,7 @@ class TestVerifyPaymentOrder:
         })
         mock_client = MagicMock()
         mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {"id": "pay_own", "amount": 25000, "status": "captured"}  # 250 INR
         with patch.object(service, "_razorpay", return_value=mock_client):
             result = await service.verify_payment_order(
                 "order_own", "pay_own", "sig_ok", caller_id="user_own"
@@ -96,9 +98,75 @@ class TestVerifyPaymentOrder:
         })
         mock_client = MagicMock()
         mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {"id": "pay_3", "amount": 20000, "status": "captured"}  # 200 INR
         with patch.object(service, "_razorpay", return_value=mock_client):
             await service.verify_payment_order("order_3", "pay_3", "sig_3")
             await service.verify_payment_order("order_3", "pay_3", "sig_3")
         from app.services.credit_service import CreditService
         wallet = await CreditService().get_wallet("user_3")
         assert wallet["balance"] == 200
+
+    async def test_payment_amount_mismatch_is_not_credited(self, service):
+        await service.storage.create_document("credit_topup_orders", "order_mm", {
+            "order_id": "order_mm", "team_id": "user_mm", "amount_inr": 500, "amount_paise": 50000,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        # Attacker-style: valid signature, but the captured payment is ₹1 not ₹500.
+        mock_client.payment.fetch.return_value = {"id": "pay_mm", "amount": 100, "status": "captured"}
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order("order_mm", "pay_mm", "sig_mm")
+        assert result == {"error": "Could not credit wallet"}
+
+        from app.services.credit_service import CreditService
+        wallet = await CreditService().get_wallet("user_mm")
+        assert wallet["balance"] == 0
+
+    async def test_payment_fetch_failure_is_fail_closed(self, service):
+        await service.storage.create_document("credit_topup_orders", "order_fetch", {
+            "order_id": "order_fetch", "team_id": "user_fetch", "amount_inr": 100,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.side_effect = Exception("razorpay api down")
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order("order_fetch", "pay_fetch", "sig_fetch")
+        assert result == {"error": "Could not verify payment amount"}
+
+        from app.services.credit_service import CreditService
+        wallet = await CreditService().get_wallet("user_fetch")
+        assert wallet["balance"] == 0
+
+    async def test_uncaptured_payment_is_not_credited(self, service):
+        await service.storage.create_document("credit_topup_orders", "order_auth", {
+            "order_id": "order_auth", "team_id": "user_auth", "amount_inr": 100, "amount_paise": 10000,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        # Authorized but not captured — mirrors the webhook crediting only on
+        # payment.captured.
+        mock_client.payment.fetch.return_value = {"id": "pay_auth", "amount": 10000, "status": "authorized"}
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order("order_auth", "pay_auth", "sig_auth")
+        assert result == {"error": "Could not verify payment amount"}
+
+        from app.services.credit_service import CreditService
+        wallet = await CreditService().get_wallet("user_auth")
+        assert wallet["balance"] == 0
+
+    async def test_matching_stored_amount_credits(self, service):
+        # Production orders (created via create_payment_order) store amount_paise;
+        # a fetched payment matching that amount credits normally.
+        await service.storage.create_document("credit_topup_orders", "order_match", {
+            "order_id": "order_match", "team_id": "user_match", "amount_inr": 300, "amount_paise": 30000,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {"id": "pay_match", "amount": 30000, "status": "captured"}
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order("order_match", "pay_match", "sig_match")
+        assert result == {"credited": True, "credits": 300}
+
+        from app.services.credit_service import CreditService
+        wallet = await CreditService().get_wallet("user_match")
+        assert wallet["balance"] == 300

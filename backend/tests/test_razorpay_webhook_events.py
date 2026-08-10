@@ -67,3 +67,16 @@ class TestPaymentCapturedTopup:
         from app.services.credit_service import CreditService
         wallet = await CreditService().get_wallet("user_t4")
         assert wallet["balance"] == 0
+
+    async def test_webhooks_without_event_id_do_not_collide_in_log(self, service):
+        # Regression: id-less events all fell back to the "evt_unknown" log
+        # primary key, so a second one raised a duplicate-key error on
+        # PostgreSQL. Each must get its own log row.
+        p1 = _event("subscription.completed", {"id": "sub_c1", "notes": {}})
+        p2 = _event("subscription.completed", {"id": "sub_c2", "notes": {}})
+        r1 = await service.handle_webhook(p1, sig_header=None)
+        r2 = await service.handle_webhook(p2, sig_header=None)
+        assert r1 == {"received": True, "type": "subscription.completed"}
+        assert r2 == {"received": True, "type": "subscription.completed"}
+        log = await service.storage.query_documents("onramp_webhook_events", [])
+        assert len(log) == 2
