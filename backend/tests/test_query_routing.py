@@ -102,7 +102,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return f"Response from {provider.value}"
 
@@ -116,7 +116,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return "ok"
 
@@ -130,7 +130,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return "ok"
 
@@ -143,7 +143,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             if provider == ModelProvider.OPENROUTER:
                 raise Exception("OpenRouter down")
@@ -161,7 +161,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return '{"ok": true}'
 
@@ -176,7 +176,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_stream(self_, provider, prompt, system, max_tokens):
+        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             yield "hello "
             yield "world"
@@ -248,7 +248,7 @@ class TestOpenAIModelRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return f"Response from {provider.value}"
 
@@ -275,7 +275,7 @@ class TestOpenAIModelRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             seen.append(provider)
             return "ok"
 
@@ -289,7 +289,7 @@ class TestOpenAIModelRouting:
         _set_all_keys(monkeypatch)
         router = LLMRouter()
 
-        async def fake_stream(self_, provider, prompt, system, max_tokens):
+        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None):
             yield "Hel"
             yield "lo"
 
@@ -305,7 +305,7 @@ class TestOpenAIModelRouting:
         _set_all_keys(monkeypatch)
         router = LLMRouter()
 
-        async def fake_call(self_, provider, prompt, system, max_tokens):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
             return "ok"
 
         monkeypatch.setattr(LLMRouter, "_call_provider", fake_call)

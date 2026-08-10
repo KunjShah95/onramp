@@ -1115,6 +1115,50 @@ export async function validateApiKey(
   )
 }
 
+// ─── Provider Keys (BYOK) ─────────────────────────────────────────────────
+
+export interface ProviderKeyInfo {
+  provider: string
+  configured: boolean
+  env_var?: string | null
+  updated_at?: string | null
+  updated_by?: string | null
+}
+
+export interface ProviderKeysResponse {
+  org_name: string
+  providers: ProviderKeyInfo[]
+  count: number
+}
+
+export async function listProviderKeys(
+  orgName: string
+): Promise<ProviderKeysResponse> {
+  return get<ProviderKeysResponse>(`${API_BASE}/ai/keys/${orgName}/providers`)
+}
+
+export async function setProviderKey(
+  orgName: string,
+  provider: string,
+  apiKey: string
+): Promise<ProviderKeyInfo> {
+  return request<ProviderKeyInfo>(
+    `${API_BASE}/ai/keys/${orgName}/providers/${provider}`,
+    { api_key: apiKey },
+    'PUT'
+  )
+}
+
+export async function deleteProviderKey(
+  orgName: string,
+  provider: string
+): Promise<void> {
+  await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 // ─── Usage ────────────────────────────────────────────────────────────────
 
 export interface UsageRecord {
@@ -1856,6 +1900,41 @@ export async function adminGetWebhookDeliveries(webhookId: string, limit = 50): 
 
 export async function adminRotateWebhookSecret(webhookId: string): Promise<AdminWebhook> {
   return request<AdminWebhook>(`${API_BASE}/admin/webhooks/${webhookId}/rotate-secret`, {})
+}
+
+// ─── Platform Provider Keys (Admin — managed via the website, not .env) ───
+
+export interface AdminProviderKeyInfo {
+  provider: string
+  configured: boolean
+  env_var?: string | null
+  updated_at?: string | null
+  updated_by?: string | null
+}
+
+export async function adminListProviderKeys(): Promise<{
+  providers: AdminProviderKeyInfo[]
+  count: number
+}> {
+  return get(`${API_BASE}/admin/ai/provider-keys`)
+}
+
+export async function adminSetProviderKey(
+  provider: string,
+  apiKey: string
+): Promise<AdminProviderKeyInfo> {
+  return request<AdminProviderKeyInfo>(
+    `${API_BASE}/admin/ai/provider-keys/${provider}`,
+    { api_key: apiKey },
+    'PUT'
+  )
+}
+
+export async function adminDeleteProviderKey(provider: string): Promise<void> {
+  await fetch(`${API_BASE}/admin/ai/provider-keys/${provider}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
 }
 
 // ─── Architecture Drift Detection ─────────────────────────────────────────

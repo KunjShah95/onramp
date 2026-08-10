@@ -15,6 +15,7 @@ Base URL: `http://localhost:8000/api/v1` (dev) or `https://yourdomain.com/api/v1
 Auth supports three providers: **email/password**, **Google OAuth**, and **GitHub OAuth**. Users can register with one provider and later **link** a second identity (e.g. email/password account + GitHub) to the same account.
 
 ### Register (email/password)
+
 ```http
 POST /auth/register
 Content-Type: application/json
@@ -27,6 +28,7 @@ Response 200:
 ```
 
 ### Login (email/password)
+
 ```http
 POST /auth/login
 Content-Type: application/json
@@ -39,6 +41,7 @@ Response 200:
 ```
 
 ### Refresh Token
+
 ```http
 POST /auth/refresh
 Content-Type: application/json
@@ -50,6 +53,7 @@ Response 200:
 ```
 
 ### Get Current User
+
 ```http
 GET /auth/me
 Authorization: Bearer <token>
@@ -61,6 +65,7 @@ Response 200:
 ```
 
 ### Update Current User
+
 ```http
 PATCH /auth/me
 Authorization: Bearer <token>
@@ -72,6 +77,7 @@ Response 200: same shape as GET /auth/me
 ```
 
 ### Check Provider (public)
+
 ```http
 GET /auth/check-provider?email=user@example.com
 
@@ -80,11 +86,13 @@ Response 200:
 ```
 
 ### Verify Email
+
 ```http
 GET /auth/verify-email?token=...
 ```
 
 ### Forgot / Reset / Set Password
+
 ```http
 POST /auth/forgot-password     {"email": "user@example.com"}
 POST /auth/reset-password      {"token": "...", "new_password": "..."}
@@ -92,25 +100,30 @@ POST /auth/set-password        {"new_password": "..."}   # authenticated, passwo
 ```
 
 ### Deactivate Account (GDPR)
+
 ```http
 POST /auth/deactivate
 Authorization: Bearer <token>
 ```
+
 Cascades cleanup across teams, webhooks, notifications, gamification, conversations, quizzes, learning paths, and usage records.
 
 ### Google OAuth
+
 ```http
 GET  /auth/oauth/google/login      → 307 redirect to Google consent
 GET  /auth/oauth/google/callback   → exchanges code, redirects to FRONTEND_URL with session
 ```
 
 ### GitHub OAuth
+
 ```http
 GET  /auth/oauth/github/login      → 307 redirect to GitHub consent
 GET  /auth/oauth/github/callback   → exchanges code, redirects to FRONTEND_URL with session
 ```
 
 ### GitHub Account Linking
+
 ```http
 POST /auth/oauth/github/link
 Authorization: Bearer <token>
@@ -118,6 +131,7 @@ Authorization: Bearer <token>
 Response 200:
 {"authorization_url": "https://github.com/login/oauth/authorize?...&state=<redis-state>"}
 ```
+
 Attaches the authenticated user's GitHub identity to their existing account. The OAuth state is stored in Redis (single-use, 600s TTL); the callback upserts `github_username` / `github_id` on the same user and auto-links PRs to issue tasks via the GitHub push webhook.
 
 ---
@@ -125,6 +139,7 @@ Attaches the authenticated user's GitHub identity to their existing account. The
 ## Billing
 
 ### Create Subscription
+
 ```http
 POST /billing/subscriptions
 Content-Type: application/json
@@ -133,11 +148,13 @@ Content-Type: application/json
 ```
 
 ### Get Subscription
+
 ```http
 GET /billing/subscriptions/{team_id}
 ```
 
 ### Update Tier
+
 ```http
 PATCH /billing/subscriptions/{team_id}
 Content-Type: application/json
@@ -146,11 +163,13 @@ Content-Type: application/json
 ```
 
 ### Cancel Subscription
+
 ```http
 DELETE /billing/subscriptions/{team_id}
 ```
 
 ### Attach Razorpay IDs
+
 ```http
 POST /billing/subscriptions/{team_id}/razorpay
 Content-Type: application/json
@@ -159,6 +178,7 @@ Content-Type: application/json
 ```
 
 ### Create Checkout Session
+
 ```http
 POST /billing/checkout
 Content-Type: application/json
@@ -168,22 +188,26 @@ Content-Type: application/json
 Response 200:
 {"url": "https://rzp.io/...", "subscription_id": "sub_..."}
 ```
+
 Creates a Razorpay **subscription** (`plan_id` from `RAZORPAY_PLAN_*`); the
 hosted checkout is the subscription's `short_url`.
 
 ### Razorpay Webhook (public, no auth)
+
 ```http
 POST /billing/webhook
 X-Razorpay-Signature: ...
 
 Events handled: subscription.activated, subscription.charged, subscription.completed, subscription.cancelled, subscription.pending, subscription.halted, payment.captured, payment.failed
 ```
+
 Signature verified with `RAZORPAY_WEBHOOK_SECRET` via
 `razorpay.utility.verify_webhook_signature`. `payment.captured` events whose
 notes carry `topup=1` credit the wallet (`amount` paise ÷ 100 credits),
 idempotent per `payment_id`.
 
 ### Credits (usage-based top-ups)
+
 ```http
 GET  /billing/credits           {"balance": ..., "currency": "inr", ...}
 POST /billing/credits/topup     {"amount": ..., "currency": "inr"}  → Razorpay order
@@ -191,6 +215,7 @@ GET  /billing/credits/ledger    {"transactions": [...]}
 ```
 
 ### List Pricing
+
 ```http
 GET /billing/pricing
 
@@ -203,6 +228,7 @@ Response 200:
 ## Explore
 
 ### Analyze Repository
+
 ```http
 POST /explore/analyze
 Content-Type: application/json
@@ -217,11 +243,13 @@ Responses include an `X-LLM-Route` header reporting which provider/model
 produced the architecture analysis (set only when the LLM actually ran).
 
 ### Explore Health
+
 ```http
 GET /explore/health
 ```
 
 ### Get Architecture Graph
+
 ```http
 POST /repos/index
 Content-Type: application/json
@@ -234,6 +262,7 @@ Response 200 (fresh build):
  "stats": {"file_count": 512, "class_count": 320, "function_count": 1800, "import_count": 900},
  "entities": {...}, "graph": {...}}
 ```
+
 The graph (`nodes` + `edges` + `summary`) is served from the cached index document.
 
 ---
@@ -247,6 +276,7 @@ cache instead of re-cloning/re-parsing — agents then pull only the slice
 relevant to their task.
 
 ### Build / Refresh Index
+
 ```http
 POST /repos/index
 Content-Type: application/json
@@ -287,6 +317,7 @@ past the next nightly sweep) — so the first user request hits a warm cache
 instead of building.
 
 ### GitHub Push Webhook (evolution feedback loop)
+
 ```http
 POST /webhooks/github   (X-GitHub-Event: push, HMAC-SHA256 signed)
 ```
@@ -308,6 +339,7 @@ Pushes to unregistered repos / other branches are acknowledged but ignored
 `GITHUB_WEBHOOK_SECRET` for HMAC verification.
 
 ### Get Index Document
+
 ```http
 GET /repos/index/{index_id}
 ```
@@ -315,6 +347,7 @@ GET /repos/index/{index_id}
 Returns the full context document (entities + graph + stats).
 
 ### Select Context (requirement-driven, token-budgeted)
+
 ```http
 GET /repos/index/{index_id}/context?requirement=auth%20login&max_tokens=4000
 
@@ -332,6 +365,7 @@ only relevant files and their entities/edges are returned, and
 is safe to drop straight into an LLM prompt.
 
 ### Evict Index
+
 ```http
 DELETE /repos/index/{index_id}
 ```
@@ -360,6 +394,7 @@ Exactly one of `repo_structure` / `index_id` is required (400 otherwise).
 ## Learn
 
 ### Generate Learning Path
+
 ```http
 POST /learn/path
 Content-Type: application/json
@@ -371,11 +406,13 @@ Response 200:
 ```
 
 ### List Paths
+
 ```http
 GET /learn/paths
 ```
 
 ### Get Path
+
 ```http
 GET /learn/paths/{path_id}
 ```
@@ -388,6 +425,7 @@ GET /learn/paths/{path_id}
 ## First PR
 
 ### Score Beginner Issues
+
 ```http
 POST /first-pr/issues
 Content-Type: application/json
@@ -397,12 +435,14 @@ Content-Type: application/json
 Response 200:
 {"issues": [{"number": 123, "title": "...", "score": 85, "reason": "...", "labels": [...]}]}
 ```
+
 `user_level` ∈ `junior | mid | senior`. The optional `github_token` is
 pulled from the body or an `Authorization: Bearer ghp_...` header (only
 GitHub-prefixed tokens are accepted — auth JWTs are ignored) to raise the
 rate limit above the shared anonymous bucket.
 
 ### Get Issue Guide
+
 ```http
 POST /first-pr/guide
 Content-Type: application/json
@@ -418,6 +458,7 @@ Response 200:
 ## Ask
 
 ### Index a Codebase
+
 ```http
 POST /ask/index
 Content-Type: application/json
@@ -429,6 +470,7 @@ Response 200:
 ```
 
 ### Query Codebase
+
 ```http
 POST /ask/query
 Content-Type: application/json
@@ -447,6 +489,7 @@ fallback path); the streaming header is a best-effort primary-route guess
 made before the stream starts.
 
 ### Conversation History
+
 ```http
 GET    /ask/history/{index_id}
 DELETE /ask/history/{index_id}
@@ -457,6 +500,7 @@ DELETE /ask/history/{index_id}
 ## Reports
 
 ### Generate Onboarding Report
+
 ```http
 POST /reports/generate
 Content-Type: application/json
@@ -468,6 +512,7 @@ Response 200:
 ```
 
 ### Generate HTML Report
+
 ```http
 POST /reports/generate-html
 Content-Type: application/json
@@ -483,6 +528,7 @@ Response 200:
 ## Dashboard
 
 ### CTO Dashboard
+
 ```http
 GET /dashboard/cto
 Authorization: Bearer <token>
@@ -492,6 +538,7 @@ Response 200:
 ```
 
 ### Team / Trainee Dashboards
+
 ```http
 GET /dashboard/team
 GET /dashboard/trainee
@@ -503,6 +550,7 @@ GET /usage/dashboard
 ## Teams
 
 ### Create Team
+
 ```http
 POST /teams
 Content-Type: application/json
@@ -511,11 +559,13 @@ Content-Type: application/json
 ```
 
 ### List Teams
+
 ```http
 GET /teams
 ```
 
 ### Get / Update / Delete Team
+
 ```http
 GET    /teams/{team_id}
 PUT    /teams/{team_id}
@@ -523,6 +573,7 @@ DELETE /teams/{team_id}
 ```
 
 ### Members
+
 ```http
 GET    /teams/{team_id}/members
 POST   /teams/{team_id}/members      {"email": "dev@company.com", "role": "member"}
@@ -530,6 +581,7 @@ DELETE /teams/{team_id}/members/{user}
 ```
 
 ### Invites & Tier
+
 ```http
 GET  /teams/{team_id}/invites
 POST /teams/{team_id}/tier
@@ -537,6 +589,7 @@ GET  /teams/{team_id}/subscription
 ```
 
 ### Module-Level RBAC
+
 ```http
 GET    /teams/{team_id}/module-permissions
 GET    /teams/{team_id}/module-permissions/{user_id}
@@ -551,6 +604,7 @@ GET    /teams/{team_id}/module-permissions/check/{user_id}/{module}
 ## Integrations
 
 ### Webhook CRUD
+
 ```http
 GET    /integrations/webhooks
 POST   /integrations/webhooks
@@ -562,6 +616,7 @@ POST   /integrations/webhooks/{id}/rotate-secret
 ```
 
 ### Integration Config (slack, github, gitlab, bitbucket, jira, linear)
+
 ```http
 GET    /integrations/{type}
 PUT    /integrations/{type}
@@ -569,6 +624,7 @@ DELETE /integrations/{type}
 ```
 
 ### GitHub Token Validation
+
 ```http
 POST /integrations/github/test
 Content-Type: application/json
@@ -583,6 +639,7 @@ Response 200 (invalid):
 ```
 
 ### GitLab / Bitbucket / Jira / Linear
+
 ```http
 POST /integrations/gitlab/test          {"token": "glpat_..."}
 POST /integrations/gitlab/projects      {"token": "...", "group": "..."}
@@ -597,6 +654,7 @@ POST /integrations/linear/workflow-states
 ```
 
 ### List All Integrations & Events
+
 ```http
 GET /integrations
 GET /integrations/events/list
@@ -617,6 +675,7 @@ POST   /notifications/clear-read
 ```
 
 ### Preferences
+
 ```http
 GET  /notifications/preferences
 PUT  /notifications/preferences
@@ -643,6 +702,7 @@ DELETE /tasks/{task_id}
 ```
 
 ### Lifecycle actions
+
 ```http
 POST /tasks/{task_id}/transition   {"state": "in_progress"}
 POST /tasks/{task_id}/assign       {"assigned_to": "user-123"}
@@ -658,6 +718,7 @@ GET  /tasks/{task_id}/quiz-gate
 ```
 
 ### Templates
+
 ```http
 GET    /tasks/templates
 POST   /tasks/templates
@@ -666,6 +727,7 @@ DELETE /tasks/templates/{template_id}
 ```
 
 ### GitHub issue import & bulk ops
+
 ```http
 POST /tasks/import-issue
 POST /tasks/search-issues
@@ -674,6 +736,7 @@ POST /tasks/auto-assign-starter
 ```
 
 ### Analytics
+
 ```http
 GET /tasks/time-stats/team/{team_id}
 GET /tasks/time-stats/team/{team_id}/export.csv
@@ -687,6 +750,7 @@ GET /tasks/export.csv
 ## PR Review
 
 ### Describe PR
+
 ```http
 POST /pr-review/describe
 Content-Type: application/json
@@ -698,11 +762,13 @@ Response 200:
 ```
 
 ### Review PR
+
 ```http
 POST /pr-review/review
 ```
 
 ### Auto-Apply Suggestions
+
 ```http
 POST /pr-review/auto-apply
 POST /pr-review/auto-apply/single
@@ -729,6 +795,7 @@ POST /repos/{owner}/{repo}/health
 ## AI Gateway
 
 ### List LLM Router Models (OpenRouter-style)
+
 ```http
 GET /ai/models
 
@@ -747,6 +814,7 @@ Response 200:
 ```
 
 ### List Agents (routing map)
+
 ```http
 GET /ai/agents
 
@@ -785,6 +853,7 @@ agent). This powers the agent catalog UI (Developer Portal) and lets clients
 pre-select the right model per agent.
 
 ### Invoke an Agent
+
 ```http
 POST /ai/agents/{agent_name}
 Content-Type: application/json
@@ -793,6 +862,7 @@ Content-Type: application/json
 ```
 
 ### API Keys (AIaaS)
+
 ```http
 POST   /ai/keys
 GET    /ai/keys
@@ -802,6 +872,7 @@ POST   /ai/keys/validate
 ```
 
 ### Provider Route Breakdown (cost-savings)
+
 ```http
 GET /ai/usage/{org_name}/providers?period=month
 
@@ -837,6 +908,7 @@ which also holds the per-model `$`/1M-token pricing table). Every route record
 snapshots the price at request time, so historical numbers stay stable.
 
 ### Usage / Quota / Audit Logs
+
 ```http
 GET /ai/usage/{org_name}
 GET /ai/usage/{org_name}/summary
@@ -850,7 +922,10 @@ GET /ai/tiers
 ## OpenAI-Compatible Gateway (OpenRouter-style)
 
 The `/v1` gateway exposes the query-type LLM router behind the OpenAI Chat
-Completions API, so any OpenAI-SDK client can point `base_url` at it:
+Completions API, so any OpenAI-SDK client can point `base_url` at it.
+For the full router internals — provider chain, query types, caching, cost
+attribution, BYOK, and how to add a provider — see
+[docs/LLM_ROUTING.md](LLM_ROUTING.md):
 
 ```python
 from openai import AsyncOpenAI
@@ -868,6 +943,7 @@ header, or `Authorization: Bearer cf_...`).
 omitted to auto-classify the prompt.
 
 ### Chat Completions
+
 ```http
 POST /v1/chat/completions
 Content-Type: application/json
@@ -924,6 +1000,7 @@ miss even though their raw similarity is ~0.9. Semantic hits report as
 TTL defaults to 1h (`LLM_CACHE_TTL`). Streaming responses are not cached.
 
 ### Embeddings
+
 ```http
 POST /v1/embeddings
 Content-Type: application/json
@@ -934,10 +1011,12 @@ Response 200:
 {"object": "list", "data": [{"object": "embedding", "embedding": [...], "index": 0}, ...],
  "model": "text-embedding-3-small", "usage": {"prompt_tokens": 10, "total_tokens": 10}}
 ```
+
 Backed by the pluggable embeddings router (`EMBEDDINGS_PROVIDER`:
 `openai` / `cohere` / `voyage` / `pgvector` / `none`).
 
 ### List Models
+
 ```http
 GET /v1/models
 
@@ -950,6 +1029,7 @@ Response 200:
 ## Admin (owner role)
 
 ### API Key Management (pepper-version aware)
+
 ```http
 GET  /admin/keys
 POST /admin/keys/rehash
@@ -964,12 +1044,14 @@ Response 200 (rehash):
   "legacy_fallback_enabled": true
 }
 ```
+
 Keys record the HMAC pepper version at creation; legacy (pre-rotation) keys
 keep validating through the transition window via the fallback
 (`API_KEY_ALLOW_LEGACY_PEPPER`, default `true`). Set it to `false` once all
 legacy keys are regenerated.
 
 ### Global Usage + LLM Cost Savings
+
 ```http
 GET /admin/usage?period=month&days=14
 GET /admin/usage/teams
@@ -1004,6 +1086,7 @@ length of the daily `provider_series` (default 14, max 90) used by the admin
 dashboard's free-vs-paid-over-time chart.
 
 ### Audit Trail & Webhooks
+
 ```http
 GET /admin/audit
 GET /admin/audit/export
@@ -1111,6 +1194,7 @@ The Kubernetes deployment uses `/health` for startup/liveness probes and
 ```http
 WS /api/v1/ws?token=<jwt>
 ```
+
 Authenticated via token query param. Server pushes notification events;
 client may send `{"type": "ping"}` and receives `{"type": "pong"}`.
 Invalid/missing token closes with code `4001`.
@@ -1120,7 +1204,7 @@ Invalid/missing token closes with code `4001`.
 ## Webhook Events
 
 | Event | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `task.assigned` | Task assigned to user |
 | `task.started` | User started working on task |
 | `task.submitted` | Task submitted for review |

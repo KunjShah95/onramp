@@ -74,7 +74,10 @@ def test_production_missing_one_required_var_fails(monkeypatch, missing_var):
         _validate_production_env()
 
 
-def test_production_without_any_llm_key_fails(monkeypatch):
+def test_production_without_any_llm_key_warns_but_passes(monkeypatch):
+    """LLM keys may be managed via the Admin Dashboard (platform provider keys
+    stored in the DB) instead of .env — a missing env key is a boot warning,
+    not a hard failure."""
     monkeypatch.setenv("ENV", "production")
     for var in REQUIRED_VARS:
         if var == "DATABASE_URL":
@@ -83,11 +86,12 @@ def test_production_without_any_llm_key_fails(monkeypatch):
             monkeypatch.setenv(var, "redis://localhost:6379/1")
         elif var in ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY"):
             monkeypatch.setenv(var, _valid_fernet_key())
-        elif var != "JWT_SECRET":
+        elif var == "JWT_SECRET":
+            monkeypatch.setenv(var, "secure-prod-jwt-secret-not-the-default")
+        else:
             monkeypatch.setenv(var, "x")
 
-    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
-        _validate_production_env()
+    _validate_production_env()  # must NOT raise
 
 
 def test_production_without_razorpay_config_does_not_require_webhook_secret(monkeypatch):

@@ -329,6 +329,11 @@ class LLMRouter:
             },
         }
 
+        # Platform provider keys configured via the Admin Dashboard (stored
+        # encrypted in the DB, pushed in at startup / on change). They sit
+        # between per-team BYOK keys (which win) and the env vars above.
+        self.platform_keys: Dict[str, str] = {}
+
         self.current_provider = None
         # Attribution for the most recent completed call: which provider/model
         # served it and whether it was free - used for cost-savings tracking.
@@ -396,26 +401,55 @@ class LLMRouter:
             logger.warning("Unknown query type %r, falling back to auto-classification", query_type)
             return None
 
+    def set_platform_keys(self, keys: Optional[Dict[str, str]] = None) -> None:
+        """Apply platform-level keys configured via the Admin Dashboard."""
+        self.platform_keys = dict(keys or {})
+
+    def _effective_api_key(
+        self, provider: ModelProvider, provider_keys: Optional[Dict[str, str]] = None
+    ) -> str:
+        """API key to use for a provider. Precedence: team BYOK key (request-
+        scoped ``provider_keys``) > platform key (Admin Dashboard) > env var."""
+        if provider_keys:
+            team_key = provider_keys.get(provider.value)
+            if team_key:
+                return team_key
+        if self.platform_keys:
+            platform_key = self.platform_keys.get(provider.value)
+            if platform_key:
+                return platform_key
+        return self.providers[provider]["api_key"]
+
+    def _is_available(
+        self, provider: ModelProvider, provider_keys: Optional[Dict[str, str]] = None
+    ) -> bool:
+        """Provider availability with per-request team overrides applied."""
+        return bool(self._effective_api_key(provider, provider_keys))
+
     def classify(self, prompt: str) -> QueryType:
         """Classify a prompt into a query type (heuristic, no extra LLM call)."""
         return classify_query(prompt)
 
-    def resolve_route(self, query_type) -> List[ModelProvider]:
+    def resolve_route(
+        self, query_type, provider_keys: Optional[Dict[str, str]] = None
+    ) -> List[ModelProvider]:
         """Ordered provider chain for a query type.
 
         Type-specific preferences come first; every remaining configured
         provider is appended afterwards so a query type can never exhaust
-        the router's fallback resilience.
+        the router's fallback resilience. ``provider_keys`` (optional
+        request-scoped BYOK map) makes a provider available even when no
+        platform env key is set.
         """
         qtype = self._coerce_query_type(query_type) or QueryType.CHAT
         preferred = [
             p for p in QUERY_TYPE_ROUTES.get(qtype, [])
-            if self.providers[p]["api_key"]
+            if self._is_available(p, provider_keys)
         ]
         seen = set(preferred)
         rest = [
             p for p in self.fallback_chain
-            if p not in seen and self.providers[p]["api_key"]
+            if p not in seen and self._is_available(p, provider_keys)
         ]
         return preferred + rest
 
@@ -444,13 +478,15 @@ class LLMRouter:
 
     # ── OpenAI-compatible routing (OpenRouter-style) ───────────────────────
 
-    def _chain_starting_with(self, provider: ModelProvider) -> List[ModelProvider]:
+    def _chain_starting_with(
+        self, provider: ModelProvider, provider_keys: Optional[Dict[str, str]] = None
+    ) -> List[ModelProvider]:
         """Ordered chain with ``provider`` first, then the configured fallbacks."""
-        if not self.providers[provider]["api_key"]:
-            return self.resolve_route(QueryType.CHAT)
+        if not self._is_available(provider, provider_keys):
+            return self.resolve_route(QueryType.CHAT, provider_keys=provider_keys)
         return [provider] + [
             p for p in self.fallback_chain
-            if p != provider and self.providers[p]["api_key"]
+            if p != provider and self._is_available(p, provider_keys)
         ]
 
     def provider_chain(
@@ -458,6 +494,7 @@ class LLMRouter:
         model: Optional[str] = None,
         query_type: Optional[QueryType] = None,
         prompt: Optional[str] = None,
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> List[ModelProvider]:
         """Resolve an OpenAI-style ``model`` string to an ordered provider chain.
 
@@ -468,25 +505,28 @@ class LLMRouter:
           - a known model id ("gpt-4o-mini", "llama-3.3-70b-versatile", ...),
           - auto-classification of ``prompt`` if provided,
           - otherwise the default CHAT chain.
+
+        ``provider_keys`` (optional request-scoped BYOK map) makes a provider
+        routable when no platform env key is set.
         """
         qtype = self._coerce_query_type(query_type)
         if qtype is not None:
-            return self.resolve_route(qtype)
+            return self.resolve_route(qtype, provider_keys=provider_keys)
         if model:
             m = model.strip().lower()
             try:
-                return self.resolve_route(QueryType(m))
+                return self.resolve_route(QueryType(m), provider_keys=provider_keys)
             except ValueError:
                 pass
             for provider in ModelProvider:
                 if m == provider.value:
-                    return self._chain_starting_with(provider)
+                    return self._chain_starting_with(provider, provider_keys=provider_keys)
             for provider, cfg in self.providers.items():
                 if cfg["model"] and m == cfg["model"].lower():
-                    return self._chain_starting_with(provider)
+                    return self._chain_starting_with(provider, provider_keys=provider_keys)
         if prompt:
-            return self.resolve_route(self.classify(prompt))
-        return self.resolve_route(QueryType.CHAT)
+            return self.resolve_route(self.classify(prompt), provider_keys=provider_keys)
+        return self.resolve_route(QueryType.CHAT, provider_keys=provider_keys)
 
     def route_info(
         self, provider: ModelProvider, query_type: Optional[QueryType] = None
@@ -572,6 +612,7 @@ class LLMRouter:
         model: Optional[str] = None,
         query_type: Optional[QueryType] = None,
         cache_scope: str = "global",
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> tuple[str, str, Dict[str, Any]]:
         """OpenAI-compatible completion with caching and graceful degradation.
 
@@ -613,8 +654,12 @@ class LLMRouter:
                 qtype.value if qtype else "auto", similarity, text[:60],
             )
             return text, "cache/semantic", route
-        chain = self.provider_chain(model=model, query_type=query_type, prompt=prompt)
-        response, provider = await self._complete(chain, prompt, system, max_tokens)
+        chain = self.provider_chain(
+            model=model, query_type=query_type, prompt=prompt, provider_keys=provider_keys
+        )
+        response, provider = await self._complete(
+            chain, prompt, system, max_tokens, provider_keys
+        )
         route = self.route_info(provider, query_type=qtype)
         self.last_route = route
         self.last_cache_hit = False
@@ -632,13 +677,18 @@ class LLMRouter:
         max_tokens: int = 2000,
         model: Optional[str] = None,
         query_type: Optional[QueryType] = None,
+        provider_keys: Optional[Dict[str, str]] = None,
     ):
         """OpenAI-compatible streaming completion. Yields
         ``(token, served_model_id, route)``."""
-        chain = self.provider_chain(model=model, query_type=query_type, prompt=prompt)
+        chain = self.provider_chain(
+            model=model, query_type=query_type, prompt=prompt, provider_keys=provider_keys
+        )
         route_qtype = self._effective_query_type(model, query_type, prompt)
         served_provider = None
-        async for token, provider in self._stream_complete(chain, prompt, system, max_tokens):
+        async for token, provider in self._stream_complete(
+            chain, prompt, system, max_tokens, provider_keys
+        ):
             if served_provider is None:
                 served_provider = provider
             yield token, self.served_model(provider), self.route_info(provider, query_type=route_qtype)
@@ -654,6 +704,7 @@ class LLMRouter:
         max_tokens: int = 2000,
         query_type: Optional[QueryType] = None,
         cache_scope: str = "global",
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> str:
         """Call LLM with automatic fallback, caching, and graceful degradation.
         
@@ -698,7 +749,8 @@ class LLMRouter:
             )
             return text
         response, provider = await self._complete(
-            self.resolve_route(qtype), prompt, system, max_tokens
+            self.resolve_route(qtype, provider_keys=provider_keys),
+            prompt, system, max_tokens, provider_keys,
         )
         # Single assignment (no set-then-patch) so concurrent requests can't
         # clobber the attribution mid-update.
@@ -717,16 +769,18 @@ class LLMRouter:
         prompt: str,
         system: str,
         max_tokens: int,
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> tuple[str, ModelProvider]:
         """Run a completion over an explicit provider chain with fallback."""
         errors = []
         for provider in chain:
-            config = self.providers[provider]
-            if not config["api_key"]:
+            if not self._is_available(provider, provider_keys):
                 continue
 
             try:
-                response = await self._call_provider(provider, prompt, system, max_tokens)
+                response = await self._call_provider(
+                    provider, prompt, system, max_tokens, provider_keys
+                )
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider: {provider.value}")
                     self.current_provider = provider
@@ -768,9 +822,11 @@ class LLMRouter:
         prompt: str,
         system: str,
         max_tokens: int,
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> str:
         """Dispatch to the right SDK for this provider type."""
-        config = self.providers[provider]
+        config = dict(self.providers[provider])
+        config["api_key"] = self._effective_api_key(provider, provider_keys)
         ptype = config["type"]
 
         if ptype == "openai_sdk":
@@ -899,16 +955,18 @@ class LLMRouter:
         prompt: str,
         system: str,
         max_tokens: int,
+        provider_keys: Optional[Dict[str, str]] = None,
     ):
         """Shared streaming generator over an explicit provider chain."""
         errors = []
         for provider in chain:
-            config = self.providers[provider]
-            if not config["api_key"]:
+            if not self._is_available(provider, provider_keys):
                 continue
             yielded = False
             try:
-                async for token in self._stream_provider(provider, prompt, system, max_tokens):
+                async for token in self._stream_provider(
+                    provider, prompt, system, max_tokens, provider_keys
+                ):
                     yielded = True
                     yield token, provider
                 if self.current_provider != provider:
@@ -923,8 +981,9 @@ class LLMRouter:
                 errors.append(err_msg)
         raise RuntimeError(f"All LLM providers exhausted (stream). Errors: {'; '.join(errors)}")
 
-    async def _stream_provider(self, provider, prompt, system, max_tokens):
-        config = self.providers[provider]
+    async def _stream_provider(self, provider, prompt, system, max_tokens, provider_keys=None):
+        config = dict(self.providers[provider])
+        config["api_key"] = self._effective_api_key(provider, provider_keys)
         ptype = config["type"]
         if ptype == "openai_sdk":
             async for t in self._stream_openai_sdk(provider, config, prompt, system, max_tokens):

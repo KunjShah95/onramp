@@ -188,7 +188,7 @@ class TestRealRouterIntegration:
 
         router = LLMRouter()
 
-        async def fake_complete(chain, prompt, system, max_tokens):
+        async def fake_complete(chain, prompt, system, max_tokens, provider_keys=None):
             return "hello from provider", chain[0]
 
         monkeypatch.setattr(router, "_complete", fake_complete)
@@ -217,7 +217,7 @@ class TestRealRouterIntegration:
     async def test_openai_chat_cache_hit_shape(self, monkeypatch):
         router = LLMRouter()
 
-        async def fake_complete(chain, prompt, system, max_tokens):
+        async def fake_complete(chain, prompt, system, max_tokens, provider_keys=None):
             return "cached openai reply", chain[0]
 
         monkeypatch.setattr(router, "_complete", fake_complete)

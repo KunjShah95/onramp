@@ -161,7 +161,7 @@ GET /health → Dependencies (LLM, GitHub, Database)
 **Endpoints (9 routers, 20+ endpoints):**
 
 | Router | Endpoints | Purpose |
-|--------|-----------|---------|
+| -------- | ----------- | --------- |
 | explore | POST /analyze | ArchitectureExplorer |
 | learn | POST /path | LearningPathGenerator |
 | first-pr | POST /issues, POST /guide | FirstPRAccelerator |
@@ -357,7 +357,7 @@ class BaseAgent(ABC):
 **Where data lives and where it comes from:**
 
 | Source | Access | Data | Lifecycle |
-|--------|--------|------|-----------|
+| -------- | -------- | ------ | ----------- |
 | GitHub | Public API (read-only) | Repos, issues, PRs, commits | Real-time |
 | LLM Router | Multi-provider HTTPS API | LLM responses, analysis | Ephemeral |
 | Auth (first-party) | JWT + OAuth | User identity, JWT + refresh tokens | Session-based |
@@ -439,7 +439,7 @@ return {
 ### users
 
 | Column | Type | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | id | UUID | PK, indexed |
 | email | VARCHAR(255) | Unique, indexed |
 | created_at | TIMESTAMPTZ | auto-generated |
@@ -450,7 +450,7 @@ return {
 ### repos
 
 | Column | Type | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | id | UUID | PK |
 | user_id | UUID | FK → users.id |
 | name | VARCHAR(255) | |
@@ -462,7 +462,7 @@ return {
 ### analyses
 
 | Column | Type | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | id | UUID | PK |
 | user_id | UUID | FK → users.id |
 | repo_id | UUID | FK → repos.id |
@@ -474,7 +474,7 @@ return {
 ### teams (SaaS future)
 
 | Column | Type | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | id | UUID | PK |
 | name | VARCHAR(255) | |
 | created_at | TIMESTAMPTZ | auto-generated |
@@ -482,7 +482,7 @@ return {
 ### team_members
 
 | Column | Type | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | id | UUID | PK |
 | team_id | UUID | FK → teams.id |
 | user_id | UUID | FK → users.id |
@@ -651,7 +651,7 @@ Frontend:
 ### Bottlenecks & Mitigations
 
 | Bottleneck | Risk | Mitigation |
-|-----------|------|-----------|
+| ----------- | ------ | ----------- |
 | GitHub API rate limit | 5k/hr per token | Use authenticated requests, cache clones |
 | LLM API quota | $ per token | Monitor token usage, rate limit users, provider fallback |
 | Database connections | Pool exhaustion | Connection pooling (asyncpg), Neon auto-scaling |
@@ -759,7 +759,7 @@ tests/
 ## Decision Log (Locked)
 
 | Decision | Option A | Option B | Chosen | Why |
-|----------|----------|----------|--------|-----|
+| ---------- | ---------- | ---------- | -------- | ----- |
 | Framework | Django | FastAPI | FastAPI | Async-first, simpler, modern |
 | LLM | OpenAI | Claude (Anthropic) | Multi-provider | No vendor lock-in, fallback, cost optimization |
 | Database | PostgreSQL | — | PostgreSQL+Neon Auth | Scalability, Neon Auth integration, SQL |

@@ -1499,6 +1499,54 @@ class TaskTemplate(Base):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+class TeamProviderKey(Base):
+    """Per-team BYOK provider API key (Fernet-encrypted at rest).
+
+    Lets a team supply its own LLM/embedding provider keys from the
+    Developer Portal. The raw key is encrypted with PII_ENCRYPTION_KEY before
+    storage; only masked metadata is ever returned to clients. When present,
+    a team key overrides the platform-level env var for that provider for that
+    team's gateway requests.
+    """
+
+    __tablename__ = "onramp_team_provider_keys"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=generate_uuid
+    )
+    team_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    api_key_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("team_id", "provider", name="uq_team_provider_key"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        """Public shape — presence metadata only, never the raw key."""
+        return {
+            "id": self.id,
+            "team_id": self.team_id,
+            "provider": self.provider,
+            "configured": True,
+            "updated_by": self.updated_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class DynamicDocument(Base):
     """Fallback model for generic or unmigrated collections"""
     

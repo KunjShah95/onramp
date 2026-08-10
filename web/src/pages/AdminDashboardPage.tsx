@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ShieldCheck, Users, Key, Heartbeat } from '@phosphor-icons/react'
+import { ShieldCheck, Users, Key, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
@@ -15,11 +15,16 @@ import { AdminDashboardSkeleton } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
 import {
   adminGetUsage, adminGetTeamUsage, adminListApiKeys, adminListAuditEvents,
+  adminListProviderKeys, adminSetProviderKey, adminDeleteProviderKey,
 } from '../lib/api'
-import type { AdminAuditEvent, AdminUsageResponse } from '../lib/api'
+import type {
+  AdminAuditEvent, AdminUsageResponse, AdminProviderKeyInfo,
+} from '../lib/api'
+import { useToast } from '../context/ToastContext'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { PROVIDER_OPTIONS } from '../lib/providers'
 
 // Signal palette + tooltip style — consistent with the DORA / CTO dashboards.
 const SIG = {
@@ -73,6 +78,12 @@ export default function AdminDashboardPage() {
   const [teams, setTeams] = useState<number | null>(null)
   const [members, setMembers] = useState<number | null>(null)
   const [audit, setAudit] = useState<AdminAuditEvent[]>([])
+  const [providerKeys, setProviderKeys] = useState<Record<string, AdminProviderKeyInfo>>({})
+  const [editingProvider, setEditingProvider] = useState<string | null>(null)
+  const [providerKeyInput, setProviderKeyInput] = useState('')
+  const [savingKey, setSavingKey] = useState(false)
+  const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
+  const toast = useToast()
 
   async function fetchAdminData() {
     setLoading(true); setError('')
@@ -85,11 +96,44 @@ export default function AdminDashboardPage() {
           setMembers(t.teams.reduce((acc, x) => acc + (x.member_count || 0), 0))
         }).catch(() => {}),
         adminListAuditEvents({ limit: 8 }).then((a) => setAudit(a.events)).catch(() => {}),
+        fetchProviderKeys().catch(() => {}),
       ])
     } catch (err: any) {
       setError(err.message || 'Failed to load admin data.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchProviderKeys() {
+    const data = await adminListProviderKeys()
+    const map: Record<string, AdminProviderKeyInfo> = {}
+    ;(data.providers || []).forEach((p) => { map[p.provider] = p })
+    setProviderKeys(map)
+  }
+
+  async function handleSaveProviderKey() {
+    if (!editingProvider) return
+    setSavingKey(true)
+    try {
+      await adminSetProviderKey(editingProvider, providerKeyInput.trim())
+      setEditingProvider(null); setProviderKeyInput('')
+      await fetchProviderKeys()
+      toast.success('Saved', `${editingProvider} key updated — applied to the router immediately`)
+    } catch (err: any) {
+      toast.error('Failed', err.message || 'Failed to save provider key')
+    }
+    setSavingKey(false)
+  }
+
+  async function handleDeleteProviderKey(provider: string) {
+    try {
+      await adminDeleteProviderKey(provider)
+      await fetchProviderKeys()
+      setConfirmDeleteProvider(null)
+      toast.success('Removed', `${provider} key removed — platform fallback now applies`)
+    } catch (err: any) {
+      toast.error('Failed', err.message || 'Failed to remove provider key')
     }
   }
 
@@ -200,6 +244,101 @@ export default function AdminDashboardPage() {
                   </div>
                 </>
               )}
+            </ConsolePanel>
+          </motion.div>
+
+          {/* Platform Provider Keys — managed via the website, not .env */}
+          <motion.div variants={item}>
+            <ConsolePanel
+              rail="Provider Keys · Platform"
+              designator={`${Object.keys(providerKeys).length}/${PROVIDER_OPTIONS.length} CONFIGURED`}
+              status={Object.keys(providerKeys).length ? 'go' : 'standby'}
+              live={Object.keys(providerKeys).length > 0}
+            >
+              <p className="text-caption text-text-muted mb-4">
+                Platform-wide LLM &amp; embedding provider keys — configured here instead of <span className="font-code text-text-primary/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {PROVIDER_OPTIONS.map((p) => {
+                  const info = providerKeys[p.id]
+                  const configured = !!info?.configured
+                  return (
+                    <div key={p.id} className="rounded-tile border border-seam bg-well p-3">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-2 h-2 rounded-tile shrink-0 ${configured ? 'bg-go' : 'bg-well-strong'}`} />
+                          <span className="text-body-xs font-medium text-text-primary truncate">{p.label}</span>
+                        </div>
+                        {configured ? (
+                          <span className="font-code text-[9px] uppercase tracking-wider text-success bg-well-strong px-1.5 py-0.5 rounded shrink-0">Set</span>
+                        ) : (
+                          <span className="font-code text-[9px] uppercase tracking-wider text-text-muted/60 shrink-0">Env/Unset</span>
+                        )}
+                      </div>
+                      <p className="font-code text-[9px] text-text-muted/60 mb-2 truncate">overrides {p.envVar}</p>
+                      {configured && info.updated_at && (
+                        <p className="text-caption text-text-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            if (editingProvider === p.id) {
+                              setEditingProvider(null); setProviderKeyInput('')
+                            } else {
+                              setEditingProvider(p.id); setProviderKeyInput('')
+                            }
+                          }}
+                          className="flex items-center gap-1.5 text-caption text-success hover:text-success/80 transition-colors"
+                        >
+                          <PencilSimple size={12} />
+                          {configured ? 'Update' : 'Add key'}
+                        </button>
+                        {configured && (confirmDeleteProvider !== p.id ? (
+                          <button
+                            onClick={() => setConfirmDeleteProvider(p.id)}
+                            className="flex items-center gap-1.5 text-caption text-text-muted hover:text-error transition-colors"
+                          >
+                            <Trash size={12} />
+                            Remove
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteProviderKey(p.id)}
+                            onBlur={() => setConfirmDeleteProvider(null)}
+                            className="flex items-center gap-1.5 text-caption font-semibold text-error hover:text-error/80 transition-colors"
+                          >
+                            <Trash size={12} />
+                            Confirm?
+                          </button>
+                        ))}
+                      </div>
+                      {editingProvider === p.id && (
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={providerKeyInput}
+                            onChange={(e) => setProviderKeyInput(e.target.value)}
+                            placeholder="sk-..."
+                            autoFocus
+                            className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-text-primary placeholder:text-text-muted/30 outline-none focus:border-success/50 transition-colors"
+                          />
+                          <button
+                            onClick={handleSaveProviderKey}
+                            disabled={savingKey || !providerKeyInput.trim()}
+                            className="btn-primary !px-3 !py-1.5 text-caption shrink-0 disabled:opacity-40"
+                          >
+                            {savingKey ? <Spinner size={12} className="animate-spin" /> : 'Save'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-2 mt-4 text-caption text-text-muted/70">
+                <Lock size={12} className="shrink-0" />
+                Keys are Fernet-encrypted at rest and win over environment variables. Per-team BYOK keys (Developer Portal) still take precedence for that team's gateway calls.
+              </div>
             </ConsolePanel>
           </motion.div>
 

@@ -38,6 +38,7 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "NV-Embed-QA":             {"input": 0.0,   "output": 0.0, "inr_input": 0.0,   "inr_output": 0.0},
     "nomic-embed-text":        {"input": 0.0,   "output": 0.0, "inr_input": 0.0,   "inr_output": 0.0},
     "all-MiniLM-L6-v2":        {"input": 0.0,   "output": 0.0, "inr_input": 0.0,   "inr_output": 0.0},
+    "sentence-transformers/all-MiniLM-L6-v2": {"input": 0.0, "output": 0.0, "inr_input": 0.0, "inr_output": 0.0},
     "embed-english-v3.0":      {"input": 0.10,  "output": 0.0, "inr_input": 8.50,  "inr_output": 0.0},
     "voyage-code-3":           {"input": 0.12,  "output": 0.0, "inr_input": 10.20, "inr_output": 0.0},
 }

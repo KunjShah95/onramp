@@ -198,7 +198,7 @@ class TestRouterSemanticIntegration:
     def _router_with_fake_complete(self, monkeypatch, answer="Paris is the capital of France"):
         router = LLMRouter()
 
-        async def fake_complete(chain, prompt, system, max_tokens):
+        async def fake_complete(chain, prompt, system, max_tokens, provider_keys=None):
             return answer, chain[0]
 
         monkeypatch.setattr(router, "_complete", fake_complete)

@@ -132,9 +132,16 @@ def _validate_production_env() -> None:
         elif var == "JWT_SECRET" and value == "dev-jwt-secret-change-in-production":
             errors.append("JWT_SECRET is using the insecure default value - must be changed in production")
     
-    # At least one LLM provider must be configured
+    # LLM provider keys may come from the environment OR the Admin Dashboard
+    # (platform provider keys stored encrypted in the DB, managed via the
+    # website). No env keys is therefore a warning, not a boot failure — the
+    # router starts with only the local Ollama fallback until keys are added.
     if not any(os.getenv(var) for var in _LLM_KEY_VARS):
-        errors.append(f"At least one LLM provider API key is required: {', '.join(_LLM_KEY_VARS)}")
+        warnings.append(
+            "No LLM provider API keys set in the environment — configure them "
+            "from the Admin Console (Provider Keys · Platform) or the router "
+            "will only have the local Ollama fallback."
+        )
     
     # Validate DATABASE_URL format
     database_url = os.getenv("DATABASE_URL")
@@ -247,6 +254,20 @@ async def lifespan(app: FastAPI):
     if os.getenv("REDIS_URL"):
         from app.services.cache_service import get_client
         await get_client()
+    # Platform provider keys are managed via the Admin Dashboard (not .env) —
+    # push whatever is stored in the DB into the running routers so website-
+    # configured keys take effect without a redeploy. Best-effort: a briefly
+    # unavailable DB must not crash boot — the app starts with env-only keys
+    # and picks the DB keys up on the next admin write or restart.
+    try:
+        from app.services.platform_provider_keys import refresh_runtime_routers
+        await refresh_runtime_routers(app)
+    except Exception:
+        import logging
+        logging.getLogger("onramp.startup").exception(
+            "Failed to load platform provider keys at startup — "
+            "continuing with environment keys only"
+        )
     yield
     from app.services.cache_service import close as close_cache
     await close_cache()

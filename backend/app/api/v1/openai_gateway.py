@@ -176,14 +176,35 @@ async def _enforce_quota(auth: dict, action: str) -> None:
         logger.exception("Quota check failed for %s; allowing request", scope)
 
 
-def _route_header_for(llm, body: ChatCompletionRequest, prompt: str) -> str:
+async def _team_provider_keys(auth: dict) -> Optional[Dict[str, str]]:
+    """Decrypted BYOK map for the caller's org (or None for no-org callers).
+
+    Only API-key callers carry an ``org_name`` scope (JWT sessions don't), so
+    platform env keys are used for everything else. Best-effort: a storage
+    failure falls back to platform keys instead of failing the request.
+    """
+    org = auth.get("org_name")
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_keys_map
+
+        return await get_team_keys_map(org)
+    except Exception:
+        logger.exception("Failed to load provider keys for %s", org)
+        return None
+
+
+def _route_header_for(
+    llm, body: ChatCompletionRequest, prompt: str, provider_keys: Optional[Dict[str, str]] = None
+) -> str:
     """Best-effort route header for the primary provider of this request.
 
     The header is a debug aid; the authoritative served model is reported in
     each streaming chunk's ``model`` field. Never raises.
     """
     try:
-        chain = llm.provider_chain(model=body.model, prompt=prompt)
+        chain = llm.provider_chain(model=body.model, prompt=prompt, provider_keys=provider_keys)
         if chain:
             return llm.route_info(chain[0])["served"]
     except Exception:
@@ -251,14 +272,19 @@ async def chat_completions(
         raise HTTPException(status_code=400, detail="messages must include a user message")
     max_tokens = body.max_tokens or 2000
 
+    # Request-scoped BYOK overrides: when the caller's org has its own provider
+    # keys (Developer Portal), those win over the platform env keys for this
+    # request. Loaded once up front and threaded through routing + streaming.
+    provider_keys = await _team_provider_keys(auth)
+
     if body.stream:
         # Debug route header (best-effort — resolved from the primary provider).
-        route_header = _route_header_for(llm, body, prompt)
+        route_header = _route_header_for(llm, body, prompt, provider_keys)
         return StreamingResponse(
             # Usage (with real token counts + cost) is tracked inside the
             # generator once the stream completes; failed streams are not
             # billed, so nothing is recorded on the error path.
-            _stream_events(llm, body, system, prompt, max_tokens, auth),
+            _stream_events(llm, body, system, prompt, max_tokens, auth, provider_keys),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -277,6 +303,7 @@ async def chat_completions(
             max_tokens=max_tokens,
             model=body.model,
             cache_scope=cache_scope,
+            provider_keys=provider_keys,
         )
     except RuntimeError as exc:
         logger.warning("Chat completion failed: %s", exc)
@@ -330,7 +357,10 @@ def _sse(payload: Dict) -> str:
     return "data: " + json.dumps(payload) + "\n\n"
 
 
-async def _stream_events(llm, body: ChatCompletionRequest, system, prompt, max_tokens, auth):
+async def _stream_events(
+    llm, body: ChatCompletionRequest, system, prompt, max_tokens, auth,
+    provider_keys: Optional[Dict[str, str]] = None,
+):
     """Server-sent-events generator for streaming completions.
 
     Tracks usage once the stream ends (with real token counts and the actual
@@ -344,7 +374,8 @@ async def _stream_events(llm, body: ChatCompletionRequest, system, prompt, max_t
     output_chars = 0
     try:
         async for token, model_id, _route in llm.openai_chat_stream(
-            prompt, system=system, max_tokens=max_tokens, model=body.model
+            prompt, system=system, max_tokens=max_tokens, model=body.model,
+            provider_keys=provider_keys,
         ):
             served = model_id
             route = _route
@@ -411,9 +442,13 @@ async def create_embeddings(
     # after the embed call succeeds so failures never consume quota.
     await _enforce_quota(auth, "embed")
 
-    provider = embeddings.resolve_model(body.model)
+    # Request-scoped BYOK overrides (see chat_completions).
+    provider_keys = await _team_provider_keys(auth)
+    provider = embeddings.resolve_model(body.model, provider_keys)
     try:
-        vectors, served_provider, route = await embeddings.embed_batch(texts, preferred=provider)
+        vectors, served_provider, route = await embeddings.embed_batch(
+            texts, preferred=provider, provider_keys=provider_keys
+        )
     except RuntimeError as exc:
         logger.warning("Embedding request failed: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc))

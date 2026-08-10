@@ -654,8 +654,8 @@ onramp/
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `JWT_SECRET` | ✅ | JWT signing secret (generate with `secrets.token_urlsafe(32)`) |
 | `ENV` | ✅ | `development` or `production` |
-| `OPENROUTER_API_KEY` | ⚠️ | At least one AI provider key required |
-| `GEMINI_API_KEY` | ⚠️ | Google Gemini key |
+| `OPENROUTER_API_KEY` | ⬜ | Provider keys can be set here **or** via the Admin Console → *Provider Keys · Platform* (encrypted in the DB — no .env edit needed); at least one key is required per provider |
+| `GEMINI_API_KEY` | ⬜ | Google Gemini key (or set via Admin Console) |
 | `MISTRAL_API_KEY` | ⚠️ | Mistral models (OpenAI-compatible) |
 | `HUGGINGFACE_API_KEY` | ⚠️ | HuggingFace router (OpenAI-compatible) |
 | `RAZORPAY_KEY_ID` | ⬜ | Razorpay billing key (INR) |

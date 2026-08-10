@@ -27,7 +27,7 @@
 ## Legend
 
 | Mark | Meaning |
-|------|---------|
+| ------ | --------- |
 | ✅ | Completed |
 | 🟢 | Not started — ready to build |
 | 🟡 | Partially built — needs completion |
@@ -38,7 +38,7 @@
 ## Phase Map: FEATURES_PLAN → ROADMAP
 
 | FEATURES_PLAN ID | Feature | Old Priority | Old Status | New Phase | New Status |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | #1 | Real Razorpay Billing Webhook | P0 | ✅ Done | — | ✅ Done |
 | #2 | Production Deployment | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
 | #3 | E2E / Integration Tests (Frontend) | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
@@ -71,7 +71,7 @@
 ### New items added by phased roadmap (not in original FEATURES_PLAN)
 
 | New Item | Phase | Priority |
-|----------|-------|----------|
+| ---------- | ------- | ---------- |
 | Real-time WebSocket notifications | v1.2 | Critical |
 | Milestone tracking with roadmap view | v1.2 | High |
 | Session refresh & remember-me | v1.2 | High |
@@ -127,6 +127,7 @@
 **Effort:** 2 days (devops)
 
 **What's done:**
+
 - Docker Compose (dev + prod), Nginx, K8s manifests, CI/CD configs all exist
 - `DEPLOYMENT.md` documents Railway + Vercel path
 - `PRODUCTION_AUDIT.md` identifies all blockers
@@ -134,6 +135,7 @@
 **What remains:**
 
 **P0 — Boot blockers (fixed):**
+
 - [x] Add `PII_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block
 - [x] Add `GITHUB_TOKEN_ENCRYPTION_KEY` to `docker-compose.prod.yml`
 - [x] Add `GITHUB_TOKEN` to `docker-compose.prod.yml`
@@ -146,11 +148,13 @@
 - ➡️ Set up `RENDER_DEPLOY_HOOK_URL` in GitHub secrets (manual)
 
 **P1 — Pending:**
+
 - [ ] Update `allow_origin_regex` in `main.py` to include custom domain patterns
 - [ ] Add Nginx security headers (CSP, HSTS, X-Frame-Options) to `nginx.conf`
 - [ ] Update Dockerfile from `python:3.11` to `python:3.12`
 
 **Files modified:**
+
 - `docker-compose.prod.yml` — Added `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `GITHUB_TOKEN`, `TRUST_PROXY=true`, `REDIS_URL` construction
 - `.env.example` (root) — Added all missing env vars with defaults
 - `backend/app/main.py` — Extended `_validate_production_env()` with `JWT_SECRET`, `PII_ENCRYPTION_KEY`, plus insecure-default detection
@@ -167,6 +171,7 @@
 Cover key user journeys with Playwright. Existing `web/e2e/` has auth, dashboard, and review-queue specs with mocks.
 
 **Needed:**
+
 - [ ] Login → Dashboard loads → stats visible
 - [ ] Navigate to Explore → enter repo URL → submit → results displayed
 - [ ] Team management: create team → invite member → verify invite created
@@ -175,6 +180,7 @@ Cover key user journeys with Playwright. Existing `web/e2e/` has auth, dashboard
 - [ ] Run in CI pipeline (`frontend.yml`)
 
 **Files to modify:**
+
 - `web/e2e/` — New spec files for each flow
 - `web/e2e/mocks.ts` — Add mock data for billing, team, settings
 - `.github/workflows/frontend.yml` — Add Playwright step
@@ -190,6 +196,7 @@ Cover key user journeys with Playwright. Existing `web/e2e/` has auth, dashboard
 Push task updates (assigned, reviewed, approved) to connected clients via WebSocket. Fall back to polling when WebSocket disconnects.
 
 **Implementation Details:**
+
 - Backend: Add WebSocket endpoint `/api/v1/ws/notifications` using FastAPI's WebSocket support
   - Authenticate via token query param
   - Maintain connection registry per user
@@ -201,12 +208,14 @@ Push task updates (assigned, reviewed, approved) to connected clients via WebSoc
 - Fallback: Keep existing polling as backup
 
 **Files to create/modify:**
+
 - `backend/app/api/v1/websocket.py` — WebSocket handler
 - `backend/app/services/notification_service.py` — Add broadcast method
 - `web/src/hooks/useWebSocket.ts` — WebSocket connection hook
 - `web/src/components/ui/NotificationBell.tsx` — Accept push updates
 
 **Acceptance Criteria:**
+
 - [ ] WebSocket connects on login, disconnects on logout
 - [ ] Task assignment triggers push notification within 1s
 - [ ] Reconnect on disconnect works automatically
@@ -223,6 +232,7 @@ Push task updates (assigned, reviewed, approved) to connected clients via WebSoc
 Upgrade the existing ForceGraph component with search, filter, drill-down, and tooltip interactions.
 
 **Implementation Details:**
+
 - [ ] Add search bar above graph to filter nodes by name (real-time)
 - [ ] Add filter controls (show/hide by file type, module, dependency count)
 - [ ] Add click-to-drill-down: clicking a node expands its dependency subgraph
@@ -231,10 +241,12 @@ Upgrade the existing ForceGraph component with search, filter, drill-down, and t
 - [ ] Add node color coding: file type (blue=Python, green=JS, orange=TS)
 
 **Files to modify:**
+
 - `web/src/components/ForceGraph.tsx` — All enhancements
 - `web/src/pages/ExplorePage.tsx` — Wiring and layout
 
 **Acceptance Criteria:**
+
 - [ ] Search filters graph in real-time as user types
 - [ ] Clicking a node shows details panel with file list
 - [ ] Filter toggles show/hide node categories
@@ -251,6 +263,7 @@ Upgrade the existing ForceGraph component with search, filter, drill-down, and t
 A visual roadmap timeline showing onboarding milestones, their status, and dependencies. Trainees see their path ahead; seniors see team-wide progress.
 
 **Implementation Details:**
+
 - Backend: Extend `onboarding_plan_service.py` with milestone dependency graph
   - `GET /api/v1/onboarding-plans/{id}/roadmap` — Returns milestone DAG with status
 - Frontend: Timeline component on `OnboardingPlanPage.tsx` + `TraineeDashboard.tsx`
@@ -259,6 +272,7 @@ A visual roadmap timeline showing onboarding milestones, their status, and depen
   - Click a milestone to see required tasks
 
 **Files to create/modify:**
+
 - `backend/app/api/v1/onboarding_plans.py` — Add roadmap endpoint
 - `backend/app/services/onboarding_plan_service.py` — Roadmap DAG logic
 - `web/src/components/ui/RoadmapTimeline.tsx` — New timeline component
@@ -276,6 +290,7 @@ A visual roadmap timeline showing onboarding milestones, their status, and depen
 Persist login across browser closes. Currently JWT expires at 7 days with no refresh mechanism.
 
 **Implementation Details:**
+
 - Backend: Add refresh token endpoint `POST /api/v1/auth/refresh`
   - Short-lived access token (15 min) + long-lived refresh token (30 days, stored in DB)
   - Refresh token rotation (old token invalidated on each refresh)
@@ -283,6 +298,7 @@ Persist login across browser closes. Currently JWT expires at 7 days with no ref
   - Intercept 401 responses → attempt refresh → retry original request
 
 **Files to create/modify:**
+
 - `backend/app/api/v1/auth.py` — Add refresh token logic
 - `backend/app/services/user_service.py` — Refresh token storage
 - `web/src/context/AuthContext.tsx` — Token refresh interceptor
@@ -299,6 +315,7 @@ Persist login across browser closes. Currently JWT expires at 7 days with no ref
 Make all 44 page components usable on mobile. Tailwind responsive classes are partially used; many pages lack mobile breakpoints.
 
 **Implementation Details:**
+
 - **Wave 1 (core 10 pages):** Dashboard, Tasks, Explore, Team, Notifications, Settings, Profile, Login, Register, Landing
 - **Wave 2 (remaining 34):** All other pages
 - Per-page: Add `sm:` and `md:` breakpoint overrides
@@ -307,6 +324,7 @@ Make all 44 page components usable on mobile. Tailwind responsive classes are pa
 - Ensure touch targets ≥ 44px
 
 **Files to modify:**
+
 - All 44 page components — responsive CSS classes
 - `web/src/components/ui/Sidebar.tsx` — Collapsible on mobile
 - `web/src/components/layout/Layout.tsx` — Mobile layout structure
@@ -322,12 +340,14 @@ Make all 44 page components usable on mobile. Tailwind responsive classes are pa
 Expand repo analysis beyond GitHub to support GitLab and Bitbucket. Uses existing architecture explorer infrastructure.
 
 **Implementation Details:**
+
 - Extend `github_service.py` → `git_service.py` (multi-provider)
 - For GitLab: Use GitLab API (personal access token, project ID)
 - For Bitbucket: Use Bitbucket Cloud API (app password)
 - For all: Git clone via HTTPS (works for any public repo)
 
 **Files to create/modify:**
+
 - `backend/app/services/git_service.py` — Unified git service
 - `backend/app/services/github_service.py` — Refactor as GitHub provider
 - `backend/app/services/gitlab_service.py` — New GitLab provider
@@ -344,6 +364,7 @@ Expand repo analysis beyond GitHub to support GitLab and Bitbucket. Uses existin
 Allow users to run AI features using local Ollama models — critical for air-gapped/self-hosted deployments and cost reduction.
 
 **Implementation Details:**
+
 - Add `OLLAMA` provider to `llm.py` fallback chain
   - Reads `OLLAMA_BASE_URL` env var (default: `http://localhost:11434`)
   - Uses OpenAI-compatible API (Ollama serves OpenAI-compatible endpoints)
@@ -352,6 +373,7 @@ Allow users to run AI features using local Ollama models — critical for air-ga
 - No dependencies to install — uses existing `AsyncOpenAI` client
 
 **Files to modify:**
+
 - `backend/app/llm.py` — Add `OLLAMA` provider to `ModelProvider` enum and config
 - `backend/.env.example` — Add `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
 
@@ -366,6 +388,7 @@ Allow users to run AI features using local Ollama models — critical for air-ga
 AI reviews come with actionable fix suggestions. Users can auto-apply them as commit suggestions on the PR.
 
 **Implementation Details:**
+
 - Backend: Extend `PRReviewAgent` to generate `fix_suggestions`
   - Each suggestion: `{ file, line_start, line_end, original, suggested, explanation }`
   - Return in existing review response
@@ -374,6 +397,7 @@ AI reviews come with actionable fix suggestions. Users can auto-apply them as co
   - "Apply All" bulk action
 
 **Files to modify:**
+
 - `backend/app/agents/pr_review.py` — Add fix suggestion generation
 - `web/src/pages/PRDescriptionPage.tsx` — Display + apply suggestions
 
@@ -388,6 +412,7 @@ AI reviews come with actionable fix suggestions. Users can auto-apply them as co
 Add pagination to TasksPage and NotificationsPage using existing Pagination component.
 
 **Files to modify:**
+
 - `web/src/pages/TasksPage.tsx` — Add Pagination component
 - `web/src/pages/NotificationsPage.tsx` — Already has pagination via API, wire UI
 
@@ -402,14 +427,17 @@ Add pagination to TasksPage and NotificationsPage using existing Pagination comp
 Contract tests (35 tests) and load tests (13 tests) now run in dedicated named steps on every PR.
 
 **What was done:**
+
 - `backend.yml` split into 3 named steps: unit/integration, API contract, load/performance
 - Contract tests get 30s timeout; load tests get 120s timeout (concurrent benchmarks)
 - Contract + load tests excluded from main test run to avoid duplication
 
 **Also done:**
+
 - ✅ `pytest-cov` coverage reporting now configured across all 4 test steps (unit, contract, load, postgres) using `--cov-append` for aggregate coverage.xml output
 
 **Remaining:**
+
 - [ ] Add Playwright E2E + a11y tests to `frontend.yml` (separate task)
 
 ---
@@ -430,6 +458,7 @@ Contract tests (35 tests) and load tests (13 tests) now run in dedicated named s
 Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD (Entra ID), and Google Workspace.
 
 **Implementation Details:**
+
 - Integrate `python3-saml` or use WorkOS for faster implementation
 - New API endpoints:
   - `POST /api/v1/auth/sso/configure` — Save IdP config
@@ -442,6 +471,7 @@ Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD (En
 - Domain-based routing: auto-detect IdP from email domain
 
 **Files to create:**
+
 - `backend/app/services/sso_service.py`
 - `web/src/pages/Settings.tsx` — SSO config section
 
@@ -456,6 +486,7 @@ Single Sign-On via SAML/SSO for enterprise customers. Support Okta, Azure AD (En
 Add engineering team analytics — cycle time, deployment frequency, mean time to recovery (MTTR), change failure rate.
 
 **Implementation Details:**
+
 - New dashboard endpoint: `GET /api/v1/dashboard/dora/{team_id}`
 - Compute from existing task + PR data
 - Frontend: New analytics tab on DashboardPage with trend charts
@@ -471,6 +502,7 @@ Add engineering team analytics — cycle time, deployment frequency, mean time t
 GitHub Action that triggers an Onramp PR review when a PR is opened/updated.
 
 **Implementation Details:**
+
 - New GitHub Action: `.github/actions/onramp-review/action.yml`
 - On `pull_request` event → call Onramp API with PR diff
 - Post review as PR comment via GitHub API
@@ -486,6 +518,7 @@ GitHub Action that triggers an Onramp PR review when a PR is opened/updated.
 Monitor repos for divergence from documented architecture. Alert on drift.
 
 **Implementation Details:**
+
 - Compare current repo structure against last architecture analysis
 - Flag: new modules, removed modules, dependency changes, circular deps
 - Alert via notification when drift > threshold
@@ -525,6 +558,7 @@ Toggle in Q&A chat that makes AI respond with sarcastic but accurate code critic
 Bi-directional sync between Onramp tasks and Jira/Linear tickets.
 
 **Implementation Details:**
+
 - New integrations: `backend/app/services/jira_service.py`, `linear_service.py`
 - Webhook handlers for Jira/Linear events → update Onramp task status
 - Outbound sync: Onramp task state changes → update Jira/Linear ticket
@@ -558,6 +592,7 @@ SIEM-exportable audit event viewer + upgrade API key hashing from unsalted SHA-2
 Assign a GitHub Issue → AI implements the fix → opens a PR with the solution. Sandboxed execution for safety.
 
 **Implementation Details:**
+
 - New agent: `backend/app/agents/autonomous_agent.py`
 - Pipeline: Understand issue → plan → implement → test → open PR
 - Sandbox: Docker container with limited network/filesystem
@@ -610,6 +645,7 @@ Progressive Web App for on-the-go access — push notifications, quick Q&A, prog
 Profile and optimize hot paths: API response times, DB queries, frontend bundle size, infrastructure scaling.
 
 **Implementation Details:**
+
 - PostgreSQL read replicas + connection pooling (pgBouncer)
 - Redis caching layer for frequent endpoints (repo analysis results)
 - Response compression (gzip/brotli) at Nginx level
@@ -634,6 +670,7 @@ Profile and optimize hot paths: API response times, DB queries, frontend bundle 
 **Effort:** Ongoing
 
 **Key activities:**
+
 - Evidence collection for all 5 trust service criteria
 - Access review process documentation
 - Change management procedures
@@ -674,7 +711,7 @@ PostgreSQL Row-Level Security or per-tenant database to create a hard security b
 Quick wins that can be slotted into any release:
 
 | Feature | Effort | Dependencies |
-|---------|--------|-------------|
+| --------- | -------- | ------------- |
 | Codebase trailer — auto-generated movie trailer for any repo | 1 day | ArchitectureExplorer |
 | Hot Take PR review — personality-driven one-liner summary | 0.5 day | PRReviewAgent |
 | DevScore leaderboard — weekly XP rankings | 1 day | Gamification engine |
@@ -758,7 +795,7 @@ Stretch ────────────────────────
 ## Effort Summary (Remaining)
 
 | Phase | Features | Total Effort |
-|-------|----------|-------------|
+| ------- | ---------- | ------------- |
 | **v1.2** | 12 features (6 P0, 6 other) | ~2–3 weeks |
 | **v1.3** | 9 features | ~3–4 weeks |
 | **v1.4** | 7 features | ~3–4 weeks |
@@ -773,7 +810,7 @@ Stretch ────────────────────────
 ### ✅ Done (original FEATURES_PLAN)
 
 | ID | Feature | Shipped In |
-|----|---------|-----------|
+| ---- | --------- | ----------- |
 | #1 | Real Razorpay Billing Webhook | v1.0 |
 | #5 | Knowledge Quizzes (QuizGenerator agent) | v1.1 |
 | #6 | Gamification System (XP, badges, streaks) | v1.1 |
@@ -787,7 +824,7 @@ Stretch ────────────────────────
 ### ✅ Done (new — created during v1.2 prep)
 
 | Feature | Tests | Status |
-|---------|-------|--------|
+| --------- | ------- | -------- |
 | API contract tests | 35 tests in `test_api_contract.py` | ✅ Done |
 | Load / performance tests | 13 tests in `test_load_performance.py` | ✅ Done |
 | A11y audit tests | 13 tests in `web/e2e/a11y.spec.ts` using `@axe-core/playwright` | ✅ Done |

@@ -37,12 +37,14 @@ npm run dev
 ## Code Style
 
 ### Python (Backend)
+
 - **Linter:** `ruff` — run `ruff check .` before committing
 - **Types:** `mypy` — run `mypy .` to check types
 - **Format:** `ruff format .` for auto-formatting
 - Follow existing patterns in the codebase
 
 ### TypeScript/React (Frontend)
+
 - **Linter:** ESLint — run `npx eslint .`
 - **TypeScript:** Strict mode enabled — no `any` in new code
 - **Styling:** TailwindCSS utility classes, no CSS modules
@@ -69,7 +71,7 @@ cd web && npx playwright test
 Use Conventional Commits:
 
 | Prefix | Example |
-|--------|---------|
+| -------- | --------- |
 | `feat:` | `feat: add Razorpay checkout flow` |
 | `fix:` | `fix: guard null subscription id in webhook` |
 | `docs:` | `docs: add API reference` |

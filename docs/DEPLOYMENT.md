@@ -64,10 +64,12 @@ railway up
 5. Railway auto-detects `railway.json` and the Dockerfile
 
 **Add PostgreSQL:**
+
 1. In the Railway dashboard, click **+ New** → **Database** → **Add PostgreSQL**
 2. Railway automatically adds `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` to the backend environment
 
 **Add Redis (required in production):**
+
 1. Click **+ New** → **Database** → **Add Redis**
 2. Railway automatically adds `REDIS_URL` to the backend environment
 3. `REDIS_URL` is boot-required under `ENV=production` (rate limits, LLM cache, OAuth state store, repo index cache)
@@ -75,7 +77,7 @@ railway up
 **Set Environment Variables** in Railway Dashboard → Backend Service → Variables:
 
 | Variable | Value | Notes |
-|----------|-------|-------|
+| ---------- | ------- | ------- |
 | `ENV` | `production` | Enables boot-time prod validation; disables `/docs` + seed router |
 | `ENVIRONMENT` | `production` | Alias |
 | `AUTH_DEV_BYPASS` | `false` | MUST be false in production |
@@ -143,7 +145,7 @@ vercel --prod
 > OAuth Apps and set the `*_CLIENT_ID` / `*_CLIENT_SECRET` + `BACKEND_URL` /
 > `FRONTEND_URL` vars above.
 >
-> Register a GitHub OAuth App at https://github.com/settings/developers →
+> Register a GitHub OAuth App at <https://github.com/settings/developers> →
 > New OAuth App. Authorization callback URL:
 > `{BACKEND_URL}/api/v1/auth/oauth/github/callback`. Requested scopes:
 > `read:user user:email`.
@@ -229,6 +231,7 @@ docker compose -f docker-compose.prod.yml logs -f
 ```
 
 The production Docker Compose includes:
+
 - **Backend** (FastAPI) — 2 replicas, resource-limited
 - **PostgreSQL** — v16 Alpine, persistent volume
 - **Redis** — v7 Alpine, RDB/AOF persistence
@@ -245,7 +248,7 @@ For GCP deployment with Terraform, see `infrastructure/terraform/`.
 ### Backend (set in Railway)
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+| ---------- | ---------- | --------- | ------------- |
 | `ENV` | No | `development` | Set to `production` |
 | `DATABASE_URL` | Yes | — | Set automatically by Railway PostgreSQL |
 | `REDIS_URL` | **Yes (prod)** | — | Boot-required in production; set automatically by Railway Redis |
@@ -297,7 +300,7 @@ railway run python -m alembic upgrade head
 ## Cost Estimates (Railway + Vercel)
 
 | Service | Plan | Estimated Monthly |
-|---------|------|------------------|
+| --------- | ------ | ------------------ |
 | Railway (backend + Postgres + Redis) | Starter ($5) or Developer ($20) | $5–20 |
 | Vercel (frontend) | Hobby (free) | $0 |
 | OpenRouter API | Pay-as-you-go | $5–50 |
@@ -309,7 +312,7 @@ railway run python -m alembic upgrade head
 ## Monitoring
 
 | Endpoint | Description |
-|----------|-------------|
+| ---------- | ------------- |
 | `GET /health` | Liveness probe — always 200 while running |
 | `GET /ready` | Readiness — 503 when Postgres/Redis unreachable |
 | `GET /metrics` | Prometheus metrics |
@@ -323,17 +326,20 @@ railway run python -m alembic upgrade head
 ### Backend won't start
 
 Check Railway logs:
+
 ```
 railway logs
 ```
 
 Common issues:
+
 - `DATABASE_URL` not set → Add Railway PostgreSQL plugin
 - Port binding error → Railway uses `PORT` env var, not 8000
 
 ### Frontend can't reach backend
 
 Check browser console for CORS errors. Verify:
+
 1. `VITE_API_URL` in Vercel matches the Railway backend URL
 2. `CORS_ALLOWED_ORIGINS` in Railway includes the Vercel domain
 3. `TRUST_PROXY=true` in Railway
@@ -341,6 +347,7 @@ Check browser console for CORS errors. Verify:
 ### Auth fails
 
 Common issues:
+
 1. OAuth redirect mismatch
    - The GitHub/Google callback URL registered in the OAuth App must exactly match `{BACKEND_URL}/api/v1/auth/oauth/{provider}/callback`
 2. `JWT_SECRET` not set (or still the dev default)

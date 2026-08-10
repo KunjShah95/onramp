@@ -9,6 +9,7 @@ from app.services.team_service import get_team_members, add_member, get_user_tea
 from app.middleware.access_guard import ROLE_HIERARCHY
 from app.services.audit_log_service import log_key_action, get_audit_logs
 from app.services.webhook_service import send_webhook
+from app.services import team_provider_keys
 
 router = APIRouter(prefix="/ai", tags=["ai-gateway"])
 key_service = APIKeyService()
@@ -365,6 +366,84 @@ async def validate_api_key(
         "tier": tier,
         "limits": limits,
     }
+
+
+class ProviderKeyRequest(BaseModel):
+    api_key: str
+
+
+@router.get("/keys/{org_name}/providers")
+async def list_provider_keys(
+    org_name: str,
+    user: dict = Depends(get_current_user),
+):
+    """List which providers a team has BYOK keys for (masked, no secrets).
+
+    Only key managers can view the roster. The raw keys are never returned;
+    each entry reports ``configured`` plus audit metadata.
+    """
+    user_role = await _require_key_manager_role(org_name, user)
+    providers = await team_provider_keys.list_team_keys(org_name)
+    await log_key_action(
+        org_name=org_name,
+        action="provider_keys_listed",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"key_count": len(providers)},
+    )
+    return {"org_name": org_name, "providers": providers, "count": len(providers)}
+
+
+@router.put("/keys/{org_name}/providers/{provider}")
+async def set_provider_key(
+    org_name: str,
+    provider: str,
+    request: ProviderKeyRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Store (or replace) a team's BYOK key for an LLM/embedding provider.
+
+    The key is encrypted at rest and immediately overrides the platform-level
+    key for this provider for the team's gateway requests.
+    """
+    user_role = await _require_key_manager_role(org_name, user)
+    result = await team_provider_keys.set_team_key(
+        org_name, provider, request.api_key, user["uid"]
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    await log_key_action(
+        org_name=org_name,
+        action="provider_key_set",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"provider": result.get("provider")},
+    )
+    return result
+
+
+@router.delete("/keys/{org_name}/providers/{provider}")
+async def delete_provider_key(
+    org_name: str,
+    provider: str,
+    user: dict = Depends(get_current_user),
+):
+    """Remove a team's BYOK key for a provider (falls back to platform key)."""
+    user_role = await _require_key_manager_role(org_name, user)
+    ok = await team_provider_keys.delete_team_key(org_name, provider)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No key configured for provider '{provider}'",
+        )
+    await log_key_action(
+        org_name=org_name,
+        action="provider_key_deleted",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"provider": provider},
+    )
+    return {"deleted": True, "provider": provider}
 
 
 @router.get("/usage/{org_name}")

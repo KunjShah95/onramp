@@ -8,8 +8,9 @@
 ## 1. Environment Variables Audit
 
 ### ✅ Configured Properly
+
 | Variable | Source | Status |
-|----------|--------|--------|
+| ---------- | -------- | -------- |
 | `ENV` (→ `production`) | `docker-compose.prod.yml` | ✅ Set |
 | `ENVIRONMENT` (→ `production`) | `docker-compose.prod.yml` | ✅ Set (alias) |
 | `JWT_SECRET` | `.env.example`, `docker-compose.prod.yml` | ✅ Template exists — naming mismatch fixed |
@@ -21,7 +22,7 @@
 ### ~~❌ Missing / Incomplete~~ ✅ **FIXED**
 
 | Variable | Status |
-|----------|--------|
+| ---------- | -------- |
 | `PII_ENCRYPTION_KEY` | ✅ Added to `docker-compose.prod.yml` + root `.env.example` |
 | `GITHUB_TOKEN_ENCRYPTION_KEY` | ✅ Added to `docker-compose.prod.yml` + root `.env.example` |
 | `GITHUB_TOKEN` | ✅ Added to `docker-compose.prod.yml` + root `.env.example` |
@@ -36,6 +37,7 @@
 ## 2. CORS Configuration Audit
 
 ### Current Config (in `main.py`)
+
 ```python
 _cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", 
     "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
@@ -58,7 +60,7 @@ app.add_middleware(
 ### Issues
 
 | # | Issue | Severity |
-|---|-------|----------|
+| --- | ------- | ---------- |
 | 1 | **`allow_origin_regex` is now configurable via `CORS_ALLOWED_ORIGIN_REGEX` env var** — defaults to Vercel pattern for backward compat, operators can set custom domain patterns | ✅ Fixed |
 | 2 | **`allow_origins` default includes only localhost** — production deployment on Railway/Vercel REQUIRES `CORS_ALLOWED_ORIGINS` to be set. The `DEPLOYMENT.md` documents this correctly but the default fallback means a misconfigured production deploy will silently fail with CORS errors in the browser | ⚠️ Medium |
 | 3 | **OAuth redirect URLs** in `auth.py` read `CORS_ALLOWED_ORIGINS` to determine the redirect target — same issue, the default is localhost | ⚠️ Medium |
@@ -69,6 +71,7 @@ app.add_middleware(
 ## 3. Database Connection String Audit
 
 ### ✅ Connection pooling parameters — all configurable
+
 ```python
 pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
 max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "20"))
@@ -77,11 +80,13 @@ pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 ```
 
 ### ⚠️ SSL mode
+
 - Defaults to `require` in production — correct
 - `docker-compose.prod.yml` overrides to `prefer` — acceptable for Docker internal networking
 - Railway injects `DATABASE_URL` automatically when PostgreSQL addon is attached
 
 ### ❌ DATABASE_URL not in root `.env.example`
+
 The root `.env.example` (used by `docker-compose`) does NOT include `DATABASE_URL`. The `docker-compose.prod.yml` constructs it inline from `DB_PASSWORD`. This is correct but the root `.env.example` needs to define `DB_PASSWORD`.
 
 ---
@@ -91,7 +96,7 @@ The root `.env.example` (used by `docker-compose`) does NOT include `DATABASE_UR
 ### `docker-compose.prod.yml`
 
 | Issue | Severity |
-|-------|----------|
+| ------- | ---------- |
 | Uses **Python 3.11** in the Dockerfile, but app is written for **3.12** (see `pyproject.toml`) | ⚠️ Medium — most 3.11 code works, but potential compatibility |
 | **No `JWT_SECRET_KEY` default** referenced — the variable is passed through as `${JWT_SECRET_KEY}` but the root `.env.example` has `JWT_SECRET_KEY=change-me-to-a-random-secret-min-32-chars` | ✅ Documented |
 | **`PII_ENCRYPTION_KEY` not passed** through to the backend container | ❌ High |
@@ -114,7 +119,7 @@ The root `.env.example` (used by `docker-compose`) does NOT include `DATABASE_UR
 ### Nginx Configuration
 
 | Issue | Severity |
-|-------|----------|
+| ------- | ---------- |
 | ✅ `proxy_pass http://backend:8000` — correct internal DNS |
 | ✅ `Cache-Control: public, immutable` — good for static assets |
 | ✅ Gzip enabled |
@@ -126,30 +131,33 @@ The root `.env.example` (used by `docker-compose`) does NOT include `DATABASE_UR
 ## 5. Deployment Path Nuance
 
 | Platform | `REDIS_URL` | Vault/Secrets | Status |
-|----------|------------|---------------|--------|
+| ---------- | ------------ | --------------- | -------- |
 | **Railway (Option A)** | Auto-injected by Redis addon | Railway Dashboard env vars | ✅ Works for REDIS_URL — but PII/GITHUB keys still need manual entry |
 | **Docker self-hosted (Option B)** | Must be constructed from `REDIS_HOST`+`REDIS_PORT`+`REDIS_PASSWORD` | Must be in `.env` file | ❌ `REDIS_URL` never assembled from individual vars |
 
 ## 6. CI/CD Pipeline Audit
 
 ### Backend CI (`backend.yml`)
+
 | ✅ Working | Compileall, alembic migrations, pytest (memory + postgres) |
-|-----------|------|
+| ----------- | ------ |
 | ✅ Test CI | Runs against in-memory and PostgreSQL |
 | ✅ Fixed | Load tests (`test_load_performance.py`) — runs in dedicated step with 120s timeout |
 | ✅ Fixed | Contract tests (`test_api_contract.py`) — runs in dedicated named step |
 | ✅ Configured | `pytest-cov` coverage across all 4 test steps (unit, contract, load, postgres) |
 
 ### Frontend CI (`frontend.yml`)
+
 | ✅ Working | TypeScript check, vitest, build |
-|-----------|------|
+| ----------- | ------ |
 | ✅ Sound | Good isolation and caching |
 | ❌ Missing | Playwright E2E tests — should run in CI |
 | ❌ Missing | `@axe-core/playwright` a11y tests — should run |
 
 ### CD Pipeline (`cd.yml`)
+
 | Issue | Severity |
-|-------|----------|
+| ------- | ---------- |
 | ❌ **Vercel token and project IDs not configured** — deploy step is skipped at runtime (echoes "not configured") | ❌ **BLOCKER** |
 | ❌ **Render deploy hook URL not configured** — backend deploy is skipped | ❌ **BLOCKER** |
 | ❌ **No production environment validation in pipeline** — no check that env vars are set before deploy | ⚠️ Medium |
@@ -164,6 +172,7 @@ The root `.env.example` (used by `docker-compose`) does NOT include `DATABASE_UR
 All config files now use `JWT_SECRET` consistently. The mismatch between `auth.py` (reading `JWT_SECRET`) and `docker-compose.prod.yml`/K8s/`.env.example` (passing `JWT_SECRET_KEY`) is resolved.
 
 **Changed files:**
+
 - `docker-compose.yml` — `JWT_SECRET_KEY` → `JWT_SECRET`
 - `docker-compose.prod.yml` — `JWT_SECRET_KEY` → `JWT_SECRET`
 - `kubernetes/deployment.yaml` — `JWT_SECRET_KEY` → `JWT_SECRET`
@@ -173,7 +182,7 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 ### Other JWT Issues
 
 | Issue | Status |
-|-------|--------|
+| ------- | -------- |
 | `JWT_SECRET` has a hardcoded default fallback — now verified at boot | ✅ Fixed (`_validate_production_env()` checks for insecure default) |
 | JWT uses HS256 with 7-day expiry — acceptable for v1 | ✅ |
 | No JWT refresh token rotation | ⚠️ Low (noted in roadmap) |
@@ -185,7 +194,7 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 ## 7. Security Audit Summary
 
 | Check | Status |
-|-------|--------|
+| ------- | -------- |
 | PII encryption at rest (Fernet) | ✅ Yes — but key is NOT provisioned in production config |
 | Boot-time env validation | ✅ Yes — but missing vars prevent startup |
 | CORS allowlist | ✅ Configurable — but regex is Vercel-specific |
@@ -202,7 +211,7 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 ### P0 — Boot Blockers
 
 | # | Action | Status |
-|---|--------|--------|
+| --- | -------- | -------- |
 | 1 | Add `PII_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block | ✅ Fixed |
 | 2 | Add `GITHUB_TOKEN_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block | ✅ Fixed |
 | 3 | Add billing env vars to root `.env.example` — Stripe → Razorpay (`RAZORPAY_*`) | ✅ Fixed |
@@ -221,7 +230,7 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 ### P1 — Must-Fix Before GA
 
 | # | Action | Status |
-|---|--------|--------|
+| --- | -------- | -------- |
 | 9 | Update `allow_origin_regex` in `main.py` — made configurable via `CORS_ALLOWED_ORIGIN_REGEX` env var | ✅ Fixed |
 | 10 | Add `TRUST_PROXY=true` to `docker-compose.prod.yml` | ✅ Fixed |
 | 11 | Add pre-deploy env validation & smoke test to CD pipeline | ✅ Fixed (cd.yml) |
@@ -232,14 +241,13 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 ### P2 — Should-Fix Soon
 
 | # | Action | Est. Time |
-|---|--------|-----------|
+| --- | -------- | ----------- |
 | 15 | Add load tests + contract tests to backend CI | ✅ Fixed — 3 named steps in `backend.yml` |
 | 16 | Add Playwright E2E + a11y tests to frontend CI | 15 min |
 | 17 | Add pytest-cov coverage reporting to CI (all 4 test steps) | ✅ Fixed |
 | 18 | Set up `SENTRY_DSN` and verify error capture works | 5 min |
 | 19 | Set up dependency vulnerability scanning (e.g., `pip audit`, `npm audit`) | 10 min |
 | 20 | Run `npm audit fix` on the web package | 2 min |
-
 
 ---
 
