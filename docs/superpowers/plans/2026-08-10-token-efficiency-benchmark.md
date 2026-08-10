@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a live, reproducible benchmark that measures token usage + wall-clock time for four tools (Claude Code, Codex, Cursor, Onramp) on the same repo-understanding task against a subset of facebook/react, and renders a markdown report with an Onramp efficiency delta.
+**Goal:** Build a live, reproducible benchmark that measures token usage + wall-clock time for four tools (Claude Code, Codex, Cursor, Onramp) on the same repo-understanding task against a subset of facebook/react, renders a markdown report with an Onramp efficiency delta, and enforces a **$10 USD cost budget** on live API runs.
 
-**Architecture:** A set of PowerShell scripts under `scripts/benchmarks/` plus one Python helper. Each tool runner executes an identical prompt against a repo directory and emits a normalized `usage.json`. A `normalize.ps1` merges all `usage-<tool>.json` files into `results.json`. A `render_report.ps1` reads `results.json` and writes a dated markdown report to `docs/benchmarks/token-efficiency-<date>.md`. Each runner accepts a `-Stub` switch that emits deterministic usage data so the full pipeline is testable without hitting external tools.
+**Architecture:** A set of PowerShell scripts under `scripts/benchmarks/` plus one Python helper. Each tool runner executes an identical prompt against a repo directory and emits a normalized `usage.json`. A `normalize.ps1` merges all `usage-<tool>.json` files into `results.json`. A `render_report.ps1` reads `results.json` and writes a dated markdown report to `docs/benchmarks/token-efficiency-<date>.md`. Each runner accepts a `-Stub` switch that emits deterministic usage data so the full pipeline is testable without hitting external tools. Every runner also records an estimated `cost_usd` (tokens × per-tool pricing); `normalize.ps1` sums it against the `BENCHMARK_BUDGET_USD` budget (default **10**) and the report flags when the budget is exceeded.
 
 **Tech Stack:** PowerShell 5.1, Python 3.13 (backend `Document`/`EmbeddingsService._chunk_content` chunking), git (shallow clone of facebook/react), the locally installed CLIs (claude 2.1.175, codex 0.144.6, cursor 3.15.6).
 
@@ -40,12 +40,13 @@ Normalized `usage-<tool>.json` shape (emitted by every runner):
   "output_tokens": 2345,
   "elapsed_s": 42.3,
   "loc_scanned": 18320,
+  "cost_usd": 0.87,
   "status": "ok",
   "note": ""
 }
 ```
 
-`status` is one of `ok | skipped | failed`. When usage is unavailable, `input_tokens`/`output_tokens` are JSON `null` (renders as `n/a`).
+`status` is one of `ok | skipped | failed`. When usage is unavailable, `input_tokens`/`output_tokens` are JSON `null` (renders as `n/a`). `cost_usd` is an estimate: `(input_tokens × $input_per_1M + output_tokens × $output_per_1M) / 1_000_000`, using per-tool pricing constants in `common.ps1` (see Task 1). Onramp's index run uses embedding pricing and is typically ~$0.01.
 
 ---
 
@@ -138,6 +139,27 @@ $global:BenchRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $global:BenchWorkDir = Join-Path $BenchRoot "work"
 New-Item -ItemType Directory -Force -Path $BenchWorkDir | Out-Null
 
+# USD pricing per 1M tokens (input/output) per tool, used to estimate cost_usd.
+# Values are list prices as of 2026-08; used only for budgeting, not billing.
+$global:ToolPricing = @{
+    claude_code = @{ input = 3.00; output = 15.00 }      # Claude Sonnet class
+    codex       = @{ input = 1.25; output = 10.00 }      # OpenAI GPT-5 class
+    cursor      = @{ input = 3.00; output = 15.00 }      # Cursor agent model
+    onramp      = @{ input = 0.02; output = 0.00 }       # text-embedding-3-small
+}
+$global:BudgetUsd = [double](if ($env:BENCHMARK_BUDGET_USD) { $env:BENCHMARK_BUDGET_USD } else { 10 })
+
+function Get-CostUsd {
+    param([string]$Tool, $InputTokens, $OutputTokens)
+    if ($null -eq $InputTokens) { return $null }
+    if ($null -eq $OutputTokens) { return $null }
+    $price = $global:ToolPricing[$Tool]
+    if (-not $price) { return $null }
+    $in = [double]$InputTokens / 1_000_000.0 * $price.input
+    $out = [double]$OutputTokens / 1_000_000.0 * $price.output
+    return [math]::Round($in + $out, 4)
+}
+
 function Write-UsageJson {
     param(
         [string]$Tool,
@@ -156,6 +178,7 @@ function Write-UsageJson {
         output_tokens = $OutputTokens
         elapsed_s     = [math]::Round($ElapsedS, 2)
         loc_scanned   = $LocScanned
+        cost_usd      = Get-CostUsd -Tool $Tool -InputTokens $InputTokens -OutputTokens $OutputTokens
         status        = $Status
         note          = $Note
     }
@@ -224,11 +247,22 @@ Assert-True ($probe.elapsed_s -eq 1.5) "usage.json has rounded elapsed_s"
 Assert-True ($probe.loc_scanned -eq $loc) "usage.json has loc_scanned"
 Assert-True ($probe.status -eq "ok") "usage.json has status"
 Assert-True ($probe.PSObject.Properties.Name -contains "note") "usage.json has note field"
+Assert-True ($probe.PSObject.Properties.Name -contains "cost_usd") "usage.json has cost_usd field"
+$probeCost = Get-CostUsd -Tool "probe" -InputTokens 1000000 -OutputTokens 1000000
+Assert-True ($null -eq $probeCost) "probe tool has no pricing -> cost_usd null"
 
-Write-Host "`n=== 3. Write-UsageJson supports null tokens ===" -ForegroundColor Cyan
+Write-Host "`n=== 3. cost estimation + budget ===" -ForegroundColor Cyan
+$claudeCost = Get-CostUsd -Tool "claude_code" -InputTokens 1000000 -OutputTokens 1000000
+Assert-True ([math]::Abs([double]$claudeCost - 18.0) -lt 0.01) "claude_code cost 1M in + 1M out = 18.0 (got $claudeCost)"
+$onrampCost = Get-CostUsd -Tool "onramp" -InputTokens 1000000 -OutputTokens 0
+Assert-True ([math]::Abs([double]$onrampCost - 0.02) -lt 0.001) "onramp embedding cost 1M in = 0.02 (got $onrampCost)"
+Assert-True ($global:BudgetUsd -eq 10) "default BENCHMARK_BUDGET_USD = 10 (got $global:BudgetUsd)"
+
+Write-Host "`n=== 4. Write-UsageJson supports null tokens ===" -ForegroundColor Cyan
 Write-UsageJson -Tool "probe-null" -Model "" -InputTokens $null -OutputTokens $null -ElapsedS 0 -LocScanned 0 -Status "skipped" -Note "missing"
 $probeNull = Get-Content (Join-Path $BenchWorkDir "usage-probe-null.json") -Raw | ConvertFrom-Json
 Assert-True ($null -eq $probeNull.input_tokens) "null input_tokens serializes as null"
+Assert-True ($null -eq $probeNull.cost_usd) "null tokens -> cost_usd null"
 Assert-True ($probeNull.status -eq "skipped") "skipped status preserved"
 
 if ($failures -eq 0) {
@@ -243,7 +277,7 @@ if ($failures -eq 0) {
 - [ ] **Step 4: Run the harness and verify it passes**
 
 Run: `powershell -ExecutionPolicy Bypass -File scripts/benchmarks/test-benchmark.ps1`
-Expected: 3 sections, all PASS, exit code 0.
+Expected: 4 sections (loc, shape, cost+budget, null tokens), all PASS, exit code 0.
 
 - [ ] **Step 5: Commit**
 
@@ -417,6 +451,7 @@ Assert-True ($claude.tool -eq "claude_code") "claude stub: tool name"
 Assert-True ($claude.input_tokens -eq 1000) "claude stub: input_tokens"
 Assert-True ($claude.loc_scanned -ge 40) "claude stub: loc_scanned from fixture"
 Assert-True ($claude.status -eq "ok") "claude stub: status ok"
+Assert-True ([math]::Abs([double]$claude.cost_usd - 0.0053) -lt 0.001) "claude stub: cost_usd estimated (1000x3 + 150x15 per 1M = 0.0053)"
 ```
 
 - [ ] **Step 3: Run the harness**
@@ -523,6 +558,7 @@ Assert-True ($codex.tool -eq "codex") "codex stub: tool name"
 Assert-True ($codex.input_tokens -eq 900) "codex stub: input_tokens"
 Assert-True ($codex.loc_scanned -ge 40) "codex stub: loc_scanned from fixture"
 Assert-True ($codex.status -eq "ok") "codex stub: status ok"
+Assert-True ([math]::Abs([double]$codex.cost_usd - 0.0023) -lt 0.001) "codex stub: cost_usd estimated (900x1.25 + 120x10 per 1M = 0.0023)"
 ```
 
 - [ ] **Step 3: Run the harness**
@@ -614,6 +650,7 @@ Assert-True ($cursor.tool -eq "cursor") "cursor stub: tool name"
 Assert-True ($cursor.input_tokens -eq 1100) "cursor stub: input_tokens"
 Assert-True ($cursor.loc_scanned -ge 40) "cursor stub: loc_scanned from fixture"
 Assert-True ($cursor.status -eq "ok") "cursor stub: status ok"
+Assert-True ([math]::Abs([double]$cursor.cost_usd - 0.0063) -lt 0.001) "cursor stub: cost_usd estimated (1100x3 + 200x15 per 1M = 0.0063)"
 ```
 
 - [ ] **Step 3: Run the harness**
@@ -781,6 +818,7 @@ $onrampStub = Get-Content (Join-Path $BenchWorkDir "usage-onramp.json") -Raw | C
 Assert-True ($onrampStub.tool -eq "onramp") "onramp stub: tool name"
 Assert-True ($onrampStub.input_tokens -eq 800) "onramp stub: input_tokens"
 Assert-True ($onrampStub.status -eq "ok") "onramp stub: status ok"
+Assert-True ([math]::Abs([double]$onrampStub.cost_usd - 0.0) -lt 0.001) "onramp stub: cost_usd near zero (embedding pricing)"
 
 Write-Host "`n=== 8. onramp_token_count.py real run on fixture ===" -ForegroundColor Cyan
 $realOut = python (Join-Path $benchDir "onramp_token_count.py") -repo $fixtureRepo 2>$null | Out-String
@@ -830,17 +868,34 @@ foreach ($f in $usageFiles) {
     $runs += Get-Content $f.FullName -Raw | ConvertFrom-Json
 }
 
+. "$benchDir/common.ps1"
+
+$totalCost = 0.0
+$costKnown = $false
+foreach ($r in $runs) {
+    if ($null -ne $r.cost_usd) {
+        $totalCost += [double]$r.cost_usd
+        $costKnown = $true
+    }
+}
+$budgetUsd = $global:BudgetUsd
+$overBudget = $costKnown -and ($totalCost -gt $budgetUsd)
+
 $results = [ordered]@{
     meta = [ordered]@{
         repo = "facebook/react (subset: packages/react/src, packages/react-dom/src, packages/react-reconciler)"
         prompt = "Analyze this repo and produce: architecture summary, module dependency map, 5 key data-flow paths, and a test-strategy assessment."
+        budget_usd = $budgetUsd
+        total_cost_usd = [math]::Round($totalCost, 4)
+        over_budget = $overBudget
     }
     runs = $runs
 }
 
 $outPath = Join-Path $workDir "results.json"
 $results | ConvertTo-Json -Depth 8 | Set-Content -Path $outPath -Encoding UTF8
-Write-Host "Wrote $outPath ($($runs.Count) runs)"
+Write-Host "Wrote $outPath ($($runs.Count) runs, est cost `$$([math]::Round($totalCost, 4)) / budget `$$budgetUsd)"
+if ($overBudget) { Write-Warning "BUDGET EXCEEDED: estimated cost `$$([math]::Round($totalCost, 4)) exceeds `$$budgetUsd" }
 ```
 
 - [ ] **Step 2: Add tests to test-benchmark.ps1 (merge correctness + idempotency)**
@@ -858,8 +913,21 @@ Reset-Work
 $results = Get-Content (Join-Path $BenchWorkDir "results.json") -Raw | ConvertFrom-Json
 Assert-True ($results.runs.Count -eq 4) "normalize merges 4 stub runs (got $($results.runs.Count))"
 Assert-True ($results.meta.repo -like "*facebook/react*") "normalize includes meta.repo"
+Assert-True ($results.meta.budget_usd -eq 10) "normalize records budget_usd=10"
+Assert-True ($null -ne $results.meta.total_cost_usd) "normalize records total_cost_usd"
+Assert-True ($null -ne $results.meta.over_budget) "normalize records over_budget flag"
+Assert-True (-not $results.meta.over_budget) "stub costs (~$0.01) are under $10 budget"
 
-Write-Host "`n=== 10. normalize is idempotent ===" -ForegroundColor Cyan
+Write-Host "`n=== 10. budget overrun is flagged ===" -ForegroundColor Cyan
+$env:BENCHMARK_BUDGET_USD = "0.001"
+. (Join-Path $benchDir "common.ps1") | Out-Null
+& (Join-Path $benchDir "normalize.ps1") | Out-Null
+$over = Get-Content (Join-Path $BenchWorkDir "results.json") -Raw | ConvertFrom-Json
+Assert-True ($over.meta.over_budget) "over_budget true when budget is tiny"
+Remove-Item Env:\BENCHMARK_BUDGET_USD -ErrorAction SilentlyContinue
+. (Join-Path $benchDir "common.ps1") | Out-Null
+
+Write-Host "`n=== 11. normalize is idempotent ===" -ForegroundColor Cyan
 $before = Get-Content (Join-Path $BenchWorkDir "results.json") -Raw
 & (Join-Path $benchDir "normalize.ps1") | Out-Null
 $after = Get-Content (Join-Path $BenchWorkDir "results.json") -Raw
@@ -869,13 +937,13 @@ Assert-True ($before -eq $after) "re-running normalize produces byte-identical r
 - [ ] **Step 3: Run the harness**
 
 Run: `powershell -ExecutionPolicy Bypass -File scripts/benchmarks/test-benchmark.ps1`
-Expected: all 10 sections PASS, exit code 0.
+Expected: all 11 sections PASS, exit code 0.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add scripts/benchmarks/normalize.ps1 scripts/benchmarks/test-benchmark.ps1
-git commit -m "feat(benchmark): add normalize.ps1 with idempotent merge"
+git commit -m "feat(benchmark): add normalize.ps1 with budget aggregation + idempotent merge"
 ```
 
 ---
@@ -916,10 +984,14 @@ $lines.Add("**Repo:** $($results.meta.repo)")
 $lines.Add("")
 $lines.Add("**Prompt:** $($results.meta.prompt)")
 $lines.Add("")
+$budgetTxt = "**Cost:** estimated `$$([math]::Round([double]$results.meta.total_cost_usd, 4)) / budget `$$([math]::Round([double]$results.meta.budget_usd, 2))"
+if ($results.meta.over_budget) { $budgetTxt += " — ⚠️ **OVER BUDGET**" }
+$lines.Add($budgetTxt)
+$lines.Add("")
 $lines.Add("## Results")
 $lines.Add("")
-$lines.Add("| Tool | Model | Input tokens | Output tokens | Total tokens | Elapsed (s) | Tokens / 1k LOC | Status |")
-$lines.Add("|---|---|---|---|---|---|---|---|")
+$lines.Add("| Tool | Model | Input tokens | Output tokens | Total tokens | Est. cost (USD) | Elapsed (s) | Tokens / 1k LOC | Status |")
+$lines.Add("|---|---|---|---|---|---|---|---|---|")
 
 $onrampTokens = 0
 $onrampFound = $false
@@ -938,8 +1010,9 @@ foreach ($r in $results.runs) {
         $total = ([int]$r.input_tokens) + ([int]$r.output_tokens)
         $perLocTxt = [math]::Round($total / ($r.loc_scanned / 1000.0), 1)
     }
+    $costTxt = if ($null -ne $r.cost_usd) { "`$$([math]::Round([double]$r.cost_usd, 4))" } else { "n/a" }
     $noteSuffix = if ($r.note) { " ($($r.note))" } else { "" }
-    $lines.Add("| $($r.tool) | $($r.model) | $inTxt | $outTxt | $totalTxt | $([math]::Round([double]$r.elapsed_s, 1)) | $perLocTxt | $($r.status)$noteSuffix |")
+    $lines.Add("| $($r.tool) | $($r.model) | $inTxt | $outTxt | $totalTxt | $costTxt | $([math]::Round([double]$r.elapsed_s, 1)) | $perLocTxt | $($r.status)$noteSuffix |")
 }
 
 $lines.Add("")
@@ -995,41 +1068,46 @@ function Assert-ReportScenarios {
     $md = Get-Content (Join-Path $BenchWorkDir "report\token-efficiency-*.md") -Raw
     Assert-True ($md -match "^\| Tool \| Model \| Input tokens") "$Label: table header present"
     Assert-True ($md -match "^\|---") "$Label: separator row present"
+    Assert-True ($md -match "budget") "$Label: budget/cost line present"
 }
 
-Write-Host "`n=== 11. render_report: all-ok scenario ===" -ForegroundColor Cyan
+Write-Host "`n=== 12. render_report: all-ok scenario ===" -ForegroundColor Cyan
 Assert-ReportScenarios -Label "all-ok" -UsageById @{
-    "claude_code" = [ordered]@{ tool="claude_code"; model="m1"; input_tokens=1000; output_tokens=100; elapsed_s=1.0; loc_scanned=50; status="ok"; note="" }
-    "codex"       = [ordered]@{ tool="codex"; model="m2"; input_tokens=900; output_tokens=80; elapsed_s=0.8; loc_scanned=50; status="ok"; note="" }
-    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; status="ok"; note="" }
+    "claude_code" = [ordered]@{ tool="claude_code"; model="m1"; input_tokens=1000; output_tokens=100; elapsed_s=1.0; loc_scanned=50; cost_usd=0.0045; status="ok"; note="" }
+    "codex"       = [ordered]@{ tool="codex"; model="m2"; input_tokens=900; output_tokens=80; elapsed_s=0.8; loc_scanned=50; cost_usd=0.0019; status="ok"; note="" }
+    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; cost_usd=0.0000; status="ok"; note="" }
 }
+$allOkMd = Get-Content (Join-Path $BenchWorkDir "report\token-efficiency-*.md") -Raw
+Assert-True ($allOkMd -match "Est\. cost") "all-ok: cost column header present"
+Assert-True ($allOkMd -match "0\.0045") "all-ok: claude cost rendered"
 
-Write-Host "`n=== 12. render_report: one-skipped scenario ===" -ForegroundColor Cyan
+Write-Host "`n=== 13. render_report: one-skipped scenario ===" -ForegroundColor Cyan
 Assert-ReportScenarios -Label "one-skipped" -UsageById @{
-    "claude_code" = [ordered]@{ tool="claude_code"; model="m1"; input_tokens=1000; output_tokens=100; elapsed_s=1.0; loc_scanned=50; status="ok"; note="" }
-    "codex"       = [ordered]@{ tool="codex"; model=""; input_tokens=$null; output_tokens=$null; elapsed_s=0; loc_scanned=0; status="skipped"; note="codex not in PATH" }
-    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; status="ok"; note="" }
+    "claude_code" = [ordered]@{ tool="claude_code"; model="m1"; input_tokens=1000; output_tokens=100; elapsed_s=1.0; loc_scanned=50; cost_usd=0.0045; status="ok"; note="" }
+    "codex"       = [ordered]@{ tool="codex"; model=""; input_tokens=$null; output_tokens=$null; elapsed_s=0; loc_scanned=0; cost_usd=$null; status="skipped"; note="codex not in PATH" }
+    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; cost_usd=0.0000; status="ok"; note="" }
 }
 
-Write-Host "`n=== 13. render_report: one-failed scenario ===" -ForegroundColor Cyan
+Write-Host "`n=== 14. render_report: one-failed scenario ===" -ForegroundColor Cyan
 Assert-ReportScenarios -Label "one-failed" -UsageById @{
-    "claude_code" = [ordered]@{ tool="claude_code"; model=""; input_tokens=$null; output_tokens=$null; elapsed_s=12.0; loc_scanned=0; status="failed"; note="no usage in stream-json output" }
-    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; status="ok"; note="" }
+    "claude_code" = [ordered]@{ tool="claude_code"; model=""; input_tokens=$null; output_tokens=$null; elapsed_s=12.0; loc_scanned=0; cost_usd=$null; status="failed"; note="no usage in stream-json output" }
+    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; cost_usd=0.0000; status="ok"; note="" }
 }
 
-Write-Host "`n=== 14. render_report: missing-usage scenario ===" -ForegroundColor Cyan
+Write-Host "`n=== 15. render_report: missing-usage scenario ===" -ForegroundColor Cyan
 Assert-ReportScenarios -Label "missing-usage" -UsageById @{
-    "cursor"      = [ordered]@{ tool="cursor"; model="cursor-agent"; input_tokens=$null; output_tokens=$null; elapsed_s=30.0; loc_scanned=50; status="ok"; note="no usage export" }
-    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; status="ok"; note="" }
+    "cursor"      = [ordered]@{ tool="cursor"; model="cursor-agent"; input_tokens=$null; output_tokens=$null; elapsed_s=30.0; loc_scanned=50; cost_usd=$null; status="ok"; note="no usage export" }
+    "onramp"      = [ordered]@{ tool="onramp"; model="idx"; input_tokens=200; output_tokens=0; elapsed_s=0.1; loc_scanned=50; cost_usd=0.0000; status="ok"; note="" }
 }
 $missingMd = Get-Content (Join-Path $BenchWorkDir "report\token-efficiency-*.md") -Raw
 Assert-True ($missingMd -match "\| n/a \| n/a \|") "missing-usage: n/a rendered for null tokens"
+Assert-True ($missingMd -match "n/a.*n/a.*n/a") "missing-usage: cost n/a for null tokens"
 ```
 
 - [ ] **Step 3: Run the harness**
 
 Run: `powershell -ExecutionPolicy Bypass -File scripts/benchmarks/test-benchmark.ps1`
-Expected: all 14 sections PASS, exit code 0.
+Expected: all 15 sections PASS, exit code 0.
 
 - [ ] **Step 4: Commit**
 
@@ -1050,7 +1128,7 @@ git commit -m "feat(benchmark): add render_report.ps1 with scenario tests"
 Insert before the final `if ($failures -eq 0)` block:
 
 ```powershell
-Write-Host "`n=== 15. end-to-end pipeline on fixture (stub runners) ===" -ForegroundColor Cyan
+Write-Host "`n=== 16. end-to-end pipeline on fixture (stub runners) ===" -ForegroundColor Cyan
 Reset-Work
 & (Join-Path $benchDir "run_claude_code.ps1") -RepoPath $fixtureRepo -Stub | Out-Null
 & (Join-Path $benchDir "run_codex.ps1") -RepoPath $fixtureRepo -Stub | Out-Null
@@ -1066,12 +1144,13 @@ Assert-True ($md -match "codex") "e2e: report mentions codex"
 Assert-True ($md -match "cursor") "e2e: report mentions cursor"
 Assert-True ($md -match "onramp") "e2e: report mentions onramp"
 Assert-True ($md -match "Efficiency delta vs Onramp") "e2e: report has delta section"
+Assert-True ($md -match "budget") "e2e: report shows budget/cost line"
 ```
 
 - [ ] **Step 2: Run the full harness**
 
 Run: `powershell -ExecutionPolicy Bypass -File scripts/benchmarks/test-benchmark.ps1`
-Expected: all 15 sections PASS, exit code 0.
+Expected: all 16 sections PASS, exit code 0.
 
 - [ ] **Step 3: Commit**
 
