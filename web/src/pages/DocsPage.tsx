@@ -211,11 +211,17 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'LLM providers',
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        <p>Onramp supports three LLM backends. Set <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">LLM_PROVIDER</code> in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">.env</code>.</p>
+        <p>Onramp runs a multi-provider router with free-first fallback. Set any subset of keys in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">.env</code> — providers without a key are skipped, and the router falls through free → paid → local.</p>
         <div className="space-y-3">
           {[
-            { provider: 'openai', vars: 'OPENAI_API_KEY', note: 'Recommended for best quality.' },
-            { provider: 'azure', vars: 'AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT', note: 'For enterprise Azure tenants.' },
+            { provider: 'openrouter', vars: 'OPENROUTER_API_KEY', note: 'Free tier, huge model catalog.' },
+            { provider: 'gemini', vars: 'GEMINI_API_KEY', note: 'Free tier, strong reasoning.' },
+            { provider: 'groq', vars: 'GROQ_API_KEY', note: 'Free tier, very fast inference.' },
+            { provider: 'nvidia', vars: 'NVIDIA_API_KEY', note: 'Free tier via NVIDIA NIM.' },
+            { provider: 'mistral', vars: 'MISTRAL_API_KEY', note: 'OpenAI-compatible — Mistral models.' },
+            { provider: 'openai', vars: 'OPENAI_API_KEY', note: 'Paid fallback — GPT models.' },
+            { provider: 'anthropic', vars: 'ANTHROPIC_API_KEY', note: 'Paid fallback — Claude models.' },
+            { provider: 'huggingface', vars: 'HUGGINGFACE_API_KEY', note: 'OpenAI-compatible router (router.huggingface.co).' },
             { provider: 'ollama', vars: 'OLLAMA_BASE_URL (default: localhost:11434)', note: 'Fully local — no data leaves your machine.' },
           ].map((p) => (
             <div key={p.provider} className="bg-[hsl(var(--secondary))]/60 border border-[hsl(var(--border))] rounded-xl p-4">
@@ -225,6 +231,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
             </div>
           ))}
         </div>
+        <p>Set at least one key or the router falls back to local Ollama. See the router's live catalog via <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]">GET /api/v1/ai/tiers</code>.</p>
       </div>
     ),
   },

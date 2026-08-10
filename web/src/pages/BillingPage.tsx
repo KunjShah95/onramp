@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, topUpCredits, getCreditLedger, CREDIT_COSTS_LIST } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { useFeatureFlag } from '../context/FeatureFlagContext'
-import { Check, CreditCard, Coins, ArrowDown, ArrowUp, CurrencyDollar, Spinner } from '@phosphor-icons/react'
+import { Check, CreditCard, Coins, ArrowDown, ArrowUp, CurrencyInr, Spinner } from '@phosphor-icons/react'
 
 export default function BillingPage() {
   const toast = useToast()
@@ -28,9 +28,9 @@ export default function BillingPage() {
 
   const tiers = [
     { id: 'free', price: 0, label: 'Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
-    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 9, label: 'Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
-    { id: 'startup', price: 49, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
-    { id: 'professional', price: 299, label: 'Professional', popular: true, features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
+    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, label: 'Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
+    { id: 'startup', price: 999, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
+    { id: 'professional', price: 2999, label: 'Professional', popular: true, features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
     { id: 'enterprise', price: 0, label: 'Enterprise', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
   ]
 
@@ -106,11 +106,45 @@ export default function BillingPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
   }
 
+  function loadRazorpayScript(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true)
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.onload = () => resolve(true)
+      script.onerror = () => resolve(false)
+      document.body.appendChild(script)
+    })
+  }
+
   async function handleTopUp() {
     try {
-      await topUpCredits(topUpAmount)
-      toast.success('Credits added', `${topUpAmount} credits added to wallet`)
-      await fetchWallet()
+      const ok = await loadRazorpayScript()
+      if (!ok) { toast.error('Could not load payment gateway'); return }
+      const order = await createCreditOrder({ amount_inr: topUpAmount })
+      const rzp = new (window as any).Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Onramp',
+        description: `Credit top-up of ₹${topUpAmount}`,
+        order_id: order.order_id,
+        handler: async (response: any) => {
+          const res = await verifyCreditOrder({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          })
+          if (res.credited) {
+            toast.success('Credits added', `${res.credits} credits added to wallet`)
+            await fetchWallet()
+          } else {
+            toast.error('Payment verification failed')
+          }
+        },
+        modal: { ondismiss: () => { /* no-op; user cancelled */ } },
+      })
+      rzp.open()
     } catch (e) {
       toast.error('Top-up failed', e instanceof Error ? e.message : 'Unknown error')
     }
@@ -170,7 +204,7 @@ export default function BillingPage() {
                 <div className="overline text-ink-muted mb-2">Plan Status</div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="px-3 py-1 rounded-tile bg-go/15 text-go text-sm font-bold capitalize border border-go/25">{subscription.tier}</span>
-                  <span className="text-sm text-ink-secondary">${subscription.price}/mo</span>
+                  <span className="text-sm text-ink-secondary">₹{subscription.price}/mo</span>
                   <span className="text-sm text-ink-muted capitalize">{subscription.billing_cycle}</span>
                   <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-pill font-mono border',
                     subscription.status === 'active' ? 'text-go bg-go/10 border-go/20' : 'text-ink-muted bg-well border-seam')}>
@@ -209,7 +243,7 @@ export default function BillingPage() {
 
                     {/* Top-up */}
                     <div className="flex items-center gap-3 p-3 bg-well rounded-card border border-seam mb-4">
-                      <CurrencyDollar className="w-4 h-4 text-go" weight="fill" />
+                      <CurrencyInr className="w-4 h-4 text-go" weight="fill" />
                       <input
                         type="number"
                         min={10}
@@ -218,7 +252,7 @@ export default function BillingPage() {
                         onChange={(e) => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 10))}
                         className="input w-24 font-mono"
                       />
-                      <span className="text-xs text-ink-muted">credits</span>
+                      <span className="text-xs text-ink-muted">INR</span>
                       <button
                         onClick={handleTopUp}
                         className="ml-auto btn btn-primary px-4 py-1.5 text-xs font-semibold"
@@ -296,7 +330,7 @@ export default function BillingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ type: 'spring', stiffness: 100, damping: 15 }}
                       >
-                        ${tier.price}
+                        ₹{tier.price}
                       </motion.span>
                       <span className="text-sm text-ink-muted font-normal">/mo</span>
                     </span>

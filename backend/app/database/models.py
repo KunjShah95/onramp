@@ -1152,7 +1152,7 @@ class AuditEvent(Base):
 
 
 class WebhookIdempotency(Base):
-    """Stripe webhook idempotency tracker"""
+    """Webhook idempotency tracker"""
 
     __tablename__ = "onramp_webhook_idempotency"
 
@@ -1175,7 +1175,7 @@ class WebhookIdempotency(Base):
 
 
 class WebhookEventLog(Base):
-    """Stripe webhook event log"""
+    """Webhook event log"""
 
     __tablename__ = "onramp_webhook_events"
 

@@ -78,21 +78,41 @@ For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deplo
 
 ## Environment variables
 
-### Required for database startup
+The authoritative list lives in `backend/.env.example`. Highlights:
+
+### Core (required for startup)
 
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | Async SQLAlchemy PostgreSQL URL. The local default is already in `backend/.env.example`. |
 | `DB_SSL_MODE` | `disable` for local Docker Postgres; `require`/`verify-full` for production. |
+| `JWT_SECRET` | HS256 signing secret (min 32 chars). **Required in production** — the boot validator refuses to start on the dev default. |
+| `PII_ENCRYPTION_KEY` | Fernet key for PII at rest (`email`, `name`). **Required in production.** Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. |
+
+### Production-only requirements
+
+| Variable | Description |
+|----------|-------------|
+| `REDIS_URL` | **Boot-required in production** (`_validate_production_env`). Optional in dev — the app falls back to in-memory where supported. |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | Fernet key for encrypting stored GitHub tokens. Required in production. |
+| `API_KEY_HMAC_SECRET` | HMAC-SHA256 pepper for API key hashing. Required in production. |
+| `API_KEY_ALLOW_LEGACY_PEPPER` | Default `true` — keeps pre-rotation API keys authenticating. Set `false` after all legacy keys are regenerated. |
+| `ENV` | Set to `production` to enable production validation, disable `/docs` and the seed router. |
+| `ENABLE_API_DOCS` | `true` re-enables Swagger `/docs` under production (off by default). |
+| `ENABLE_SEED_ROUTER` | `true` re-enables the `POST /seed/*` demo-data router under production (off by default). |
 
 ### Optional services
 
 | Variable | Description |
 |----------|-------------|
-| `REDIS_URL` | Optional distributed cache/rate limit URL. If unset, the app falls back where supported. |
 | `GITHUB_TOKEN` | Optional GitHub token for higher repo-analysis rate limits. |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth App credentials — required for GitHub login & account linking. Callback: `{BACKEND_URL}/api/v1/auth/oauth/github/callback`. |
+| `GITHUB_WEBHOOK_SECRET` | Shared secret for GitHub push webhook HMAC verification. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth credentials — required for Google login. |
+| `BACKEND_URL`, `FRONTEND_URL` | Public URLs used to build OAuth redirect targets. |
 | `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Configure any one or more AI providers. |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Optional billing integration. |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Optional billing integration (INR). |
+| `COHERE_API_KEY`, `VOYAGE_API_KEY` | Optional embedding providers (with `EMBEDDINGS_PROVIDER`). |
 
 ## Common issues
 
@@ -101,6 +121,8 @@ For local Docker/PostgreSQL, `DB_SSL_MODE=disable` is expected. Production deplo
 | PostgreSQL connection refused | Run `docker compose up -d postgres` and wait for the health check. |
 | Password authentication failed | Ensure `backend/.env` matches the credentials for your actual PostgreSQL server. The Docker Compose local stack uses `onramp:postgres_password`. |
 | Tables missing | Run `cd backend && alembic upgrade head`. |
-| Redis connection refused | Start Redis with `docker compose up -d redis`, or leave `REDIS_URL` unset for local fallback behavior. |
+| Redis connection refused | Start Redis with `docker compose up -d redis`. In development `REDIS_URL` may be left unset; **production refuses to boot without it**. |
 | AI responses empty | Add at least one AI provider key to `backend/.env` and restart the backend. |
 | CORS errors | Ensure the frontend points to `http://localhost:8000/api/v1` and the backend allows `http://localhost:5173`. |
+| `/docs` 404 in production | By design — set `ENABLE_API_DOCS=true` to expose Swagger. |
+| Backend won't start in production | Check the boot log: the production validator requires `JWT_SECRET`, `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `API_KEY_HMAC_SECRET`, and `REDIS_URL`. |

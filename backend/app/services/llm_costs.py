@@ -29,6 +29,8 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     # Paid providers
     "gpt-4o-mini":                  {"input": 0.15, "output": 0.60},
     "claude-3-5-sonnet-20241022":   {"input": 3.00, "output": 15.00},
+    "mistral-large-latest":         {"input": 2.00, "output": 6.00},
+    "Qwen/Qwen2.5-72B-Instruct":    {"input": 0.40, "output": 0.40},
     # Embedding models — USD and INR per 1M input tokens (embeddings have no
     # output tokens). Free/local models are $0 in both currencies.
     "text-embedding-3-small":  {"input": 0.02, "output": 0.0, "inr_input": 1.70,  "inr_output": 0.0},

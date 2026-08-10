@@ -5,7 +5,8 @@ from app.llm import LLMRouter, ModelProvider, QueryType, classify_query
 
 _PROVIDER_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-    "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+    "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
 )
 
 

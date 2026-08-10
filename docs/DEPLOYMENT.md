@@ -67,27 +67,37 @@ railway up
 1. In the Railway dashboard, click **+ New** → **Database** → **Add PostgreSQL**
 2. Railway automatically adds `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` to the backend environment
 
-**Add Redis (optional):**
+**Add Redis (required in production):**
 1. Click **+ New** → **Database** → **Add Redis**
 2. Railway automatically adds `REDIS_URL` to the backend environment
+3. `REDIS_URL` is boot-required under `ENV=production` (rate limits, LLM cache, OAuth state store, repo index cache)
 
 **Set Environment Variables** in Railway Dashboard → Backend Service → Variables:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `ENV` | `production` | |
-| `ENVIRONMENT` | `production` | |
+| `ENV` | `production` | Enables boot-time prod validation; disables `/docs` + seed router |
+| `ENVIRONMENT` | `production` | Alias |
 | `AUTH_DEV_BYPASS` | `false` | MUST be false in production |
 | `CORS_ALLOWED_ORIGINS` | `https://onramp.vercel.app` | Add your Vercel domain |
 | `TRUST_PROXY` | `true` | Railway runs behind a proxy |
+| `JWT_SECRET` | `<random ≥ 32 chars>` | **Required** — boot validator rejects the dev default |
+| `PII_ENCRYPTION_KEY` | `<Fernet key>` | **Required** — encrypts `users.email`/`name` at rest |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | `<Fernet key>` | **Required** — encrypts stored GitHub tokens |
+| `API_KEY_HMAC_SECRET` | `<random ≥ 32 chars>` | **Required** — HMAC pepper for API key hashing |
 | `OPENROUTER_API_KEY` | `sk-or-v1-...` | Or `GEMINI_API_KEY` |
-| `GITHUB_TOKEN` | `ghp_...` | GitHub personal access token |
-| `STRIPE_SECRET_KEY` | `sk_live_...` | Optional — leave empty for stub |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Optional |
-| `STRIPE_PRICE_STARTUP` | `price_...` | From Stripe dashboard |
-| `STRIPE_PRICE_PROFESSIONAL` | `price_...` | From Stripe dashboard |
+| `GITHUB_TOKEN` | `ghp_...` | GitHub personal access token (repo analysis) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App — required for GitHub login & account linking |
+| `GITHUB_WEBHOOK_SECRET` | — | HMAC secret for the GitHub push webhook |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Required for Google login |
+| `BACKEND_URL` | `https://your-backend.railway.app` | Used to build OAuth redirects |
+| `FRONTEND_URL` | `https://onramp.vercel.app` | OAuth callback landing page |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | — | Razorpay API keys — enables checkout & top-ups |
+| `RAZORPAY_WEBHOOK_SECRET` | `whsec_...` | Webhook signature secret (required when Razorpay enabled) |
+| `RAZORPAY_PLAN_STARTUP` | `plan_...` | Razorpay plan ID for startup tier |
+| `RAZORPAY_PLAN_PROFESSIONAL` | `plan_...` | Razorpay plan ID for professional tier |
 | `SENTRY_DSN` | `https://...` | Optional |
-| `GITHUB_TOKEN_ENCRYPTION_KEY` | `...` | Generate with Fernet |
+| `ENABLE_API_DOCS` | `false` | Set `true` to expose Swagger `/docs` in production |
 | `DB_SSL_MODE` | `require` | Railway Postgres requires SSL |
 | `DB_POOL_SIZE` | `10` | |
 | `DB_MAX_OVERFLOW` | `20` | |
@@ -127,7 +137,16 @@ vercel --prod
 | `VITE_API_URL` | `https://backend-service-name.railway.app/api/v1` | Your Railway backend URL |
 | `VITE_WAITLIST_URL` | `https://backend-service-name.railway.app` | Same as backend URL |
 
-> **Note:** Auth is handled via Neon Auth (PostgreSQL-native managed auth). No Firebase configuration is needed. See `backend/.env.example` for Neon Auth env vars.
+> **Note:** Auth is first-party — email/password (JWT) plus Google and GitHub
+> OAuth, with GitHub **account linking** for existing users. No Neon Auth or
+> Firebase configuration is needed. To enable Google/GitHub login, register
+> OAuth Apps and set the `*_CLIENT_ID` / `*_CLIENT_SECRET` + `BACKEND_URL` /
+> `FRONTEND_URL` vars above.
+>
+> Register a GitHub OAuth App at https://github.com/settings/developers →
+> New OAuth App. Authorization callback URL:
+> `{BACKEND_URL}/api/v1/auth/oauth/github/callback`. Requested scopes:
+> `read:user user:email`.
 
 **Deploy:** Click **Deploy**. Vercel will build and deploy automatically.
 
@@ -136,17 +155,19 @@ Your frontend URL will be: `https://onramp.vercel.app` (you can rename in Vercel
 ### Step 4: Post-Deployment Checks
 
 ```bash
-# 1. Verify backend health
+# 1. Verify backend liveness + readiness
 curl https://your-backend.railway.app/health
-# Expected: {"status": "healthy"}
+# Expected: {"status": "ok", "version": "1.0.0", "uptime_seconds": ...}
+curl https://your-backend.railway.app/ready
+# Expected: {"status": "ready", "checks": {"database": {...}, "redis": {...}}}
 
-# 2. Verify API docs
+# 2. Verify API docs (only if you set ENABLE_API_DOCS=true)
 # Open: https://your-backend.railway.app/docs
-# Should show Swagger UI
+# Should show Swagger UI — otherwise it 404s by design in production
 
 # 3. Open frontend
 # https://onramp.vercel.app
-# Sign in with Google → should redirect to dashboard
+# Sign in with email/password, Google, or GitHub → should redirect to dashboard
 
 # 4. Test the full flow
 # - Create a team
@@ -154,23 +175,26 @@ curl https://your-backend.railway.app/health
 # - Analyze a repository
 # - Generate a learning path
 # - Create and complete tasks
+# - Link a GitHub account from Profile → confirm it appears on /auth/me
 ```
 
-### Step 5: Configure Stripe Webhook (Optional)
+### Step 5: Configure Razorpay Webhook (Optional)
 
-1. Go to [Stripe Dashboard](https://dashboard.stripe.com/webhooks)
-2. Click **Add endpoint**
+1. Go to [Razorpay Dashboard](https://dashboard.razorpay.com/app/webhooks)
+2. Click **Add webhook**
 3. URL: `https://your-backend.railway.app/api/v1/billing/webhook`
 4. Events to send:
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_succeeded`
-   - `invoice.payment_failed`
-   - `customer.subscription.trial_will_end`
-5. Click **Add endpoint**
-6. Copy the **Signing secret** (`whsec_...`)
-7. Add it as `STRIPE_WEBHOOK_SECRET` in Railway
+   - `subscription.activated`
+   - `subscription.charged`
+   - `subscription.completed`
+   - `subscription.cancelled`
+   - `subscription.pending`
+   - `subscription.halted`
+   - `payment.captured`
+   - `payment.failed`
+5. Click **Create webhook**
+6. Copy the **Secret** (`whsec_...`)
+7. Add it as `RAZORPAY_WEBHOOK_SECRET` in Railway
 
 ### Step 6: CI/CD Setup
 
@@ -224,16 +248,21 @@ For GCP deployment with Terraform, see `infrastructure/terraform/`.
 |----------|----------|---------|-------------|
 | `ENV` | No | `development` | Set to `production` |
 | `DATABASE_URL` | Yes | — | Set automatically by Railway PostgreSQL |
-| `REDIS_URL` | No | — | Set automatically by Railway Redis |
+| `REDIS_URL` | **Yes (prod)** | — | Boot-required in production; set automatically by Railway Redis |
+| `JWT_SECRET` | **Yes (prod)** | — | HS256 signing secret (≥ 32 chars) |
+| `PII_ENCRYPTION_KEY` | **Yes (prod)** | — | Fernet key for PII at rest |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | **Yes (prod)** | — | Fernet key for stored GitHub tokens |
+| `API_KEY_HMAC_SECRET` | **Yes (prod)** | — | HMAC pepper for API key hashing |
 | `CORS_ALLOWED_ORIGINS` | Yes | `http://localhost:5173` | Vercel frontend URL |
 | `TRUST_PROXY` | Yes | `false` | Set to `true` on Railway |
 | `OPENROUTER_API_KEY` | See notes | — | At least one AI key required |
 | `GEMINI_API_KEY` | See notes | — | Free alternative to OpenRouter |
 | `GITHUB_TOKEN` | Yes | — | For repo cloning/issues |
-| `STRIPE_SECRET_KEY` | No | — | For billing |
-| `STRIPE_WEBHOOK_SECRET` | No | — | For webhook verification |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | For GitHub auth | — | GitHub OAuth App |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google auth | — | Google OAuth App |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | No | — | For billing (INR) |
+| `RAZORPAY_WEBHOOK_SECRET` | No | — | For webhook verification |
 | `SENTRY_DSN` | No | — | For error monitoring |
-| `GITHUB_TOKEN_ENCRYPTION_KEY` | No | — | For storing user tokens |
 
 ### Frontend (set in Vercel)
 
@@ -244,18 +273,13 @@ For GCP deployment with Terraform, see `infrastructure/terraform/`.
 
 ---
 
-## Stripe Configuration
+## Razorpay Configuration
 
-1. Create a webhook endpoint in Stripe Dashboard
+1. Create a webhook endpoint in Razorpay Dashboard (`https://dashboard.razorpay.com/app/webhooks`)
 2. URL: `https://your-backend.railway.app/api/v1/billing/webhook`
-3. Events to listen for:
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_succeeded`
-   - `invoice.payment_failed`
-   - `customer.subscription.trial_will_end`
-4. Create products and prices in Stripe Catalog → set price IDs in env vars
+3. Events to listen for: `subscription.activated`, `subscription.charged`, `subscription.completed`, `subscription.cancelled`, `subscription.pending`, `subscription.halted`, `payment.captured`, `payment.failed`
+4. Create plans in Razorpay Catalog → set plan IDs in `RAZORPAY_PLAN_*` env vars
+5. Credit wallet top-ups use Razorpay **orders** + Checkout.js with server-side signature verification (`POST /billing/credits/order` + `/billing/credits/order/verify`); webhook `payment.captured` also credits wallets (idempotent per payment)
 
 ---
 
@@ -286,8 +310,10 @@ railway run python -m alembic upgrade head
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Simple health check (200 = healthy) |
-| `GET /docs` | Swagger API documentation |
+| `GET /health` | Liveness probe — always 200 while running |
+| `GET /ready` | Readiness — 503 when Postgres/Redis unreachable |
+| `GET /metrics` | Prometheus metrics |
+| `GET /docs` | Swagger API docs — **off by default in production** (`ENABLE_API_DOCS=true`) |
 | Sentry | Error tracking (configure `SENTRY_DSN`) |
 
 ---
@@ -315,11 +341,13 @@ Check browser console for CORS errors. Verify:
 ### Auth fails
 
 Common issues:
-1. Neon Auth JWKS URL or issuer not configured
-   - Set `NEON_AUTH_JWKS_URL` and `NEON_AUTH_ISSUER` in backend environment
-2. Auth dev bypass still enabled
+1. OAuth redirect mismatch
+   - The GitHub/Google callback URL registered in the OAuth App must exactly match `{BACKEND_URL}/api/v1/auth/oauth/{provider}/callback`
+2. `JWT_SECRET` not set (or still the dev default)
+   - Boot fails in production — set a real ≥ 32-char secret
+3. Auth dev bypass still enabled
    - Ensure `AUTH_DEV_BYPASS=false` in production
-3. CORS mismatch
+4. CORS mismatch
    - Ensure `CORS_ALLOWED_ORIGINS` in Railway includes the Vercel domain
 
 ### Build fails on Vercel

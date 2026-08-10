@@ -1,6 +1,6 @@
 # Razorpay Billing Replacement Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace Stripe with Razorpay across the billing stack — checkout, subscriptions, webhooks, credit top-ups, DB columns, frontend, and legal copy — with INR pricing.
 
@@ -37,7 +37,7 @@
 **Files:**
 - Modify: `backend/requirements.txt`
 
-- [ ] **Step 1: Edit requirements.txt**
+- [x] **Step 1: Edit requirements.txt**
 
 Change line 23:
 
@@ -51,13 +51,13 @@ to:
 razorpay>=1.4.0       # billing (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)
 ```
 
-- [ ] **Step 2: Install and verify import**
+- [x] **Step 2: Install and verify import**
 
 Run: `pip install -r requirements.txt`
 Then: `python -c "import razorpay; print(razorpay.__version__)"`
 Expected: prints a version >= 1.4 (no ImportError).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/requirements.txt
@@ -72,7 +72,7 @@ git commit -m "chore(billing): replace stripe dependency with razorpay"
 - Modify: `backend/app/database/models.py`
 - Create: `backend/alembic/versions/023_razorpay_billing.py`
 
-- [ ] **Step 1: Update the Subscription model**
+- [x] **Step 1: Update the Subscription model**
 
 In `backend/app/database/models.py`, replace lines 664-665:
 
@@ -104,7 +104,7 @@ with:
             "razorpay_payment_id": self.razorpay_payment_id,
 ```
 
-- [ ] **Step 2: Create the Alembic migration**
+- [x] **Step 2: Create the Alembic migration**
 
 Create `backend/alembic/versions/023_razorpay_billing.py`:
 
@@ -145,12 +145,12 @@ def downgrade() -> None:
                     new_column_name='stripe_customer_id', existing_type=sa.String(255))
 ```
 
-- [ ] **Step 3: Run the migration (dev DB)**
+- [x] **Step 3: Run the migration (dev DB)**
 
 Run: `cd backend && alembic upgrade head`
 Expected: applies `023_razorpay_billing`; verify with `alembic current` shows `023_razorpay_billing`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/app/database/models.py backend/alembic/versions/023_razorpay_billing.py
@@ -166,7 +166,7 @@ This task replaces every Stripe reference with Razorpay. The document-store CRUD
 (`create_subscription`, `get_subscription`, `update_subscription`, `cancel_subscription`,
 idempotency helpers, event log) stay unchanged.
 
-- [ ] **Step 1: Replace module constants and pricing**
+- [x] **Step 1: Replace module constants and pricing**
 
 Replace the top-of-file block (lines 11-25):
 
@@ -202,7 +202,7 @@ TIER_PRICING = {
 }
 ```
 
-- [ ] **Step 2: Rename attach + enable/accessor methods**
+- [x] **Step 2: Rename attach + enable/accessor methods**
 
 Replace lines 100-122 (the `attach_stripe` method and the Stripe guard/accessor):
 
@@ -233,7 +233,7 @@ Replace lines 100-122 (the `attach_stripe` method and the Stripe guard/accessor)
         )
 ```
 
-- [ ] **Step 3: Replace create_checkout_session**
+- [x] **Step 3: Replace create_checkout_session**
 
 Replace lines 124-147 with a Razorpay subscription creator:
 
@@ -263,7 +263,7 @@ Replace lines 124-147 with a Razorpay subscription creator:
         return {"url": sub.get("short_url"), "subscription_id": sub.get("id")}
 ```
 
-- [ ] **Step 4: Replace webhook verification**
+- [x] **Step 4: Replace webhook verification**
 
 Replace lines 188-238 (`_verify_and_parse_event`) with a Razorpay verifier. Razorpay sends the
 event as the raw body (not wrapped), and signs it with the `X-Razorpay-Signature` header.
@@ -337,11 +337,11 @@ event as the raw body (not wrapped), and signs it with the `X-Razorpay-Signature
         }
 ```
 
-- [ ] **Step 5: Update handle_webhook guard + routing**
+- [x] **Step 5: Update handle_webhook guard + routing**
 
 Replace `is_stripe_enabled()` with `is_razorpay_enabled()` in `handle_webhook` (line 247).
 
-- [ ] **Step 6: Rewrite _process_event for Razorpay event types**
+- [x] **Step 6: Rewrite _process_event for Razorpay event types**
 
 Replace lines 284-358 with:
 
@@ -412,7 +412,7 @@ Replace lines 284-358 with:
             return {"unhandled": True}
 ```
 
-- [ ] **Step 7: Rename the by-id updater + add top-up helper**
+- [x] **Step 7: Rename the by-id updater + add top-up helper**
 
 Replace `_update_subscription_by_stripe_id` (lines 378-401) with `_update_subscription_by_razorpay_id`
 (querying `razorpay_subscription_id`), and add a `_credit_topup` helper:
@@ -468,7 +468,7 @@ Replace `_update_subscription_by_stripe_id` (lines 378-401) with `_update_subscr
         return True
 ```
 
-- [ ] **Step 8: Fix `create_subscription` defaults**
+- [x] **Step 8: Fix `create_subscription` defaults**
 
 In `create_subscription` (lines 66-67), replace:
 
@@ -484,13 +484,13 @@ with:
             "razorpay_subscription_id": None,
 ```
 
-- [ ] **Step 9: Run existing tests and confirm expected failures**
+- [x] **Step 9: Run existing tests and confirm expected failures**
 
 Run: `cd backend && pytest tests/test_billing_e2e.py tests/test_billing_webhook.py -x`
 Expected: tests fail because they still reference `attach_stripe`, `_stripe`,
 `STRIPE_SECRET_KEY`, `STRIPE_PRICE_IDS`, and `stripe_customer_id`. These are updated in Task 4.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add backend/app/services/billing_service.py
@@ -502,7 +502,7 @@ git commit -m "feat(billing): swap billing service from Stripe to Razorpay"
 **Files:**
 - Modify: `backend/app/api/v1/billing.py`
 
-- [ ] **Step 1: Replace AttachStripeRequest + attach route**
+- [x] **Step 1: Replace AttachStripeRequest + attach route**
 
 Replace lines 40-42 and 102-116:
 
@@ -532,7 +532,7 @@ async def attach_razorpay(
     return {"attached": True}
 ```
 
-- [ ] **Step 2: Update the webhook receiver**
+- [x] **Step 2: Update the webhook receiver**
 
 Replace the `stripe_webhook` route (lines 134-147) with a Razorpay receiver:
 
@@ -551,7 +551,7 @@ async def razorpay_webhook(request: Request):
     return result
 ```
 
-- [ ] **Step 3: Add credit top-up order + verify endpoints**
+- [x] **Step 3: Add credit top-up order + verify endpoints**
 
 Append after the existing `/credits/topup` endpoint:
 
@@ -592,17 +592,17 @@ async def verify_credit_order(
     return result
 ```
 
-- [ ] **Step 4: Update the top-up docstring**
+- [x] **Step 4: Update the top-up docstring**
 
 In `top_up_credits`, change the docstring reference from "after a successful Stripe payment"
 to "after a successful Razorpay payment" (optional, cosmetic).
 
-- [ ] **Step 5: Verify routes import cleanly**
+- [x] **Step 5: Verify routes import cleanly**
 
 Run: `cd backend && python -c "from app.api.v1.billing import router; print(len(router.routes))"`
 Expected: no ImportError; prints a route count.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/api/v1/billing.py
@@ -614,7 +614,7 @@ git commit -m "feat(billing): razorpay webhook + credit order/verify endpoints"
 **Files:**
 - Modify: `backend/app/services/billing_service.py`
 
-- [ ] **Step 1: Add create_payment_order**
+- [x] **Step 1: Add create_payment_order**
 
 Add these methods to `BillingService` (after `create_checkout_session`):
 
@@ -691,12 +691,12 @@ Add these methods to `BillingService` (after `create_checkout_session`):
         return {"credited": True, "credits": credits}
 ```
 
-- [ ] **Step 2: Run the service import check**
+- [x] **Step 2: Run the service import check**
 
 Run: `cd backend && python -c "from app.services.billing_service import BillingService; print('ok')"`
 Expected: prints `ok`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/app/services/billing_service.py
@@ -709,7 +709,7 @@ git commit -m "feat(billing): add razorpay order + payment verification for cred
 - Modify: `backend/app/main.py`
 - Modify: `backend/.env.example`
 
-- [ ] **Step 1: Update _validate_production_env**
+- [x] **Step 1: Update _validate_production_env**
 
 In `backend/app/main.py`, replace lines 113-126:
 
@@ -732,7 +732,7 @@ In `backend/app/main.py`, replace lines 113-126:
 
 Also update the docstring on line 103 (optional, cosmetic: "Stripe webhook" ? "Razorpay webhook").
 
-- [ ] **Step 2: Update .env.example**
+- [x] **Step 2: Update .env.example**
 
 In `backend/.env.example`, replace lines 100-103:
 
@@ -754,12 +754,12 @@ RAZORPAY_PLAN_PROFESSIONAL=
 RAZORPAY_PLAN_USAGE_BASED=
 ```
 
-- [ ] **Step 3: Verify main imports**
+- [x] **Step 3: Verify main imports**
 
 Run: `cd backend && python -c "import app.main; print('ok')"`
 Expected: prints `ok`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/app/main.py backend/.env.example
@@ -775,7 +775,7 @@ git commit -m "feat(billing): razorpay env validation and config vars"
 - Create: `backend/tests/test_razorpay_topup.py`
 - Create: `backend/tests/test_razorpay_webhook_events.py`
 
-- [ ] **Step 1: Rewrite test_billing_e2e.py**
+- [x] **Step 1: Rewrite test_billing_e2e.py**
 
 Replace the entire file with a Razorpay-flavored version. Key changes: env vars,
 `attach_razorpay`, `_razorpay` mock, `RAZORPAY_PLAN_IDS`, `razorpay_subscription_id`,
@@ -926,12 +926,12 @@ class TestPricingTiers:
         assert BillingService.get_pricing()["startup"]["price_monthly"] == 999
 ```
 
-- [ ] **Step 2: Run the e2e tests**
+- [x] **Step 2: Run the e2e tests**
 
 Run: `cd backend && pytest tests/test_billing_e2e.py -v`
 Expected: all pass.
 
-- [ ] **Step 3: Rewrite test_billing_webhook.py**
+- [x] **Step 3: Rewrite test_billing_webhook.py**
 
 Replace the file with Razorpay signature tests. The `service` fixture now uses
 `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`; env vars are `RAZORPAY_WEBHOOK_SECRET` and
@@ -1011,12 +1011,12 @@ async def test_handle_webhook_returns_error_on_invalid_signature(service, monkey
     result = await service.handle_webhook(b'{"event": "subscription.charged"}', sig_header="bad-sig")
     assert result == {"error": "Invalid webhook signature"}
 ```
-- [ ] **Step 4: Run webhook tests**
+- [x] **Step 4: Run webhook tests**
 
 Run: `cd backend && pytest tests/test_billing_webhook.py -v`
 Expected: all pass.
 
-- [ ] **Step 5: Update test_prod_env_validation.py**
+- [x] **Step 5: Update test_prod_env_validation.py**
 
 Replace `STRIPE_WEBHOOK_SECRET` with `RAZORPAY_WEBHOOK_SECRET` in the `REQUIRED_VARS`
 tuple (line 12), and replace the Stripe references in `_set_all_required` (line 52),
@@ -1050,12 +1050,12 @@ body's `STRIPE_*` deletions with:
     monkeypatch.delenv("RAZORPAY_WEBHOOK_SECRET", raising=False)
 ```
 
-- [ ] **Step 6: Run prod-env validation tests**
+- [x] **Step 6: Run prod-env validation tests**
 
 Run: `cd backend && pytest tests/test_prod_env_validation.py -v`
 Expected: all pass.
 
-- [ ] **Step 7: Create test_razorpay_topup.py**
+- [x] **Step 7: Create test_razorpay_topup.py**
 
 ```python
 """Credit wallet top-up via Razorpay orders and payment signature verification."""
@@ -1139,7 +1139,7 @@ class TestVerifyPaymentOrder:
         assert wallet["balance"] == 200
 ```
 
-- [ ] **Step 8: Create test_razorpay_webhook_events.py**
+- [x] **Step 8: Create test_razorpay_webhook_events.py**
 
 ```python
 """Razorpay webhook event -> local state mapping (payment.captured top-ups)."""
@@ -1201,17 +1201,17 @@ class TestPaymentCapturedTopup:
         assert wallet["balance"] == 100
 ```
 
-- [ ] **Step 9: Run the new tests**
+- [x] **Step 9: Run the new tests**
 
 Run: `cd backend && pytest tests/test_razorpay_topup.py tests/test_razorpay_webhook_events.py -v`
 Expected: all pass.
 
-- [ ] **Step 10: Run the full backend test suite**
+- [x] **Step 10: Run the full backend test suite**
 
 Run: `cd backend && pytest -q`
 Expected: no failures (Stripe references removed everywhere).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add backend/tests/
@@ -1223,7 +1223,7 @@ git commit -m "test(billing): update and add tests for Razorpay billing"
 **Files:**
 - Modify: `web/src/lib/api.ts`
 
-- [ ] **Step 1: Update the Subscription type**
+- [x] **Step 1: Update the Subscription type**
 
 In `web/src/lib/api.ts`, replace the `Subscription` interface (lines 939-947):
 
@@ -1240,7 +1240,7 @@ export interface Subscription {
 }
 ```
 
-- [ ] **Step 2: Replace attachStripe with attachRazorpay**
+- [x] **Step 2: Replace attachStripe with attachRazorpay**
 
 Replace lines 987-999:
 
@@ -1260,7 +1260,7 @@ export async function attachRazorpay(
 }
 ```
 
-- [ ] **Step 3: Update createCheckoutSession return type**
+- [x] **Step 3: Update createCheckoutSession return type**
 
 Replace lines 1005-1015:
 
@@ -1278,7 +1278,7 @@ export async function createCheckoutSession(data: {
 }
 ```
 
-- [ ] **Step 4: Add credit order + verify functions**
+- [x] **Step 4: Add credit order + verify functions**
 
 Append after `createCheckoutSession`:
 
@@ -1309,12 +1309,12 @@ export async function verifyCreditOrder(data: {
 }
 ```
 
-- [ ] **Step 5: Verify the client typechecks**
+- [x] **Step 5: Verify the client typechecks**
 
 Run: `cd web && npx tsc --noEmit`
 Expected: no errors related to `api.ts` (other pre-existing errors, if any, are untouched).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add web/src/lib/api.ts
@@ -1326,7 +1326,7 @@ git commit -m "feat(billing): razorpay API client (attach, checkout, credit orde
 **Files:**
 - Modify: `web/src/pages/BillingPage.tsx`
 
-- [ ] **Step 1: Update imports**
+- [x] **Step 1: Update imports**
 
 Replace the import from `../lib/api` (line 3) with the Razorpay functions added in Task 8:
 
@@ -1337,7 +1337,7 @@ import { createSubscription, getSubscription, cancelSubscription, createCheckout
 Also add `RazorpayLogo` (or reuse `CreditCard`) from `@phosphor-icons/react` on line 10 � no
 new dependency required; keep existing icon imports.
 
-- [ ] **Step 2: Update tier card prices to INR**
+- [x] **Step 2: Update tier card prices to INR**
 
 Replace the `tiers` array (lines 29-35) so prices are INR and the usage-based tier shows the
 ?499 base:
@@ -1352,13 +1352,13 @@ Replace the `tiers` array (lines 29-35) so prices are INR and the usage-based ti
   ]
 ```
 
-- [ ] **Step 3: Swap currency symbols in JSX**
+- [x] **Step 3: Swap currency symbols in JSX**
 
 Replace `$` with `?` in the price displays:
 - Line 173: `${subscription.price}/mo` ? `?{subscription.price}/mo`
 - Line 301: `${tier.price}` ? `?{tier.price}`
 
-- [ ] **Step 4: Implement Razorpay top-up flow**
+- [x] **Step 4: Implement Razorpay top-up flow**
 
 Replace `handleTopUp` (lines 109-117) with an order + Checkout.js flow:
 
@@ -1408,12 +1408,12 @@ Replace `handleTopUp` (lines 109-117) with an order + Checkout.js flow:
   }
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `cd web && npx tsc --noEmit`
 Expected: no new errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add web/src/pages/BillingPage.tsx
@@ -1427,7 +1427,7 @@ git commit -m "feat(billing): INR pricing + Razorpay checkout for credit top-ups
 - Modify: `web/src/pages/PrivacyPage.tsx`
 - Modify: `web/src/pages/DPAPage.tsx`
 
-- [ ] **Step 1: TermsPage.tsx**
+- [x] **Step 1: TermsPage.tsx**
 
 Replace "Paid plans are billed in advance through Stripe on a monthly or annual cycle..."
 (line 42) with:
@@ -1436,7 +1436,7 @@ Replace "Paid plans are billed in advance through Stripe on a monthly or annual 
       'Paid plans are billed in advance through Razorpay on a monthly or annual cycle and renew automatically until cancelled. Usage-based charges, where applicable, are billed in arrears. You can cancel at any time from the billing page; cancellation takes effect at the end of the current billing period. Fees are non-refundable except where required by law. We may change pricing with at least 30 days notice.',
 ```
 
-- [ ] **Step 2: PrivacyPage.tsx**
+- [x] **Step 2: PrivacyPage.tsx**
 
 Replace "Payment data: handled by Stripe. We never store full card numbers on our servers."
 (line 14) with:
@@ -1447,7 +1447,7 @@ Replace "Payment data: handled by Stripe. We never store full card numbers on ou
 
 Replace "payment processing (Stripe)" (line 37) with "payment processing (Razorpay)".
 
-- [ ] **Step 3: DPAPage.tsx**
+- [x] **Step 3: DPAPage.tsx**
 
 Replace "'Stripe Inc. � Payment processing'" (line 41) with:
 
@@ -1455,12 +1455,12 @@ Replace "'Stripe Inc. � Payment processing'" (line 41) with:
   'Razorpay Inc. � Payment processing',
 ```
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 Run: `cd web && npx tsc --noEmit`
 Expected: no new errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web/src/pages/TermsPage.tsx web/src/pages/PrivacyPage.tsx web/src/pages/DPAPage.tsx
@@ -1473,7 +1473,7 @@ git commit -m "docs(legal): reference Razorpay instead of Stripe in legal pages"
 **Files:**
 - Modify: various
 
-- [ ] **Step 1: Search for leftover Stripe references**
+- [x] **Step 1: Search for leftover Stripe references**
 
 Run: `rg -i "stripe" backend/app web/src backend/tests backend/.env.example backend/requirements.txt`
 Expected: no matches except the historical Alembic migration
@@ -1481,18 +1481,18 @@ Expected: no matches except the historical Alembic migration
 and `backend/tests/test_prod_env_validation.py` if a docstring still mentions Stripe
 (update those docstrings to Razorpay).
 
-- [ ] **Step 2: Confirm webhook path is public**
+- [x] **Step 2: Confirm webhook path is public**
 
 In `backend/app/main.py`, confirm `/api/v1/billing/webhook` remains in the
 AuthMiddleware public_paths list (line ~342). No change needed unless the route moved.
 
-- [ ] **Step 3: Run the full backend test suite + frontend typecheck**
+- [x] **Step 3: Run the full backend test suite + frontend typecheck**
 
 Run: `cd backend && pytest -q`
 Run: `cd web && npx tsc --noEmit`
 Expected: backend tests pass; no new frontend type errors.
 
-- [ ] **Step 4: Commit any cleanup**
+- [x] **Step 4: Commit any cleanup**
 
 ```bash
 git add -A

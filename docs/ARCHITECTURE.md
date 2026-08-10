@@ -7,6 +7,33 @@
 
 ---
 
+## Current State (Aug 2026) — Delta vs. This Document
+
+The core architecture below (FastAPI monolith, multi-provider LLM router,
+React 19 SPA) is unchanged and current. These specifics have **evolved**:
+
+- **Auth** — now first-party **email/password (JWT) + Google + GitHub OAuth**
+  with GitHub account linking; Neon Auth is no longer required. JWT HS256,
+  7-day expiry, refresh tokens, `POST /auth/refresh`.
+- **Hosting** — backend on **Railway** (port 8000), not Render port 3007.
+- **Redis** — **required in production** (boot-validated): rate limiting,
+  LLM response cache (+ semantic tier), OAuth state store, repo index cache.
+  Not optional.
+- **LLM caching** — this doc says "no caching"; the gateway now caches
+  repeated prompts in Redis (`X-LLM-Cache: HIT`, zero cost) with a semantic
+  near-duplicate tier (`LLM_SEMANTIC_THRESHOLD`), TTL 1h.
+- **Embeddings** — pluggable router (`EMBEDDINGS_PROVIDER`: openai / cohere /
+  voyage / pgvector / none) instead of keyword-only; repo indexes are built
+  parse-once and cached via the Celery `build_repo_index` task.
+- **API keys** — implemented: `nx_live_` / `nx_test_` keys, HMAC-SHA256
+  hashed with a versioned pepper (`API_KEY_HMAC_SECRET`), legacy-key
+  fallback during rotation (`API_KEY_ALLOW_LEGACY_PEPPER`).
+- **Health** — `/health` (liveness) + `/ready` (readiness) + `/metrics`
+  mounted at the root; `/docs` is off by default in production
+  (`ENABLE_API_DOCS=true` to enable).
+
+---
+
 ## Executive Overview
 
 **What it is:** Three-tier AI-powered developer onboarding system. Single backend engine powering two frontends (API + Web).
@@ -43,14 +70,14 @@
                         │                        │
 ┌───────────────────────▼─────────────────────────▼──────────────┐
 │                      FASTAPI GATEWAY                            │
-│                   (Port 3007 / Render)                          │
+│                      (Port 8000 / Railway)                      │
 ├────────────────────────────────────────────────────────────────┤
 │  Middleware Layer:                                              │
-│  • CORS (whitelist origins)                                    │
-│  • Auth (Neon Auth session verification)                      │
-│  • Rate Limiting (token bucket per user/org)                   │
-│  • Request Logging (Sentry)                                    │
-│  • Request Validation (Pydantic)                               │
+  │  • CORS (whitelist origins)                                    │
+  │  • Auth (JWT / API key / OAuth verification)                   │
+  │  • Rate Limiting (token bucket per user/org, Redis)            │
+  │  • Request Logging (Sentry)                                    │
+  │  • Request Validation (Pydantic)                               │
 └────────────────┬────────────────────────────────────┬──────────┘
                  │                                    │
      ┌───────────▼─────────────┐      ┌──────────────▼──────┐
@@ -90,7 +117,7 @@
      ├────────────────────────────────────────────┤
      │ GitHub:  Public repo access (read-only)     │
      │ OpenRouter:  Primary LLM gateway                │
-     │ PostgreSQL:  Auth + dynamic documents (Neon)    │
+     │ PostgreSQL:  Users + dynamic documents (Neon/Railway)    │
      │ Temp:     Cloned repos (cleaned up)          │
      │ Memory:   Embeddings index (ephemeral)       │
      └────────────────────────────────────────────┘
@@ -113,7 +140,7 @@ app = FastAPI(title="Onramp 2.0 API")
 # Middleware Stack (order matters)
 1. CORSMiddleware → Allow web/IDE/actions
 2. LoggingMiddleware → Sentry integration
-3. AuthMiddleware → Neon Auth session verification
+3. AuthMiddleware → JWT / API key verification
 4. RateLimitMiddleware → Token bucket per user
 5. RequestValidation → Pydantic models
 
@@ -333,7 +360,7 @@ class BaseAgent(ABC):
 |--------|--------|------|-----------|
 | GitHub | Public API (read-only) | Repos, issues, PRs, commits | Real-time |
 | LLM Router | Multi-provider HTTPS API | LLM responses, analysis | Ephemeral |
-| Neon Auth | SDK | User identity, session tokens | Session-based |
+| Auth (first-party) | JWT + OAuth | User identity, JWT + refresh tokens | Session-based |
 | PostgreSQL | asyncpg / SQLAlchemy | User prefs, analyses, teams, repos | Persistent |
 | Redis | Optional (cache/rate-limit) | Rate limit counters, cached analyses | TTL-based |
 | Temp filesystem | Local | Cloned repos | Cleaned up (24h max) |
@@ -418,7 +445,7 @@ return {
 | created_at | TIMESTAMPTZ | auto-generated |
 | preferences | JSONB | {theme, notification_level, ...} |
 | tier | VARCHAR(50) | free/startup/professional/enterprise |
-| neon_user_id | VARCHAR(255) | Neon Auth user reference |
+| provider | VARCHAR(50) | password / google.com / github.com |
 
 ### repos
 
@@ -493,7 +520,7 @@ LLM: Multi-provider router (dev key for any supported provider)
 ┌──────────────────────────────────────────────────────────┐
 │                  POSTGRES (Neon / Managed)               │
 │  Tables: users, repos, analyses, teams, team_members    │
-│  Auth: Neon Auth (Better Auth) session verification      │
+│  Auth: JWT (email/password + Google/GitHub OAuth)          │
 │  Migrations: Alembic                                     │
 └──────────────────────────────────────────────────────────┘
 
@@ -560,9 +587,12 @@ Frontend:
 
 ### Authentication
 
-- Neon Auth (Better Auth) session verification on every request
+- JWT (HS256) issued by `/auth/login`, `/auth/register`, or OAuth flows;
+  refresh tokens via `POST /auth/refresh`
+- Onramp API keys (`nx_live_...` / `nx_test_...`) accepted where supported
 - Tokens extracted from Authorization header: `Bearer <token>`
 - Invalid/expired session → 401 Unauthorized
+- Public paths (health, OAuth callbacks, webhooks) skip auth via exact matching
 
 ### Authorization
 
@@ -570,11 +600,15 @@ Frontend:
 - Check: `analysis.user_id == authenticated_user_id`
 - Missing check → 403 Forbidden (logged)
 
-### API Keys (Future)
+### API Keys (Implemented)
 
-- AIaaS users get `sk_live_...` API keys
-- Key → Organization (rate limit scoped to org)
-- Key rotation supported (old keys continue working for 30 days)
+- AIaaS users get `nx_live_...` / `nx_test_...` API keys
+- Key → Organization/team (rate limit scoped to org)
+- Keys are stored as **HMAC-SHA256 hashes** with a versioned pepper
+  (`API_KEY_HMAC_SECRET` + `pepper_version` on the key row)
+- Rotation supported — old keys keep working through the legacy-pepper
+  fallback window (`API_KEY_ALLOW_LEGACY_PEPPER`, default `true`);
+  `/admin/keys/rehash` reports current-vs-legacy classification
 
 ### Data Privacy
 
@@ -596,14 +630,17 @@ Frontend:
 ### Horizontal Scaling
 
 - **Stateless APIs:** Each instance independent, can add/remove freely
-- **Load balancing:** Render handles auto-scaling (0-10 instances)
+- **Load balancing:** Railway / container platform handles horizontal auto-scaling
 - **Database:** Neon PostgreSQL (serverless, auto-scaling connections)
 
 ### Caching Strategy
 
-- **Repo analysis:** Cache in memory (1h TTL), keyed by (repo_url, branch)
-- **Embeddings index:** Rebuild on-demand, not persisted (ok for < 10k repos)
-- **LLM responses:** No caching (analyses are fresh)
+- **Repo analysis / index:** Cloned + parsed **once**, cached in Redis as a
+  compact context document keyed by `repo_url@branch`; refreshed nightly by
+  the Celery beat `refresh_repo_indexes` task and on GitHub push webhooks
+- **LLM responses:** Cached in Redis (exact tier, TTL 1h) with a semantic
+  near-duplicate tier (`LLM_SEMANTIC_THRESHOLD`, subset gate) — hits cost $0
+- **Rate limiting:** Redis-backed in production (in-memory fallback in dev)
 
 ### Async / Concurrency
 
@@ -728,10 +765,10 @@ tests/
 | Database | PostgreSQL | — | PostgreSQL+Neon Auth | Scalability, Neon Auth integration, SQL |
 | Frontend | Vue | React | React | Ecosystem, team familiarity |
 | Design System | Shadcn | Aceternity | Aceternity | Premium feel, minimal |
-| Deployment | AWS | Render + Vercel | R+V | Lower ops burden |
-| Auth | Custom JWT | — | Neon Auth | Database-native auth, Better Auth SDK |
-| Caching | Redis | In-memory | In-mem | No infrastructure, good enough |
-| Embeddings | Vector DB | Keyword | Keyword | Phase 1: simple, upgrade Phase 2 |
+| Deployment | AWS | Railway + Vercel | R+V | Lower ops burden |
+| Auth | Custom JWT | Neon Auth | JWT + OAuth | First-party email/password + Google/GitHub OAuth, account linking |
+| Caching | Redis | In-memory | Redis (prod) | Required in production: rate limits, LLM cache, OAuth state, repo index |
+| Embeddings | Vector DB | Keyword | Pluggable | `EMBEDDINGS_PROVIDER`: openai / cohere / voyage / pgvector / none |
 
 ---
 

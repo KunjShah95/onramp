@@ -9,13 +9,14 @@ import pytest
 from app.main import _validate_production_env
 
 REQUIRED_VARS = (
-    "DATABASE_URL", "STRIPE_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY",
+    "DATABASE_URL", "RAZORPAY_WEBHOOK_SECRET", "GITHUB_TOKEN_ENCRYPTION_KEY",
     "REDIS_URL", "JWT_SECRET", "PII_ENCRYPTION_KEY",
     "API_KEY_HMAC_SECRET",
 )
 _ALL_ENV_KEYS = REQUIRED_VARS + (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-    "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+    "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
     "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET",
     "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
     "BACKEND_URL", "FRONTEND_URL",
@@ -47,9 +48,9 @@ def _set_all_required(monkeypatch, llm_key="OPENAI_API_KEY"):
         else:
             monkeypatch.setenv(var, "x")
     monkeypatch.setenv(llm_key, "sk-x")
-    # Enable Stripe so STRIPE_WEBHOOK_SECRET is actually required (billing is
-    # optional — without STRIPE_SECRET_KEY it runs in stub mode).
-    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_x")
+    # Enable Razorpay so RAZORPAY_WEBHOOK_SECRET is actually required (billing is
+    # optional — without RAZORPAY_KEY_ID it runs in stub mode).
+    monkeypatch.setenv("RAZORPAY_KEY_ID", "rzp_test_x")
 
 
 def test_non_production_skips_validation(monkeypatch):
@@ -89,16 +90,16 @@ def test_production_without_any_llm_key_fails(monkeypatch):
         _validate_production_env()
 
 
-def test_production_without_stripe_config_does_not_require_webhook_secret(monkeypatch):
-    """Billing is optional — a production deploy without Stripe needs no webhook secret."""
+def test_production_without_razorpay_config_does_not_require_webhook_secret(monkeypatch):
+    """Billing is optional — a production deploy without Razorpay needs no webhook secret."""
     monkeypatch.setenv("ENV", "production")
     _set_all_required(monkeypatch)
-    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
-    monkeypatch.delenv("STRIPE_PRICE_STARTUP", raising=False)
-    monkeypatch.delenv("STRIPE_PRICE_PROFESSIONAL", raising=False)
-    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("RAZORPAY_KEY_ID", raising=False)
+    monkeypatch.delenv("RAZORPAY_PLAN_STARTUP", raising=False)
+    monkeypatch.delenv("RAZORPAY_PLAN_PROFESSIONAL", raising=False)
+    monkeypatch.delenv("RAZORPAY_WEBHOOK_SECRET", raising=False)
 
-    _validate_production_env()  # must not raise even with no Stripe webhook secret
+    _validate_production_env()  # must not raise even with no Razorpay webhook secret
 
 
 def test_production_with_any_single_llm_key_passes(monkeypatch):

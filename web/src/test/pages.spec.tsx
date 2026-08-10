@@ -29,7 +29,7 @@ vi.mock(import('../lib/api'), async (importOriginal) => {
     listPlaybooks: { playbooks: [] },
     getPlaybook: { id: 'p1', name: 'Playbook', steps: [] },
     listPricing: { tiers: [] },
-    createCheckoutSession: { url: 'https://checkout.stripe.com/test' },
+    createCheckoutSession: { url: 'https://rzp.io/test', subscription_id: 'sub_test' },
     createApiKey: { key: { id: 'k1', label: 'Key' }, raw_key: 'sk-test' },
     listApiKeys: { keys: [] },
     validateApiKey: { valid: true },

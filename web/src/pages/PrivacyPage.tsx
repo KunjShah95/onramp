@@ -11,7 +11,7 @@ const sections: LegalSection[] = [
       'Team data: team names, member roles, invitations you send, and playbooks you create.',
       'Repository data: repository URLs you connect and code snippets you submit for analysis. We process code to generate answers, learning paths, and reviews; we do not use your code to train AI models.',
       'Usage data: API requests, token consumption, feature usage, and billing events, used for quota enforcement and product analytics.',
-      'Payment data: handled by Stripe. We never store full card numbers on our servers.',
+      'Payment data: handled by Razorpay. We never store full card numbers on our servers.',
     ],
   },
   {
@@ -34,7 +34,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Sharing',
     paragraphs: [
-      'We do not sell your personal information. We share data only with service providers necessary to run Onramp: cloud hosting, PostgreSQL database hosting (Neon), payment processing (Stripe), email delivery, error monitoring (Sentry, configured without personally identifiable information), and the LLM providers described above. We may disclose information if required by law.',
+      'We do not sell your personal information. We share data only with service providers necessary to run Onramp: cloud hosting, PostgreSQL database hosting (Neon), payment processing (Razorpay), email delivery, error monitoring (Sentry, configured without personally identifiable information), and the LLM providers described above. We may disclose information if required by law.',
     ],
   },
   {

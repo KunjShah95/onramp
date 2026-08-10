@@ -39,7 +39,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Billing',
     paragraphs: [
-      'Paid plans are billed in advance through Stripe on a monthly or annual cycle and renew automatically until cancelled. Usage-based charges, where applicable, are billed in arrears. You can cancel at any time from the billing page; cancellation takes effect at the end of the current billing period. Fees are non-refundable except where required by law. We may change pricing with at least 30 days notice.',
+      'Paid plans are billed in advance through Razorpay on a monthly or annual cycle and renew automatically until cancelled. Usage-based charges, where applicable, are billed in arrears. You can cancel at any time from the billing page; cancellation takes effect at the end of the current billing period. Fees are non-refundable except where required by law. We may change pricing with at least 30 days notice.',
     ],
   },
   {

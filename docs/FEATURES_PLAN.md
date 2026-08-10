@@ -39,7 +39,7 @@
 
 | FEATURES_PLAN ID | Feature | Old Priority | Old Status | New Phase | New Status |
 |---|---|---|---|---|---|
-| #1 | Real Stripe Billing Webhook | P0 | ✅ Done | — | ✅ Done |
+| #1 | Real Razorpay Billing Webhook | P0 | ✅ Done | — | ✅ Done |
 | #2 | Production Deployment | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
 | #3 | E2E / Integration Tests (Frontend) | P0 | 🟡 Partial | **v1.2** | 🟢 Ready |
 | #4 | Interactive Repo Visualization | P1 | 🟡 Partial | **v1.2** | 🟢 Ready |
@@ -774,7 +774,7 @@ Stretch ────────────────────────
 
 | ID | Feature | Shipped In |
 |----|---------|-----------|
-| #1 | Real Stripe Billing Webhook | v1.0 |
+| #1 | Real Razorpay Billing Webhook | v1.0 |
 | #5 | Knowledge Quizzes (QuizGenerator agent) | v1.1 |
 | #6 | Gamification System (XP, badges, streaks) | v1.1 |
 | #9 | React Query Integration | v1.1 |

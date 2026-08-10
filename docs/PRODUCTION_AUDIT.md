@@ -1,7 +1,7 @@
 # 🔍 Production Deployment Audit — Comprehensive Findings
 
-**Date:** July 2026  
-**Status:** ⚠️ Not production-ready — 14 blockers identified
+**Date:** July 2026 (updated Aug 2026)  
+**Status:** ✅ **Production-ready at the code level** — all P0 boot blockers and P1 items are fixed. Remaining items are manual GitHub secret setup (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `RENDER_DEPLOY_HOOK_URL`) plus the P2 backlog.
 
 ---
 
@@ -27,7 +27,7 @@
 | `GITHUB_TOKEN` | ✅ Added to `docker-compose.prod.yml` + root `.env.example` |
 | `REDIS_URL` | ✅ Constructed in `docker-compose.prod.yml` as `redis://:${REDIS_PASSWORD}@redis:6379/0` (Railway auto-injects) |
 | `TRUST_PROXY` | ✅ Set to `true` in `docker-compose.prod.yml` (Railway requirement) |
-| `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_*` | ✅ Added to root `.env.example` |
+| `RAZORPAY_*` | ✅ Replaced Stripe vars in root `.env.example` (Aug 2026) |
 
 **Remaining:** Slack vars, SENTRY_DSN — depend on service setup, not P0 blockers.
 
@@ -205,12 +205,18 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 |---|--------|--------|
 | 1 | Add `PII_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block | ✅ Fixed |
 | 2 | Add `GITHUB_TOKEN_ENCRYPTION_KEY` to `docker-compose.prod.yml` backend env block | ✅ Fixed |
-| 3 | Add `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_*` env vars to root `.env.example` | ✅ Fixed |
+| 3 | Add billing env vars to root `.env.example` — Stripe → Razorpay (`RAZORPAY_*`) | ✅ Fixed |
 | 4 | Add `REDIS_URL` construction from individual Redis vars | ✅ Fixed |
 | 5 | Add `GITHUB_TOKEN` to `docker-compose.prod.yml` backend env block | ✅ Fixed |
 | 6 | Fix `JWT_SECRET` vs `JWT_SECRET_KEY` naming mismatch | ✅ Fixed |
 | 7 | Set up `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` in GitHub secrets | ➡️ Manual (GitHub Settings) |
 | 8 | Set up `RENDER_DEPLOY_HOOK_URL` in GitHub secrets | ➡️ Manual (GitHub Settings) |
+| 9 | Fix K8s probes (`/api/v1/observability/health/live` → `/health` + `/ready`) | ✅ Fixed (Aug 2026) |
+| 10 | Fix K8s dead `CORS_ORIGINS` → `CORS_ALLOWED_ORIGINS`; add `REDIS_URL` to Secret | ✅ Fixed (Aug 2026) |
+| 11 | Fix docker-compose CORS typo `http:localhost:80` → `http://localhost:80` | ✅ Fixed (Aug 2026) |
+| 12 | Rewrite `rotate-secrets.yml` (previously generated keys that were never stored) | ✅ Fixed (Aug 2026) |
+| 13 | API key rotation: pepper versioning + legacy fallback (`API_KEY_ALLOW_LEGACY_PEPPER`) | ✅ Fixed (Aug 2026) |
+| 14 | PII backfill migration 022 — encrypt pre-existing plaintext `email`/`name` | ✅ Fixed + applied live (Aug 2026) |
 
 ### P1 — Must-Fix Before GA
 
@@ -237,4 +243,4 @@ All config files now use `JWT_SECRET` consistently. The mismatch between `auth.p
 
 ---
 
-**Summary:** 6 of 8 P0 items fixed (2 remain: VERCEL_TOKEN and RENDER_DEPLOY_HOOK_URL — requires manual GitHub secret setup). **6 of 6 P1 items fixed.** 6 P2 items remain. The Railway+Vercel deployment path is now fully unblocked at the code level — add the 4 GitHub secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, RENDER_DEPLOY_HOOK_URL) and deploy.
+**Summary:** All P0 code-level blockers fixed (the only remaining items are the 2 manual GitHub-secret setups — `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` and `RENDER_DEPLOY_HOOK_URL` — required to activate the CD deploy steps). **6 of 6 P1 items fixed.** P2 backlog: Playwright E2E/a11y in frontend CI, Sentry DSN, `npm audit fix`. The Railway+Vercel deployment path is unblocked at the code level — add the 4 GitHub secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, RENDER_DEPLOY_HOOK_URL) and deploy.

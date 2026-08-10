@@ -59,8 +59,8 @@ and the remaining configured providers are appended afterwards, so any single
 provider outage falls through the whole chain. Providers without an API key
 are skipped. The seven types are `chat`, `code`, `reasoning`, `structured`,
 `summarization`, `translation`, and `creative` (`chat` uses the default
-free-first chain: OpenRouter → Gemini → Groq → NVIDIA → OpenAI → Anthropic →
-Ollama).
+free-first chain: OpenRouter → Gemini → Groq → NVIDIA → Mistral →
+HuggingFace → OpenAI → Anthropic → Ollama).
 
 **Override per call.** An agent's `query_type` is a *default*, not a law —
 pass `query_type=` explicitly to any LLM call and it wins:
@@ -229,7 +229,7 @@ truncated, so prompts stay small.
 
 ### 💳 Billing & API Gateway
 
-- Stripe subscription management (free / pro / enterprise)
+- Razorpay subscription management (free / pro / enterprise)
 - API key management with usage tracking
 - Rate limiting (200 req/min, Redis-backed)
 - Usage quotas with endpoint-level breakdown
@@ -260,7 +260,7 @@ truncated, so prompts stay small.
 | **Observability** | Prometheus + Grafana (dependency-free /metrics) |
 | **AI** | Multi-provider: OpenRouter, Gemini, Groq, OpenAI, Anthropic |
 | **Auth** | Custom JWT (bcrypt + Fernet encryption) |
-| **Billing** | Stripe |
+| **Billing** | Razorpay (INR) |
 | **Monitoring** | Sentry |
 | **Email** | SendGrid |
 
@@ -656,8 +656,12 @@ onramp/
 | `ENV` | ✅ | `development` or `production` |
 | `OPENROUTER_API_KEY` | ⚠️ | At least one AI provider key required |
 | `GEMINI_API_KEY` | ⚠️ | Google Gemini key |
-| `STRIPE_SECRET_KEY` | ⬜ | For billing |
-| `STRIPE_WEBHOOK_SECRET` | ⬜ | Stripe webhook signature verification |
+| `MISTRAL_API_KEY` | ⚠️ | Mistral models (OpenAI-compatible) |
+| `HUGGINGFACE_API_KEY` | ⚠️ | HuggingFace router (OpenAI-compatible) |
+| `RAZORPAY_KEY_ID` | ⬜ | Razorpay billing key (INR) |
+| `RAZORPAY_KEY_SECRET` | ⬜ | Razorpay billing secret |
+| `RAZORPAY_WEBHOOK_SECRET` | ⬜ | Razorpay webhook signature verification |
+| `RAZORPAY_PLAN_STARTUP` / `RAZORPAY_PLAN_PROFESSIONAL` / `RAZORPAY_PLAN_USAGE_BASED` | ⬜ | Razorpay plan IDs per tier |
 | `SENDGRID_API_KEY` | ⬜ | Transactional email |
 | `REDIS_URL` | ⬜ | For distributed rate limiting |
 | `SENTRY_DSN` | ⬜ | Error monitoring |

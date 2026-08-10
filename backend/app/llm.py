@@ -49,8 +49,10 @@ class ModelProvider(Enum):
     GEMINI = "gemini"          # Free
     GROQ = "groq"              # Free
     NVIDIA = "nvidia"          # Free
+    MISTRAL = "mistral"        # Paid fallback (OpenAI-compatible)
     OPENAI = "openai"          # Paid fallback
     ANTHROPIC = "anthropic"    # Paid fallback
+    HUGGINGFACE = "huggingface"  # Paid fallback (OpenAI-compatible router)
     OLLAMA = "ollama"          # Local / self-hosted (no API key required)
 
 
@@ -239,10 +241,14 @@ class LLMRouter:
     def __init__(self):
         # Fallback chain: free providers first → paid providers second → local/Ollama last
         self.fallback_chain = [
+            # Free tier first, then the paid OpenAI-compatible providers
+            # (Mistral + HuggingFace), then the strongest paid SDKs, then local.
             ModelProvider.OPENROUTER,
             ModelProvider.GEMINI,
             ModelProvider.GROQ,
             ModelProvider.NVIDIA,
+            ModelProvider.MISTRAL,
+            ModelProvider.HUGGINGFACE,
             ModelProvider.OPENAI,
             ModelProvider.ANTHROPIC,
             ModelProvider.OLLAMA,
@@ -286,6 +292,13 @@ class LLMRouter:
                 "type": "openai_sdk",
                 "free": True,
             },
+            ModelProvider.MISTRAL: {
+                "api_key": os.getenv("MISTRAL_API_KEY"),
+                "model": "mistral-large-latest",
+                "base_url": "https://api.mistral.ai/v1",
+                "type": "openai_sdk",
+                "free": False,
+            },
             ModelProvider.OPENAI: {
                 "api_key": os.getenv("OPENAI_API_KEY"),
                 "model": "gpt-4o-mini",
@@ -298,6 +311,13 @@ class LLMRouter:
                 "model": "claude-3-5-sonnet-20241022",
                 "base_url": None,
                 "type": "anthropic_sdk",
+                "free": False,
+            },
+            ModelProvider.HUGGINGFACE: {
+                "api_key": os.getenv("HUGGINGFACE_API_KEY"),
+                "model": "Qwen/Qwen2.5-72B-Instruct",
+                "base_url": "https://router.huggingface.co/v1",
+                "type": "openai_sdk",
                 "free": False,
             },
             ModelProvider.OLLAMA: {
@@ -352,7 +372,8 @@ class LLMRouter:
             raise RuntimeError(
                 "No LLM provider API keys configured. Set at least one: "
                 "OPENROUTER_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, NVIDIA_API_KEY, "
-                "OPENAI_API_KEY, ANTHROPIC_API_KEY, or set OLLAMA_BASE_URL for local models."
+                "MISTRAL_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, "
+                "HUGGINGFACE_API_KEY, or set OLLAMA_BASE_URL for local models."
             )
         self.current_provider = available[0]
         fallback_list = [p.value for p in available[1:]]

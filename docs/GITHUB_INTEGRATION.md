@@ -163,14 +163,19 @@ Configuration: 3 attempts, exponential backoff (2s→4s→8s). Non-retriable err
 
 **Problem:** Both services default to `os.getenv("GITHUB_TOKEN")` — a single token shared across all users (5,000 requests/hour total).
 
-**Fix (backend complete, frontend pending):**
+**Fix (complete):**
 - `POST /first-pr/issues` and `POST /explore/analyze` accept an optional `github_token` field
 - Token is extracted from the request body or `Authorization: Bearer` header
 - Token prefix validation ensures only GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `github_pat_`) are accepted (avoids accidentally using auth JWTs)
 - Forwarded through agents: `FirstPRAccelerator(llm, github_token=token)` → `IssueService(token)`
 - And: `ArchitectureExplorer(llm, github_token=token)` → `GitHubService(token=token)`
 
-**What's still needed:** Frontend GitHub OAuth to obtain per-user tokens and send them in API requests.
+**Frontend OAuth shipped (Aug 2026):** users can now **link their GitHub
+identity** to their account (`POST /api/v1/auth/oauth/github/link` from
+Profile → Connect GitHub). The linked identity stores `github_username` /
+`github_id` on the user row, and the GitHub push webhook auto-links PRs to
+issue tasks. See [GitHub OAuth & Account Linking](#github-oauth--account-linking)
+below.
 
 **Files:** `backend/app/api/v1/first_pr.py`, `backend/app/api/v1/explore.py`, `backend/app/agents/first_pr_accelerator.py`, `backend/app/agents/architecture_explorer.py`
 
@@ -254,6 +259,34 @@ if not _BRANCH_PATTERN.match(branch):
 | 11 | Branch injection | ✅ Fixed |
 | 12 | Missing logger | ✅ Fixed |
 
-### Pre-existing Issue (Unrelated)
+### GitHub OAuth & Account Linking
 
-`backend/app/database/models.py` line 209 defines a column named `metadata` on `UsageRecord`, which conflicts with SQLAlchemy's reserved `Base.metadata` attribute. This blocks the test suite but doesn't affect GitHub fetching.
+**Purpose:** let users sign in *with* GitHub (new accounts) and let existing
+email/password users **attach** a GitHub identity to the same account without
+creating a duplicate.
+
+**Flow (link):**
+```
+Profile "Connect GitHub"
+  → POST /api/v1/auth/oauth/github/link   (Bearer JWT)
+  → { authorization_url }  (state stored in Redis, single-use, 600s TTL)
+  → GitHub consent → GET /api/v1/auth/oauth/github/callback
+  → Redis state consumed (atomic GETDEL — replay is rejected)
+  → token exchange with client secret (async, httpx)
+  → users.github_username / users.github_id upserted on the SAME user
+  → redirect to FRONTEND_URL with success/error query params
+```
+
+**Login flow (new account):** `GET /api/v1/auth/oauth/github/login` → consent
+→ callback → find-or-create by GitHub id → JWT issued.
+
+**Files:** `backend/app/api/v1/auth.py` (`/oauth/github/*`),
+`backend/app/services/oauth_service.py` (state store + token exchange),
+`backend/app/api/v1/webhook_handler.py` (PR↔task auto-link).
+
+### Resolved Issue (was: reserved `metadata` column)
+
+`UsageRecord.usage_metadata` and `Notification.notif_metadata` use the
+SQLAlchemy 2.0 `mapped_column("metadata", JSONB)` form, which maps the
+attribute to a DB column named `metadata` without colliding with
+`Base.metadata`. The full test suite passes (822 passed / 199 skipped).

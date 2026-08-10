@@ -66,8 +66,8 @@ configure_logging()
 
 _LLM_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-    "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
-    "OLLAMA_BASE_URL",
+    "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY", "OLLAMA_BASE_URL",
 )
 
 # Fernet keys are 32-byte urlsafe-base64 — the cryptography lib base64-decodes
@@ -100,7 +100,7 @@ def _is_valid_postgres_url(value: Optional[str]) -> bool:
 def _validate_production_env() -> None:
     """Fail fast on boot if production is missing config it needs at runtime.
 
-    Each of these already hard-fails at call time (Stripe webhook, GitHub
+    Each of these already hard-fails at call time (Razorpay webhook, GitHub
     token encryption, rate limiter), but discovering that on the first
     request is worse than refusing to start.
     """
@@ -110,8 +110,8 @@ def _validate_production_env() -> None:
     errors = []
     warnings = []
     
-    # Required environment variables. STRIPE_WEBHOOK_SECRET is only required
-    # when billing is actually enabled — without STRIPE_SECRET_KEY the billing
+    # Required environment variables. RAZORPAY_WEBHOOK_SECRET is only required
+    # when billing is actually enabled — without RAZORPAY_KEY_ID the billing
     # service runs in metadata-only stub mode and never verifies a signature.
     required_vars = [
         "DATABASE_URL",
@@ -119,11 +119,11 @@ def _validate_production_env() -> None:
         "JWT_SECRET", "PII_ENCRYPTION_KEY",
         "API_KEY_HMAC_SECRET",
     ]
-    stripe_enabled = any(
-        os.getenv(v) for v in ("STRIPE_SECRET_KEY", "STRIPE_PRICE_STARTUP", "STRIPE_PRICE_PROFESSIONAL")
+    razorpay_enabled = any(
+        os.getenv(v) for v in ("RAZORPAY_KEY_ID", "RAZORPAY_PLAN_STARTUP", "RAZORPAY_PLAN_PROFESSIONAL")
     )
-    if stripe_enabled:
-        required_vars.append("STRIPE_WEBHOOK_SECRET")
+    if razorpay_enabled:
+        required_vars.append("RAZORPAY_WEBHOOK_SECRET")
     
     for var in required_vars:
         value = os.getenv(var)
@@ -339,7 +339,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/verify-email",          # email verification
     "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
     "/api/v1/webhooks",                   # generic webhook deliveries
-    "/api/v1/billing/webhook",   # Stripe calls this unauthenticated (signature-verified)
+    "/api/v1/billing/webhook",   # Razorpay calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config
     "/api/v1/ai/tiers",          # public tier config
     "/v1/chat/completions",      # OpenAI-compatible gateway (auth enforced in-endpoint)

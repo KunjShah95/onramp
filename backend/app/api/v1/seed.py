@@ -385,7 +385,8 @@ async def _system_health(storage) -> list:
     import os
     llm_keys = any(os.getenv(k) for k in (
         "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-        "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
     ))
     health.append({"service": "LLM Router", "status": "healthy" if llm_keys else "unconfigured"})
 

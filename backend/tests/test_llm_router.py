@@ -11,7 +11,8 @@ class TestInit:
     async def test_falls_back_to_ollama_with_no_api_keys(self, monkeypatch):
         """When no cloud API keys are set, Ollama (local) is the fallback provider."""
         for var in ("OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-                     "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+                     "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+                     "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY"):
             monkeypatch.delenv(var, raising=False)
         router = LLMRouter()
         # No RuntimeError — Ollama is always available as the last resort
@@ -31,7 +32,8 @@ class TestInit:
 
     async def test_all_providers_available_picks_openrouter(self, monkeypatch):
         for var in ("OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-                     "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+                     "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+                     "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY"):
             monkeypatch.setenv(var, f"sk-{var.lower()}-test")
         router = LLMRouter()
         assert router.current_provider == ModelProvider.OPENROUTER
@@ -61,7 +63,31 @@ class TestInit:
         monkeypatch.setenv("GROQ_API_KEY", "sk-groq")
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-anthropic")
         router = LLMRouter()
-        assert len(router.fallback_chain) == 7
+        assert len(router.fallback_chain) == 9
+
+    async def test_mistral_and_huggingface_are_openai_compatible(self, monkeypatch):
+        """Mistral + HuggingFace register as OpenAI-compatible providers."""
+        monkeypatch.setenv("MISTRAL_API_KEY", "sk-mistral")
+        monkeypatch.setenv("HUGGINGFACE_API_KEY", "hf_test")
+        router = LLMRouter()
+        # Both sit in the free-first fallback chain (paid tier).
+        assert ModelProvider.MISTRAL in router.fallback_chain
+        assert ModelProvider.HUGGINGFACE in router.fallback_chain
+        mistral_cfg = router.providers[ModelProvider.MISTRAL]
+        assert mistral_cfg["api_key"] == "sk-mistral"
+        assert mistral_cfg["model"] == "mistral-large-latest"
+        assert mistral_cfg["base_url"] == "https://api.mistral.ai/v1"
+        assert mistral_cfg["type"] == "openai_sdk"
+        assert mistral_cfg["free"] is False
+        hf_cfg = router.providers[ModelProvider.HUGGINGFACE]
+        assert hf_cfg["api_key"] == "hf_test"
+        assert hf_cfg["model"] == "Qwen/Qwen2.5-72B-Instruct"
+        assert hf_cfg["base_url"] == "https://router.huggingface.co/v1"
+        assert hf_cfg["type"] == "openai_sdk"
+        assert hf_cfg["free"] is False
+        # provider_chain resolves provider-name / model-id strings to the new providers.
+        assert router.provider_chain(model="mistral")[0] == ModelProvider.MISTRAL
+        assert router.provider_chain(model="Qwen/Qwen2.5-72B-Instruct")[0] == ModelProvider.HUGGINGFACE
 
 
 class TestChat:

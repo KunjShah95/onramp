@@ -942,7 +942,9 @@ export interface Subscription {
   price: number
   billing_cycle: string
   status: string
-  stripe_customer_id?: string
+  razorpay_customer_id?: string
+  razorpay_subscription_id?: string
+  razorpay_payment_id?: string
   created_at: string
 }
 
@@ -984,16 +986,16 @@ export async function cancelSubscription(teamId: string): Promise<void> {
   })
 }
 
-export async function attachStripe(
+export async function attachRazorpay(
   teamId: string,
-  stripeCustomerId: string,
-  stripeSubscriptionId: string
+  razorpayCustomerId: string,
+  razorpaySubscriptionId: string
 ): Promise<Subscription> {
   return request<Subscription>(
-    `${API_BASE}/billing/subscriptions/${teamId}/stripe`,
+    `${API_BASE}/billing/subscriptions/${teamId}/razorpay`,
     {
-      stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: stripeSubscriptionId,
+      razorpay_customer_id: razorpayCustomerId,
+      razorpay_subscription_id: razorpaySubscriptionId,
     }
   )
 }
@@ -1007,9 +1009,34 @@ export async function createCheckoutSession(data: {
   tier: string
   success_url: string
   cancel_url: string
-}): Promise<{ url: string; session_id: string }> {
-  return request<{ url: string; session_id: string }>(
+}): Promise<{ url: string; subscription_id: string }> {
+  return request<{ url: string; subscription_id: string }>(
     `${API_BASE}/billing/checkout`,
+    data
+  )
+}
+
+export async function createCreditOrder(data: {
+  amount_inr: number
+}): Promise<{
+  order_id: string
+  amount: number
+  currency: string
+  key_id: string
+}> {
+  return request<{ order_id: string; amount: number; currency: string; key_id: string }>(
+    `${API_BASE}/billing/credits/order`,
+    data
+  )
+}
+
+export async function verifyCreditOrder(data: {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}): Promise<{ credited: boolean; credits: number }> {
+  return request<{ credited: boolean; credits: number }>(
+    `${API_BASE}/billing/credits/order/verify`,
     data
   )
 }
