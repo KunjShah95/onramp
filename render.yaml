@@ -1,0 +1,137 @@
+# ──────────────────────────────────────────────────────────────────────────
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Defines the production backend infrastructure:
+#   - onramp-redis   (Render Key Value) — Celery broker + result store
+#   - onramp-api     (web service)      — FastAPI / uvicorn  (health: /health)
+#   - onramp-worker  (background worker) — Celery task queues
+#   - onramp-beat    (background worker) — Celery beat scheduler
+#
+# Apply: Dashboard → New → Blueprint → connect this repo, or the Render CLI
+# (`render blueprint apply`). Existing services are matched by name.
+#
+# Why background workers? A Web Service must bind a port and pass a
+# deploy-time port scan; a Celery process binds none, so creating it as a
+# Web Service fails the deploy with "No open ports detected… create a
+# background worker instead". Background workers are liveness-monitored only
+# (no port, no health check).
+#
+# IMPORTANT: apply this AFTER the backend/Dockerfile stage reorder is merged
+# to main. Services link `branch: main`; main's older Dockerfile builds a
+# worker image by default, which would break the API service's /health.
+# ──────────────────────────────────────────────────────────────────────────
+
+# Environment group shared by every service (env vars are per-service on
+# Render unless grouped — this keeps the API, worker and beat in sync).
+envVarGroups:
+  - name: onramp-shared
+    envVars:
+      - key: ENV
+        value: production
+      # ── Secrets — prompted for on the first Blueprint apply (sync: false) ──
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PII_ENCRYPTION_KEY
+        sync: false
+      - key: GITHUB_TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: API_KEY_HMAC_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      # ── Optional integrations (LLM, OAuth, billing, email, GitHub) ──
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+services:
+  # ── Redis (Key Value) — private-network only ────────────────────────────
+  - type: keyvalue
+    name: onramp-redis
+    plan: free # 25 MB, no persistence — bump to a paid plan for real traffic
+    ipAllowList: [] # [] = only allow internal (Render service) connections
+
+  # ── API — FastAPI web service ───────────────────────────────────────────
+  # Build context + Dockerfile resolve inside rootDir (backend/).
+  - type: web
+    name: onramp-api
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: onramp-shared
+      # Celery reads CELERY_BROKER_URL / CELERY_RESULT_BACKEND and falls back
+      # to REDIS_URL (see backend/app/tasks/celery_app.py). Auto-wired to the
+      # Key Value instance over the private network.
+      - key: REDIS_URL
+        fromService:
+          name: onramp-redis
+          type: keyvalue
+          property: connectionString
+
+  # ── Celery worker — consumes the task queues ────────────────────────────
+  # Built from the default (production) Dockerfile stage; dockerCommand
+  # replaces the uvicorn CMD. Workers receive no health checks on Render.
+  - type: worker
+    name: onramp-worker
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    branch: main
+    dockerCommand: celery -A app.tasks.celery_app worker -l info -Q agent-tasks,analytics-tasks,notification-tasks,default
+    envVars:
+      - fromGroup: onramp-shared
+      - key: REDIS_URL
+        fromService:
+          name: onramp-redis
+          type: keyvalue
+          property: connectionString
+
+  # ── Celery beat — periodic scheduler (digests, sweeps, repo indexes) ────
+  - type: worker
+    name: onramp-beat
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    branch: main
+    dockerCommand: celery -A app.tasks.celery_app beat -l info
+    envVars:
+      - fromGroup: onramp-shared
+      - key: REDIS_URL
+        fromService:
+          name: onramp-redis
+          type: keyvalue
+          property: connectionString

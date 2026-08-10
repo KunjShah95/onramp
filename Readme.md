@@ -441,6 +441,55 @@ or set `VITE_API_URL` in your `.env` file.
 
 ---
 
+## 🚀 Deploying to Render (API + Celery Workers + Redis)
+
+The backend runs on Render as three services sharing one Redis (Key Value) instance. A [`render.yaml`](./render.yaml) blueprint defines the whole stack — the recommended way to set it up or reproduce it.
+
+### Blueprint (recommended)
+
+1. Dashboard → **New → Blueprint** → connect this repo (pick the branch that contains `render.yaml`).
+2. Render creates: `onramp-redis` (Key Value), `onramp-api` (web service), and `onramp-worker` + `onramp-beat` (background workers).
+3. During creation you're prompted for the `sync: false` secrets — fill them with the same values the API service already uses.
+
+> **Apply order:** the blueprint links services to `main`, and the API image depends on the `backend/Dockerfile` stage reorder (production = default target). Apply it only after this change is on `main` — otherwise the API service builds a worker image and its `/health` check fails.
+
+| Resource | Render type | What it runs |
+|---|---|---|
+| `onramp-redis` | Key Value (Redis) | Celery broker + result store — auto-wired as `REDIS_URL` |
+| `onramp-api` | Web service | `alembic upgrade head` + uvicorn (`production` Dockerfile stage), health check `/health` |
+| `onramp-worker` | Background worker | `celery -A app.tasks.celery_app worker -Q agent-tasks,analytics-tasks,notification-tasks,default` |
+| `onramp-beat` | Background worker | `celery -A app.tasks.celery_app beat` (digests, nightly sweeps, repo indexes) |
+
+> **Why background workers?** A Web Service must bind a port and passes a deploy-time port scan. A Celery process binds none — creating it as a Web Service times out the deploy with *"No open ports detected… create a background worker instead"*. Background workers are liveness-monitored only (no port, no health check).
+
+Secrets prompted on first apply (`sync: false`): `DATABASE_URL`, `JWT_SECRET`, `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `API_KEY_HMAC_SECRET`, `CORS_ALLOWED_ORIGINS`, `BACKEND_URL`, `FRONTEND_URL`, plus optional LLM/OAuth/billing keys (Gemini/OpenRouter/Groq, GitHub/Google OAuth, Razorpay, SendGrid, Sentry). All services share them via the `onramp-shared` environment group.
+
+Notes:
+
+- **Redis**: the free Key Value plan has no persistence — bump `plan` in `render.yaml` for durability. `ipAllowList: []` keeps it private-network only; Render services connect over the internal network.
+- **Deploys**: services auto-deploy on commits to `main`. Once the blueprint is live, the CD workflow's `RENDER_DEPLOY_HOOK_URL` secret is redundant.
+- **Migrations** run automatically on API deploys (`alembic upgrade head` in the Dockerfile CMD).
+
+### Manual dashboard setup (no blueprint)
+
+1. **New → Redis** → wait for *Available* → copy the **Internal URL** (`rediss://default:…@…:6379`).
+2. **New → Web Service** → root dir `backend`, Dockerfile target `production`, health check path `/health`. Add `REDIS_URL` plus the secrets above.
+3. **New → Background Worker** → root dir `backend`, start command:
+
+   ```bash
+   celery -A app.tasks.celery_app worker -l info -Q agent-tasks,analytics-tasks,notification-tasks,default
+   ```
+
+4. Repeat for the scheduler (**Background Worker**):
+
+   ```bash
+   celery -A app.tasks.celery_app beat -l info
+   ```
+
+5. Set the **same env vars on every service** — env vars are per-service on Render unless you use an Environment Group.
+
+---
+
 ## 🔑 Seeded Test Accounts
 
 Run the seed script to populate the database with realistic sample data across all 39 tables:
