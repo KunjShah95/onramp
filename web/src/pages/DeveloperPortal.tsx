@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, type ApiKey, type RateLimitInfo, type AgentInfo } from '../lib/api'
+import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo } from '../lib/api'
 import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
-import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal } from '@phosphor-icons/react'
+import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
 import CodeEditor from '../components/ui/monaco-editor'
+import { PROVIDER_OPTIONS } from '../lib/providers'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,6 +46,11 @@ export default function DeveloperPortal() {
   const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
   const [newKeyExpiry, setNewKeyExpiry] = useState('')
   const [creatingKey, setCreatingKey] = useState(false)
+  const [providerKeys, setProviderKeys] = useState<Record<string, ProviderKeyInfo>>({})
+  const [editingProvider, setEditingProvider] = useState<string | null>(null)
+  const [providerKeyInput, setProviderKeyInput] = useState('')
+  const [savingProviderKey, setSavingProviderKey] = useState(false)
+  const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
 
   // Earliest selectable expiry date (today) — past dates mean "no expiry".
   const today = new Date().toISOString().split('T')[0]
@@ -58,6 +64,7 @@ export default function DeveloperPortal() {
     fetchKeys()
     fetchUsage()
     fetchTiers()
+    fetchProviderKeys()
   }, [activeTeamId])
 
   async function fetchKeys() {
@@ -88,6 +95,45 @@ export default function DeveloperPortal() {
       setTierInfo(data)
     } catch {
       // Fall back to empty state
+    }
+  }
+
+  async function fetchProviderKeys() {
+    if (!activeTeamId) return
+    try {
+      const data = await listProviderKeys(activeTeamId)
+      const map: Record<string, ProviderKeyInfo> = {}
+      ;(data.providers || []).forEach((p) => { map[p.provider] = p })
+      setProviderKeys(map)
+    } catch {
+      // Silent — section stays read-only / empty
+    }
+  }
+
+  async function handleSaveProviderKey() {
+    if (!activeTeamId || !editingProvider) return
+    setSavingProviderKey(true)
+    try {
+      await setProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
+      setEditingProvider(null)
+      setProviderKeyInput('')
+      await fetchProviderKeys()
+      toast.success('Saved', `${editingProvider} key updated`)
+    } catch (err: any) {
+      toast.error('Failed', err.message || 'Failed to save provider key')
+    }
+    setSavingProviderKey(false)
+  }
+
+  async function handleDeleteProviderKey(provider: string) {
+    if (!activeTeamId) return
+    try {
+      await deleteProviderKey(activeTeamId, provider)
+      await fetchProviderKeys()
+      setConfirmDeleteProvider(null)
+      toast.success('Removed', `${provider} key removed — platform key will be used`)
+    } catch (err: any) {
+      toast.error('Failed', err.message || 'Failed to remove provider key')
     }
   }
 
@@ -322,6 +368,107 @@ export default function DeveloperPortal() {
                   No API keys found. Create one to get started.
                 </div>
               )}
+            </CardSpotlight>
+          </motion.div>
+
+          {/* Provider Keys (BYOK) */}
+          <motion.div variants={itemVariants}>
+            <CardSpotlight className="p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <Lock className="w-5 h-5 text-go" weight="fill" />
+                <div>
+                  <h3 className="font-display font-bold">Provider Keys (BYOK)</h3>
+                  <p className="text-xs text-text-tertiary">
+                    Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway — requests made with this team's API key use your keys instead of the platform defaults.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {PROVIDER_OPTIONS.map((p) => {
+                  const info = providerKeys[p.id]
+                  const configured = !!info?.configured
+                  return (
+                    <div key={p.id} className="bg-bg-secondary border border-border rounded-xl p-3.5">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${configured ? 'bg-go' : 'bg-bg-tertiary'}`} />
+                          <span className="font-medium text-text-primary text-xs truncate">{p.label}</span>
+                        </div>
+                        {configured ? (
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded shrink-0">Configured</span>
+                        ) : (
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50 shrink-0">Platform</span>
+                        )}
+                      </div>
+                      <p className="font-mono text-[9px] text-text-tertiary/60 mb-2.5 truncate">overrides {p.envVar}</p>
+                      {configured && info.updated_at && (
+                        <p className="text-[10px] text-text-tertiary/70 mb-2.5">Updated {formatKeyDate(info.updated_at)}</p>
+                      )}
+                      {canManageKeys && (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              if (editingProvider === p.id) {
+                                setEditingProvider(null)
+                                setProviderKeyInput('')
+                              } else {
+                                setEditingProvider(p.id)
+                                setProviderKeyInput('')
+                              }
+                            }}
+                            className="flex items-center gap-1.5 text-[11px] text-go hover:text-go/80 transition-colors"
+                          >
+                            <PencilSimple size={12} />
+                            {configured ? 'Update' : 'Add key'}
+                          </button>
+                          {configured && (confirmDeleteProvider !== p.id ? (
+                            <button
+                              onClick={() => setConfirmDeleteProvider(p.id)}
+                              className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-error transition-colors"
+                            >
+                              <Trash size={12} />
+                              Remove
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteProviderKey(p.id)}
+                              onBlur={() => setConfirmDeleteProvider(null)}
+                              className="flex items-center gap-1.5 text-[11px] font-semibold text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <Trash size={12} />
+                              Confirm?
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {editingProvider === p.id && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={providerKeyInput}
+                            onChange={(e) => setProviderKeyInput(e.target.value)}
+                            placeholder="sk-..."
+                            autoFocus
+                            className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                          />
+                          <button
+                            onClick={handleSaveProviderKey}
+                            disabled={savingProviderKey || !providerKeyInput.trim()}
+                            className="px-2.5 py-1.5 rounded-lg bg-go hover:bg-go/90 disabled:opacity-40 text-white text-[11px] font-semibold transition-all shrink-0"
+                          >
+                            {savingProviderKey ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-[10px] text-text-tertiary/60">
+                Keys are encrypted at rest and apply to OpenAI-compatible gateway calls (<code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code>, <code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/embeddings</code>) authenticated with this team's API key. Leave a provider on “Platform” to use the shared platform key.
+              </p>
             </CardSpotlight>
           </motion.div>
 

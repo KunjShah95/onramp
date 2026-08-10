@@ -381,12 +381,20 @@ async def _system_health(storage) -> list:
     except Exception:
         health.append({"service": "Redis Cache", "status": "unavailable"})
 
-    # LLM router: healthy if at least one provider key is configured.
+    # LLM router: healthy if at least one provider key is configured — from the
+    # environment OR the platform store (Admin Dashboard → Provider Keys).
     import os
     llm_keys = any(os.getenv(k) for k in (
         "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-        "NVIDIA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
     ))
+    try:
+        from app.services.platform_provider_keys import get_platform_keys
+        if await get_platform_keys():
+            llm_keys = True
+    except Exception:
+        pass  # best-effort — the env check above still applies
     health.append({"service": "LLM Router", "status": "healthy" if llm_keys else "unconfigured"})
 
     return health

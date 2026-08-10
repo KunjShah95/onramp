@@ -36,21 +36,22 @@ class FakeLLM:
             "query_types": {"code": {"description": "x"}, "chat": {"description": "y"}},
         }
 
-    def provider_chain(self, model=None, query_type=None, prompt=None):
+    def provider_chain(self, model=None, query_type=None, prompt=None, provider_keys=None):
+        self.last_provider_keys = provider_keys
         return ["groq"]
 
     def route_info(self, provider, query_type=None):
         return self._route(query_type)
 
     async def openai_chat(
-        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global"
+        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global", provider_keys=None
     ):
         self.last_prompt, self.last_system, self.last_model = prompt, system, model
         self.last_cache_scope = cache_scope
         return "Hello from the router!", self.served, self._route(query_type)
 
     async def openai_chat_stream(
-        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global"
+        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global", provider_keys=None
     ):
         self.last_prompt, self.last_system, self.last_model = prompt, system, model
         for tok in ["Hel", "lo", " world"]:
@@ -371,14 +372,14 @@ class TestEmbeddingsEndpoint:
             is_available = True
             providers = {"openai": {"model": "text-embedding-3-small"}}
 
-            async def embed_batch(self, texts, preferred=None):
+            async def embed_batch(self, texts, preferred=None, provider_keys=None):
                 return [[0.1, 0.2] for _ in texts], "openai", {
                     "provider": "openai", "model": "text-embedding-3-small",
                     "served": "openai/text-embedding-3-small",
                     "price_usd": 0.02, "price_inr": 1.70,
                 }
 
-            def resolve_model(self, model):
+            def resolve_model(self, model, provider_keys=None):
                 return "openai"
 
         client = TestClient(self._app_with_embeddings(monkeypatch, FakeRouter()))
@@ -397,7 +398,7 @@ class TestEmbeddingsEndpoint:
             is_available = True
             providers = {"openai": {"model": "text-embedding-3-small"}}
 
-            async def embed_batch(self, texts, preferred=None):
+            async def embed_batch(self, texts, preferred=None, provider_keys=None):
                 calls["preferred"] = preferred
                 return [[0.1, 0.2] for _ in texts], "openai", {
                     "provider": "openai", "model": "text-embedding-3-small",
@@ -405,7 +406,7 @@ class TestEmbeddingsEndpoint:
                     "price_usd": 0.02, "price_inr": 1.70,
                 }
 
-            def resolve_model(self, model):
+            def resolve_model(self, model, provider_keys=None):
                 return "openai"
 
         client = TestClient(self._app_with_embeddings(monkeypatch, FakeRouter()))
@@ -426,10 +427,10 @@ class TestEmbeddingsEndpoint:
             is_available = True
             providers = {"openai": {"model": "text-embedding-3-small"}}
 
-            async def embed_batch(self, texts, preferred=None):
+            async def embed_batch(self, texts, preferred=None, provider_keys=None):
                 raise ValueError("empty")
 
-            def resolve_model(self, model):
+            def resolve_model(self, model, provider_keys=None):
                 return "openai"
 
         client = TestClient(self._app_with_embeddings(monkeypatch, FakeRouter()))

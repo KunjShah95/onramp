@@ -65,6 +65,9 @@ web/test-results/
 !web/public/*.svg
 !web/src/assets/*.svg
 
+# Git worktrees
+.worktrees/
+
 # Agent artifacts
 .playwright-mcp/
 .impeccable/

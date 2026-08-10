@@ -20,7 +20,7 @@ groq>=0.11.0
 # Optional infra
 redis>=5.0.0          # distributed rate limiting (REDIS_URL)
 sendgrid>=6.11.0    # transactional email delivery
-stripe>=10.0.0        # billing (STRIPE_SECRET_KEY)
+razorpay>=1.4.0       # billing (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)
 cryptography>=42.0.0  # token encryption at rest
 sentry-sdk>=2.0.0     # error monitoring
 brotli-asgi>=1.4.0    # optional Brotli response compression (falls back to gzip if absent)

@@ -38,7 +38,7 @@ const subprocessors = [
   'Vercel Inc. — Frontend hosting',
   'Railway Corp. — Backend hosting',
   'Neon Inc. — Database hosting',
-  'Stripe Inc. — Payment processing',
+  'Razorpay Inc. — Payment processing',
 ]
 
 const steps = [

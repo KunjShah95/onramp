@@ -5,7 +5,8 @@ All routes in this module require the caller to hold the "owner" role
 in at least one team. This is enforced by require_admin_access.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 import hashlib
 import hmac
 import json
@@ -17,7 +18,9 @@ from app.api.v1.auth import get_current_user
 from app.services.team_service import get_user_teams
 
 from app.services.audit_service import query_events
+from app.services.audit_log_service import log_key_action
 from app.services.webhook_service import get_webhook as _get_webhook
+from app.services import platform_provider_keys
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -457,3 +460,79 @@ async def rotate_admin_webhook_secret(
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
     return updated
+
+
+# ── Platform Provider Keys (managed via the website, not .env) ─────────────
+
+
+class AdminProviderKeyRequest(BaseModel):
+    api_key: str
+
+
+@router.get("/ai/provider-keys")
+async def list_platform_provider_keys(
+    uid: str = Depends(_require_owner),
+):
+    """List platform-level provider keys (masked — never the secrets).
+
+    These are the keys the LLM/embedding routers use platform-wide, configured
+    here instead of in ``backend/.env``. Encrypted at rest.
+    """
+    providers = await platform_provider_keys.list_platform_keys()
+    await log_key_action(
+        org_name="global",
+        action="platform_provider_keys_listed",
+        user_id=uid,
+        user_role="owner",
+        details={"key_count": len(providers)},
+    )
+    return {"providers": providers, "count": len(providers)}
+
+
+@router.put("/ai/provider-keys/{provider}")
+async def set_platform_provider_key(
+    provider: str,
+    request: AdminProviderKeyRequest,
+    req: Request,
+    uid: str = Depends(_require_owner),
+):
+    """Store (or replace) a platform-level provider key and apply it live."""
+    result = await platform_provider_keys.set_platform_key(
+        provider, request.api_key, uid
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    # Push into the running routers immediately (no restart / .env edit).
+    await platform_provider_keys.refresh_runtime_routers(req.app)
+    await log_key_action(
+        org_name="global",
+        action="platform_provider_key_set",
+        user_id=uid,
+        user_role="owner",
+        details={"provider": result.get("provider")},
+    )
+    return result
+
+
+@router.delete("/ai/provider-keys/{provider}")
+async def delete_platform_provider_key(
+    provider: str,
+    req: Request,
+    uid: str = Depends(_require_owner),
+):
+    """Remove a platform-level provider key and apply the change live."""
+    ok = await platform_provider_keys.delete_platform_key(provider)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No key configured for provider '{provider}'",
+        )
+    await platform_provider_keys.refresh_runtime_routers(req.app)
+    await log_key_action(
+        org_name="global",
+        action="platform_provider_key_deleted",
+        user_id=uid,
+        user_role="owner",
+        details={"provider": provider},
+    )
+    return {"deleted": True, "provider": provider}

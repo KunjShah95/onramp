@@ -4,11 +4,13 @@ Mirrors :mod:`app.llm` (LLMRouter): an enum of providers, a config dict per
 provider, a free-first fallback chain, lazy SDK imports (so a missing optional
 SDK only disables that one provider), and USD+INR pricing attribution.
 
-Providers are skipped when their API key is unset. HuggingFace is available
-only when ``sentence-transformers`` is installed. Ollama is always in the
-chain (checked at call time, like the LLM router). With nothing configured the
-router still constructs — ``is_available`` is then ``False`` and callers fall
-back to keyword search.
+Providers are skipped when their API key is unset. HuggingFace comes in two
+flavors: a cloud provider (``HF_INFERENCE``, the OpenAI-compatible Inference
+API, keyed by ``HUGGINGFACE_API_KEY``) and a local provider (``HUGGINGFACE``,
+available only when ``sentence-transformers`` is installed). Ollama is always
+in the chain (checked at call time, like the LLM router). With nothing
+configured the router still constructs — ``is_available`` is then ``False``
+and callers fall back to keyword search.
 """
 
 import os
@@ -36,8 +38,9 @@ class EmbeddingProvider(Enum):
     OPENAI = "openai"
     COHERE = "cohere"
     VOYAGE = "voyage"
+    HF_INFERENCE = "huggingface_inference"  # HuggingFace Inference API (cloud, OpenAI-compatible)
     OLLAMA = "ollama"
-    HUGGINGFACE = "huggingface"
+    HUGGINGFACE = "huggingface"  # Local sentence-transformers (no API key)
 
 
 class EmbeddingRouter:
@@ -55,6 +58,7 @@ class EmbeddingRouter:
         self.fallback_chain = [
             EmbeddingProvider.GEMINI,
             EmbeddingProvider.NVIDIA,
+            EmbeddingProvider.HF_INFERENCE,  # free tier for many embedding models
             EmbeddingProvider.OPENAI,
             EmbeddingProvider.COHERE,
             EmbeddingProvider.VOYAGE,
@@ -112,6 +116,20 @@ class EmbeddingRouter:
                 "dimensions": 768,
                 "free": True,
             },
+            EmbeddingProvider.HF_INFERENCE: {
+                # HuggingFace Inference API — OpenAI-compatible /v1/embeddings
+                # (Bearer auth with the standard hf_... token). Shares the
+                # HUGGINGFACE_API_KEY used by the LLM router's HF provider.
+                # Marked free here because most embedding models are served on
+                # HF's free tier with an account token (the LLM router's HF
+                # entry is free: False since chat models burn PRO credits).
+                "api_key": os.getenv("HUGGINGFACE_API_KEY"),
+                "model": os.getenv("HF_INFERENCE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
+                "base_url": "https://router.huggingface.co/v1",
+                "type": "openai_sdk",
+                "dimensions": 384,
+                "free": True,
+            },
             EmbeddingProvider.HUGGINGFACE: {
                 "api_key": None,
                 "model": os.getenv("HF_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
@@ -121,6 +139,11 @@ class EmbeddingRouter:
                 "free": True,
             },
         }
+
+        # Platform provider keys configured via the Admin Dashboard (stored
+        # encrypted in the DB, pushed in at startup / on change). Precedence:
+        # per-team BYOK keys > platform keys > env vars above.
+        self.platform_keys: Dict[str, str] = {}
 
         self.current_provider: Optional[EmbeddingProvider] = None
         self.last_route: Optional[Dict[str, Any]] = None
@@ -135,13 +158,24 @@ class EmbeddingRouter:
 
         return importlib.util.find_spec("sentence_transformers") is not None
 
-    def _provider_available(self, provider: EmbeddingProvider) -> bool:
+    def set_platform_keys(self, keys: Optional[Dict[str, str]] = None) -> None:
+        """Apply platform-level keys configured via the Admin Dashboard."""
+        self.platform_keys = dict(keys or {})
+
+    def _provider_available(
+        self, provider: EmbeddingProvider, provider_keys: Optional[Dict[str, str]] = None
+    ) -> bool:
+        """Availability, honoring per-request BYOK + platform overrides."""
         if provider == EmbeddingProvider.HUGGINGFACE:
             return self._hf_installed()
         if provider == EmbeddingProvider.OLLAMA:
             # Local provider counts as available only when the user points at
             # an Ollama instance; keeps is_available False with no config.
             return bool(os.getenv("OLLAMA_BASE_URL"))
+        if provider_keys and provider_keys.get(provider.value):
+            return True
+        if self.platform_keys and self.platform_keys.get(provider.value):
+            return True
         cfg = self.providers[provider]
         return bool(cfg.get("api_key"))
 
@@ -179,29 +213,43 @@ class EmbeddingRouter:
     def primary(self) -> Optional[EmbeddingProvider]:
         return self.current_provider
 
-    def _chain(self, preferred: Optional[EmbeddingProvider] = None) -> List[EmbeddingProvider]:
-        """Chain starting at ``preferred`` (or the current provider), free-first."""
-        if self.current_provider is None:
-            return []
-        if preferred is not None and self._provider_available(preferred):
+    def _chain(
+        self, preferred: Optional[EmbeddingProvider] = None,
+        provider_keys: Optional[Dict[str, str]] = None,
+    ) -> List[EmbeddingProvider]:
+        """Chain starting at ``preferred``, else the router primary, else the
+        first available provider (free-first)."""
+        if preferred is not None and self._provider_available(preferred, provider_keys):
             start = preferred
-        else:
+        elif self.current_provider is not None and self._provider_available(
+            self.current_provider, provider_keys
+        ):
+            # Honor EMBEDDINGS_PROVIDER / the configured primary provider.
             start = self.current_provider
+        else:
+            available = [
+                p for p in self.fallback_chain if self._provider_available(p, provider_keys)
+            ]
+            if not available:
+                return []
+            start = available[0]
         return [start] + [
             p for p in self.fallback_chain
-            if p != start and self._provider_available(p)
+            if p != start and self._provider_available(p, provider_keys)
         ]
 
-    def resolve_model(self, model: Optional[str]) -> Optional[EmbeddingProvider]:
+    def resolve_model(
+        self, model: Optional[str], provider_keys: Optional[Dict[str, str]] = None
+    ) -> Optional[EmbeddingProvider]:
         """Resolve a model/provider name to a provider (else primary)."""
         if model:
             m = model.strip().lower()
             for provider in EmbeddingProvider:
                 if m == provider.value:
-                    return provider if self._provider_available(provider) else self.current_provider
+                    return provider if self._provider_available(provider, provider_keys) else self.current_provider
             for provider, cfg in self.providers.items():
                 if cfg["model"] and m == cfg["model"].lower():
-                    return provider if self._provider_available(provider) else self.current_provider
+                    return provider if self._provider_available(provider, provider_keys) else self.current_provider
         return self.current_provider
 
     # ── Catalog & attribution ─────────────────────────────────────────────
@@ -247,31 +295,35 @@ class EmbeddingRouter:
         return vectors[0], provider, route
 
     async def embed_batch(
-        self, texts: List[str], preferred: Optional[EmbeddingProvider] = None
+        self, texts: List[str], preferred: Optional[EmbeddingProvider] = None,
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> Tuple[List[List[float]], EmbeddingProvider, Dict[str, Any]]:
         """Embed a batch of texts with per-provider fallback.
 
         ``preferred`` biases the provider chain to start with a specific
         provider (e.g. one resolved from an explicit ``model`` argument).
-        Returns ``(vectors, provider, route)``. Raises ``ValueError`` for an
-        empty batch and ``RuntimeError`` when every configured provider fails.
+        ``provider_keys`` (optional request-scoped BYOK map) makes a cloud
+        provider available when no platform env key is set, and overrides its
+        key for this call. Returns ``(vectors, provider, route)``. Raises
+        ``ValueError`` for an empty batch and ``RuntimeError`` when every
+        configured provider fails.
         """
         if not texts:
             raise ValueError("texts must not be empty")
-        chain = self._chain(preferred)
+        chain = self._chain(preferred, provider_keys)
         if not chain:
             raise RuntimeError(
                 "No embedding providers configured. Set OPENAI_API_KEY, "
                 "GEMINI_API_KEY, NVIDIA_API_KEY, COHERE_API_KEY, "
-                "VOYAGE_API_KEY, OLLAMA_BASE_URL, or install sentence-transformers."
+                "VOYAGE_API_KEY, HUGGINGFACE_API_KEY, OLLAMA_BASE_URL, "
+                "or install sentence-transformers."
             )
         errors = []
         for provider in chain:
-            cfg = self.providers[provider]
-            if not self._provider_available(provider):
+            if not self._provider_available(provider, provider_keys):
                 continue
             try:
-                vectors = await self._call_provider(provider, texts)
+                vectors = await self._call_provider(provider, texts, provider_keys)
                 self.current_provider = provider
                 self.last_route = self.route_info(provider)
                 _record_embedding_call(provider)
@@ -283,10 +335,15 @@ class EmbeddingRouter:
         raise RuntimeError(f"All embedding providers exhausted. Errors: {'; '.join(errors)}")
 
     async def _call_provider(
-        self, provider: EmbeddingProvider, texts: List[str]
+        self, provider: EmbeddingProvider, texts: List[str],
+        provider_keys: Optional[Dict[str, str]] = None,
     ) -> List[List[float]]:
         """Dispatch to the right SDK for this provider type."""
-        config = self.providers[provider]
+        config = dict(self.providers[provider])
+        if provider_keys and provider_keys.get(provider.value):
+            config["api_key"] = provider_keys[provider.value]
+        elif self.platform_keys and self.platform_keys.get(provider.value):
+            config["api_key"] = self.platform_keys[provider.value]
         ptype = config["type"]
         if ptype == "openai_sdk":
             return await self._call_openai_sdk(provider, config, texts)
@@ -303,7 +360,7 @@ class EmbeddingRouter:
     async def _call_openai_sdk(
         self, provider: EmbeddingProvider, config: Dict[str, Any], texts: List[str]
     ) -> List[List[float]]:
-        """OpenAI SDK — covers OpenAI, NVIDIA, Ollama (OpenAI-compatible)."""
+        """OpenAI SDK — covers OpenAI, NVIDIA, Ollama, HuggingFace Inference (OpenAI-compatible)."""
         from openai import AsyncOpenAI
 
         client = AsyncOpenAI(

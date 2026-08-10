@@ -76,6 +76,16 @@ spec:
                 secretKeyRef:
                   name: onramp-secrets
                   key: GROQ_API_KEY
+            - name: MISTRAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: MISTRAL_API_KEY
+            - name: HUGGINGFACE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: HUGGINGFACE_API_KEY
             - name: NEON_AUTH_URL
               valueFrom:
                 secretKeyRef:
@@ -86,16 +96,36 @@ spec:
                 secretKeyRef:
                   name: onramp-secrets
                   key: AUTH_DB_URL
-            - name: STRIPE_SECRET_KEY
+            - name: RAZORPAY_KEY_ID
               valueFrom:
                 secretKeyRef:
                   name: onramp-secrets
-                  key: STRIPE_SECRET_KEY
-            - name: STRIPE_WEBHOOK_SECRET
+                  key: RAZORPAY_KEY_ID
+            - name: RAZORPAY_KEY_SECRET
               valueFrom:
                 secretKeyRef:
                   name: onramp-secrets
-                  key: STRIPE_WEBHOOK_SECRET
+                  key: RAZORPAY_KEY_SECRET
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: RAZORPAY_WEBHOOK_SECRET
+            - name: RAZORPAY_PLAN_STARTUP
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: RAZORPAY_PLAN_STARTUP
+            - name: RAZORPAY_PLAN_PROFESSIONAL
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: RAZORPAY_PLAN_PROFESSIONAL
+            - name: RAZORPAY_PLAN_USAGE_BASED
+              valueFrom:
+                secretKeyRef:
+                  name: onramp-secrets
+                  key: RAZORPAY_PLAN_USAGE_BASED
             - name: SENDGRID_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -124,6 +124,7 @@ _MODEL_REGISTRY: dict[str, tuple] = {
     "onramp_gamification_badges":     (db_models.Badge, "badge_id", False, False),
     "onramp_gamification_streaks":    (db_models.Streak, "streak_id", False, False),
     "onramp_subscriptions":           (db_models.Subscription, "subscription_id", False, False),
+    "team_provider_keys":             (db_models.TeamProviderKey, "id", False, False),
     "onramp_webhooks":                (db_models.Webhook, "webhook_id", False, False),
     "onramp_integrations":            (db_models.IntegrationConfig, "id", False, False),
     "onramp_conversations":           (db_models.ConversationTurn, "id", False, False),

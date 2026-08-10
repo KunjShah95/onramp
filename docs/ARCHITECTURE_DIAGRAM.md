@@ -9,10 +9,10 @@ Auto-generated from codebase (`backend/app/main.py`, `llm.py`, `services/`, `age
 ```mermaid
 graph TB
     subgraph Clients
-        WEB["Web SPA<br/>React 19 + TS + Vite<br/>24 lazy pages"]
+        WEB["Web SPA<br/>React 19 + TS + Vite<br/>67 pages, code-split"]
         IDE["IDE / CLI / GitHub Actions"]
         SLACKC["Slack workspace"]
-        STRIPEC["Stripe (webhooks)"]
+        RAZORC["Razorpay (webhooks)"]
         GH["GitHub (OAuth + webhooks)"]
     end
 
@@ -22,16 +22,15 @@ graph TB
 
     subgraph API["FastAPI Backend :8000"]
         MW["Middleware chain<br/>Logging → ResponseWrapper →<br/>RateLimit → Auth → CORS"]
-        ROUTERS["37 routers /api/v1<br/>explore, learn, ask, first_pr,<br/>billing, auth, teams, wiki,<br/>gamification, hr_dashboard, ..."]
-        AGENTS["13 AI Agents<br/>architecture_explorer,<br/>learning_path_generator,<br/>pr_review, repo_qa,<br/>quiz_generator, health_scorer,<br/>codebase_trailer, ..."]
-        SERVICES["38 Services<br/>github, slack, billing,<br/>embeddings, oauth, audit,<br/>notification, gamification,<br/>dora_metrics, wiki, ..."]
+        ROUTERS["39 routers /api/v1<br/>explore, learn, ask, first_pr,<br/>billing, auth, teams, wiki,<br/>gamification, hr_dashboard, ..."]
+        AGENTS["16 AI Agents<br/>architecture_explorer,<br/>learning_path_generator,<br/>pr_review, repo_qa,<br/>quiz_generator, health_scorer,<br/>codebase_trailer, ..."]
+        SERVICES["52 Services<br/>github, slack, billing,<br/>embeddings, oauth, audit,<br/>notification, gamification,<br/>dora_metrics, wiki, ..."]
         LLM["LLMRouter<br/>multi-provider fallback"]
     end
 
     subgraph Data
         PG[("PostgreSQL 16<br/>asyncpg / SQLAlchemy 2.0")]
-        REDIS[("Redis<br/>cache + rate-limit<br/>(optional)")]
-        AUTH["Neon Auth<br/>(Better Auth on PG)"]
+        REDIS[("Redis<br/>cache + rate-limit + OAuth state<br/>(required in production)")]
     end
 
     subgraph LLMProviders["LLM Providers (priority: free → paid)"]
@@ -47,7 +46,7 @@ graph TB
     VERCEL -->|HTTPS REST| MW
     IDE -->|Bearer token| MW
     SLACKC -->|signed payloads| MW
-    STRIPEC -->|signature-verified webhook| MW
+    RAZORC -->|signature-verified webhook| MW
     GH -->|OAuth + webhook| MW
 
     MW --> ROUTERS
@@ -56,10 +55,10 @@ graph TB
     AGENTS --> LLM
     SERVICES --> PG
     SERVICES --> REDIS
-    MW -->|verify session| AUTH
+    MW -->|verify JWT / API key| PG
     SERVICES -->|clone / API| GH
     SERVICES -->|post / slash| SLACKC
-    SERVICES -->|subscriptions| STRIPEC
+    SERVICES -->|subscriptions| RAZORC
 
     LLM --> OR --> GEM --> GROQ --> NV --> OAI --> ANT
 ```
@@ -84,8 +83,8 @@ sequenceDiagram
     L->>RW: trace + timing
     RW->>RL: wrap response envelope
     RL->>A: token bucket check (Redis)
-    A->>CORS: verify Bearer / Neon session
-    Note over A: public_paths skip auth<br/>(/health, /docs, register, webhooks)
+    A->>CORS: verify Bearer JWT / API key / OAuth
+    Note over A: public_paths skip auth<br/>(/health, /ready, register, OAuth callbacks, webhooks)
     CORS->>R: dispatch to /api/v1 route
     R->>S: business logic
     S->>DB: async query
@@ -159,11 +158,10 @@ graph LR
     subgraph Managed["Managed data"]
         PGm[("PostgreSQL 16")]
         REDISm[("Redis")]
-        NEON["Neon Auth"]
     end
     subgraph Ext["External SaaS"]
         SENTRY["Sentry (errors)"]
-        STRIPEd["Stripe"]
+        RAZORd["Razorpay"]
         GHd["GitHub"]
         SLACKd["Slack"]
         LLMd["LLM providers x6"]
@@ -173,9 +171,8 @@ graph LR
     SPA -->|/api/v1| UVI
     UVI --> PGm
     UVI --> REDISm
-    UVI --> NEON
     UVI --> SENTRY
-    UVI --> STRIPEd
+    UVI --> RAZORd
     UVI --> GHd
     UVI --> SLACKd
     UVI --> LLMd

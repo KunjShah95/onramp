@@ -65,7 +65,7 @@ Onramp is an AI-powered developer onboarding & team-acceleration platform. It he
 
 ### Billing & API Gateway
 
-- [x] Stripe subscription management (create, update, cancel, webhooks)
+- [x] Razorpay subscription management (create, update, cancel, webhooks)
 - [x] Tiered pricing (free → pro → enterprise)
 - [x] API key management with per-key usage tracking
 - [x] Rate limiting (200 req/min per IP, Redis-backed)

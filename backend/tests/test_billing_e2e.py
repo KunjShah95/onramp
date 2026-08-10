@@ -1,8 +1,7 @@
-"""End-to-end tests for the full billing lifecycle.
+"""End-to-end tests for the full billing lifecycle (Razorpay).
 
-Covers subscription CRUD, Stripe Checkout session creation, webhook event
-processing (checkout completed, subscription update/delete, invoice events),
-idempotency handling, and event audit logging.
+Covers subscription CRUD, Razorpay subscription creation, webhook event
+processing (activated/charged/cancelled), idempotency, and audit logging.
 """
 import json
 from unittest.mock import MagicMock, patch
@@ -12,13 +11,14 @@ from app.services.billing_service import BillingService
 
 @pytest.fixture
 def service(monkeypatch):
-    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_dummy")
-    monkeypatch.setenv("ALLOW_UNVERIFIED_STRIPE", "true")
-    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+    monkeypatch.setenv("RAZORPAY_KEY_ID", "rzp_test_dummy")
+    monkeypatch.setenv("RAZORPAY_KEY_SECRET", "rzp_test_secret")
+    monkeypatch.setenv("ALLOW_UNVERIFIED_RAZORPAY", "true")
+    monkeypatch.delenv("RAZORPAY_WEBHOOK_SECRET", raising=False)
     import app.services.billing_service as bs
-    monkeypatch.setattr(bs, "STRIPE_PRICE_IDS", {
-        "startup": "price_startup_test",
-        "professional": "price_prof_test",
+    monkeypatch.setattr(bs, "RAZORPAY_PLAN_IDS", {
+        "startup": "plan_startup_test",
+        "professional": "plan_prof_test",
     })
     return BillingService()
 
@@ -26,16 +26,15 @@ def service(monkeypatch):
 @pytest.fixture
 async def seeded_sub(service):
     await service.create_subscription("team_e2e", "startup", "monthly")
-    await service.attach_stripe("team_e2e", "cus_e2e", "sub_e2e")
+    await service.attach_razorpay("team_e2e", "cus_e2e", "sub_e2e")
     return "team_e2e"
 
 
-def _make_webhook_event(event_type: str, **overrides: dict) -> bytes:
+def _make_webhook_event(event_type: str, entity: dict, **overrides: dict) -> bytes:
     data = {
-        "id": "evt_test",
-        "type": event_type,
-        "data": {"object": {"id": "sub_test", "object": "event"}},
-        "created": 1700000000,
+        "event": event_type,
+        "payload": {"subscription": {"entity": entity}},
+        "created_at": 1700000000,
     }
     data.update(overrides)
     return json.dumps(data).encode()
@@ -47,7 +46,7 @@ class TestSubscriptionCRUD:
         assert sub["team_id"] == "team_1"
         assert sub["tier"] == "startup"
         assert sub["status"] == "active"
-        assert sub["price"] == 49
+        assert sub["price"] == 999
 
         fetched = await service.get_subscription("team_1")
         assert fetched is not None
@@ -60,7 +59,7 @@ class TestSubscriptionCRUD:
         await service.create_subscription("team_1", "startup", "monthly")
         updated = await service.update_subscription("team_1", "professional")
         assert updated["tier"] == "professional"
-        assert updated["price"] == 299
+        assert updated["price"] == 2999
 
     async def test_cancel_subscription_hides_it(self, service):
         await service.create_subscription("team_1", "startup", "monthly")
@@ -70,103 +69,125 @@ class TestSubscriptionCRUD:
     async def test_cancel_nonexistent_returns_false(self, service):
         assert await service.cancel_subscription("nonexistent") is False
 
-    async def test_attach_stripe_ids(self, service):
+    async def test_attach_razorpay_ids(self, service):
         await service.create_subscription("team_1", "startup", "monthly")
-        assert await service.attach_stripe("team_1", "cus_abc", "sub_xyz") is True
+        assert await service.attach_razorpay("team_1", "cus_abc", "sub_xyz") is True
         sub = await service.get_subscription("team_1")
-        assert sub["stripe_customer_id"] == "cus_abc"
-        assert sub["stripe_subscription_id"] == "sub_xyz"
+        assert sub["razorpay_customer_id"] == "cus_abc"
+        assert sub["razorpay_subscription_id"] == "sub_xyz"
 
 
-class TestCheckoutSession:
-    async def test_stripe_disabled_returns_stub(self, monkeypatch, service):
-        monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+class TestSubscriptionCreation:
+    async def test_razorpay_disabled_returns_stub(self, monkeypatch, service):
+        monkeypatch.delenv("RAZORPAY_KEY_ID", raising=False)
         result = await service.create_checkout_session(
             "team_1", "startup", "https://example.com/success", "https://example.com/cancel"
         )
-        assert result == {"error": "Stripe is not configured", "stub": True}
+        assert result == {"error": "Razorpay is not configured", "stub": True}
 
-    async def test_creates_stripe_checkout_session(self, service):
-        mock_session = MagicMock(url="https://checkout.stripe.com/cs_test", id="cs_test_123")
-        mock_stripe = MagicMock()
-        mock_stripe.checkout.Session.create.return_value = mock_session
-        with patch.object(service, "_stripe", return_value=mock_stripe):
+    async def test_creates_razorpay_subscription(self, service):
+        mock_sub = MagicMock()
+        mock_sub.get.side_effect = lambda k, d=None: {"short_url": "https://rzp.io/abc", "id": "sub_test"}.get(k, d)
+        mock_client = MagicMock()
+        mock_client.subscription.create.return_value = mock_sub
+        with patch.object(service, "_razorpay", return_value=mock_client):
             result = await service.create_checkout_session(
                 "team_1", "startup", "https://example.com/success", "https://example.com/cancel"
             )
-        assert result["url"] == "https://checkout.stripe.com/cs_test"
-        assert result["session_id"] == "cs_test_123"
+        assert result["url"] == "https://rzp.io/abc"
+        assert result["subscription_id"] == "sub_test"
 
 
 class TestWebhookEvents:
-    async def test_checkout_completed_attaches_stripe(self, service, seeded_sub):
-        payload = _make_webhook_event("checkout.session.completed",
-            data={"object": {"client_reference_id": "team_e2e", "customer": "cus_new", "subscription": "sub_new"}},
+    async def test_activated_attaches_razorpay(self, service, seeded_sub):
+        payload = _make_webhook_event("subscription.activated",
+            {"id": "sub_new", "customer_id": "cus_new", "notes": {"team_id": "team_e2e"}},
         )
         result = await service.handle_webhook(payload, sig_header=None)
-        assert result == {"received": True, "type": "checkout.session.completed"}
+        assert result == {"received": True, "type": "subscription.activated"}
         sub = await service.get_subscription("team_e2e")
-        assert sub["stripe_customer_id"] == "cus_new"
-        assert sub["stripe_subscription_id"] == "sub_new"
+        assert sub["razorpay_customer_id"] == "cus_new"
+        assert sub["razorpay_subscription_id"] == "sub_new"
 
-    async def test_subscription_updated_syncs_status(self, service, seeded_sub):
-        payload = _make_webhook_event("customer.subscription.updated",
-            data={"object": {"id": "sub_e2e", "status": "past_due", "items": {"data": [{"price": {"id": ""}}]}, "cancel_at_period_end": False}},
+    async def test_charged_syncs_status(self, service, seeded_sub):
+        payload = _make_webhook_event("subscription.charged",
+            {"id": "sub_e2e", "plan_id": "plan_startup_test"},
         )
         await service.handle_webhook(payload, sig_header=None)
         subs = await service.storage.query_documents("onramp_subscriptions", [("team_id", "==", "team_e2e")])
-        assert subs[0]["status"] == "past_due"
+        assert subs[0]["status"] == "active"
 
-    async def test_subscription_deleted_cancels_local(self, service, seeded_sub):
-        payload = _make_webhook_event("customer.subscription.deleted",
-            data={"object": {"id": "sub_e2e"}},
-        )
+    async def test_cancelled_cancels_local(self, service, seeded_sub):
+        payload = _make_webhook_event("subscription.cancelled", {"id": "sub_e2e"})
         await service.handle_webhook(payload, sig_header=None)
         assert await service.get_subscription("team_e2e") is None
 
-    async def test_invoice_payment_succeeded_updates_period(self, service, seeded_sub):
-        payload = _make_webhook_event("invoice.payment_succeeded",
-            data={"object": {"subscription": "sub_e2e", "period_end": 1700100000}},
-        )
-        await service.handle_webhook(payload, sig_header=None)
-        sub = await service.get_subscription("team_e2e")
-        assert sub["current_period_end"] is not None
-
-    async def test_invoice_payment_failed_sets_past_due(self, service, seeded_sub):
-        payload = _make_webhook_event("invoice.payment_failed",
-            data={"object": {"subscription": "sub_e2e"}},
-        )
+    async def test_pending_sets_past_due(self, service, seeded_sub):
+        payload = _make_webhook_event("subscription.pending", {"id": "sub_e2e"})
         await service.handle_webhook(payload, sig_header=None)
         subs = await service.storage.query_documents("onramp_subscriptions", [("team_id", "==", "team_e2e")])
         assert subs[0]["status"] == "past_due"
 
+    async def test_activated_creates_local_subscription_when_missing(self, service):
+        # Checkout creates the Razorpay subscription directly — no local doc
+        # exists yet, so the webhook must upsert one for the team.
+        payload = _make_webhook_event("subscription.activated",
+            {"id": "sub_fresh", "customer_id": "cus_fresh", "plan_id": "plan_startup_test",
+             "notes": {"team_id": "team_fresh"}},
+        )
+        result = await service.handle_webhook(payload, sig_header=None)
+        assert result == {"received": True, "type": "subscription.activated"}
+        sub = await service.get_subscription("team_fresh")
+        assert sub is not None
+        assert sub["tier"] == "startup"
+        assert sub["razorpay_customer_id"] == "cus_fresh"
+        assert sub["razorpay_subscription_id"] == "sub_fresh"
+
+    async def test_charged_updates_period_end(self, service, seeded_sub):
+        payload = _make_webhook_event("subscription.charged",
+            {"id": "sub_e2e", "plan_id": "plan_startup_test", "current_end": 1767225600},
+        )
+        await service.handle_webhook(payload, sig_header=None)
+        subs = await service.storage.query_documents("onramp_subscriptions", [("team_id", "==", "team_e2e")])
+        assert subs[0]["status"] == "active"
+        assert subs[0]["current_period_end"] is not None
+
+    async def test_webhook_retry_deduped_by_event_id(self, service, seeded_sub):
+        # Razorpay retries deliveries; the event id (not a header Razorpay
+        # never sends) must dedupe the second attempt.
+        payload = _make_webhook_event("subscription.charged",
+            {"id": "sub_e2e", "plan_id": "plan_startup_test"},
+            id="evt_retry_1",
+        )
+        r1 = await service.handle_webhook(payload, sig_header=None)
+        assert r1["received"] is True
+        r2 = await service.handle_webhook(payload, sig_header=None)
+        assert r2["duplicate"] is True
+
     async def test_idempotency_skips_duplicate(self, service, seeded_sub):
-        payload = _make_webhook_event("checkout.session.completed",
-            data={"object": {"client_reference_id": "team_e2e", "customer": "cus_dedup", "subscription": "sub_dedup"}},
+        payload = _make_webhook_event("subscription.activated",
+            {"id": "sub_dedup", "customer_id": "cus_dedup", "notes": {"team_id": "team_e2e"}},
         )
         r1 = await service.handle_webhook(payload, sig_header=None, idempotency_key="idem_1")
         assert r1["received"] is True
         r2 = await service.handle_webhook(payload, sig_header=None, idempotency_key="idem_1")
         assert r2["duplicate"] is True
-        assert r2["type"] == "checkout.session.completed"
 
     async def test_unhandled_event_types_are_logged(self, service, seeded_sub):
-        payload = _make_webhook_event("setup_intent.created",
-            data={"object": {"id": "seti_test"}},
-        )
+        payload = _make_webhook_event("subscription.halted", {"id": "sub_e2e"})
         result = await service.handle_webhook(payload, sig_header=None)
-        assert result == {"received": True, "type": "setup_intent.created"}
+        assert result == {"received": True, "type": "subscription.halted"}
 
 
 class TestEventAuditLog:
     async def test_webhook_events_are_logged(self, service):
         await service.create_subscription("team_log", "free", "monthly")
-        payload = _make_webhook_event("checkout.session.completed",
-            data={"object": {"client_reference_id": "team_log", "customer": "cus_log", "subscription": "sub_log"}},
+        payload = _make_webhook_event("subscription.charged",
+            {"id": "sub_log", "plan_id": "plan_startup_test"},
         )
         await service.handle_webhook(payload, sig_header=None)
         logs = await service.get_event_log(limit=10)
-        matching = [e for e in logs if e["event_type"] == "checkout.session.completed"]
+        matching = [e for e in logs if e["event_type"] == "subscription.charged"]
         assert len(matching) >= 1
         assert matching[0]["status"] == "processed"
 
@@ -177,7 +198,8 @@ class TestPricingTiers:
         for tier in ("free", "startup", "professional", "enterprise"):
             assert tier in pricing
 
-    def test_pricing_has_features(self):
-        for tier_data in BillingService.get_pricing().values():
-            assert "features" in tier_data
-            assert isinstance(tier_data["features"], list)
+    def test_startup_price_is_inr(self):
+        assert BillingService.get_pricing()["startup"]["price_monthly"] == 999
+
+    def test_professional_price_is_inr(self):
+        assert BillingService.get_pricing()["professional"]["price_monthly"] == 2999
