@@ -77,3 +77,6 @@ web/test-results/
 scripts/
 .superpowers/
 docs/
+
+# Recovered account identities (contains user emails)
+backend/restore_users.csv
