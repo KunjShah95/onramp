@@ -1,4 +1,6 @@
 import json
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -22,6 +24,10 @@ class QueryRequest(BaseModel):
     question: str
     use_memory: bool = True
     mode: str = "normal"
+    # Optional explicit model id / query-type / provider name that wins over
+    # the agent's default routing (e.g. "anthropic", "gpt-4o-mini", or any
+    # OpenRouter-catalog "vendor/model" id). See LLMRouter.chat/provider_chain.
+    model: Optional[str] = None
 
 
 @router.post("/index")
@@ -58,7 +64,10 @@ async def query_repo(
 
     before_route = getattr(llm, "last_route", None)
     try:
-        answer = await qa.ask(request.index_id, request.question, memory, mode=request.mode)
+        answer = await qa.ask(
+            request.index_id, request.question, memory,
+            mode=request.mode, model=request.model,
+        )
         await _conversation.add_turn(user_id, request.index_id, request.question, answer)
         # Debug header showing exactly which provider/model served the answer
         # (only if this request actually hit the LLM — not the fallback path).
@@ -90,7 +99,10 @@ async def query_repo_stream(
     async def event_gen():
         full_answer = ""
         try:
-            async for token in qa.ask_stream(request.index_id, request.question, memory, mode=request.mode):
+            async for token in qa.ask_stream(
+                request.index_id, request.question, memory,
+                mode=request.mode, model=request.model,
+            ):
                 full_answer += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
             yield "data: [DONE]\n\n"

@@ -15,6 +15,7 @@ import { useToast } from '../context/ToastContext'
 import { useRoastMode } from '../context/RoastModeContext'
 import { indexRepo, askQuestionStream } from '../lib/api'
 import RoastModeToggle from '../components/ui/RoastModeToggle'
+import ModelPicker from '../components/ui/ModelPicker'
 import ConsolePanel from '../components/ui/console-panel'
 
 const fade = {
@@ -51,6 +52,9 @@ export default function AskPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Explicit model pinned for this conversation (null = Auto routing).
+  // Sent with every /ask request — see ModelPicker.
+  const [model, setModel] = useState<string | null>(null)
   const { enabled: roastMode } = useRoastMode()
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -106,7 +110,8 @@ export default function AskPage() {
           )
         },
         controller.signal,
-        roastMode ? 'roast' : 'normal'
+        roastMode ? 'roast' : 'normal',
+        model ?? undefined
       )
     } catch (err: any) {
       setMessages((prev) =>
@@ -155,6 +160,7 @@ export default function AskPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0 mt-2">
             <RoastModeToggle />
+            <ModelPicker value={model} onChange={setModel} />
             {messages.length > 1 && (
               <button
                 onClick={handleClear}
@@ -336,7 +342,9 @@ export default function AskPage() {
             </button>
           </div>
           <p className="font-code text-[10px] text-ink-tertiary mt-1.5 text-center">
-            AI responses are generated based on codebase analysis
+            {model
+              ? `Model pinned: ${model} — every question uses it`
+              : 'Auto routing — the router picks the best model per question · AI responses are generated based on codebase analysis'}
           </p>
         </div>
       </div>

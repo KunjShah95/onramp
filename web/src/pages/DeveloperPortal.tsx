@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo } from '../lib/api'
+import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, addProviderKey, fetchModelCatalog, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
 import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
-import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple } from '@phosphor-icons/react'
+import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple, Stack, MagnifyingGlass, Plus } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
 import CodeEditor from '../components/ui/monaco-editor'
@@ -47,10 +47,15 @@ export default function DeveloperPortal() {
   const [newKeyExpiry, setNewKeyExpiry] = useState('')
   const [creatingKey, setCreatingKey] = useState(false)
   const [providerKeys, setProviderKeys] = useState<Record<string, ProviderKeyInfo>>({})
+  const [providerKeyCounts, setProviderKeyCounts] = useState<Record<string, number>>({})
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
+  const [addingPoolKey, setAddingPoolKey] = useState(false)
   const [providerKeyInput, setProviderKeyInput] = useState('')
   const [savingProviderKey, setSavingProviderKey] = useState(false)
   const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
+  const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogSearch, setCatalogSearch] = useState('')
 
   // Earliest selectable expiry date (today) — past dates mean "no expiry".
   const today = new Date().toISOString().split('T')[0]
@@ -65,7 +70,19 @@ export default function DeveloperPortal() {
     fetchUsage()
     fetchTiers()
     fetchProviderKeys()
+    fetchCatalog()
   }, [activeTeamId])
+
+  async function fetchCatalog() {
+    setCatalogLoading(true)
+    try {
+      const data = await fetchModelCatalog()
+      setCatalog(data)
+    } catch {
+      setCatalog(null)
+    }
+    setCatalogLoading(false)
+  }
 
   async function fetchKeys() {
     if (!activeTeamId) return
@@ -103,8 +120,14 @@ export default function DeveloperPortal() {
     try {
       const data = await listProviderKeys(activeTeamId)
       const map: Record<string, ProviderKeyInfo> = {}
-      ;(data.providers || []).forEach((p) => { map[p.provider] = p })
+      const counts: Record<string, number> = {}
+      ;(data.providers || []).forEach((p) => {
+        counts[p.provider] = (counts[p.provider] || 0) + 1
+        // Primary wins the card's "configured" state; extra keys still count.
+        if (!map[p.provider] || p.is_primary) map[p.provider] = p
+      })
       setProviderKeys(map)
+      setProviderKeyCounts(counts)
     } catch {
       // Silent — section stays read-only / empty
     }
@@ -114,11 +137,18 @@ export default function DeveloperPortal() {
     if (!activeTeamId || !editingProvider) return
     setSavingProviderKey(true)
     try {
-      await setProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
+      if (addingPoolKey) {
+        await addProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
+      } else {
+        await setProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
+      }
       setEditingProvider(null)
+      setAddingPoolKey(false)
       setProviderKeyInput('')
       await fetchProviderKeys()
-      toast.success('Saved', `${editingProvider} key updated`)
+      toast.success('Saved', addingPoolKey
+        ? `${editingProvider} pool key added — traffic now rotates across ${(providerKeyCounts[editingProvider] || 0) + 1} keys`
+        : `${editingProvider} key updated`)
     } catch (err: any) {
       toast.error('Failed', err.message || 'Failed to save provider key')
     }
@@ -388,6 +418,7 @@ export default function DeveloperPortal() {
                 {PROVIDER_OPTIONS.map((p) => {
                   const info = providerKeys[p.id]
                   const configured = !!info?.configured
+                  const keyCount = providerKeyCounts[p.id] || 0
                   return (
                     <div key={p.id} className="bg-bg-secondary border border-border rounded-xl p-3.5">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -395,24 +426,35 @@ export default function DeveloperPortal() {
                           <span className={`w-2 h-2 rounded-full shrink-0 ${configured ? 'bg-go' : 'bg-bg-tertiary'}`} />
                           <span className="font-medium text-text-primary text-xs truncate">{p.label}</span>
                         </div>
-                        {configured ? (
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded shrink-0">Configured</span>
-                        ) : (
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50 shrink-0">Platform</span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {configured ? (
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded">Configured</span>
+                          ) : (
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50">Platform</span>
+                          )}
+                          {keyCount > 1 && (
+                            <span
+                              className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/70 bg-bg-tertiary/40 px-1.5 py-0.5 rounded"
+                              title={`${keyCount} keys in this provider's pool — the router rotates across them`}
+                            >
+                              {keyCount} keys
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="font-mono text-[9px] text-text-tertiary/60 mb-2.5 truncate">overrides {p.envVar}</p>
                       {configured && info.updated_at && (
                         <p className="text-[10px] text-text-tertiary/70 mb-2.5">Updated {formatKeyDate(info.updated_at)}</p>
                       )}
                       {canManageKeys && (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <button
                             onClick={() => {
                               if (editingProvider === p.id) {
                                 setEditingProvider(null)
                                 setProviderKeyInput('')
                               } else {
+                                setAddingPoolKey(false)
                                 setEditingProvider(p.id)
                                 setProviderKeyInput('')
                               }
@@ -422,6 +464,20 @@ export default function DeveloperPortal() {
                             <PencilSimple size={12} />
                             {configured ? 'Update' : 'Add key'}
                           </button>
+                          {configured && (
+                            <button
+                              onClick={() => {
+                                setAddingPoolKey(true)
+                                setEditingProvider(p.id)
+                                setProviderKeyInput('')
+                              }}
+                              className="flex items-center gap-1.5 text-[11px] text-text-tertiary hover:text-go transition-colors"
+                              title="Add another key — traffic rotates round-robin across the pool"
+                            >
+                              <Plus size={12} />
+                              Add key
+                            </button>
+                          )}
                           {configured && (confirmDeleteProvider !== p.id ? (
                             <button
                               onClick={() => setConfirmDeleteProvider(p.id)}
@@ -448,7 +504,7 @@ export default function DeveloperPortal() {
                             type="password"
                             value={providerKeyInput}
                             onChange={(e) => setProviderKeyInput(e.target.value)}
-                            placeholder="sk-..."
+                            placeholder={addingPoolKey ? 'sk-... (extra pool key)' : 'sk-...'}
                             autoFocus
                             className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
                           />
@@ -457,7 +513,7 @@ export default function DeveloperPortal() {
                             disabled={savingProviderKey || !providerKeyInput.trim()}
                             className="px-2.5 py-1.5 rounded-lg bg-go hover:bg-go/90 disabled:opacity-40 text-white text-[11px] font-semibold transition-all shrink-0"
                           >
-                            {savingProviderKey ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+                            {savingProviderKey ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : (addingPoolKey ? 'Add' : 'Save')}
                           </button>
                         </div>
                       )}
@@ -469,6 +525,118 @@ export default function DeveloperPortal() {
               <p className="text-[10px] text-text-tertiary/60">
                 Keys are encrypted at rest and apply to OpenAI-compatible gateway calls (<code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code>, <code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/embeddings</code>) authenticated with this team's API key. Leave a provider on “Platform” to use the shared platform key.
               </p>
+            </CardSpotlight>
+          </motion.div>
+
+          {/* Model Catalog */}
+          <motion.div variants={itemVariants}>
+            <CardSpotlight className="p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <Stack className="w-5 h-5 text-go" weight="fill" />
+                <div>
+                  <h3 className="font-display font-bold">Model Catalog</h3>
+                  <p className="text-xs text-text-tertiary">
+                    Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code>.
+                  </p>
+                </div>
+              </div>
+
+              {catalogLoading && !catalog ? (
+                <div className="flex items-center justify-center py-8">
+                  <Spinner className="w-5 h-5 text-go animate-spin" />
+                </div>
+              ) : !catalog ? (
+                <div className="text-center py-8 text-text-tertiary text-sm">
+                  <Stack className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p>Model catalog unavailable.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Query-type routing */}
+                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightning className="w-4 h-4 text-go" />
+                      <span className="font-mono text-[11px] text-go uppercase tracking-wider">Query-Type Routing</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {Object.entries(catalog.query_types || {}).map(([qtype, qinfo]) => (
+                        <div key={qtype} className="bg-bg-primary border border-border rounded-lg p-3">
+                          <p className="font-bold text-text-primary text-xs mb-0.5">{qtype}</p>
+                          <p className="text-[10px] text-text-tertiary leading-relaxed mb-1.5">{qinfo.description}</p>
+                          <p className="font-mono text-[9px] text-go/80 truncate">
+                            {(qinfo.preferred_providers || []).join(' → ') || 'free-first fallback chain'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pinned provider defaults */}
+                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Terminal className="w-4 h-4 text-go" />
+                      <span className="font-mono text-[11px] text-go uppercase tracking-wider">Pinned Defaults</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {Object.entries(catalog.providers || {}).map(([provider, pinfo]) => (
+                        <div key={provider} className="flex items-center justify-between gap-2 bg-bg-primary border border-border rounded-lg px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-text-primary capitalize truncate">{provider}</p>
+                            <p className="font-mono text-[9px] text-text-tertiary truncate">{pinfo.model}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {pinfo.free ? (
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded">Free</span>
+                            ) : (
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">Paid</span>
+                            )}
+                            {!pinfo.available && (
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50">unconfigured</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dynamic OpenRouter catalog */}
+                  <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Stack className="w-4 h-4 text-go" />
+                        <span className="font-mono text-[11px] text-go uppercase tracking-wider">OpenRouter Catalog</span>
+                        {!!catalog.openrouter_catalog?.length && (
+                          <span className="font-mono text-[9px] text-text-tertiary/60">{catalog.openrouter_catalog.length} models</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 w-52">
+                        <MagnifyingGlass size={12} className="text-text-tertiary/50 shrink-0" />
+                        <input
+                          value={catalogSearch}
+                          onChange={(e) => setCatalogSearch(e.target.value)}
+                          placeholder="Filter by vendor or id…"
+                          className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-text-primary placeholder:text-text-tertiary/30 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {catalog.openrouter_catalog?.length ? (
+                      <CatalogModelList
+                        models={catalog.openrouter_catalog}
+                        search={catalogSearch}
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    ) : (
+                      <p className="text-[11px] text-text-tertiary py-3">
+                        {catalog.catalog_fetched === false
+                          ? 'The live catalog could not be fetched right now — passthrough model ids still work; they are just not listed here.'
+                          : 'Live OpenRouter catalog not yet merged. Pin a provider key above and refresh; any vendor/model id still routes through the gateway.'}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </CardSpotlight>
           </motion.div>
 
@@ -706,6 +874,62 @@ X-RateLimit-Reset: 1704067200`)}
         </div>
       )}
     </motion.div>
+  )
+}
+
+function CatalogModelList({ models, search, copiedId, onCopy }: {
+  models: OpenRouterCatalogModel[]
+  search: string
+  copiedId: string | null
+  onCopy: (id: string, content: string) => void
+}) {
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? models.filter((m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q) || m.vendor.toLowerCase().includes(q))
+    : models
+  const freeCount = models.filter((m) => m.free).length
+
+  return (
+    <>
+      <p className="font-mono text-[9px] text-text-tertiary/60 mb-2">
+        {models.length} models · {freeCount} free · {models.length - freeCount} paid
+      </p>
+      <div className="max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
+        {filtered.length === 0 && (
+          <p className="text-[11px] text-text-tertiary py-3">No models match “{search}”.</p>
+        )}
+        {filtered.map((m) => (
+          <div
+            key={m.id}
+            className="flex items-center justify-between gap-3 bg-bg-primary border border-border rounded-lg px-3 py-2 hover:border-go/30 transition-colors"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] text-text-primary truncate">{m.id}</span>
+                {m.free ? (
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded shrink-0">Free</span>
+                ) : (
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0">Paid</span>
+                )}
+              </div>
+              <p className="text-[10px] text-text-tertiary/80 truncate mt-0.5">
+                {m.name}
+                {m.context_length > 0 && <> · {m.context_length.toLocaleString()} ctx</>}
+                {m.pricing.prompt > 0 && <> · ${m.pricing.prompt}/1M in · ${m.pricing.completion}/1M out</>}
+              </p>
+            </div>
+            <button
+              onClick={() => onCopy(`model-${m.id}`, m.id)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-go hover:bg-go/10 transition-all shrink-0"
+              aria-label={`Copy model id ${m.id}`}
+              title="Copy model id"
+            >
+              {copiedId === `model-${m.id}` ? <Check size={13} className="text-go" /> : <Copy size={13} />}
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 

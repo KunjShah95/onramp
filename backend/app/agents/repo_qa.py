@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import random
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.agents.base_agent import BaseAgent
 from app.llm import QueryType
 from app.services.embeddings_service import EmbeddingsService
@@ -69,7 +69,15 @@ class RepoQA(BaseAgent):
             "Provide a clear answer with file references where applicable."
         )
 
-    async def ask(self, index_id: str, question: str, memory: str = "", mode: str = "normal") -> str:
+    async def ask(
+        self, index_id: str, question: str, memory: str = "", mode: str = "normal",
+        model: Optional[str] = None,
+    ) -> str:
+        """Answer a question about an indexed repo.
+
+        ``model`` (optional) names an explicit model id / query type / provider
+        that wins over this agent's REASONING default — see LLMRouter.chat.
+        """
         documents = await self.embeddings.search(index_id, question)
 
         if not documents:
@@ -84,7 +92,7 @@ class RepoQA(BaseAgent):
         if self.llm:
             prompt = self._build_prompt(question, context, memory, mode)
             try:
-                result = await self._call_claude(prompt)
+                result = await self._call_claude(prompt, model=model)
                 return result.strip()
             except Exception:
                 logger.exception("LLM call failed for repo QA, using fallback")
@@ -96,8 +104,16 @@ class RepoQA(BaseAgent):
             f"{best_doc.content[:1000]}"
         )
 
-    async def ask_stream(self, index_id: str, question: str, memory: str = "", mode: str = "normal"):
-        """Stream an answer token-by-token (async generator)."""
+    async def ask_stream(
+        self, index_id: str, question: str, memory: str = "", mode: str = "normal",
+        model: Optional[str] = None,
+    ):
+        """Stream an answer token-by-token (async generator).
+
+        ``model`` (optional) names an explicit model id / query type / provider
+        that wins over this agent's REASONING default — see
+        LLMRouter.chat_stream.
+        """
         documents = await self.embeddings.search(index_id, question)
 
         if not documents:
@@ -113,7 +129,7 @@ class RepoQA(BaseAgent):
         if self.llm and hasattr(self.llm, "chat_stream"):
             prompt = self._build_prompt(question, context, memory, mode)
             try:
-                async for token in self.llm.chat_stream(prompt):
+                async for token in self.llm.chat_stream(prompt, model=model):
                     yield token
                 return
             except Exception:

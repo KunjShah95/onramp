@@ -22,6 +22,8 @@ class FakeRouter:
 
     def __init__(self):
         self.last_route = None
+        self.last_chat_kwargs = {}
+        self.last_stream_kwargs = {}
 
     @staticmethod
     def _route(query_type=None):
@@ -34,10 +36,13 @@ class FakeRouter:
         }
 
     async def chat(self, prompt, system=None, max_tokens=2000, query_type=None, **kwargs):
+        self.last_chat_kwargs = kwargs
         self.last_route = self._route(query_type)
         return "patched-answer"
 
     def chat_stream(self, prompt, system=None, max_tokens=2000, query_type=None, **kwargs):
+        self.last_stream_kwargs = kwargs
+
         async def _gen():
             self.last_route = self._route(query_type)
             yield "tok1"
@@ -190,6 +195,42 @@ class TestAskEndpoint:
             body = "".join(resp.iter_text())
         assert "tok1" in body and "tok2" in body
         assert body.rstrip().endswith("data: [DONE]")
+
+    def test_query_forwards_explicit_model_to_router(self, monkeypatch):
+        """The picker's explicit model id must reach the router's chat call
+        (query + stream), so it wins over the agent's REASONING default."""
+        doc = SimpleNamespace(filename="app/main.py", doc_type="source", content="print('hi')")
+        app = _build_app(monkeypatch, [doc])
+        client = TestClient(app)
+        body = _ask_body()
+        body["model"] = "deepseek/deepseek-r1"
+
+        resp = client.post("/api/v1/ask/query", json=body)
+        assert resp.status_code == 200
+        assert app.state.llm.last_chat_kwargs.get("model") == "deepseek/deepseek-r1"
+
+    def test_query_without_model_keeps_auto_routing(self, monkeypatch):
+        doc = SimpleNamespace(filename="app/main.py", doc_type="source", content="print('hi')")
+        app = _build_app(monkeypatch, [doc])
+        client = TestClient(app)
+        resp = client.post("/api/v1/ask/query", json=_ask_body())
+        assert resp.status_code == 200
+        assert app.state.llm.last_chat_kwargs.get("model") is None
+
+    def test_query_stream_forwards_explicit_model_to_router(self, monkeypatch):
+        """The streaming path must thread the picker's model into ask_stream
+        just like the non-streaming path."""
+        doc = SimpleNamespace(filename="app/main.py", doc_type="source", content="print('hi')")
+        app = _build_app(monkeypatch, [doc])
+        client = TestClient(app)
+        body = _ask_body()
+        body["model"] = "qwen/qwen3-coder:32b"
+
+        with client.stream("POST", "/api/v1/ask/query/stream", json=body) as resp:
+            assert resp.status_code == 200
+            body_out = "".join(resp.iter_text())
+        assert "tok1" in body_out
+        assert app.state.llm.last_stream_kwargs.get("model") == "qwen/qwen3-coder:32b"
 
 
 class TestExploreEndpoint:

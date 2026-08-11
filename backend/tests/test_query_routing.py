@@ -1,12 +1,13 @@
 """Tests for OpenRouter-style query-type routing in the LLM router."""
 
-from app.llm import LLMRouter, ModelProvider, QueryType, classify_query
+from app.llm import LLMRouter, ModelProvider, QueryType, RoutingMode, classify_query
 
 
 _PROVIDER_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-    "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
+    "NVIDIA_API_KEY", "DEEPSEEK_API_KEY", "QWEN_API_KEY",
+    "ZHIPU_API_KEY", "MOONSHOT_API_KEY", "MISTRAL_API_KEY",
+    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
 )
 
 
@@ -102,7 +103,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return f"Response from {provider.value}"
 
@@ -116,7 +117,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return "ok"
 
@@ -130,7 +131,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return "ok"
 
@@ -143,7 +144,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             if provider == ModelProvider.OPENROUTER:
                 raise Exception("OpenRouter down")
@@ -161,7 +162,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return '{"ok": true}'
 
@@ -176,7 +177,7 @@ class TestQueryTypeRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             yield "hello "
             yield "world"
@@ -248,7 +249,7 @@ class TestOpenAIModelRouting:
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return f"Response from {provider.value}"
 
@@ -260,7 +261,13 @@ class TestOpenAIModelRouting:
         # Route attribution: paid provider (Claude), code query type, with the
         # per-1M-token prices snapshot from the pricing table. Keep the price
         # values in sync with MODEL_PRICING in app/services/llm_costs.py.
-        assert route == {
+        # complexity/routing_mode are the router-scoring observability fields
+        # (see RoutingMode / estimate_complexity in app/llm.py) - checked
+        # separately below since their exact values aren't the point here.
+        route_without_scoring_fields = {
+            k: v for k, v in route.items() if k not in ("complexity", "routing_mode")
+        }
+        assert route_without_scoring_fields == {
             "provider": "anthropic",
             "model": "claude-3-5-sonnet-20241022",
             "served": "anthropic/claude-3-5-sonnet-20241022",
@@ -269,13 +276,15 @@ class TestOpenAIModelRouting:
             "price_in": 3.00,
             "price_out": 15.00,
         }
+        assert 0.0 <= route["complexity"] <= 1.0
+        assert route["routing_mode"] == RoutingMode.BALANCED
 
     async def test_openai_chat_provider_override(self, monkeypatch):
         _set_all_keys(monkeypatch)
         router = LLMRouter()
         seen = []
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             seen.append(provider)
             return "ok"
 
@@ -289,7 +298,7 @@ class TestOpenAIModelRouting:
         _set_all_keys(monkeypatch)
         router = LLMRouter()
 
-        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             yield "Hel"
             yield "lo"
 
@@ -305,7 +314,7 @@ class TestOpenAIModelRouting:
         _set_all_keys(monkeypatch)
         router = LLMRouter()
 
-        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None):
+        async def fake_call(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
             return "ok"
 
         monkeypatch.setattr(LLMRouter, "_call_provider", fake_call)

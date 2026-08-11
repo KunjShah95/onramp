@@ -95,6 +95,32 @@ class TestProviderBreakdown:
         result = await tracker.get_provider_breakdown("acme", period="day")
         assert result["tracked_requests"] == 1
 
+    async def test_aggregates_per_key_from_key_id_metadata(self):
+        """Route records with a key_id (multi-key BYOK pools) roll up per key:
+        request counts plus the same dollar figures as provider_costs."""
+        tracker = UsageTracker()
+        await tracker.record_usage(
+            "acme", "chat", credits=1, cost_usd=0.01, cost_avoided_usd=0.02,
+            metadata={**_route(provider="deepseek"), "key_id": "key-slot-A"},
+        )
+        await tracker.record_usage(
+            "acme", "chat", credits=1, cost_usd=0.04, cost_avoided_usd=0.0,
+            metadata={**_route(provider="deepseek"), "key_id": "key-slot-B"},
+        )
+        await tracker.record_usage(
+            "acme", "chat", credits=1, metadata=_route(),
+        )
+        result = await tracker.get_provider_breakdown("acme")
+        # Only records carrying a key_id count toward the per-key view.
+        assert result["keys"] == {"key-slot-A": 1, "key-slot-B": 1}
+        assert result["key_costs"]["key-slot-A"] == {
+            "requests": 1, "cost_usd": 0.01, "cost_avoided_usd": 0.02,
+        }
+        assert result["key_costs"]["key-slot-B"]["cost_usd"] == pytest.approx(0.04)
+        # Provider-level totals are unaffected by the per-key split.
+        assert result["providers"]["deepseek"] == 2
+        assert result["provider_costs"]["deepseek"]["cost_usd"] == pytest.approx(0.05)
+
 
 class TestProviderUsageEndpoint:
     """GET /api/v1/ai/usage/{org}/providers endpoint."""

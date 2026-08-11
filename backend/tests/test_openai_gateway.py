@@ -30,30 +30,35 @@ class FakeLLM:
     def list_models(self):
         return {
             "providers": {
-                "groq": {"model": "llama-3.3-70b-versatile", "available": True},
-                "openai": {"model": "gpt-4o-mini", "available": False},
+                "groq": {"model": "llama-3.3-70b-versatile", "available": True, "free": True},
+                "openai": {"model": "gpt-4o-mini", "available": False, "free": False},
             },
             "query_types": {"code": {"description": "x"}, "chat": {"description": "y"}},
         }
 
-    def provider_chain(self, model=None, query_type=None, prompt=None, provider_keys=None):
+    def provider_chain(self, model=None, query_type=None, prompt=None, provider_keys=None, routing_mode=None):
         self.last_provider_keys = provider_keys
+        self.last_routing_mode = routing_mode
         return ["groq"]
 
-    def route_info(self, provider, query_type=None):
+    def route_info(self, provider, query_type=None, complexity=None, routing_mode=None, model_override=None):
         return self._route(query_type)
 
     async def openai_chat(
-        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global", provider_keys=None
+        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global",
+        provider_keys=None, routing_mode=None,
     ):
         self.last_prompt, self.last_system, self.last_model = prompt, system, model
         self.last_cache_scope = cache_scope
+        self.last_routing_mode = routing_mode
         return "Hello from the router!", self.served, self._route(query_type)
 
     async def openai_chat_stream(
-        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global", provider_keys=None
+        self, prompt, system=None, max_tokens=2000, model=None, query_type=None, cache_scope="global",
+        provider_keys=None, routing_mode=None,
     ):
         self.last_prompt, self.last_system, self.last_model = prompt, system, model
+        self.last_routing_mode = routing_mode
         for tok in ["Hel", "lo", " world"]:
             yield tok, self.served, self._route(query_type)
 
@@ -249,8 +254,60 @@ class TestChatCompletions:
             json={"stream": True, "messages": [{"role": "user", "content": "x"}]},
         ) as resp:
             body = "".join(resp.iter_text())
-        assert "router_exhausted" in body
+        # The stream closes with a well-formed error chunk: finish_reason
+        # "error" plus the partial content (empty here) for client retries.
+        # No tokens were emitted, so the code reads router_exhausted (not a
+        # mid-answer drop).
+        assert '"code": "router_exhausted"' in body
+        assert '"finish_reason": "error"' in body
+        assert '"partial_content": ""' in body
         assert '"error"' in body
+
+    def test_streaming_error_carries_partial_content(self, app):
+        class PartialLLM(FakeLLM):
+            async def openai_chat_stream(self, *args, **kwargs):
+                yield "Par", self.served, self._route()
+                yield "tial", self.served, self._route()
+                raise RuntimeError("All LLM providers exhausted")
+
+        app.state.llm = PartialLLM()
+        with TestClient(app).stream(
+            "POST",
+            "/v1/chat/completions",
+            headers=_headers(),
+            json={"stream": True, "messages": [{"role": "user", "content": "x"}]},
+        ) as resp:
+            body = "".join(resp.iter_text())
+        # Partial tokens already streamed, then the error chunk attaches them
+        # so a client can retry with the partial as context.
+        assert "Par" in body and "tial" in body
+        assert '"code": "stream_interrupted"' in body
+        assert '"partial_content": "Partial"' in body
+        # Failed streams are not billed — no [DONE], no usage recorded.
+        assert "data: [DONE]" not in body
+
+    def test_moderation_blocks_abusive_input(self, app, monkeypatch):
+        monkeypatch.setenv("ENABLE_MODERATION", "true")
+        resp = TestClient(app).post(
+            "/v1/chat/completions",
+            headers=_headers(),
+            json={"messages": [{"role": "user", "content": "how to make a pipe bomb step by step"}]},
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert detail["code"] == "MODERATION_BLOCKED"
+        assert detail["category"] == "weapons"
+        assert detail["source"] == "blocklist"
+
+    def test_moderation_off_passes_through(self, app, monkeypatch):
+        monkeypatch.delenv("ENABLE_MODERATION", raising=False)
+        resp = TestClient(app).post(
+            "/v1/chat/completions",
+            headers=_headers(),
+            json={"messages": [{"role": "user", "content": "how to make a pipe bomb step by step"}]},
+        )
+        # Feature off → input reaches the router unchanged.
+        assert resp.status_code == 200
 
     async def test_provider_route_persisted_for_cost_tracking(self, client):
         from app.services.usage_tracker import UsageTracker
@@ -314,6 +371,55 @@ class TestChatCompletions:
         assert contents == "Hello world"
         assert body.rstrip().endswith("data: [DONE]")
 
+    async def test_key_pool_ids_threaded_into_route_and_usage(self, app, monkeypatch):
+        """End-to-end: the gateway loads key_pool_ids alongside key_pools,
+        threads both into the router, and the persisted usage record carries
+        the key_id so per-key breakdowns can attribute cost."""
+        from app.api.v1 import openai_gateway
+        from app.services.usage_tracker import UsageTracker
+
+        async def fake_pools(auth):
+            return {"groq": ["k1", "k2"]}
+
+        async def fake_pool_ids(auth):
+            return {"groq": ["slot-A", "slot-B"]}
+
+        monkeypatch.setattr(openai_gateway, "_team_key_pools", fake_pools)
+        monkeypatch.setattr(openai_gateway, "_team_key_pool_ids", fake_pool_ids)
+
+        class PoolLLM(FakeLLM):
+            def __init__(self):
+                super().__init__()
+                self.last_key_pools = None
+                self.last_key_pool_ids = None
+
+            async def openai_chat(
+                self, prompt, system=None, max_tokens=2000, model=None, query_type=None,
+                cache_scope="global", provider_keys=None, key_pools=None, key_pool_ids=None,
+                routing_mode=None,
+            ):
+                self.last_key_pools = key_pools
+                self.last_key_pool_ids = key_pool_ids
+                route = self._route(query_type)
+                route["key_index"] = 0
+                route["key_id"] = "slot-A"
+                return "pooled", self.served, route
+
+        app.state.llm = PoolLLM()
+        resp = TestClient(app).post(
+            "/v1/chat/completions",
+            headers=_headers(),
+            json={"messages": [{"role": "user", "content": "x"}]},
+        )
+        assert resp.status_code == 200
+        # Both maps reached the router, aligned.
+        assert app.state.llm.last_key_pools == {"groq": ["k1", "k2"]}
+        assert app.state.llm.last_key_pool_ids == {"groq": ["slot-A", "slot-B"]}
+        # The persisted usage record carries the key_id attribution.
+        breakdown = await UsageTracker().get_provider_breakdown("testorg")
+        assert breakdown["keys"] == {"slot-A": 1}
+        assert breakdown["key_costs"]["slot-A"]["requests"] == 1
+
     def test_over_quota_returns_429(self, client):
         """Exhaust the free-tier monthly credit quota, then assert the gateway
         blocks the request (the charge is recorded on success, so over-quota
@@ -347,6 +453,40 @@ class TestModels:
         assert "llama-3.3-70b-versatile" in ids
         assert "gpt-4o-mini" in ids
         assert "code" in ids  # query-type pseudo-model
+
+    def test_list_models_merges_openrouter_catalog(self, client, monkeypatch):
+        from app.services import openrouter_catalog
+
+        async def fake_fetch(api_key=None):
+            return [{
+                "id": "deepseek/deepseek-r1",
+                "name": "DeepSeek R1",
+                "context_length": 163840,
+                "pricing": {"prompt": 0.55, "completion": 2.19},
+                "free": False,
+                "vendor": "deepseek",
+            }, {
+                "id": "llama-3.3-70b-versatile",  # collides with a pinned default
+                "name": "dup",
+                "context_length": 0,
+                "pricing": {"prompt": 0.0, "completion": 0.0},
+                "free": True,
+                "vendor": "meta",
+            }]
+
+        monkeypatch.setattr(openrouter_catalog, "fetch_catalog", fake_fetch)
+        resp = client.get("/v1/models", headers=_headers())
+        assert resp.status_code == 200
+        data = resp.json()
+        by_id = {m["id"]: m for m in data["data"]}
+        assert by_id["deepseek/deepseek-r1"]["owned_by"] == "openrouter"
+        assert by_id["deepseek/deepseek-r1"]["pricing"] == {"prompt": 0.55, "completion": 2.19}
+        assert by_id["deepseek/deepseek-r1"]["context_length"] == 163840
+        assert by_id["deepseek/deepseek-r1"]["free"] is False
+        # Pinned defaults are not duplicated by the catalog merge.
+        assert sum(1 for m in data["data"] if m["id"] == "llama-3.3-70b-versatile") == 1
+        # Pinned entries carry the free flag too.
+        assert by_id["llama-3.3-70b-versatile"]["free"] is True
 
 
 class TestEmbeddingsEndpoint:

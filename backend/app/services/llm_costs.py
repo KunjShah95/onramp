@@ -31,6 +31,15 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "claude-3-5-sonnet-20241022":   {"input": 3.00, "output": 15.00},
     "mistral-large-latest":         {"input": 2.00, "output": 6.00},
     "Qwen/Qwen2.5-72B-Instruct":    {"input": 0.40, "output": 0.40},
+    # Chinese-market model APIs - all OpenAI-compatible REST, priced in USD
+    # per published rate cards (converted where a provider quotes CNY).
+    "deepseek-chat":                {"input": 0.14, "output": 0.28},
+    "deepseek-reasoner":            {"input": 0.55, "output": 2.19},
+    "qwen-plus":                    {"input": 0.40, "output": 1.20},
+    "qwen-max":                     {"input": 1.60, "output": 6.40},
+    "glm-4-plus":                   {"input": 0.60, "output": 0.60},
+    "glm-4-flash":                  {"input": 0.0,  "output": 0.0},  # free tier
+    "moonshot-v1-8k":               {"input": 0.20, "output": 0.20},
     # Embedding models — USD and INR per 1M input tokens (embeddings have no
     # output tokens). Free/local models are $0 in both currencies.
     "text-embedding-3-small":  {"input": 0.02, "output": 0.0, "inr_input": 1.70,  "inr_output": 0.0},

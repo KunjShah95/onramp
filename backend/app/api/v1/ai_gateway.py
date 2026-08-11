@@ -1,3 +1,4 @@
+import logging
 import os
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from pydantic import BaseModel
@@ -9,7 +10,10 @@ from app.services.team_service import get_team_members, add_member, get_user_tea
 from app.middleware.access_guard import ROLE_HIERARCHY
 from app.services.audit_log_service import log_key_action, get_audit_logs
 from app.services.webhook_service import send_webhook
-from app.services import team_provider_keys
+from app.services import team_provider_keys, team_routing_settings
+from app.llm import RoutingMode
+
+logger = logging.getLogger("onramp.ai_gateway")
 
 router = APIRouter(prefix="/ai", tags=["ai-gateway"])
 key_service = APIKeyService()
@@ -446,6 +450,134 @@ async def delete_provider_key(
     return {"deleted": True, "provider": provider}
 
 
+@router.post("/keys/{org_name}/providers/{provider}/keys")
+async def add_provider_key(
+    org_name: str,
+    provider: str,
+    request: ProviderKeyRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Add an *extra* BYOK key to a provider's pool (multi-key load balancing).
+
+    Teams can register several keys for the same provider; the router rotates
+    round-robin across the pool on the team's gateway requests. The first key
+    stored for a provider is the primary (what ``GET .../providers`` reports
+    as configured); this endpoint appends additional slots.
+    """
+    user_role = await _require_key_manager_role(org_name, user)
+    result = await team_provider_keys.add_team_key(
+        org_name, provider, request.api_key, user["uid"]
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    await log_key_action(
+        org_name=org_name,
+        action="provider_key_added",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"provider": result.get("provider"), "key_id": result.get("key_id")},
+    )
+    return result
+
+
+@router.delete("/keys/{org_name}/providers/{provider}/keys/{key_id}")
+async def remove_provider_key(
+    org_name: str,
+    provider: str,
+    key_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Remove one specific key from a provider's pool.
+
+    Removing the primary promotes the oldest remaining key. Returns 404 when
+    no key matched ``key_id``.
+    """
+    user_role = await _require_key_manager_role(org_name, user)
+    ok = await team_provider_keys.remove_team_key(org_name, provider, key_id)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No key '{key_id}' configured for provider '{provider}'",
+        )
+    await log_key_action(
+        org_name=org_name,
+        action="provider_key_removed",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"provider": provider, "key_id": key_id},
+    )
+    return {"deleted": True, "provider": provider, "key_id": key_id}
+
+
+class RoutingModeRequest(BaseModel):
+    routing_mode: Any
+
+
+@router.get("/routing-mode/{org_name}")
+async def get_routing_mode(
+    org_name: str,
+    user: dict = Depends(get_current_user),
+):
+    """Team's cost/quality routing dial (Cost / Balanced / Intelligence).
+
+    Biases app.llm.LLMRouter's provider scoring for this team's gateway
+    requests - see RoutingMode in app/llm.py. Defaults to BALANCED when the
+    team hasn't set a preference.
+    """
+    await _require_key_manager_role(org_name, user)
+    mode = await team_routing_settings.get_team_routing_mode(org_name)
+    return {
+        "org_name": org_name,
+        "routing_mode": mode,
+        "preset": next(
+            (name for name, value in (
+                ("cost", RoutingMode.COST),
+                ("balanced", RoutingMode.BALANCED),
+                ("intelligence", RoutingMode.INTELLIGENCE),
+            ) if value == mode),
+            None,
+        ),
+    }
+
+
+@router.put("/routing-mode/{org_name}")
+async def set_routing_mode(
+    org_name: str,
+    request: RoutingModeRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Set the team's cost/quality routing dial.
+
+    Accepts an int 0-10 (0 = cheapest, 10 = highest quality) or a preset
+    name ("cost" / "balanced" / "intelligence"). Takes effect on the team's
+    next gateway request (short TTL cache, no restart needed).
+    """
+    user_role = await _require_key_manager_role(org_name, user)
+    result = await team_routing_settings.set_team_routing_mode(
+        org_name, request.routing_mode, user["uid"]
+    )
+    await log_key_action(
+        org_name=org_name,
+        action="routing_mode_set",
+        user_id=user["uid"],
+        user_role=user_role,
+        details={"routing_mode": result.get("routing_mode")},
+    )
+    return result
+
+
+@router.get("/router-health")
+async def get_router_health(req: Request, user: dict = Depends(get_current_user)):
+    """Live per-provider reliability snapshot (circuit-breaker state, rolling
+    success rate) from the app's LLMRouter instance - observability into
+    *why* the router is (or isn't) reaching for a given provider right now.
+    """
+    llm = getattr(req.app.state, "llm", None)
+    if llm is None or not hasattr(llm, "router_health"):
+        raise HTTPException(status_code=503, detail="LLM router not initialized")
+    return llm.router_health()
+
+
 @router.get("/usage/{org_name}")
 async def get_usage(
     org_name: str,
@@ -504,12 +636,31 @@ async def list_llm_models(req: Request):
 
     Returns the available providers (and whether each is configured) plus
     the per-query-type routing preferences (code -> Claude, chat -> free
-    fast models, structured -> JSON-capable models, ...).
+    fast models, structured -> JSON-capable models, ...). When a live
+    OpenRouter catalog can be fetched it is merged in under
+    ``openrouter_catalog`` (id, name, context length, per-1M-token pricing,
+    free flag) so model picker UIs can list ids instead of routing blind.
     """
     llm = getattr(req.app.state, "llm", None)
     if llm is None or not hasattr(llm, "list_models"):
         raise HTTPException(status_code=503, detail="LLM router not initialized")
-    return llm.list_models()
+    catalog = llm.list_models()
+    # Dynamic OpenRouter catalog — best-effort, cached. A fetch failure marks
+    # ``catalog_fetched`` False and leaves the static catalog intact.
+    try:
+        from app.services.openrouter_catalog import fetch_catalog
+
+        openrouter_key = (
+            (getattr(llm, "platform_keys", None) or {}).get("openrouter")
+            or os.getenv("OPENROUTER_API_KEY")
+        )
+        catalog["openrouter_catalog"] = await fetch_catalog(openrouter_key)
+        catalog["catalog_fetched"] = True
+    except Exception:
+        logger.exception("Failed to fetch OpenRouter catalog")
+        catalog["openrouter_catalog"] = []
+        catalog["catalog_fetched"] = False
+    return catalog
 
 
 # ── AIaaS Agent Gateway ───────────────────────────────────────────────────────

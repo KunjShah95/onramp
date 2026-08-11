@@ -228,12 +228,21 @@ export async function askQuestionStream(
   question: string,
   onToken: (token: string) => void,
   signal?: AbortSignal,
-  mode: string = 'normal'
+  mode: string = 'normal',
+  /** Optional explicit model id (pinned router default, provider name, or
+   * an OpenRouter "vendor/model" passthrough) — sent to /ask/query/stream
+   * so the conversation can pin a model instead of auto-routing. */
+  model?: string
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ index_id: indexId, question, mode }),
+    body: JSON.stringify({
+      index_id: indexId,
+      question,
+      mode,
+      ...(model ? { model } : {}),
+    }),
     signal,
   })
   if (res.status === 401) throw new Error('Authentication required. Please sign in again.')
@@ -1120,6 +1129,8 @@ export async function validateApiKey(
 export interface ProviderKeyInfo {
   provider: string
   configured: boolean
+  key_id?: string | null
+  is_primary?: boolean
   env_var?: string | null
   updated_at?: string | null
   updated_by?: string | null
@@ -1157,6 +1168,79 @@ export async function deleteProviderKey(
     method: 'DELETE',
     headers: authHeaders(),
   })
+}
+
+/**
+ * Add an *extra* key to a provider's pool — the router rotates round-robin
+ * across all of a team's keys for that provider (multi-key load balancing).
+ */
+export async function addProviderKey(
+  orgName: string,
+  provider: string,
+  apiKey: string
+): Promise<ProviderKeyInfo> {
+  return request<ProviderKeyInfo>(
+    `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys`,
+    { api_key: apiKey },
+    'POST'
+  )
+}
+
+/**
+ * Remove one specific key slot from a provider's pool by its key_id.
+ */
+export async function removeProviderKey(
+  orgName: string,
+  provider: string,
+  keyId: string
+): Promise<void> {
+  await fetch(
+    `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys/${keyId}`,
+    { method: 'DELETE', headers: authHeaders() }
+  )
+}
+
+// ─── Model Catalog (dynamic OpenRouter fetch) ─────────────────────────────
+
+export interface ModelCatalogProvider {
+  model: string
+  base_url: string | null
+  type: string
+  free: boolean
+  available: boolean
+}
+
+export interface ModelCatalogQueryType {
+  description: string
+  preferred_providers: string[]
+}
+
+export interface OpenRouterCatalogModel {
+  id: string
+  name: string
+  context_length: number
+  pricing: { prompt: number; completion: number }
+  free: boolean
+  vendor: string
+}
+
+export interface ModelCatalog {
+  router: string
+  routing_modes: Record<string, number>
+  query_types: Record<string, ModelCatalogQueryType>
+  providers: Record<string, ModelCatalogProvider>
+  /** Present when the backend merged the live OpenRouter catalog. */
+  openrouter_catalog?: OpenRouterCatalogModel[]
+  catalog_fetched?: boolean
+}
+
+/**
+ * LLM model catalog (query types + pinned providers + dynamic OpenRouter
+ * catalog when the gateway has merged it). Best-effort — the portal renders
+ * defensively when the catalog is unavailable.
+ */
+export async function fetchModelCatalog(): Promise<ModelCatalog> {
+  return get<ModelCatalog>(`${API_BASE}/ai/models`)
 }
 
 // ─── Usage ────────────────────────────────────────────────────────────────

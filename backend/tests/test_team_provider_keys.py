@@ -16,7 +16,11 @@ from fastapi.testclient import TestClient
 from app.services.team_provider_keys import (
     SUPPORTED_PROVIDERS,
     set_team_key,
+    add_team_key,
+    remove_team_key,
     get_team_keys_map,
+    get_team_key_pool,
+    get_team_key_pool_ids,
     list_team_keys,
     delete_team_key,
     is_supported_provider,
@@ -88,6 +92,86 @@ class TestTeamProviderKeyService:
         keys = await get_team_keys_map(team)
         assert keys == {"huggingface_inference": "hf_token"}
         assert await delete_team_key(team, "huggingface_inference") is True
+
+
+# ── Multi-key pools (load balancing) ───────────────────────────────────────
+
+
+class TestTeamKeyPools:
+    async def test_add_builds_pool_and_primary_map_unchanged(self):
+        team = "pool-r1"
+        first = await add_team_key(team, "deepseek", "ds-key-1", "u-1")
+        assert first["is_primary"] is True
+        second = await add_team_key(team, "deepseek", "ds-key-2", "u-2")
+        assert second["is_primary"] is False
+        third = await add_team_key(team, "deepseek", "ds-key-3", "u-3")
+        assert third["is_primary"] is False
+
+        # Single-key view stays the primary key (backward compatible).
+        assert (await get_team_keys_map(team)) == {"deepseek": "ds-key-1"}
+        # Pool view exposes all keys, primary first.
+        assert await get_team_key_pool(team, "deepseek") == ["ds-key-1", "ds-key-2", "ds-key-3"]
+
+    async def test_list_shows_one_entry_per_key(self):
+        team = "pool-r2"
+        await add_team_key(team, "openai", "a", "u-1")
+        second = await add_team_key(team, "openai", "b", "u-1")
+        masked = await list_team_keys(team)
+        assert len(masked) == 2
+        assert masked[0]["is_primary"] is True
+        assert masked[1]["is_primary"] is False
+        assert masked[1]["key_id"] == second["key_id"]
+        assert all("api_key" not in m for m in masked)
+
+    async def test_remove_specific_key(self):
+        team = "pool-r3"
+        await add_team_key(team, "groq", "g1", "u-1")
+        second = await add_team_key(team, "groq", "g2", "u-1")
+        assert await remove_team_key(team, "groq", second["key_id"]) is True
+        assert await get_team_key_pool(team, "groq") == ["g1"]
+        # Unknown key id → False, pool untouched.
+        assert await remove_team_key(team, "groq", "nope") is False
+        assert await get_team_key_pool(team, "groq") == ["g1"]
+
+    async def test_removing_primary_promotes_oldest_remaining(self):
+        team = "pool-r4"
+        first = await add_team_key(team, "anthropic", "a1", "u-1")
+        await add_team_key(team, "anthropic", "a2", "u-1")
+        await add_team_key(team, "anthropic", "a3", "u-1")
+        assert await remove_team_key(team, "anthropic", first["key_id"]) is True
+        assert (await get_team_keys_map(team)) == {"anthropic": "a2"}
+        assert await get_team_key_pool(team, "anthropic") == ["a2", "a3"]
+
+    async def test_remove_last_key_empties_provider(self):
+        team = "pool-r5"
+        first = await add_team_key(team, "voyage", "v1", "u-1")
+        assert await remove_team_key(team, "voyage", first["key_id"]) is True
+        assert await get_team_keys_map(team) == {}
+        assert await get_team_key_pool(team, "voyage") == []
+
+    async def test_add_validates_provider_and_key(self):
+        assert "error" in await add_team_key("pool-r6", "notaprovider", "k", "u-1")
+        assert "error" in await add_team_key("pool-r6", "openai", "   ", "u-1")
+
+    async def test_key_pool_ids_aligned_with_pool_keys(self):
+        """get_team_key_pool_ids is index-for-index aligned with the pool keys,
+        so route records can name the exact key_id that served."""
+        team = "pool-r7"
+        first = await add_team_key(team, "deepseek", "ds-a", "u-1")
+        second = await add_team_key(team, "deepseek", "ds-b", "u-1")
+        third = await add_team_key(team, "deepseek", "ds-c", "u-1")
+
+        keys = await get_team_key_pool(team, "deepseek")
+        ids = await get_team_key_pool_ids(team)
+        assert ids["deepseek"] == [first["key_id"], second["key_id"], third["key_id"]]
+        assert len(keys) == len(ids["deepseek"])
+
+        # Removing a key keeps the remaining ids aligned with the new pool.
+        await remove_team_key(team, "deepseek", second["key_id"])
+        keys = await get_team_key_pool(team, "deepseek")
+        ids = await get_team_key_pool_ids(team)
+        assert keys == ["ds-a", "ds-c"]
+        assert ids["deepseek"] == [first["key_id"], third["key_id"]]
 
 
 # ── Router overrides ───────────────────────────────────────────────────────
@@ -309,3 +393,54 @@ class TestProviderKeyEndpoints:
             assert r.status_code == 403
         finally:
             ai_gateway._require_key_manager_role = original
+
+    def test_add_extra_key_builds_pool(self, client):
+        # Primary via PUT (existing semantics).
+        r = client.put(
+            f"{API_PREFIX}/ai/keys/acme/providers/openai",
+            json={"api_key": "sk-acme-primary"},
+        )
+        assert r.status_code == 200
+        # Extra pool key via POST .../keys.
+        r = client.post(
+            f"{API_PREFIX}/ai/keys/acme/providers/openai/keys",
+            json={"api_key": "sk-acme-extra"},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["provider"] == "openai"
+        assert body["key_id"]
+        assert body["is_primary"] is False
+        assert "sk-acme-extra" not in r.text
+
+        # Roster now shows two key slots, primary first.
+        r = client.get(f"{API_PREFIX}/ai/keys/acme/providers")
+        slots = [p for p in r.json()["providers"] if p["provider"] == "openai"]
+        assert len(slots) == 2
+        assert slots[0]["is_primary"] is True
+        assert slots[1]["key_id"] == body["key_id"]
+
+        # Remove the extra key by id.
+        r = client.delete(
+            f"{API_PREFIX}/ai/keys/acme/providers/openai/keys/{body['key_id']}"
+        )
+        assert r.status_code == 200
+        r = client.get(f"{API_PREFIX}/ai/keys/acme/providers")
+        slots = [p for p in r.json()["providers"] if p["provider"] == "openai"]
+        assert len(slots) == 1 and slots[0]["is_primary"] is True
+
+    def test_remove_missing_key_404(self, client):
+        r = client.delete(f"{API_PREFIX}/ai/keys/acme/providers/openai/keys/nope")
+        assert r.status_code == 404
+
+    def test_add_extra_key_validates(self, client):
+        r = client.post(
+            f"{API_PREFIX}/ai/keys/acme/providers/azure/keys",
+            json={"api_key": "k"},
+        )
+        assert r.status_code == 400
+        r = client.post(
+            f"{API_PREFIX}/ai/keys/acme/providers/openai/keys",
+            json={"api_key": ""},
+        )
+        assert r.status_code == 400

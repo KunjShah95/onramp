@@ -178,7 +178,10 @@ class UsageTracker:
         """Provider attribution for an org — measures free-first routing savings.
 
         Counts requests per provider/model and splits free vs paid based on
-        the ``usage_metadata`` attached by :meth:`record_usage`.
+        the ``usage_metadata`` attached by :meth:`record_usage`. When route
+        records carry a ``key_id`` (multi-key BYOK pools — see
+        app.services.team_provider_keys), the same counts and dollar figures
+        are broken out per key so teams can see which key slot served what.
         """
         now = datetime.now(timezone.utc)
         if period == "month":
@@ -194,6 +197,8 @@ class UsageTracker:
         providers: Dict[str, int] = {}
         models: Dict[str, int] = {}
         provider_costs: Dict[str, Dict[str, float]] = {}
+        keys: Dict[str, int] = {}
+        key_costs: Dict[str, Dict[str, float]] = {}
         free_requests = 0
         paid_requests = 0
         total_cost_usd = 0.0
@@ -224,6 +229,19 @@ class UsageTracker:
             pc["cost_usd"] += cost
             pc["cost_avoided_usd"] += avoided
 
+            # Per-key attribution (multi-key BYOK pools): the route record
+            # names the exact key_id that served; key_costs mirrors the
+            # provider_costs shape so per-key dollar figures are available.
+            key_id = meta.get("key_id")
+            if key_id:
+                keys[key_id] = keys.get(key_id, 0) + 1
+                kc = key_costs.setdefault(key_id, {
+                    "requests": 0, "cost_usd": 0.0, "cost_avoided_usd": 0.0,
+                })
+                kc["requests"] += 1
+                kc["cost_usd"] += cost
+                kc["cost_avoided_usd"] += avoided
+
         tracked = sum(providers.values())
         return {
             "org_name": org_name,
@@ -240,6 +258,9 @@ class UsageTracker:
             "providers": providers,
             "models": models,
             "provider_costs": provider_costs,
+            # Per-key view for multi-key pools (empty when no key_id metadata).
+            "keys": keys,
+            "key_costs": key_costs,
         }
 
     async def get_usage(self, org_name: str, period: Optional[str] = None) -> dict:

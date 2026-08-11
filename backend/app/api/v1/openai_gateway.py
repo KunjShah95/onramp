@@ -24,15 +24,18 @@ automatic classification.
 
 import json
 import logging
+import os
 import time
 import uuid
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.v1.auth import get_user_or_api_key
+from app.llm import RoutingMode
+from app.services.moderation import check_moderation, is_enabled as moderation_enabled
 from app.services.quota import charge_wallet, check_quota
 from app.services.usage_tracker import UsageTracker
 from app.services.llm_costs import (
@@ -60,6 +63,11 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = None
     stream: Optional[bool] = False
     user: Optional[str] = None
+    # OpenRouter-style cost/quality dial for this call: an int 0-10 (0 =
+    # cheapest) or a preset name ("cost"/"balanced"/"intelligence"). Wins
+    # over the caller's team default when set; falls back to the team's
+    # stored preference, then RoutingMode.BALANCED. See app/llm.py RoutingMode.
+    routing_mode: Optional[Union[int, str]] = None
 
 
 class EmbeddingsRequest(BaseModel):
@@ -195,8 +203,72 @@ async def _team_provider_keys(auth: dict) -> Optional[Dict[str, str]]:
         return None
 
 
+async def _team_key_pools(auth: dict) -> Optional[Dict[str, List[str]]]:
+    """Decrypted multi-key pools ``{provider: [key, ...]}`` for the caller's
+    org (or None when no pool keys exist). Only API-key callers carry an
+    ``org_name`` scope. Best-effort: a storage failure returns None so the
+    request still routes on the primary keys.
+    """
+    org = auth.get("org_name")
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_key_pools
+
+        pools = await get_team_key_pools(org)
+        return pools or None
+    except Exception:
+        logger.exception("Failed to load key pools for %s", org)
+        return None
+
+
+async def _team_key_pool_ids(auth: dict) -> Optional[Dict[str, List[str]]]:
+    """Stable ``{provider: [key_id, ...]}`` map for the caller's org — aligned
+    index-for-index with :func:`_team_key_pools`, so the router can record
+    which exact key served a call in the route metadata. None when the team
+    has no pool keys (or on storage failure — attribution then keeps only the
+    positional ``key_index``). Only API-key callers carry an ``org_name``
+    scope.
+    """
+    org = auth.get("org_name")
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_key_pool_ids
+
+        ids = await get_team_key_pool_ids(org)
+        return ids or None
+    except Exception:
+        logger.exception("Failed to load key pool ids for %s", org)
+        return None
+
+
+async def _resolve_routing_mode(auth: dict, requested: Optional[Union[int, str]]) -> Union[int, str]:
+    """Effective routing_mode for this call: an explicit per-request value
+    wins; otherwise fall back to the caller's org-level default (Developer
+    Portal setting), then RoutingMode.BALANCED. Best-effort: a storage
+    failure falls back to BALANCED instead of failing the request.
+    """
+    if requested is not None:
+        return requested
+    org = auth.get("org_name")
+    if not org:
+        return RoutingMode.BALANCED
+    try:
+        from app.services.team_routing_settings import get_team_routing_mode
+
+        return await get_team_routing_mode(org)
+    except Exception:
+        logger.exception("Failed to load routing mode for %s", org)
+        return RoutingMode.BALANCED
+
+
 def _route_header_for(
-    llm, body: ChatCompletionRequest, prompt: str, provider_keys: Optional[Dict[str, str]] = None
+    llm,
+    body: ChatCompletionRequest,
+    prompt: str,
+    provider_keys: Optional[Dict[str, str]] = None,
+    routing_mode: Optional[Union[int, str]] = None,
 ) -> str:
     """Best-effort route header for the primary provider of this request.
 
@@ -204,9 +276,13 @@ def _route_header_for(
     each streaming chunk's ``model`` field. Never raises.
     """
     try:
-        chain = llm.provider_chain(model=body.model, prompt=prompt, provider_keys=provider_keys)
+        chain = llm.provider_chain(
+            model=body.model, prompt=prompt, provider_keys=provider_keys, routing_mode=routing_mode
+        )
         if chain:
-            return llm.route_info(chain[0])["served"]
+            passthrough = getattr(llm, "_is_openrouter_passthrough_model", None)
+            model_override = body.model if passthrough and passthrough(body.model, provider_keys) else None
+            return llm.route_info(chain[0], model_override=model_override)["served"]
     except Exception:
         pass
     return body.model or "onramp"
@@ -216,17 +292,26 @@ def _route_header_for(
 
 @router.get("/models")
 async def list_models(req: Request, auth: dict = Depends(get_user_or_api_key)):
-    """OpenAI-compatible model listing (OpenRouter-style)."""
+    """OpenAI-compatible model listing (OpenRouter-style).
+
+    Merges the router's pinned defaults + query types with the *live*
+    OpenRouter catalog (cached fetch, best-effort — a transient OpenRouter
+    outage falls back to the static catalog). Catalog entries carry their
+    per-1M-token pricing and context length so a picker UI can show cost.
+    """
     llm = _get_llm(req)
     catalog = llm.list_models()
 
     data = []
+    pinned_ids = set()
     for provider, info in catalog["providers"].items():
+        pinned_ids.add(info["model"])
         data.append({
             "id": info["model"],
             "object": "model",
             "owned_by": provider,
             "available": info["available"],
+            "free": bool(info.get("free", False)),
         })
     for qtype in catalog["query_types"]:
         data.append({
@@ -235,6 +320,30 @@ async def list_models(req: Request, auth: dict = Depends(get_user_or_api_key)):
             "owned_by": "onramp-query-router",
             "available": True,
         })
+    # Dynamic OpenRouter catalog (public endpoint; authenticated when a key is
+    # configured). Deduped against the pinned defaults above.
+    try:
+        from app.services.openrouter_catalog import fetch_catalog
+
+        openrouter_key = (
+            (getattr(llm, "platform_keys", None) or {}).get("openrouter")
+            or os.getenv("OPENROUTER_API_KEY")
+        )
+        for m in await fetch_catalog(openrouter_key):
+            if m["id"] in pinned_ids:
+                continue
+            data.append({
+                "id": m["id"],
+                "object": "model",
+                "owned_by": "openrouter",
+                "available": True,
+                "free": m["free"],
+                "context_length": m["context_length"],
+                "pricing": m["pricing"],
+                "vendor": m["vendor"],
+            })
+    except Exception:
+        logger.exception("Failed to merge OpenRouter catalog")
     embeddings = getattr(req.app.state, "embeddings", None)
     if embeddings is not None and hasattr(embeddings, "list_models"):
         ecat = embeddings.list_models()
@@ -272,24 +381,66 @@ async def chat_completions(
         raise HTTPException(status_code=400, detail="messages must include a user message")
     max_tokens = body.max_tokens or 2000
 
+    # Content moderation / guardrails (flag-gated via ENABLE_MODERATION — off
+    # by default, so this adds zero latency until a deployment opts in).
+    # Blocks obviously abusive input before it reaches any provider; fail-open
+    # and non-blocking when disabled.
+    moderation_header = "off"
+    if moderation_enabled():
+        openrouter_key = (
+            (getattr(llm, "platform_keys", None) or {}).get("openrouter")
+            or os.getenv("OPENROUTER_API_KEY")
+        )
+        verdict = await check_moderation(
+            f"{system or ''}\n{prompt}", openrouter_key=openrouter_key
+        )
+        if verdict["blocked"]:
+            logger.warning(
+                "Moderation blocked gateway request: %s (%s)",
+                verdict["category"], verdict["source"],
+            )
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Input blocked by content moderation",
+                    "code": "MODERATION_BLOCKED",
+                    "category": verdict["category"],
+                    "source": verdict["source"],
+                },
+            )
+        moderation_header = verdict["source"] or "pass"
+
     # Request-scoped BYOK overrides: when the caller's org has its own provider
     # keys (Developer Portal), those win over the platform env keys for this
     # request. Loaded once up front and threaded through routing + streaming.
     provider_keys = await _team_provider_keys(auth)
+    # Multi-key pools (several BYOK keys per provider) — the router rotates
+    # round-robin across them to spread traffic / dodge per-key rate limits.
+    key_pools = await _team_key_pools(auth)
+    # Stable key_ids for those pools (aligned index-for-index) so route
+    # records name the exact key that served, not just its position.
+    key_pool_ids = await _team_key_pool_ids(auth)
+    # Cost/quality dial: explicit per-request value wins, else the caller's
+    # org-level default (Developer Portal setting), else RoutingMode.BALANCED.
+    routing_mode = await _resolve_routing_mode(auth, body.routing_mode)
 
     if body.stream:
         # Debug route header (best-effort — resolved from the primary provider).
-        route_header = _route_header_for(llm, body, prompt, provider_keys)
+        route_header = _route_header_for(llm, body, prompt, provider_keys, routing_mode)
         return StreamingResponse(
             # Usage (with real token counts + cost) is tracked inside the
             # generator once the stream completes; failed streams are not
             # billed, so nothing is recorded on the error path.
-            _stream_events(llm, body, system, prompt, max_tokens, auth, provider_keys),
+            _stream_events(
+                llm, body, system, prompt, max_tokens, auth, provider_keys,
+                routing_mode, key_pools, key_pool_ids,
+            ),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "X-Accel-Buffering": "no",
                 "X-LLM-Route": route_header,
+                "X-LLM-Moderation": moderation_header,
             },
         )
 
@@ -297,14 +448,19 @@ async def chat_completions(
         # cache_scope isolates the response cache per tenant (org) so one
         # customer's cached answers are never served to another.
         cache_scope = auth.get("org_name") or auth.get("uid") or "global"
-        content, served, route = await llm.openai_chat(
-            prompt,
-            system=system,
-            max_tokens=max_tokens,
-            model=body.model,
-            cache_scope=cache_scope,
-            provider_keys=provider_keys,
-        )
+        chat_kwargs: Dict[str, Any] = {
+            "system": system,
+            "max_tokens": max_tokens,
+            "model": body.model,
+            "cache_scope": cache_scope,
+            "provider_keys": provider_keys,
+            "routing_mode": routing_mode,
+        }
+        if key_pools:
+            chat_kwargs["key_pools"] = key_pools
+        if key_pool_ids:
+            chat_kwargs["key_pool_ids"] = key_pool_ids
+        content, served, route = await llm.openai_chat(prompt, **chat_kwargs)
     except RuntimeError as exc:
         logger.warning("Chat completion failed: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc))
@@ -315,6 +471,7 @@ async def chat_completions(
     # Debug headers: which provider/model served this request, and whether it
     # was served from the Redis response cache (free, zero tokens/cost).
     response.headers["X-LLM-Route"] = served
+    response.headers["X-LLM-Moderation"] = moderation_header
     response.headers["X-LLM-Cache"] = "HIT" if getattr(llm, "last_cache_hit", False) else "MISS"
     # Which cache tier served: "redis" (exact match), "semantic" (near-
     # duplicate), or "MISS". The semantic tier reuses the same free/$0
@@ -360,6 +517,9 @@ def _sse(payload: Dict) -> str:
 async def _stream_events(
     llm, body: ChatCompletionRequest, system, prompt, max_tokens, auth,
     provider_keys: Optional[Dict[str, str]] = None,
+    routing_mode: Optional[Union[int, str]] = None,
+    key_pools: Optional[Dict[str, List[str]]] = None,
+    key_pool_ids: Optional[Dict[str, List[str]]] = None,
 ):
     """Server-sent-events generator for streaming completions.
 
@@ -372,14 +532,26 @@ async def _stream_events(
     served = body.model or "onramp"
     route = None
     output_chars = 0
+    partial_parts: List[str] = []
     try:
+        stream_kwargs: Dict[str, Any] = {
+            "system": system,
+            "max_tokens": max_tokens,
+            "model": body.model,
+            "provider_keys": provider_keys,
+            "routing_mode": routing_mode,
+        }
+        if key_pools:
+            stream_kwargs["key_pools"] = key_pools
+        if key_pool_ids:
+            stream_kwargs["key_pool_ids"] = key_pool_ids
         async for token, model_id, _route in llm.openai_chat_stream(
-            prompt, system=system, max_tokens=max_tokens, model=body.model,
-            provider_keys=provider_keys,
+            prompt, **stream_kwargs
         ):
             served = model_id
             route = _route
             output_chars += len(token)
+            partial_parts.append(token)
             yield _sse({
                 "id": completion_id,
                 "object": "chat.completion.chunk",
@@ -401,12 +573,24 @@ async def _stream_events(
     except RuntimeError as exc:
         # Intentional: failed streams are not billed, so no usage is recorded.
         logger.warning("Streaming completion failed: %s", exc)
+        # Close the stream with the partial content attached so clients can
+        # retry with it as context (the mid-stream failover limitation — the
+        # router commits once the first token is emitted). Distinguish a
+        # mid-answer drop (partial content exists) from a pre-token outage
+        # (no provider was reachable at all).
+        partial_text = "".join(partial_parts)
         yield _sse({
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": served,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "error"}],
             "error": {
                 "message": str(exc),
                 "type": "upstream_error",
-                "code": "router_exhausted",
-            }
+                "code": "stream_interrupted" if partial_text else "router_exhausted",
+                "partial_content": partial_text,
+            },
         })
         return
     await _track_usage(
