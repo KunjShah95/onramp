@@ -8,9 +8,9 @@ const ArchitectureMap = lazy(() => import('./ArchitectureMap'))
 const EASE = [0.16, 1, 0.3, 1] as const
 
 const CALLOUTS = [
-  { icon: CheckCircle, color: 'text-[#10B981]', ring: 'border-[#10B981]/30', label: 'Every service indexed', note: 'from source, not docs' },
-  { icon: GitBranch, color: 'text-[#06B6D4]', ring: 'border-[#06B6D4]/30', label: 'Dependencies mapped', note: 'drawn as a live graph' },
-  { icon: Users, color: 'text-[#00D9FF]', ring: 'border-[#00D9FF]/30', label: 'Ownership visible', note: 'who owns what, always' },
+  { icon: CheckCircle, color: 'text-go', ring: 'border-go/30', label: 'Every service indexed', note: 'from source, not docs' },
+  { icon: GitBranch, color: 'text-accent-via', ring: 'border-accent-via/30', label: 'Dependencies mapped', note: 'drawn as a live graph' },
+  { icon: Users, color: 'text-accent-primary', ring: 'border-accent-primary/30', label: 'Ownership visible', note: 'who owns what, always' },
   { icon: Waveform, color: 'text-[#F59E0B]', ring: 'border-[#F59E0B]/30', label: 'Updated on every push', note: 'fresh from HEAD' },
 ]
 
@@ -40,7 +40,7 @@ export default function Solution() {
           transition={{ duration: 0.65, ease: EASE }}
           className="max-w-2xl"
         >
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-[#06B6D4]">
+          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-accent-via">
             The solution
           </p>
           <h2 className="mt-4 font-display text-[clamp(1.8rem,4vw,3rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
@@ -63,7 +63,7 @@ export default function Solution() {
           <div className="relative overflow-hidden rounded-sm border border-white/10 bg-[#0B1016] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_24px_64px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between border-b border-white/5 px-5 py-3">
               <div className="flex items-center gap-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] motion-safe:animate-pulse-glow" />
+                <span className="h-1.5 w-1.5 rounded-full bg-go motion-safe:animate-pulse-glow" />
                 <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">
                   Architecture map
                 </span>
@@ -111,7 +111,7 @@ export default function Solution() {
                     </div>
                     <div className="flex justify-between gap-3 font-code text-[10px]">
                       <dt className="text-ink-tertiary">last commit</dt>
-                      <dd className="text-[#10B981]">{tooltip.lastCommit}</dd>
+                      <dd className="text-go">{tooltip.lastCommit}</dd>
                     </div>
                   </dl>
                 </div>

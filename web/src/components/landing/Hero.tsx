@@ -35,9 +35,9 @@ export default function Hero() {
     <section ref={ref} className="relative overflow-hidden bg-base pt-28 pb-0 sm:pt-32">
       {/* ambient glows */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/4 h-[520px] w-[720px] rounded-full bg-[#06B6D4]/10 blur-[120px]" />
-        <div className="absolute right-0 top-1/3 h-[420px] w-[480px] rounded-full bg-[#00D9FF]/10 blur-[110px]" />
-        <div className="absolute bottom-0 left-10 h-[360px] w-[420px] rounded-full bg-[#10B981]/5 blur-[100px]" />
+        <div className="absolute -top-40 left-1/4 h-[520px] w-[720px] rounded-full bg-accent-via/10 blur-[120px]" />
+        <div className="absolute right-0 top-1/3 h-[420px] w-[480px] rounded-full bg-accent-primary/10 blur-[110px]" />
+        <div className="absolute bottom-0 left-10 h-[360px] w-[420px] rounded-full bg-go/5 blur-[100px]" />
       </div>
 
       {/* dot grid floor */}
@@ -65,7 +65,7 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.05, ease: EASE }}
               className="inline-flex items-center gap-2 rounded-sm border border-white/10 bg-white/[0.04] px-3 py-1.5"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] motion-safe:animate-pulse-glow" />
+              <span className="h-1.5 w-1.5 rounded-full bg-go motion-safe:animate-pulse-glow" />
               <span className="font-code text-[11px] font-medium uppercase tracking-[0.14em] text-ink-secondary">
                 Onramp · architecture map
               </span>
@@ -79,7 +79,7 @@ export default function Hero() {
               ))}
               <br />
               <Word i={HEADLINE.length}>Make</Word>{' '}
-              <span className="bg-gradient-to-r from-[#00D9FF] via-[#06B6D4] to-[#10B981] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-accent-primary via-accent-via to-go bg-clip-text text-transparent">
                 <Word i={HEADLINE.length + 1}>it</Word> <Word i={HEADLINE.length + 2}>visible.</Word>
               </span>
             </h1>
@@ -102,16 +102,16 @@ export default function Hero() {
             >
               <Link
                 to="/register"
-                className="group inline-flex h-12 items-center gap-2 rounded-sm bg-[#00D9FF] px-7 text-[15px] font-bold text-[#0F1419] shadow-[0_0_32px_rgba(0,217,255,0.4)] transition-all hover:bg-[#22D3EE] hover:shadow-[0_0_44px_rgba(0,217,255,0.55)] active:translate-y-px"
+                className="group inline-flex h-12 items-center gap-2 rounded-sm bg-accent-primary px-7 text-[15px] font-bold text-[#0F1419] shadow-[0_0_32px_rgba(0,217,255,0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_44px_rgba(0,217,255,0.55)] active:translate-y-px"
               >
                 Try for free
                 <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 to="#the-gap"
-                className="inline-flex h-12 items-center gap-2 text-[15px] font-semibold text-[#06B6D4] transition-colors hover:text-[#22D3EE]"
+                className="inline-flex h-12 items-center gap-2 text-[15px] font-semibold text-accent-via transition-colors hover:text-accent-primary-hover"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#06B6D4]/40">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-accent-via/40">
                   <Play size={12} weight="fill" />
                 </span>
                 Watch 2-min demo
@@ -140,7 +140,7 @@ export default function Hero() {
                 {/* rail */}
                 <div className="relative z-20 flex items-center justify-between border-b border-white/5 px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] motion-safe:animate-pulse-glow" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-go motion-safe:animate-pulse-glow" />
                     <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">
                       Live index · acme/platform
                     </span>
@@ -166,7 +166,7 @@ export default function Hero() {
                     <span className="flex items-center gap-1.5 rounded-sm border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-2.5 py-1 font-code text-[10px] font-medium uppercase tracking-[0.12em] text-[#FBBF24]">
                       <GitFork size={11} weight="fill" /> 14 services
                     </span>
-                    <span className="flex items-center gap-1.5 rounded-sm border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 py-1 font-code text-[10px] font-medium uppercase tracking-[0.12em] text-[#22D3EE]">
+                    <span className="flex items-center gap-1.5 rounded-sm border border-accent-via/40 bg-accent-via/10 px-2.5 py-1 font-code text-[10px] font-medium uppercase tracking-[0.12em] text-accent-primary-hover">
                       mapping… indexed
                     </span>
                   </div>

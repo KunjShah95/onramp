@@ -21,16 +21,16 @@ function InstallVisual() {
           whileInView={{ width: 64 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-          className="h-px bg-gradient-to-r from-white/20 to-[#10B981]"
+          className="h-px bg-gradient-to-r from-white/20 to-go"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.6 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-sm border border-[#10B981]/40 bg-[#10B981]/10"
+          className="flex h-16 w-16 items-center justify-center rounded-sm border border-go/40 bg-go/10"
         >
-          <span className="font-code text-[26px] font-bold text-[#10B981]">✓</span>
+          <span className="font-code text-[26px] font-bold text-go">✓</span>
         </motion.div>
       </div>
     </div>
@@ -48,7 +48,7 @@ function IndexVisual() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 0.45, delay: 0.2 + i * 0.15, ease: EASE }}
-            className="h-9 w-9 rounded-sm border border-white/10 bg-gradient-to-br from-[#06B6D4]/60 to-[#00D9FF]/30"
+            className="h-9 w-9 rounded-sm border border-white/10 bg-gradient-to-br from-accent-via/60 to-accent-primary/30"
           />
         ))}
       </div>
@@ -58,7 +58,7 @@ function IndexVisual() {
           whileInView={{ width: '100%' }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 1.4, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="h-full rounded-full bg-gradient-to-r from-[#06B6D4] to-[#00D9FF]"
+          className="h-full rounded-full bg-gradient-to-r from-accent-via to-accent-primary"
         />
       </div>
       <span className="font-code text-[11px] text-ink-tertiary">indexing… mapped</span>
@@ -76,7 +76,7 @@ function OnboardVisual() {
         transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
         className="flex items-center gap-2 rounded-sm border border-white/10 bg-panel-raised px-3 py-2"
       >
-        <MagnifyingGlass size={13} className="text-[#06B6D4]" />
+        <MagnifyingGlass size={13} className="text-accent-via" />
         <span className="font-code text-[11px] text-ink-secondary">how does billing work?</span>
       </motion.div>
       <motion.div
@@ -84,9 +84,9 @@ function OnboardVisual() {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-        className="rounded-sm border border-[#06B6D4]/30 bg-[#06B6D4]/10 px-3 py-2"
+        className="rounded-sm border border-accent-via/30 bg-accent-via/10 px-3 py-2"
       >
-        <span className="font-code text-[11px] text-[#22D3EE]">
+        <span className="font-code text-[11px] text-accent-primary-hover">
           Billing → payments/billing · owner @payments
         </span>
       </motion.div>
@@ -141,7 +141,7 @@ export default function HowItWorks() {
           transition={{ duration: 0.65, ease: EASE }}
           className="max-w-2xl"
         >
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-[#10B981]">
+          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-go">
             How it works
           </p>
           <h2 className="mt-4 font-display text-[clamp(1.8rem,4vw,3rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
@@ -163,7 +163,7 @@ export default function HowItWorks() {
                 <span className="font-display text-[13px] font-bold text-ink-tertiary">
                   STEP {s.n}
                 </span>
-                <span className="flex items-center gap-1.5 rounded-sm border border-[#10B981]/30 bg-[#10B981]/10 px-2 py-0.5 font-code text-[10px] text-[#34D399]">
+                <span className="flex items-center gap-1.5 rounded-sm border border-go/30 bg-go/10 px-2 py-0.5 font-code text-[10px] text-go-lit">
                   {s.time}
                 </span>
               </div>

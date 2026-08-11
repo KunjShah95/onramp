@@ -43,7 +43,7 @@ export default function Pricing() {
           transition={{ duration: 0.65, ease: EASE }}
           className="max-w-2xl"
         >
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-[#10B981]">
+          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-go">
             Pricing
           </p>
           <h2 className="mt-4 font-display text-[clamp(1.8rem,4vw,3rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
@@ -70,12 +70,12 @@ export default function Pricing() {
                 type="button"
                 onClick={() => setAnnual(label === 'Annual')}
                 className={`relative rounded-sm px-4 py-1.5 font-code text-[12px] font-medium transition-colors ${
-                  active ? 'bg-[#00D9FF] text-[#0F1419]' : 'text-ink-secondary hover:text-white'
+                  active ? 'bg-accent-primary text-[#0F1419]' : 'text-ink-secondary hover:text-white'
                 }`}
               >
                 {label}
                 {label === 'Annual' && (
-                  <span className="ml-1.5 font-code text-[10px] text-[#34D399]">−17%</span>
+                  <span className="ml-1.5 font-code text-[10px] text-go-lit">−17%</span>
                 )}
               </button>
             )
@@ -104,14 +104,14 @@ export default function Pricing() {
             <ul className="mt-7 flex-1 space-y-2.5 border-t border-white/5 pt-5">
               {STARTER_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                  <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-[#10B981]" />
+                  <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-go" />
                   {f}
                 </li>
               ))}
             </ul>
             <Link
               to="/register"
-              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm border border-white/10 bg-panel-raised px-6 py-3 text-[14px] font-semibold text-white transition-all hover:border-[#10B981]/40 active:translate-y-px"
+              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm border border-white/10 bg-panel-raised px-6 py-3 text-[14px] font-semibold text-white transition-all hover:border-go/40 active:translate-y-px"
             >
               Start free
               <ArrowRight size={14} weight="bold" />
@@ -124,14 +124,14 @@ export default function Pricing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
-            className="relative flex flex-col rounded-sm border border-[#00D9FF]/40 bg-panel-raised p-7 shadow-[0_0_0_1px_rgba(0,217,255,0.12),0_24px_64px_rgba(0,0,0,0.45)]"
+            className="relative flex flex-col rounded-sm border border-accent-primary/40 bg-panel-raised p-7 shadow-[0_0_0_1px_rgba(0,217,255,0.12),0_24px_64px_rgba(0,0,0,0.45)]"
           >
-            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#00D9FF] via-[#06B6D4] to-[#10B981]" />
+            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-accent-primary via-accent-via to-go" />
             <div className="flex items-center justify-between">
-              <span className="font-code text-[10px] uppercase tracking-[0.14em] text-[#22D3EE]">
+              <span className="font-code text-[10px] uppercase tracking-[0.14em] text-accent-primary-hover">
                 Team
               </span>
-              <span className="rounded-sm border border-[#00D9FF]/40 bg-[#00D9FF]/10 px-2 py-0.5 font-code text-[10px] font-medium uppercase tracking-[0.1em] text-[#22D3EE]">
+              <span className="rounded-sm border border-accent-primary/40 bg-accent-primary/10 px-2 py-0.5 font-code text-[10px] font-medium uppercase tracking-[0.1em] text-accent-primary-hover">
                 Recommended
               </span>
             </div>
@@ -147,8 +147,8 @@ export default function Pricing() {
             <ul className="mt-7 flex-1 space-y-2.5 border-t border-white/5 pt-5">
               {TEAM_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                  <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-[#00D9FF]/20">
-                    <Check size={10} weight="bold" className="text-[#22D3EE]" />
+                  <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-accent-primary/20">
+                    <Check size={10} weight="bold" className="text-accent-primary-hover" />
                   </span>
                   {f}
                 </li>
@@ -156,7 +156,7 @@ export default function Pricing() {
             </ul>
             <Link
               to="/register"
-              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm bg-[#00D9FF] px-6 py-3 text-[14px] font-bold text-[#0F1419] shadow-[0_0_28px_rgba(0,217,255,0.4)] transition-all hover:bg-[#22D3EE] active:translate-y-px"
+              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm bg-accent-primary px-6 py-3 text-[14px] font-bold text-[#0F1419] shadow-[0_0_28px_rgba(0,217,255,0.4)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
             >
               Start 14-day trial
               <ArrowRight size={14} weight="bold" />
@@ -183,14 +183,14 @@ export default function Pricing() {
             <ul className="mt-7 flex-1 space-y-2.5 border-t border-white/5 pt-5">
               {ENTERPRISE_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                  <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-[#10B981]" />
+                  <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-go" />
                   {f}
                 </li>
               ))}
             </ul>
             <Link
               to="/register"
-              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm border border-white/10 bg-panel-raised px-6 py-3 text-[14px] font-semibold text-white transition-all hover:border-[#10B981]/40 active:translate-y-px"
+              className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-sm border border-white/10 bg-panel-raised px-6 py-3 text-[14px] font-semibold text-white transition-all hover:border-go/40 active:translate-y-px"
             >
               Contact sales
               <ArrowRight size={14} weight="bold" />

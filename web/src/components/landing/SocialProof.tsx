@@ -4,9 +4,9 @@ const EASE = [0.16, 1, 0.3, 1] as const
 
 /* Fictional wordmarks — monogram marks so they don't read as text-only. */
 const LOGOS = [
-  { name: 'Stripe', mark: 'S', color: 'text-[#00D9FF]' },
-  { name: 'Figma', mark: 'F', color: 'text-[#06B6D4]' },
-  { name: 'Vercel', mark: '▲', color: 'text-[#10B981]' },
+  { name: 'Stripe', mark: 'S', color: 'text-accent-primary' },
+  { name: 'Figma', mark: 'F', color: 'text-accent-via' },
+  { name: 'Vercel', mark: '▲', color: 'text-go' },
 ]
 
 const QUOTES = [
@@ -76,12 +76,12 @@ export default function SocialProof() {
               transition={{ duration: 0.65, delay: 0.1 + i * 0.1, ease: EASE }}
               className="group flex flex-col rounded-sm border border-white/10 bg-panel p-7 transition-colors duration-300 hover:border-white/20"
             >
-              <span className="font-display text-[28px] leading-none text-[#06B6D4]">“</span>
+              <span className="font-display text-[28px] leading-none text-accent-via">“</span>
               <blockquote className="mt-3 flex-1 text-[15px] leading-[1.65] text-ink-secondary">
                 {q.quote}
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 border-t border-white/5 pt-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#00D9FF]/40 to-[#06B6D4]/20 font-code text-[11px] font-bold text-white">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary/40 to-accent-via/20 font-code text-[11px] font-bold text-white">
                   {q.initial}
                 </span>
                 <div>

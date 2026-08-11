@@ -59,7 +59,7 @@ export default function LandingNav() {
           </Link>
           <Link
             to="/register"
-            className="inline-flex items-center rounded-sm bg-[#00D9FF] px-4 py-2 text-[13px] font-bold text-[#0F1419] shadow-[0_0_24px_rgba(0,217,255,0.35)] transition-all hover:bg-[#22D3EE] active:translate-y-px"
+            className="inline-flex items-center rounded-sm bg-accent-primary px-4 py-2 text-[13px] font-bold text-[#0F1419] shadow-[0_0_24px_rgba(0,217,255,0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
           >
             Try for free
           </Link>

@@ -47,7 +47,7 @@ function MentoringLoop() {
       {[0, 1].map((i) => (
         <div key={i} className="rounded-sm border border-white/10 bg-white/[0.03] p-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06B6D4]/20 font-code text-[9px] font-bold text-[#22D3EE]">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-via/20 font-code text-[9px] font-bold text-accent-primary-hover">
               {i === 0 ? 'S' : 'J'}
             </span>
             <span className="font-code text-[11px] text-ink-secondary">
