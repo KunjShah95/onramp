@@ -6,11 +6,11 @@ import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import { EnvelopeSimple, Lock, User, ArrowRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
-import InputField from '../components/ui/first-principles/InputField'
+import { cn } from '../lib/utils'
 
 const stagger = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
 
 const fadeUp = {
@@ -26,31 +26,17 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [localError, setLocalError] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
-  const emailRef = useRef<HTMLInputElement>(null)
-  const passwordRef = useRef<HTMLInputElement>(null)
-  const confirmPasswordRef = useRef<HTMLInputElement>(null)
 
   const { register, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
-  
-  // Form validation helpers
-  const isNameValid = name.trim() !== '' && name.length >= 2
-  const isEmailValid = email.trim() !== '' && email.includes('@')
-  const isPasswordValid = password.trim() !== '' && password.length >= 6
-  const isConfirmPasswordValid = confirmPassword.trim() !== '' && confirmPassword === password
-  const canSubmit = isSubmitting ? false : (isNameValid && isEmailValid && isPasswordValid && isConfirmPasswordValid)
 
   useEffect(() => {
-    // Wait for role sync before redirecting to the role-appropriate home
     if (user && !loading) navigate(homeForRole(role), { replace: true })
   }, [user, loading, navigate, role])
 
   useEffect(() => {
-    // Focus the first input field on mount
-    if (!loading) {
-      nameRef.current?.focus()
-    }
+    if (!loading) nameRef.current?.focus()
   }, [loading])
 
   useEffect(() => {
@@ -76,9 +62,7 @@ export default function Register() {
     try {
       await register(email, password, name)
       toast.success('Account created', `Welcome, ${name}!`)
-      // Redirect happens via the effect above once the role has synced.
     } catch {
-      // Error displayed inline via AuthContext
     } finally {
       setIsSubmitting(false)
     }
@@ -88,98 +72,92 @@ export default function Register() {
 
   return (
     <PageTransition>
-      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-        />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
+        {/* Premium background accents */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-go/3 rounded-full blur-3xl pointer-events-none" />
 
         <motion.main
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="w-full max-w-[400px] z-10"
+          className="w-full max-w-md z-10 relative"
         >
           {/* Brand Header */}
-          <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-card bg-accent-from shadow-lit flex items-center justify-center mb-4">
+          <motion.div variants={fadeUp} className="flex flex-col items-center mb-10">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center mb-5">
               <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
             </div>
-            <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-              Onramp
+            <h1 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] tracking-tight">
+              Create Account
             </h1>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Create your workspace</p>
+            <p className="text-[14px] text-[hsl(var(--muted-foreground))] mt-2.5 text-center font-body">
+              Start shipping faster with AI-powered onboarding
+            </p>
           </motion.div>
 
           {displayError && (
-            <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25" role="alert" aria-atomic="true">
+            <motion.div variants={fadeUp} className="bg-abort/10 text-abort rounded-lg px-4 py-3 mb-6 text-sm border border-abort/20 font-medium" role="alert">
               {displayError}
             </motion.div>
           )}
 
           {/* Auth Card */}
-          <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
+          <motion.div variants={fadeUp} className="bg-gradient-to-br from-panel via-panel to-panel/80 border border-go/20 rounded-lg p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
+            {/* Glow effect */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Social Sign-Up Buttons */}
-            <div className="space-y-3 mb-5">
+            <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
               <a
                 href={getGoogleLoginUrl()}
                 aria-label="Sign up with Google"
-                className="w-full flex items-center justify-center gap-2.5 bg-bg-secondary border border-[hsl(var(--border))] rounded-xl py-2.5 text-sm text-[hsl(var(--foreground))] font-medium hover:bg-[hsl(var(--secondary))] active:scale-[0.98] transition-all font-body"
+                className="flex items-center justify-center gap-2 bg-panel-raised border border-seam/50 rounded-lg py-3 text-[13px] font-semibold text-[hsl(var(--foreground))] hover:border-go/30 hover:shadow-lg active:scale-[0.98] transition-all backdrop-blur-sm"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Sign up with Google
+                <span className="w-5 h-5 rounded-md bg-base border border-seam flex items-center justify-center font-code font-bold text-[10px] text-[hsl(var(--foreground))]">G</span>
+                Google
               </a>
-
               <a
                 href={getGithubLoginUrl()}
                 aria-label="Sign up with GitHub"
-                className="w-full flex items-center justify-center gap-2.5 bg-[#24292F] border border-[#1B1F23] rounded-xl py-2.5 text-sm text-white font-medium hover:bg-[#1B1F23] active:scale-[0.98] transition-all font-body"
+                className="flex items-center justify-center gap-2 bg-[hsl(var(--foreground))]/5 border border-[hsl(var(--foreground))]/20 rounded-lg py-3 text-[13px] font-semibold text-[hsl(var(--foreground))] hover:border-go/30 hover:shadow-lg active:scale-[0.98] transition-all backdrop-blur-sm"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-                </svg>
-                Sign up with GitHub
+                <span className="w-5 h-5 rounded-md bg-base flex items-center justify-center font-code font-bold text-[10px] text-[hsl(var(--foreground))]">GH</span>
+                GitHub
               </a>
             </div>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-[hsl(var(--border))]" />
-              <span className="text-xs text-[hsl(var(--muted-foreground))] font-body">or sign up with email</span>
-              <div className="flex-1 h-px bg-[hsl(var(--border))]" />
+            <div className="flex items-center gap-3 mb-6 relative z-10">
+              <div className="flex-1 h-px bg-seam/50" />
+              <span className="text-[11px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-semibold">or email</span>
+              <div className="flex-1 h-px bg-seam/50" />
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
               <div className="space-y-1.5">
-                <label htmlFor="name" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Name</label>
+                <label htmlFor="name" className="text-[12px] text-[hsl(var(--muted-foreground))] font-semibold uppercase tracking-wide">Name</label>
                 <div className="relative">
-                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/50" />
                   <input
+                    ref={nameRef}
                     id="name"
                     type="text"
-                    placeholder="Your name"
+                    placeholder="Your full name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                     autoComplete="name"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-base/50 border border-seam/50 rounded-lg pl-9 pr-3.5 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-go/30 focus:ring-1 focus:ring-go/20 transition-all font-body"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Email Address</label>
+                <label htmlFor="email" className="text-[12px] text-[hsl(var(--muted-foreground))] font-semibold uppercase tracking-wide">Email</label>
                 <div className="relative">
-                  <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
+                  <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/50" />
                   <input
                     id="email"
                     type="email"
@@ -188,59 +166,65 @@ export default function Register() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-base/50 border border-seam/50 rounded-lg pl-9 pr-3.5 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-go/30 focus:ring-1 focus:ring-go/20 transition-all font-body"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Password</label>
+                <label htmlFor="password" className="text-[12px] text-[hsl(var(--muted-foreground))] font-semibold uppercase tracking-wide">Password</label>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/50" />
                   <input
                     id="password"
                     type="password"
-                    placeholder="Create a password (min. 6 characters)"
+                    placeholder="Minimum 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
                     minLength={6}
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-base/50 border border-seam/50 rounded-lg pl-9 pr-3.5 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-go/30 focus:ring-1 focus:ring-go/20 transition-all font-body"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Confirm Password</label>
+                <label htmlFor="confirmPassword" className="text-[12px] text-[hsl(var(--muted-foreground))] font-semibold uppercase tracking-wide">Confirm Password</label>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
+                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/50" />
                   <input
                     id="confirmPassword"
                     type="password"
-                    placeholder="Repeat your password"
+                    placeholder="Repeat password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                    className="w-full bg-base/50 border border-seam/50 rounded-lg pl-9 pr-3.5 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-go/30 focus:ring-1 focus:ring-go/20 transition-all font-body"
                   />
                 </div>
               </div>
 
-              <button type="submit" disabled={isSubmitting || !name || !email || !password || !confirmPassword} className="w-full bg-accent-from hover:bg-accent-to text-[hsl(var(--accent-foreground))] font-semibold text-sm py-2.5 rounded-btn flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <button
+                type="submit"
+                disabled={isSubmitting || !name || !email || !password || !confirmPassword}
+                className={cn(
+                  'w-full mt-6 bg-gradient-to-r from-go to-go-lit hover:shadow-lg text-white font-bold text-[15px] py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
                 {isSubmitting ? 'Creating account...' : 'Create Account'}
-                <ArrowRight size={16} weight="bold" />
+                {!isSubmitting && <ArrowRight size={18} weight="bold" />}
               </button>
             </form>
           </motion.div>
 
           {/* Footer */}
-          <motion.div variants={fadeUp} className="mt-6 text-center">
-            <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body">
+          <motion.div variants={fadeUp} className="mt-8 text-center">
+            <p className="text-[13px] text-[hsl(var(--muted-foreground))] font-body">
               Already have an account?{' '}
-              <Link to="/login" className="text-[hsl(var(--accent))] font-medium hover:opacity-80 transition-colors font-body">
-                Sign In
+              <Link to="/login" className="text-go font-semibold hover:text-go-lit transition-colors">
+                Sign in
               </Link>
             </p>
           </motion.div>

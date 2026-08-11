@@ -60,6 +60,7 @@ const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
+const WhyOnrampPage = lazy(() => import('./pages/WhyOnrampPage'))
 const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 const DocsPage = lazy(() => import('./pages/DocsPage'))
@@ -128,6 +129,11 @@ export default function App() {
               <Route path="/pricing" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><PricingPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/why-onramp" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><WhyOnrampPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/changelog" element={

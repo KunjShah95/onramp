@@ -16,6 +16,8 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@babylonjs/core": "^9.20.0",
+    "@babylonjs/loaders": "^9.20.0",
     "@monaco-editor/react": "^4.7.0",
     "@neondatabase/neon-js": "^0.6.2-beta",
     "@phosphor-icons/react": "^2.1.10",
@@ -31,6 +33,7 @@
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
     "framer-motion": "^11.18.2",
+    "gsap": "^3.15.0",
     "hls.js": "^1.6.16",
     "monaco-editor": "^0.56.0",
     "react": "^19.0.0",

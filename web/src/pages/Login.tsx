@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import AuthNavbar from '../components/ui/auth-navbar'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
@@ -22,10 +23,6 @@ export default function Login() {
   const location = useLocation()
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
-  const [showPassword, setShowPassword] = useState(false)
-  
-  // Add refs for better focus management
-  const rememberMeRef = useRef<HTMLInputElement>(null)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname
 
@@ -34,7 +31,6 @@ export default function Login() {
   }, [user, loading, navigate, from, role])
 
   useEffect(() => {
-    // Focus the appropriate input field based on stage
     if (stage === 'email') {
       emailRef.current?.focus()
     } else {
@@ -46,7 +42,6 @@ export default function Login() {
     return () => clearError()
   }, [clearError])
 
-  // Form validation helpers
   const isEmailValid = email.trim() !== '' && email.includes('@')
   const isPasswordValid = password.trim() !== '' && password.length >= 6
   const canSubmit = isSubmitting ? false : (stage === 'email' ? isEmailValid : isPasswordValid)
@@ -65,7 +60,6 @@ export default function Login() {
       await login(email, password, rememberMe)
       toast.success('Signed in', 'Welcome back!')
     } catch {
-      // inline error
     } finally {
       setIsSubmitting(false)
     }
@@ -78,99 +72,105 @@ export default function Login() {
 
   return (
     <PageTransition>
-      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative">
-        {/* Split card — left brand, right form */}
+      <AuthNavbar />
+      <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
+        {/* Premium background accents */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-go/3 rounded-full blur-3xl pointer-events-none" />
+
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 rounded-card border border-seam bg-panel overflow-hidden shadow-seam"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 rounded-lg border border-go/20 bg-gradient-to-br from-panel via-panel to-panel/80 overflow-hidden shadow-2xl backdrop-blur-sm relative z-10"
         >
-          {/* LEFT — brand panel */}
-          <aside className="hidden lg:flex flex-col justify-between p-10 bg-base border-r border-seam relative">
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-[3px] bg-accent-from shadow-lit flex items-center justify-center">
+          {/* LEFT — premium brand panel */}
+          <aside className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-bg-secondary/80 via-bg-secondary/60 to-bg-secondary/40 border-r border-go/10 relative">
+            {/* Glow effect */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
+
+            <Link to="/" className="flex items-center gap-2.5 group relative z-10">
+              <div className="w-9 h-9 rounded-[3px] bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center">
                 <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
               </div>
-              <span className="font-display text-sm font-bold text-ink tracking-tight">Onramp</span>
+              <span className="font-display text-sm font-bold text-[hsl(var(--foreground))] tracking-tight group-hover:text-go transition-colors">Onramp</span>
             </Link>
 
-            <div className="space-y-5">
+            <div className="space-y-6 relative z-10">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
-                <span className="designator text-ink-secondary">FLIGHT · CONSOLE</span>
+                <span className="designator text-[hsl(var(--muted-foreground))]">AUTH · ACCESS</span>
               </div>
-              <h1 className="font-display text-4xl xl:text-5xl text-ink tracking-tight leading-[1.05] font-bold">
-                Skip the docs.
+              <h1 className="font-display text-5xl xl:text-6xl text-[hsl(var(--foreground))] tracking-tight leading-[1.05] font-bold">
+                Welcome back.
                 <br />
-                <span className="text-go">Read the code.</span>
+                <span className="text-go">Ship faster.</span>
               </h1>
-              <p className="text-ink-secondary text-[14px] leading-relaxed max-w-sm">
-                Your team indexes a repo in two minutes and answers ramp-up questions grounded in the actual code — file, line, commit.
+              <p className="text-[hsl(var(--muted-foreground))] text-[14px] leading-relaxed max-w-sm">
+                Sign in to access your team's codebase insights, onboarding plans, and AI-powered mentorship.
               </p>
             </div>
 
-            <div className="flex items-center gap-4 text-caption text-ink-tertiary">
-              <span className="font-code">v2.4</span>
-              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-              <span>SOC 2</span>
-              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-              <span>SAML</span>
+            <div className="flex items-center gap-4 text-caption text-[hsl(var(--muted-foreground))] relative z-10">
+              <span className="font-code text-[12px]">Enterprise Grade</span>
+              <span className="w-1 h-1 rounded-full bg-go/30" />
+              <span className="text-[12px]">SOC 2 Type II</span>
+              <span className="w-1 h-1 rounded-full bg-go/30" />
+              <span className="text-[12px]">SAML SSO</span>
             </div>
           </aside>
 
           {/* RIGHT — form panel */}
-          <main className="p-7 sm:p-10 flex flex-col justify-center min-h-[520px]">
-            {/* Mobile-only brand */}
-            <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-6">
-              <div className="w-9 h-9 rounded-[3px] bg-accent-from shadow-lit flex items-center justify-center">
+          <main className="p-8 sm:p-10 flex flex-col justify-center min-h-[520px] relative z-10">
+            <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-8">
+              <div className="w-9 h-9 rounded-[3px] bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center">
                 <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
               </div>
-              <span className="font-display text-sm font-bold text-ink tracking-tight">Onramp</span>
+              <span className="font-display text-sm font-bold text-[hsl(var(--foreground))] tracking-tight">Onramp</span>
             </Link>
 
-            <div className="mb-6">
-              <span className="designator text-ink-secondary">{stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}</span>
-              <h2 className="font-display text-2xl md:text-3xl text-ink font-bold tracking-tight mt-2">
-                {stage === 'email' ? 'Sign in' : 'Enter your password'}
+            <div className="mb-8">
+              <span className="designator text-[hsl(var(--muted-foreground))]">{stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}</span>
+              <h2 className="font-display text-3xl text-[hsl(var(--foreground))] font-bold tracking-tight mt-3">
+                {stage === 'email' ? 'Sign in' : 'Enter password'}
               </h2>
-              <p className="text-ink-secondary text-[13.5px] mt-1.5">
-                {stage === 'email' ? "We'll check your email, then ask for your password." :
-                  <>Signing in as <span className="font-code text-ink">{email}</span> · <button type="button" onClick={goBack} className="text-go hover:underline">change</button></>}
+              <p className="text-[hsl(var(--muted-foreground))] text-[14px] mt-2">
+                {stage === 'email' ? "We'll verify your email, then ask for your password." :
+                  <>Signing in as <span className="font-code text-[hsl(var(--foreground))]">{email}</span> · <button type="button" onClick={goBack} className="text-go hover:underline font-medium">change</button></>}
               </p>
             </div>
 
             {error && (
-              <div className="bg-error/10 text-error rounded-[3px] px-4 py-2.5 mb-4 text-[13px] border border-error/25" role="alert" aria-atomic="true">
+              <div className="bg-abort/10 text-abort rounded-lg px-4 py-3 mb-6 text-[13px] border border-abort/20 font-medium" role="alert">
                 {error}
               </div>
             )}
 
-            {/* OAuth — equal weight, monogrammed */}
-            <div className="grid grid-cols-2 gap-2.5 mb-5">
+            {/* OAuth — premium styling */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
               <a
                 href={getGoogleLoginUrl()}
                 aria-label="Continue with Google"
-                className="group flex items-center justify-center gap-2 bg-panel-raised border border-seam rounded-[3px] py-2.5 text-[13.5px] font-medium text-ink hover:border-go/40 active:scale-[0.98] transition-all"
+                className="group flex items-center justify-center gap-2 bg-panel-raised border border-seam/50 rounded-lg py-3 text-[14px] font-semibold text-[hsl(var(--foreground))] hover:border-go/30 hover:shadow-lg active:scale-[0.98] transition-all backdrop-blur-sm"
               >
-                <span className="w-5 h-5 rounded-[2px] bg-base border border-seam flex items-center justify-center font-code font-bold text-[11px] text-ink-secondary group-hover:text-go">G</span>
-                Continue with Google
+                <span className="w-5 h-5 rounded-md bg-base border border-seam flex items-center justify-center font-code font-bold text-[11px] text-[hsl(var(--foreground))] group-hover:text-go">G</span>
+                Google
               </a>
               <a
                 href={getGithubLoginUrl()}
                 aria-label="Continue with GitHub"
-                className="group flex items-center justify-center gap-2 bg-[hsl(var(--foreground))] border border-[hsl(var(--foreground))] rounded-[3px] py-2.5 text-[13.5px] font-medium text-[hsl(var(--background))] hover:opacity-90 active:scale-[0.98] transition-all"
+                className="group flex items-center justify-center gap-2 bg-[hsl(var(--foreground))]/5 border border-[hsl(var(--foreground))]/20 rounded-lg py-3 text-[14px] font-semibold text-[hsl(var(--foreground))] hover:border-go/30 hover:shadow-lg active:scale-[0.98] transition-all backdrop-blur-sm"
               >
-                <span className="w-5 h-5 rounded-[2px] bg-[hsl(var(--background))] flex items-center justify-center font-code font-bold text-[11px] text-[hsl(var(--foreground))]">GH</span>
-                Continue with GitHub
+                <span className="w-5 h-5 rounded-md bg-base flex items-center justify-center font-code font-bold text-[11px] text-[hsl(var(--foreground))]">GH</span>
+                GitHub
               </a>
             </div>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-seam" />
-              <span className="text-[11px] text-ink-tertiary uppercase tracking-[0.1em] font-semibold">or email</span>
-              <div className="flex-1 h-px bg-seam" />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex-1 h-px bg-seam/50" />
+              <span className="text-[11px] text-[hsl(var(--muted-foreground))] uppercase tracking-wider font-semibold">or email</span>
+              <div className="flex-1 h-px bg-seam/50" />
             </div>
 
             <form onSubmit={stage === 'email' ? handleEmailSubmit : handleSubmit} className="space-y-4">
@@ -199,19 +199,19 @@ export default function Login() {
                     autoComplete="current-password"
                     autoFocus
                     trailing={
-                      <Link to="/forgot-password" className="text-[11px] font-medium text-go hover:underline">
+                      <Link to="/forgot-password" className="text-[11px] font-semibold text-go hover:underline">
                         Forgot?
                       </Link>
                     }
                   />
-                  <label className="flex items-center gap-2 cursor-pointer group">
+                  <label className="flex items-center gap-2.5 cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded-[2px] border-seam text-go focus:ring-go/30 bg-base"
+                      className="w-4 h-4 rounded border-seam/50 text-go focus:ring-go/30 bg-base/50"
                     />
-                    <span className="text-[12px] text-ink-secondary group-hover:text-ink transition-colors">Remember me</span>
+                    <span className="text-[13px] text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors font-medium">Keep me signed in</span>
                   </label>
                 </>
               )}
@@ -220,19 +220,18 @@ export default function Login() {
                 type="submit"
                 disabled={!canSubmit}
                 className={cn(
-                  'w-full bg-go hover:bg-go-lit text-[hsl(var(--primary-foreground))] font-semibold text-[14px] py-3 rounded-[3px] flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                  'w-full mt-6 bg-gradient-to-r from-go to-go-lit hover:shadow-lg text-white font-bold text-[15px] py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
-                aria-label={isSubmitting ? 'Signing in' : stage === 'email' ? 'Continue' : 'Sign In'}
               >
-                {isSubmitting ? 'Signing in...' : stage === 'email' ? 'Continue' : 'Sign In'}
-                <ArrowRight size={16} weight="bold" />
+                {isSubmitting ? 'Signing in...' : stage === 'email' ? 'Continue' : 'Sign in'}
+                {!isSubmitting && <ArrowRight size={18} weight="bold" />}
               </button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-seam flex items-center justify-between text-[12px] text-ink-tertiary">
-              <span>New here?</span>
-              <Link to="/register" className="text-go font-medium hover:underline inline-flex items-center gap-1">
-                Create an account <ArrowUpRight size={12} weight="bold" />
+            <div className="mt-8 pt-6 border-t border-seam/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-[hsl(var(--muted-foreground))]">
+              <span>New to Onramp?</span>
+              <Link to="/register" className="text-go font-semibold hover:text-go-lit transition-colors inline-flex items-center gap-2">
+                Create free account <ArrowUpRight size={14} weight="bold" />
               </Link>
             </div>
           </main>

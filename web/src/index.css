@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Expanded:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Expanded:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -402,6 +402,378 @@
     --card-foreground: 0 0% 95%;
     --popover: 264 44% 12%;
     --popover-foreground: 0 0% 95%;
+  }
+  /* ---------------- Unique themes ---------------- */
+  /* Slate - The Quiet Instrument.
+     Near-monochrome graphite, one electric-mint accent.
+     Genealogy: Linear x Notion. */
+  [data-theme='slate'] {
+    --room: #0B0D10;
+    --base: #111417;
+    --panel: #161A1F;
+    --panel-raised: #1D2228;
+    --well: #14181D;
+    --inset: #0E1114;
+    --ink: #F2F4F6;
+    --ink-secondary: #AEB6BF;
+    --ink-tertiary: #828B95;
+    --ink-muted: #67717C;
+    --ink-disabled: #4A535E;
+    --go: #2DD4BF;
+    --go-lit: #5EEAD4;
+    --mission: #7FB0FF;
+    --mission-lit: #A8C9FF;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(242,244,246,0.12);
+    --seam-strong: rgba(242,244,246,0.20);
+    --bg-void: 11 13 16;
+    --bg-primary: 22 26 31;
+    --bg-secondary: 29 34 40;
+    --bg-tertiary: 38 44 52;
+    --bg-elevated: 35 41 48;
+    --text-primary: 242 244 246;
+    --text-secondary: 174 182 191;
+    --text-tertiary: 130 139 149;
+    --text-muted: 103 113 124;
+    --text-disabled: 74 83 94;
+    --border-rgb: 165 173 183;
+    --accent-from: 45 212 191;
+    --accent-via: 94 234 212;
+    --accent-to: 153 246 228;
+    --accent-muted: 45 212 191;
+    --accent-glow: 45 212 191;
+    --accent-primary: 45 212 191;
+    --accent-primary-hover: 94 234 212;
+    --success: 16 185 129;
+    --success-lit: 52 211 153;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 127 176 255;
+    --info-lit: 168 201 255;
+    --background: 210 18% 6%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 210 18% 6%;
+    --secondary: 210 15% 13%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 210 12% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 172 66% 50%;
+    --accent-foreground: 0 0% 6%;
+    --border: 210 12% 16%;
+    --ring: 172 66% 50%;
+    --card: 210 15% 13%;
+    --card-foreground: 0 0% 95%;
+    --popover: 210 16% 11%;
+    --popover-foreground: 0 0% 95%;
+  }
+
+  /* Ember - The Warm Core.
+     Warm charcoal, molten ember accent, warm undertones.
+     Genealogy: Raycast x Arc. */
+  [data-theme='ember'] {
+    --room: #120B07;
+    --base: #1A110A;
+    --panel: #221710;
+    --panel-raised: #2C1F15;
+    --well: #1F150D;
+    --inset: #161009;
+    --ink: #FFF4EA;
+    --ink-secondary: #D6C2AF;
+    --ink-tertiary: #A98F7A;
+    --ink-muted: #87705D;
+    --ink-disabled: #64503F;
+    --go: #F97316;
+    --go-lit: #FB923C;
+    --mission: #60A5FA;
+    --mission-lit: #93C5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(255,244,234,0.12);
+    --seam-strong: rgba(255,244,234,0.20);
+    --bg-void: 18 11 7;
+    --bg-primary: 34 23 16;
+    --bg-secondary: 44 31 21;
+    --bg-tertiary: 56 40 28;
+    --bg-elevated: 48 34 24;
+    --text-primary: 255 244 234;
+    --text-secondary: 214 194 175;
+    --text-tertiary: 169 143 122;
+    --text-muted: 135 112 93;
+    --text-disabled: 100 80 63;
+    --border-rgb: 176 150 128;
+    --accent-from: 249 115 22;
+    --accent-via: 251 146 60;
+    --accent-to: 251 191 36;
+    --accent-muted: 249 115 22;
+    --accent-glow: 249 115 22;
+    --accent-primary: 249 115 22;
+    --accent-primary-hover: 251 146 60;
+    --success: 34 197 94;
+    --success-lit: 74 222 128;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 96 165 250;
+    --info-lit: 147 197 253;
+    --background: 22 44% 5%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 22 44% 5%;
+    --secondary: 21 36% 12%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 21 30% 15%;
+    --muted-foreground: 0 0% 75%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 6%;
+    --border: 22 30% 16%;
+    --ring: 25 95% 53%;
+    --card: 21 36% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 21 38% 10%;
+    --popover-foreground: 0 0% 95%;
+  }
+
+  /* Aurora - The Neon Vortex.
+     True-black with a vivid cyan->violet->pink gradient accent.
+     Genealogy: ReactBits x Aceternity. */
+  [data-theme='aurora'] {
+    --room: #050508;
+    --base: #0A0A12;
+    --panel: #10101C;
+    --panel-raised: #181827;
+    --well: #0D0D18;
+    --inset: #080810;
+    --ink: #F5F5FF;
+    --ink-secondary: #B4B4D0;
+    --ink-tertiary: #8686A6;
+    --ink-muted: #6B6B89;
+    --ink-disabled: #4C4C66;
+    --go: #22D3EE;
+    --go-lit: #67E8F9;
+    --mission: #A78BFA;
+    --mission-lit: #C4B5FD;
+    --caution: #FBBF24;
+    --caution-lit: #FCD34D;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(245,245,255,0.12);
+    --seam-strong: rgba(245,245,255,0.20);
+    --bg-void: 5 5 8;
+    --bg-primary: 16 16 28;
+    --bg-secondary: 24 24 39;
+    --bg-tertiary: 34 34 56;
+    --bg-elevated: 30 30 48;
+    --text-primary: 245 245 255;
+    --text-secondary: 180 180 208;
+    --text-tertiary: 134 134 166;
+    --text-muted: 107 107 137;
+    --text-disabled: 76 76 102;
+    --border-rgb: 165 165 195;
+    --accent-from: 34 211 238;
+    --accent-via: 167 139 250;
+    --accent-to: 244 114 182;
+    --accent-muted: 34 211 238;
+    --accent-glow: 167 139 250;
+    --accent-primary: 34 211 238;
+    --accent-primary-hover: 244 114 182;
+    --success: 16 185 129;
+    --success-lit: 52 211 153;
+    --warning: 251 191 36;
+    --warning-lit: 252 211 77;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 167 139 250;
+    --info-lit: 196 181 253;
+    --background: 240 23% 5%;
+    --foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 240 23% 5%;
+    --secondary: 240 24% 12%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 20% 14%;
+    --muted-foreground: 0 0% 72%;
+    --accent: 187 92% 53%;
+    --accent-foreground: 0 0% 6%;
+    --border: 240 20% 14%;
+    --ring: 258 90% 76%;
+    --card: 240 24% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 240 24% 10%;
+    --popover-foreground: 0 0% 95%;
+  }
+
+  /* Paper - The Editorial Sheet.
+     Warm off-white paper, calm green accent, low contrast.
+     Genealogy: Notion. */
+  [data-theme='paper'] {
+    --room: #F4F1EC;
+    --base: #FBFBF8;
+    --panel: #FFFFFF;
+    --panel-raised: #FFFFFF;
+    --well: #F0EDE6;
+    --inset: #EAE7DF;
+    --ink: #221F1A;
+    --ink-secondary: #5D584F;
+    --ink-tertiary: #6F6A60;
+    --ink-muted: #827C71;
+    --ink-disabled: #ABA69B;
+    --go: #0C8A5A;
+    --go-lit: #16A365;
+    --mission: #2F6FB2;
+    --mission-lit: #3B82C4;
+    --caution: #B5710A;
+    --caution-lit: #D6870F;
+    --abort: #BE3A2E;
+    --abort-lit: #D24C3F;
+    --seam: rgba(34,31,26,0.12);
+    --seam-strong: rgba(34,31,26,0.20);
+    --bg-void: 244 241 236;
+    --bg-primary: 251 251 248;
+    --bg-secondary: 255 255 255;
+    --bg-tertiary: 240 237 230;
+    --bg-elevated: 255 255 255;
+    --text-primary: 34 31 26;
+    --text-secondary: 93 88 79;
+    --text-tertiary: 111 106 96;
+    --text-muted: 130 124 113;
+    --text-disabled: 171 166 155;
+    --border-rgb: 34 31 26;
+    --accent-from: 12 138 90;
+    --accent-via: 22 163 101;
+    --accent-to: 52 200 138;
+    --accent-muted: 12 138 90;
+    --accent-glow: 12 138 90;
+    --accent-primary: 12 138 90;
+    --accent-primary-hover: 22 163 101;
+    --success: 12 138 90;
+    --success-lit: 22 163 101;
+    --warning: 181 113 10;
+    --warning-lit: 214 135 15;
+    --error: 190 58 46;
+    --error-lit: 210 76 63;
+    --info: 47 111 178;
+    --info-lit: 59 130 196;
+    --card: 90 6% 97%;
+    --card-foreground: 40 13% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 40 13% 12%;
+    --background: 40 14% 94%;
+    --foreground: 40 13% 12%;
+    --primary: 40 13% 12%;
+    --primary-foreground: 40 14% 94%;
+    --secondary: 40 12% 96%;
+    --secondary-foreground: 40 13% 12%;
+    --muted: 40 10% 93%;
+    --muted-foreground: 40 6% 42%;
+    --accent: 156 72% 30%;
+    --accent-foreground: 0 0% 100%;
+    --border: 40 10% 86%;
+    --ring: 156 72% 30%;
+  }
+
+
+  /* ── Premium landing surface ──────────────────────────
+     The public landing page pins its own dark identity so it never
+     follows the app's theme. Spec palette: near-black #0F1419 base,
+     teal #06B6D4 primary, emerald #10B981 success, amber #F59E0B
+     caution, cyan #00D9FF CTA. Typography: Space Mono display,
+     Inter body, IBM Plex Mono data. */
+  .landing-premium {
+    --room: #070A0E;
+    --base: #0F1419;
+    --panel: #131A21;
+    --panel-raised: #1A222C;
+    --well: #10161D;
+    --inset: #0C1116;
+    --ink: #FFFFFF;
+    --ink-secondary: #A8B3BF;
+    --ink-tertiary: #6B7280;
+    --ink-muted: #4B5563;
+    --ink-disabled: #374151;
+    --go: #10B981;
+    --go-lit: #34D399;
+    --mission: #06B6D4;
+    --mission-lit: #22D3EE;
+    --caution: #F59E0B;
+    --caution-lit: #FBBF24;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(255, 255, 255, 0.10);
+    --seam-strong: rgba(255, 255, 255, 0.18);
+    --bg-void: 7 10 14;
+    --bg-primary: 15 20 25;
+    --bg-secondary: 19 26 33;
+    --bg-tertiary: 26 34 44;
+    --bg-elevated: 26 34 44;
+    --text-primary: 255 255 255;
+    --text-secondary: 168 179 191;
+    --text-tertiary: 107 114 128;
+    --text-muted: 75 85 99;
+    --text-disabled: 55 65 81;
+    --border-rgb: 148 163 184;
+    --accent-from: 0 217 255;
+    --accent-via: 6 182 212;
+    --accent-to: 16 185 129;
+    --accent-muted: 6 182 212;
+    --accent-glow: 0 217 255;
+    --accent-primary: 0 217 255;
+    --accent-primary-hover: 34 211 238;
+    --success: 16 185 129;
+    --success-lit: 52 211 153;
+    --warning: 245 158 11;
+    --warning-lit: 251 191 36;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 6 182 212;
+    --info-lit: 34 211 238;
+
+    color: var(--ink);
+    background-color: var(--room);
+  }
+
+  .landing-premium ::selection {
+    background: rgba(0, 217, 255, 0.28);
+    color: #ffffff;
+  }
+
+  .landing-premium h1,
+  .landing-premium h2,
+  .landing-premium h3,
+  .landing-premium h4,
+  .landing-premium h5,
+  .landing-premium h6 {
+    color: var(--ink);
+  }
+
+  .landing-premium .font-display {
+    font-family: 'Space Mono', ui-monospace, monospace;
+    letter-spacing: -0.02em;
+  }
+
+  .landing-premium .font-heading {
+    font-family: 'Space Mono', ui-monospace, monospace;
+  }
+
+  .landing-premium .font-code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  .landing-premium body,
+  .landing-premium p,
+  .landing-premium span,
+  .landing-premium a,
+  .landing-premium li,
+  .landing-premium button {
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   * {
