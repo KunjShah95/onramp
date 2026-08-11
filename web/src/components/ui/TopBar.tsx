@@ -17,7 +17,7 @@ interface TopBarProps {
 export default function TopBar({ lastShortcut, callsign }: TopBarProps) {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const isDark = theme !== 'light'
+  const isDark = theme !== 'light' && theme !== 'paper'
 
   return (
     <header

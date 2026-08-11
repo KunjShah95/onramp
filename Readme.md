@@ -454,7 +454,7 @@ The backend runs on Render as three services sharing one Redis (Key Value) insta
 > **Apply order:** the blueprint links services to `main`, and the API image depends on the `backend/Dockerfile` stage reorder (production = default target). Apply it only after this change is on `main` — otherwise the API service builds a worker image and its `/health` check fails.
 
 | Resource | Render type | What it runs |
-|---|---|---|
+| --- | --- | --- |
 | `onramp-redis` | Key Value (Redis) | Celery broker + result store — auto-wired as `REDIS_URL` |
 | `onramp-api` | Web service | `alembic upgrade head` + uvicorn (`production` Dockerfile stage), health check `/health` |
 | `onramp-worker` | Background worker | `celery -A app.tasks.celery_app worker -Q agent-tasks,analytics-tasks,notification-tasks,default` |

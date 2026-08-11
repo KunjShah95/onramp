@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+
+const HeatmapGem = lazy(() => import('../components/ui/heatmap-gem'))
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,8 +44,9 @@ const faqs = [
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Changelog', href: '/changelog' },
+  { label: 'Why Onramp', href: '/why-onramp' },
   { label: 'Pricing', href: '/pricing', active: true },
+  { label: 'Changelog', href: '/changelog' },
 ]
 
 function Segmented({ options, value, onChange, pillId }: {
@@ -160,16 +163,16 @@ export default function PricingPage() {
         </motion.div>
       </div>
 
-      {/* Asymmetric pricing — Team centered, full-width, deeper surface */}
+      {/* 3-tier pricing — equal width, Team featured */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 pb-20"
+        className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-5 pb-20"
       >
-        {/* Free — compact, left */}
-        <motion.div variants={itemVariants} className="md:col-span-4">
-          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-colors hover:border-seam-strong">
+        {/* Free — left */}
+        <motion.div variants={itemVariants} className="md:col-span-1">
+          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-lg backdrop-blur-sm">
             <div className="callsign opacity-60">FREE</div>
             <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
               For a solo dev getting the lay of the land.
@@ -198,10 +201,20 @@ export default function PricingPage() {
           </div>
         </motion.div>
 
-        {/* Team — anchor, full width, taller, deep panel */}
-        <motion.div variants={itemVariants} className="md:col-span-8 md:-mt-2">
-          <div className="relative flex h-full flex-col rounded-card border border-seam-strong bg-bg-secondary shadow-overhead p-8 md:p-10 transition-colors">
-            <div className="flex items-center justify-between">
+        {/* Team — center, featured with gem */}
+        <motion.div variants={itemVariants} className="md:col-span-1">
+          <div className="relative flex h-full flex-col rounded-card border border-go/30 bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-secondary/80 shadow-overhead p-8 md:p-10 transition-all hover:border-go/50 overflow-hidden">
+            {/* Heatmap gem — positioned top right, part of card design */}
+            <div className="absolute -top-24 -right-24 w-80 h-80 pointer-events-none opacity-50 md:opacity-60 blur-sm">
+              <Suspense fallback={<div className="w-full h-full" />}>
+                <HeatmapGem size={320} autoRotate={true} />
+              </Suspense>
+            </div>
+
+            {/* Gem glow effect */}
+            <div className="absolute -top-16 -right-16 w-72 h-72 bg-go/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
                 <span className="callsign text-go">TEAM · RECOMMENDED</span>
@@ -245,33 +258,35 @@ export default function PricingPage() {
           </div>
         </motion.div>
 
-        {/* Enterprise — compact, right */}
-        <motion.div variants={itemVariants} className="md:col-span-12">
-          <div className="relative flex flex-col md:flex-row md:items-center gap-6 md:gap-10 rounded-card border border-seam bg-panel p-7 transition-colors hover:border-seam-strong">
-            <div className="flex-1">
-              <div className="callsign opacity-60">ENTERPRISE</div>
-              <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body">
-                For orgs that need control, security, and scale.
-              </p>
-              <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-[hsl(var(--muted-foreground))] font-body">
-                {ENTERPRISE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-1.5">
-                    <Check size={11} weight="bold" className="text-go" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col md:items-end gap-3 shrink-0">
+        {/* Enterprise — right */}
+        <motion.div variants={itemVariants} className="md:col-span-1">
+          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-lg backdrop-blur-sm">
+            <div className="callsign opacity-60">ENTERPRISE</div>
+            <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
+              For orgs that need control, security, and scale.
+            </p>
+            <div className="mt-5">
               <PriceDisplay sym="" value="Custom" />
-              <Link
-                to="#contact"
-                className="inline-flex items-center justify-center gap-1.5 rounded-btn border border-seam bg-panel-raised px-6 py-2.5 text-[14px] font-medium text-[hsl(var(--foreground))] hover:border-go/30 transition-colors"
-              >
-                Contact sales
-                <ArrowRight size={14} weight="bold" />
-              </Link>
             </div>
+
+            <Link
+              to="/contact"
+              className="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-btn bg-go px-6 py-3 text-[15px] font-medium text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_rgba(24,27,24,0.18)] hover:bg-go-lit transition-colors active:scale-[0.98]"
+            >
+              Contact sales
+              <ArrowRight size={15} weight="bold" />
+            </Link>
+
+            <ul className="mt-7 space-y-2.5 border-t border-seam pt-5 text-sm flex-1">
+              {ENTERPRISE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-[13.5px] leading-[1.4] text-[hsl(var(--muted-foreground))] font-body">
+                  <span className="mt-px flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-full bg-well text-go">
+                    <Check size={10} weight="bold" />
+                  </span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </motion.div>
       </motion.div>

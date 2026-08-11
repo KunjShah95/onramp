@@ -6,6 +6,11 @@ export const THEMES = [
   { id: 'midnight', name: 'Midnight', icon: 'bedtime', description: 'Cool indigo-dark with violet-blue accents' },
   { id: 'forest', name: 'Forest', icon: 'forest', description: 'Earthy green-dark with fresh green accents' },
   { id: 'purple', name: 'Purple', icon: 'whatshot', description: 'Deep violet-dark with vibrant purple accents' },
+  /* ── Unique themes — see THEMES.md for the design research ── */
+  { id: 'slate', name: 'Slate', icon: 'monitor', description: 'Quiet Instrument — near-monochrome graphite, one electric-mint accent (Linear × Notion)' },
+  { id: 'ember', name: 'Ember', icon: 'fire', description: 'Warm Core — charcoal with a molten ember accent (Raycast × Arc)' },
+  { id: 'aurora', name: 'Aurora', icon: 'sparkles', description: 'Neon Vortex — true-black with a cyan→violet→pink gradient (ReactBits × Aceternity)' },
+  { id: 'paper', name: 'Paper', icon: 'note', description: 'Editorial Sheet — warm off-white paper light theme (Notion)' },
 ] as const
 
 export type Theme = (typeof THEMES)[number]['id']
