@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
 
 const NAV_LINKS = [
-  { label: 'The gap', href: '#the-gap' },
-  { label: 'The map', href: '#the-map' },
-  { label: 'Metrics', href: '#metrics' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'The gap', href: '#the-gap', isAnchor: true },
+  { label: 'The map', href: '#the-map', isAnchor: true },
+  { label: 'Metrics', href: '#metrics', isAnchor: true },
+  { label: 'Pricing', href: '#pricing', isAnchor: true },
+  { label: 'Why Onramp', href: '/why-onramp', isAnchor: false },
 ]
 
 export default function LandingNav() {
@@ -24,15 +25,29 @@ export default function LandingNav() {
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-[13px] font-medium text-ink-secondary transition-colors hover:text-white"
-            >
-              {l.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((l, idx) => {
+            const isRoute = !l.isAnchor
+            return (
+              <div key={l.href}>
+                {isRoute && idx > 3 && <span className="absolute -left-4 text-ink-secondary/20">·</span>}
+                {isRoute ? (
+                  <Link
+                    to={l.href}
+                    className="text-[13px] font-medium text-ink-secondary transition-colors hover:text-white"
+                  >
+                    {l.label}
+                  </Link>
+                ) : (
+                  <a
+                    href={l.href}
+                    className="text-[13px] font-medium text-ink-secondary transition-colors hover:text-white"
+                  >
+                    {l.label}
+                  </a>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -70,16 +85,29 @@ export default function LandingNav() {
             className="overflow-hidden border-t border-white/5 bg-base md:hidden"
           >
             <div className="flex flex-col gap-1 px-6 py-4">
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  {l.label}
-                </a>
-              ))}
+              {NAV_LINKS.map((l) => {
+                const isRoute = !l.isAnchor
+                return isRoute ? (
+                  <Link
+                    key={l.href}
+                    to={l.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    {l.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    {l.label}
+                  </a>
+                )
+              })}
+              <div className="border-t border-white/5 my-2" />
               <Link
                 to="/login"
                 onClick={() => setOpen(false)}

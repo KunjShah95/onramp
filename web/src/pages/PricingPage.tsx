@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import MarketingLayout from '../components/layout/MarketingLayout'
-import HeatmapGem from '../components/ui/heatmap-gem'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+
+const HeatmapGem = lazy(() => import('../components/ui/heatmap-gem'))
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -43,8 +44,9 @@ const faqs = [
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Changelog', href: '/changelog' },
+  { label: 'Why Onramp', href: '/why-onramp' },
   { label: 'Pricing', href: '/pricing', active: true },
+  { label: 'Changelog', href: '/changelog' },
 ]
 
 function Segmented({ options, value, onChange, pillId }: {
@@ -204,7 +206,9 @@ export default function PricingPage() {
           <div className="relative flex h-full flex-col rounded-card border border-go/30 bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-secondary/80 shadow-overhead p-8 md:p-10 transition-all hover:border-go/50 overflow-hidden">
             {/* Heatmap gem — positioned top right, part of card design */}
             <div className="absolute -top-24 -right-24 w-80 h-80 pointer-events-none opacity-50 md:opacity-60 blur-sm">
-              <HeatmapGem size={320} autoRotate={true} />
+              <Suspense fallback={<div className="w-full h-full" />}>
+                <HeatmapGem size={320} autoRotate={true} />
+              </Suspense>
             </div>
 
             {/* Gem glow effect */}
@@ -266,7 +270,7 @@ export default function PricingPage() {
             </div>
 
             <Link
-              to="#contact"
+              to="/contact"
               className="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-btn bg-go px-6 py-3 text-[15px] font-medium text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_rgba(24,27,24,0.18)] hover:bg-go-lit transition-colors active:scale-[0.98]"
             >
               Contact sales

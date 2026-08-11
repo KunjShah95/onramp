@@ -2,12 +2,14 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Brain, Code, Lightning } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
+import PhilosophyHero from '../components/landing/PhilosophyHero'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
   { label: 'Why Onramp', href: '/why-onramp', active: true },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Changelog', href: '/changelog' },
 ]
 
 const containerVariants = {
@@ -26,7 +28,7 @@ export default function WhyOnrampPage() {
       {/* Hero */}
       <div className="relative pt-20 pb-12 px-6 text-center max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-          <span className="designator text-ink-secondary">ENGINEERING · PHILOSOPHY</span>
+          <span className="font-code text-[10px] uppercase tracking-[0.16em] text-ink-secondary">ENGINEERING · PHILOSOPHY</span>
           <h1 className="font-display text-5xl md:text-6xl mt-4 mb-6 font-bold tracking-tight text-[hsl(var(--foreground))]">
             Why Onramp, Not Terminals
           </h1>
@@ -35,6 +37,9 @@ export default function WhyOnrampPage() {
           </p>
         </motion.div>
       </div>
+
+      {/* Philosophy Hero — split panel visual */}
+      <PhilosophyHero />
 
       {/* Core Philosophy */}
       <motion.div
@@ -162,13 +167,16 @@ export default function WhyOnrampPage() {
 
       {/* Comparison Table */}
       <motion.div
-        variants={itemVariants}
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
         className="relative max-w-5xl mx-auto px-6 py-20"
       >
-        <h2 className="font-display text-3xl font-bold text-center text-[hsl(var(--foreground))] mb-10">
+        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-center text-[hsl(var(--foreground))] mb-10">
           The Approach Breakdown
-        </h2>
-        <div className="rounded-card border border-seam bg-panel overflow-hidden">
+        </motion.h2>
+        <motion.div variants={itemVariants} className="rounded-card border border-seam bg-panel overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -197,27 +205,32 @@ export default function WhyOnrampPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* CTA */}
       <motion.div
-        variants={itemVariants}
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
         className="relative max-w-3xl mx-auto px-6 py-20 text-center"
       >
-        <h2 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-4">
+        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-4">
           Ready to onboard your way.
-        </h2>
-        <p className="text-[hsl(var(--muted-foreground))] font-body mb-8">
+        </motion.h2>
+        <motion.p variants={itemVariants} className="text-[hsl(var(--muted-foreground))] font-body mb-8">
           Join teams shipping faster because developers understand code from day one.
-        </p>
-        <Link
-          to="/pricing"
-          className="inline-flex items-center justify-center gap-2 bg-go px-8 py-3 rounded-btn text-[15px] font-medium text-[hsl(var(--primary-foreground))] hover:bg-go-lit transition-colors"
-        >
-          Start 14-day trial
-          <ArrowRight size={16} weight="bold" />
-        </Link>
+        </motion.p>
+        <motion.div variants={itemVariants}>
+          <Link
+            to="/pricing"
+            className="inline-flex items-center justify-center gap-2 bg-go px-8 py-3 rounded-btn text-[15px] font-medium text-[hsl(var(--primary-foreground))] hover:bg-go-lit transition-colors"
+          >
+            Start 14-day trial
+            <ArrowRight size={16} weight="bold" />
+          </Link>
+        </motion.div>
       </motion.div>
     </MarketingLayout>
   )

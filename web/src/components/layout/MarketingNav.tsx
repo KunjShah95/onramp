@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { List, X } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export interface NavLinkItem {
   label: string
@@ -15,6 +18,7 @@ interface MarketingNavProps {
 
 const DEFAULT_LINKS: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
+  { label: 'Why Onramp', href: '/why-onramp' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
@@ -23,6 +27,8 @@ export default function MarketingNav({
   links = DEFAULT_LINKS,
   fixed = true,
 }: MarketingNavProps) {
+  const [open, setOpen] = useState(false)
+
   return (
     <nav
       className={[
@@ -67,7 +73,7 @@ export default function MarketingNav({
       <div className="flex items-center gap-4">
         <Link
           to="/login"
-          className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-body"
+          className="hidden text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-body sm:inline"
         >
           Log in
         </Link>
@@ -77,7 +83,59 @@ export default function MarketingNav({
         >
           Start free
         </Link>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-9 w-9 items-center justify-center rounded-sm text-[hsl(var(--muted-foreground))] md:hidden"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+        >
+          {open ? <X size={18} /> : <List size={18} />}
+        </button>
       </div>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] md:hidden"
+          >
+            <div className="flex flex-col gap-1 px-6 py-4">
+              {links.map((link) =>
+                link.active ? (
+                  <span
+                    key={link.label}
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--foreground))]"
+                  >
+                    {link.label}
+                  </span>
+                ) : (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))]/50 hover:text-[hsl(var(--foreground))]"
+                  >
+                    {link.label}
+                  </Link>
+                )
+              )}
+              <div className="border-t border-[hsl(var(--border))] my-2" />
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))]/50 hover:text-[hsl(var(--foreground))]"
+              >
+                Log in
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

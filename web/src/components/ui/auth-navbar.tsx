@@ -15,15 +15,26 @@ export default function AuthNavbar() {
           </div>
           <span className="font-display text-sm font-bold text-[hsl(var(--foreground))]">Onramp</span>
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-6">
+          <Link to="/docs" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+            Docs
+          </Link>
           <Link to="/why-onramp" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
             Why Onramp
           </Link>
           <Link to="/pricing" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
             Pricing
           </Link>
-          <Link to="/" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
-            Home
+          <Link to="/changelog" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+            Changelog
+          </Link>
+        </div>
+        <div className="flex md:hidden items-center gap-4">
+          <Link to="/why-onramp" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+            Why Onramp
+          </Link>
+          <Link to="/pricing" className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
+            Pricing
           </Link>
         </div>
       </div>

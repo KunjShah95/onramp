@@ -680,6 +680,73 @@
     --ring: 156 72% 30%;
   }
 
+  /* ── Landing theme — pins the Shaders-inspired dark surface ── */
+  [data-theme='landing'] {
+    --room: #070A0E;
+    --base: #0F1419;
+    --panel: #131A21;
+    --panel-raised: #1A222C;
+    --well: #10161D;
+    --inset: #0C1116;
+    --ink: #FFFFFF;
+    --ink-secondary: #A8B3BF;
+    --ink-tertiary: #6B7280;
+    --ink-muted: #4B5563;
+    --ink-disabled: #374151;
+    --go: #10B981;
+    --go-lit: #34D399;
+    --mission: #06B6D4;
+    --mission-lit: #22D3EE;
+    --caution: #F59E0B;
+    --caution-lit: #FBBF24;
+    --abort: #F87171;
+    --abort-lit: #FCA5A5;
+    --seam: rgba(255, 255, 255, 0.10);
+    --seam-strong: rgba(255, 255, 255, 0.18);
+    --bg-void: 7 10 14;
+    --bg-primary: 15 20 25;
+    --bg-secondary: 19 26 33;
+    --bg-tertiary: 26 34 44;
+    --bg-elevated: 26 34 44;
+    --text-primary: 255 255 255;
+    --text-secondary: 168 179 191;
+    --text-tertiary: 107 114 128;
+    --text-muted: 75 85 99;
+    --text-disabled: 55 69 85;
+    --border-rgb: 168 179 191;
+    --accent-from: 16 185 129;
+    --accent-via: 52 211 153;
+    --accent-to: 16 185 129;
+    --accent-muted: 16 185 129;
+    --accent-glow: 16 185 129;
+    --accent-primary: 16 185 129;
+    --accent-primary-hover: 52 211 153;
+    --success: 16 185 129;
+    --success-lit: 52 211 153;
+    --warning: 245 158 11;
+    --warning-lit: 251 191 36;
+    --error: 248 113 113;
+    --error-lit: 252 165 165;
+    --info: 6 182 212;
+    --info-lit: 34 211 238;
+    --background: 217 39% 11%;
+    --foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 217 39% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 33% 20%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --border: 217 33% 24%;
+    --ring: 160 84% 39%;
+    --card: 217 33% 17%;
+    --card-foreground: 0 0% 100%;
+    --popover: 217 39% 11%;
+    --popover-foreground: 0 0% 100%;
+  }
+
 
   /* ── Premium landing surface ──────────────────────────
      The public landing page pins its own dark identity so it never

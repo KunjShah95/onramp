@@ -8,10 +8,21 @@ const LINK_COLS = [
       { label: 'Pricing', to: '/pricing' },
       { label: 'Changelog', to: '/changelog' },
       { label: 'Docs', to: '/docs' },
+      { label: 'Why Onramp', to: '/why-onramp' },
+      { label: 'Security', to: '/security' },
     ],
   },
   {
     title: 'Company',
+    links: [
+      { label: 'Blog', to: '/blog' },
+      { label: 'Careers', to: '/careers' },
+      { label: 'Contact', to: '/contact' },
+      { label: 'About', to: '/about' },
+    ],
+  },
+  {
+    title: 'Legal',
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },

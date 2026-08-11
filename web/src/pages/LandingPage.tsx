@@ -21,7 +21,7 @@ import Footer from '../components/landing/Footer'
 
 export default function LandingPage() {
   return (
-    <div className="landing-premium min-h-screen bg-room text-ink antialiased">
+    <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
       <LandingNav />
       <main>
         <Hero />
