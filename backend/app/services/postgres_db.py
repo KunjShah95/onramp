@@ -266,7 +266,24 @@ class PostgresStorage:
                 elif op == "in":
                     query = query.where(col.in_(value or []))
                 elif op in (">=", "<=", ">", "<"):
-                    query = query.where(col.op(op)(value))
+                    # Service code (DynamicDocument era) passes ISO-8601 strings
+                    # for datetime columns. Bind those as real datetime values —
+                    # otherwise asyncpg sends them as VARCHAR and Postgres rejects
+                    # the comparison with "operator does not exist:
+                    # timestamp with time zone >= character varying".
+                    if isinstance(col.type, DateTime) and isinstance(value, str):
+                        try:
+                            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                        except ValueError:
+                            pass
+                    if op == ">=":
+                        query = query.where(col >= value)
+                    elif op == "<=":
+                        query = query.where(col <= value)
+                    elif op == ">":
+                        query = query.where(col > value)
+                    else:
+                        query = query.where(col < value)
                 else:
                     logger.warning("Unsupported filter operator '%s' for key '%s'", op, key)
         return query

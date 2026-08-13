@@ -14,6 +14,7 @@ from app.services.api_key_service import APIKeyService
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
 from app.services.credit_service import CreditService, InsufficientCreditsError
+from app.services.team_service import get_user_teams
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +149,27 @@ async def charge_wallet(scope: str, action: str) -> dict:
 def enforce_quota(action: str):
     """FastAPI dependency factory: enforce + record quota for an AI action."""
 
+    async def _resolve_scope(uid: str) -> str:
+        """Resolve the billing/usage scope for a user.
+
+        Usage is metered per team — the rest of the app (billing, dashboards,
+        usage tracking) keys on the user's team id. Using the raw uid as the
+        ``team_id`` would write a ``usage_records`` row whose team_id doesn't
+        reference any ``teams.id``, tripping the foreign key on insert.
+        """
+        try:
+            teams = await get_user_teams(uid)
+            if teams:
+                return teams[0].get("id") or teams[0].get("team_id") or uid
+        except Exception:
+            logger.warning("Failed to resolve team scope for %s, using uid", uid)
+        return uid
+
     async def _dep(request: Request) -> dict:
         user = getattr(request.state, "user", None)
         if not user:
             raise HTTPException(status_code=401, detail="Not authenticated")
-        scope = user.get("uid")
+        scope = await _resolve_scope(user.get("uid"))
         return await check_and_record(scope, action)
 
     return Depends(_dep)
