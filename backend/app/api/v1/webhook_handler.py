@@ -210,6 +210,18 @@ async def _handle_pr_merged(payload: dict) -> dict:
             "reason": "No linked Onramp task found for this PR URL",
         }
 
+    # Stamp the merge on the task (best-effort, never blocks completion). This
+    # is the attribution that lets the ramp summary compute time-to-first-
+    # merged-PR for teams WITHOUT linked GitHub accounts: the task's assignee
+    # is the trainee, so no login→user mapping is required. Annotation-only —
+    # writes even when the task is already completed.
+    try:
+        from app.services.task_service import stamp_pr_merged
+
+        await stamp_pr_merged(task["task_id"])
+    except Exception:
+        logger.exception("Failed to stamp pr_merged_at on task %s", task.get("task_id"))
+
     # Only complete if the task is still in a pre-completion state.
     if task.get("state") == "completed":
         return {"handled": True, "pr_number": pr_number, "task_completed": False, "reason": "Already completed"}

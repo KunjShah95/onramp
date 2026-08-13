@@ -94,6 +94,34 @@ class TestRoutedLLMWrapper:
             tokens.append(token)
         assert tokens == ["tok"]
 
+    async def test_wrapper_chat_stream_matches_real_router_signature(self, monkeypatch):
+        """Regression: _RoutedLLM.chat_stream injects cache_scope (+ optional
+        BYOK kwargs) into the router call, but LLMRouter.chat_stream used to
+        reject cache_scope with a TypeError — which silently sent every agent
+        stream to the fallback path. The wrapper must work against the real
+        signature (cache_scope accepted, provider_keys/key_pools threaded)."""
+        monkeypatch.setenv("GROQ_API_KEY", "sk-groq-test")
+        router = LLMRouter()
+
+        async def fake_stream(self_, provider, prompt, system, max_tokens,
+                              provider_keys=None, key_pools=None, key_pool_ids=None,
+                              model_override=None):
+            # Prove team BYOK keys reach the streamed provider call.
+            assert key_pools == {"groq": ["pool-1"]}
+            assert provider_keys == {"groq": "primary"}
+            yield "tok"
+
+        monkeypatch.setattr(LLMRouter, "_stream_provider", fake_stream)
+        agent = RepoQA(router)
+        tokens = []
+        async for token in agent.llm.chat_stream(
+            "question?",
+            provider_keys={"groq": "primary"},
+            key_pools={"groq": ["pool-1"]},
+        ):
+            tokens.append(token)
+        assert tokens == ["tok"]
+
     async def test_default_query_type_passes_none(self):
         class PlainAgent(BaseAgent):
             query_type = None

@@ -3,6 +3,7 @@ import { ArrowRight, Brain, Code, Lightning } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import PhilosophyHero from '../components/landing/PhilosophyHero'
+import CostAtScaleCalculator from '../components/landing/CostAtScaleCalculator'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
@@ -30,10 +31,10 @@ export default function WhyOnrampPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
           <span className="font-code text-[10px] uppercase tracking-[0.16em] text-ink-secondary">ENGINEERING · PHILOSOPHY</span>
           <h1 className="font-display text-5xl md:text-6xl mt-4 mb-6 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            Why Onramp, Not Terminals
+            Why Onramp, Not Coding Agents
           </h1>
           <p className="text-[hsl(var(--muted-foreground))] text-lg mb-8 max-w-2xl mx-auto font-body">
-            Onboarding isn't about running commands. It's about understanding context. We chose code analysis over terminals because developers learn by reading, not typing.
+            Agents burn tokens re-reading your codebase on every change. Onramp indexes it once, updates the graph when it changes, and answers from real context — a fraction of the cost, at any team size.
           </p>
         </motion.div>
       </div>
@@ -48,30 +49,30 @@ export default function WhyOnrampPage() {
         animate="visible"
         className="relative max-w-5xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-8 mb-20"
       >
-        {/* Why Not Terminals/Agents */}
+        {/* Why Not Coding Agents */}
         <motion.div variants={itemVariants} className="rounded-card border border-seam bg-panel p-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-[3px] bg-abort/10 flex items-center justify-center">
               <Code size={20} weight="bold" className="text-abort" />
             </div>
-            <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why NOT Terminals</h3>
+            <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why NOT Coding Agents</h3>
           </div>
           <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Requires expertise.</strong> Running commands assumes git/docker/shell knowledge — not all devs have it.</span>
+              <span><strong>Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context whenever it changes — multiplied by every developer and every product.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Error-prone.</strong> Commands fail silently. Typos halt progress. Debugging takes hours.</span>
+              <span><strong>Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn — the bill grows with every hire.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Context-agnostic.</strong> Terminals show logs, not intent. You're debugging blind.</span>
+              <span><strong>No lasting context.</strong> Every session starts from scratch. Onramp's graph is built once and updated, not re-read.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Slow to onboard.</strong> Takes days to understand why commands matter.</span>
+              <span><strong>Paid keys for everything.</strong> Agents hit paid APIs constantly; Onramp routes most requests through free tiers first.</span>
             </li>
           </ul>
         </motion.div>
@@ -182,30 +183,52 @@ export default function WhyOnrampPage() {
               <thead>
                 <tr className="border-b border-seam bg-panel-raised">
                   <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Aspect</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Terminals / Scripts</th>
                   <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Coding Agents</th>
                   <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Onramp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-seam">
                 {[
-                  ['Learning curve', 'Steep — shell knowledge needed', 'Medium — magic box problem', 'Gentle — read the code'],
-                  ['Trust', 'Black box output', 'Agent decisions opaque', 'File + line citations'],
-                  ['Speed to PR', 'Slow (debugging commands)', 'Fast but wrong sometimes', 'Fast + correct'],
-                  ['Works offline', 'Yes', 'No (requires API)', 'Yes (local index)'],
-                  ['Understand WHY', 'No, just WHAT', 'No, just HOW', 'Yes, full context'],
+                  ['Context', 'Re-reads the whole codebase per change', 'Indexed once — graph updates on change'],
+                  ['Cost model', 'Per-seat subs + per-dev token burn', 'Flat per-workspace price'],
+                  ['Cost at scale', 'Grows with devs × products × changes', 'Flat — never moves'],
+                  ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
+                  ['Understand WHY', 'No, just HOW', 'Yes, full context'],
                 ].map((row, idx) => (
                   <tr key={idx} className="hover:bg-panel-raised/50 transition-colors">
                     <td className="px-6 py-3 font-semibold text-[hsl(var(--foreground))]">{row[0]}</td>
                     <td className="px-6 py-3 text-[hsl(var(--muted-foreground))]">{row[1]}</td>
-                    <td className="px-6 py-3 text-[hsl(var(--muted-foreground))]">{row[2]}</td>
-                    <td className="px-6 py-3 text-go font-semibold">{row[3]}</td>
+                    <td className="px-6 py-3 text-go font-semibold">{row[2]}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </motion.div>
+      </motion.div>
+
+      {/* Cost at scale — multiple devs × multiple products */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        className="relative max-w-5xl mx-auto px-6 py-20"
+      >
+        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-center text-[hsl(var(--foreground))] mb-4">
+          The Cost at Scale
+        </motion.h2>
+        <motion.p variants={itemVariants} className="text-[hsl(var(--muted-foreground))] font-body text-center max-w-2xl mx-auto mb-10">
+          Coding agents charge per seat AND re-read every codebase into every developer's context on
+          every change — so the bill multiplies with every hire and every product. Onramp's flat
+          price stays put. Move the sliders.
+        </motion.p>
+        <motion.div variants={itemVariants}>
+          <CostAtScaleCalculator />
+        </motion.div>
+        <motion.p variants={itemVariants} className="text-center text-xs text-[hsl(var(--muted-foreground))] mt-6 font-code">
+          Modeled on public agent pricing (Aug 2026) + Onramp's $99/mo workspace plan · interactive team-dashboard benchmark available on the Ramp page
+        </motion.p>
       </motion.div>
 
       {/* CTA */}

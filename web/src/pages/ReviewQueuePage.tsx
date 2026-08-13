@@ -17,6 +17,7 @@ import { listTeams, listTasks, getTeamMembers } from '../lib/api'
 import type { WorkflowTask, TeamsResponse } from '../lib/api'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
+import ReviewOpsPanel from '../components/dashboard/ReviewOpsPanel'
 
 const STATUS_CONFIG: Record<string, { label: string; tone: 'go' | 'mission' | 'caution' | 'abort' | 'idle' }> = {
   submitted: { label: 'Pending', tone: 'caution' },
@@ -194,6 +195,11 @@ export default function ReviewQueuePage() {
               ))}
             </div>
           </ConsolePanel>
+        </motion.div>
+
+        {/* Review ops — load balancing + consistency (v1.5) */}
+        <motion.div initial="hidden" animate="show" variants={fade}>
+          <ReviewOpsPanel teamId={teamId || undefined} />
         </motion.div>
 
         {/* Error */}

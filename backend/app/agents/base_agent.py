@@ -87,12 +87,16 @@ class BaseAgent(ABC):
         """Execute agent logic. Implement in subclass."""
         pass
 
-    async def _call_claude(self, prompt: str, context: str = "", model: Optional[str] = None) -> str:
+    async def _call_claude(
+        self, prompt: str, context: str = "", model: Optional[str] = None, **kwargs
+    ) -> str:
         """Call Claude API with prompt and context.
 
         ``model`` (optional) names an explicit model id / query type / provider
         that wins over this agent's declared query_type — see LLMRouter.chat.
+        Extra ``kwargs`` (routing_mode, provider_keys, key_pools, ...) are
+        forwarded to the router so callers can bias routing per request.
         """
         full_prompt = f"{context}\n\n{prompt}"
-        response = await self.llm.chat(full_prompt, model=model)
+        response = await self.llm.chat(full_prompt, model=model, **kwargs)
         return response

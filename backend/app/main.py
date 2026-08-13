@@ -27,15 +27,15 @@ from app.llm import LLMClient
 from app.embeddings import EmbeddingRouter
 from app.api.v1 import (
     repo_index as repo_index,
-    accounts as accounts_router, admin as admin_router, ai_gateway, ask, audit as audit_router,
+    accounts as accounts_router, admin as admin_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
     dora as dora_router, onboarding_plans as onboarding_plans_router, openai_gateway, ops as ops_router,
-    playbooks, pr_review,
-    quiz as quiz_router, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
+    playbooks, pr_review, review_ops,
+    quiz as quiz_router, ramp, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
     teams, unique, webhook_handler, wiki, ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
@@ -424,6 +424,7 @@ app.include_router(contributor.router, prefix="/api/v1")
 app.include_router(unique.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(ai_gateway.router, prefix="/api/v1")
+app.include_router(modelling.router, prefix="/api/v1")
 app.include_router(teams.router, prefix="/api/v1")
 app.include_router(playbooks.router, prefix="/api/v1")
 app.include_router(marketplace_router.router, prefix="/api/v1")
@@ -446,6 +447,8 @@ app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")
 app.include_router(onboarding_plans_router.router, prefix="/api/v1")
 app.include_router(dora_router.router, prefix="/api/v1")
+app.include_router(ramp.router, prefix="/api/v1")
+app.include_router(review_ops.router, prefix="/api/v1")
 # GitHub webhook receiver — HMAC-verified, registered as a public path above.
 app.include_router(webhook_handler.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")

@@ -162,7 +162,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
         <p>Triggers full analysis pipeline on a repository.</p>
         <div className="bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl overflow-hidden">
           <div className="px-4 py-2 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]/80 flex items-center gap-3">
-            <span className="font-mono text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded">POST</span>
+            <span className="font-mono text-[10px] bg-accent/10 text-accent border border-accent/25 px-2 py-0.5 rounded">POST</span>
             <span className="font-mono text-[11px] text-[hsl(var(--muted-foreground))]">/api/v1/analyze</span>
           </div>
           <pre className="p-4 font-mono text-xs text-[hsl(var(--muted-foreground))] overflow-x-auto leading-relaxed">

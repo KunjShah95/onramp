@@ -329,6 +329,10 @@ class Repository(Base):
     language: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
+    # Files seen at last analysis — feeds the token-efficiency benchmark's
+    # codebase-size default (file count × tokens/file) when the repo has
+    # been indexed.
+    file_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

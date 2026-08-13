@@ -530,6 +530,69 @@ def check_stale_tasks(self) -> dict:
         loop.close()
 
 
+# ── Stuck-Dev Sweep (Ramp wedge) ──────────────────────────────────────────
+
+
+async def sweep_stuck_devs() -> dict:
+    """Detect stuck new devs across every team and fire leader alerts.
+
+    Runs the v1.4 interception loop (see app.services.ramp_service). Alerts
+    are deduped per trainee (≤1/day) by the service, so this is safe to run
+    on a schedule.
+    """
+    from app.services.postgres_db import get_storage
+    from app.services.ramp_service import fire_stuck_alerts
+
+    storage = get_storage()
+    teams = await storage.list_documents("teams")
+    total_fired = 0
+    total_skipped = 0
+    total_stuck = 0
+
+    for team in teams:
+        team_id = team.get("id")
+        if not team_id:
+            continue
+        try:
+            result = await fire_stuck_alerts(team_id)
+            total_fired += result.get("alerts_fired", 0)
+            total_skipped += result.get("skipped", 0)
+            total_stuck += result.get("stuck_count", 0)
+        except Exception:
+            logger.exception("Stuck-dev sweep failed for team %s", team_id)
+
+    logger.info(
+        "Stuck-dev sweep: %d teams, %d alerts fired, %d skipped (%d stuck devs)",
+        len(teams), total_fired, total_skipped, total_stuck,
+    )
+    return {
+        "teams_scanned": len(teams),
+        "alerts_fired": total_fired,
+        "skipped": total_skipped,
+        "stuck_count": total_stuck,
+    }
+
+
+@shared_task(
+    queue="notification-tasks",
+    bind=True,
+    max_retries=1,
+)
+def check_stuck_devs(self) -> dict:
+    """Celery wrapper for the stuck-dev sweep (see sweep_stuck_devs)."""
+    import asyncio
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(sweep_stuck_devs())
+    except Exception as exc:
+        logger.exception("Stuck-dev sweep failed")
+        raise self.retry(exc=exc)
+    finally:
+        loop.close()
+
+
 # ── Team Digest (Slack) ────────────────────────────────────────────────────
 
 

@@ -465,6 +465,145 @@ class TestCohortComparison:
         assert result["cohorts"] == []
 
 
+class TestCohortRetention:
+    async def test_retained_curve_drops_for_deactivated_member(self):
+        """v1.6 wave 2: retention curves track deactivation — a member whose
+        user record carries deactivated_at drops out of retained_pct from
+        that bucket on, while active_pct reflects recent task activity."""
+        from app.services import hr_metrics_service as hr
+        from app.services.postgres_db import generate_id
+        storage = get_storage()
+
+        # Two members joined ~60 days ago (same cohort).
+        await _seed_member(TUID_USER_JUNIOR1, joined_days_ago=60)
+        await _seed_member(TUID_USER_JUNIOR2, joined_days_ago=60)
+
+        # Junior2 was deactivated 10 days ago → still "retained" at the 30d
+        # bucket, gone from the 60d bucket onward.
+        deactivated = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        await storage.create_document("users", TUID_USER_JUNIOR2, {
+            "id": TUID_USER_JUNIOR2,
+            "name": "Junior Two",
+            "email": "j2@test.com",
+            "is_active": False,
+            "deactivated_at": deactivated,
+        })
+
+        # Junior1 updated a task 5 days ago → active in the 30d window.
+        await storage.create_document("onramp_tasks", generate_id(), {
+            "task_id": generate_id(),
+            "team_id": TUID_TEAM_ALPHA,
+            "created_by": TUID_USER_SENIOR,
+            "assigned_to": TUID_USER_JUNIOR1,
+            "title": "Retention task",
+            "module": "core",
+            "state": "in_progress",
+            "created_at": (datetime.now(timezone.utc) - timedelta(days=50)).isoformat(),
+            "updated_at": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),
+        })
+
+        result = await hr.cohort_retention(TUID_TEAM_ALPHA)
+        assert result["cohorts"], "expected at least one cohort"
+        cohort = result["cohorts"][-1]
+        assert cohort["member_count"] == 2
+        by_day = {s["day"]: s for s in cohort["series"]}
+
+        # 30d: nobody was deactivated before the 30d mark → 100% retained.
+        assert by_day[30]["retained_pct"] == 100.0
+        # 60d: the deactivated member (left at day 50) drops out → 50%.
+        assert by_day[60]["retained_pct"] == 50.0
+        # Monotone non-increasing thereafter.
+        assert by_day[90]["retained_pct"] == 50.0
+        # Active: Junior1's update (day 55 after joining) lands in the 60d
+        # bucket's 30-day window, not the 30d one.
+        assert by_day[30]["active_pct"] == 0.0
+        assert by_day[60]["active_pct"] == 50.0
+
+    async def test_empty_team(self):
+        from app.services import hr_metrics_service as hr
+        result = await hr.cohort_retention(TUID_TEAM_EMPTY)
+        assert result["cohorts"] == []
+
+
+class TestHeadcountFlow:
+    async def test_joined_vs_deactivated_per_month(self):
+        """v1.6 wave 3: headcount flows bucket joins (team_members.joined_at)
+        and deactivations (users.deactivated_at) per calendar month, with
+        cumulative cohort_size (total onboarded) and headcount (net).
+
+        Timestamps are month-aligned and fully in the past so the bucketing
+        is stable regardless of the date the suite runs on.
+        """
+        from app.services import hr_metrics_service as hr
+        storage = get_storage()
+
+        now = datetime.now(timezone.utc)
+
+        def _first_of_month(dt: datetime, months_back: int) -> datetime:
+            year, month = dt.year, dt.month - months_back
+            while month <= 0:
+                month += 12
+                year -= 1
+            return datetime(year, month, 1, tzinfo=timezone.utc)
+
+        # Two juniors joined on the first of the month two back (month A);
+        # the senior joined mid previous month; Junior2 was deactivated a few
+        # days after the senior joined — same calendar month (month B).
+        old = _first_of_month(now, 2)
+        prev = _first_of_month(now, 1)
+        senior_joined = prev + timedelta(days=5)
+        junior2_deactivated = prev + timedelta(days=10)
+
+        for uid, joined_at in [
+            (TUID_USER_JUNIOR1, old),
+            (TUID_USER_JUNIOR2, old),
+            (TUID_USER_SENIOR, senior_joined),
+        ]:
+            role = "senior_dev" if uid == TUID_USER_SENIOR else "new_dev"
+            await storage.create_document("team_members", f"mem-{uid}", {
+                "user_id": uid, "team_id": TUID_TEAM_ALPHA, "role": role,
+                "joined_at": joined_at.isoformat(),
+            })
+
+        await storage.create_document("users", TUID_USER_JUNIOR2, {
+            "id": TUID_USER_JUNIOR2,
+            "name": "Junior Two",
+            "email": "j2@test.com",
+            "is_active": False,
+            "deactivated_at": junior2_deactivated.isoformat(),
+        })
+
+        result = await hr.headcount_flow(TUID_TEAM_ALPHA)
+        assert len(result["months"]) == 2, "two distinct calendar months"
+        first, second = result["months"]
+
+        # Old month: 2 joined, nothing deactivated.
+        assert first["month"] == old.strftime("%Y-%m")
+        assert first["joined"] == 2
+        assert first["deactivated"] == 0
+        assert first["net"] == 2
+        assert first["cohort_size"] == 2
+        assert first["headcount"] == 2
+
+        # New month: 1 joined, 1 deactivated → net 0, cumulative holds.
+        assert second["month"] == prev.strftime("%Y-%m")
+        assert second["joined"] == 1
+        assert second["deactivated"] == 1
+        assert second["net"] == 0
+        assert second["cohort_size"] == 3
+        assert second["headcount"] == 2
+
+        assert result["total_joined"] == 3
+        assert result["current_headcount"] == 2
+
+    async def test_empty_team(self):
+        from app.services import hr_metrics_service as hr
+        result = await hr.headcount_flow(TUID_TEAM_EMPTY)
+        assert result["months"] == []
+        assert result["current_headcount"] == 0
+        assert result["total_joined"] == 0
+
+
 class TestOnboardingTimeline:
     async def test_lanes_and_milestones(self):
         from app.services import task_service as ts

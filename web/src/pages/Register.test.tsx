@@ -26,7 +26,7 @@ describe('Register', () => {
 
   it('renders the registration form', () => {
     render(<Register />)
-    expect(screen.getByRole('heading', { name: /onramp/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()

@@ -19,11 +19,88 @@ The OpenAI-compatible gateway has its own model-string-first variant
 query-type-first endpoints.
 """
 
-from typing import Any, Optional
+import logging
+from typing import Any, Dict, List, Optional, Union
 
-from app.llm import QueryType
+from app.llm import QueryType, RoutingMode
+
+logger = logging.getLogger("onramp.llm_route")
 
 FALLBACK_ROUTE = "onramp"
+
+
+# ── Team routing context (BYOK keys + routing dial) ────────────────────────
+#
+# Shared by every LLM-backed endpoint (the OpenAI-compatible gateway and the
+# internal /ask chat) so team BYOK provider keys, multi-key pools, and the
+# routing-mode preference resolve identically everywhere. Each loader is
+# best-effort: a storage failure logs and returns None / the default rather
+# than failing the request, and the underlying services use a short-TTL cache
+# so these are cheap on the hot path.
+
+
+async def team_provider_keys(org: Optional[str]) -> Optional[Dict[str, str]]:
+    """Decrypted ``{provider: primary_key}`` BYOK map for an org. None when
+    ``org`` is falsy (personal/unauthenticated context) or on storage failure
+    — the router then falls back to platform/env keys."""
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_keys_map
+
+        return await get_team_keys_map(org)
+    except Exception:
+        logger.exception("Failed to load provider keys for %s", org)
+        return None
+
+
+async def team_key_pools(org: Optional[str]) -> Optional[Dict[str, List[str]]]:
+    """Decrypted multi-key pools ``{provider: [key, ...]}`` for an org (None
+    when no pool keys exist / no org / storage failure)."""
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_key_pools
+
+        pools = await get_team_key_pools(org)
+        return pools or None
+    except Exception:
+        logger.exception("Failed to load key pools for %s", org)
+        return None
+
+
+async def team_key_pool_ids(org: Optional[str]) -> Optional[Dict[str, List[str]]]:
+    """Stable ``{provider: [key_id, ...]}`` map aligned index-for-index with
+    :func:`team_key_pools` so route records name the exact key that served."""
+    if not org:
+        return None
+    try:
+        from app.services.team_provider_keys import get_team_key_pool_ids
+
+        ids = await get_team_key_pool_ids(org)
+        return ids or None
+    except Exception:
+        logger.exception("Failed to load key pool ids for %s", org)
+        return None
+
+
+async def resolve_team_routing_mode(
+    org: Optional[str], requested: Optional[Union[int, str]]
+) -> Union[int, str]:
+    """Effective routing_mode for a request: an explicit per-request value
+    (``requested``) wins; otherwise the org's stored preference; otherwise
+    :data:`RoutingMode.BALANCED`. Best-effort — never raises."""
+    if requested is not None:
+        return requested
+    if not org:
+        return RoutingMode.BALANCED
+    try:
+        from app.services.team_routing_settings import get_team_routing_mode
+
+        return await get_team_routing_mode(org)
+    except Exception:
+        logger.exception("Failed to load routing mode for %s", org)
+        return RoutingMode.BALANCED
 
 
 def primary_route_header(

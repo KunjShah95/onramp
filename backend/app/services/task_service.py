@@ -363,6 +363,7 @@ async def transition_task(
             updates["pr_url"] = pr_url
     elif new_state == "needs_changes":
         updates["reviewed_at"] = now
+        updates["reviewed_by"] = user_id
         updates["review_cycles"] = int(task.get("review_cycles", 0) or 0) + 1
         if feedback:
             updates["review_feedback"] = feedback
@@ -371,6 +372,9 @@ async def transition_task(
         updates["reviewed_by"] = user_id
     elif new_state in ("product_review", "approved"):
         updates["reviewed_at"] = now
+        # Record who produced the verdict so review analytics can attribute
+        # outcomes to a reviewer (consistency scoring / reviewer load).
+        updates["reviewed_by"] = user_id
         if new_state == "approved":
             if feedback:
                 updates["review_feedback"] = feedback
@@ -588,6 +592,29 @@ async def log_actual_hours(task_id: str, hours: float, user_id: str) -> dict:
             logging.getLogger(__name__).debug("Time-overrun alert failed", exc_info=True)
 
     return result or task
+
+
+async def stamp_pr_merged(task_id: str) -> Optional[dict]:
+    """Record the GitHub merge time on a task (annotation-only write).
+
+    Unlike :func:`update_task`, this writes even to terminal tasks — the merge
+    timestamp is an annotation, not a state mutation, and may arrive after a
+    senior already completed the task. Used by the PR-merge webhook so the
+    ramp summary can compute time-to-first-merged-PR for teams without linked
+    GitHub accounts (attribution = task assignee).
+
+    The write also bumps ``updated_at`` (consistent with every other task
+    update). Deliberate side effect: a real merge IS trainee activity, so it
+    correctly resets the ramp detector's inactivity clock.
+    """
+    storage = get_storage()
+    task = await storage.get_document(COLLECTION, task_id)
+    if not task:
+        return None
+    now = _utcnow()
+    return await storage.update_document(
+        COLLECTION, task_id, {"pr_merged_at": now, "updated_at": now}
+    )
 
 
 async def get_task_by_pr_url(pr_url: str) -> Optional[dict]:

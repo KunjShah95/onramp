@@ -22,7 +22,7 @@ describe('ForgotPassword', () => {
 
   it('renders the forgot password form', () => {
     render(<ForgotPassword />)
-    expect(screen.getByRole('heading', { name: /onramp/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /reset password/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
   })
 

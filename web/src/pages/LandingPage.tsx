@@ -10,18 +10,22 @@ import ClosingCta from '../components/landing/ClosingCta'
 import Footer from '../components/landing/Footer'
 
 /* ─────────────────────────────────────────────────────────────────────────
- * Landing — "your codebase is a map", the premium build.
+ * Landing — "your codebase is a map", the premium light build.
  *
- * A single dark surface (`.landing-premium`) pins its own identity so it
- * never follows the app's theme. Sections:
- *   Hero (3D chaos → clarity) · ProblemGrid (#the-gap) · Solution (#the-map,
- *   interactive Babylon map) · MetricsBoard (#metrics) · HowItWorks ·
- *   SocialProof · Pricing (#pricing) · ClosingCta · Footer
+ * A clean light surface (`.landing-light`, overrides `.landing-premium`)
+ * pins its own identity so it never follows the app's theme. Stripe-grade
+ * restraint: white & slate surfaces, Inter type, a single cyan accent, and
+ * the 3D architecture map framed as a dark product window.
+ *   Hero · Problem (#the-gap) · Product (#the-map) · Metrics (#metrics) ·
+ *   How it works · Customers · Pricing (#pricing) · CTA · Footer
  * ───────────────────────────────────────────────────────────────────────── */
 
 export default function LandingPage() {
   return (
-    <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+    <div
+      data-theme="landing"
+      className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
+    >
       <LandingNav />
       <main>
         <Hero />

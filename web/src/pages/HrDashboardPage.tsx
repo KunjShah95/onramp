@@ -21,6 +21,8 @@ import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import { Hash, CaretDown } from '@phosphor-icons/react'
 import { ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from 'recharts'
+import RampPanel from '../components/dashboard/RampPanel'
+import RetentionCurvesPanel from '../components/dashboard/RetentionCurvesPanel'
 
 const SIG = { go: '#17A34A', blue: '#2472C4', amber: '#D6870F' }
 const TOOLTIP = {
@@ -455,6 +457,12 @@ export default function HrDashboardPage() {
         <ReviewAnalyticsCard analytics={reviewData} />
         <CohortComparisonCard cohorts={cohortsData?.cohorts} />
         <MentorMatchCard match={mentorData} members={devMembers} selectedId={activeDevId} onSelect={setSelectedDevId} />
+      </motion.div>
+
+      {/* Row 4 — org ramp health + retention curves (shared leadership telemetry) */}
+      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <RampPanel teamId={teamId} />
+        <RetentionCurvesPanel teamId={teamId} />
       </motion.div>
     </motion.div>
   )

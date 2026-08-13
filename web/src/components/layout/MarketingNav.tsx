@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { List, X } from '@phosphor-icons/react'
+import { TreeStructure, List, X } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export interface NavLinkItem {
@@ -10,7 +10,7 @@ export interface NavLinkItem {
 }
 
 interface MarketingNavProps {
-  /** Optional custom links. Defaults to Docs / Pricing / Changelog. */
+  /** Optional custom links. Defaults to Docs / Why Onramp / Pricing / Changelog. */
   links?: NavLinkItem[]
   /** Whether the nav should be fixed (vs relative/static). Default true. */
   fixed?: boolean
@@ -32,66 +32,65 @@ export default function MarketingNav({
   return (
     <nav
       className={[
-        'flex items-center justify-between px-6 md:px-12 lg:px-20 py-4 z-50',
-        'bg-[hsl(var(--background))]/80 backdrop-blur-xl border-b border-[hsl(var(--border))]',
-        fixed ? 'fixed top-0 left-0 right-0' : '',
+        'border-b border-white/5 bg-base/80 backdrop-blur-xl',
+        fixed ? 'fixed inset-x-0 top-0 z-50' : '',
       ].join(' ')}
     >
-      {/* Logo */}
-      <Link to="/" className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-tile bg-accent-from shadow-lit">
-          <span className="text-[11px] font-bold text-white font-display tracking-tight">OR</span>
-        </span>
-        <span className="text-xl font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-          Onramp
-        </span>
-      </Link>
-
-      {/* Center nav links */}
-      <div className="hidden md:flex items-center gap-8">
-        {links.map((link) =>
-          link.active ? (
-            <span
-              key={link.label}
-              className="text-sm font-medium text-[hsl(var(--foreground))]"
-            >
-              {link.label}
-            </span>
-          ) : (
-            <Link
-              key={link.label}
-              to={link.href}
-              className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-            >
-              {link.label}
-            </Link>
-          )
-        )}
-      </div>
-
-      {/* Right side */}
-      <div className="flex items-center gap-4">
-        <Link
-          to="/login"
-          className="hidden text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-body sm:inline"
-        >
-          Log in
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
+        {/* Logo */}
+        <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
+          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-cyan-400/90 text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
+            <TreeStructure size={16} weight="bold" />
+          </span>
+          <span className="font-display text-sm font-bold tracking-tight text-white">ONRAMP</span>
         </Link>
-        <Link
-          to="/register"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-btn bg-go text-[hsl(var(--primary-foreground))] text-sm font-semibold shadow-card transition-all hover:bg-go-lit active:scale-[0.98] font-body"
-        >
-          Start free
-        </Link>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-sm text-[hsl(var(--muted-foreground))] md:hidden"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          aria-expanded={open}
-        >
-          {open ? <X size={18} /> : <List size={18} />}
-        </button>
+
+        {/* Center nav links */}
+        <div className="hidden items-center gap-8 md:flex">
+          {links.map((link) =>
+            link.active ? (
+              <span
+                key={link.label}
+                className="text-[13px] font-medium text-white"
+              >
+                {link.label}
+              </span>
+            ) : (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="text-[13px] font-medium text-ink-secondary transition-colors hover:text-white"
+              >
+                {link.label}
+              </Link>
+            )
+          )}
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-4">
+          <Link
+            to="/login"
+            className="hidden text-[13px] font-medium text-ink-secondary transition-colors hover:text-white sm:inline"
+          >
+            Log in
+          </Link>
+          <Link
+            to="/register"
+            className="inline-flex items-center rounded-sm bg-accent-primary px-4 py-2 text-[13px] font-bold text-[#0F1419] shadow-[0_0_24px_rgba(0,217,255,0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+          >
+            Try for free
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-sm text-ink-secondary md:hidden"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+          >
+            {open ? <X size={18} /> : <List size={18} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -102,14 +101,14 @@ export default function MarketingNav({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-[hsl(var(--border))] bg-[hsl(var(--background))] md:hidden"
+            className="overflow-hidden border-t border-white/5 bg-base md:hidden"
           >
             <div className="flex flex-col gap-1 px-6 py-4">
               {links.map((link) =>
                 link.active ? (
                   <span
                     key={link.label}
-                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--foreground))]"
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-white"
                   >
                     {link.label}
                   </span>
@@ -118,17 +117,17 @@ export default function MarketingNav({
                     key={link.label}
                     to={link.href}
                     onClick={() => setOpen(false)}
-                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))]/50 hover:text-[hsl(var(--foreground))]"
+                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-white/5 hover:text-white"
                   >
                     {link.label}
                   </Link>
                 )
               )}
-              <div className="border-t border-[hsl(var(--border))] my-2" />
+              <div className="border-t border-white/5 my-2" />
               <Link
                 to="/login"
                 onClick={() => setOpen(false)}
-                className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))]/50 hover:text-[hsl(var(--foreground))]"
+                className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-white/5 hover:text-white"
               >
                 Log in
               </Link>

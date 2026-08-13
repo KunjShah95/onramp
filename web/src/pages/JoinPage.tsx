@@ -45,6 +45,7 @@ export default function JoinPage() {
 
   return (
     <PageTransition>
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
       <div className="min-h-screen bg-bg-void flex items-center justify-center p-4 sm:p-8">
         <AnimatePresence mode="wait">
           <motion.div
@@ -108,6 +109,7 @@ export default function JoinPage() {
             </ConsolePanel>
           </motion.div>
         </AnimatePresence>
+      </div>
       </div>
     </PageTransition>
   )

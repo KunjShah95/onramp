@@ -27,7 +27,7 @@ test.describe('Login Page', () => {
     await expect(page.locator('input#password')).toBeVisible()
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /forgot\?/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: /create an account/i })).toBeVisible()
+    await expect(page.getByRole('link', { name: /create free account/i })).toBeVisible()
   })
 
   test('shows validation errors on empty submit', async ({ page }) => {
@@ -47,7 +47,7 @@ test.describe('Login Page', () => {
   })
 
   test('navigates to register page', async ({ page }) => {
-    await page.getByRole('link', { name: /create an account/i }).click()
+    await page.getByRole('link', { name: /create free account/i }).click()
     await expect(page).toHaveURL(/\/register/)
   })
 
@@ -118,7 +118,7 @@ test.describe('Registration Page', () => {
     await page.goto('/register')
     await page.waitForSelector('input#name', { timeout: 10_000 })
 
-    await expect(page.getByText(/Create your workspace/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: /create account/i })).toBeVisible()
     await expect(page.locator('input#name')).toBeVisible()
     await expect(page.locator('input#email')).toBeVisible()
     await expect(page.locator('input#password')).toBeVisible()

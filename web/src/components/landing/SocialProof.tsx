@@ -1,92 +1,85 @@
 import { motion } from 'framer-motion'
+import SectionHeading from './SectionHeading'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-/* Fictional wordmarks — monogram marks so they don't read as text-only. */
-const LOGOS = [
-  { name: 'Stripe', mark: 'S', color: 'text-accent-primary' },
-  { name: 'Figma', mark: 'F', color: 'text-accent-via' },
-  { name: 'Vercel', mark: '▲', color: 'text-go' },
-]
+/* Fictional customer wordmarks — shown as neutral text so they never read as
+ * real trademarks or as placeholder logos. */
+const CUSTOMERS = ['Northwind', 'Lattice', 'Kite & Co', 'Harbor', 'Bramble', 'Vertex Labs']
 
-const QUOTES = [
+const TESTIMONIALS = [
   {
     quote:
-      "Onramp cut our onboarding time from 2 weeks to 3 days. Our juniors are productive immediately.",
+      "Onramp cut our onboarding time from two weeks to three days. Juniors are shipping real PRs in their first week.",
     name: 'Sarah Chen',
-    role: 'CTO, TechCorp',
+    role: 'CTO, Northwind',
     initial: 'SC',
   },
   {
     quote:
-      "Finally, an onboarding tool built for the way we actually work. Not another generic tool.",
+      "Finally, an onboarding tool built for the way engineering actually works. The map answers what the docs can't.",
     name: 'Marcus Williams',
-    role: 'VP Engineering, StartupAI',
+    role: 'VP Engineering, Lattice',
     initial: 'MW',
   },
   {
     quote:
-      "Our senior devs spend 10x less time answering 'where do I start?' questions. Huge win.",
+      "Our senior engineers stopped answering the same 'where do I start?' questions. That alone paid for the tool.",
     name: 'Priya Patel',
-    role: 'Engineering Lead, DataFlow',
+    role: 'Engineering Lead, Harbor',
     initial: 'PP',
   },
 ]
 
 export default function SocialProof() {
   return (
-    <section className="relative border-t border-white/5 bg-base">
+    <section className="relative scroll-mt-24 border-t border-black/5 bg-base">
       <div className="mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
-        {/* logo row */}
+        <SectionHeading
+          eyebrow="Customers"
+          heading={<>Teams that stopped searching start shipping.</>}
+          sub="Engineering leaders use Onramp to make their architecture visible — and to get out of the way."
+        />
+
+        {/* wordmark strip */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.8 }}
-          className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6"
+          className="mt-14 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 border-y border-black/5 py-6"
         >
-          <span className="font-code text-[11px] uppercase tracking-[0.18em] text-ink-tertiary">
-            Trusted by
-          </span>
-          {LOGOS.map((l, i) => (
-            <motion.div
-              key={l.name}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.5, delay: 0.15 + i * 0.1, ease: EASE }}
-              className="flex items-center gap-2"
+          {CUSTOMERS.map((c) => (
+            <span
+              key={c}
+              className="font-body text-[15px] font-semibold tracking-tight text-ink-tertiary"
             >
-              <span className={`flex h-7 w-7 items-center justify-center rounded-sm border border-white/10 bg-white/[0.04] font-display text-[13px] font-bold ${l.color}`}>
-                {l.mark}
-              </span>
-              <span className="font-display text-[15px] font-bold text-ink-secondary">{l.name}</span>
-            </motion.div>
+              {c}
+            </span>
           ))}
         </motion.div>
 
-        {/* quotes */}
-        <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {QUOTES.map((q, i) => (
+        {/* testimonials */}
+        <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {TESTIMONIALS.map((t, i) => (
             <motion.figure
-              key={q.name}
+              key={t.name}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.65, delay: 0.1 + i * 0.1, ease: EASE }}
-              className="group flex flex-col rounded-sm border border-white/10 bg-panel p-7 transition-colors duration-300 hover:border-white/20"
+              className="flex flex-col rounded-xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
             >
-              <span className="font-display text-[28px] leading-none text-accent-via">“</span>
-              <blockquote className="mt-3 flex-1 text-[15px] leading-[1.65] text-ink-secondary">
-                {q.quote}
+              <blockquote className="flex-1 text-[15px] leading-[1.65] text-ink-secondary">
+                “{t.quote}”
               </blockquote>
-              <figcaption className="mt-6 flex items-center gap-3 border-t border-white/5 pt-5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary/40 to-accent-via/20 font-code text-[11px] font-bold text-white">
-                  {q.initial}
+              <figcaption className="mt-6 flex items-center gap-3 border-t border-black/5 pt-5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary/20 to-accent-via/10 font-body text-[12px] font-semibold text-accent-primary-hover">
+                  {t.initial}
                 </span>
                 <div>
-                  <div className="text-[13px] font-semibold text-white">{q.name}</div>
-                  <div className="font-code text-[11px] text-ink-tertiary">{q.role}</div>
+                  <div className="text-[13.5px] font-semibold text-ink">{t.name}</div>
+                  <div className="text-[12px] text-ink-tertiary">{t.role}</div>
                 </div>
               </figcaption>
             </motion.figure>

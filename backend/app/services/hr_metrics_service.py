@@ -464,6 +464,183 @@ async def cohort_comparison(team_id: str) -> dict:
     return {"cohorts": result, "team_id": team_id}
 
 
+async def cohort_retention(team_id: str) -> dict:
+    """Retention curves per hiring cohort (v1.6 wave 2 — CTO seat).
+
+    Groups members by the month they joined and, for each cohort, tracks two
+    survival curves at fixed day-buckets **relative to each member's join date**
+    (30/60/90/120/180d):
+
+    - ``retained_pct`` — % of the cohort still on the team: a member counts
+      at bucket N when they were never deactivated or deactivated after day N
+      (``users.deactivated_at`` is the authoritative leave signal).
+    - ``active_pct``   — % still *working*: a task was updated/completed in
+      the 30-day window ending at day N after joining (a proxy for
+      engagement; a member with no tasks yet is simply not counted active).
+
+    Because both signals are monotone (once a member drops out at bucket N
+    they stay out), the curves never increase. Cohorts sorted oldest first
+    so leadership can see whether newer cohorts retain better than older
+    ones.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+    tasks = await _team_tasks(storage, team_id)
+
+    # Deactivated-at map (the leave signal) — best-effort.
+    deactivated_at: dict[str, datetime] = {}
+    if members:
+        try:
+            user_rows = await storage.query_documents(
+                "users", [("id", "in", [m.get("user_id") for m in members])]
+            )
+        except Exception:
+            user_rows = []
+        for u in user_rows:
+            deact = _parse_dt(u.get("deactivated_at"))
+            if deact:
+                deactivated_at[u["id"]] = deact
+
+    # Per-member task activity timestamps (updated/completed) for the
+    # engagement window.
+    activity: dict[str, list[datetime]] = {}
+    for t in tasks:
+        uid = t.get("assigned_to")
+        if not uid:
+            continue
+        done = _parse_dt(t.get("updated_at")) or _parse_dt(t.get("completed_at"))
+        if done:
+            activity.setdefault(uid, []).append(done)
+
+    BUCKETS = (30, 60, 90, 120, 180)
+
+    cohorts: dict[str, list[dict]] = {}
+    for m in members:
+        joined = _parse_dt(m.get("joined_at"))
+        if not joined:
+            continue
+        month = joined.strftime("%Y-%m")
+        cohorts.setdefault(month, []).append({
+            "user_id": m.get("user_id"),
+            "joined": joined,
+            "deactivated": deactivated_at.get(m.get("user_id")),
+            "activity": activity.get(m.get("user_id"), []),
+        })
+
+    result = []
+    for month in sorted(cohorts.keys()):
+        cohort_members = cohorts[month]
+        n = len(cohort_members)
+        series = []
+        for days in BUCKETS:
+            retained = 0
+            active = 0
+            for cm in cohort_members:
+                joined = cm["joined"]
+                # Retained at bucket N: either never deactivated, or deactivated
+                # after day N (i.e. survived at least N days on the team).
+                deact = cm["deactivated"]
+                if deact is None or (deact - joined).total_seconds() / 86400 >= days:
+                    retained += 1
+                # Active at bucket N: task activity in the 30-day window ending
+                # at day N after joining (engagement proxy).
+                window_end = joined + timedelta(days=days)
+                window_start = window_end - timedelta(days=30)
+                if any(window_start <= a <= window_end for a in cm["activity"]):
+                    active += 1
+            series.append({
+                "day": days,
+                "retained_pct": round(retained / n * 100, 1) if n else 0.0,
+                "active_pct": round(active / n * 100, 1) if n else 0.0,
+            })
+        result.append({
+            "cohort": month,
+            "label": _format_month(month),
+            "member_count": n,
+            "series": series,
+        })
+
+    return {"cohorts": result, "team_id": team_id, "generated_at": datetime.now(timezone.utc)}
+
+
+async def headcount_flow(team_id: str) -> dict:
+    """Headcount flows per month (v1.6 wave 3 — CTO seat).
+
+    For each calendar month, how many members joined
+    (``team_members.joined_at``) vs. deactivated
+    (``users.deactivated_at`` — the same leave signal the retention curves
+    use), plus two running totals:
+
+    - ``cohort_size`` — cumulative joins (total people onboarded to date;
+      the "cohort size delta" line).
+    - ``headcount``   — cumulative net (joins − deactivations; the visible
+      membership trajectory).
+
+    Data caveat: ``team_members`` rows are deleted when a member is removed
+    from a team (no tombstone), so departures are only visible through user
+    deactivation; months whose only change is a removal-without-deactivation
+    won't appear. Months sorted oldest first so leadership can read growth
+    over time.
+    """
+    storage = get_storage()
+    members = await _team_members(storage, team_id)
+
+    # Deactivated-at map (the leave signal) — best-effort, same as
+    # ``cohort_retention``.
+    deactivated_at: dict[str, datetime] = {}
+    if members:
+        try:
+            user_rows = await storage.query_documents(
+                "users", [("id", "in", [m.get("user_id") for m in members])]
+            )
+        except Exception:
+            user_rows = []
+        for u in user_rows:
+            deact = _parse_dt(u.get("deactivated_at"))
+            if deact:
+                deactivated_at[u["id"]] = deact
+
+    joined_by_month: dict[str, int] = {}
+    deactivated_by_month: dict[str, int] = {}
+    for m in members:
+        uid = m.get("user_id")
+        joined = _parse_dt(m.get("joined_at"))
+        if joined:
+            month = joined.strftime("%Y-%m")
+            joined_by_month[month] = joined_by_month.get(month, 0) + 1
+        deact = deactivated_at.get(uid)
+        if deact:
+            month = deact.strftime("%Y-%m")
+            deactivated_by_month[month] = deactivated_by_month.get(month, 0) + 1
+
+    months = sorted(set(joined_by_month) | set(deactivated_by_month))
+    result = []
+    cohort_size = 0
+    headcount = 0
+    for month in months:
+        joined = joined_by_month.get(month, 0)
+        deactivated = deactivated_by_month.get(month, 0)
+        cohort_size += joined
+        headcount += joined - deactivated
+        result.append({
+            "month": month,
+            "label": _format_month(month),
+            "joined": joined,
+            "deactivated": deactivated,
+            "net": joined - deactivated,
+            "cohort_size": cohort_size,
+            "headcount": headcount,
+        })
+
+    return {
+        "months": result,
+        "team_id": team_id,
+        "current_headcount": headcount,
+        "total_joined": cohort_size,
+        "generated_at": datetime.now(timezone.utc),
+    }
+
+
 def _format_month(ym: str) -> str:
     """Format '2026-03' → 'Mar 2026'."""
     try:

@@ -21,6 +21,7 @@ import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
 import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import FirstRunDashboard from '../components/dashboard/FirstRunDashboard'
+import RampPanel, { isLeaderRole } from '../components/dashboard/RampPanel'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -71,6 +72,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'dora'>('overview')
   const { role, activeTeamId } = useAuth()
+  const showRamp = isLeaderRole(role)
 
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['ctoDashboard'],
@@ -364,6 +366,13 @@ export default function DashboardPage() {
               )}
             </ConsoleCard>
           </motion.div>
+
+          {/* ── Ramp · Senior-Time ─────────────────────────────────────── */}
+          {showRamp && (
+            <motion.div variants={item} className="mb-5">
+              <RampPanel />
+            </motion.div>
+          )}
 
           {/* ── Review Rail ────────────────────────────────────────────── */}
           <motion.div variants={item} className="mb-5">

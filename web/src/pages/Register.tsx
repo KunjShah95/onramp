@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
-import { EnvelopeSimple, Lock, User, ArrowRight } from '@phosphor-icons/react'
+import { EnvelopeSimple, Lock, User, ArrowRight, TreeStructure } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import { cn } from '../lib/utils'
 
@@ -72,6 +72,7 @@ export default function Register() {
 
   return (
     <PageTransition>
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
         {/* Premium background accents */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />
@@ -85,8 +86,8 @@ export default function Register() {
         >
           {/* Brand Header */}
           <motion.div variants={fadeUp} className="flex flex-col items-center mb-10">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center mb-5">
-              <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
+            <div className="w-12 h-12 rounded-lg bg-cyan-400/90 shadow-lg flex items-center justify-center mb-5 text-[#0F1419]">
+              <TreeStructure size={22} weight="bold" />
             </div>
             <h1 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] tracking-tight">
               Create Account
@@ -229,6 +230,7 @@ export default function Register() {
             </p>
           </motion.div>
         </motion.main>
+      </div>
       </div>
     </PageTransition>
   )

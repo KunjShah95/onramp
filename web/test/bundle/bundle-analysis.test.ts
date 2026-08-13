@@ -4,31 +4,45 @@
  * Reads the built JS/CSS bundle sizes from `dist/` after a production build
  * and asserts they stay within defined budgets.  Run after `npm run build`.
  *
+ * Gzip metrics use real zlib compression (level 9) per file, matching what a
+ * CDN/webserver actually serves — each chunk is fetched and decompressed
+ * individually, so per-file gzip sums are the true on-wire weight.
+ *
  * Run:  npm run build && npx vitest run test/bundle/bundle-analysis.test.ts
  */
 
 import { describe, it, expect } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
+import { gzipSync } from 'zlib'
 
 const DIST_DIR = path.resolve(__dirname, '../../dist')
 
-// ── Size budgets (gzipped) ──────────────────────────────────────────
-// Adjust these as the app grows.  Run `npm run build` and check sizes.
-// Current actuals (Aug 2026): 1338KB JS, 268KB largest chunk, 69KB CSS,
-// 9.96MB total assets.  Budgets include ~10-25% headroom so real regressions
-// (accidental duplicate deps, un-lazy-loaded pages) still fail CI.
+// ── Size budgets ────────────────────────────────────────────────────
+// Gzip budgets are real zlib-gzipped KB. Raw budgets (index.html, total
+// assets) measure bytes on disk. Adjust these as the app grows — run
+// `npm run build` and check sizes.
+// Current actuals (Aug 2026): 1067KB JS gzipped, 274KB largest chunk
+// gzipped, 21KB CSS gzipped, 12.1MB total raw assets. The largest chunk is
+// Babylon's shared math.vector hub (~1.1MB raw / ~274KB gzip) — it cannot be
+// split across chunks: Babylon's internal circular imports throw TDZ
+// ReferenceErrors when split, so Rollup keeps the circular graph in one
+// chunk. JS and raw-asset budgets carry ~10-25% headroom so real regressions
+// (accidental duplicate deps, un-lazy-loaded pages) still fail CI; CSS and
+// index.html are generous caps that mainly guard against runaway growth.
 const BUDGETS = {
-  totalJsGzipKb: 1500,      // Total JS (all chunks, gzipped)
-  maxChunkGzipKb: 300,      // Largest single JS chunk (gzipped)
-  totalCssGzipKb: 100,      // Total CSS (all files, gzipped)
-  maxHtmlKb: 50,            // index.html
-  totalAssetsKb: 11000,     // All built assets combined (React 19 + Recharts + Framer Motion + D3)
+  totalJsGzipKb: 1250,      // Total JS (all chunks, gzipped)
+  maxChunkGzipKb: 330,      // Largest single JS chunk (gzipped)
+  totalCssGzipKb: 50,       // Total CSS (all files, gzipped)
+  maxHtmlKb: 50,            // index.html (raw)
+  totalAssetsKb: 13800,     // All built assets combined, raw (React 19 + Recharts + Framer Motion + D3 + Babylon)
 }
 
-// Simple gzip-size estimation (reads file sizes; actual gzip is ~60-70% of original)
-function estimateGzipSize(bytes: number): number {
-  return Math.round(bytes * 0.65 / 1024)  // ~65% compression ratio
+// Real gzip size of a file in KB (zlib, max compression). Replaces the old
+// ~65% linear estimate, which roughly doubled the true on-wire weight of
+// minified JS.
+function gzipKbOf(filePath: string): number {
+  return gzipSync(fs.readFileSync(filePath), { level: 9 }).length / 1024
 }
 
 describe('Bundle Size Budgets', () => {
@@ -43,48 +57,44 @@ describe('Bundle Size Budgets', () => {
     files = getAllFiles(DIST_DIR)
   })
 
-  it('total JS (gzip estimated) is under budget', () => {
+  it('total JS (gzipped) is under budget', () => {
     const jsFiles = files.filter(f => f.endsWith('.js'))
-    const totalBytes = jsFiles.reduce((sum, f) => sum + fs.statSync(f).size, 0)
-    const gzipKb = estimateGzipSize(totalBytes)
+    const totalGzipKb = jsFiles.reduce((sum, f) => sum + gzipKbOf(f), 0)
 
     console.log(`\n  [BUNDLE] JS files: ${jsFiles.length}`)
-    console.log(`  [BUNDLE] Total JS: ${(totalBytes / 1024).toFixed(0)}KB raw, ~${gzipKb}KB gzip`)
+    console.log(`  [BUNDLE] Total JS: ${totalGzipKb.toFixed(0)}KB gzipped`)
 
     for (const f of jsFiles.slice(0, 10)) {
-      const kb = (fs.statSync(f).size / 1024).toFixed(0)
-      console.log(`  [BUNDLE]   ${path.relative(DIST_DIR, f)}: ${kb}KB`)
+      const rawKb = (fs.statSync(f).size / 1024).toFixed(0)
+      console.log(`  [BUNDLE]   ${path.relative(DIST_DIR, f)}: ${rawKb}KB raw, ${gzipKbOf(f).toFixed(1)}KB gzip`)
     }
 
-    expect(gzipKb).toBeLessThan(BUDGETS.totalJsGzipKb)
+    expect(totalGzipKb).toBeLessThan(BUDGETS.totalJsGzipKb)
   })
 
-  it('largest JS chunk (gzip estimated) is under budget', () => {
+  it('largest JS chunk (gzipped) is under budget', () => {
     const jsFiles = files.filter(f => f.endsWith('.js'))
-    const largest = jsFiles.reduce(
-      (max, f) => {
-        const size = fs.statSync(f).size
-        return size > max.size ? { file: f, size } : max
-      },
-      { file: '', size: 0 }
-    )
+    let largest = { file: '', gzip: 0 }
+    for (const f of jsFiles) {
+      const g = gzipKbOf(f)
+      if (g > largest.gzip) largest = { file: f, gzip: g }
+    }
 
-    const gzipKb = estimateGzipSize(largest.size)
+    const rawKb = (fs.statSync(largest.file).size / 1024).toFixed(0)
     const relPath = path.relative(DIST_DIR, largest.file)
-    console.log(`\n  [BUNDLE] Largest chunk: ${relPath} — ${(largest.size / 1024).toFixed(0)}KB raw, ~${gzipKb}KB gzip`)
+    console.log(`\n  [BUNDLE] Largest chunk: ${relPath} — ${rawKb}KB raw, ${largest.gzip.toFixed(1)}KB gzip`)
 
-    expect(gzipKb).toBeLessThan(BUDGETS.maxChunkGzipKb)
+    expect(largest.gzip).toBeLessThan(BUDGETS.maxChunkGzipKb)
   })
 
-  it('total CSS (gzip estimated) is under budget', () => {
+  it('total CSS (gzipped) is under budget', () => {
     const cssFiles = files.filter(f => f.endsWith('.css'))
-    const totalBytes = cssFiles.reduce((sum, f) => sum + fs.statSync(f).size, 0)
-    const gzipKb = estimateGzipSize(totalBytes)
+    const totalGzipKb = cssFiles.reduce((sum, f) => sum + gzipKbOf(f), 0)
 
     console.log(`\n  [BUNDLE] CSS files: ${cssFiles.length}`)
-    console.log(`  [BUNDLE] Total CSS: ${(totalBytes / 1024).toFixed(0)}KB raw, ~${gzipKb}KB gzip`)
+    console.log(`  [BUNDLE] Total CSS: ${totalGzipKb.toFixed(0)}KB gzipped`)
 
-    expect(gzipKb).toBeLessThan(BUDGETS.totalCssGzipKb)
+    expect(totalGzipKb).toBeLessThan(BUDGETS.totalCssGzipKb)
   })
 
   it('index.html size is under budget', () => {
@@ -94,7 +104,7 @@ describe('Bundle Size Budgets', () => {
       return  // Skip if no index.html (e.g., Vite SPA with fallback)
     }
     const kb = fs.statSync(htmlFile).size / 1024
-    console.log(`\n  [BUNDLE] index.html: ${kb.toFixed(1)}KB`)
+    console.log(`\n  [BUNDLE] index.html: ${kb.toFixed(1)}KB raw`)
 
     expect(kb).toBeLessThan(BUDGETS.maxHtmlKb)
   })
@@ -107,7 +117,7 @@ describe('Bundle Size Budgets', () => {
     const totalBytes = assetFiles.reduce((sum, f) => sum + fs.statSync(f).size, 0)
     const mb = (totalBytes / 1024 / 1024).toFixed(2)
 
-    console.log(`\n  [BUNDLE] All built assets: ${assetFiles.length} files, ${mb}MB`)
+    console.log(`\n  [BUNDLE] All built assets: ${assetFiles.length} files, ${mb}MB raw`)
 
     expect(totalBytes / 1024).toBeLessThan(BUDGETS.totalAssetsKb)
   })

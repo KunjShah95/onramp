@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, addProviderKey, fetchModelCatalog, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
+import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, addProviderKey, fetchModelCatalog, fetchRoutingMode, setRoutingMode, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
 import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
-import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple, Stack, MagnifyingGlass, Plus } from '@phosphor-icons/react'
+import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple, Stack, MagnifyingGlass, Plus, Gauge } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
 import CodeEditor from '../components/ui/monaco-editor'
@@ -56,6 +56,9 @@ export default function DeveloperPortal() {
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogSearch, setCatalogSearch] = useState('')
+  const [routingMode, setRoutingModeState] = useState<number | null>(null)
+  const [routingModeLoading, setRoutingModeLoading] = useState(false)
+  const [savingRoutingMode, setSavingRoutingMode] = useState(false)
 
   // Earliest selectable expiry date (today) — past dates mean "no expiry".
   const today = new Date().toISOString().split('T')[0]
@@ -71,6 +74,7 @@ export default function DeveloperPortal() {
     fetchTiers()
     fetchProviderKeys()
     fetchCatalog()
+    fetchRoutingModePref()
   }, [activeTeamId])
 
   async function fetchCatalog() {
@@ -131,6 +135,31 @@ export default function DeveloperPortal() {
     } catch {
       // Silent — section stays read-only / empty
     }
+  }
+
+  async function fetchRoutingModePref() {
+    if (!activeTeamId) return
+    setRoutingModeLoading(true)
+    try {
+      const data = await fetchRoutingMode(activeTeamId)
+      setRoutingModeState(data.routing_mode)
+    } catch {
+      // Best-effort — card renders with the unknown state
+    }
+    setRoutingModeLoading(false)
+  }
+
+  async function handleSetRoutingMode(mode: string | number) {
+    if (!activeTeamId) return
+    setSavingRoutingMode(true)
+    try {
+      const res = await setRoutingMode(activeTeamId, mode)
+      setRoutingModeState(res.routing_mode)
+      toast.success('Routing mode updated', 'Takes effect on your team\u2019s next gateway request.')
+    } catch (err: any) {
+      toast.error('Failed to update routing mode', err.message)
+    }
+    setSavingRoutingMode(false)
   }
 
   async function handleSaveProviderKey() {
@@ -527,6 +556,66 @@ export default function DeveloperPortal() {
               </p>
             </CardSpotlight>
           </motion.div>
+
+          {/* Routing Mode (Cost / Balanced / Intelligence) */}
+          {canManageKeys && (
+            <motion.div variants={itemVariants}>
+              <CardSpotlight className="p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <Gauge className="w-5 h-5 text-go" weight="fill" />
+                  <div>
+                    <h3 className="font-display font-bold">Routing Mode</h3>
+                    <p className="text-xs text-text-tertiary">
+                      Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code> both honor this.
+                    </p>
+                  </div>
+                </div>
+
+                {routingModeLoading ? (
+                  <div className="flex items-center gap-2 py-3">
+                    <Spinner className="w-4 h-4 text-go animate-spin" />
+                    <span className="text-xs text-text-tertiary">Loading routing preference…</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {([
+                      { value: 2, label: 'Cost', sub: 'Cheapest first — free providers dominate' },
+                      { value: 5, label: 'Balanced', sub: 'Trust the router\u2019s per-task ranking' },
+                      { value: 8, label: 'Intelligence', sub: 'Strongest models first — quality over price' },
+                    ] as const).map((preset) => {
+                      const active = routingMode === preset.value
+                      return (
+                        <button
+                          key={preset.label}
+                          onClick={() => handleSetRoutingMode(preset.value)}
+                          disabled={savingRoutingMode}
+                          className={`text-left bg-bg-primary border rounded-xl p-3.5 transition-all ${
+                            active
+                              ? 'border-go/40 bg-go/5 ring-1 ring-go/20'
+                              : 'border-border hover:border-border-hover hover:bg-bg-secondary'
+                          } disabled:opacity-50`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-bold text-text-primary text-xs">{preset.label}</span>
+                            {active && (
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-go bg-go/10 border border-go/20 px-1.5 py-0.5 rounded">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-text-tertiary leading-relaxed">{preset.sub}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-text-tertiary/60 mt-3">
+                  Takes effect on your team's next request — no restart, no redeploy. The router still picks the best provider per question; this dial just biases how far up the quality/price ladder it goes.
+                </p>
+              </CardSpotlight>
+            </motion.div>
+          )}
 
           {/* Model Catalog */}
           <motion.div variants={itemVariants}>

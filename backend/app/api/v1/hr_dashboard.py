@@ -63,6 +63,30 @@ async def get_cohort_comparison(request: Request, team_id: str, user: dict = Dep
     return await hr_metrics_service.cohort_comparison(team_id)
 
 
+@router.get("/cohort-retention/{team_id}")
+@cached("hr", ttl=600)
+async def get_cohort_retention(request: Request, team_id: str, user: dict = Depends(get_current_user)):
+    """Retention curves per hiring cohort (v1.6 wave 2 — CTO seat).
+
+    Returns retained/active % survival curves at 30/60/90/120/180d after
+    joining for each join-month cohort, so leadership can see whether newer
+    cohorts retain better than older ones.
+    """
+    return await hr_metrics_service.cohort_retention(team_id)
+
+
+@router.get("/headcount-flow/{team_id}")
+@cached("hr", ttl=600)
+async def get_headcount_flow(request: Request, team_id: str, user: dict = Depends(get_current_user)):
+    """Headcount flows per month (v1.6 wave 3 — CTO seat).
+
+    Returns joined vs. deactivated per calendar month plus cumulative
+    cohort size and headcount trajectory, so leadership can see hiring and
+    attrition at a glance.
+    """
+    return await hr_metrics_service.headcount_flow(team_id)
+
+
 @router.get("/timeline/{team_id}")
 @cached("hr", ttl=300)
 async def get_timeline(request: Request, team_id: str, user: dict = Depends(get_current_user)):

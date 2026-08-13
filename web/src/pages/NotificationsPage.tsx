@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bell,
@@ -10,6 +11,7 @@ import {
   Bug,
   ChartBar,
   CheckCircle,
+  WarningCircle,
 } from '@phosphor-icons/react'
 import { EmptyState } from '../components/ui/empty-state'
 import { NotificationsSkeleton } from '../components/ui/Skeleton'
@@ -20,6 +22,7 @@ import {
   markAllNotificationsRead,
   deleteNotification,
   clearReadNotifications,
+  notificationLink,
 } from '../lib/api'
 import type { OnrampNotification } from '../lib/api'
 import Pagination from '../components/ui/Pagination'
@@ -42,6 +45,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   pr_merged: GitPullRequest,
   milestone_reached: ChartBar,
   quiz_graded: ChartBar,
+  dev_stuck: WarningCircle,
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -59,6 +63,7 @@ const COLOR_MAP: Record<string, string> = {
   pr_merged: 'text-cyan-400',
   milestone_reached: 'text-go',
   quiz_graded: 'text-amber-400',
+  dev_stuck: 'text-red-400',
 }
 
 const BG_MAP: Record<string, string> = {
@@ -76,6 +81,7 @@ const BG_MAP: Record<string, string> = {
   pr_merged: 'bg-cyan-500/10',
   milestone_reached: 'bg-go/10',
   quiz_graded: 'bg-amber-500/10',
+  dev_stuck: 'bg-red-500/10',
 }
 
 const containerVariants = {
@@ -99,6 +105,7 @@ function relativeTime(iso: string): string {
 }
 
 export default function NotificationsPage() {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState<OnrampNotification[]>([])
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [loading, setLoading] = useState(true)
@@ -284,7 +291,13 @@ export default function NotificationsPage() {
                     className={`group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer hover:bg-bg-tertiary/20 ${
                       !notification.read ? 'bg-go/[0.03]' : ''
                     }`}
-                    onClick={() => !notification.read && markRead(notification.notification_id)}
+                    onClick={() => {
+                      // dev_stuck deep-links by recipient: leaders → the Ramp
+                      // intervention view, the trainee's own nudge → Ask Codebase.
+                      const link = notificationLink(notification)
+                      if (link) navigate(link)
+                      if (!notification.read) markRead(notification.notification_id)
+                    }}
                   >
                     {!notification.read && (
                       <span className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-go" />

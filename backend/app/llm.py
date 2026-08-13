@@ -1538,6 +1538,10 @@ class LLMRouter:
         query_type: Optional[QueryType] = None,
         routing_mode: Any = None,
         model: Optional[str] = None,
+        provider_keys: Optional[Dict[str, str]] = None,
+        key_pools: Optional[Dict[str, List[str]]] = None,
+        key_pool_ids: Optional[Dict[str, List[str]]] = None,
+        cache_scope: Optional[str] = None,
     ):
         """Stream a response token-by-token with provider fallback.
 
@@ -1549,26 +1553,53 @@ class LLMRouter:
         ``query_type`` — the same strings :meth:`provider_chain` accepts
         (query-type name, provider name, pinned model id, or any
         OpenRouter-catalog "vendor/model" id).
+
+        ``provider_keys`` / ``key_pools`` / ``key_pool_ids`` are request-scoped
+        team BYOK overrides (see :meth:`openai_chat_stream`) — multi-key pools
+        rotate round-robin and the route record names the exact key that
+        served. ``cache_scope`` is accepted for interface parity with
+        :meth:`chat` / the agent wrapper; streaming responses are not cached,
+        so it is intentionally unused here.
         """
         qtype = self._effective_query_type(model, query_type, prompt)
         served_provider = None
         passthrough_model = (
-            model if self._is_openrouter_passthrough_model(model) else None
+            model if self._is_openrouter_passthrough_model(model, provider_keys) else None
         )
         chain = self.provider_chain(
             model=model,
             query_type=None if model else query_type,
             prompt=prompt,
+            provider_keys=provider_keys,
             routing_mode=routing_mode,
         )
         stream_kwargs: Dict[str, Any] = {}
+        if provider_keys:
+            stream_kwargs["provider_keys"] = provider_keys
+        if key_pools:
+            stream_kwargs["key_pools"] = key_pools
+        if key_pool_ids:
+            stream_kwargs["key_pool_ids"] = key_pool_ids
         if passthrough_model:
             stream_kwargs["model_override"] = passthrough_model
+        # Capture the round-robin key index AND stable key_id once per
+        # provider, at that provider's first token — the shared
+        # _last_key_index/_last_key_id can be rotated by a concurrent request
+        # mid-stream, which would otherwise make the final attribution flap.
+        key_index_seen: Dict[str, int] = {}
+        key_id_seen: Dict[str, str] = {}
         async for token, provider in self._stream_complete(
             chain, prompt, system, max_tokens, **stream_kwargs
         ):
             if served_provider is None:
                 served_provider = provider
+            if key_pools:
+                key_index_seen.setdefault(
+                    provider.value, self._last_key_index.get(provider.value)
+                )
+                key_id_seen.setdefault(
+                    provider.value, self._last_key_id.get(provider.value)
+                )
             yield token
         if served_provider is not None:
             self.last_route = self.route_info(
@@ -1576,6 +1607,8 @@ class LLMRouter:
                 complexity=estimate_complexity(prompt, qtype),
                 routing_mode=RoutingMode.coerce(routing_mode),
                 model_override=passthrough_model,
+                key_index=key_index_seen.get(served_provider.value) if key_pools else None,
+                key_id=key_id_seen.get(served_provider.value) if key_pools else None,
             )
 
     async def _stream_complete(

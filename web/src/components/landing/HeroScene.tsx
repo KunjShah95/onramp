@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Engine } from '@babylonjs/core/Engines/engine'
 import { Scene } from '@babylonjs/core/scene'
 import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
@@ -23,6 +23,10 @@ import '@babylonjs/core/Meshes/Builders/linesBuilder'
  * random rotations and flat neutral colors (an unmapped repo). After a 2s
  * hold they settle into layered rows, recolored by domain, and dependency
  * edges draw in as glowing teal lines. The camera drifts with the pointer.
+ *
+ * Production guard: when WebGL is unavailable (old devices, locked-down
+ * browsers) we render a static CSS stand-in of the same scene instead of a
+ * blank canvas — the hero never breaks.
  * ───────────────────────────────────────────────────────────────────────── */
 
 type Node = {
@@ -86,9 +90,42 @@ function seededRandom(seed: number) {
   }
 }
 
+/** Static CSS stand-in of the architecture map — shown when WebGL is out. */
+function StaticFallback() {
+  const boxes = [
+    { c: '#00D9FF', x: 0 },
+    { c: '#00D9FF', x: 1 },
+    { c: '#00D9FF', x: 2 },
+    { c: '#06B6D4', x: 3 },
+    { c: '#06B6D4', x: 4 },
+    { c: '#06B6D4', x: 5 },
+    { c: '#10B981', x: 6 },
+    { c: '#10B981', x: 7 },
+    { c: '#10B981', x: 8 },
+    { c: '#10B981', x: 9 },
+    { c: '#5A7D9A', x: 10 },
+    { c: '#5A7D9A', x: 11 },
+    { c: '#5A7D9A', x: 12 },
+  ]
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="flex items-end gap-1.5">
+        {boxes.map((b, i) => (
+          <span
+            key={i}
+            className="h-4 w-4 rounded-[2px]"
+            style={{ backgroundColor: b.c, opacity: 0.85 }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function HeroScene({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [webglOk, setWebglOk] = useState(true)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -97,7 +134,17 @@ export default function HeroScene({ className }: { className?: string }) {
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true })
+    let engine: Engine | null = null
+    try {
+      if (!Engine.IsSupported) {
+        throw new Error('WebGL is not supported')
+      }
+      engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true })
+    } catch {
+      setWebglOk(false)
+      return
+    }
+
     const scene = new Scene(engine)
     scene.clearColor = new Color4(0, 0, 0, 0)
 
@@ -262,7 +309,7 @@ export default function HeroScene({ className }: { className?: string }) {
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          engine.runRenderLoop(() => scene.render())
+          engine?.runRenderLoop(() => scene.render())
           io.disconnect()
         }
       },
@@ -271,7 +318,7 @@ export default function HeroScene({ className }: { className?: string }) {
     io.observe(container)
     unobserve = () => io.disconnect()
 
-    const onResize = () => engine.resize()
+    const onResize = () => engine?.resize()
     window.addEventListener('resize', onResize)
 
     return () => {
@@ -280,13 +327,17 @@ export default function HeroScene({ className }: { className?: string }) {
       unobserve?.()
       if (edgeTimer) clearTimeout(edgeTimer)
       scene.dispose()
-      engine.dispose()
+      engine?.dispose()
     }
   }, [])
 
   return (
     <div ref={containerRef} className={className}>
-      <canvas ref={canvasRef} className="h-full w-full outline-none" aria-hidden />
+      {webglOk ? (
+        <canvas ref={canvasRef} className="h-full w-full outline-none" aria-hidden />
+      ) : (
+        <StaticFallback />
+      )}
     </div>
   )
 }

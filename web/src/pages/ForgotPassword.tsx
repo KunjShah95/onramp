@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
-import { EnvelopeSimple, ArrowRight, Mailbox } from '@phosphor-icons/react'
+import { EnvelopeSimple, ArrowRight, Mailbox, TreeStructure } from '@phosphor-icons/react'
 
 type PageState = 'idle' | 'sending' | 'sent' | 'error'
 
@@ -45,74 +45,76 @@ export default function ForgotPassword() {
 
   return (
     <PageTransition>
-      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-        />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-body">
+        {/* Premium background accents */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-go/3 rounded-full blur-3xl pointer-events-none" />
 
         <motion.main
           initial="hidden"
           animate="visible"
-          className="w-full max-w-[400px] z-10"
+          className="w-full max-w-md z-10 relative"
         >
           {/* Brand Header */}
-          <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-card bg-accent-from shadow-lit flex items-center justify-center mb-4">
-              <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
+          <motion.div variants={fadeUp} className="flex flex-col items-center mb-10">
+            <div className="w-12 h-12 rounded-lg bg-cyan-400/90 shadow-lg flex items-center justify-center mb-5 text-[#0F1419]">
+              <TreeStructure size={22} weight="bold" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-              Onramp
+            <h1 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] tracking-tight">
+              Reset Password
             </h1>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 text-center font-body">Reset your password</p>
+            <p className="text-[14px] text-[hsl(var(--muted-foreground))] mt-2.5 text-center font-body">
+              Enter your email and we'll send you a link to reset your password
+            </p>
           </motion.div>
 
           {pageState === 'sent' ? (
-            <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
-              <Mailbox size={40} className="text-[hsl(var(--accent))] mx-auto mb-3" weight="fill" />
-              <h2 className="font-display text-xl text-[hsl(var(--foreground))] mb-2">Check your email</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 font-body">
+            <motion.div variants={fadeUp} className="bg-gradient-to-br from-panel via-panel to-panel/80 border border-go/20 rounded-lg p-8 shadow-2xl text-center relative overflow-hidden backdrop-blur-sm">
+              {/* Glow effect */}
+              <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="w-14 h-14 rounded-lg bg-go/10 border border-go/20 flex items-center justify-center mx-auto mb-4 relative z-10">
+                <Mailbox size={28} className="text-go" weight="fill" />
+              </div>
+              <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-2 relative z-10">Check your email</h2>
+              <p className="text-[14px] text-[hsl(var(--muted-foreground))] mb-5 relative z-10 font-body">
                 If an account exists for <strong className="text-[hsl(var(--foreground))]">{email}</strong>,
                 we've sent a password reset link.
               </p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]/60 mb-4 font-body">
+              <p className="text-xs text-[hsl(var(--muted-foreground))]/70 mb-6 relative z-10 font-body">
                 Didn't receive it? Check your spam folder or{' '}
                 <button
                   onClick={() => { setPageState('idle'); setError('') }}
-                  className="text-[hsl(var(--accent))] hover:opacity-80 transition-colors underline font-medium"
+                  className="text-go hover:underline font-medium"
                 >
                   try again
                 </button>
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 px-5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all font-body"
+                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-go to-go-lit hover:shadow-lg text-white font-bold text-[15px] py-3 px-8 rounded-lg transition-all active:scale-[0.98] font-body relative z-10"
               >
-                Back to Sign In
+                Back to Sign In <ArrowRight size={16} weight="bold" />
               </Link>
             </motion.div>
           ) : (
             <>
               {error && (
-                <motion.div variants={fadeUp} className="bg-error/10 text-error rounded-lg px-4 py-3 mb-5 text-sm border border-error/25">
+                <motion.div variants={fadeUp} className="bg-abort/10 text-abort rounded-lg px-4 py-3 mb-6 text-[13px] border border-abort/20 font-medium" role="alert">
                   {error}
                 </motion.div>
               )}
 
-              <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
+              <motion.div variants={fadeUp} className="bg-gradient-to-br from-panel via-panel to-panel/80 border border-go/20 rounded-lg p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
+                {/* Glow effect */}
+                <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
 
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5 font-body">
-                  Enter your email address and we'll send you a link to reset your password.
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
                   <div className="space-y-1.5">
-                    <label htmlFor="email" className="text-xs text-[hsl(var(--muted-foreground))] font-medium font-body">Email Address</label>
+                    <label htmlFor="email" className="text-[12px] text-[hsl(var(--muted-foreground))] font-semibold uppercase tracking-wide">Email Address</label>
                     <div className="relative">
-                      <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/40" />
+                      <EnvelopeSimple size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]/50" />
                       <input
                         id="email"
                         type="email"
@@ -122,7 +124,7 @@ export default function ForgotPassword() {
                         required
                         autoComplete="email"
                         autoFocus
-                        className="w-full bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl pl-9 pr-3.5 py-2.5 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/40 focus:outline-none focus:border-[hsl(var(--accent))]/60 focus:ring-1 focus:ring-[hsl(var(--accent))]/20 transition-all font-body"
+                        className="w-full bg-base/50 border border-seam/50 rounded-lg pl-9 pr-3.5 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]/60 focus:outline-none focus:border-go/30 focus:ring-1 focus:ring-go/20 transition-all font-body"
                       />
                     </div>
                   </div>
@@ -130,18 +132,18 @@ export default function ForgotPassword() {
                   <button
                     type="submit"
                     disabled={pageState === 'sending' || !email.trim()}
-                    className="w-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-body"
+                    className="w-full mt-6 bg-gradient-to-r from-go to-go-lit hover:shadow-lg text-white font-bold text-[15px] py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {pageState === 'sending' ? 'Sending...' : 'Send Reset Link'}
-                    <ArrowRight size={16} weight="bold" />
+                    {pageState !== 'sending' && <ArrowRight size={18} weight="bold" />}
                   </button>
                 </form>
               </motion.div>
 
-              <motion.div variants={fadeUp} className="mt-6 text-center">
-                <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body">
+              <motion.div variants={fadeUp} className="mt-8 text-center">
+                <p className="text-[13px] text-[hsl(var(--muted-foreground))] font-body">
                   Remember your password?{' '}
-                  <Link to="/login" className="text-[hsl(var(--accent))] font-medium hover:opacity-80 transition-colors font-body">
+                  <Link to="/login" className="text-go font-semibold hover:text-go-lit transition-colors">
                     Sign In
                   </Link>
                 </p>
@@ -149,6 +151,7 @@ export default function ForgotPassword() {
             </>
           )}
         </motion.main>
+      </div>
       </div>
     </PageTransition>
   )

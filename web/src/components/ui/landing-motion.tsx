@@ -39,18 +39,21 @@ export function SpotlightCard({
   className,
   spotClassName,
   disabled = false,
+  glow = 'rgba(14,122,60,0.09)',
 }: {
   children: React.ReactNode
   className?: string
   spotClassName?: string
   disabled?: boolean
+  /** The cursor-following glow color (CSS color). Defaults to the emerald accent. */
+  glow?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const mx = useMotionValue(-400)
   const my = useMotionValue(-400)
   const x = useSpring(mx, { stiffness: 260, damping: 32, mass: 0.6 })
   const y = useSpring(my, { stiffness: 260, damping: 32, mass: 0.6 })
-  const bg = useMotionTemplate`radial-gradient(420px circle at ${x}px ${y}px, rgba(14,122,60,0.09), transparent 65%)`
+  const bg = useMotionTemplate`radial-gradient(420px circle at ${x}px ${y}px, ${glow}, transparent 65%)`
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (disabled) return
@@ -238,3 +241,99 @@ export function Typewriter({
     </span>
   )
 }
+
+/* ── Beams — drifting background light streaks ─────────────────
+ * The Aceternity "background beams / meteors" signature done GPU-cheap:
+ * thin rotated gradient lines that translate across the canvas on an
+ * infinite loop. Decorative only. transform-only; respects
+ * prefers-reduced-motion by freezing to a static opacity ghost. */
+export function Beams({ className }: { className?: string }) {
+  const reduced = useReducedMotion()
+  const beams = [
+    { top: '18%', left: '-20%', rotate: 24, delay: 0, dur: 14, op: 0.5 },
+    { top: '34%', left: '-32%', rotate: 18, delay: 3.2, dur: 18, op: 0.4 },
+    { top: '52%', left: '-15%', rotate: 30, delay: 6, dur: 15, op: 0.35 },
+    { top: '66%', left: '-40%', rotate: 12, delay: 1.4, dur: 20, op: 0.45 },
+    { top: '80%', left: '-25%', rotate: 26, delay: 5, dur: 13, op: 0.3 },
+  ]
+  return (
+    <div aria-hidden className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}>
+      {beams.map((b, i) => (
+        <motion.div
+          key={i}
+          className="absolute h-px w-[42rem]"
+          style={{
+            top: b.top,
+            left: b.left,
+            opacity: b.op,
+            rotate: b.rotate,
+            background:
+              'linear-gradient(90deg, transparent 0%, rgba(0,217,255,0.28) 30%, rgba(16,185,129,0.36) 55%, rgba(52,211,153,0.18) 70%, transparent 100%)',
+            filter: 'blur(0.5px)',
+          }}
+          animate={
+            reduced
+              ? undefined
+              : {
+                  x: ['0vw', '175vw'],
+                  opacity: [b.op, b.op * (i % 2 === 0 ? 0.7 : 0.9), b.op],
+                }
+          }
+          transition={{ duration: b.dur, delay: b.delay, repeat: Infinity, ease: 'linear', repeatDelay: 1.2 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ── MovingBorder — animated conic gradient border ─────────────
+ * The Aceternity "moving border" signature: a slow-rotating conic
+ * gradient is clipped to a 1px ring around a card. The gradient turns
+ * slowly behind the content; only the ring shows. transform-only. */
+export function MovingBorder({
+  children,
+  className,
+  innerClassName,
+  speed = 7,
+}: {
+  children: React.ReactNode
+  className?: string
+  innerClassName?: string
+  speed?: number
+}) {
+  const reduced = useReducedMotion()
+  return (
+    <div className={cn('relative rounded-[24px] p-px', className)}>
+      {/* rotating conic ring */}
+      <motion.div
+        aria-hidden
+        className="absolute -inset-[120%]"
+        style={{
+          background:
+            'conic-gradient(from var(--angle), transparent 0deg, rgba(0,217,255,0.6) 70deg, rgba(52,211,153,0.7) 120deg, rgba(255,255,255,0.08) 160deg, transparent 200deg, transparent 360deg)',
+          ['--angle' as string]: '0deg',
+        }}
+        animate={
+          reduced
+            ? undefined
+            : ({ '--angle': ['0deg', '360deg'] } as unknown as { '--angle': string })
+        }
+        transition={{ duration: speed, repeat: Infinity, ease: 'linear' }}
+      />
+      {/* mask back to a thin ring + solid interior */}
+      <div
+        aria-hidden
+        className="absolute inset-0 rounded-[24px]"
+        style={{
+          background: 'var(--base)',
+          WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+          padding: '1px',
+        }}
+      />
+      <div className={cn('relative rounded-[23px]', innerClassName)}>{children}</div>
+    </div>
+  )
+}
+

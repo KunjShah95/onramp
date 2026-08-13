@@ -19,6 +19,10 @@ import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
+import RampPanel from '../components/dashboard/RampPanel'
+import CohortTrendPanel from '../components/dashboard/CohortTrendPanel'
+import RetentionCurvesPanel from '../components/dashboard/RetentionCurvesPanel'
+import HeadcountFlowPanel from '../components/dashboard/HeadcountFlowPanel'
 
 const SIG = {
   go: '#17A34A',
@@ -245,6 +249,26 @@ export default function ExecutivePage() {
                   </div>
                 )}
               </ConsolePanel>
+            </motion.div>
+          </div>
+
+          {/* Ramp · Senior-Time — health score, ramp cost + stuck devs for the C-suite */}
+          <motion.div variants={item}>
+            <RampPanel />
+          </motion.div>
+
+          {/* Cohort trend — onboarding improvement across hiring cohorts */}
+          <motion.div variants={item}>
+            <CohortTrendPanel />
+          </motion.div>
+
+          {/* Retention curves + headcount flow — survival & hiring/attrition */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <motion.div variants={item}>
+              <RetentionCurvesPanel />
+            </motion.div>
+            <motion.div variants={item}>
+              <HeadcountFlowPanel />
             </motion.div>
           </div>
 

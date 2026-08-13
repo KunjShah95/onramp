@@ -48,6 +48,6 @@ describe('Login', () => {
 
   it('navigates to register page link', () => {
     render(<Login />)
-    expect(screen.getByRole('link', { name: /create an account/i })).toHaveAttribute('href', '/register')
+    expect(screen.getByRole('link', { name: /create free account/i })).toHaveAttribute('href', '/register')
   })
 })

@@ -13,6 +13,7 @@ import os
 from app.api.v1.webhook_handler import (
     _verify_signature,
     _handle_pr_event,
+    _handle_pr_merged,
     _handle_push_event,
     _handle_issue_comment_event,
     _get_webhook_secret,
@@ -134,6 +135,112 @@ class TestHandlePrEvent:
         payload = _build_pr_payload("opened")
         result = await _handle_pr_event(payload, "pull_request")
         assert result["pr_data"]["sender"] == "test-user"
+
+
+# ═══════════════════════════════════════════════════════════════
+# PR Merged Handling
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestHandlePrMerged:
+    async def test_merge_completes_task_and_stamps_pr_merged_at(self):
+        """A merged PR auto-completes the linked task AND stamps pr_merged_at
+        on it — the attribution that lets the ramp summary compute
+        time-to-first-merged-PR without a linked GitHub account."""
+        from datetime import datetime, timezone
+
+        from app.services.postgres_db import get_storage, generate_id
+
+        storage = get_storage()
+        pr_url = "https://github.com/onramp/backend/pull/42"
+        task = {
+            "task_id": generate_id(),
+            "team_id": "team-wh-1",
+            "created_by": "senior-1",
+            "assigned_to": "trainee-1",
+            "title": "Fix login bug",
+            "module": "core",
+            "state": "submitted",
+            "pr_url": pr_url,
+            "review_cycles": 0,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "started_at": None,
+            "submitted_at": datetime.now(timezone.utc),
+            "reviewed_at": None,
+            "completed_at": None,
+            "pr_merged_at": None,
+        }
+        await storage.create_document("onramp_tasks", task["task_id"], task)
+
+        payload = {
+            "action": "closed",
+            "pull_request": {
+                "number": 42,
+                "html_url": pr_url,
+                "merged": True,
+                "merged_by": {"login": "senior-1"},
+                "user": {"login": "trainee-1"},
+            },
+            "repository": {"full_name": "onramp/backend"},
+            "sender": {"login": "trainee-1"},
+        }
+
+        result = await _handle_pr_merged(payload)
+        assert result["task_completed"] is True
+
+        updated = await storage.get_document("onramp_tasks", task["task_id"])
+        assert updated["state"] == "completed"
+        assert updated["pr_merged_at"] is not None
+
+    async def test_merge_stamps_already_completed_task(self):
+        """Even when the task was already completed (e.g. senior closed it
+        first), the merge still stamps pr_merged_at so the timing is captured."""
+        from datetime import datetime, timezone
+
+        from app.services.postgres_db import get_storage, generate_id
+
+        storage = get_storage()
+        pr_url = "https://github.com/onramp/backend/pull/43"
+        task = {
+            "task_id": generate_id(),
+            "team_id": "team-wh-1",
+            "created_by": "senior-1",
+            "assigned_to": "trainee-1",
+            "title": "Fix login bug 2",
+            "module": "core",
+            "state": "completed",
+            "pr_url": pr_url,
+            "review_cycles": 1,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "started_at": None,
+            "submitted_at": datetime.now(timezone.utc),
+            "reviewed_at": datetime.now(timezone.utc),
+            "completed_at": datetime.now(timezone.utc),
+            "pr_merged_at": None,
+        }
+        await storage.create_document("onramp_tasks", task["task_id"], task)
+
+        payload = {
+            "action": "closed",
+            "pull_request": {
+                "number": 43,
+                "html_url": pr_url,
+                "merged": True,
+                "merged_by": {"login": "senior-1"},
+                "user": {"login": "trainee-1"},
+            },
+            "repository": {"full_name": "onramp/backend"},
+            "sender": {"login": "trainee-1"},
+        }
+
+        result = await _handle_pr_merged(payload)
+        assert result["task_completed"] is False
+        assert result["reason"] == "Already completed"
+
+        updated = await storage.get_document("onramp_tasks", task["task_id"])
+        assert updated["pr_merged_at"] is not None
 
 
 # ═══════════════════════════════════════════════════════════════

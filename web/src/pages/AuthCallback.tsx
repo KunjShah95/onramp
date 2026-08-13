@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { setToken } from '../lib/neon-auth'
-import { ArrowRight } from '@phosphor-icons/react'
+import { ArrowRight, CircleNotch, TreeStructure } from '@phosphor-icons/react'
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams()
@@ -57,77 +57,87 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-body">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-      />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[hsl(var(--accent))]/5 rounded-full blur-[100px] pointer-events-none" />
+    <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-body">
+        {/* Premium background accents */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-go/3 rounded-full blur-3xl pointer-events-none" />
 
-      <motion.main
-        initial="hidden"
-        animate="visible"
-        className="w-full max-w-[400px] z-10 text-center"
-      >
-        <motion.div variants={fadeUp} className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-card bg-accent-from shadow-lit flex items-center justify-center mb-4">
-            <span className="text-sm font-display font-bold text-white tracking-tight">OR</span>
-          </div>
-          <h1 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-            Onramp
-          </h1>
-        </motion.div>
-
-        <motion.div variants={fadeUp} className="bg-bg-secondary border border-[hsl(var(--border))] rounded-2xl p-7 shadow-dashboard relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--accent))]/40 to-transparent" />
-
-          {status === 'processing' && (
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="w-10 h-10 rounded-full border-2 border-[hsl(var(--accent))] border-t-transparent animate-spin" />
-              <p className="text-sm text-[hsl(var(--muted-foreground))] font-body">
-                Completing sign in...
-              </p>
+        <motion.main
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-md z-10 relative text-center"
+        >
+          {/* Brand Header */}
+          <motion.div variants={fadeUp} className="flex flex-col items-center mb-10">
+            <div className="w-12 h-12 rounded-lg bg-cyan-400/90 shadow-lg flex items-center justify-center mb-5 text-[#0F1419]">
+              <TreeStructure size={22} weight="bold" />
             </div>
-          )}
+            <h1 className="font-display text-3xl font-bold text-[hsl(var(--foreground))] tracking-tight">
+              Onramp
+            </h1>
+            <p className="text-[14px] text-[hsl(var(--muted-foreground))] mt-2.5 text-center font-body">
+              {isLinkFlow ? 'Linking your GitHub account' : 'Completing your sign in'}
+            </p>
+          </motion.div>
 
-          {status === 'success' && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-2xl bg-success/10 border border-success/25 flex items-center justify-center">
-                <svg className="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-[hsl(var(--foreground))] font-body">
-                {isLinkFlow ? 'GitHub account linked!' : 'Signed in successfully!'}
-              </p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body flex items-center gap-1">
-                {isLinkFlow ? 'Redirecting to your profile' : 'Redirecting to dashboard'} <ArrowRight size={12} className="inline animate-pulse" />
-              </p>
-            </div>
-          )}
+          <motion.div variants={fadeUp} className="bg-gradient-to-br from-panel via-panel to-panel/80 border border-go/20 rounded-lg p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
+            {/* Glow effect */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
 
-          {status === 'error' && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <div className="w-12 h-12 rounded-2xl bg-error/10 border border-error/25 flex items-center justify-center">
-                <svg className="w-6 h-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <p className="text-sm text-error font-medium font-body">
-                {isLinkFlow ? 'GitHub link failed' : 'Sign in failed'}
-              </p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body mb-2">
-                {errorMsg}
-              </p>
-              <button
-                onClick={() => navigate(isLinkFlow ? '/profile' : '/login', { replace: true })}
-                className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-semibold text-sm py-2.5 px-5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all font-body"
-              >
-                {isLinkFlow ? 'Back to Profile' : 'Back to Sign In'}
-              </button>
+            <div className="relative z-10">
+              {status === 'processing' && (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="w-14 h-14 rounded-lg bg-mission/10 border border-mission/20 flex items-center justify-center">
+                    <CircleNotch size={28} className="text-mission animate-spin" weight="bold" />
+                  </div>
+                  <p className="text-sm text-[hsl(var(--muted-foreground))] font-body">
+                    Completing sign in...
+                  </p>
+                </div>
+              )}
+
+              {status === 'success' && (
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className="w-14 h-14 rounded-lg bg-go/10 border border-go/20 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-go" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-[hsl(var(--foreground))] font-body">
+                    {isLinkFlow ? 'GitHub account linked!' : 'Signed in successfully!'}
+                  </p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body flex items-center gap-1">
+                    {isLinkFlow ? 'Redirecting to your profile' : 'Redirecting to dashboard'} <ArrowRight size={12} className="inline animate-pulse" />
+                  </p>
+                </div>
+              )}
+
+              {status === 'error' && (
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className="w-14 h-14 rounded-lg bg-abort/10 border border-abort/20 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-abort" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-abort font-medium font-body">
+                    {isLinkFlow ? 'GitHub link failed' : 'Sign in failed'}
+                  </p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]/60 font-body mb-2">
+                    {errorMsg}
+                  </p>
+                  <button
+                    onClick={() => navigate(isLinkFlow ? '/profile' : '/login', { replace: true })}
+                    className="bg-gradient-to-r from-go to-go-lit hover:shadow-lg text-white font-bold text-sm py-3 px-8 rounded-lg transition-all active:scale-[0.98] font-body"
+                  >
+                    {isLinkFlow ? 'Back to Profile' : 'Back to Sign In'}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </motion.div>
-      </motion.main>
+          </motion.div>
+        </motion.main>
+      </div>
     </div>
   )
 }

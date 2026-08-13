@@ -267,6 +267,66 @@ async def notify_stale_task(
             logger.exception("Failed to send Slack stale-task notification")
 
 
+async def notify_dev_stuck(
+    trainee: dict,
+    leader_ids: list[str],
+    signals: list[dict],
+    severity: str = "medium",
+    team_id: str = "",
+) -> None:
+    """Alert team leaders + the trainee that a new dev is stuck (in-app).
+
+    Fires one ``dev_stuck`` notification per leader and a self-serve nudge to
+    the trainee, summarizing the stuck signals. Best-effort — never raises;
+    the WebSocket broadcast happens inside create_notification.
+    """
+    from app.services.notification_service import create_notification
+
+    name = trainee.get("name") or trainee.get("user_id", "trainee")
+    labels = "; ".join(s.get("label", "") for s in signals)
+
+    for lid in leader_ids:
+        if not lid:
+            continue
+        try:
+            await create_notification(
+                user_id=lid,
+                type="dev_stuck",
+                title="Dev stuck — needs attention",
+                message=(
+                    f"{name} looks stuck ({severity}): {labels}. "
+                    "Open the Ramp view to intervene."
+                ),
+                metadata={
+                    "user_id": trainee.get("user_id"),
+                    "team_id": team_id,
+                    "severity": severity,
+                    "signals": signals,
+                },
+                team_id=team_id,
+            )
+        except Exception:
+            logger.exception("Failed to send dev_stuck alert to leader %s", lid)
+
+    trainee_id = trainee.get("user_id")
+    if trainee_id:
+        try:
+            await create_notification(
+                user_id=trainee_id,
+                type="dev_stuck",
+                title="Feeling stuck? Ask the codebase.",
+                message=(
+                    "You've had some stalled work lately. Try Ask Codebase, your "
+                    "Learning Path, or ping a senior — you're not expected to "
+                    "figure it out alone."
+                ),
+                metadata={"team_id": team_id, "severity": severity},
+                team_id=team_id,
+            )
+        except Exception:
+            logger.exception("Failed to send dev_stuck nudge to %s", trainee_id)
+
+
 async def notify_peer_review_claimed(task: dict, reviewer_name: str) -> None:
     """Notify the task assignee that a peer claimed their task for review."""
     from app.services.notification_service import create_notification

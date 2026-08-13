@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
 import { GithubLogo, MagnifyingGlass } from '@phosphor-icons/react'
+import SectionHeading from './SectionHeading'
+import { SpotlightCard } from '../ui/landing-motion'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -12,25 +14,25 @@ function InstallVisual() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.5, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-sm border border-white/10 bg-panel-raised"
+          className="flex h-16 w-16 items-center justify-center rounded-xl border border-black/10 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
         >
-          <GithubLogo size={28} weight="fill" className="text-white" />
+          <GithubLogo size={28} weight="fill" className="text-ink" />
         </motion.div>
         <motion.div
           initial={{ width: 0 }}
           whileInView={{ width: 64 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-          className="h-px bg-gradient-to-r from-white/20 to-go"
+          className="h-px bg-gradient-to-r from-black/15 to-go"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.6 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-sm border border-go/40 bg-go/10"
+          className="flex h-16 w-16 items-center justify-center rounded-xl border border-go/25 bg-go/[0.06]"
         >
-          <span className="font-code text-[26px] font-bold text-go">✓</span>
+          <span className="text-[24px] font-bold text-go">✓</span>
         </motion.div>
       </div>
     </div>
@@ -48,20 +50,20 @@ function IndexVisual() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 0.45, delay: 0.2 + i * 0.15, ease: EASE }}
-            className="h-9 w-9 rounded-sm border border-white/10 bg-gradient-to-br from-accent-via/60 to-accent-primary/30"
+            className="h-9 w-9 rounded-md border border-black/10 bg-gradient-to-br from-accent-primary/15 to-accent-primary/5"
           />
         ))}
       </div>
-      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
+      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-black/10">
         <motion.div
           initial={{ width: '0%' }}
           whileInView={{ width: '100%' }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 1.4, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="h-full rounded-full bg-gradient-to-r from-accent-via to-accent-primary"
+          className="h-full rounded-full bg-gradient-to-r from-accent-primary to-accent-via"
         />
       </div>
-      <span className="font-code text-[11px] text-ink-tertiary">indexing… mapped</span>
+      <span className="font-code text-[11px] text-ink-tertiary">indexed</span>
     </div>
   )
 }
@@ -74,9 +76,9 @@ function OnboardVisual() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
-        className="flex items-center gap-2 rounded-sm border border-white/10 bg-panel-raised px-3 py-2"
+        className="flex items-center gap-2 rounded-lg border border-black/10 bg-slate-50 px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
       >
-        <MagnifyingGlass size={13} className="text-accent-via" />
+        <MagnifyingGlass size={13} className="text-accent-primary" />
         <span className="font-code text-[11px] text-ink-secondary">how does billing work?</span>
       </motion.div>
       <motion.div
@@ -84,7 +86,7 @@ function OnboardVisual() {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-        className="rounded-sm border border-accent-via/30 bg-accent-via/10 px-3 py-2"
+        className="rounded-lg border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2"
       >
         <span className="font-code text-[11px] text-accent-primary-hover">
           Billing → payments/billing · owner @payments
@@ -110,7 +112,6 @@ const STEPS = [
     time: '30 seconds',
     body: 'Connect Onramp to your GitHub. Read-only access, no code changes.',
     visual: InstallVisual,
-    align: 'lg:items-start',
   },
   {
     n: '02',
@@ -118,7 +119,6 @@ const STEPS = [
     time: '2–10 minutes',
     body: 'Onramp scans your repos, maps services, and indexes dependencies.',
     visual: IndexVisual,
-    align: 'lg:items-center',
   },
   {
     n: '03',
@@ -126,52 +126,44 @@ const STEPS = [
     time: 'day one',
     body: 'New hires open Onramp, find the architecture, ask questions, ship.',
     visual: OnboardVisual,
-    align: 'lg:items-end',
   },
 ]
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative border-t border-white/5 bg-panel">
+    <section id="how-it-works" className="relative scroll-mt-24 border-t border-black/5 bg-room">
       <div className="mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.65, ease: EASE }}
-          className="max-w-2xl"
-        >
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-go">
-            How it works
-          </p>
-          <h2 className="mt-4 font-display text-[clamp(1.8rem,4vw,3rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
-            Three steps to a map that never goes stale.
-          </h2>
-        </motion.div>
-
-        <div className="mt-14 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <SectionHeading
+          eyebrow="How it works"
+          heading={<>Three steps to a map that never goes stale.</>}
+          sub="No onboarding deck, no wiki crawl. The map draws itself — and keeps drawing itself on every push."
+        />
+        <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {STEPS.map((s, i) => (
             <motion.div
               key={s.n}
-              initial={{ opacity: 0, x: i === 0 ? -32 : i === 2 ? 32 : 0, y: 24 }}
-              whileInView={{ opacity: 1, x: 0, y: 0 }}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.7, delay: 0.1 + i * 0.1, ease: EASE }}
-              className={`group relative flex flex-col overflow-hidden rounded-sm border border-white/10 bg-panel-raised p-6 transition-colors duration-300 hover:border-white/20 ${s.align}`}
+              className="h-full"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-display text-[13px] font-bold text-ink-tertiary">
-                  STEP {s.n}
-                </span>
-                <span className="flex items-center gap-1.5 rounded-sm border border-go/30 bg-go/10 px-2 py-0.5 font-code text-[10px] text-go-lit">
-                  {s.time}
-                </span>
-              </div>
-              <div className="mt-6 w-full">
-                <s.visual />
-              </div>
-              <h3 className="mt-6 font-display text-xl font-bold text-white">{s.title}</h3>
-              <p className="mt-2 text-[13px] leading-[1.6] text-ink-tertiary">{s.body}</p>
+              <SpotlightCard
+                glow="rgba(8,145,178,0.07)"
+                className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-accent-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-body text-sm font-bold text-accent-primary">{s.n}</span>
+                  <span className="flex items-center gap-1.5 rounded-full border border-go/20 bg-go/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-go">
+                    {s.time}
+                  </span>
+                </div>
+                <div className="mt-4 w-full">
+                  <s.visual />
+                </div>
+                <h3 className="mt-4 font-body text-lg font-semibold text-ink">{s.title}</h3>
+                <p className="mt-2 text-[14px] leading-[1.6] text-ink-tertiary">{s.body}</p>
+              </SpotlightCard>
             </motion.div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchHrDevelopers, fetchHrHeatmap, listTeams } from '../lib/api'
@@ -387,6 +388,15 @@ export default function HrPeoplePage() {
                   ))}
                 </select>
               </div>
+            )}
+            {selectedTeamId && (
+              <Link
+                to={`/hr/cohort/${selectedTeamId}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3.5 py-2 text-body-xs font-medium text-blue-300 transition-all hover:bg-blue-500/20 active:scale-[0.98]"
+              >
+                <ChartBar size={15} weight="fill" />
+                Cohort analytics
+              </Link>
             )}
           </div>
         </motion.div>

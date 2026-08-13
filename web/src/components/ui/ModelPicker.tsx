@@ -21,7 +21,7 @@ interface PickerOption {
 }
 
 /**
- * Model picker for in-app chat. Backed by ``/ai/models`` — the router's
+ * Model picker for in-app chat. Backed by ``/modelling/models`` — the router's
  * pinned provider defaults plus the dynamic OpenRouter catalog (merged by
  * the backend when an OpenRouter key is configured). Selecting an id pins
  * it on the conversation: it is sent with each /ask request and beats

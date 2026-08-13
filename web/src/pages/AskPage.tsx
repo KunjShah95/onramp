@@ -13,9 +13,11 @@ import {
 import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
 import { useRoastMode } from '../context/RoastModeContext'
+import { useAuth } from '../context/AuthContext'
 import { indexRepo, askQuestionStream } from '../lib/api'
 import RoastModeToggle from '../components/ui/RoastModeToggle'
 import ModelPicker from '../components/ui/ModelPicker'
+import RoutingModePicker, { type RoutingModeValue } from '../components/ui/RoutingModePicker'
 import ConsolePanel from '../components/ui/console-panel'
 
 const fade = {
@@ -23,11 +25,41 @@ const fade = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
 }
 
+// The routing dial is persisted locally so a reload doesn't silently reset
+// it to Auto mid-conversation. Only the named presets (or null = Auto) are
+// accepted back out of storage.
+const ROUTING_MODE_STORAGE_KEY = 'onramp:ask:routingMode'
+const ROUTING_MODE_VALUES = new Set(['cost', 'balanced', 'intelligence'])
+
+function readStoredRoutingMode(): RoutingModeValue {
+  try {
+    const raw = localStorage.getItem(ROUTING_MODE_STORAGE_KEY)
+    if (raw && ROUTING_MODE_VALUES.has(raw)) return raw
+  } catch {
+    // storage unavailable (private mode / SSR) — fall back to Auto
+  }
+  return null
+}
+
+function writeStoredRoutingMode(value: RoutingModeValue): void {
+  try {
+    if (value === null) {
+      localStorage.removeItem(ROUTING_MODE_STORAGE_KEY)
+    } else {
+      localStorage.setItem(ROUTING_MODE_STORAGE_KEY, String(value))
+    }
+  } catch {
+    // storage unavailable — non-critical, skip
+  }
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  /** Provider/model that actually served this answer ("groq/llama-3.3-70b-versatile"). */
+  route?: string
 }
 
 const SUGGESTIONS = [
@@ -55,7 +87,13 @@ export default function AskPage() {
   // Explicit model pinned for this conversation (null = Auto routing).
   // Sent with every /ask request — see ModelPicker.
   const [model, setModel] = useState<string | null>(null)
+  // Cost/quality routing dial for this conversation (null = Auto/team default).
+  // Restored from localStorage so the choice survives page reloads.
+  const [routingMode, setRoutingMode] = useState<RoutingModeValue>(readStoredRoutingMode)
   const { enabled: roastMode } = useRoastMode()
+  // Active team scope for routing settings (BYOK keys + routing dial) —
+  // sent with every /ask request; verified server-side.
+  const { activeTeamId } = useAuth()
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -64,6 +102,11 @@ export default function AskPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Keep the persisted routing dial in sync with the live picker.
+  useEffect(() => {
+    writeStoredRoutingMode(routingMode)
+  }, [routingMode])
 
   const handleSend = async () => {
     if (!input.trim() || loading) return
@@ -111,7 +154,14 @@ export default function AskPage() {
         },
         controller.signal,
         roastMode ? 'roast' : 'normal',
-        model ?? undefined
+        model ?? undefined,
+        routingMode,
+        (served) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, route: served } : m))
+          )
+        },
+        activeTeamId ?? null
       )
     } catch (err: any) {
       setMessages((prev) =>
@@ -161,6 +211,7 @@ export default function AskPage() {
           <div className="flex items-center gap-2 shrink-0 mt-2">
             <RoastModeToggle />
             <ModelPicker value={model} onChange={setModel} />
+            <RoutingModePicker value={routingMode} onChange={setRoutingMode} />
             {messages.length > 1 && (
               <button
                 onClick={handleClear}
@@ -256,6 +307,14 @@ export default function AskPage() {
                       <span className="font-code text-[10px] text-ink-tertiary">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
+                      {msg.role === 'assistant' && msg.route && (
+                        <span
+                          className="font-code text-[9.5px] text-go/70 uppercase tracking-wider"
+                          title="Provider/model that served this answer (via the model router)"
+                        >
+                          served by {msg.route}
+                        </span>
+                      )}
                       {msg.role === 'assistant' && msg.id !== 'welcome' && msg.content && (
                         <button
                           onClick={() => handleCopy(msg.id, msg.content)}
@@ -344,7 +403,13 @@ export default function AskPage() {
           <p className="font-code text-[10px] text-ink-tertiary mt-1.5 text-center">
             {model
               ? `Model pinned: ${model} — every question uses it`
-              : 'Auto routing — the router picks the best model per question · AI responses are generated based on codebase analysis'}
+              : 'Auto routing — the router picks the best model per question'}
+            {routingMode != null && (
+              <>
+                {' · '}routing mode: {String(routingMode)}
+              </>
+            )}
+            {' · AI responses are generated based on codebase analysis'}
           </p>
         </div>
       </div>

@@ -46,6 +46,8 @@ const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
 const SetPassword = lazy(() => import('./pages/SetPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const HRDashboard = lazy(() => import('./pages/HRDashboard'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
@@ -73,10 +75,8 @@ const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const BlogPage = lazy(() => import('./pages/BlogPage'))
-const CareersPage = lazy(() => import('./pages/CareersPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
-const CareerDetailPage = lazy(() => import('./pages/CareerDetailPage'))
 const CustomersPage = lazy(() => import('./pages/CustomersPage'))
 const SecurityPage = lazy(() => import('./pages/SecurityPage'))
 const DPAPage = lazy(() => import('./pages/DPAPage'))
@@ -107,6 +107,7 @@ const FeatureFlagsPage = lazy(() => import('./pages/FeatureFlagsPage'))
 const DeveloperPortal = lazy(() => import('./pages/DeveloperPortal'))
 const DriftDetectionPage = lazy(() => import('./pages/DriftDetectionPage'))
 const AutonomousCodingPage = lazy(() => import('./pages/AutonomousCodingPage'))
+const RampPage = lazy(() => import('./pages/RampPage'))
 
 export default function App() {
   return (
@@ -171,6 +172,11 @@ export default function App() {
                   <ErrorBoundary><VerifyEmail /></ErrorBoundary>
                 </Suspense>
               } />
+              <Route path="/reset-password" element={
+                <Suspense fallback={<FormLoadingFallback />}>
+                  <ErrorBoundary><ResetPassword /></ErrorBoundary>
+                </Suspense>
+              } />
               <Route path="/set-password" element={
                 <Suspense fallback={<FormLoadingFallback />}>
                   <ErrorBoundary><SetPassword /></ErrorBoundary>
@@ -206,11 +212,6 @@ export default function App() {
                   <ErrorBoundary><BlogPage /></ErrorBoundary>
                 </Suspense>
               } />
-              <Route path="/careers" element={
-                <Suspense fallback={<PageLoadingFallback />}>
-                  <ErrorBoundary><CareersPage /></ErrorBoundary>
-                </Suspense>
-              } />
               <Route path="/contact" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><ContactPage /></ErrorBoundary>
@@ -219,11 +220,6 @@ export default function App() {
               <Route path="/blog/:slug" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><BlogPostPage /></ErrorBoundary>
-                </Suspense>
-              } />
-              <Route path="/careers/:slug" element={
-                <Suspense fallback={<PageLoadingFallback />}>
-                  <ErrorBoundary><CareerDetailPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/customers" element={
@@ -417,6 +413,13 @@ export default function App() {
                       </Suspense>
                     } />
 
+                    {/* Ramp Visibility — v1.4 wedge */}
+                    <Route path="/ramp" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><RampPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
                     {/* Phase 5: Drill-Down Views */}
                     <Route path="/member/:userId" element={
                       <Suspense fallback={<PageLoadingFallback />}>
@@ -435,6 +438,11 @@ export default function App() {
                     <Route path="/hr/people" element={
                       <Suspense fallback={<DashboardSkeleton />}>
                         <ErrorBoundary><HrPeoplePage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                    <Route path="/hr/cohort/:teamId" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><HRDashboard /></ErrorBoundary>
                       </Suspense>
                     } />
                     <Route path="/hr-dashboard" element={

@@ -1,422 +1,218 @@
-# 🗺️ Onramp 2.0 — Product Roadmap
+# 🗺️ Onramp 2.0 — Product Roadmap (Problem-First)
 
-**Last updated:** July 2026  
-**Status:** v1.3 Complete  
-**Next:** v1.4 — Platform & Scale
-
----
-
-## Vision
-
-Onramp is an AI-powered developer onboarding & team-acceleration platform. It helps engineering organizations onboard new developers faster, track skill progression, automate code reviews, and provide CTO/leadership visibility into team health — all powered by multi-provider AI agents.
+**Last updated:** August 2026
+**Status:** v1.4 wedge built (Track → Quantify → Intercept) · v1.5 wave 1 built (review load-balancing + consistency) · v1.6 wave 3 built (headcount flows + cohort size deltas) · Phase 0 built (cost-model dials + measurement loop + ramp-vs-Onramp ROI tracker) · Next: run the 5-team validation interviews
 
 ---
 
-## ✅ MVP (v1.0.0) — Complete
+## 🎯 North Star — the problem we solve
 
-### Authentication & Teams
+> **New developers waste expensive senior-developer time while ramping up, and engineering leaders have no way to track the ramp or intercept the drain — costing senior devs their focus and companies real money.**
 
-- [x] Email/password registration & login with JWT
-- [x] Role-based access control (new_dev, developer, senior_dev, tester, cto, ceo, owner, member)
-- [x] Team creation, invites, and membership management
-- [x] Self-serve team switching and role sync
-- [x] PostgreSQL-backed session management (no third-party auth dependency)
+Root cause: **institutional knowledge fails to flow to the people who need it.** Every feature below is judged against this problem — if a feature doesn't serve it, it's cut.
 
-### AI-Powered Developer Tools
+**Evidence:** customer conversations — leaders couldn't track new devs; new devs burned senior time; the cost was real and financial.
 
-- [x] **Code Architecture Explorer** — Visualize repo structure as an interactive force-directed graph
-- [x] **First PR Accelerator** — Find beginner-friendly issues and generate step-by-step contribution guides
-- [x] **Learning Path Generator** — Generate personalized learning paths from any codebase
-- [x] **Repo Q&A (Ask)** — Chat with your codebase; streaming SSE responses
-- [x] **PR Description Generator** — Auto-generate PR titles, descriptions, and changelogs
-- [x] **Code Health Scorer** — Analyze repos for complexity, maintainability, and test coverage
-- [x] **Pattern Recognition** — Find similar code patterns and alternative approaches across repos
-- [x] **Silent Pair Programming** — AI-guided walkthroughs for solving issues
-- [x] **Quiz Generator** — Module-level quizzes with multiple choice, code review, and matching questions
-- [x] **Regression Test Generator** — Generate test checklists and edge-case coverage from PR diffs
+**Full problem statement, cost math, personas & metrics → [PROBLEM.md](./PROBLEM.md)**
 
-### Onboarding & Learning
+### Wedge — Ramp Visibility & Senior-Time Protection
 
-- [x] **Onboarding Report Generator** — Auto-generated HTML/Markdown onboarding docs for any repo
-- [x] **Trainee Dashboard** — Track progress, unlocked modules, streak, XP, and badges
-- [x] **Gamification Engine** — XP points, leveling, badges, streaks, leaderboards
-- [x] **Module-Level Access Control** — Grant/revoke module access per user per team
-- [x] **Learning Paths** — Persisted, reusable path milestones
-- [x] **Onboarding Hub** — Central portal for new developers with guided paths
+1. **Track** — every new dev's ramp is visible: learned, working on, stuck on.
+2. **Quantify** — the cost of ramp: senior hours burned, review cycles, ramp lag vs. benchmark.
+3. **Intercept** — self-serve routing (Repo Q&A / learning paths / wiki) + stuck-dev alerts, before more senior time is lost.
 
-### Task Management & Workflow
+### The four pillars (one root problem)
 
-- [x] **Full task lifecycle** (create → assign → start → submit → review → approve → complete)
-- [x] **AI-assisted code review** with inline issue detection, scoring, and recommendations
-- [x] **Review queue** with status badges (under_review, needs_changes, approved, product_review)
-- [x] **Product sign-off gate** with review feedback
-- [x] **Dedicated review queue page** with filtering and batch actions
-- [x] **Direct approve / route-to-product** from submitted state (no mandatory under_review)
-
-### CTO / Leadership Dashboard
-
-- [x] Task distribution & completion rates
-- [x] Member progress table with per-user metrics
-- [x] Pending reviews & recent activity timeline
-- [x] Require-attention action items
-- [x] Activity trend charts (AreaChart, BarChart, PieChart via Recharts)
-- [x] **Executive Dashboard** dedicated to C-suite (CEO/CTO)
-- [x] **Senior Developer Space** for team leads
-
-### Billing & API Gateway
-
-- [x] Razorpay subscription management (create, update, cancel, webhooks)
-- [x] Tiered pricing (free → pro → enterprise)
-- [x] API key management with per-key usage tracking
-- [x] Rate limiting (200 req/min per IP, Redis-backed)
-- [x] Usage quotas and credit tracking
-
-### v1.1 Additions — Complete
-
-#### Authentication & Security
-
-- [x] **OAuth2 social login** — Google & GitHub (server-side flow with CSRF state tokens)
-- [x] **OAuth callback handling** — AuthCallback page for seamless provider redirects
-- [x] **Password reset flow** — Short-lived JWT token via email reset link
-- [x] **Forgot / Reset password pages** — Full UI with success/error states
-- [x] **Role expansion** — Added `ceo`, `cto`, `senior_dev`, `tester` roles with route guards
-
-#### Onboarding Plans (30-60-90 Day)
-
-- [x] **Onboarding Plan CRUD** — Create structured plans with milestones per team member
-- [x] **Milestone tracking** — Individual milestones with status, due dates, completion
-- [x] **Pulse check-ins** — Weekly pulse surveys with trend tracking
-- [x] **Plan review workflow** — Reviewer sign-off gates
-
-#### Playbooks
-
-- [x] **Full CRUD** — Create, read, update, delete playbook templates
-- [x] **Tag system** — Categorize playbooks by technology and role
-- [x] **Usage tracking** — Per-playbook use counters
-- [x] **Rich card UI** — Grid view with filtering by category
-
-#### Wiki
-
-- [x] **AI-generated onboarding wikis** — Generate from any public repo URL
-- [x] **Semantic sections** — Architecture, setup, conventions, deployment, testing
-- [x] **Markdown output** — Downloadable onboarding wiki documents
-
-#### Quiz System
-
-- [x] **Module-level quiz generation** — Multiple choice, code review, matching
-- [x] **Quiz grading notifications** — `quiz_graded` event with score display
-- [x] **Notification integration** — Bell icon, badge count, quiz_graded icon/color
-
-#### HR Dashboard
-
-- [x] **HR analytics** — Team health metrics, onboarding progress
-- [x] **People management** — HR People page with team member overview
-- [x] **Role-scoped views** — HR-specific dashboard alongside senior dashboard
-
-#### Notifications & Integrations
-
-- [x] **In-app notification center** — Read/unread, preferences, quiet hours
-- [x] **Notification Bell** — Polling-based badge count, dropdown preview
-- [x] **Rich notification types** — 14 event types with distinct icons & colors
-- [x] **Pagination support** — Page clamping, type-filtered views
-- [x] **Mark all read** — Bulk read status updates
-- [x] **Webhook management** — Create, test, rotate secrets, delivery logs
-- [x] **GitHub integration** — Token validation, scope checking
-- [x] **Slack integration** — Channel config, event-driven notifications
-- [x] **Email via SendGrid** — Digest, alerts
-
-#### UX & Polish
-
-- [x] **Custom CSS design system** — 50+ design tokens (bg/text/accent colors, spacing, shadows, transitions)
-- [x] **Per-page skeleton loading** — 15+ page-specific skeleton components
-- [x] **Keyboard shortcuts** — Global nav shortcuts (g+d dashboard, g+e explore, etc.)
-- [x] **Global background effects** — Ambient gradient backgrounds
-- [x] **Transition context** — Page transition animations
-- [x] **Error boundaries** — Per-route error isolation
-- [x] **Changelog page** — Public changelog for release notes
-- [x] **Pricing page** — Public pricing with plan comparison
-- [x] **Privacy & Terms pages** — Legal compliance
-
-#### Drill-Down Views
-
-- [x] **Per-developer detail** (`/member/:userId`) — Member profile, tasks, progress, module access
-- [x] **Module health** (`/module/:moduleName`) — Per-module status and health metrics
-- [x] **Dev Space** — Developer workspace with tool launcher
-- [x] **Senior Space** — Team lead command center
-
-#### Admin & Infrastructure
-
-- [x] **Admin dashboard** — View all API keys, usage across teams, audit events
-- [x] **Audit log** — CRUD events with actor/target/metadata
-- [x] **User deactivation** — GDPR right-to-erasure
-- [x] **Webhook delivery inspection and retry**
-- [x] **Database: 8 Alembic migrations** — Schema evolution from initial to dynamic document tables
-- [x] **Database: Dynamic document table migration** — 21 collections migrated from JSONB to real tables
-
-### Security
-
-- [x] JWT-based auth (HS256, 7-day expiry)
-- [x] bcrypt password hashing (all production users)
-- [x] Fernet field-level encryption (PII: email, name)
-- [x] Alembic database migrations (8 versions)
-- [x] RBAC middleware with route-level access guards
-- [x] CORS with allowlist + Vercel regex
-- [x] Production env validation on boot (fail-fast)
-
-### Tech Stack
-
-- [x] **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0, asyncpg, Alembic
-- [x] **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 3, Framer Motion, Recharts, TanStack React Query, Phosphor Icons
-- [x] **Database:** PostgreSQL 16 (local/Railway), Redis (caching/rate-limit)
-- [x] **AI:** OpenRouter, Gemini, Groq, OpenAI, Anthropic (multi-provider with failover)
-- [x] **Infra:** Docker Compose, Railway, Vercel, Nginx, Sentry
-- [x] **CI/CD:** GitHub Actions (backend + frontend pipelines)
+| Pillar | Pain | Persona | Metric | Status |
+| --- | --- | --- | --- | --- |
+| **P1 · Ramp-up** | Slow ramp; senior time drained | New devs + leads | Time-to-first-merged-PR ↓ | 🔴 **v1.4 wedge** |
+| **P2 · Reviews** | Review bottleneck | Seniors, leads | Review turnaround ↓ | 🔵 v1.5 wave 1 built |
+| **P3 · Visibility** | Blind leaders | CTO / EM / HR | Stuck surfaced <24h | 🔵 v1.6 wave 3 built |
+| **P4 · Stale docs** | Docs drift from code | Everyone | Q&A without humans ↑ | 🔵 Folded into P1 |
 
 ---
 
-## ✅ v1.2 — Production Launch & Polish (Month 1)
+## ✅ Done — v1.0 → v1.3 (history)
 
-**Theme:** Foundation — ship to production, close UX gaps, set up for scale  
-**Est. effort:** 2–3 weeks  
-**Focus:** Production readiness, real-time, mobile, accessibility, performance
+### MVP (v1.0) — Complete
 
-### Production Readiness
+- **Auth & teams:** email/password + JWT, RBAC (8 roles), team creation/invites/membership, team switching, PostgreSQL sessions.
+- **AI tools:** Architecture Explorer, First PR Accelerator, Learning Path Generator, Repo Q&A (streaming SSE), PR Description Generator, Code Health Scorer, Pattern Recognition, Silent Pair Programming, Quiz Generator, Regression Test Generator.
+- **Onboarding & learning:** Onboarding Report Generator, Trainee Dashboard, gamification (XP/levels/badges/streaks/leaderboards), module-level access, learning paths, Onboarding Hub.
+- **Task workflow:** full lifecycle (create → assign → start → submit → review → approve → complete), AI-assisted review, review queue with status badges, product sign-off gate.
+- **Leadership dashboards:** CTO/Executive dashboard, Senior Dev Space, task distribution/completion charts, activity trends.
+- **Billing & API gateway:** Razorpay subscriptions (free/pro/enterprise), API keys with usage tracking, rate limiting, quotas.
 
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **DevOps** | Deploy backend to Railway/Render with Docker | 🔴 Critical | 2 days | ✅ Done |
-| **DevOps** | Deploy frontend to Vercel with custom domain + HTTPS | 🔴 Critical | 1 day | ✅ Done |
-| **DevOps** | Production PostgreSQL (managed) + automated backups | 🔴 Critical | 1 day | ✅ Done |
-| **DevOps** | Production Redis for rate limiting + caching | 🔴 Critical | 0.5 day | ✅ Done |
-| **DevOps** | Wire CI/CD — auto-deploy on `main` push | 🔴 Critical | 1 day | ✅ Done |
-| **DevOps** | SSL/TLS, env vars, sanity checks | 🔴 Critical | 1 day | ✅ Done |
+### v1.1 — Complete
 
-### UX & Polish
+- **Auth & security:** OAuth2 (Google/GitHub) with CSRF state, password reset, role expansion (ceo/cto/senior_dev/tester).
+- **Onboarding plans:** 30-60-90 day plans, milestone tracking, pulse check-ins, review sign-off.
+- **Playbooks / Wiki / Quiz:** playbook CRUD + tags + usage; AI wikis from repo URLs; module quizzes with grading notifications.
+- **HR dashboard:** team health metrics, people management, role-scoped views.
+- **Notifications & integrations:** notification center (14 event types), bell + badge, webhooks (create/test/rotate/logs), GitHub token validation, Slack, SendGrid.
+- **UX polish:** 50+ design tokens, 15+ skeleton loaders, keyboard shortcuts, ambient backgrounds, error boundaries, changelog/pricing/privacy/terms pages.
+- **Drill-downs:** member detail, module health, Dev Space, Senior Space.
+- **Admin & infra:** admin dashboard (API keys, usage, audit events), audit log, user deactivation, dynamic-document table migration (21 collections).
 
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **Notifications** | Real-time WebSocket push for task updates | 🔴 Critical | 3 days | ✅ Done (backend WS + frontend 5-min polling) |
-| **Visualization** | Interactive repo graph — search, filter, drill-down, tooltips | 🟢 High | 2 days | ✅ Done |
-| **Trainee** | Milestone tracking with roadmap timeline view | 🟢 High | 2 days | ✅ Done |
-| **Auth** | Session refresh & remember-me (persist across browser closes) | 🟢 High | 1 day | ✅ Done |
-| **DevEx** | Mobile-responsive views — wave 1: core 10 pages | 🟢 High | 3 days | ✅ Done |
-| **DevEx** | Mobile-responsive — wave 2: remaining 34 pages | 🟢 High | 3 days | ✅ Done |
-| **A11y** | WCAG 2.1 AA audit — keyboard nav, ARIA labels, focus indicators, axe-core scans | 🟢 High | 2 days | ✅ Done |
-| **Load More** | Pagination on TasksPage + NotificationsPage (reuse existing Pagination) | 🟢 Medium | 1 day | ✅ Done |
-| **CI/CD Tests** | Frontend E2E — login → dashboard → explore → team → billing → a11y | 🟢 High | 2 days | ✅ Done (65+ tests) |
-| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days | ✅ Done (31 tests) |
-| **DevEx** | Keyboard shortcuts — visual feedback, expanded coverage to all pages | 🟢 Medium | 0.5 day | ✅ Done |
-| **Notifications** | Backend WebSocket endpoint + connection manager | 🟢 Medium | 2 days | ✅ Done |
-| **Notifications** | Notification bell z-index fix (fixed positioning above all layers) | 🟢 Medium | 0.5 day | ✅ Done |
-| **Notifications** | Polling interval configurable via VITE_NOTIFICATION_POLL_INTERVAL | 🟢 Low | 0.5 day | ✅ Done |
-| **Integrations** | Jira / Linear ticket synchronization (bi-directional) | 🟢 Medium | 4 days | ✅ Done |
-| **Integrations** | Feature flag management UI | 🟢 Medium | 1 day | ✅ Done |
+### v1.2 — Production Launch & Polish — Complete
 
-### Platform Expansion — Carried Forward to v1.4
+Production readiness (Railway/Render + Vercel + managed PG + Redis + CI/CD + SSL) · real-time WebSocket notifications · interactive repo graph · milestone roadmap view · session refresh/remember-me · full mobile responsiveness (44 pages) · WCAG 2.1 AA audit · pagination · E2E suite (65+ tests) · API contract tests (31) · keyboard shortcuts · Jira/Linear sync · feature flags.
 
-| Area | Feature | Priority | Original Est. | Status |
-| ------ | --------- | ---------- | --------------- | -------- |
-| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
-| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
-| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days | ⏳ Carried to v1.4 |
+### v1.3 — Enterprise + AI Acceleration — Complete
+
+SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · Prometheus/Grafana observability · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
 
 ---
 
-## ✅ v1.3 — Enterprise + AI Acceleration (Month 2)
+## 🎯 v1.4 — Wedge: Ramp Visibility & Senior-Time Protection
 
-**Theme:** Enterprise foundation + AI differentiation  
-**Est. effort:** 3–4 weeks  
-**Focus:** SSO, audit, DORA metrics, PR automation, community marketplace
+**Theme:** Make the ramp measurable and the senior-time drain interceptable.
+**Est. effort:** 3–4 weeks
+**Focus:** The complete **Track → Quantify → Intercept** loop for new devs. Nothing else ships until this loop is proven with real teams.
 
-### Enterprise Foundation
+### ✅ Wave 1 — built (Ramp service + `/ramp` API + Ramp page)
 
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **Auth** | SSO/SAML — Okta + Azure AD / Entra ID federation | 🔴 Critical | 3 weeks | ✅ Done |
-| **Auth** | Domain-based routing (auto-detect IdP from email) | 🟢 High | 3 days | ✅ Done |
-| **Admin** | Real-time audit log UI with SIEM-exportable events | 🟢 High | 3 days | ✅ Done |
-| **Security** | HMAC-SHA256 for API key hashing (replace unsalted SHA-256) | 🟢 High | 1 day | ✅ Done |
-| **Security** | Rate limit documentation + developer portal | 🟢 Medium | 1 day | ✅ Done |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Track | **Per-trainee ramp profiles** — ramp days vs team benchmark, completion, review cycles, stalled work, questions asked | ✅ Built (`ramp_service.get_ramp_summary` → `GET /ramp/summary`) |
+| Quantify | **Senior-time cost per new dev** — review cycles × 0.5h + stalled re-engagement, at ~$90/hr | ✅ Built (`senior_time_estimate`, totals on `/ramp/summary`) |
+| Intercept | **Stuck-dev detector** — stalled task (>5d) · review loop (≥2 cycles) · review timeout (>24h) · inactivity (>7d) | ✅ Built (`ramp_service.detect_stuck` → `GET /ramp/stuck`) |
+| Intercept | **Stuck-dev alerts** — deduped ≤1/day `dev_stuck` notifications to leaders + self-serve nudge to trainee | ✅ Built (`fire_stuck_alerts` → `POST /ramp/check` + Celery `check_stuck_devs` every 6h) |
+| UI | **Ramp page** (`/ramp`, senior+ roles) — benchmark/cost cards, stuck panel, per-trainee table | ✅ Built (`web/src/pages/RampPage.tsx`) |
+| Tests | Ramp service + authz tests (memory backend) | ✅ 12 tests, all passing |
 
-### AI Differentiation
+### Next (wave 2)
 
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **Analytics** | Team velocity trends — cycle time, throughput, DORA metrics | 🟢 High | 3 days | ✅ Done |
-| **Tasks** | CI/CD auto PR review on push (GitHub Actions integration) | 🟢 High | 3 days | ✅ Done |
-| **Integration** | Jira / Linear ticket sync (bi-directional) | 🟢 Medium | 4 days | ✅ Done (moved from v1.2) |
-| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ✅ Done (`DriftDetector` agent + `POST /api/v1/drift/detect`) |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Validate | Pressure-test the cost model with 3–5 customer conversations | 🔴 Blocking (PROBLEM.md) |
+| Intercept | Self-serve-first routing nudge deep-link (Ask Codebase / Learning Path on alert click) | 🆕 |
+| Dashboards | Surface ramp cost + stuck list inside CTO/Executive dashboard (charts built) | ✅ Built (`RampPanel` on Mission Control + Executive Console) |
+| Track | Time-to-first-merged-PR wired to GitHub PR-merge webhook data — login-keyed milestones (linked accounts) + `pr_merged_at` stamp on the auto-completed task (works for teams WITHOUT linked GitHub accounts) | ✅ Built |
 
-### Community & Content
-
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ✅ Done (`/api/v1/marketplace/*` + Marketplace page) | | **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ✅ Done |
- ✅ Done (prepaid credit wallet + metered drawdown) |
-| **Admin** | Team-level feature flag management | 🟢 Medium | 2 days | ✅ Done |
-| **Viral** | "Senior Dev Roast" mode — toggle sarcastic AI persona | 🟢 Low | 1 day | ✅ Done |
+**Exit criteria for v1.4:** 3–5 real teams using the loop; senior-time-per-new-dev measured; stuck-dev alert latency < 24h; time-to-first-merged-PR baseline captured.
 
 ---
 
-## 🎯 v1.4 — Platform & Scale (Month 3)
+## 🔵 v1.5 — Reviews (P2)
 
-**Theme:** Open the platform, ship AI SDK, scale infrastructure  
-**Est. effort:** 3–4 weeks  
-**Focus:** Public API, autonomous agents, VS Code extension, performance  
-**Includes carried-forward:** Mobile wave 2, A11y audit, CI/CD tests, GitLab/Bitbucket, Ollama, PR auto-apply, rate limit docs, drift detection, marketplace, usage-based billing
+The senior-time drain continues past ramp — attack the review bottleneck.
 
-### Remaining v1.2 Carried Items
+### ✅ Wave 1 — built (load balancing + consistency)
 
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **CI/CD Tests** | API contract tests + OpenAPI 3.1 spec | 🟢 Medium | 2 days |
-| **Integrations** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days | ✅ Done |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Load | **Reviewer load board** — per-reviewer pending/in-review counts, 30d volume, oldest wait, 0-100 load score | ✅ Built (`review_ops_service.reviewer_load` → `GET /review-ops/load`) |
+| Load | **Next-reviewer suggestion** — least-loaded capable reviewer, assignee excluded, rework tie-break | ✅ Built (`suggest_reviewer` → `GET /review-ops/suggest`) |
+| Consistency | **Per-reviewer consistency scores** — turnaround + variance + rework/calibration → 0-100 (null below 3 reviews) | ✅ Built (`consistency_scores` → `GET /review-ops/consistency`) |
+| Attribution | **Reviewer recorded on every outcome** — `reviewed_by` now set on needs_changes / product_review / approved | ✅ Built (`task_service.transition_task`) |
+| UI | **Review Ops panel on the review queue** (`/reviews`) — suggestion callout, load bars, score badges | ✅ Built (`ReviewOpsPanel.tsx`) |
+| Tests | Load, suggestion, consistency, re-submission regression, authz | ✅ 12 tests, all passing |
 
-### Remaining v1.3 Carried Items
+### Next (wave 2)
 
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **AI** | Architecture drift detection — alert when code diverges from docs | 🟢 Medium | 4 days | ✅ Done |
-| **Marketplace** | Community playbook marketplace — publish, search, import, rate | 🟢 Medium | 4 days | ✅ Done | | **Billing** | Usage-based pricing tier (per-query / per-seat hybrid) | 🟢 Medium | 3 days | ✅ Done |
- ✅ Done |
-
-### AI Platform
-
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **AI** | Autonomous coding agent (sandboxed) — assign issue -> AI implements -> opens PR | 🟢 High | 4 weeks | ✅ Done |
-| **AI** | Ollama local model support (air-gapped/self-hosted) | 🟢 Medium | 3 days | ✅ Done |
-| **AI** | PR review — auto-apply suggestions (inline fix commits) | 🟢 Medium | 3 days | ✅ Done |
-| **API** | AIaaS public API gateway — package agents as REST APIs with key auth | 🟢 High | 3 days | ✅ Done |
-| **API** | TypeScript SDK -> `@onramp/sdk` (typed client: chat, stream, embeddings, agents, usage) | 🟢 High | 2 days | ✅ Done (`sdk/` — tsc build + 6 unit tests) |
-| **API** | Usage-based billing: per-query metering + credit system | 🟢 High | 3 days | ✅ Done (`CreditService` wallet + `/api/v1/billing/credits*`) | ### Developer Experience
-
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **IDE** | VS Code extension — inline explanations, PR review, learning paths | 🟢 High | 3 days |
-| **CI/CD** | GitHub Actions marketplace app — auto onboarding report on push | 🟢 Medium | 3 days |
-| **Mobile** | PWA — service worker, offline app-shell fallback, manifest + icons | 🟢 Medium | 2 weeks | ✅ Done (`web/public/sw.js` + manifest + registerPwa) |
-| **Mobile** | Quick Q&A from mobile | 🟢 Medium | 3 days | ### Performance & Scale
-
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **Scale** | PostgreSQL read replicas + connection pooling (pgBouncer) | 🟢 High | 2 days |
-| **Scale** | Redis caching layer for frequent endpoints | 🟢 High | 1 day | ✅ Done |
-| **Scale** | Response compression (gzip/brotli) | 🟢 Medium | 0.5 day | ✅ Done (ASGI GZip + optional Brotli middleware) |
-| **Scale** | Lighthouse audit -> p95 API < 500ms, bundle < 200KB gzipped | 🟢 High | 2 days | ✅ Done (Perf + bundle CI gates) |
-| **Scale** | CDN for static assets (Vercel edge + Nginx Cache-Control) | 🟢 Medium | 1 day | ✅ Done |
-| **Scale** | Load testing (k6 or Locust) + CI gate | 🟢 Medium | 2 days | ✅ Done (12 backend tests + k6 script) |
-
-### Observability & Ops (Production Hardening)
-
-| Area | Feature | Priority | Est. Effort | Status |
-| ------ | --------- | ---------- | ------------- | -------- |
-| **Monitoring** | Prometheus `/metrics` — HTTP, LLM, cache, embeddings, WS (dependency-free registry) | 🔴 Critical | 1 day | ✅ Done |
-| **Monitoring** | Grafana stack — auto-provisioned datasource + API dashboard | 🟢 High | 0.5 day | ✅ Done (`grafana/` + compose service) |
-| **Monitoring** | Structured JSON logging (`LOG_FORMAT=json`) — Loki/Datadog-ready | 🔴 Critical | 0.5 day | ✅ Done |
-| **Monitoring** | Request correlation IDs (`X-Request-ID` echo + log field) | 🔴 Critical | 0.5 day | ✅ Done |
-| **Ops** | Liveness `/health` + readiness `/ready` (DB + Redis probes) | 🔴 Critical | 0.5 day | ✅ Done |
-| **Security** | Hardened security headers (HSTS, nosniff, frame-deny, Permissions-Policy, CSP opt-in) | 🟢 High | 0.5 day | ✅ Done |
-| **Security** | OpenAPI security scheme (BearerAuth) for typed client generation | 🟢 Medium | 0.5 day | ✅ Done |
-| **Infra** | Docker: non-root users, HEALTHCHECKs, Python 3.12, nginx on 8080 | 🔴 Critical | 1 day | ✅ Done |
+- Review turnaround metrics folded into the ramp cost view (P1 × P2 shared data).
+- Per-task suggestion wired into the queue rows (the `task_id` variant exists — surface it in the Review action).
+- Review-events log to close the consistency blind spot (approval "stickiness" is currently not measurable — see `review_ops_service` docstring).
+- Regression test generator + PR descriptions as review accelerators (built).
 
 ---
 
-## 🎯 v2.0 — Enterprise GA (Month 4+)
+## 🔵 v1.6 — Org-Level Visibility (P3)
 
-**Theme:** Enterprise-grade compliance, horizontal scaling, ecosystem  
-**Est. effort:** 6–8 weeks  
-**Focus:** SOC 2, tenant isolation, Helm, agent plugins
+Reporting layer on top of P1 + P2 data.
 
-### Enterprise Compliance
+### ✅ Wave 1 — built (org ramp health + cohort trend)
 
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **Security** | SOC 2 Type II readiness — evidence collection, access reviews, change management | 🔴 Critical | ongoing |
-| **Security** | Third-party penetration test | 🔴 Critical | 4 weeks (ext.) |
-| **Security** | Secrets vault integration (HashiCorp Vault / Azure Key Vault) | 🟢 High | 1 week |
-| **Security** | Immutable audit trail with tamper-evident logging | 🟢 High | 1 week |
-| **Security** | SCIM provisioning — user lifecycle managed from IdP | 🟢 High | 2 weeks |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Health | **Org ramp health score** — composite 0-100 (ramp velocity 20% / completion 15% / stuck 20% / review health 15% / first-PR 15% / **attrition 15%**) with grade (healthy ≥80 · at_risk 50-79 · critical <50 · no_data) + component drill-down | ✅ Built (`ramp_service.ramp_health` → `GET /ramp/health`) |
+| Health | **First-PR benchmark** — team median days-to-first-merged-PR (webhook-stamped, works without linked GitHub accounts) | ✅ Built (`first_pr_benchmark_days` on `/ramp/summary`) |
+| Health | **Backfill script** — stamps `pr_merged_at` on webhook-auto-completed tasks for teams with pre-existing merges (dry-run default) | ✅ Built (`backfill_pr_merged_at.py`) |
+| UI | **Health card on Ramp page** — score, grade, per-component bars | ✅ Built (`RampPage.tsx` HealthCard) |
+| UI | **Health readout on leadership consoles** — score + grade LED on RampPanel (Mission Control + Executive) | ✅ Built (`RampPanel.tsx`) |
+| UI | **Cohort trend panel** — cohort comparison surfaced on the Executive Console (previously HR-only) | ✅ Built (`CohortTrendPanel.tsx`) |
+| Detector | **Inactivity false-positive fix** — no-activity signal only fires for trainees with OPEN work (completed/cancelled-only teams are healthy, not stuck) | ✅ Built + regression test |
+| Tests | Health score math, empty team, stuck-heavy team, review-analytics-failure path, detector regression | ✅ 6 tests, all passing |
 
-### Multi-Tenant Architecture
+### ✅ Wave 2 — built (attrition-risk weighted + retention curves)
 
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **Platform** | Hard tenant isolation — PostgreSQL RLS or per-tenant database | 🔴 Critical | 2 weeks |
-| **Platform** | Data residency controls — EU/US/APAC region pinning | 🟢 High | 2 weeks |
-| **Platform** | Self-hosted deployment — Helm chart for Kubernetes | 🟢 High | 2 weeks |
-| **Platform** | Multi-org support with namespace isolation | 🟢 High | 3 weeks |
-| **Platform** | GitLab & Bitbucket repository support | 🟢 Medium | 3 days |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Health | **Attrition risk folded into health score** — `attrition_health` as a weighted 6th component (150 pts off per full at-risk ratio; weights rebalanced to sum 1.0) | ✅ Built (`ramp_health` + `at_risk_count` exposure) |
+| Retention | **Cohort retention curves** — retained % / active % survival at 30/60/90/120/180d after joining, join-relative per cohort (deactivation = leave signal) | ✅ Built (`hr_metrics_service.cohort_retention` → `GET /hr/cohort-retention/{team_id}`) |
+| UI | **Retention curves on CTO seat** — newest cohort charted + per-cohort 180d retention trend across cohorts | ✅ Built (`RetentionCurvesPanel.tsx` on Executive Console) |
+| Detector | **Retention bucket semantics fix** — buckets are join-relative (a member deactivated at day 50 drops out at the 60d bucket, not the 30d one) | ✅ Built + regression test |
+| Tests | Attrition component lowers composite · retention curve drop-out · empty team · endpoint smoke | ✅ 4 tests, all passing |
 
-### Ecosystem & Plugins
+### ✅ Wave 3 — built (headcount flows + cohort size deltas)
 
-| Area | Feature | Priority | Est. Effort |
-| ------ | --------- | ---------- | ------------- |
-| **Platform** | Plugin system for custom AI agents — write your own agent | 🟢 Medium | 3 weeks |
-| **Platform** | Agent MCP (Model Context Protocol) support | 🟢 Medium | 2 weeks |
-| **Platform** | Custom enterprise roles (beyond owner/ceo/member) | 🟢 Medium | 1 week |
-| **Monitoring** | Prometheus/Grafana observability stack | 🟢 Medium | 1 week |
-| **Monitoring** | Structured JSON logging for production | 🟢 Medium | 1 day |
+| Area | Feature | Status |
+| --- | --- | --- |
+| Headcount | **Headcount flows per month** — joined (team_members.joined_at) vs. deactivated (users.deactivated_at) per calendar month, with net change | ✅ Built (`hr_metrics_service.headcount_flow` → `GET /hr/headcount-flow/{team_id}`) |
+| Headcount | **Cohort size deltas + trajectory** — cumulative cohort_size (total onboarded) and headcount (net) running totals per month | ✅ Built (same payload) |
+| UI | **Headcount flow on CTO seat** — joined/left bars + headcount line chart, net-growing/shrinking signal | ✅ Built (`HeadcountFlowPanel.tsx`, 2-col grid with retention) |
+| UI | **Org health + retention on the HR console** — RampPanel (health score + stuck) and retention curves mounted on the HR dashboard; HR added to the shared leader-role gate (`LEADER_ROLES`), `/ramp` nav + read-only Ramp page for HR (check button stays leader-only) | ✅ Built (`HrDashboardPage.tsx`, `RampPanel.tsx`, `Sidebar.tsx`) |
+| Tests | Month bucketing + cumulative math · empty team | ✅ 2 tests, all passing |
+
+### ✅ Phase 0 — cost-model validation harness (pressure-testing the assumptions)
+
+| Area | Feature | Status |
+| --- | --- | --- |
+| Calibration | **Tunable cost model** — env-driven platform defaults (`ONRAMP_SENIOR_HOURLY_RATE` etc.) + per-team overrides (`team_cost_settings`) with validated ranges | ✅ Built (`team_cost_settings.py`, threaded through `get_ramp_summary`) |
+| API | **`GET /ramp/cost-model`** (member) — effective assumptions, source, measured signals, sensitivity band · **`PUT /ramp/cost-model`** (leader) — partial calibration | ✅ Built (`ramp.py`) |
+| Measurement | **Measured signals bound the assumptions** — avg elapsed review cycle vs 0.5h, stalled re-engagement weeks, review-cycle count | ✅ Built (`_measured_cost_stats` on the summary + Ramp page CostModel card) |
+| Honesty | **Sensitivity band** — `cost_low ≤ cost_current ≤ cost_high` across the $75–100/hr · 0.25–1h/cycle band (PROBLEM.md's working numbers) | ✅ Built (`cost_sensitivity`) |
+| Runbook | **Interview script updated** — 5-team protocol + the product-side measurement loop + how to feed results into the dials | ✅ `docs/validation-interview-script.md` |
+| Benchmark | **Ramp vs Onramp ROI tracker** — senior ramp cost vs Onramp at the **live subscription price** (active billing subscription, INR→USD, else team override, else the $99/mo platform default — `price_source` labels which), React-scoped (`stack=react` filters cost to React-repo tasks; team stack always reported honestly), snapshot history for tracking over time | ✅ Built (`ramp_vs_onramp_benchmark` → `GET /ramp/benchmark` + `POST /ramp/benchmark/snapshot`) |
+| Benchmark | **Terminal coding agents vs Onramp** — per-agent team monthly cost (per-dev subscription × dev count) vs Onramp's **live subscription price** (same `price_source` logic), for the team's detected stack (React when repos are JS/TS), documented Aug-2026 catalog (Claude Code, Codex, Gemini CLI, Cursor) + snapshot tracking | ✅ Built (`agent_benchmark_service` → `GET /ramp/agent-benchmark` + `POST /ramp/agent-benchmark/snapshot`, `AgentBenchmarkPanel.tsx` on the Ramp page) |
+| Benchmark | **Live-price resolution** — `resolve_benchmark_price`: explicit team override → live `onramp_subscriptions` (INR→USD at `ONRAMP_INR_TO_USD_RATE`, default ₹84/$) → $99 platform default; free-tier teams (₹0) correctly fall back to the default instead of an infinite ROI; the original ₹ amount rides along (`onramp_price_inr`) so panels show the conversion step (e.g. "₹2,999 ≈ $35.70/mo") | ✅ Built (`team_cost_settings.resolve_benchmark_price` + `live_subscription_price`, UI labels show the source + conversion) |
+| Benchmark | **Token-efficiency benchmark** — the "why we're cheaper" story in tokens AND dollars, mechanism-first: a step-by-step "when the codebase changes" comparison (agent re-reads the whole repo = `tokens_per_change` vs Onramp re-embeds only changed files = `graph_refresh.tokens_per_change`, ~10%) + measured 30d usage (free-key %, spend) + subscriptions; headline per-change token savings and monthly $ savings; change-frequency dial (the faster the churn, the wider the gap); codebase-size default grounded in indexed `file_count` (new model column + migration); honest caveat that changed-files-only re-embed is the target architecture | ✅ Built (`token_efficiency_benchmark` → `GET /ramp/efficiency-benchmark`, `EfficiencyBenchmarkPanel.tsx` on the Ramp page) |
+| Benchmark | **Headcount / hiring simulation** — "hire more devs? agents charge per seat AND per context": `dev_count` simulates agent costs at any team size (per-dev subscriptions × N **+ per-dev token burn** — each agent holds its own codebase copy, so tokens scale with headcount too; `per_dev_token_burn=false` models a shared/reused context) vs Onramp's flat price; leaders record the exact scenario (`POST /ramp/efficiency-benchmark/headcount`) and read back the saved record history — the scaling story (agent cost grows with every hire on both dimensions, Onramp stays flat) tracked over time | ✅ Built (`token_efficiency_benchmark(dev_count=…, per_dev_token_burn=…)` + `record_headcount_scenario`, hiring dial + per-dev toggle + record button + history in `EfficiencyBenchmarkPanel`) |
+| Benchmark | **Multi-product scaling** — "several devs × several products": `product_count` treats each product as its own codebase, so agent re-reads compound devs × products × changes while Onramp's flat price never moves (refresh scales only with total changed files); recorded scenarios carry `product_count`; **public `CostAtScaleCalculator` on the Why Onramp marketing page** (devs/products/changes sliders → live agent vs Onramp monthly totals) | ✅ Built (`token_efficiency_benchmark(product_count=…)`, products slider + history label in `EfficiencyBenchmarkPanel`, `CostAtScaleCalculator.tsx` on `WhyOnrampPage.tsx`) |
+| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401 · headcount scaling (agent-only) · headcount record roundtrip · headcount 401s · per-dev token burn (tokens scale with headcount) · shared-context mode · multi-product compounding (devs × products, Onramp refresh scales only with total tokens)** | ✅ 32 tests, all passing |
+| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401 · headcount scaling (agent-only) · headcount record roundtrip · headcount 401s** | ✅ 29 tests, all passing |
+| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401** | ✅ 25 tests, all passing |
+| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip | ✅ 17 tests, all passing |
+
+### Next (wave 4)
+
+- Run the 5-team validation interviews and converge the defaults from real calibration data.
+- P4 (stale docs) — drift detection + wiki freshness (built) never standalone.
 
 ---
 
-## 🎯 Stretch / Viral Features
+## ⏸️ Shelved / De-prioritized
 
-Quick wins that drive engagement and social sharing, can be slotted into any release:
-
-| Area | Feature | Effort |
-| ------ | --------- | -------- |
-| **Viral** | Codebase trailer — "In a world..." auto-generated movie trailer for any repo | 1 day |
-| **Viral** | Hot Take PR review — personality-driven one-liner summary | 0.5 day |
-| **Viral** | DevScore leaderboard — weekly XP rankings with crown badges | 1 day |
-| **Viral** | Dark mode consistency audit across all 4 themes | 0.5 day |
+| Item | Why shelved | Revisit when |
+| --- | --- | --- |
+| AIaaS gateway / SDK / usage-based billing | A different business (AI-API reselling) — conflicts with the onboarding problem | We deliberately decide to pivot |
+| Community marketplace | Ecosystem, not problem-solving | Wedge is proven with paying teams |
+| Ollama self-hosted models | Enterprise niche | Self-host demand from a real deal |
+| SSO/SAML, SCIM, SOC2, tenant isolation, secrets vault | Enterprise stage-gates, not problems | An enterprise deal requires them |
+| "Senior Dev Roast", codebase trailer, hot-take review, DevScore crowns | No problem attached | Never, unless engagement data says otherwise |
 
 ---
 
 ## 🧪 Testing & Reliability
 
-- [x] **Backend tests:** 737+ passing (pytest, async fixtures, dual memory+postgres storage)
-- [x] **Backend observability tests:** 25 (metrics registry + exposition, /health + /ready probes, security headers, JSON logging, request IDs)
-- [x] **Frontend tests:** 58+ passing (Vitest, React Testing Library)
-- [x] **SDK tests:** 6 passing (typed client against mocked gateway)
-- [x] **E2E tests:** Playwright suite (auth, dashboard, review-queue, explore, team, billing, a11y) — **65+ tests**
-- [x] **TypeScript:** strict mode, zero errors (web + sdk)
-- [x] **Backend CI:** GitHub Actions (compileall + alembic upgrade + pytest w/ service Postgres)
-- [x] **Frontend CI:** GitHub Actions (tsc + vitest + build)
-- [x] **Database migration tests:** Regression test for migration 003 ordering
-- [x] **RBAC access guard tests:** Parametrized role-based auth matrix
-- [x] **Field encryption tests:** Fernet encrypt/decrypt round-trip
-- [x] **Production env validation tests:** Fail-fast on missing env vars
-- [x] **API contract tests** — 35 tests covering response envelopes, validation errors, auth guards, OpenAPI schema, and content-type contracts
-- [x] **Load testing** — 13 tests covering endpoint latency, average latency over 20 samples, concurrent load (10 users x 5 requests), mixed endpoint stress, and error rate under 100-request stress
-- [x] **A11y audit** — 13 Playwright + axe-core tests covering WCAG 2.1 AA compliance across 10 public pages, form labels, keyboard navigation, image alt text, landmark structure, and color contrast
-
----
+- **Backend:** 737+ passing pytest (async fixtures, dual memory+postgres storage), incl. observability (25), API contract (31), load/performance (12).
+- **Frontend:** 58+ Vitest + RTL tests; strict-mode TypeScript, zero errors.
+- **SDK:** 6 tests. **E2E:** 65+ Playwright (auth, dashboard, review-queue, explore, team, billing, a11y).
+- **CI:** GitHub Actions — backend (compileall + alembic + pytest) and frontend (tsc + vitest + build).
+- **Observability:** Prometheus (10 metric families), Grafana dashboard, JSON logging, request correlation IDs.
 
 ## 📊 Key Metrics
 
 | Metric | Current |
-| -------- | --------- |
+| --- | --- |
 | Backend API endpoints | 115+ |
-| Frontend page components | 44 |
-| AI agents | 10 |
-| Database tables | 39+ |
-| Database migrations | 8 |
-| Test count (backend + frontend + sdk) | 800+ |
-| Prometheus metrics | 10 families (HTTP, LLM, cache, embeddings, WS) |
-| TypeScript SDK | `@onramp/sdk` (chat, stream, embeddings, agents, usage) |
-| API contract tests | 31 (response schemas, validation, OpenAPI) |
-| Load/performance tests | 12 (latency, concurrent, stress) |
-| Lighthouse-style perf tests | 8 (FCP, DCL, DOM, console errors) |
-| Bundle size analysis | 5 budgets (JS, CSS, HTML, max chunk) |
-| E2E Playwright tests | 65+ (auth, dashboard, review-queue, explore, team, billing, a11y) |
-| k6 load test script | 1 (public + auth endpoints) |
-| CI/CD pipelines | 3 (backend + frontend + PR review) |
-| Auth providers | 4 (email, Google OAuth, GitHub OAuth, SSO/SAML) |
-| Notification event types | 14 |
-| Integration services | 7 (Slack, GitHub, Webhooks, Jira, Linear, GitLab, Bitbucket) |
-| Design tokens (CSS vars) | 50+ |
+| Frontend pages / AI agents / DB tables | 44 / 10 / 39+ |
+| Tests (backend + frontend + sdk) | 800+ |
+| Auth providers | 4 (email, Google, GitHub, SSO) |
+| Integrations | 7 (Slack, GitHub, Webhooks, Jira, Linear, GitLab, Bitbucket) |
+| Notification event types | 15 |
 
 ---
 
-*This roadmap is a living document. Items are re-prioritized based on user feedback and business needs.*
+*This roadmap is a living document. Every item traces back to the problem statement in [PROBLEM.md](./PROBLEM.md) — if it doesn't, it's cut.*

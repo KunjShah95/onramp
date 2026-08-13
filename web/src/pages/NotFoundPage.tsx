@@ -6,6 +6,7 @@ import PageTransition from '../components/ui/page-transition'
 export default function NotFoundPage() {
   return (
     <PageTransition>
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
       <div className="min-h-screen flex px-4 items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -60,6 +61,7 @@ export default function NotFoundPage() {
             </div>
           </div>
         </motion.div>
+      </div>
       </div>
     </PageTransition>
   )

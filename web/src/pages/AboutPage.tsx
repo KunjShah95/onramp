@@ -97,18 +97,6 @@ export default function AboutPage() {
         </motion.div>
 
         {/* Team */}
-        <motion.div {...fadeUp(0.24)} className="mt-16 text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
-          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Join the team</h2>
-          <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-lg mx-auto">
-            We're looking for engineers, designers, and product thinkers who want to shape the future of developer onboarding.
-          </p>
-          <a
-            href="/careers"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold hover:opacity-90 transition-all"
-          >
-            View open positions
-          </a>
-        </motion.div>
       </div>
     </MarketingLayout>
   )

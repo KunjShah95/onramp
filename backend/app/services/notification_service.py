@@ -51,6 +51,7 @@ DEFAULT_PREFERENCES = {
         "task_stale": True,
         "task_time_overrun": True,
         "peer_review_claimed": True,
+        "dev_stuck": True,
     },
     "email": {
         "task_assigned": True,
@@ -70,6 +71,7 @@ DEFAULT_PREFERENCES = {
         "task_stale": True,
         "task_time_overrun": True,
         "peer_review_claimed": False,
+        "dev_stuck": True,
     },
     "slack": {
         "task_assigned": False,
@@ -88,6 +90,7 @@ DEFAULT_PREFERENCES = {
         "task_stale": True,
         "task_time_overrun": True,
         "peer_review_claimed": False,
+        "dev_stuck": True,
     },
 }
 
@@ -97,6 +100,17 @@ async def get_preferences(user_id: str) -> dict:
     storage = get_storage()
     prefs = await storage.get_document(PREFERENCES_COLLECTION, user_id)
     if prefs:
+        # Merge stored channels with the current defaults so newly-added
+        # notification types (e.g. dev_stuck) default ON for existing users
+        # instead of silently rendering as off/undefined in the settings UI.
+        stored_channels = prefs.get("channels", {}) or {}
+        merged_channels = {}
+        for channel, defaults in DEFAULT_PREFERENCES.items():
+            merged_channels[channel] = {
+                **defaults,
+                **(stored_channels.get(channel) or {}),
+            }
+        prefs["channels"] = merged_channels
         return prefs
     # Return defaults
     return {
@@ -157,6 +171,7 @@ NOTIFICATION_TYPE_LABELS = {
     "task_stale": "Stale Task Alert",
     "task_time_overrun": "Time Overrun Alert",
     "peer_review_claimed": "Peer Review Claimed",
+    "dev_stuck": "Dev Stuck Alert",
 }
 
 CHANNEL_LABELS = {

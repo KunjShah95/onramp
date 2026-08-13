@@ -36,6 +36,11 @@ export default defineConfig({
           if (id.includes('node_modules/d3-')) {
             return 'vendor-d3'
           }
+          // NOTE: @babylonjs/core is intentionally NOT split into per-subfolder
+          // chunks — its modules have heavy internal circular imports, and
+          // splitting them across chunks throws TDZ ReferenceErrors at runtime
+          // ("Cannot access 'X' before initialization"). Rollup's automatic
+          // co-location keeps the circular graph in one chunk.
         },
       },
     },

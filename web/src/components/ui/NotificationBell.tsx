@@ -7,6 +7,7 @@ import {
   getUnreadCount,
   markNotificationsRead,
   markAllNotificationsRead,
+  notificationLink,
   type OnrampNotification,
 } from '../../lib/api'
 
@@ -103,6 +104,15 @@ export default function NotificationBell() {
     }
   }
 
+  /** Open a notification: dev_stuck deep-links to its destination — the
+   * leader-gated Ramp view for leader alerts, Ask Codebase for the trainee's
+   * own self-serve nudge (they can't access /ramp). */
+  function handleOpen(n: OnrampNotification) {
+    const link = notificationLink(n)
+    if (link) navigate(link)
+    if (!n.read) handleMarkRead(n)
+  }
+
   function handleViewAll() {
     setOpen(false)
     navigate('/notifications')
@@ -123,6 +133,7 @@ export default function NotificationBell() {
     pr_merged: 'merge',
     milestone_reached: 'flag',
     quiz_graded: 'quiz',
+    dev_stuck: 'person_search',
   }
 
   const typeColors: Record<string, string> = {
@@ -140,6 +151,7 @@ export default function NotificationBell() {
     pr_merged: 'text-info',
     milestone_reached: 'text-accent-from',
     quiz_graded: 'text-amber-400',
+    dev_stuck: 'text-error',
   }
 
   const timeAgo = (dateStr: string): string => {
@@ -242,7 +254,7 @@ export default function NotificationBell() {
             {notifications.map((n) => (
               <button
                 key={n.notification_id}
-                onClick={() => handleMarkRead(n)}
+                onClick={() => handleOpen(n)}
                 className={cn(
                   'w-full text-left px-4 py-3 border-b border-border/50 transition-colors hover:bg-bg-tertiary/20',
                   !n.read && 'bg-accent-primary/[0.03]'

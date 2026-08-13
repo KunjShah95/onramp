@@ -7,7 +7,7 @@ import {
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
   Star, Key, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
-  Users, CaretLeft, CaretRight,
+  Users, CaretLeft, CaretRight, TrendUp,
 } from '@phosphor-icons/react'
 
 const SIDEBAR_KEY = 'onramp-sidebar-collapsed'
@@ -49,6 +49,7 @@ const hrItems = [
 
 /** Manage — reviews, quality and administration. */
 const manageItems = [
+  { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto', 'hr'] },
   { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
   { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
   { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },

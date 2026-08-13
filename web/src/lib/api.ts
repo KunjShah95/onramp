@@ -220,8 +220,10 @@ export async function askQuestion(
 }
 
 /**
- * Stream an answer token-by-token over SSE. Calls onToken for each token.
- * Returns when the stream completes ([DONE]) or aborts via the signal.
+ * Stream an answer token-by-token over SSE. Calls onToken for each token and
+ * onRoute with the authoritative served route ("provider/model") when the
+ * backend reports it after the stream. Returns when the stream completes
+ * ([DONE]) or aborts via the signal.
  */
 export async function askQuestionStream(
   indexId: string,
@@ -232,7 +234,16 @@ export async function askQuestionStream(
   /** Optional explicit model id (pinned router default, provider name, or
    * an OpenRouter "vendor/model" passthrough) — sent to /ask/query/stream
    * so the conversation can pin a model instead of auto-routing. */
-  model?: string
+  model?: string,
+  /** Optional per-request cost/quality dial ("cost"/"balanced"/"intelligence"
+   * or int 0-10) — beats the team's stored preference for this call. */
+  routingMode?: string | number | null,
+  /** Called once with the provider/model that actually served the answer. */
+  onRoute?: (served: string) => void,
+  /** Optional explicit team scope for routing settings (BYOK keys + routing
+   * dial). Membership is verified server-side; when omitted the user's
+   * primary team is used. */
+  teamId?: string | null
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
@@ -242,6 +253,8 @@ export async function askQuestionStream(
       question,
       mode,
       ...(model ? { model } : {}),
+      ...(routingMode != null ? { routing_mode: routingMode } : {}),
+      ...(teamId ? { team_id: teamId } : {}),
     }),
     signal,
   })
@@ -267,6 +280,7 @@ export async function askQuestionStream(
       try {
         const parsed = JSON.parse(payload)
         if (parsed.error) throw new Error(parsed.error)
+        if (parsed.route) onRoute?.(parsed.route)
         if (parsed.token) onToken(parsed.token)
       } catch {
         // ignore malformed keep-alive lines
@@ -314,6 +328,469 @@ export async function fetchVelocityTrends(teamId: string, weeks = 12): Promise<{
 
 export async function fetchTeamThroughput(teamId: string, days = 30): Promise<{ members: MemberThroughput[] }> {
   return get<{ members: MemberThroughput[] }>(`${API_BASE}/dora/throughput?team_id=${teamId}&days=${days}`)
+}
+
+// ─── Ramp Visibility (v1.4 wedge — Track → Quantify → Intercept) ────────
+
+export interface RampStuckSignal {
+  code: string
+  label: string
+  detail: string
+  task_id?: string | null
+  since_days?: number | null
+}
+
+export interface RampStuckEntry {
+  user_id: string
+  name: string
+  role: string
+  severity: 'high' | 'medium'
+  signals: RampStuckSignal[]
+  senior_cost_usd: number
+}
+
+export interface RampTraineeProfile {
+  user_id: string
+  name: string
+  role: string
+  joined_at: string | null
+  ramp_days: number | null
+  benchmark_days: number | null
+  vs_benchmark_days: number | null
+  first_pr_at?: string | null
+  days_to_first_pr?: number | null
+  /** Where the first-merged-PR timestamp came from: GitHub milestone webhook
+   * (linked account) vs the merge stamp on the trainee's own task. */
+  first_pr_source?: 'github' | 'task' | null
+  tasks_total: number
+  tasks_completed: number
+  completion_pct: number
+  review_cycles: number
+  tasks_needing_changes: number
+  questions_asked: number
+  senior_hours: number
+  senior_cost_usd: number
+  stuck: RampStuckSignal[]
+  stuck_severity: 'none' | 'medium' | 'high'
+}
+
+export interface RampStuckList {
+  team_id: string
+  stuck: RampStuckEntry[]
+  count: number
+  generated_at: string
+}
+
+export interface RampSummary {
+  team_id: string
+  generated_at: string
+  benchmark_days: number | null
+  /** Median days-to-first-merged-PR across the team (None when no data yet). */
+  first_pr_benchmark_days: number | null
+  trainee_count: number
+  ramped_count: number
+  profiles: RampTraineeProfile[]
+  totals: { senior_hours: number; senior_cost_usd: number }
+  /** Phase 0: effective cost assumptions, measured signals, uncertainty band. */
+  cost_model?: {
+    settings: CostModelSettings
+    source: 'team' | 'platform'
+    measured: CostModelMeasured
+    sensitivity: CostModelSensitivity
+  }
+  stuck: RampStuckList
+}
+
+export interface RampCheckResult {
+  alerts_fired: number
+  skipped: number
+  stuck_count: number
+}
+
+/** Track + Quantify: per-trainee ramp profiles, team benchmark, cost, stuck. */
+export async function fetchRampSummary(teamId?: string): Promise<RampSummary> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<RampSummary>(`${API_BASE}/ramp/summary${params}`)
+}
+
+// ─── Review Ops (v1.5 — load balancing + consistency) ─────────────────────
+
+export interface ReviewerLoadEntry {
+  user_id: string
+  name: string
+  role: string
+  pending: number
+  in_review: number
+  reviews_30d: number
+  oldest_wait_hours: number | null
+  load_score: number
+}
+
+export interface ReviewerLoadResponse {
+  team_id: string
+  reviewers: ReviewerLoadEntry[]
+  generated_at: string
+}
+
+export interface ReviewerSuggestion {
+  user_id: string
+  name: string
+  role: string
+  pending: number
+  in_review: number
+  load_score: number
+  rework_pct: number | null
+}
+
+export interface ReviewerSuggestionResponse {
+  team_id: string
+  task_id: string | null
+  suggestion: ReviewerSuggestion | null
+  alternatives: ReviewerSuggestion[]
+  generated_at: string
+}
+
+export interface ReviewerConsistencyEntry {
+  user_id: string
+  name: string
+  role: string
+  reviews: number
+  approved: number
+  changes_requested: number
+  product_routed: number
+  rework_rate_pct: number | null
+  avg_turnaround_hours: number | null
+  turnaround_stddev_hours: number
+  score: number | null
+  confidence: 'ok' | 'insufficient'
+}
+
+export interface ConsistencyResponse {
+  team_id: string
+  reviewers: ReviewerConsistencyEntry[]
+  generated_at: string
+}
+
+/** Per-reviewer load board: pending, in-review, recent volume, load score. */
+export async function fetchReviewerLoad(teamId?: string): Promise<ReviewerLoadResponse> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<ReviewerLoadResponse>(`${API_BASE}/review-ops/load${params}`)
+}
+
+/** Least-loaded reviewer for the next review (optionally for a specific task). */
+export async function suggestReviewer(
+  teamId?: string,
+  taskId?: string
+): Promise<ReviewerSuggestionResponse> {
+  const params = new URLSearchParams()
+  if (teamId) params.set('team_id', teamId)
+  if (taskId) params.set('task_id', taskId)
+  const qs = params.toString()
+  return get<ReviewerSuggestionResponse>(`${API_BASE}/review-ops/suggest${qs ? '?' + qs : ''}`)
+}
+
+/** Per-reviewer consistency readout: turnaround, rework, 0-100 score. */
+export async function fetchConsistencyScores(teamId?: string): Promise<ConsistencyResponse> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<ConsistencyResponse>(`${API_BASE}/review-ops/consistency${params}`)
+}
+
+/** Current stuck-dev list (no notifications fired). */
+export async function fetchRampStuck(teamId?: string): Promise<RampStuckList> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<RampStuckList>(`${API_BASE}/ramp/stuck${params}`)
+}
+
+export interface RampHealthComponent {
+  score: number
+  weight: number
+  detail: string
+}
+
+export interface RampHealth {
+  team_id: string
+  health_score: number | null
+  grade: 'healthy' | 'at_risk' | 'critical' | 'no_data'
+  trainee_count: number
+  stuck_count: number
+  at_risk_count: number
+  components: Record<string, RampHealthComponent>
+  generated_at: string
+}
+
+/** Org-level ramp health score (0-100) + component breakdown (v1.6). */
+export async function fetchRampHealth(teamId?: string): Promise<RampHealth> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<RampHealth>(`${API_BASE}/ramp/health${params}`)
+}
+
+/** Intercept: run the stuck check and fire deduped alerts (leader roles). */
+export async function runRampCheck(teamId?: string): Promise<RampCheckResult> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return request<RampCheckResult>(`${API_BASE}/ramp/check${params}`, {})
+}
+
+export interface CostModelSettings {
+  senior_hourly_rate_usd: number
+  review_hours_per_cycle: number
+  stalled_weekly_hours: number
+  /** Benchmark price per workspace per month (real Team pricing: $99/mo, unlimited engineers). */
+  onramp_price_usd_per_month: number
+}
+
+export interface CostModelMeasured {
+  review_cycles: number
+  avg_cycle_elapsed_hours: number | null
+  stall_weeks: number
+}
+
+export interface CostModelSensitivity {
+  cost_low: number
+  cost_current: number
+  cost_high: number
+}
+
+export interface CostModelResponse {
+  team_id: string
+  settings: CostModelSettings
+  source: 'team' | 'platform'
+  measured: CostModelMeasured
+  sensitivity: CostModelSensitivity
+  totals: { senior_hours: number; senior_cost_usd: number }
+}
+
+/** Phase 0 pressure-test surface: effective assumptions + measured signals + uncertainty band. */
+export async function fetchCostModel(teamId?: string): Promise<CostModelResponse> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<CostModelResponse>(`${API_BASE}/ramp/cost-model${params}`)
+}
+
+/** Calibrate the team's cost model (leader roles — partial overrides). */
+export async function updateCostModel(
+  overrides: Partial<CostModelSettings>,
+  teamId?: string,
+): Promise<CostModelResponse> {
+  const params = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return request<CostModelResponse>(`${API_BASE}/ramp/cost-model${params}`, overrides, 'PUT')
+}
+
+export interface RoiBenchmark {
+  team_id: string
+  stack: string
+  team_stack: string
+  stacks_present: string[]
+  repo_count: number
+  trainee_count: number
+  task_count: number
+  ramp_window_days: number | null
+  ramp_window_months: number
+  senior_hours: number
+  senior_cost_usd: number
+  onramp_price_usd_per_month: number
+  /** Where the Onramp price came from: 'subscription' (live billing) · 'team' (override) · 'platform' (default). */
+  price_source?: 'subscription' | 'team' | 'platform'
+  /** The live subscription's original INR price (null unless a subscription won). */
+  onramp_price_inr?: number | null
+  onramp_cost_usd: number
+  roi_multiple: number
+  settings_source: string
+  generated_at: string
+}
+
+export interface RampBenchmarkResponse {
+  team_id: string
+  stack: string
+  current: RoiBenchmark
+  history: RoiBenchmark[]
+}
+
+/** The cost story, tracked: ramp senior-time cost vs Onramp (optionally React-scoped). */
+export async function fetchRampBenchmark(stack?: string): Promise<RampBenchmarkResponse> {
+  const params = stack ? `?stack=${encodeURIComponent(stack)}` : ''
+  return get<RampBenchmarkResponse>(`${API_BASE}/ramp/benchmark${params}`)
+}
+
+/** Record a point-in-time benchmark snapshot (leader roles). */
+export async function recordRampBenchmarkSnapshot(stack?: string): Promise<{ team_id: string; snapshot: RoiBenchmark }> {
+  const params = stack ? `?stack=${encodeURIComponent(stack)}` : ''
+  return request<{ team_id: string; snapshot: RoiBenchmark }>(
+    `${API_BASE}/ramp/benchmark/snapshot${params}`,
+    {},
+  )
+}
+
+export interface AgentCostRow {
+  slug: string
+  name: string
+  plan: string
+  monthly_usd_per_dev: number
+  team_monthly_usd: number
+  /** Positive = Onramp cheaper, negative = the agent is cheaper. */
+  vs_onramp_usd: number
+  /** Team agent cost ÷ Onramp's flat price (1.0 = parity). */
+  onramp_equivalents: number
+}
+
+export interface AgentBenchmark {
+  team_id: string
+  dev_count: number
+  onramp_monthly_usd: number
+  /** Where the Onramp price came from: 'subscription' (live billing) · 'team' (override) · 'platform' (default). */
+  price_source?: 'subscription' | 'team' | 'platform'
+  /** The live subscription's original INR price (null unless a subscription won). */
+  onramp_price_inr?: number | null
+  settings_source: 'team' | 'platform'
+  team_stack: string
+  stacks_present: string[]
+  repo_count: number
+  agents: AgentCostRow[]
+  generated_at: string
+}
+
+export interface AgentBenchmarkSnapshot {
+  team_id: string
+  recorded_by: string
+  dev_count: number
+  onramp_monthly_usd: number
+  price_source?: 'subscription' | 'team' | 'platform'
+  onramp_price_inr?: number | null
+  team_stack: string
+  agents: AgentCostRow[]
+  generated_at: string
+}
+
+export interface AgentBenchmarkResponse {
+  team_id: string
+  current: AgentBenchmark
+  history: AgentBenchmarkSnapshot[]
+}
+
+/** Terminal coding agents vs Onramp's flat workspace price (React-labelled). */
+export async function fetchAgentBenchmark(): Promise<AgentBenchmarkResponse> {
+  return get<AgentBenchmarkResponse>(`${API_BASE}/ramp/agent-benchmark`)
+}
+
+// ─── Token-efficiency benchmark (agents re-read the repo; Onramp refreshes the graph) ───
+
+export interface EfficiencyBenchmark {
+  team_id: string
+  team_stack: string
+  /** The team's actual developer count (non-HR members). */
+  dev_count: number
+  /** The headcount the scenario was computed at (== dev_count unless simulated). */
+  simulated_dev_count: number
+  assumptions: {
+    codebase_tokens: number
+    /** Products in the scenario — each is its own codebase of codebase_tokens. */
+    product_count: number
+    total_codebase_tokens: number
+    changes_per_month: number
+    change_file_ratio: number
+    agent_input_per_mtok: number
+    agent_output_per_mtok: number
+    /** Each dev's agent re-reads the codebase into its own context (default true). */
+    per_dev_token_burn: boolean
+  }
+  codebase_size_note: string
+  agent: {
+    name: string
+    plan: string
+    /** One dev's re-read of the codebase (250K at the default). */
+    tokens_per_dev_per_change: number
+    /** The team's re-read per change (= per-dev × dev count when per_dev_token_burn). */
+    tokens_per_change: number
+    monthly_tokens_burned: number
+    token_cost_usd: number
+    subscription_monthly_usd: number
+    monthly_usd: number
+  }
+  onramp: {
+    measured: {
+      requests_30d: number
+      tokens_30d: number
+      cost_usd_30d: number
+      free_pct: number
+      cost_avoided_usd_30d: number
+    }
+    graph_refresh: {
+      tokens_per_change: number
+      tokens_monthly: number
+      cost_usd_monthly: number
+    }
+    monthly_tokens: number
+    monthly_usd: number
+  }
+  token_ratio: number
+  cost_ratio: number
+  monthly_savings_usd: number
+  caveat: string
+  generated_at: string
+}
+
+export interface HeadcountScenarioRecord {
+  team_id: string
+  recorded_by: string
+  dev_count: number
+  simulated_dev_count: number
+  per_dev_token_burn?: boolean
+  product_count?: number
+  onramp_monthly_usd: number
+  agent_monthly_usd: number
+  agent_subscription_monthly_usd: number
+  agent_token_cost_monthly_usd: number
+  monthly_savings_usd: number
+  cost_ratio: number
+  token_ratio: number
+  team_stack: string
+  generated_at: string
+}
+
+/** Token + dollar efficiency: coding agents vs Onramp's graph refresh + free-first routing. */
+export async function fetchEfficiencyBenchmark(opts?: {
+  codebaseTokens?: number
+  changesPerMonth?: number
+  /** Simulate hiring — agent costs at this developer count. */
+  devCount?: number
+  /** Simulate a multi-product company — each product is its own codebase. */
+  productCount?: number
+  /** False = shared/reused context burned once per change instead of per dev. */
+  perDevTokenBurn?: boolean
+}): Promise<EfficiencyBenchmark> {
+  const params = new URLSearchParams()
+  if (opts?.codebaseTokens) params.set('codebase_tokens', String(opts.codebaseTokens))
+  if (opts?.changesPerMonth) params.set('changes_per_month', String(opts.changesPerMonth))
+  if (opts?.devCount) params.set('dev_count', String(opts.devCount))
+  if (opts?.productCount) params.set('product_count', String(opts.productCount))
+  if (opts?.perDevTokenBurn != null) params.set('per_dev_token_burn', String(opts.perDevTokenBurn))
+  const qs = params.toString()
+  return get<EfficiencyBenchmark>(`${API_BASE}/ramp/efficiency-benchmark${qs ? '?' + qs : ''}`)
+}
+
+/** Record a "what if we hired N people across M products" scenario (leader roles). */
+export async function recordHeadcountScenario(
+  devCount: number,
+  perDevTokenBurn = true,
+  productCount = 1,
+): Promise<{ team_id: string; record: HeadcountScenarioRecord }> {
+  return request<{ team_id: string; record: HeadcountScenarioRecord }>(
+    `${API_BASE}/ramp/efficiency-benchmark/headcount?dev_count=${devCount}&per_dev_token_burn=${perDevTokenBurn}&product_count=${productCount}`,
+    {},
+  )
+}
+
+/** Recorded headcount scenarios, newest first. */
+export async function fetchHeadcountScenarioHistory(): Promise<{ team_id: string; history: HeadcountScenarioRecord[] }> {
+  return get<{ team_id: string; history: HeadcountScenarioRecord[] }>(
+    `${API_BASE}/ramp/efficiency-benchmark/headcount/history`,
+  )
+}
+
+/** Record a point-in-time agent-vs-Onramp snapshot (leader roles). */
+export async function recordAgentBenchmarkSnapshot(): Promise<{ team_id: string; snapshot: AgentBenchmarkSnapshot }> {
+  return request<{ team_id: string; snapshot: AgentBenchmarkSnapshot }>(
+    `${API_BASE}/ramp/agent-benchmark/snapshot`,
+    {},
+  )
 }
 
 // ─── Dashboard endpoints ──────────────────────────────────────────────────
@@ -1240,7 +1717,42 @@ export interface ModelCatalog {
  * defensively when the catalog is unavailable.
  */
 export async function fetchModelCatalog(): Promise<ModelCatalog> {
-  return get<ModelCatalog>(`${API_BASE}/ai/models`)
+  return get<ModelCatalog>(`${API_BASE}/modelling/models`)
+}
+
+// ─── Routing Mode (Cost / Balanced / Intelligence) ────────────────────────
+
+export interface RoutingModeInfo {
+  org_name: string
+  routing_mode: number
+  preset: 'cost' | 'balanced' | 'intelligence' | null
+}
+
+/**
+ * The team's cost/quality routing dial (0-10 int; 2/5/8 map to the
+ * Cost / Balanced / Intelligence presets). Biases how readily the model
+ * router reaches for a paid provider on the team's requests.
+ */
+export async function fetchRoutingMode(orgName: string): Promise<RoutingModeInfo> {
+  return get<RoutingModeInfo>(
+    `${API_BASE}/ai/routing-mode/${encodeURIComponent(orgName)}`
+  )
+}
+
+/**
+ * Set the team's cost/quality routing dial — accepts a preset name
+ * ("cost" / "balanced" / "intelligence") or an int 0-10. Takes effect on
+ * the team's next request (short TTL cache, no restart).
+ */
+export async function setRoutingMode(
+  orgName: string,
+  routingMode: string | number
+): Promise<{ team_id: string; routing_mode: number }> {
+  return request<{ team_id: string; routing_mode: number }>(
+    `${API_BASE}/ai/routing-mode/${encodeURIComponent(orgName)}`,
+    { routing_mode: routingMode },
+    'PUT'
+  )
 }
 
 // ─── Usage ────────────────────────────────────────────────────────────────
@@ -1573,6 +2085,51 @@ export interface CohortComparisonResponse {
 
 export async function fetchCohortComparison(teamId: string): Promise<CohortComparisonResponse> {
   return get<CohortComparisonResponse>(`${API_BASE}/hr/cohort-comparison/${teamId}`)
+}
+
+export interface CohortRetentionPoint {
+  day: number
+  retained_pct: number
+  active_pct: number
+}
+
+export interface CohortRetentionEntry {
+  cohort: string
+  label: string
+  member_count: number
+  series: CohortRetentionPoint[]
+}
+
+export interface CohortRetentionResponse {
+  cohorts: CohortRetentionEntry[]
+  team_id: string
+  generated_at: string
+}
+
+export async function fetchCohortRetention(teamId: string): Promise<CohortRetentionResponse> {
+  return get<CohortRetentionResponse>(`${API_BASE}/hr/cohort-retention/${teamId}`)
+}
+
+export interface HeadcountFlowEntry {
+  month: string
+  label: string
+  joined: number
+  deactivated: number
+  net: number
+  cohort_size: number
+  headcount: number
+}
+
+export interface HeadcountFlowResponse {
+  months: HeadcountFlowEntry[]
+  team_id: string
+  current_headcount: number
+  total_joined: number
+  generated_at: string
+}
+
+export async function fetchHeadcountFlow(teamId: string): Promise<HeadcountFlowResponse> {
+  return get<HeadcountFlowResponse>(`${API_BASE}/hr/headcount-flow/${teamId}`)
 }
 
 // ─── Plan Roadmap (milestone DAG) ────────────────────────────
@@ -2613,6 +3170,21 @@ export interface OnrampNotification {
   read: boolean
   read_at: string | null
   created_at: string
+}
+
+/**
+ * Deep-link destination for a notification click, or null for types without
+ * one. `dev_stuck` splits by recipient: the leader's alert carries the
+ * trainee's `user_id` + `signals` in metadata (→ the leader-gated /ramp
+ * intervention view), while the trainee's own self-serve nudge carries
+ * neither (→ Ask Codebase, which the trainee can actually access).
+ */
+export function notificationLink(n: OnrampNotification): string | null {
+  if (n.type === 'dev_stuck') {
+    const md = n.metadata ?? {}
+    return md.user_id || Array.isArray(md.signals) ? '/ramp' : '/ask'
+  }
+  return null
 }
 
 export interface NotificationsResponse {

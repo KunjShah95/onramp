@@ -737,10 +737,10 @@
     --secondary-foreground: 0 0% 100%;
     --muted: 217 33% 20%;
     --muted-foreground: 0 0% 68%;
-    --accent: 160 84% 39%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 187 100% 50%;
+    --accent-foreground: 217 39% 11%;
     --border: 217 33% 24%;
-    --ring: 160 84% 39%;
+    --ring: 187 100% 50%;
     --card: 217 33% 17%;
     --card-foreground: 0 0% 100%;
     --popover: 217 39% 11%;
@@ -810,6 +810,92 @@
   .landing-premium ::selection {
     background: rgba(0, 217, 255, 0.28);
     color: #ffffff;
+  }
+
+  /* ── Light premium surface (landing) ─────────────────────────
+     The landing page pins a clean light identity — Stripe/Notion energy:
+     white & slate-50 surfaces, slate ink, cyan-600 accent, emerald success.
+     Declared after .landing-premium so it wins the cascade when both
+     classes are present (LandingPage renders `landing-premium landing-light`). */
+  .landing-light {
+    --room: #FFFFFF;
+    --base: #F8FAFC;
+    --panel: #FFFFFF;
+    --panel-raised: #FFFFFF;
+    --well: #F1F5F9;
+    --inset: #EEF2F7;
+    --ink: #0F172A;
+    --ink-secondary: #475569;
+    --ink-tertiary: #64748B;
+    --ink-muted: #94A3B8;
+    --ink-disabled: #CBD5E1;
+    --go: #059669;
+    --go-lit: #10B981;
+    --mission: #0891B2;
+    --mission-lit: #06B6D4;
+    --caution: #D97706;
+    --caution-lit: #F59E0B;
+    --abort: #DC2626;
+    --abort-lit: #F87171;
+    --seam: rgba(15, 23, 42, 0.08);
+    --seam-strong: rgba(15, 23, 42, 0.14);
+    --bg-void: 248 250 252;
+    --bg-primary: 255 255 255;
+    --bg-secondary: 241 245 249;
+    --bg-tertiary: 226 232 240;
+    --bg-elevated: 255 255 255;
+    --text-primary: 15 23 42;
+    --text-secondary: 71 85 105;
+    --text-tertiary: 100 116 139;
+    --text-muted: 148 163 184;
+    --text-disabled: 203 213 225;
+    --border-rgb: 148 163 184;
+    --accent-from: 8 145 178;
+    --accent-via: 6 182 212;
+    --accent-to: 5 150 105;
+    --accent-muted: 8 145 178;
+    --accent-glow: 8 145 178;
+    --accent-primary: 8 145 178;
+    --accent-primary-hover: 14 116 144;
+    --success: 5 150 105;
+    --success-lit: 16 185 129;
+    --warning: 217 119 6;
+    --warning-lit: 245 158 11;
+    --error: 220 38 38;
+    --error-lit: 248 113 113;
+    --info: 8 145 178;
+    --info-lit: 6 182 212;
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --primary: 188 86% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 188 86% 43%;
+    --accent-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --ring: 188 86% 43%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+  }
+
+  .landing-light ::selection {
+    background: rgba(8, 145, 178, 0.18);
+    color: #0F172A;
+  }
+
+  /* ── bg-base — section band utility ────────────────────────
+     `base` is a theme variable but not a Tailwind color token
+     (adding one would collide with the `text-base` font-size
+     utility), so the section-band class is wired straight to the
+     variable. Every theme defines --base, so this honors the
+     theme in light and dark alike. */
+  .bg-base {
+    background-color: var(--base);
   }
 
   .landing-premium h1,

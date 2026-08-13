@@ -24,7 +24,7 @@ export default function PhilosophyHero() {
       className="relative max-w-5xl mx-auto px-6 py-12 mb-20"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Terminal Panel — Old Way */}
+        {/* Coding Agent Panel — the token burn */}
         <motion.div variants={panelVariants} className="rounded-card border border-abort/20 bg-abort/5 p-6 font-mono text-[13px] overflow-hidden">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-abort/10">
             <div className="flex gap-1.5">
@@ -32,38 +32,35 @@ export default function PhilosophyHero() {
               <div className="w-2 h-2 rounded-full bg-caution/60" />
               <div className="w-2 h-2 rounded-full bg-go/60" />
             </div>
-            <span className="text-abort/70 text-[11px] ml-2">terminal</span>
+            <span className="text-abort/70 text-[11px] ml-2">coding agent</span>
           </div>
           <div className="space-y-2">
             <motion.div variants={lineVariants} className="text-ink-muted">
-              $ git clone &lt;repo&gt;
+              $ codebase changed — re-reading repo…
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-muted">
-              $ cd project
+              $ read 250K tokens into context
+            </motion.div>
+            <motion.div variants={lineVariants} className="text-ink-secondary text-[12px]">
+              → edits src/components/Button.tsx
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-muted">
-              $ npm install
-            </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
-              $ ./scripts/setup.sh
+              $ npm test
             </motion.div>
             <motion.div variants={lineVariants} className="text-abort">
-              Error: setup.sh not found
+              Error: 3 tests failed
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-muted">
-              $ ls scripts/
-            </motion.div>
-            <motion.div variants={lineVariants} className="text-abort">
-              setup.rs  build.sh  deploy.py
+              $ re-reading repo again… (250K tokens)
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-muted">
-              $ python deploy.py
+              $ session ended — context gone
+            </motion.div>
+            <motion.div variants={lineVariants} className="text-ink-muted">
+              $ tomorrow: re-read everything again
             </motion.div>
             <motion.div variants={lineVariants} className="text-abort">
-              ModuleNotFoundError: No module named 'boto3'
-            </motion.div>
-            <motion.div variants={lineVariants} className="text-abort">
-              → Still stuck after 2 hours
+              → tokens burned every single time
             </motion.div>
           </div>
         </motion.div>
@@ -83,13 +80,13 @@ export default function PhilosophyHero() {
               Ask: "How do I set up this repo?"
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
-              <span className="text-go">→</span> Parsing 47 files in ./scripts/
+              <span className="text-go">→</span> Indexed already — reading the graph
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
               <span className="text-go">→</span> Found 3 entry points: setup.rs, build.sh, deploy.py
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
-              <span className="text-go">→</span> Analyzed dependencies in Cargo.toml, package.json, requirements.txt
+              <span className="text-go">→</span> Codebase changed? Re-embed the diff, update the graph
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
               <span className="text-go">→</span> Found module gap: deploy.py needs boto3
@@ -98,7 +95,7 @@ export default function PhilosophyHero() {
               Start with: npm install && python -m pip install boto3
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px]">
-              <span className="text-go">→</span> First commit in 10 minutes
+              <span className="text-go">→</span> Graph persists — no re-read, no token burn
             </motion.div>
           </div>
         </motion.div>

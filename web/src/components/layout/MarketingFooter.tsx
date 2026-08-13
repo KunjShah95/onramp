@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
+import { TreeStructure } from '@phosphor-icons/react'
 
 const footerColumns = [
   {
@@ -7,6 +8,7 @@ const footerColumns = [
       { label: 'Pricing', href: '/pricing' },
       { label: 'Changelog', href: '/changelog' },
       { label: 'Documentation', href: '/docs' },
+      { label: 'Why Onramp', href: '/why-onramp' },
     ],
   },
   {
@@ -14,7 +16,6 @@ const footerColumns = [
     links: [
       { label: 'About', href: '/about' },
       { label: 'Blog', href: '/blog' },
-      { label: 'Careers', href: '/careers' },
       { label: 'Contact', href: '/contact' },
     ],
   },
@@ -23,6 +24,8 @@ const footerColumns = [
     links: [
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
+      { label: 'Security', href: '/security' },
+      { label: 'DPA', href: '/dpa' },
     ],
   },
   {
@@ -36,37 +39,51 @@ const footerColumns = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      <div className="max-w-6xl mx-auto px-6 md:px-12 py-14">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
-          {/* Brand column */}
-          <div className="col-span-2 md:col-span-1">
-            <span className="inline-flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-tile bg-accent-from shadow-lit">
-                <span className="text-[10px] font-bold text-white font-display tracking-tight">OR</span>
+    <footer className="relative overflow-hidden border-t border-white/5 bg-room">
+      {/* ambient glows */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 right-[14%] h-[280px] w-[460px] rounded-full bg-accent-primary/[0.08] blur-[110px]" />
+        <div className="absolute -bottom-28 left-[8%] h-[260px] w-[420px] rounded-full bg-go/[0.06] blur-[110px]" />
+      </div>
+      {/* gradient seam on the top edge */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent" />
+      {/* dot grid faded toward the bottom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(148,163,184,0.10) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+          maskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
+        }}
+      />
+
+      <div className="relative mx-auto max-w-[1280px] px-6 py-16 lg:px-10">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          {/* brand */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary to-go text-[#0F1419] shadow-[0_0_24px_rgba(0,217,255,0.35)] ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-105">
+                <TreeStructure size={17} weight="bold" />
               </span>
-              <span className="text-lg font-display font-bold tracking-tight text-[hsl(var(--foreground))]">
-                Onramp
-              </span>
-            </span>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 leading-relaxed max-w-[200px] font-body">
-              AI-powered developer onboarding for modern engineering teams.
+              <span className="font-display text-base font-bold tracking-tight text-white">ONRAMP</span>
+            </Link>
+            <p className="mt-4 max-w-xs text-[13px] leading-[1.6] text-ink-tertiary">
+              AI-powered developer onboarding for modern engineering teams. The live architecture
+              map for your repo — new hires stop asking seniors.
             </p>
           </div>
 
-          {/* Link columns */}
+          {/* link columns */}
           {footerColumns.map((col) => (
             <div key={col.title}>
-              <h3 className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-4 font-body">
-                {col.title}
-              </h3>
-              <ul className="flex flex-col gap-2.5">
+              <div className="font-code text-[10px] uppercase tracking-[0.16em] text-ink-tertiary">{col.title}</div>
+              <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      to={link.href}
-                      className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-body"
-                    >
+                    <Link to={link.href} className="group relative inline-flex items-center text-[13px] text-ink-secondary transition-colors hover:text-white">
+                      <span aria-hidden className="absolute -left-3 h-px w-0 bg-gradient-to-r from-accent-primary to-go transition-all duration-300 group-hover:w-2" />
                       {link.label}
                     </Link>
                   </li>
@@ -75,13 +92,11 @@ export default function MarketingFooter() {
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Copyright */}
-      <div className="border-t border-[hsl(var(--border))] py-5">
-        <p className="text-center text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
-          &copy; {new Date().getFullYear()} Onramp Inc. All rights reserved.
-        </p>
+        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-center">
+          <span className="font-code text-[11px] text-ink-tertiary">© {new Date().getFullYear()} Onramp, Inc. All rights reserved.</span>
+          <span className="font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs</span>
+        </div>
       </div>
     </footer>
   )

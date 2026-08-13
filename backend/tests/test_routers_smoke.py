@@ -104,3 +104,9 @@ class TestAuthRequired:
     def test_integrations_requires_auth(self, client):
         resp = client.get("/api/v1/integrations")
         assert resp.status_code == 401
+
+    def test_ramp_requires_auth(self, client):
+        resp = client.get("/api/v1/ramp/summary")
+        assert resp.status_code == 401
+        resp = client.post("/api/v1/ramp/check")
+        assert resp.status_code == 401

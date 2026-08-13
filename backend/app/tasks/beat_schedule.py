@@ -68,6 +68,16 @@ BEAT_SCHEDULE = {
         "options": {"queue": "notification-tasks"},
     },
 
+    # ── Stuck-Dev Alerts (Ramp wedge) ─────────────────────────────────────────
+    # Detect new devs who are stuck (stalled task / review loop / review
+    # timeout / inactivity) and alert team leaders. Deduped ≤1/day per dev.
+    # Runs every 6 hours (30 min offset from the stale-task sweep).
+    "check-stuck-dev-alerts": {
+        "task": "app.tasks.notification_tasks.check_stuck_devs",
+        "schedule": crontab(hour="*/6", minute=30),
+        "options": {"queue": "notification-tasks"},
+    },
+
     # ── Repo Index Refresh ─────────────────────────────────────────────────────
     # Pre-build / auto-refresh repository context indexes (parse-once stage).
     # Runs nightly at 03:00 UTC so indexes are warm before the 24h Redis TTL

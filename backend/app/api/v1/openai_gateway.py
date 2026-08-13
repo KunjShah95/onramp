@@ -34,7 +34,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.v1.auth import get_user_or_api_key
-from app.llm import RoutingMode
+from app.api.v1 import llm_route
 from app.services.moderation import check_moderation, is_enabled as moderation_enabled
 from app.services.quota import charge_wallet, check_quota
 from app.services.usage_tracker import UsageTracker
@@ -188,79 +188,36 @@ async def _team_provider_keys(auth: dict) -> Optional[Dict[str, str]]:
     """Decrypted BYOK map for the caller's org (or None for no-org callers).
 
     Only API-key callers carry an ``org_name`` scope (JWT sessions don't), so
-    platform env keys are used for everything else. Best-effort: a storage
-    failure falls back to platform keys instead of failing the request.
+    platform env keys are used for everything else. Shared implementation:
+    :func:`app.api.v1.llm_route.team_provider_keys`.
     """
-    org = auth.get("org_name")
-    if not org:
-        return None
-    try:
-        from app.services.team_provider_keys import get_team_keys_map
-
-        return await get_team_keys_map(org)
-    except Exception:
-        logger.exception("Failed to load provider keys for %s", org)
-        return None
+    return await llm_route.team_provider_keys(auth.get("org_name"))
 
 
 async def _team_key_pools(auth: dict) -> Optional[Dict[str, List[str]]]:
     """Decrypted multi-key pools ``{provider: [key, ...]}`` for the caller's
-    org (or None when no pool keys exist). Only API-key callers carry an
-    ``org_name`` scope. Best-effort: a storage failure returns None so the
-    request still routes on the primary keys.
+    org (or None when no pool keys exist). Shared implementation:
+    :func:`app.api.v1.llm_route.team_key_pools`.
     """
-    org = auth.get("org_name")
-    if not org:
-        return None
-    try:
-        from app.services.team_provider_keys import get_team_key_pools
-
-        pools = await get_team_key_pools(org)
-        return pools or None
-    except Exception:
-        logger.exception("Failed to load key pools for %s", org)
-        return None
+    return await llm_route.team_key_pools(auth.get("org_name"))
 
 
 async def _team_key_pool_ids(auth: dict) -> Optional[Dict[str, List[str]]]:
     """Stable ``{provider: [key_id, ...]}`` map for the caller's org — aligned
     index-for-index with :func:`_team_key_pools`, so the router can record
-    which exact key served a call in the route metadata. None when the team
-    has no pool keys (or on storage failure — attribution then keeps only the
-    positional ``key_index``). Only API-key callers carry an ``org_name``
-    scope.
+    which exact key served a call in the route metadata. Shared
+    implementation: :func:`app.api.v1.llm_route.team_key_pool_ids`.
     """
-    org = auth.get("org_name")
-    if not org:
-        return None
-    try:
-        from app.services.team_provider_keys import get_team_key_pool_ids
-
-        ids = await get_team_key_pool_ids(org)
-        return ids or None
-    except Exception:
-        logger.exception("Failed to load key pool ids for %s", org)
-        return None
+    return await llm_route.team_key_pool_ids(auth.get("org_name"))
 
 
 async def _resolve_routing_mode(auth: dict, requested: Optional[Union[int, str]]) -> Union[int, str]:
     """Effective routing_mode for this call: an explicit per-request value
-    wins; otherwise fall back to the caller's org-level default (Developer
-    Portal setting), then RoutingMode.BALANCED. Best-effort: a storage
-    failure falls back to BALANCED instead of failing the request.
+    wins; otherwise the caller's org-level default (Developer Portal
+    setting), then RoutingMode.BALANCED. Shared implementation:
+    :func:`app.api.v1.llm_route.resolve_team_routing_mode`.
     """
-    if requested is not None:
-        return requested
-    org = auth.get("org_name")
-    if not org:
-        return RoutingMode.BALANCED
-    try:
-        from app.services.team_routing_settings import get_team_routing_mode
-
-        return await get_team_routing_mode(org)
-    except Exception:
-        logger.exception("Failed to load routing mode for %s", org)
-        return RoutingMode.BALANCED
+    return await llm_route.resolve_team_routing_mode(auth.get("org_name"), requested)
 
 
 def _route_header_for(

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
-import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
+import { ArrowRight, ArrowUpRight, TreeStructure } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import InputField from '../components/ui/first-principles/InputField'
 import { cn } from '../lib/utils'
@@ -72,6 +72,7 @@ export default function Login() {
 
   return (
     <PageTransition>
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
       <AuthNavbar />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
         {/* Premium background accents */}
@@ -90,10 +91,10 @@ export default function Login() {
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-go/10 rounded-full blur-3xl pointer-events-none" />
 
             <Link to="/" className="flex items-center gap-2.5 group relative z-10">
-              <div className="w-9 h-9 rounded-[3px] bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center">
-                <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
+              <div className="w-9 h-9 rounded-[3px] bg-cyan-400/90 shadow-lg flex items-center justify-center text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
+                <TreeStructure size={16} weight="bold" />
               </div>
-              <span className="font-display text-sm font-bold text-[hsl(var(--foreground))] tracking-tight group-hover:text-go transition-colors">Onramp</span>
+              <span className="font-display text-sm font-bold text-white tracking-tight">ONRAMP</span>
             </Link>
 
             <div className="space-y-6 relative z-10">
@@ -123,10 +124,10 @@ export default function Login() {
           {/* RIGHT — form panel */}
           <main className="p-8 sm:p-10 flex flex-col justify-center min-h-[520px] relative z-10">
             <Link to="/" className="flex lg:hidden items-center gap-2.5 mb-8">
-              <div className="w-9 h-9 rounded-[3px] bg-gradient-to-br from-go to-go-lit shadow-lg flex items-center justify-center">
-                <span className="text-[11px] font-display font-bold text-white tracking-tight">OR</span>
+              <div className="w-9 h-9 rounded-[3px] bg-cyan-400/90 shadow-lg flex items-center justify-center text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
+                <TreeStructure size={16} weight="bold" />
               </div>
-              <span className="font-display text-sm font-bold text-[hsl(var(--foreground))] tracking-tight">Onramp</span>
+              <span className="font-display text-sm font-bold text-white tracking-tight">ONRAMP</span>
             </Link>
 
             <div className="mb-8">
@@ -236,6 +237,7 @@ export default function Login() {
             </div>
           </main>
         </motion.div>
+      </div>
       </div>
     </PageTransition>
   )

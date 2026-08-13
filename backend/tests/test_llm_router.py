@@ -235,6 +235,53 @@ class TestStreaming:
             async for _ in router.chat_stream("Hi"):
                 pass
 
+    async def test_chat_stream_rotates_across_team_key_pool(self, router, monkeypatch):
+        """chat_stream threads team BYOK key pools (multi-key load balancing)
+        through to the provider call, rotating round-robin — same behavior as
+        openai_chat_stream. This previously didn't exist on chat_stream."""
+        captured = []
+
+        async def fake_stream(self_, provider, prompt, system, max_tokens,
+                              provider_keys=None, key_pools=None, key_pool_ids=None,
+                              model_override=None):
+            cfg = dict(self_.providers[provider])
+            cfg["api_key"] = self_._effective_api_key(
+                provider, provider_keys, key_pools, key_pool_ids
+            )
+            captured.append(cfg["api_key"])
+            for token in ["a", "b"]:
+                yield token
+
+        monkeypatch.setattr(LLMRouter, "_stream_provider", fake_stream)
+        pool = {"groq": ["pool-1", "pool-2"]}
+        for i in range(3):
+            async for _ in router.chat_stream(f"hi {i}", key_pools=pool):
+                pass
+        assert captured == ["pool-1", "pool-2", "pool-1"]
+
+    async def test_chat_stream_records_key_attribution_in_last_route(self, router, monkeypatch):
+        """After a pooled stream, last_route names the exact key slot that
+        served (key_index + stable key_id) — the route metadata the gateway
+        and X-LLM-Route reporting build on."""
+        async def fake_stream(self_, provider, prompt, system, max_tokens,
+                              provider_keys=None, key_pools=None, key_pool_ids=None,
+                              model_override=None):
+            cfg = dict(self_.providers[provider])
+            cfg["api_key"] = self_._effective_api_key(
+                provider, provider_keys, key_pools, key_pool_ids
+            )
+            yield "a"
+
+        monkeypatch.setattr(LLMRouter, "_stream_provider", fake_stream)
+        pool = {"groq": ["pool-1"]}
+        pool_ids = {"groq": ["key-1"]}
+        async for _ in router.chat_stream("hi", key_pools=pool, key_pool_ids=pool_ids):
+            pass
+        route = router.last_route
+        assert route["key_index"] == 0
+        assert route["key_id"] == "key-1"
+        assert route["served"].startswith("groq/")
+
 
 class TestMultiKeyPools:
     """Multi-key load balancing — several team keys per provider, rotated

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { CountUp } from '../ui/landing-motion'
+import SectionHeading from './SectionHeading'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -15,7 +16,7 @@ function MiniBars() {
           whileInView={{ scaleY: 1 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.6, delay: 0.3 + i * 0.05, ease: EASE }}
-          className="w-full origin-bottom rounded-sm bg-gradient-to-t from-accent-via/40 to-accent-primary"
+          className="w-full origin-bottom rounded-sm bg-gradient-to-t from-accent-primary/35 to-accent-primary"
           style={{ height: `${h}%` }}
         />
       ))}
@@ -23,60 +24,50 @@ function MiniBars() {
   )
 }
 
+const CARD =
+  'relative overflow-hidden rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]'
+
 export default function MetricsBoard() {
   return (
-    <section id="metrics" className="relative border-t border-white/5 bg-base">
-      {/* gradient glow */}
+    <section id="metrics" className="relative scroll-mt-24 border-t border-black/5 bg-base">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 60% 45% at 50% 0%, rgba(6,182,212,0.10), transparent 65%)',
-        }}
+        style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 0%, rgba(8,145,178,0.05), transparent 65%)' }}
       />
       <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.65, ease: EASE }}
-          className="max-w-2xl"
-        >
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.16em] text-accent-primary">
-            The status board
-          </p>
-          <h2 className="mt-4 font-display text-[clamp(1.8rem,4vw,3rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
-            See your team's real progress.
-          </h2>
-        </motion.div>
+        <SectionHeading
+          eyebrow="Results"
+          heading={<>Onboarding stops being a bet.</>}
+          sub="Once the map exists, teams see real movement in their first month — and the readings keep improving from there."
+        />
 
-        <div className="mt-14 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {/* Time saved */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.65, delay: 0.05, ease: EASE }}
-            className="group relative overflow-hidden rounded-sm border border-white/10 bg-panel p-7 transition-colors duration-300 hover:border-white/20"
+            className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">
-                TIME SAVED
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+                Time saved
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-primary motion-safe:animate-pulse-glow" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             </div>
             <div className="mt-6 flex items-baseline gap-2">
               <CountUp
                 to={14.2}
                 duration={1.2}
-                className="font-code text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-accent-primary tabular-nums"
+                className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="font-code text-[13px] text-ink-tertiary">hours</span>
+              <span className="text-[13px] font-medium text-ink-tertiary">hours</span>
             </div>
-            <p className="mt-2 font-code text-[12px] text-ink-tertiary">per new hire</p>
-            <div className="mt-5 border-t border-white/5 pt-4">
-              <p className="font-code text-[13px] text-go">72% reduction in ramp-up time</p>
+            <p className="mt-2 text-[13px] text-ink-tertiary">per new hire, first month</p>
+            <div className="mt-5 border-t border-black/5 pt-4">
+              <p className="text-[13px] font-medium text-ink">72% reduction in ramp-up time</p>
             </div>
           </motion.div>
 
@@ -86,11 +77,11 @@ export default function MetricsBoard() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
-            className="group relative overflow-hidden rounded-sm border border-white/10 bg-panel p-7 transition-colors duration-300 hover:border-white/20"
+            className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">
-                ONBOARDING LIFT
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+                Onboarding lift
               </span>
               <span className="h-1.5 w-1.5 rounded-full bg-accent-via" />
             </div>
@@ -98,15 +89,16 @@ export default function MetricsBoard() {
               <CountUp
                 to={34}
                 duration={1.2}
-                className="font-code text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-accent-primary tabular-nums"
+                className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="font-code text-[13px] text-ink-tertiary">developers</span>
+              <span className="text-[13px] font-medium text-ink-tertiary">developers</span>
             </div>
-            <p className="mt-2 font-code text-[12px] text-ink-tertiary">onboarded last month</p>
+            <p className="mt-2 text-[13px] text-ink-tertiary">onboarded last month</p>
             <MiniBars />
-            <div className="mt-4 border-t border-white/5 pt-4">
-              <p className="font-code text-[13px] text-ink-secondary">
-                1st PR in <span className="text-go">2.3 days</span> <span className="text-ink-tertiary">(was 8.1)</span>
+            <div className="mt-4 border-t border-black/5 pt-4">
+              <p className="text-[13px] font-medium text-ink">
+                1st PR in <span className="text-accent-primary">2.3 days</span>{' '}
+                <span className="text-ink-tertiary">(was 8.1)</span>
               </p>
             </div>
           </motion.div>
@@ -117,32 +109,32 @@ export default function MetricsBoard() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.65, delay: 0.19, ease: EASE }}
-            className="group relative overflow-hidden rounded-sm border border-white/10 bg-panel p-7 transition-colors duration-300 hover:border-white/20"
+            className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">
-                TEAM HEALTH
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+                Team health
               </span>
-              <span className="flex items-center gap-1.5 rounded-sm border border-go/30 bg-go/10 px-2 py-0.5 font-code text-[10px] text-go-lit">
-                <span className="h-1.5 w-1.5 rounded-full bg-go motion-safe:animate-pulse-glow" />
-                STABLE
+              <span className="flex items-center gap-1.5 rounded-full border border-go/20 bg-go/[0.06] px-2 py-0.5 text-[11px] font-semibold text-go">
+                <span className="h-1.5 w-1.5 rounded-full bg-go" />
+                Stable
               </span>
             </div>
             <div className="mt-6 flex items-baseline gap-2">
               <CountUp
                 to={98}
                 duration={1.2}
-                className="font-code text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-go tabular-nums"
+                className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="font-code text-[13px] text-ink-tertiary">%</span>
+              <span className="text-[13px] font-medium text-ink-tertiary">%</span>
             </div>
-            <p className="mt-2 font-code text-[12px] text-ink-tertiary">onboarding success rate</p>
-            <div className="mt-5 flex items-center gap-3 border-t border-white/5 pt-4">
+            <p className="mt-2 text-[13px] text-ink-tertiary">onboarding success rate</p>
+            <div className="mt-5 flex items-center gap-3 border-t border-black/5 pt-4">
               <span className="relative flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-go/50" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-go/40" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-go" />
               </span>
-              <p className="font-code text-[13px] text-ink-secondary">
+              <p className="text-[13px] font-medium text-ink">
                 Confidence score up <span className="text-go">42%</span>
               </p>
             </div>
@@ -156,7 +148,7 @@ export default function MetricsBoard() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-6 font-code text-[11px] text-ink-tertiary"
         >
-          Illustrative demo readings — the first index replaces them with your repo's numbers.
+          Illustrative demo readings — the first index replaces them with your repository's numbers.
         </motion.p>
       </div>
     </section>

@@ -21,7 +21,11 @@ export default function MarketingLayout({
 }: MarketingLayoutProps) {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-body flex flex-col">
+      {/* Pinned premium surface — same identity as the landing page
+          (`.landing-premium` + `data-theme="landing"`) so every public page
+          shares one Shaders-inspired dark design and never follows the app
+          theme. */}
+      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased font-body flex flex-col">
         <MarketingNav links={navLinks} fixed={navFixed} />
         <main className={`flex-1 ${topPadding}`}>
           {children}
