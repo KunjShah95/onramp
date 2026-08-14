@@ -8,7 +8,7 @@ const HeroScene = lazy(() => import('./HeroScene'))
 
 function SceneFallback() {
   return (
-    <div className="flex h-full items-center justify-center font-code text-[11px] uppercase tracking-[0.18em] text-slate-500">
+    <div className="flex h-full items-center justify-center font-code text-[11px] uppercase tracking-[0.18em] text-slate-400">
       Initializing map…
     </div>
   )

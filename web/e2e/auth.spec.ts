@@ -13,9 +13,10 @@ test.describe('Login Page', () => {
     await expect(page.getByText('Onramp').first()).toBeVisible()
     await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible()
 
-    // Social login — rendered as <a> tags with text content
-    await expect(page.getByText('Continue with Google')).toBeVisible()
-    await expect(page.getByText('Continue with GitHub')).toBeVisible()
+    // Social login — rendered as <a> tags; the "Continue with …" label is
+    // exposed as the accessible name (aria-label), so query by role/name
+    await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Continue with GitHub' })).toBeVisible()
 
     // Stage 1 — email only
     await expect(page.locator('input#email')).toBeVisible()
@@ -59,10 +60,10 @@ test.describe('Login Page', () => {
   })
 
   test('social login buttons are present and clickable', async ({ page }) => {
-    const googleLink = page.getByText('Continue with Google')
+    const googleLink = page.getByRole('link', { name: 'Continue with Google' })
     await expect(googleLink).toBeVisible()
 
-    const githubLink = page.getByText('Continue with GitHub')
+    const githubLink = page.getByRole('link', { name: 'Continue with GitHub' })
     await expect(githubLink).toBeVisible()
   })
 })

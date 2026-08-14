@@ -35,28 +35,28 @@ export default function PhilosophyHero() {
             <span className="text-abort/70 text-[11px] ml-2">coding agent</span>
           </div>
           <div className="space-y-2">
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ codebase changed — re-reading repo…
             </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ read 250K tokens into context
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px]">
               → edits src/components/Button.tsx
             </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ npm test
             </motion.div>
             <motion.div variants={lineVariants} className="text-abort">
               Error: 3 tests failed
             </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ re-reading repo again… (250K tokens)
             </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ session ended — context gone
             </motion.div>
-            <motion.div variants={lineVariants} className="text-ink-muted">
+            <motion.div variants={lineVariants} className="text-ink-secondary">
               $ tomorrow: re-read everything again
             </motion.div>
             <motion.div variants={lineVariants} className="text-abort">

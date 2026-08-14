@@ -43,9 +43,11 @@ export default function HeatmapGem({ size = 300, autoRotate = true }: HeatmapGem
       let engine: Engine
       try {
         engine = new Engine(canvas, true, {
-          preserveDrawingBuffer: true,
           stencil: true
         })
+        // Babylon applies engine.canvasTabIndex (default 1) to the canvas on
+        // input attach; keep this decorative gem out of the tab order.
+        engine.canvasTabIndex = -1
       } catch (e) {
         console.error('Babylon engine creation failed:', e)
         canvas.remove()
@@ -67,6 +69,9 @@ export default function HeatmapGem({ size = 300, autoRotate = true }: HeatmapGem
         scene
       )
       camera.attachControl(containerRef.current, true)
+      // attachControl sets canvas.tabIndex = 1 for keyboard input; the gem is
+      // decorative and pointer-drag only, so pull it out of the tab order.
+      canvas.tabIndex = -1
       camera.inertia = 0.7
       camera.angularSensibilityX = 1000
       camera.angularSensibilityY = 1000
@@ -143,8 +148,11 @@ export default function HeatmapGem({ size = 300, autoRotate = true }: HeatmapGem
         'heatmap',
         scene,
         {
-          vertex: 'heatmapVertex',
-          fragment: 'heatmapFragment',
+          // Babylon resolves store keys as `<name>VertexShader` /
+          // `<name>FragmentShader`, so the base name must be 'heatmap' to
+          // match the Effect.ShadersStore registrations above.
+          vertex: 'heatmap',
+          fragment: 'heatmap',
         },
         {
           attributes: ['position', 'normal'],

@@ -11,6 +11,8 @@ test.describe('Billing Page', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
@@ -28,13 +30,13 @@ test.describe('Billing Page', () => {
   test('displays current subscription from mock data', async ({ page }) => {
     // The subscription card shows "Current Plan" heading
     await expect(page.getByText('Current Plan').first()).toBeVisible()
-    // The tier badge shows "pro" — the subscription badge is capitalized "PRO"
-    // to avoid ambiguity, also check the price
-    await expect(page.getByText('$49').first()).toBeVisible()
+    // The tier badge shows "pro" — also check the price (billed in INR)
+    await expect(page.getByText('₹49').first()).toBeVisible()
   })
 
   test('shows pricing tier cards', async ({ page }) => {
-    await expect(page.getByText('Available Plans').first()).toBeVisible()
+    // Tier matrix section
+    await expect(page.getByText('TIER MATRIX').first()).toBeVisible()
     // Free tier card should be visible
     await expect(page.getByText('Free').first()).toBeVisible()
     // Professional tier should be visible

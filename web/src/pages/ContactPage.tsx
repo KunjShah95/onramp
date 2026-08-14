@@ -85,7 +85,7 @@ export default function ContactPage() {
               <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] mb-4">
                 <method.icon size={20} weight="duotone" />
               </span>
-              <h3 className="font-display text-base font-semibold text-[hsl(var(--foreground))] mb-4">{method.title}</h3>
+              <h2 className="font-display text-base font-semibold text-[hsl(var(--foreground))] mb-4">{method.title}</h2>
               <ul className="space-y-3">
                 {method.items.map((item) => (
                   <li key={item.label}>

@@ -98,7 +98,12 @@ export default function ArchitectureMap({ className, progressRef, onHover }: Arc
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true })
+    const engine = new Engine(canvas, true, { stencil: true, alpha: true })
+    // Babylon sets canvas.tabIndex = engine.canvasTabIndex (default 1) when
+    // input attaches; this canvas is decorative (aria-hidden) so keep it out
+    // of the tab order at the engine level.
+    engine.canvasTabIndex = -1
+    canvas.tabIndex = -1
     const scene = new Scene(engine)
     scene.clearColor = new Color4(0, 0, 0, 0)
 

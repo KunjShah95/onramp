@@ -64,7 +64,11 @@ export default function Pricing() {
                 }`}
               >
                 {label}
-                {label === 'Annual' && <span className="ml-1.5 text-[11px] font-semibold text-go">−17%</span>}
+                {label === 'Annual' && (
+                  <span className={`ml-1.5 text-[11px] font-semibold ${active ? 'text-white/90' : 'text-go'}`}>
+                    −17%
+                  </span>
+                )}
               </button>
             )
           })}

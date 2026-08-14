@@ -55,7 +55,7 @@ export default function WhyOnrampPage() {
             <div className="w-10 h-10 rounded-[3px] bg-abort/10 flex items-center justify-center">
               <Code size={20} weight="bold" className="text-abort" />
             </div>
-            <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why NOT Coding Agents</h3>
+            <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why NOT Coding Agents</h2>
           </div>
           <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
             <li className="flex gap-3">
@@ -83,7 +83,7 @@ export default function WhyOnrampPage() {
             <div className="w-10 h-10 rounded-[3px] bg-go/10 flex items-center justify-center">
               <Brain size={20} weight="bold" className="text-go" />
             </div>
-            <h3 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why Onramp</h3>
+            <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why Onramp</h2>
           </div>
           <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
             <li className="flex gap-3">

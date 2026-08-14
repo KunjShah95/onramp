@@ -139,7 +139,12 @@ export default function HeroScene({ className }: { className?: string }) {
       if (!Engine.IsSupported) {
         throw new Error('WebGL is not supported')
       }
-      engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, alpha: true })
+      engine = new Engine(canvas, true, { stencil: true, alpha: true })
+      // Babylon sets canvas.tabIndex = engine.canvasTabIndex (default 1) when
+      // input attaches. This scene is decorative (aria-hidden) and
+      // pointer-driven, so keep it out of the tab order at the engine level.
+      engine.canvasTabIndex = -1
+      canvas.tabIndex = -1
     } catch {
       setWebglOk(false)
       return

@@ -829,9 +829,9 @@
     --ink-tertiary: #64748B;
     --ink-muted: #94A3B8;
     --ink-disabled: #CBD5E1;
-    --go: #059669;
+    --go: #047857;
     --go-lit: #10B981;
-    --mission: #0891B2;
+    --mission: #0E7490;
     --mission-lit: #06B6D4;
     --caution: #D97706;
     --caution-lit: #F59E0B;
@@ -850,20 +850,20 @@
     --text-muted: 148 163 184;
     --text-disabled: 203 213 225;
     --border-rgb: 148 163 184;
-    --accent-from: 8 145 178;
+    --accent-from: 14 116 144;
     --accent-via: 6 182 212;
     --accent-to: 5 150 105;
-    --accent-muted: 8 145 178;
-    --accent-glow: 8 145 178;
-    --accent-primary: 8 145 178;
-    --accent-primary-hover: 14 116 144;
+    --accent-muted: 14 116 144;
+    --accent-glow: 14 116 144;
+    --accent-primary: 14 116 144;
+    --accent-primary-hover: 12 83 107;
     --success: 5 150 105;
     --success-lit: 16 185 129;
     --warning: 217 119 6;
     --warning-lit: 245 158 11;
     --error: 220 38 38;
     --error-lit: 248 113 113;
-    --info: 8 145 178;
+    --info: 14 116 144;
     --info-lit: 6 182 212;
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
@@ -992,6 +992,27 @@
 
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(var(--border-rgb), 0.30);
+  }
+
+  /* ── Skip-to-content link — WCAG 2.4.1 Bypass Blocks ── */
+  .skip-link {
+    position: fixed;
+    top: -56px;
+    left: 16px;
+    z-index: 100;
+    padding: 10px 16px;
+    border-radius: 3px;
+    background: var(--go);
+    color: #0F1419;
+    font-family: 'Public Sans', Inter, system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    top: 12px;
   }
 
   /* Autofill — light well (auth forms) */

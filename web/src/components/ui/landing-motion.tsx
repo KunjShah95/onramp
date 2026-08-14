@@ -303,7 +303,10 @@ export function MovingBorder({
 }) {
   const reduced = useReducedMotion()
   return (
-    <div className={cn('relative rounded-[24px] p-px', className)}>
+    // overflow-hidden clips the -inset-[120%] rotating conic gradient so it
+    // can't expand the scrollable area on small viewports (the visible 1px
+    // ring lives inside the wrapper's border box, so it is unaffected).
+    <div className={cn('relative overflow-hidden rounded-[24px] p-px', className)}>
       {/* rotating conic ring */}
       <motion.div
         aria-hidden

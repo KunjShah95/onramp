@@ -26,8 +26,11 @@ export default function LandingPage() {
       data-theme="landing"
       className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
     >
-      <LandingNav />
-      <main>
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <header>
+        <LandingNav />
+      </header>
+      <main id="main-content">
         <Hero />
         <ProblemGrid />
         <Solution />

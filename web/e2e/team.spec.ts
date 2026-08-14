@@ -11,6 +11,8 @@ test.describe('Team Page', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })

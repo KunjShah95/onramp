@@ -49,7 +49,7 @@ export default function Solution() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.9, ease: EASE }}
-          className="relative mt-14"
+          className="relative mt-14 overflow-hidden"
         >
           <div
             aria-hidden
@@ -62,7 +62,7 @@ export default function Solution() {
                 <span className="h-1.5 w-1.5 rounded-full bg-go-lit" />
                 <span className="font-code text-[11px] text-slate-400">Architecture map</span>
               </div>
-              <span className="font-code text-[11px] text-slate-500">drag to orbit · scroll to build</span>
+              <span className="font-code text-[11px] text-slate-400">drag to orbit · scroll to build</span>
             </div>
 
             <div className="relative h-[480px] sm:h-[560px] lg:h-[600px]">

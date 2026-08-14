@@ -15,6 +15,8 @@ test.describe('Review Queue', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 15_000 })
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 20_000 })
@@ -22,12 +24,12 @@ test.describe('Review Queue', () => {
 
     // Navigate to review queue — cascading API calls: listTeams → setTeamId → listTasks
     await page.goto('/reviews')
-    await page.waitForSelector('text=Review Queue', { timeout: 30_000 })
+    await page.waitForSelector('text=Triage by state', { timeout: 30_000 })
   })
 
   test('renders review queue page with header', async ({ page }) => {
-    await expect(page.getByText('Review Queue').first()).toBeVisible()
-    await expect(page.getByText(/review pending pull requests/i)).toBeVisible()
+    await expect(page.getByText('Triage by state. Act by row.').first()).toBeVisible()
+    await expect(page.getByText(/pending prs in one place/i)).toBeVisible()
   })
 
   test('displays task list with review-eligible items', async ({ page }) => {

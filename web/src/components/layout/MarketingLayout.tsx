@@ -26,8 +26,11 @@ export default function MarketingLayout({
           shares one Shaders-inspired dark design and never follows the app
           theme. */}
       <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased font-body flex flex-col">
-        <MarketingNav links={navLinks} fixed={navFixed} />
-        <main className={`flex-1 ${topPadding}`}>
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <header>
+          <MarketingNav links={navLinks} fixed={navFixed} />
+        </header>
+        <main id="main-content" className={`flex-1 ${topPadding}`}>
           {children}
         </main>
         <MarketingFooter />

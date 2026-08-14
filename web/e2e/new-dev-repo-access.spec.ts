@@ -32,6 +32,8 @@ test.describe('New Dev → Allocated Repo Access', () => {
     await page.goto('/login')
     await page.waitForSelector('input#email', { timeout: 10_000 })
     await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
     await page.fill('input#password', 'password123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
@@ -42,14 +44,11 @@ test.describe('New Dev → Allocated Repo Access', () => {
 
     // Landing on the dashboard should fetch GET /api/v1/repos for the dev's
     // team, then pull a health score for the first (allocated) repo. The
-    // "Code Health" metric renders that score — proof the repo was visible.
-    // Scope to the dashboard metric card (a.block — the sidebar link also
-    // matches a[href="/code-health"] and would trip strict mode).
+    // "Repo Health" readout renders that score — proof the repo was visible.
     await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
-    const codeHealthMetric = page.locator('a.block[href="/code-health"]')
-    await expect(codeHealthMetric.getByText('Code Health')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Repo Health').first()).toBeVisible({ timeout: 15_000 })
     // Value comes from the mocked health endpoint for octocat/Hello-World
-    await expect(codeHealthMetric.getByText('85%')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('85%').first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('new dev can analyze the allocated repo on the Code Health page', async ({ page }) => {
@@ -69,13 +68,12 @@ test.describe('New Dev → Allocated Repo Access', () => {
     await expect(page.getByText(/Add more tests/i).first()).toBeVisible()
   })
 
-  test('code health link on dashboard routes to the allocated repo analysis page', async ({ page }) => {
+  test('code health link routes to the allocated repo analysis page', async ({ page }) => {
     await signInAsNewDev(page)
     await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
 
-    // The Code Health metric is a link to /code-health (scoped to the
-    // dashboard card — the sidebar link would also match otherwise)
-    await page.locator('a.block[href="/code-health"]').click()
+    // The sidebar's Code Health link routes to /code-health
+    await page.locator('aside a[href="/code-health"]').first().click()
     await expect(page).toHaveURL(/\/code-health/)
     await expect(page.getByPlaceholder(/github\.com\/owner\/repo/i)).toBeVisible()
   })
@@ -96,9 +94,8 @@ test.describe('New Dev → Allocated Repo Access', () => {
     await signInAsNewDev(page)
 
     await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
-    // No repo → health never fetched → Code Health renders the em-dash placeholder
-    const codeHealthMetric = page.locator('a.block[href="/code-health"]')
-    await expect(codeHealthMetric.getByText('Code Health')).toBeVisible({ timeout: 15_000 })
-    await expect(codeHealthMetric.getByText('—')).toBeVisible({ timeout: 10_000 })
+    // No repo → health never fetched → Repo Health renders the em-dash placeholder
+    await expect(page.getByText('Repo Health').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('—').first()).toBeVisible({ timeout: 10_000 })
   })
 })
