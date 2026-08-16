@@ -20,7 +20,10 @@ const fadeUp = (delay = 0) => ({
 
 export default function BlogPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'Blog — Onramp', description: 'Engineering insights, product updates, and best practices on developer onboarding and team velocity.', path: '/blog' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Header */}
         <motion.div {...fadeUp(0)} className="mb-12">

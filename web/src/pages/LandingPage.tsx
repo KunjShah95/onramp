@@ -1,3 +1,4 @@
+import Seo from '../components/seo/Seo'
 import LandingNav from '../components/landing/LandingNav'
 import Hero from '../components/landing/Hero'
 import ProblemGrid from '../components/landing/ProblemGrid'
@@ -26,6 +27,11 @@ export default function LandingPage() {
       data-theme="landing"
       className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
     >
+      <Seo
+        title="Onramp — AI-Powered Developer Onboarding"
+        description="Go from codebase to contribution in minutes. Onramp analyzes your repositories to create custom onboarding paths and guide developers through their first PR."
+        path="/"
+      />
       <a href="#main-content" className="skip-link">Skip to content</a>
       <header>
         <LandingNav />

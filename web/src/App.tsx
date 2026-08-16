@@ -369,11 +369,6 @@ export default function App() {
                         <ErrorBoundary><BillingPage /></ErrorBoundary>
                       </Suspense>
                     } />
-                    <Route path="/hr-dashboard" element={
-                      <Suspense fallback={<DashboardSkeleton />}>
-                        <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
-                      </Suspense>
-                    } />
                     <Route path="/api-keys" element={
                       <Suspense fallback={<ApiKeysSkeleton />}>
                         <ErrorBoundary><ApiKeysPage /></ErrorBoundary>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 import { EnvelopeSimple, ArrowRight, Mailbox, TreeStructure } from '@phosphor-icons/react'
 
 type PageState = 'idle' | 'sending' | 'sent' | 'error'
@@ -45,7 +46,8 @@ export default function ForgotPassword() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Reset Password — Onramp" description="Reset your Onramp password with a secure email link." path="/forgot-password" noindex />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-body">
         {/* Premium background accents */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />

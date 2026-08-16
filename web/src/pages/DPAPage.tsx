@@ -50,7 +50,10 @@ const steps = [
 
 export default function DPAPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'Data Processing Agreement — Onramp', description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.', path: '/dpa' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">

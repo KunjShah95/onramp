@@ -49,7 +49,10 @@ const controls = [
 
 export default function SOC2Page() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'SOC 2 Type II — Onramp', description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.', path: '/soc-2' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">

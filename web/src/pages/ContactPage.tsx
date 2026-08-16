@@ -59,7 +59,10 @@ const contactMethods: {
 
 export default function ContactPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'Contact — Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">

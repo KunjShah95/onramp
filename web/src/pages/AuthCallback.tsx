@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { setToken } from '../lib/neon-auth'
 import { ArrowRight, CircleNotch, TreeStructure } from '@phosphor-icons/react'
+import Seo from '../components/seo/Seo'
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams()
@@ -57,7 +58,8 @@ export default function AuthCallback() {
   }
 
   return (
-    <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+    <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Signing in — Onramp" description="Completing your Onramp sign in." path="/auth/callback" noindex />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-body">
         {/* Premium background accents */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />

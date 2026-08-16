@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '../../lib/utils'
+import { prefetchProps } from '../../lib/prefetch'
 import { useAuth } from '../../context/AuthContext'
+import { X } from '@phosphor-icons/react'
 import {
   House, Compass, ChatCircleDots, GraduationCap,
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
@@ -80,6 +82,7 @@ function NavItem({ to, label, Icon, collapsed }: NavItemData & { collapsed: bool
       end={to === '/'}
       title={collapsed ? label : undefined}
       aria-label={label}
+      {...prefetchProps(to)}
       className={({ isActive }) =>
         cn(
           'relative flex items-center text-[13px] transition-all duration-150',
@@ -140,7 +143,14 @@ function NavGroup({
   )
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  /** Mobile drawer open state (only applies below lg). */
+  open?: boolean
+  /** Called when the mobile drawer should close (backdrop tap / close button). */
+  onClose?: () => void
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const { role } = useAuth()
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -151,17 +161,63 @@ export default function Sidebar() {
     localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0')
   }, [collapsed])
 
+  // Close the mobile drawer with Escape.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  // Keep the body from scrolling behind the open drawer.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   const showManage =
     role === 'senior' || role === 'senior_dev' || role === 'owner' || role === 'ceo' || role === 'cto'
 
   return (
+    <>
+      {/* Mobile backdrop — only below lg, only when the drawer is open */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
     <aside
       aria-label="Primary navigation"
       className={cn(
-        'sticky top-0 app-sidebar self-start h-full bg-bg-primary border-r border-border/50 flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
+        // Desktop: sticky rail. Mobile: fixed off-canvas drawer.
+        'app-sidebar bg-bg-primary border-r border-border/50 flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
+        'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
+        open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
+        'lg:sticky lg:top-0 lg:self-start lg:h-full',
         collapsed ? 'w-[64px]' : 'w-[220px]'
       )}
     >
+      {/* Mobile close button — only visible inside the open drawer */}
+      {open && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="absolute right-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-btn border border-border text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors lg:hidden"
+        >
+          <X size={16} />
+        </button>
+      )}
+
       {/* Brand */}
       <div className={cn('pt-5 pb-4', collapsed ? 'flex justify-center px-0' : 'px-4')}>
         <NavLink
@@ -220,5 +276,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   )
 }

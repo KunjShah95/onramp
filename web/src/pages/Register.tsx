@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 import { EnvelopeSimple, Lock, User, ArrowRight, TreeStructure } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import { cn } from '../lib/utils'
@@ -72,7 +73,8 @@ export default function Register() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Create Account — Onramp" description="Create your free Onramp account and start shipping faster with AI-powered onboarding." path="/register" noindex />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
         {/* Premium background accents */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />

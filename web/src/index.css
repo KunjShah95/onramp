@@ -1365,6 +1365,16 @@
     height: 100dvh;
   }
 
+  /* ── Mobile: keep decorative glows/dot-grids from causing sideways scroll ──
+     `clip` (unlike `hidden`) doesn't create a scroll container, so it can't
+     break position: sticky children. */
+  @media (max-width: 767px) {
+    .landing-premium,
+    .marketing-surface {
+      overflow-x: clip;
+    }
+  }
+
   /* ── Truncation ────────────────────────────────── */
   .truncate-multiline {
     display: -webkit-box;

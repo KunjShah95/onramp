@@ -41,7 +41,10 @@ const values = [
 
 export default function AboutPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'About — Onramp', description: 'The team and mission behind Onramp — AI-powered developer onboarding for modern engineering teams.', path: '/about' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">

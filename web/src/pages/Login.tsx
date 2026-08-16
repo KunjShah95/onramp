@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 import { ArrowRight, ArrowUpRight, TreeStructure } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import InputField from '../components/ui/first-principles/InputField'
@@ -72,7 +73,8 @@ export default function Login() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Sign in — Onramp" description="Sign in to access your team's codebase insights, onboarding plans, and AI-powered mentorship." path="/login" noindex />
       <AuthNavbar />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 font-body relative overflow-hidden">
         {/* Premium background accents */}
@@ -94,7 +96,7 @@ export default function Login() {
               <div className="w-9 h-9 rounded-[3px] bg-cyan-400/90 shadow-lg flex items-center justify-center text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={16} weight="bold" />
               </div>
-              <span className="font-display text-sm font-bold text-white tracking-tight">ONRAMP</span>
+              <span className="font-display text-sm font-bold text-ink tracking-tight">ONRAMP</span>
             </Link>
 
             <div className="space-y-6 relative z-10">
@@ -127,7 +129,7 @@ export default function Login() {
               <div className="w-9 h-9 rounded-[3px] bg-cyan-400/90 shadow-lg flex items-center justify-center text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={16} weight="bold" />
               </div>
-              <span className="font-display text-sm font-bold text-white tracking-tight">ONRAMP</span>
+              <span className="font-display text-sm font-bold text-ink tracking-tight">ONRAMP</span>
             </Link>
 
             <div className="mb-8">

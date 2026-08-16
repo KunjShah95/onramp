@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Lifebuoy, BookOpenText, Envelope, ChatCircle, ArrowUpRight } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -40,6 +41,7 @@ const channels = [
 export default function SupportPage() {
   return (
     <PageTransition>
+      <Seo title="Support — Onramp" description="How can we help? Pick a channel and we usually respond within one business day." path="/support" />
       <div className="min-h-screen px-4 sm:px-6 py-16 sm:py-24 flex items-center justify-center relative overflow-hidden">
         <motion.div
           variants={stagger}

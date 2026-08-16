@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { setToken, setRefreshToken, clearTokens, getToken } from '../lib/neon-auth'
 import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken } from '../lib/api'
+import { prefetchRoutes } from '../lib/prefetch'
 
 interface User {
   id: string
@@ -163,6 +164,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authMethod: 'password',
         loading: true,
       }))
+      // Warm the cache for the pages the redirect is about to land on.
+      prefetchRoutes(['/dashboard', '/my-progress', '/hr/people', '/explore', '/ask', '/tasks'])
       await syncRoleFromTeams(resp.uid)
       setState((prev) => ({ ...prev, loading: false }))
     } catch (err: unknown) {
@@ -200,6 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           authMethod: 'password',
           loading: true,
         }))
+        // Warm the cache for the pages the redirect is about to land on.
+        prefetchRoutes(['/dashboard', '/my-progress', '/hr/people', '/explore', '/ask', '/tasks'])
         await syncRoleFromTeams(resp.uid)
         setState((prev) => ({ ...prev, loading: false }))
       } catch (err: unknown) {

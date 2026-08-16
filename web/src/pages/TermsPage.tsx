@@ -82,6 +82,7 @@ export default function TermsPage() {
       lastUpdated="July 2, 2026"
       intro="These terms govern your use of Onramp. Please read them carefully — they include limits on our liability and your responsibilities when using AI-generated output."
       sections={sections}
+      seo={{ title: 'Terms of Service — Onramp', description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.', path: '/terms' }}
     />
   )
 }

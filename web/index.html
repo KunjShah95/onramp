@@ -2,36 +2,64 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon-192.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0a0a0f" />
+    <meta name="theme-color" content="#f8fafc" />    <meta data-seo="robots" name="robots" content="index, follow" />
+    <meta data-seo="description" name="description" content="Onramp — AI-powered developer onboarding. Go from codebase to contribution in minutes with a live architecture map and an AI mentor grounded in your real code." />
+    <link data-seo="canonical" rel="canonical" href="%VITE_APP_URL%/"/>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Onramp" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>Onramp</title>
+    <link rel="icon" type="image/svg+xml" href="/icon-192.svg" />
+    <title>Onramp — AI-Powered Developer Onboarding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
     
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Onramp — AI-Powered Developer Onboarding" />
-    <meta property="og:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
-    <meta property="og:image" content="%VITE_APP_URL%/og-image.svg" />
-    <meta property="og:image:type" content="image/svg+xml" />
+    <!-- Open Graph / Facebook (data-seo attrs let the Seo component update them per page) -->
+    <meta data-seo="og:type" property="og:type" content="website" />
+    <meta data-seo="og:title" property="og:title" content="Onramp — AI-Powered Developer Onboarding" />
+    <meta data-seo="og:description" property="og:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
+    <meta data-seo="og:url" property="og:url" content="%VITE_APP_URL%/" />
+    <meta data-seo="og:image" property="og:image" content="%VITE_APP_URL%/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:url" content="%VITE_APP_URL%" />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Onramp — AI-Powered Developer Onboarding" />
-    <meta property="twitter:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
-    <meta property="twitter:image" content="%VITE_APP_URL%/og-image.svg" />
+    <meta data-seo="twitter:card" name="twitter:card" content="summary_large_image" />
+    <meta data-seo="twitter:title" name="twitter:title" content="Onramp — AI-Powered Developer Onboarding" />
+    <meta data-seo="twitter:description" name="twitter:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
+    <meta data-seo="twitter:image" name="twitter:image" content="%VITE_APP_URL%/og-image.png" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Onramp",
+      "url": "%VITE_APP_URL%/",
+      "logo": "%VITE_APP_URL%/icon-512.svg",
+      "description": "AI-powered developer onboarding. Onramp indexes your codebase into a live architecture map and guides developers through their first PR.",
+      "sameAs": []
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Onramp",
+      "url": "%VITE_APP_URL%/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "%VITE_APP_URL%/docs?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
 
 
   </head>

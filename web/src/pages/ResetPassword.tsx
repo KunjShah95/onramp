@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 import { Lock, ArrowRight, CheckCircle, TreeStructure } from '@phosphor-icons/react'
 import { resetPassword as apiResetPassword } from '../lib/api'
 
@@ -63,7 +64,8 @@ export default function ResetPassword() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Reset Password — Onramp" description="Set a new password for your Onramp account." path="/reset-password" noindex />
       <div className="bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(var(--background))]/95 min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-body">
         {/* Premium background accents */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-go/5 rounded-full blur-3xl pointer-events-none" />

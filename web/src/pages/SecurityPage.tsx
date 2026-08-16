@@ -65,7 +65,10 @@ const certifications = [
 
 export default function SecurityPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'Security — Onramp', description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.', path: '/security' }}
+    >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">

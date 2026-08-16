@@ -25,7 +25,14 @@ const itemVariants = {
 
 export default function WhyOnrampPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{
+        title: 'Why Onramp, Not Coding Agents | Onramp',
+        description: 'Coding agents burn tokens re-reading your codebase on every change. Onramp indexes it once and answers from real context — a fraction of the cost at any team size.',
+        path: '/why-onramp',
+      }}
+    >
       {/* Hero */}
       <div className="relative pt-20 pb-12 px-6 text-center max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>

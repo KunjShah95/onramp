@@ -80,7 +80,10 @@ const caseStudies = [
 
 export default function CustomersPage() {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: 'Customers — Onramp', description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.', path: '/customers' }}
+    >
       <div className="max-w-5xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-20 text-center">

@@ -90,7 +90,10 @@ export default function BlogPostPage() {
   const nextPost = currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null
 
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{ title: `${post.title} | Onramp Blog`, description: post.excerpt, path: `/blog/${post.slug}`, type: 'article' }}
+    >
       <article className="max-w-3xl mx-auto px-6 pt-16 pb-24">
         {/* Back link */}
         <motion.div {...fadeUp(0)}>

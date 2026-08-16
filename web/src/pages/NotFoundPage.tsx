@@ -2,11 +2,13 @@ import { motion } from 'framer-motion'
 import { Link, NavLink } from 'react-router-dom'
 import { Compass, House, BookOpenText, ArrowLeft } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 
 export default function NotFoundPage() {
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Page Not Found — Onramp" description="The page you're looking for doesn't exist or may have moved." path="/404" noindex />
       <div className="min-h-screen flex px-4 items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

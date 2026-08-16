@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
+import { prefetchProps } from '../../lib/prefetch'
 
 const NAV_LINKS = [
   { label: 'The gap', href: '#the-gap', isAnchor: true },
@@ -31,6 +32,7 @@ export default function LandingNav() {
               <Link
                 key={l.href}
                 to={l.href}
+                {...prefetchProps(l.href)}
                 className="text-[13.5px] font-medium text-ink-secondary transition-colors hover:text-ink"
               >
                 {l.label}
@@ -50,12 +52,14 @@ export default function LandingNav() {
         <div className="flex items-center gap-2">
           <Link
             to="/login"
+            {...prefetchProps('/login')}
             className="hidden text-[13.5px] font-medium text-ink-secondary transition-colors hover:text-ink sm:inline"
           >
             Log in
           </Link>
           <Link
             to="/register"
+            {...prefetchProps('/register')}
             className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13.5px] font-semibold text-white shadow-[0_4px_16px_rgba(8,145,178,0.25)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
           >
             Try for free

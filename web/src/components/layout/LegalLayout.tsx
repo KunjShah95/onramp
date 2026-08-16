@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, ShieldCheck } from '@phosphor-icons/react'
 import MarketingLayout from './MarketingLayout'
 import type { NavLinkItem } from './MarketingNav'
+import type { SeoProps } from '../seo/Seo'
 
 export interface LegalSection {
   heading: string
@@ -16,6 +17,8 @@ interface LegalLayoutProps {
   lastUpdated: string
   intro: string
   sections: LegalSection[]
+  /** Per-page SEO metadata passed through to MarketingLayout. */
+  seo?: SeoProps
 }
 
 const containerVariants = {
@@ -33,9 +36,9 @@ const navLinks: NavLinkItem[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
-export default function LegalLayout({ label, title, lastUpdated, intro, sections }: LegalLayoutProps) {
+export default function LegalLayout({ label, title, lastUpdated, intro, sections, seo }: LegalLayoutProps) {
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout navLinks={navLinks} seo={seo}>
       <div className="max-w-2xl mx-auto px-6 pt-16 pb-24">
         {/* Header */}
         <div className="mb-12">

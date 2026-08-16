@@ -253,7 +253,11 @@ export default function DocsPage() {
   const current = content[active] ?? content[defaultSection]
 
   return (
-    <MarketingLayout navLinks={navLinks} topPadding="pt-0">
+    <MarketingLayout
+      navLinks={navLinks}
+      topPadding="pt-0"
+      seo={{ title: 'Documentation — Onramp', description: 'Guides, API references, and setup walkthroughs for the whole Onramp platform.', path: '/docs' }}
+    >
       <div className="flex max-w-6xl mx-auto">
         {/* Sidebar */}
         <aside className="hidden md:block w-56 shrink-0 sticky top-[73px] self-start h-[calc(100vh-73px)] overflow-y-auto py-8 pr-4 border-r border-[hsl(var(--border))]">

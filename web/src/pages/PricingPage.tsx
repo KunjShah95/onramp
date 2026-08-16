@@ -132,7 +132,14 @@ export default function PricingPage() {
   const fmt = (n: number) => n.toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')
 
   return (
-    <MarketingLayout navLinks={navLinks}>
+    <MarketingLayout
+      navLinks={navLinks}
+      seo={{
+        title: 'Pricing — One flat price. Your whole team. | Onramp',
+        description: 'No per-seat math. Every engineer can ask, explore, and onboard for one flat price per workspace. Free, Team, and Enterprise plans with a 14-day trial.',
+        path: '/pricing',
+      }}
+    >
       {/* Hero — one line, one anchor */}
       <div className="relative pt-16 pb-10 px-6 text-center max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>

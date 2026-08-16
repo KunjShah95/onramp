@@ -1,6 +1,6 @@
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import { UserCircle, Sun, Moon } from '@phosphor-icons/react'
+import { UserCircle, Sun, Moon, List } from '@phosphor-icons/react'
 import NotificationBell from './NotificationBell'
 import RoastModeToggle from './RoastModeToggle'
 import UserMenu from './UserMenu'
@@ -12,9 +12,11 @@ interface TopBarProps {
   lastShortcut?: ShortcutEvent
   /** Current console call-sign shown in the mission clock. */
   callsign?: string
+  /** Opens the mobile sidebar drawer (hamburger, visible below lg). */
+  onMenuClick?: () => void
 }
 
-export default function TopBar({ lastShortcut, callsign }: TopBarProps) {
+export default function TopBar({ lastShortcut, callsign, onMenuClick }: TopBarProps) {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const isDark = theme !== 'light' && theme !== 'paper'
@@ -24,8 +26,18 @@ export default function TopBar({ lastShortcut, callsign }: TopBarProps) {
       role="banner"
       className="sticky top-0 z-40 h-12 border-b border-border bg-bg-primary/70 backdrop-blur-md flex items-center justify-between px-5"
     >
-      {/* Left: live mission clock + shortcut feedback */}
+      {/* Left: hamburger (mobile) + live mission clock + shortcut feedback */}
       <div className="flex items-center gap-3 min-w-0">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+            className="lg:hidden -ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-btn border border-border text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors"
+          >
+            <List size={17} weight="bold" />
+          </button>
+        )}
         <MissionClock callsign={callsign} />
         <span
           className="relative px-1.5 py-0.5 rounded bg-bg-tertiary border border-border text-text-muted font-code text-[10px] cursor-default hidden lg:inline"

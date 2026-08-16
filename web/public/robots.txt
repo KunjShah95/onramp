@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# The SPA routes are client-rendered; allow everything public.
+Disallow: /api/
+
+Sitemap: https://onramp.app/sitemap.xml

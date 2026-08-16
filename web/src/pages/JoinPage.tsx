@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Spinner, ArrowLeft, UserPlus } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import PageTransition from '../components/ui/page-transition'
+import Seo from '../components/seo/Seo'
 import { acceptInvite } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 
@@ -45,7 +46,8 @@ export default function JoinPage() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium min-h-screen bg-room text-ink antialiased">
+      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <Seo title="Join Your Team — Onramp" description="Accept your team invitation and start onboarding with Onramp." path="/join" noindex />
       <div className="min-h-screen bg-bg-void flex items-center justify-center p-4 sm:p-8">
         <AnimatePresence mode="wait">
           <motion.div
