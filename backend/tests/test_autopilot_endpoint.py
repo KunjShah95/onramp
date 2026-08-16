@@ -44,7 +44,7 @@ class _FakeAutopilotService:
                     "state": "assigned",
                     "priority": "high",
                     "assigned_to": "u-newdev",
-                    "team_role": "new_dev",
+                    "team_role": "junior_dev",
                 }
             ],
             "llm_routes": [
@@ -151,7 +151,7 @@ class TestAnalyzeEndpoint:
         assert create_tasks is True
         assert created_by == "test-user"
         assert team_id == "team-1"
-        assert resp.json()["tasks"][0]["team_role"] == "new_dev"
+        assert resp.json()["tasks"][0]["team_role"] == "junior_dev"
 
     @staticmethod
     def _seed_user_team():
@@ -171,7 +171,7 @@ class TestAnalyzeEndpoint:
                 "created_at": now, "updated_at": now,
             })
             await storage.create_document("team_members", "m1", {
-                "user_id": "test-user", "team_id": "team-1", "role": "new_dev",
+                "user_id": "test-user", "team_id": "team-1", "role": "junior_dev",
                 "joined_at": now,
             })
 

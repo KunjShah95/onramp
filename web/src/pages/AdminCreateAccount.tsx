@@ -33,7 +33,7 @@ export default function AdminCreateAccount() {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'new_dev' | 'developer' | 'tester' | 'hr'>('new_dev')
+  const [role, setRole] = useState<'junior_dev' | 'developer' | 'tester' | 'hr'>('junior_dev')
   const [teamId, setTeamId] = useState('')
   const [message, setMessage] = useState('')
   const [teams, setTeams] = useState<TeamOption[]>([])
@@ -85,7 +85,7 @@ export default function AdminCreateAccount() {
   const handleReset = () => {
     setName('')
     setEmail('')
-    setRole('new_dev')
+    setRole('junior_dev')
     setTeamId('')
     setMessage('')
     setResult(null)
@@ -93,7 +93,7 @@ export default function AdminCreateAccount() {
   }
 
   const roleLabel = (r: typeof role) =>
-    r === 'new_dev' ? 'New Developer'
+    r === 'junior_dev' ? 'Junior Developer'
     : r === 'developer' ? 'Developer'
     : r === 'tester' ? 'Tester' : 'HR'
 
@@ -241,7 +241,7 @@ export default function AdminCreateAccount() {
                   onChange={(e) => setRole(e.target.value as any)}
                   className="input w-full"
                 >
-                  <option value="new_dev">New Developer</option>
+                  <option value="junior_dev">Junior Developer</option>
                   <option value="developer">Developer</option>
                   <option value="tester">Tester</option>
                   <option value="hr">HR</option>

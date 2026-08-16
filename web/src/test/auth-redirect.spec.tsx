@@ -9,12 +9,12 @@ describe('homeForRole (post-login landing page)', () => {
   })
 
   it('sends juniors to My Progress', () => {
-    expect(homeForRole('new_dev')).toBe('/my-progress')
+    expect(homeForRole('junior_dev')).toBe('/my-progress')
     expect(homeForRole('member')).toBe('/my-progress')
   })
 
   it('defaults everyone else (and null/unknown roles) to the dashboard', () => {
-    for (const role of ['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto'] as const) {
+    for (const role of ['tester', 'developer', 'senior_dev', 'senior', 'admin', 'ceo', 'cto'] as const) {
       expect(homeForRole(role)).toBe('/dashboard')
     }
     expect(homeForRole(null)).toBe('/dashboard')
@@ -23,7 +23,7 @@ describe('homeForRole (post-login landing page)', () => {
 })
 
 describe('resolveGuardAccess (route permission check)', () => {
-  const LEADERSHIP: TeamRole[] = ['tester', 'developer', 'senior_dev', 'senior', 'owner', 'ceo', 'cto']
+  const LEADERSHIP: TeamRole[] = ['tester', 'developer', 'senior_dev', 'senior', 'admin', 'ceo', 'cto']
 
   it('denies no-team users by default', () => {
     expect(resolveGuardAccess({ role: null, allowedRoles: LEADERSHIP })).toBe(false)
@@ -35,7 +35,7 @@ describe('resolveGuardAccess (route permission check)', () => {
 
   it('keeps real roles working', () => {
     expect(resolveGuardAccess({ role: 'ceo', allowedRoles: LEADERSHIP })).toBe(true)
-    expect(resolveGuardAccess({ role: 'new_dev', allowedRoles: LEADERSHIP })).toBe(false)
+    expect(resolveGuardAccess({ role: 'junior_dev', allowedRoles: LEADERSHIP })).toBe(false)
   })
 
   it('honours minRole', () => {

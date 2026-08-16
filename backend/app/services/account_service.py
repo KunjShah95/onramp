@@ -10,7 +10,7 @@ from app.services.field_encryption import encrypt_field, email_hash
 async def create_provisioned_user(
     name: str,
     email: str,
-    role: str = "new_dev",
+    role: str = "junior_dev",
     team_id: str | None = None,
 ) -> dict:
     """Create a provisioned user account with a temp password.

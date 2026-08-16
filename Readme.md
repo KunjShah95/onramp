@@ -288,7 +288,7 @@ truncated, so prompts stay small.
 
 - JWT-based auth (HS256, rotating refresh tokens)
 - bcrypt password hashing + Fernet field-level encryption for PII
-- RBAC with 9 roles (new_dev, developer, senior_dev, tester, cto, ceo, owner, member, hr)
+- RBAC with 9 roles (junior_dev, developer, senior_dev, tester, cto, ceo, admin, member, hr)
 - OAuth2 social login (Google, GitHub) with CSRF state tokens + account linking
 - Password reset flow with short-lived JWT reset tokens
 - Alembic database migrations (26 versions)

@@ -37,7 +37,7 @@ from app.services.postgres_db import get_storage
 logger = logging.getLogger("onramp.review_ops")
 
 # Roles considered capable reviewers (suggest only routes to these).
-REVIEWER_ROLES = {"senior_dev", "senior", "owner", "ceo", "cto"}
+REVIEWER_ROLES = {"senior_dev", "senior", "admin", "ceo", "cto"}
 
 # Waiting on a reviewer to act (submitted → first verdict).
 PENDING_STATES = ("submitted", "under_review", "product_review")

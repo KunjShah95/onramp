@@ -34,7 +34,7 @@ async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = Fal
     if user["uid"] in member_ids:
         return
     if allow_create and not members:
-        await add_member(org_name, user["uid"], role="owner")
+        await add_member(org_name, user["uid"], role="admin")
         return
     raise HTTPException(status_code=403, detail="Not a member of this organization")
 
@@ -45,7 +45,7 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
     Returns the user's verified role. Raises 403 if not authorized.
     First-touch: if org has no members, caller becomes owner.
     """
-    KEY_MANAGER_ROLES = {"ceo", "cto", "owner", "senior_dev", "senior", "hr"}
+    KEY_MANAGER_ROLES = {"ceo", "cto", "admin", "senior_dev", "senior", "hr"}
 
     uid = user["uid"]
     members = await get_team_members(org_name)
@@ -53,8 +53,8 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
 
     if uid not in member_ids:
         if not members:
-            await add_member(org_name, uid, role="owner")
-            return "owner"
+            await add_member(org_name, uid, role="admin")
+            return "admin"
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
     teams = await get_user_teams(uid)

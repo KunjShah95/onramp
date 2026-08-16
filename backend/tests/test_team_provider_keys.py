@@ -300,12 +300,12 @@ def _mock_team_rbac(monkeypatch):
     from app.api.v1 import ai_gateway
 
     async def _member_of_any_org(team_id):
-        return [{"id": TEST_UID, "user_id": TEST_UID, "role": "owner"}]
+        return [{"id": TEST_UID, "user_id": TEST_UID, "role": "admin"}]
 
     async def _teams_for_user(user_id):
-        return [{"id": "acme", "team_id": "acme", "role": "owner"}]
+        return [{"id": "acme", "team_id": "acme", "role": "admin"}]
 
-    async def _add_member(team_id, user_id, role="new_dev"):
+    async def _add_member(team_id, user_id, role="junior_dev"):
         return {"id": team_id, "team_id": team_id, "user_id": user_id, "role": role}
 
     monkeypatch.setattr(ai_gateway, "get_team_members", _member_of_any_org)

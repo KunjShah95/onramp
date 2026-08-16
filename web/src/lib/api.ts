@@ -3809,7 +3809,7 @@ export async function checkProvider(
 export interface CreateAccountRequest {
   name: string
   email: string
-  role: 'new_dev' | 'developer' | 'tester' | 'hr'
+  role: 'junior_dev' | 'developer' | 'tester' | 'hr'
   team_id?: string
   message?: string
 }

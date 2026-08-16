@@ -16,31 +16,31 @@ const SIDEBAR_KEY = 'onramp-sidebar-collapsed'
 
 /** Role-based portal pages — the "hub" for each persona. */
 const portalItems = [
-  { to: '/dev-space',      label: 'Dev Space',     Icon: Code,        roles: ['developer', 'tester', 'senior_dev', 'owner', 'ceo', 'cto'] },
-  { to: '/executive',      label: 'Executive',     Icon: ChartBar,    roles: ['owner', 'ceo', 'cto'] },
-  { to: '/senior-space',   label: 'Senior',        Icon: ShieldCheck, roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/onboarding-hub', label: 'Onboarding',    Icon: GraduationCap, roles: ['new_dev', 'member'] },
+  { to: '/dev-space',      label: 'Dev Space',     Icon: Code,        roles: ['developer', 'tester', 'senior_dev', 'admin', 'ceo', 'cto'] },
+  { to: '/executive',      label: 'Executive',     Icon: ChartBar,    roles: ['admin', 'ceo', 'cto'] },
+  { to: '/senior-space',   label: 'Senior',        Icon: ShieldCheck, roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/onboarding-hub', label: 'Onboarding',    Icon: GraduationCap, roles: ['junior_dev', 'member'] },
 ]
 
 /** Daily workspace — things you open every day. */
 const workspaceItems = [
-  { to: '/dashboard',   label: 'Dashboard',   Icon: House,          roles: ['senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/explore',     label: 'Explore',     Icon: Compass,        roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/learn',       label: 'Learn',        Icon: GraduationCap, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,    roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/notifications', label: 'Notifications', Icon: Bell,       roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior', 'hr'] },
+  { to: '/dashboard',   label: 'Dashboard',   Icon: House,          roles: ['senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/explore',     label: 'Explore',     Icon: Compass,        roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/learn',       label: 'Learn',        Icon: GraduationCap, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/notifications', label: 'Notifications', Icon: Bell,       roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior', 'hr'] },
 ]
 
 /** Build — focused coding & delivery tools. */
 const buildItems = [
-  { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['new_dev', 'member'] },
-  { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['new_dev', 'member', 'senior_dev', 'developer', 'tester', 'owner', 'ceo', 'cto', 'senior'] },
-  { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
+  { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['junior_dev', 'member'] },
+  { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
 ]
 
 /** HR — people & team operations. */
@@ -51,14 +51,14 @@ const hrItems = [
 
 /** Manage — reviews, quality and administration. */
 const manageItems = [
-  { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto', 'hr'] },
-  { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/developer-portal', label: 'Developer Portal', Icon: Code,       roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/api-keys',         label: 'API Keys',        Icon: Key,         roles: ['senior_dev', 'senior', 'owner', 'ceo', 'cto'] },
-  { to: '/admin',            label: 'Admin',           Icon: ShieldCheck, roles: ['owner', 'ceo', 'cto'] },
-  { to: '/admin/feature-flags', label: 'Feature Flags', Icon: Flag,       roles: ['owner', 'ceo', 'cto'] },
+  { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr'] },
+  { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/developer-portal', label: 'Developer Portal', Icon: Code,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/api-keys',         label: 'API Keys',        Icon: Key,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/admin',            label: 'Admin',           Icon: ShieldCheck, roles: ['admin', 'ceo', 'cto'] },
+  { to: '/admin/feature-flags', label: 'Feature Flags', Icon: Flag,       roles: ['admin', 'ceo', 'cto'] },
 ]
 
 /** System links (bottom section). */
@@ -182,7 +182,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
   }, [open])
 
   const showManage =
-    role === 'senior' || role === 'senior_dev' || role === 'owner' || role === 'ceo' || role === 'cto'
+    role === 'senior' || role === 'senior_dev' || role === 'admin' || role === 'ceo' || role === 'cto'
 
   return (
     <>

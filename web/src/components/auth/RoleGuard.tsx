@@ -12,7 +12,7 @@ interface RoleGuardProps {
 }
 
 const ROLE_LEVELS: Partial<Record<TeamRole, number>> = {
-  new_dev: 1,
+  junior_dev: 1,
   member: 1,
   tester: 2,
   hr: 3,
@@ -21,7 +21,7 @@ const ROLE_LEVELS: Partial<Record<TeamRole, number>> = {
   senior: 4,
   cto: 5,
   ceo: 5,
-  owner: 5,
+  admin: 5,
 }
 
 const roleLevel = (r: string | null): number => (r ? ROLE_LEVELS[r as TeamRole] ?? 0 : 0)
@@ -59,7 +59,7 @@ export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGu
   }
 
   if (!resolveGuardAccess({ role, allowedRoles, minRole, allowNoTeam })) {
-    if (role === 'new_dev' || role === 'member') {
+    if (role === 'junior_dev' || role === 'member') {
       return <Navigate to="/my-progress" replace />
     }
     if (role === 'hr') {

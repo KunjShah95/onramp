@@ -192,9 +192,9 @@ export default function BillingPage() {
           </div>
         </div>
         {subscription && (
-          <button onClick={handleCancel} disabled={role !== 'owner'}
+          <button onClick={handleCancel} disabled={role !== 'admin'}
             className="btn btn-danger px-4 py-2.5 text-sm font-medium disabled:opacity-40"
-            title={role !== 'owner' ? 'Only the team owner can cancel' : ''}>
+            title={role !== 'admin' ? 'Only the team admin can cancel' : ''}>
             Cancel Subscription
           </button>
         )}
@@ -347,8 +347,8 @@ export default function BillingPage() {
                 <ul className="space-y-2 text-xs text-ink-secondary flex-1 mb-5">
                   {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-go mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
                 </ul>
-                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'owner'}
-                  title={role !== 'owner' ? 'Only the team owner can change plans' : ''}
+                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'admin'}
+                  title={role !== 'admin' ? 'Only the team admin can change plans' : ''}
                   className={cn('w-full py-2 rounded-btn text-xs font-bold transition-all',
                     isCurrent ? 'bg-go/10 text-go border border-go/20 cursor-default' :
                     tier.popular ? 'bg-go hover:bg-go-lit text-white disabled:opacity-40' :

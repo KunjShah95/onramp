@@ -189,7 +189,7 @@ async def test_suggest_reviewer_excludes_assignee():
     await _seed_user(storage, "senior-1", "Sara")
     await _seed_user(storage, "trainee-1", "Alice")
     await _seed_member(storage, "team-ro-1", "senior-1", "senior_dev")
-    await _seed_member(storage, "team-ro-1", "trainee-1", "new_dev")
+    await _seed_member(storage, "team-ro-1", "trainee-1", "junior_dev")
 
     # The only candidate (senior-1) is also the task assignee → no suggestion.
     task = await _seed_task(storage, "team-ro-1", "submitted", created_by="senior-1",

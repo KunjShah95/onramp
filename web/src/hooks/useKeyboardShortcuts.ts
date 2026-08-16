@@ -14,9 +14,9 @@ export type ShortcutEvent = {
 } | null
 
 const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[] }[] = [
-  { key: 'd', path: '/dashboard', label: 'Dashboard', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'p', path: '/my-progress', label: 'My Progress', roles: ['member', 'new_dev'] },
-  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'd', path: '/dashboard', label: 'Dashboard', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'p', path: '/my-progress', label: 'My Progress', roles: ['member', 'junior_dev'] },
+  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 't', path: '/tasks', label: 'Tasks' },
   { key: 'e', path: '/explore', label: 'Explore' },
   { key: 'a', path: '/ask', label: 'Ask Codebase' },
@@ -24,16 +24,16 @@ const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[
   { key: 'x', path: '/first-issue', label: 'First Issue' },
   { key: 'n', path: '/notifications', label: 'Notifications' },
   { key: 's', path: '/settings', label: 'Settings' },
-  { key: 'i', path: '/admin', label: 'Admin', roles: ['owner', 'ceo', 'cto'] },
-  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'm', path: '/team', label: 'Team', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'k', path: '/api-keys', label: 'API Keys', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'y', path: '/playbooks', label: 'Playbooks', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer'] },
-  { key: 'o', path: '/developer-portal', label: 'Developer Portal', roles: ['owner', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'i', path: '/admin', label: 'Admin', roles: ['admin', 'ceo', 'cto'] },
+  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'm', path: '/team', label: 'Team', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'k', path: '/api-keys', label: 'API Keys', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'y', path: '/playbooks', label: 'Playbooks', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer'] },
+  { key: 'o', path: '/developer-portal', label: 'Developer Portal', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 'w', path: '/wiki', label: 'Wiki' },
-  { key: 'u', path: '/executive', label: 'Executive', roles: ['owner', 'ceo', 'cto'] },
-  { key: 'v', path: '/dev-space', label: 'Dev Space', roles: ['developer', 'owner', 'ceo', 'cto', 'senior_dev', 'tester'] },
-  { key: 'z', path: '/senior-space', label: 'Senior Space', roles: ['senior', 'senior_dev', 'developer', 'owner', 'ceo', 'cto'] },
+  { key: 'u', path: '/executive', label: 'Executive', roles: ['admin', 'ceo', 'cto'] },
+  { key: 'v', path: '/dev-space', label: 'Dev Space', roles: ['developer', 'admin', 'ceo', 'cto', 'senior_dev', 'tester'] },
+  { key: 'z', path: '/senior-space', label: 'Senior Space', roles: ['senior', 'senior_dev', 'developer', 'admin', 'ceo', 'cto'] },
 ]
 
 export function useKeyboardShortcuts() {

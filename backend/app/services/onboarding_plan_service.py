@@ -305,7 +305,7 @@ async def generate_plan_from_learning_path(
     user_id: str,
     created_by: str,
     repo_url: str,
-    role: str = "new_dev",
+    role: str = "junior_dev",
     notes: str | None = None,
 ) -> dict | None:
     """Generate an onboarding plan from an AI-explored learning path.

@@ -110,7 +110,7 @@ describe('RetentionCurvesPanel', () => {
   })
 
   it('stays hidden (and skips the fetch) for non-leader roles', async () => {
-    mockAuthRole('new_dev', 't3')
+    mockAuthRole('junior_dev', 't3')
     render(<RetentionCurvesPanel />)
 
     // Let the auth role resolve from listTeams before asserting.

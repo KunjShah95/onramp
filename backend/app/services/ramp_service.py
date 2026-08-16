@@ -32,10 +32,10 @@ logger = logging.getLogger("onramp.ramp")
 # ── Scope ─────────────────────────────────────────────────────────────────
 
 # Roles tracked as "trainees" (new developers being onboarded).
-TRAINEE_ROLES = {"new_dev", "member"}
+TRAINEE_ROLES = {"junior_dev", "member"}
 
 # Roles that receive stuck-dev leader alerts.
-LEADER_ROLES = {"senior_dev", "senior", "cto", "ceo", "owner"}
+LEADER_ROLES = {"senior_dev", "senior", "cto", "ceo", "admin"}
 
 # ── Cost model (working assumptions — Phase 0 pressure-tests these) ────────
 #

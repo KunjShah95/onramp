@@ -35,19 +35,19 @@ interface AuthState {
   loading: boolean
   error: string | null
   authMethod: 'password' | null
-  role: 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr' | null
+  role: 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr' | null
   activeTeamId: string | null
 }
 
-export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr'
+export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr'
 
 /** Roles allowed to create & manage team API keys (Settings + Developer Portal). */
-export const KEY_MANAGER_ROLES: TeamRole[] = ['ceo', 'cto', 'owner', 'senior', 'senior_dev', 'developer', 'tester']
+export const KEY_MANAGER_ROLES: TeamRole[] = ['ceo', 'cto', 'admin', 'senior', 'senior_dev', 'developer', 'tester']
 
 /** Role-appropriate landing page after login/register. */
 export function homeForRole(role: TeamRole | null | undefined): string {
   if (role === 'hr') return '/hr/people'
-  if (role === 'new_dev' || role === 'member') return '/my-progress'
+  if (role === 'junior_dev' || role === 'member') return '/my-progress'
   return '/dashboard'
 }
 
@@ -98,13 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({
           ...prev,
           activeTeamId: (activeTeam as any).team_id || null,
-             role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr') || 'new_dev',
+             role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
         }))
       } else {
         setState((prev) => ({ ...prev, role: null, activeTeamId: null }))
       }
     } catch {
-      setState((prev) => ({ ...prev, role: 'new_dev' }))
+      setState((prev) => ({ ...prev, role: 'junior_dev' }))
     }
   }, [])
 
@@ -240,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...prev,
           loading: false,
           activeTeamId: teamId,
-               role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr') || 'new_dev',
+               role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
         }))
       } else {
         setState((prev) => ({ ...prev, loading: false }))
@@ -260,8 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           )
           if (targetTeam) {
             return {
-              ...prev,
-          role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr') || 'new_dev',
+              ...prev,           role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
             }
           }
         }
@@ -269,8 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const activeTeam = teamsData.teams[0]
           return {
             ...prev,
-            activeTeamId: activeTeam.team_id,
-          role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'new_dev' | 'owner' | 'senior' | 'member' | 'hr') || 'new_dev',
+            activeTeamId: activeTeam.team_id,           role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
           }
         }
         return { ...prev, role: null, activeTeamId: null }

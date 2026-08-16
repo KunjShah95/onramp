@@ -38,15 +38,15 @@ async def _run_guard(min_role: str, team_id: str, user: dict):
 
 
 @pytest.mark.parametrize("user_role,min_role,should_pass", [
-    ("owner", "member", True),
-    ("owner", "senior", True),
-    ("owner", "owner", True),
+    ("admin", "member", True),
+    ("admin", "senior", True),
+    ("admin", "admin", True),
     ("senior", "member", True),
     ("senior", "senior", True),
-    ("senior", "owner", False),
+    ("senior", "admin", False),
     ("member", "member", True),
     ("member", "senior", False),
-    ("member", "owner", False),
+    ("member", "admin", False),
 ])
 async def test_role_hierarchy_matrix(storage, user_role, min_role, should_pass):
     await _seed_team(storage, "team-1", "user-1", user_role)
@@ -61,7 +61,7 @@ async def test_role_hierarchy_matrix(storage, user_role, min_role, should_pass):
 
 
 async def test_non_member_rejected(storage):
-    await _seed_team(storage, "team-1", "someone-else", "owner")
+    await _seed_team(storage, "team-1", "someone-else", "admin")
     user = {"uid": "user-not-in-team"}
 
     with pytest.raises(HTTPException) as exc_info:
@@ -86,8 +86,8 @@ async def test_missing_team_id_rejected(storage):
 
 async def test_membership_in_other_team_does_not_leak_access(storage):
     """A user who is owner of team-2 must not pass a check scoped to team-1."""
-    await _seed_team(storage, "team-1", "someone-else", "owner")
-    await _seed_team(storage, "team-2", "user-1", "owner")
+    await _seed_team(storage, "team-1", "someone-else", "admin")
+    await _seed_team(storage, "team-2", "user-1", "admin")
     user = {"uid": "user-1"}
 
     with pytest.raises(HTTPException) as exc_info:

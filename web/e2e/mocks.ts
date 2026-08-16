@@ -154,7 +154,7 @@ export async function mockBackendAPIs(page: Page) {
             tier: 'pro',
             members: ['member-1', 'member-2'],
             created_at: '2025-01-01T00:00:00Z',
-            role: 'owner',
+            role: 'admin',
           },
         ],
       }),

@@ -772,7 +772,7 @@ async def mentor_matching(team_id: str, new_dev_id: str, limit: int = 5) -> dict
     team's repo languages (their planned stack).
 
     A candidate senior scores +2 per shared language. Seniors are members with
-    role in {owner, ceo, cto, senior_dev}.
+    role in {admin, ceo, cto, senior_dev}.
     """
     storage = get_storage()
     members = await _team_members(storage, team_id)
@@ -805,7 +805,7 @@ async def mentor_matching(team_id: str, new_dev_id: str, limit: int = 5) -> dict
     if not new_dev_langs:
         new_dev_langs = set(team_langs)  # planned stack = team's stack
 
-    senior_roles = {"owner", "ceo", "cto", "senior_dev"}
+    senior_roles = {"admin", "ceo", "cto", "senior_dev"}
     scored = []
     for m in members:
         uid = m.get("user_id")

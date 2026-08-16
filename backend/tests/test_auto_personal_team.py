@@ -40,7 +40,7 @@ async def test_create_personal_team_named_after_user_with_new_dev_role():
     )
     assert len(members) == 1
     assert members[0]["team_id"] == team["id"]
-    assert members[0]["role"] == "new_dev"
+    assert members[0]["role"] == "junior_dev"
 
 
 @pytest.mark.asyncio
@@ -142,7 +142,7 @@ def test_register_auto_creates_personal_team(client, monkeypatch):
         )
         assert len(members) == 1
         member = members[0]
-        assert member["role"] == "new_dev"
+        assert member["role"] == "junior_dev"
         team = await storage.get_document("teams", member["team_id"])
         assert team is not None
         assert team["name"] == "Fresh Dev's Team"
@@ -155,7 +155,7 @@ def test_register_succeeds_even_if_team_creation_fails(client, monkeypatch):
 
     _stub_db_config(auth_module, monkeypatch=monkeypatch)
 
-    async def _boom(user_id, display_name, role="new_dev"):
+    async def _boom(user_id, display_name, role="junior_dev"):
         raise RuntimeError("team insert failed")
 
     # auth.py imports create_personal_team at module level, so patch the
@@ -184,7 +184,7 @@ async def test_oauth_new_user_gets_personal_team(monkeypatch):
 
     calls = []
 
-    async def _spy(user_id, display_name, role="new_dev"):
+    async def _spy(user_id, display_name, role="junior_dev"):
         calls.append((user_id, display_name, role))
 
     # oauth_service imports create_personal_team at module level, so patch
@@ -203,7 +203,7 @@ async def test_oauth_new_user_gets_personal_team(monkeypatch):
     assert len(calls) == 1
     assert calls[0][0] == result["uid"]
     assert calls[0][1] == "Google New"
-    assert calls[0][2] == "new_dev"
+    assert calls[0][2] == "junior_dev"
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_oauth_existing_user_does_not_get_second_team(monkeypatch):
 
     calls = []
 
-    async def _spy(user_id, display_name, role="new_dev"):
+    async def _spy(user_id, display_name, role="junior_dev"):
         calls.append((user_id, display_name, role))
 
     monkeypatch.setattr(

@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext'
 // Same set the /ramp route + sidebar use — the panel is a leadership surface.
 // 'hr' is included: org ramp health is people telemetry (the HR console
 // already owns attrition risk, ramp time, and completion).
-export const LEADER_ROLES = ['senior_dev', 'senior', 'owner', 'ceo', 'cto', 'hr']
+export const LEADER_ROLES = ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr']
 
 export function isLeaderRole(role?: string | null): boolean {
   return !!role && LEADER_ROLES.includes(role)

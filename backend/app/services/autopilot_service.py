@@ -52,7 +52,7 @@ _DIFFICULTY_ROLES = {
 }
 
 _ROLE_LABELS = {
-    "intern": "Intern / new dev",
+    "intern": "Intern / junior dev",
     "developer": "Junior developer",
     "senior_dev": "Senior developer",
 }
@@ -60,7 +60,7 @@ _ROLE_LABELS = {
 # Pipeline role → Onramp team-member role (TeamMember.role column). Used to
 # auto-assign created tasks to a real team member holding the matching role.
 _ROLE_TEAM_ROLES = {
-    "intern": "new_dev",
+    "intern": "junior_dev",
     "developer": "developer",
     "senior_dev": "senior_dev",
 }
@@ -595,7 +595,7 @@ class AutopilotService:
         rotation: Dict[str, Dict[str, Any]] = {}
         for issue in issues:
             role = issue.get("assigned_role", "developer")
-            team_role = _ROLE_TEAM_ROLES.get(role, "new_dev")
+            team_role = _ROLE_TEAM_ROLES.get(role, "junior_dev")
             if team_role not in rotation:
                 pool = self._role_members(members, team_role, created_by)
                 rotation[team_role] = {
@@ -617,7 +617,7 @@ class AutopilotService:
                 continue
 
             role = issue.get("assigned_role", "developer")
-            team_role = _ROLE_TEAM_ROLES.get(role, "new_dev")
+            team_role = _ROLE_TEAM_ROLES.get(role, "junior_dev")
             # Load-aware: pick the least-loaded member (round-robin order as
             # the tie-breaker), then bump their load + advance the cursor.
             state = rotation[team_role]

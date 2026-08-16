@@ -34,7 +34,7 @@ class AutopilotAnalyzeRequest(BaseModel):
     create_tasks: bool = Field(
         True,
         description="Create each issue as a real Onramp task assigned by role "
-        "(intern→new_dev, junior→developer, senior→senior_dev)",
+        "(intern→junior_dev, junior→developer, senior→senior_dev)",
     )
     team_id: Optional[str] = Field(
         None,

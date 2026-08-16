@@ -184,7 +184,7 @@ class TeamMember(Base):
     team_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
     )
-    role: Mapped[str] = mapped_column(String(50), default="new_dev")
+    role: Mapped[str] = mapped_column(String(50), default="junior_dev")
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -192,7 +192,7 @@ class TeamMember(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "team_id", name="uq_team_members_user_team"),
         CheckConstraint(
-            "role IN ('owner', 'ceo', 'cto', 'senior_dev', 'developer', 'tester', 'new_dev', 'member', 'hr')",
+            "role IN ('admin', 'ceo', 'cto', 'senior_dev', 'developer', 'tester', 'junior_dev', 'member', 'hr')",
             name="ck_team_members_role"
         ),
         Index("ix_team_members_user_id", "user_id"),

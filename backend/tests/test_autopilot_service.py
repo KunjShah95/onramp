@@ -165,8 +165,8 @@ async def _seed_team(storage, team_id, creator_id, extra_members=()):
         "created_at": now, "updated_at": now,
     })
     for uid, name, role in [
-        (creator_id, "Creator", "owner"),
-        ("u-newdev", "New Dev", "new_dev"),
+        (creator_id, "Creator", "admin"),
+        ("u-newdev", "New Dev", "junior_dev"),
         ("u-dev", "Dev", "developer"),
         ("u-senior", "Senior", "senior_dev"),
     ] + list(extra_members):
@@ -192,7 +192,7 @@ class TestCreateTasks:
 
         assert len(created) == 2
         by_title = {t["title"]: t for t in created}
-        assert by_title["Fix auth NPE"]["team_role"] == "new_dev"
+        assert by_title["Fix auth NPE"]["team_role"] == "junior_dev"
         assert by_title["Fix auth NPE"]["assigned_to"] == "u-newdev"
         assert by_title["Harden rate limiter"]["team_role"] == "senior_dev"
         assert by_title["Harden rate limiter"]["assigned_to"] == "u-senior"
@@ -259,7 +259,7 @@ class TestCreateTasks:
             "password_hash": "h", "is_active": True, "created_at": now, "updated_at": now,
         }))
         asyncio.run(storage.create_document("team_members", "mem-u-boss", {
-            "user_id": "u-boss", "team_id": "team-owner", "role": "owner",
+            "user_id": "u-boss", "team_id": "team-owner", "role": "admin",
             "joined_at": now,
         }))
         svc = AutopilotService(llm=object())
@@ -313,8 +313,8 @@ class TestRoundRobinAssignment:
     def test_rotates_across_all_new_dev_members_in_one_batch(self, storage):
         # new_dev pool: base u-newdev + u-n1 + u-n2 → sorted [u-n1, u-n2, u-newdev].
         asyncio.run(_seed_team(storage, "team-rr", "u-creator", [
-            ("u-n1", "Intern One", "new_dev"),
-            ("u-n2", "Intern Two", "new_dev"),
+            ("u-n1", "Intern One", "junior_dev"),
+            ("u-n2", "Intern Two", "junior_dev"),
         ]))
         svc = AutopilotService(llm=object())
 
@@ -329,8 +329,8 @@ class TestRoundRobinAssignment:
     def test_rotation_continues_across_separate_runs(self, storage):
         """A second pipeline run keeps the cycle (seeded from task history)."""
         asyncio.run(_seed_team(storage, "team-rr", "u-creator", [
-            ("u-n1", "Intern One", "new_dev"),
-            ("u-n2", "Intern Two", "new_dev"),
+            ("u-n1", "Intern One", "junior_dev"),
+            ("u-n2", "Intern Two", "junior_dev"),
         ]))
         svc = AutopilotService(llm=object())
 
@@ -351,8 +351,8 @@ class TestRoundRobinAssignment:
         new_dev pool: [u-n1, u-n2, u-newdev]; senior pool: [u-s2, u-senior]
         (sorted — 'u-s2' < 'u-senior')."""
         asyncio.run(_seed_team(storage, "team-rr", "u-creator", [
-            ("u-n1", "Intern One", "new_dev"),
-            ("u-n2", "Intern Two", "new_dev"),
+            ("u-n1", "Intern One", "junior_dev"),
+            ("u-n2", "Intern Two", "junior_dev"),
             ("u-s2", "Senior Two", "senior_dev"),
         ]))
         svc = AutopilotService(llm=object())
@@ -430,8 +430,8 @@ class TestLoadAwareAssignment:
         """A member with pre-existing active tasks is passed over until the
         lighter member gets the assignment."""
         asyncio.run(_seed_team(storage, "team-load", "u-creator", [
-            ("u-busy", "Busy Intern", "new_dev"),
-            ("u-free", "Free Intern", "new_dev"),
+            ("u-busy", "Busy Intern", "junior_dev"),
+            ("u-free", "Free Intern", "junior_dev"),
         ]))
         # u-busy already holds 2 active tasks; u-free holds none.
         self._seed_active_tasks(storage, "team-load", "u-busy", 2)
@@ -448,8 +448,8 @@ class TestLoadAwareAssignment:
         member, the lighter member wins instead."""
         # new_dev pool (sorted): [u-a, u-b, u-newdev]
         asyncio.run(_seed_team(storage, "team-load", "u-creator", [
-            ("u-a", "Intern A", "new_dev"),
-            ("u-b", "Intern B", "new_dev"),
+            ("u-a", "Intern A", "junior_dev"),
+            ("u-b", "Intern B", "junior_dev"),
         ]))
         from datetime import datetime, timezone
 
@@ -480,8 +480,8 @@ class TestLoadAwareAssignment:
     def test_completed_tasks_do_not_count_as_load(self, storage):
         """Only active tasks weight the assignment — completed work is not load."""
         asyncio.run(_seed_team(storage, "team-load", "u-creator", [
-            ("u-done", "Done Intern", "new_dev"),
-            ("u-other", "Other Intern", "new_dev"),
+            ("u-done", "Done Intern", "junior_dev"),
+            ("u-other", "Other Intern", "junior_dev"),
         ]))
         from datetime import datetime, timezone
 
@@ -562,7 +562,7 @@ class TestTaskAutoAdvance:
             "password_hash": "h", "is_active": True, "created_at": now, "updated_at": now,
         }))
         asyncio.run(storage.create_document("team_members", "mem-u-boss", {
-            "user_id": "u-boss", "team_id": "team-owner", "role": "owner",
+            "user_id": "u-boss", "team_id": "team-owner", "role": "admin",
             "joined_at": now,
         }))
         svc = self._patched_service(monkeypatch)

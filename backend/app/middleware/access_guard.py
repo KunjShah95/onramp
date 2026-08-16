@@ -21,7 +21,7 @@ Usage:
     async def add_member(
         team_id: str,
         user: dict = Depends(get_current_user),
-        _: None = require_team_role("owner"),
+        _: None = require_team_role("admin"),
     ):
         ...
 """
@@ -31,13 +31,13 @@ from fastapi import Request, HTTPException, Depends
 ROLE_HIERARCHY = {
     "ceo": 6,
     "cto": 6,
-    "owner": 6,
+    "admin": 6,
     "senior_dev": 5,
     "senior": 5,
     "hr": 4,
     "developer": 4,
     "tester": 3,
-    "new_dev": 2,
+    "junior_dev": 2,
     "member": 2,
 }
 
@@ -137,7 +137,7 @@ def require_module_access(
 
 
 def require_team_role(
-    required_role: str = "owner",
+    required_role: str = "admin",
     team_id_param: str = "team_id",
 ) -> Depends:
     """FastAPI dependency: require the current user to have ``required_role``
@@ -152,7 +152,7 @@ def require_team_role(
         async def update_settings(
             team_id: str,
             user: dict = Depends(get_current_user),
-            _: None = Depends(require_team_role("owner")),
+            _: None = Depends(require_team_role("admin")),
         ):
             ...
     """
@@ -202,7 +202,7 @@ def require_minimum_role(
     min_role: str = "member",
     team_id_param: str = "team_id",
 ) -> Depends:
-    """FastAPI dependency: require user's team role >= min_role (owner > senior > member)."""
+    """FastAPI dependency: require user's team role >= min_role (admin > senior > member)."""
 
     async def _guard(request: Request) -> None:
         from app.services.team_service import get_user_teams

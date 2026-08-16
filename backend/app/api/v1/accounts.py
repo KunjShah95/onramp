@@ -26,13 +26,13 @@ FRONTEND_URL = os.getenv(
 # Roles that can create accounts
 CREATOR_ROLES = {"ceo", "cto", "senior_dev", "hr"}
 # Roles that can be assigned to created accounts
-CREATABLE_ROLES = {"new_dev": 2, "developer": 4, "tester": 3, "hr": 4}
+CREATABLE_ROLES = {"junior_dev": 2, "developer": 4, "tester": 3, "hr": 4}
 
 
 class CreateAccountRequest(BaseModel):
     name: str
     email: EmailStr
-    role: str = "new_dev"
+    role: str = "junior_dev"
     team_id: str | None = None
     message: str | None = None
 
@@ -54,7 +54,7 @@ class CsvPreviewRequest(BaseModel):
 class BulkCreateRow(BaseModel):
     name: str
     email: EmailStr
-    role: str = "new_dev"
+    role: str = "junior_dev"
     team_id: str | None = None
 
 
@@ -110,9 +110,9 @@ async def _get_creator_role(user: dict) -> tuple[str, int]:
 def _can_create_role(creator_level: int, target_role: str) -> bool:
     """Check if creator can assign a given role.
 
-    ceo/cto/owner (6): can create any creatable role.
-    senior_dev/senior (5): can create new_dev/developer/tester.
-    hr (4): can create new_dev/developer/tester.
+    ceo/cto/admin (6): can create any creatable role.
+    senior_dev/senior (5): can create junior_dev/developer/tester.
+    hr (4): can create junior_dev/developer/tester.
     """
     target_level = CREATABLE_ROLES.get(target_role, 0)
     if target_level == 0:
@@ -223,7 +223,7 @@ async def preview_csv(
         for i, row in enumerate(reader, start=1):
             name = row.get("name", "").strip()
             email = row.get("email", "").strip()
-            role = row.get("role", "new_dev").strip()
+            role = row.get("role", "junior_dev").strip()
             error = None
             valid = True
 

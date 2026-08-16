@@ -72,7 +72,7 @@ function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLText
 type TeamMember = { user_id: string; name: string; role: string }
 
 /** Deterministic order: seniors first, then by name. */
-const TECH_ROLES_ORDER = ['owner', 'ceo', 'cto', 'senior_dev', 'senior', 'developer', 'tester', 'new_dev', 'member', 'hr']
+const TECH_ROLES_ORDER = ['admin', 'ceo', 'cto', 'senior_dev', 'senior', 'developer', 'tester', 'junior_dev', 'member', 'hr']
 
 function sortMembers(members: TeamMember[]): TeamMember[] {
   const roleIdx = (r: string) => { const i = TECH_ROLES_ORDER.indexOf(r); return i === -1 ? TECH_ROLES_ORDER.length : i }

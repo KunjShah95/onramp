@@ -2,7 +2,7 @@
 
 The LLM/embedding routers read their provider keys from environment variables
 at boot. This service lets an admin configure the *same* keys from the Admin
-Dashboard (owner role), stored encrypted at rest and pushed into the running
+Dashboard (admin role), stored encrypted at rest and pushed into the running
 routers at startup and after every change — so deployments no longer need to
 edit ``backend/.env`` to supply provider keys.
 

@@ -83,3 +83,6 @@ backend/restore_users.csv
 
 # Repo Autopilot output
 /autopilot_out/
+
+# Database dumps/backups
+*.dump

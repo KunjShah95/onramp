@@ -22,13 +22,13 @@ async def create_team(name: str, description: Optional[str] = None) -> dict:
 
 
 async def create_personal_team(
-    user_id: str, display_name: str, role: str = "new_dev"
+    user_id: str, display_name: str, role: str = "junior_dev"
 ) -> dict:
     """Create a personal team for a user and add them as its first member.
 
     Called at registration so every new account has a team + role from day
     one (the frontend derives ``role``/``activeTeamId`` from membership).
-    ``new_dev`` is the minimal role — same as demo "New Dev" accounts.
+    ``junior_dev`` is the minimal role — same as demo "Junior Dev" accounts.
     """
     clean_name = " ".join((display_name or "").strip().split())
     if not clean_name:
@@ -61,7 +61,7 @@ async def delete_team(team_id: str) -> None:
     await storage.delete_document("teams", team_id)
 
 
-async def add_member(team_id: str, user_id: str, role: str = "new_dev") -> dict:
+async def add_member(team_id: str, user_id: str, role: str = "junior_dev") -> dict:
     """Add a user to a team"""
     storage = get_storage()
     
@@ -177,11 +177,11 @@ class TeamService:
 
     async def create_team(self, name: str, owner: str, tier: str = "free") -> dict:
         team = await create_team(name=name, description="")
-        await add_member(team["id"], owner, role="owner")
+        await add_member(team["id"], owner, role="admin")
         team["owner"] = owner
         team["tier"] = tier
         team["team_id"] = team["id"]
-        team["members"] = [{"user_id": owner, "role": "owner"}]
+        team["members"] = [{"user_id": owner, "role": "admin"}]
         return team
 
     async def get_team(self, team_id: str) -> Optional[dict]:
@@ -198,7 +198,7 @@ class TeamService:
             t["team_id"] = t.get("id")
         return teams
 
-    async def add_member(self, team_id: str, user: str, role: str = "new_dev") -> dict:
+    async def add_member(self, team_id: str, user: str, role: str = "junior_dev") -> dict:
         try:
             # Check for duplicates
             members = await get_team_members(team_id)
@@ -213,7 +213,7 @@ class TeamService:
         await remove_member(team_id, user)
         return {"removed": True, "user": user}
 
-    async def create_invite(self, team_id: str, email: str, invited_by: str, role: str = "new_dev", message: str = "") -> dict:
+    async def create_invite(self, team_id: str, email: str, invited_by: str, role: str = "junior_dev", message: str = "") -> dict:
         from app.services.invite_service import create_invite as _create
         return await _create(team_id, email, invited_by, role=role, message=message)
 

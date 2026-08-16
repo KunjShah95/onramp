@@ -217,7 +217,7 @@ def _mock_owner(monkeypatch):
     from app.api.v1 import admin
 
     async def _teams_for_user(uid):
-        return [{"id": "acme", "team_id": "acme", "role": "owner"}]
+        return [{"id": "acme", "team_id": "acme", "role": "admin"}]
 
     monkeypatch.setattr(admin, "get_user_teams", _teams_for_user)
 

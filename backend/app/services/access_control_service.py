@@ -179,7 +179,7 @@ async def has_module_access(
     )
 
     for m in members:
-        if m.get("role") in ("owner", "ceo", "cto"):
+        if m.get("role") in ("admin", "ceo", "cto"):
             return True
 
     # Check module permission

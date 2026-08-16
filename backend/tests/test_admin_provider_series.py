@@ -77,7 +77,7 @@ async def _seed_admin_owner():
     })
     await storage.create_document("teams", "acme", {"name": "Acme", "is_active": True})
     await storage.create_document("team_members", generate_id(), {
-        "team_id": "acme", "user_id": "adminuser", "role": "owner",
+        "team_id": "acme", "user_id": "adminuser", "role": "admin",
     })
 
 

@@ -94,7 +94,7 @@ async def test_deactivate_removes_from_teams():
         "user_id": uid, "team_id": team_a_id, "role": "member"
     })
     m2 = await s.create_document("team_members", str(generate_id()), {
-        "user_id": uid, "team_id": team_b_id, "role": "owner"
+        "user_id": uid, "team_id": team_b_id, "role": "admin"
     })
 
     await deactivate_user(uid)

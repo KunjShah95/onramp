@@ -273,7 +273,7 @@ async def create_template_endpoint(
 ):
     """Create a reusable task template (blueprint) for a team.
 
-    The caller must hold a senior/owner role in the team.
+    The caller must hold a senior/admin role in the team.
     """
     from app.services.team_service import get_user_teams
 
@@ -285,8 +285,8 @@ async def create_template_endpoint(
     )
     if not target:
         raise HTTPException(status_code=403, detail="Access denied")
-    if target.get("role") not in ("owner", "ceo", "cto", "senior_dev"):
-        raise HTTPException(status_code=403, detail="Only senior/owner roles can create templates")
+    if target.get("role") not in ("admin", "ceo", "cto", "senior_dev"):
+        raise HTTPException(status_code=403, detail="Only senior/admin roles can create templates")
     template = await task_template_service.create_template(
         team_id=request.team_id,
         created_by=uid,

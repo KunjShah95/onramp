@@ -107,7 +107,7 @@ async def generate_plan(payload: dict, user: dict = Depends(get_current_user)):
         user_id=target_user_id,
         created_by=user["uid"],
         repo_url=repo_url,
-        role=payload.get("role", "new_dev"),
+        role=payload.get("role", "junior_dev"),
         notes=payload.get("notes"),
     )
     if not plan:

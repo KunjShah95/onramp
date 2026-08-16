@@ -105,7 +105,7 @@ async def grant_module(
     # Verify the granter is an owner of the team
     teams = await team_service.list_teams(user.get("uid", ""))
     is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "owner"
+        t.get("team_id") == team_id and t.get("role") == "admin"
         for t in teams
     )
     if not is_owner:
@@ -137,7 +137,7 @@ async def revoke_module(
     """Revoke a user's access to a specific module."""
     teams = await team_service.list_teams(user.get("uid", ""))
     is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "owner"
+        t.get("team_id") == team_id and t.get("role") == "admin"
         for t in teams
     )
     if not is_owner:
@@ -161,7 +161,7 @@ async def revoke_all_modules(
     """Revoke ALL module access for a user."""
     teams = await team_service.list_teams(user.get("uid", ""))
     is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "owner"
+        t.get("team_id") == team_id and t.get("role") == "admin"
         for t in teams
     )
     if not is_owner:

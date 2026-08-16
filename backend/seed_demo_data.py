@@ -54,8 +54,8 @@ ALL_USERS = [
     (UID_DEV2,    "Sam Wilson",     "sam@acme.com",      "developer"),
     (UID_TESTER,  "Jordan Lee",     "jordan@acme.com",   "tester"),
     (UID_HR,      "Sarah Kim",      "sarah@acme.com",    "hr"),
-    (UID_NEWBIE,  "Dev Shah",       "dev@acme.com",      "new_dev"),
-    (UID_NEWBIE2, "Anika Gupta",    "anika@acme.com",    "new_dev"),
+    (UID_NEWBIE,  "Dev Shah",       "dev@acme.com",      "junior_dev"),
+    (UID_NEWBIE2, "Anika Gupta",    "anika@acme.com",    "junior_dev"),
 ]
 
 # ── Team definitions ────────────────────────────────────────────────
@@ -74,14 +74,14 @@ MEMBERSHIPS = [
     (TEAM_ACME,    UID_DEV2,    "developer"),
     (TEAM_ACME,    UID_TESTER,  "tester"),
     (TEAM_ACME,    UID_HR,      "hr"),
-    (TEAM_ACME,    UID_NEWBIE,  "new_dev"),
-    (TEAM_ACME,    UID_NEWBIE2, "new_dev"),
+    (TEAM_ACME,    UID_NEWBIE,  "junior_dev"),
+    (TEAM_ACME,    UID_NEWBIE2, "junior_dev"),
     (TEAM_BETA,    UID_CTO,     "cto"),
     (TEAM_BETA,    UID_SENIOR,  "senior_dev"),
     (TEAM_BETA,    UID_DEV1,    "developer"),
-    (TEAM_BETA,    UID_NEWBIE,  "new_dev"),
+    (TEAM_BETA,    UID_NEWBIE,  "junior_dev"),
     (TEAM_STARTUP, UID_DEV2,    "developer"),
-    (TEAM_STARTUP, UID_NEWBIE2, "new_dev"),
+    (TEAM_STARTUP, UID_NEWBIE2, "junior_dev"),
 ]
 
 # ── Task definitions ────────────────────────────────────────────────
@@ -411,7 +411,7 @@ async def seed():
          [{"step": 1, "title": "Set up dev environment", "done": True},
           {"step": 2, "title": "Meet the team", "done": True},
           {"step": 3, "title": "Review architecture docs", "done": False}],
-         ["onboarding", "new_dev"]),
+         ["onboarding", "junior_dev"]),
         ("playbook-2", TEAM_ACME, "Code Review Best Practices",
          "Guidelines for conducting effective code reviews.",
          [{"step": 1, "title": "Review the PR description", "done": False},

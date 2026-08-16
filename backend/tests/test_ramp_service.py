@@ -218,7 +218,7 @@ async def test_summary_cost_model_block_and_override():
     await _seed_team(storage, "team-cost-3")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-cost-3", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-cost-3", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-cost-3", "senior-1", "senior_dev")
     await _seed_task(storage, "team-cost-3", "trainee-a", "completed",
                      review_cycles=2, completed_days_ago=10, updated_days_ago=10)
@@ -306,7 +306,7 @@ async def test_ramp_vs_onramp_benchmark_roi():
     await _seed_team(storage, "team-bench-1")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-bench-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-bench-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-bench-1", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-bench-1", "webapp", "TypeScript", "https://github.com/acme/webapp")
     await _seed_bench_task(storage, "team-bench-1", "trainee-a", "A1", "https://github.com/acme/webapp")
@@ -330,7 +330,7 @@ async def test_benchmark_react_scoping_on_mixed_team():
     await _seed_team(storage, "team-bench-2")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-bench-2", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-bench-2", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-bench-2", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-bench-2", "webapp", "TypeScript", "https://github.com/acme/webapp")
     await _seed_bench_repo(storage, "team-bench-2", "api", "Python", "https://github.com/acme/api")
@@ -357,7 +357,7 @@ async def test_benchmark_price_override_changes_onramp_cost():
     await _seed_team(storage, "team-bench-3")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-bench-3", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-bench-3", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-bench-3", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-bench-3", "webapp", "JavaScript", "https://github.com/acme/webapp")
     await _seed_bench_task(storage, "team-bench-3", "trainee-a", "A1", "https://github.com/acme/webapp")
@@ -379,7 +379,7 @@ async def test_benchmark_snapshot_record_and_history():
     await _seed_team(storage, "team-bench-4")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-bench-4", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-bench-4", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-bench-4", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-bench-4", "webapp", "TypeScript", "https://github.com/acme/webapp")
     await _seed_bench_task(storage, "team-bench-4", "trainee-a", "A1", "https://github.com/acme/webapp")
@@ -411,7 +411,7 @@ async def test_benchmark_uses_live_subscription_price():
     await _seed_team(storage, "team-bench-live")
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-bench-live", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-bench-live", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-bench-live", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-bench-live", "webapp", "TypeScript", "https://github.com/acme/webapp")
     await _seed_bench_task(storage, "team-bench-live", "trainee-a", "A1", "https://github.com/acme/webapp")
@@ -444,7 +444,7 @@ async def test_benchmark_team_override_wins_over_subscription():
     storage = get_storage()
     await _seed_team(storage, "team-bench-override")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-bench-override", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-bench-override", "trainee-a", "junior_dev")
     await _seed_subscription(storage, "team-bench-override", "startup")  # ₹999/mo
     await tcs.set_team_cost_settings(
         "team-bench-override", "senior-1", {"onramp_price_usd_per_month": 198.0}
@@ -468,7 +468,7 @@ async def test_benchmark_free_tier_falls_back_to_platform_default():
     storage = get_storage()
     await _seed_team(storage, "team-bench-free")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-bench-free", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-bench-free", "trainee-a", "junior_dev")
     await _seed_subscription(storage, "team-bench-free", "free")  # ₹0/mo
 
     from app.services import agent_benchmark_service as absvc
@@ -503,9 +503,9 @@ async def test_agent_benchmark_math():
     await _seed_user(storage, "trainee-c", "Casey")
     await _seed_user(storage, "hr-1", "H")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-agent-1", "trainee-a", "new_dev")
-    await _seed_member(storage, "team-agent-1", "trainee-b", "new_dev")
-    await _seed_member(storage, "team-agent-1", "trainee-c", "new_dev")
+    await _seed_member(storage, "team-agent-1", "trainee-a", "junior_dev")
+    await _seed_member(storage, "team-agent-1", "trainee-b", "junior_dev")
+    await _seed_member(storage, "team-agent-1", "trainee-c", "junior_dev")
     await _seed_member(storage, "team-agent-1", "hr-1", "hr")  # excluded from dev count
     await _seed_member(storage, "team-agent-1", "senior-1", "senior_dev")
     await _seed_bench_repo(storage, "team-agent-1", "webapp", "TypeScript", "https://github.com/acme/webapp")
@@ -537,7 +537,7 @@ async def test_agent_benchmark_price_override():
     storage = get_storage()
     await _seed_team(storage, "team-agent-2")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-agent-2", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-agent-2", "trainee-a", "junior_dev")
 
     at_99 = await absvc.agent_cost_benchmark("team-agent-2")
     await tcs.set_team_cost_settings("team-agent-2", "senior-1", {"onramp_price_usd_per_month": 198.0})
@@ -556,7 +556,7 @@ async def test_agent_benchmark_snapshot_roundtrip():
     storage = get_storage()
     await _seed_team(storage, "team-agent-3")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-agent-3", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-agent-3", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-agent-3", "webapp", "JavaScript", "https://github.com/acme/webapp")
 
     first = await absvc.record_agent_benchmark_snapshot("team-agent-3", "senior-1")
@@ -600,7 +600,7 @@ async def test_token_efficiency_benchmark_default_math():
     storage = get_storage()
     await _seed_team(storage, "team-eff-1")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-1", "trainee-a", "junior_dev")
 
     bench = await absvc.token_efficiency_benchmark("team-eff-1")
     assert bench["assumptions"]["codebase_tokens"] == 250_000
@@ -635,7 +635,7 @@ async def test_token_efficiency_uses_measured_usage():
     storage = get_storage()
     await _seed_team(storage, "team-eff-2")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-2", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-2", "trainee-a", "junior_dev")
 
     # 5 records in the last 30d: 4 free, 1 paid — 10K tokens, $0.02 spent.
     now = datetime.now(timezone.utc)
@@ -678,7 +678,7 @@ async def test_token_efficiency_tunable_inputs_and_file_count_default():
     storage = get_storage()
     await _seed_team(storage, "team-eff-3")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-3", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-3", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-eff-3", "webapp", "TypeScript", "https://github.com/acme/webapp")
     await storage.update_document("repositories", "repo-webapp", {"file_count": 400})
 
@@ -716,7 +716,7 @@ async def test_headcount_simulation_scales_agent_cost_only():
     storage = get_storage()
     await _seed_team(storage, "team-eff-hc")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-hc", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-hc", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-eff-hc", "webapp", "TypeScript", "https://github.com/acme/webapp")
 
     at_actual = await absvc.token_efficiency_benchmark("team-eff-hc")
@@ -752,7 +752,7 @@ async def test_multi_product_scaling_compounds_agent_cost():
     storage = get_storage()
     await _seed_team(storage, "team-eff-mp")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-mp", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-mp", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-eff-mp", "webapp", "TypeScript", "https://github.com/acme/webapp")
 
     single = await absvc.token_efficiency_benchmark("team-eff-mp")
@@ -790,7 +790,7 @@ async def test_per_dev_token_burn_can_be_disabled():
     storage = get_storage()
     await _seed_team(storage, "team-eff-shared")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-shared", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-shared", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-eff-shared", "webapp", "TypeScript", "https://github.com/acme/webapp")
 
     shared_10 = await absvc.token_efficiency_benchmark(
@@ -812,7 +812,7 @@ async def test_headcount_scenario_record_and_history():
     storage = get_storage()
     await _seed_team(storage, "team-eff-hc2")
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-eff-hc2", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-eff-hc2", "trainee-a", "junior_dev")
     await _seed_bench_repo(storage, "team-eff-hc2", "webapp", "TypeScript", "https://github.com/acme/webapp")
 
     rec = await absvc.record_headcount_scenario("team-eff-hc2", "senior-1", 10)
@@ -851,7 +851,7 @@ async def test_cost_model_put_requires_leader():
     storage = get_storage()
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
 
     # A plain member may read…
     await _require_member({"uid": "trainee-a"}, "team-ramp-1")
@@ -870,7 +870,7 @@ async def test_get_ramp_summary_benchmark_and_profiles():
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "trainee-b", "Bob")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "trainee-b", "member", joined_days_ago=10)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev", joined_days_ago=200)
 
@@ -916,8 +916,8 @@ async def test_detect_stuck_signals_and_severity():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "trainee-b", "Bob")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
-    await _seed_member(storage, "team-ramp-1", "trainee-b", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-b", "junior_dev")
 
     # Alice: needs_changes untouched 10 days + 2 change-request cycles.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "needs_changes",
@@ -955,7 +955,7 @@ async def test_no_inactivity_signal_when_all_tasks_completed():
     storage = get_storage()
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
     # Completed 15 days ago, nothing since — no open work.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
                      completed_days_ago=15, updated_days_ago=15, title="A1")
@@ -978,7 +978,7 @@ async def test_pending_review_timeout_signal():
     storage = get_storage()
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
     # Submitted 2 days ago, still waiting for review.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "submitted",
                      updated_days_ago=2, title="A1")
@@ -995,7 +995,7 @@ async def test_ramp_summary_days_to_first_pr_from_webhook():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await storage.update_document("users", "trainee-a", {"github_username": "alice-dev"})
     # PR merged 10 days ago → 20 days after joining.
@@ -1022,7 +1022,7 @@ async def test_ramp_summary_days_to_first_pr_from_task_stamp_without_github():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     # No github_username on the user, no milestone rows — only the task stamp.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
@@ -1045,9 +1045,9 @@ async def test_ramp_summary_first_pr_benchmark_median():
     await _seed_user(storage, "trainee-b", "Bob")
     await _seed_user(storage, "trainee-c", "Cara")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
-    await _seed_member(storage, "team-ramp-1", "trainee-b", "new_dev", joined_days_ago=20)
-    await _seed_member(storage, "team-ramp-1", "trainee-c", "new_dev", joined_days_ago=10)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-b", "junior_dev", joined_days_ago=20)
+    await _seed_member(storage, "team-ramp-1", "trainee-c", "junior_dev", joined_days_ago=10)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
 
     # Alice: PR merged 10d ago → 20d. Bob: merged 5d ago → 15d. Cara: none.
@@ -1075,7 +1075,7 @@ async def test_ramp_summary_first_pr_benchmark_none_when_no_data():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
                      completed_days_ago=10, updated_days_ago=10, title="A1")
@@ -1091,7 +1091,7 @@ async def test_ramp_summary_github_milestone_wins_over_task_stamp():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await storage.update_document("users", "trainee-a", {"github_username": "alice-dev"})
     # Milestone: merged 15 days ago (15d after join). Task stamp: 10 days ago.
@@ -1119,7 +1119,7 @@ async def test_ramp_summary_no_first_pr_data():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
                      completed_days_ago=10, updated_days_ago=10, title="A1")
@@ -1136,7 +1136,7 @@ async def test_fire_stuck_alerts_deduped():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await _seed_task(storage, "team-ramp-1", "trainee-a", "in_progress",
                      updated_days_ago=10, title="A1")
@@ -1162,7 +1162,7 @@ async def test_no_alerts_when_team_is_healthy():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
                      completed_days_ago=2, updated_days_ago=2, title="A1")
@@ -1182,8 +1182,8 @@ async def test_ramp_health_healthy_team_scores_high():
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "trainee-b", "Bob")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
-    await _seed_member(storage, "team-ramp-1", "trainee-b", "new_dev", joined_days_ago=20)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-b", "junior_dev", joined_days_ago=20)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     # Both ramped fast, all tasks completed, merged PRs — a healthy team.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
@@ -1214,8 +1214,8 @@ async def test_ramp_health_stuck_heavy_team_scores_low():
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "trainee-b", "Bob")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
-    await _seed_member(storage, "team-ramp-1", "trainee-b", "new_dev", joined_days_ago=20)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-b", "junior_dev", joined_days_ago=20)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     # Neither has ramped; both have stale in-progress tasks → stuck.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "in_progress",
@@ -1238,7 +1238,7 @@ async def test_ramp_health_review_analytics_failure_is_graceful(monkeypatch):
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
                      completed_days_ago=10, updated_days_ago=10,
@@ -1267,8 +1267,8 @@ async def test_ramp_health_attrition_risk_lowers_score():
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "trainee-b", "Bob")
     await _seed_user(storage, "senior-1", "Sara")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev", joined_days_ago=30)
-    await _seed_member(storage, "team-ramp-1", "trainee-b", "new_dev", joined_days_ago=20)
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev", joined_days_ago=30)
+    await _seed_member(storage, "team-ramp-1", "trainee-b", "junior_dev", joined_days_ago=20)
     await _seed_member(storage, "team-ramp-1", "senior-1", "senior_dev")
     # Healthy trainee: ramped, completed, merged PR.
     await _seed_task(storage, "team-ramp-1", "trainee-a", "completed",
@@ -1322,7 +1322,7 @@ async def test_ramp_authz_non_member_forbidden():
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_user(storage, "outsider", "Oscar")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
 
     with pytest.raises(HTTPException) as exc:
         await _require_member({"uid": "outsider"}, "team-ramp-1")
@@ -1341,7 +1341,7 @@ async def test_ramp_authz_member_but_not_leader_forbidden_on_check():
     storage = get_storage()
     await _seed_team(storage)
     await _seed_user(storage, "trainee-a", "Alice")
-    await _seed_member(storage, "team-ramp-1", "trainee-a", "new_dev")
+    await _seed_member(storage, "team-ramp-1", "trainee-a", "junior_dev")
 
     # A plain member passes the read check…
     await _require_member({"uid": "trainee-a"}, "team-ramp-1")

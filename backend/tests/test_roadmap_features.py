@@ -427,7 +427,7 @@ class TestStaleTaskSweep:
 # ═══════════════════════════════════════════════════════════════
 
 
-async def _seed_member(user_id, role="new_dev", joined_days_ago=30):
+async def _seed_member(user_id, role="junior_dev", joined_days_ago=30):
     storage = get_storage()
     joined = (datetime.now(timezone.utc) - timedelta(days=joined_days_ago)).isoformat()
     await storage.create_document("team_members", f"mem-{user_id}", {
@@ -559,7 +559,7 @@ class TestHeadcountFlow:
             (TUID_USER_JUNIOR2, old),
             (TUID_USER_SENIOR, senior_joined),
         ]:
-            role = "senior_dev" if uid == TUID_USER_SENIOR else "new_dev"
+            role = "senior_dev" if uid == TUID_USER_SENIOR else "junior_dev"
             await storage.create_document("team_members", f"mem-{uid}", {
                 "user_id": uid, "team_id": TUID_TEAM_ALPHA, "role": role,
                 "joined_at": joined_at.isoformat(),
@@ -632,7 +632,7 @@ class TestMentorMatching:
         from app.services import hr_metrics_service as hr
         from app.services import task_service as ts
         storage = get_storage()
-        await _seed_member(TUID_USER_JUNIOR1, role="new_dev")
+        await _seed_member(TUID_USER_JUNIOR1, role="junior_dev")
         await _seed_member(TUID_USER_JUNIOR2, role="senior_dev")
         await _seed_member(TUID_USER_SENIOR, role="senior_dev")
 
@@ -666,6 +666,6 @@ class TestMentorMatching:
 
     async def test_no_seniors(self):
         from app.services import hr_metrics_service as hr
-        await _seed_member(TUID_USER_JUNIOR1, role="new_dev")
+        await _seed_member(TUID_USER_JUNIOR1, role="junior_dev")
         result = await hr.mentor_matching(TUID_TEAM_ALPHA, TUID_USER_JUNIOR1)
         assert result["match_count"] == 0

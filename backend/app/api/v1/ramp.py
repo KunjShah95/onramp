@@ -54,7 +54,7 @@ class CostModelUpdate(BaseModel):
     review_hours_per_cycle: Optional[float] = None
     stalled_weekly_hours: Optional[float] = None
 
-LEADER_ROLES = {"senior_dev", "senior", "cto", "ceo", "owner"}
+LEADER_ROLES = {"senior_dev", "senior", "cto", "ceo", "admin"}
 
 
 async def _resolve_team(user: dict, team_id: Optional[str]) -> str:

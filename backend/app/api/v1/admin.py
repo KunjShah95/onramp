@@ -1,7 +1,7 @@
 """
 Admin router — owner-level endpoints for cross-team management.
 
-All routes in this module require the caller to hold the "owner" role
+All routes in this module require the caller to hold the "admin" role
 in at least one team. This is enforced by require_admin_access.
 """
 
@@ -24,18 +24,18 @@ from app.services import platform_provider_keys
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-ROLE_HIERARCHY = {"owner": 3, "senior": 2, "member": 1}
+ROLE_HIERARCHY = {"admin": 3, "senior": 2, "member": 1}
 
 
 async def _require_owner(user: dict = Depends(get_current_user)) -> str:
     """Require the user to be an owner of at least one team."""
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
-    is_owner = any(t.get("role") == "owner" for t in teams)
-    if not is_owner:
+    is_admin = any(t.get("role") == "admin" for t in teams)
+    if not is_admin:
         raise HTTPException(
             status_code=403,
-            detail="Admin access requires the 'owner' role in at least one team",
+            detail="Admin access requires the 'admin' role in at least one team",
         )
     return uid
 
@@ -483,7 +483,7 @@ async def list_platform_provider_keys(
         org_name="global",
         action="platform_provider_keys_listed",
         user_id=uid,
-        user_role="owner",
+        user_role="admin",
         details={"key_count": len(providers)},
     )
     return {"providers": providers, "count": len(providers)}
@@ -508,7 +508,7 @@ async def set_platform_provider_key(
         org_name="global",
         action="platform_provider_key_set",
         user_id=uid,
-        user_role="owner",
+        user_role="admin",
         details={"provider": result.get("provider")},
     )
     return result
@@ -532,7 +532,7 @@ async def delete_platform_provider_key(
         org_name="global",
         action="platform_provider_key_deleted",
         user_id=uid,
-        user_role="owner",
+        user_role="admin",
         details={"provider": provider},
     )
     return {"deleted": True, "provider": provider}

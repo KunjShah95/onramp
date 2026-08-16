@@ -262,7 +262,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         }
         portal = "dev"
 
-    elif role in ("owner", "ceo", "cto"):
+    elif role in ("admin", "ceo", "cto"):
         billing = await _billing_rollup(storage)
         data = {
             **base_data,

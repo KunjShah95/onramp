@@ -119,7 +119,7 @@ async def slack_interactive(request: Request):
             storage = get_storage()
             members = await storage.query_documents(
                 "team_members",
-                [("team_id", "==", _TEAM_ID), ("role", "==", "new_dev")],
+                [("team_id", "==", _TEAM_ID), ("role", "==", "junior_dev")],
             )
             for m in members:
                 # Best effort — the junior may not have Slack linked

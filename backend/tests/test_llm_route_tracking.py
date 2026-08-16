@@ -162,7 +162,7 @@ class TestProviderUsageEndpoint:
             "email": "t@test.com", "name": "Test", "is_active": True,
         })
         await storage.create_document("team_members", generate_id(), {
-            "team_id": "acme", "user_id": "testuser", "role": "owner",
+            "team_id": "acme", "user_id": "testuser", "role": "admin",
         })
         await UsageTracker().record_usage("acme", "chat", credits=1, metadata=_route())
 
