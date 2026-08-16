@@ -6,7 +6,13 @@ import type {
   QAResult,
   IndexResult,
   HistoryTurn,
+  ResolveIssueRequest,
+  ResolveIssueResult,
 } from './types'
+
+// Re-export the resolve-issue contract — AutonomousCodingPage imports these
+// from this module (the agent endpoints live here, the types live in types.ts).
+export type { ResolveIssueRequest, ResolveIssueResult } from './types'
 
 // Expected VITE_API_URL format: "http://localhost:8000" or "http://localhost:8000/api/v1"
 // If it already includes /api/v1, the path is not appended again.
@@ -1911,30 +1917,115 @@ export async function executeAgent(
 
 // ─── Autonomous Coding Agent ────────────────────────────────────────────────
 
-export interface AutonomousCodingResult {
-  success: boolean
-  pr_url?: string
-  pr_number?: number
-  branch?: string
-  summary?: string
-  files_changed?: number
-  patches_applied?: number
-  patches_failed?: number
-  error?: string
+export async function resolveRepoIssue(
+  owner: string,
+  repo: string,
+  body: ResolveIssueRequest
+): Promise<ResolveIssueResult> {
+  return request<ResolveIssueResult>(`${API_BASE}/repos/${owner}/${repo}/resolve-issue`, body)
 }
 
-export async function executeAutonomousCoding(
-  repoUrl: string,
-  issueDescription: string,
-  baseBranch = 'main',
-  branchName?: string,
-): Promise<AutonomousCodingResult> {
-  return request<AutonomousCodingResult>(`${API_BASE}/ai/agents/autonomous`, {
-    repo_url: repoUrl,
-    issue_description: issueDescription,
-    base_branch: baseBranch,
-    branch_name: branchName,
-  })
+// ─── Repo Autopilot (repo URL → issues → Onramp tasks → PRs) ───────────────
+
+export interface AutopilotIssue {
+  title: string
+  description: string
+  category: string
+  severity: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  files: string[]
+  assigned_role: 'intern' | 'developer' | 'senior_dev'
+  source: string
+  /** Stamped when the issue was created as a real Onramp task. */
+  task_id?: string | null
+  /** 'created' | 'skipped-duplicate' | 'error: …' | undefined (tasks disabled). */
+  task_status?: string | null
+}
+
+export interface AutopilotTask {
+  task_id: string
+  title: string
+  state: string
+  priority: string
+  assigned_to: string | null
+  team_role: string
+}
+
+export interface AutopilotLlmRoute {
+  step: string
+  query_type: string
+  provider: string
+  model: string
+  free?: boolean
+}
+
+export interface AutopilotRepoInfo {
+  label: string
+  url: string
+  branch: string
+}
+
+export interface AutopilotAnalyzeResponse {
+  repo: AutopilotRepoInfo
+  issues: AutopilotIssue[]
+  tasks: AutopilotTask[]
+  llm_routes: AutopilotLlmRoute[]
+  stats: Record<string, unknown>
+}
+
+export interface AutopilotSolution {
+  issue: string
+  assigned_role: string
+  difficulty: string
+  source: string
+  success: boolean
+  pr_number?: number | null
+  pr_url?: string | null
+  error?: string | null
+  validation?: {
+    status: string
+    ai?: { resolved?: boolean; confidence?: number }
+  } | null
+}
+
+export interface AutopilotRunResponse extends AutopilotAnalyzeResponse {
+  solutions: AutopilotSolution[]
+  review_md: string
+}
+
+/**
+ * Run the autopilot pipeline (steps 1–5): clone → parse → graph →
+ * model-routed analysis → issues assigned by role. When ``createTasks`` is
+ * on (default), each issue becomes a real Onramp task in the caller's team.
+ */
+export async function runAutopilotAnalyze(opts: {
+  repo_url: string
+  branch?: string
+  max_issues?: number
+  routing_mode?: string
+  create_tasks?: boolean
+  team_id?: string
+}): Promise<AutopilotAnalyzeResponse> {
+  return request<AutopilotAnalyzeResponse>(`${API_BASE}/autopilot/analyze`, opts)
+}
+
+/**
+ * Full pipeline (steps 1–8): analyze → solve issues → GitHub PRs → validate
+ * each PR head → senior-review markdown. Requires GITHUB_TOKEN server-side;
+ * tasks are still created as with ``runAutopilotAnalyze``.
+ */
+export async function runAutopilot(opts: {
+  repo_url: string
+  branch?: string
+  max_issues?: number
+  max_solve?: number
+  routing_mode?: string
+  run_validation?: boolean
+  max_retry?: number
+  create_tasks?: boolean
+  team_id?: string
+}): Promise<AutopilotRunResponse> {
+  return request<AutopilotRunResponse>(`${API_BASE}/autopilot/run`, opts)
 }
 
 // ─── HR Dashboard ──────────────────────────────────────────────────────────

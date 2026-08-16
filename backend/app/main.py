@@ -29,7 +29,7 @@ from app.api.v1 import (
     repo_index as repo_index,
     accounts as accounts_router, admin as admin_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
-    explore, feature_flags as feature_flags_router, first_pr, gamification, health,
+    autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
@@ -411,6 +411,7 @@ app.state.llm = llm_client
 embeddings = EmbeddingRouter()
 app.state.embeddings = embeddings
 
+app.include_router(autopilot.router, prefix="/api/v1")
 app.include_router(explore.router, prefix="/api/v1")
 app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")

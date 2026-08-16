@@ -17,7 +17,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
-import { executeAutonomousCoding, type AutonomousCodingResult } from '../lib/api'
+import { resolveRepoIssue, type ResolveIssueResult } from '../lib/api'
 import CodeEditor from '../components/ui/monaco-editor'
 
 type StageState = 'pending' | 'active' | 'done' | 'failed'
@@ -27,7 +27,7 @@ interface RunRecord {
   id: string
   repo: string
   issue: string
-  result: AutonomousCodingResult
+  result: ResolveIssueResult
   at: number
 }
 
@@ -40,7 +40,7 @@ export default function AutonomousCodingPage() {
   const [baseBranch, setBaseBranch] = useState('main')
   const [issue, setIssue] = useState('')
   const [running, setRunning] = useState(false)
-  const [result, setResult] = useState<AutonomousCodingResult | null>(null)
+  const [result, setResult] = useState<ResolveIssueResult | null>(null)
   const [error, setError] = useState('')
   const [stage, setStage] = useState(-1)
   const [panel, setPanel] = useState<'explorer' | 'runs'>('explorer')
@@ -62,20 +62,29 @@ export default function AutonomousCodingPage() {
     }
     setRunning(true); setError(''); setResult(null); setStage(0); setTermOpen(true)
 
-    // Advance the stage stepper through 0→2 as a progress affordance; the final
-    // "Open pull request" stage holds until the real request resolves.
     stageTimer.current = window.setInterval(() => {
       setStage((s) => (s < 2 ? s + 1 : s))
     }, 1400)
 
     try {
-      const res = await executeAutonomousCoding(repoUrl.trim(), issue.trim(), baseBranch)
+      const url = repoUrl.trim()
+      const [owner, repo] = url.replace(/^https?:\/\/(www\.)?github\.com\//i, '').replace(/\.git$/, '').split('/')
+
+      const res = await resolveRepoIssue(owner, repo, {
+        repo_url: url,
+        issue_description: issue.trim(),
+        branch: baseBranch,
+      })
+
       if (stageTimer.current) window.clearInterval(stageTimer.current)
-      setStage(res.success ? 4 : -2)
+
+      const success = res.status === 'proposed_and_applied'
+      setStage(success ? 4 : -2)
       setResult(res)
-      setRuns((r) => [{ id: crypto.randomUUID(), repo: shortRepo(repoUrl), issue, result: res, at: Date.now() }, ...r].slice(0, 12))
-      if (res.success) toast.success('PR created', `PR #${res.pr_number} on ${shortRepo(repoUrl)}`)
-      else toast.error('Agent run failed', res.error || 'Could not generate changes.')
+      setRuns((r) => [{ id: crypto.randomUUID(), repo: shortRepo(url), issue, result: res, at: Date.now() }, ...r].slice(0, 12))
+
+      if (success) toast.success('Issue resolved', `Fixes applied to ${shortRepo(url)}`)
+      else toast.error('Agent run failed', res.error || 'Could not resolve the issue.')
     } catch (err: any) {
       if (stageTimer.current) window.clearInterval(stageTimer.current)
       setStage(-2)

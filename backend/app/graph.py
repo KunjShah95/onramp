@@ -99,7 +99,7 @@ class DependencyGraph:
         """Return modules in topological order."""
         try:
             return list(nx.topological_sort(self.graph))
-        except nx.NetworkXError:
+        except nx.NetworkXException:
             # Cycle detected - return all nodes as fallback
             return list(self.graph.nodes())
 
@@ -224,7 +224,8 @@ class DependencyGraph:
         # Calculate properties on collapsed graph
         try:
             topology = list(nx.topological_sort(collapsed_graph))
-        except nx.NetworkXError:
+        except nx.NetworkXException:
+            # Collapsing can merge nodes into a cycle - fall back to plain order
             topology = list(collapsed_graph.nodes())
 
         try:

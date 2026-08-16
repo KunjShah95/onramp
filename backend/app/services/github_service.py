@@ -335,6 +335,8 @@ class GitHubService:
                 resp = await client.get(url, headers=headers)
             elif method == "POST":
                 resp = await client.post(url, headers=headers, json=json_body or {})
+            elif method == "PATCH":
+                resp = await client.patch(url, headers=headers, json=json_body or {})
             else:
                 raise ValueError(f"Unsupported method: {method}")
             resp.raise_for_status()
@@ -695,6 +697,57 @@ class GitHubService:
             logger.exception("Failed to create PR %s/%s %s->%s", owner, repo, head, base)
             return None
 
+    # ── Issue / PR labeling (role-based auto-labels) ────────────────────
+
+    async def ensure_labels(self, owner: str, repo: str, labels: Dict[str, str]) -> Dict[str, List[str]]:
+        """Create any missing labels on a repository.
+
+        ``labels`` maps label name → hex color (with or without ``#``). GitHub's
+        API refuses duplicate creation, so existing labels are listed first and
+        only missing ones are created. Failures are non-fatal (logged, skipped).
+
+        Returns ``{"created": [...], "existing": [...]}``.
+        """
+        try:
+            data = await self._gh_request("GET", f"/repos/{owner}/{repo}/labels?per_page=100")
+            existing = {l.get("name") for l in data if isinstance(l, dict)}
+        except Exception:
+            logger.warning("Could not list labels for %s/%s — skipping label ensure", owner, repo)
+            return {"created": [], "existing": []}
+
+        created = []
+        for name, color in labels.items():
+            if name in existing:
+                continue
+            try:
+                await self._gh_request(
+                    "POST",
+                    f"/repos/{owner}/{repo}/labels",
+                    {"name": name, "color": str(color).lstrip("#")[:6]},
+                )
+                created.append(name)
+            except Exception:
+                logger.warning("Failed to create label %r on %s/%s", name, owner, repo)
+        return {"created": created, "existing": sorted(existing & set(labels))}
+
+    async def add_labels(self, owner: str, repo: str, number: int, labels: List[str]) -> bool:
+        """Add labels to an issue or PR (the issues API accepts both).
+
+        Returns True on success; non-fatal on failure (repo may not be writable).
+        """
+        if not labels:
+            return True
+        try:
+            await self._gh_request(
+                "POST",
+                f"/repos/{owner}/{repo}/issues/{number}/labels",
+                {"labels": list(labels)},
+            )
+            return True
+        except Exception:
+            logger.warning("Failed to add labels %s to %s/%s#%s", labels, owner, repo, number)
+            return False
+
     async def apply_suggestions_bulk(
         self,
         repo_url: str,
@@ -979,6 +1032,46 @@ class GitHubService:
         except Exception as e:
             logger.exception(f"Error fetching issue #{issue_number} for {repo_url}: {e}")
             return None
+
+    async def close_issue(self, repo_url: str, issue_number: int,
+                          comment: str = "") -> bool:
+        """Close a GitHub issue via the Issues API (PATCH state=closed).
+
+        Returns True when the API reported the issue as closed (or it was
+        already closed); False on any failure. ``comment`` is optional and,
+        when given, is posted before closing so the thread explains why.
+        """
+        try:
+            cleaned_url = repo_url.strip()
+            if not _is_valid_github_url(cleaned_url):
+                logger.warning(f"Invalid repository URL passed to close_issue: {repo_url!r}")
+                return False
+            if cleaned_url.endswith(".git"):
+                cleaned_url = cleaned_url[:-4]
+            parts = cleaned_url.rstrip("/").split("/")
+            if len(parts) < 2:
+                return False
+            owner, repo = parts[-2], parts[-1]
+
+            if comment:
+                try:
+                    await self._gh_request(
+                        "POST",
+                        f"/repos/{owner}/{repo}/issues/{issue_number}/comments",
+                        {"body": comment},
+                    )
+                except Exception:
+                    logger.exception("Failed to comment on issue #%s before closing", issue_number)
+
+            data = await self._gh_request(
+                "PATCH",
+                f"/repos/{owner}/{repo}/issues/{issue_number}",
+                {"state": "closed"},
+            )
+            return data.get("state") == "closed"
+        except Exception as e:
+            logger.exception(f"Error closing issue #{issue_number} for {repo_url}: {e}")
+            return False
 
     async def get_pr_diff(self, repo_url: str, pr_number: int) -> str:
         """Fetch PR diff from GitHub API."""

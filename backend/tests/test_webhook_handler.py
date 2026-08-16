@@ -193,6 +193,121 @@ class TestHandlePrMerged:
         assert updated["state"] == "completed"
         assert updated["pr_merged_at"] is not None
 
+    async def test_merge_closes_source_issue(self, monkeypatch):
+        """When the merged task was seeded from a GitHub issue, the merge
+        auto-closes the originating issue (approved + merged)."""
+        from datetime import datetime, timezone
+
+        from app.services.postgres_db import get_storage, generate_id
+
+        storage = get_storage()
+        pr_url = "https://github.com/onramp/backend/pull/44"
+        task = {
+            "task_id": generate_id(),
+            "team_id": "team-wh-1",
+            "created_by": "senior-1",
+            "assigned_to": "trainee-1",
+            "title": "Fix login bug 3",
+            "module": "core",
+            "state": "submitted",
+            "pr_url": pr_url,
+            "review_cycles": 0,
+            "source_issue": {
+                "number": 7,
+                "url": "https://github.com/onramp/backend/issues/7",
+                "repo_url": "https://github.com/onramp/backend",
+            },
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "started_at": None,
+            "submitted_at": datetime.now(timezone.utc),
+            "reviewed_at": None,
+            "completed_at": None,
+            "pr_merged_at": None,
+        }
+        await storage.create_document("onramp_tasks", task["task_id"], task)
+
+        closed = {}
+
+        async def fake_close_issue(self, repo_url, issue_number, comment=""):
+            closed.update(repo_url=repo_url, issue_number=issue_number, comment=comment)
+            return True
+
+        import app.services.github_service as gh_service
+
+        monkeypatch.setattr(gh_service.GitHubService, "close_issue", fake_close_issue)
+
+        payload = {
+            "action": "closed",
+            "pull_request": {
+                "number": 44,
+                "html_url": pr_url,
+                "merged": True,
+                "merged_by": {"login": "senior-1"},
+                "user": {"login": "trainee-1"},
+            },
+            "repository": {"full_name": "onramp/backend"},
+            "sender": {"login": "trainee-1"},
+        }
+
+        result = await _handle_pr_merged(payload)
+        assert result["task_completed"] is True
+        assert result["source_issue_closed"] is True
+        assert closed == {
+            "repo_url": "https://github.com/onramp/backend",
+            "issue_number": 7,
+            "comment": (
+                "Closed automatically — fixed by PR #44 "
+                f"({pr_url}) which has been merged and approved."
+            ),
+        }
+
+    async def test_merge_skips_close_without_source_issue(self):
+        """Tasks not seeded from a GitHub issue (no source_issue number) are
+        completed but no issue is closed."""
+        from datetime import datetime, timezone
+
+        from app.services.postgres_db import get_storage, generate_id
+
+        storage = get_storage()
+        pr_url = "https://github.com/onramp/backend/pull/45"
+        task = {
+            "task_id": generate_id(),
+            "team_id": "team-wh-1",
+            "created_by": "senior-1",
+            "assigned_to": "trainee-1",
+            "title": "Fix login bug 4",
+            "module": "core",
+            "state": "submitted",
+            "pr_url": pr_url,
+            "review_cycles": 0,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+            "started_at": None,
+            "submitted_at": datetime.now(timezone.utc),
+            "reviewed_at": None,
+            "completed_at": None,
+            "pr_merged_at": None,
+        }
+        await storage.create_document("onramp_tasks", task["task_id"], task)
+
+        payload = {
+            "action": "closed",
+            "pull_request": {
+                "number": 45,
+                "html_url": pr_url,
+                "merged": True,
+                "merged_by": {"login": "senior-1"},
+                "user": {"login": "trainee-1"},
+            },
+            "repository": {"full_name": "onramp/backend"},
+            "sender": {"login": "trainee-1"},
+        }
+
+        result = await _handle_pr_merged(payload)
+        assert result["task_completed"] is True
+        assert result["source_issue_closed"] is False
+
     async def test_merge_stamps_already_completed_task(self):
         """Even when the task was already completed (e.g. senior closed it
         first), the merge still stamps pr_merged_at so the timing is captured."""

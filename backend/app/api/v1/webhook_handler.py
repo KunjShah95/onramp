@@ -252,11 +252,38 @@ async def _handle_pr_merged(payload: dict) -> dict:
             "PR #%d merged → auto-completed task %s (%s)",
             pr_number, task["task_id"], task.get("title", ""),
         )
+
+        # Auto-close the originating GitHub issue — the task is now approved
+        # (auto-approved on merge) and the PR has merged. Only tasks seeded
+        # from a real GitHub issue carry a source_issue with a number.
+        closed = False
+        src = task.get("source_issue") or {}
+        src_number = src.get("number")
+        src_repo = src.get("repo_url")
+        if src_number and src_repo:
+            try:
+                from app.services.github_service import GitHubService
+
+                gh = GitHubService(os.getenv("GITHUB_TOKEN"))
+                closed = await gh.close_issue(
+                    src_repo,
+                    int(src_number),
+                    comment=(
+                        f"Closed automatically — fixed by PR #{pr_number} "
+                        f"({pr_url}) which has been merged and approved."
+                    ),
+                )
+                if closed:
+                    logger.info("Auto-closed source issue #%s (%s)", src_number, src_repo)
+            except Exception:
+                logger.exception("Failed to auto-close source issue #%s", src_number)
+
         return {
             "handled": True,
             "pr_number": pr_number,
             "task_id": task["task_id"],
             "task_completed": True,
+            "source_issue_closed": closed,
             "merged_by": merged_by,
         }
     except Exception:

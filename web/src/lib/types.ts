@@ -112,3 +112,33 @@ export interface HistoryTurn {
   index_id?: string
   user_id?: string
 }
+
+export interface ProposedFix {
+  file_path: string
+  search_string: string
+  replace_string: string
+  reasoning: string
+}
+
+export interface AnalysisResult {
+  root_cause: string
+  affected_entities: string[]
+  blast_radius: string
+  confidence: number
+}
+
+export interface ResolveIssueRequest {
+  repo_url: string
+  issue_description: string
+  branch?: string
+}
+
+export interface ResolveIssueResult {
+  status: string
+  analysis?: AnalysisResult
+  fixes?: ProposedFix[]
+  application?: Array<{ status: string; result?: any; error?: string }>
+  validation?: string
+  summary?: string
+  error?: string
+}

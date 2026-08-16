@@ -1,10 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from typing import Optional, List
+from pydantic import BaseModel
 from app.services.postgres_db import get_storage, generate_id
 from app.api.v1.auth import get_current_user
+from app.llm import LLMRouter
+from app.services.issue_orchestrator import IssueOrchestrator
 
 router = APIRouter(prefix="/repos", tags=["repositories"])
 
+class ResolveIssueRequest(BaseModel):
+    repo_url: str
+    issue_description: str
+    branch: Optional[str] = "main"
 
 _storage = get_storage()  # shared storage singleton (respects STORAGE_BACKEND=memory)
 
@@ -223,6 +230,32 @@ async def list_roadmap(user: dict = Depends(get_current_user)):
     # Real milestones only — empty list when none exist, no fabricated roadmap.
     return {"milestones": milestones}
 
+
+@router.post("/{owner}/{repo}/resolve-issue")
+async def resolve_repo_issue(
+    owner: str,
+    repo: str,
+    request: ResolveIssueRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Trigger an autonomous loop to analyze and resolve a specific codebase issue."""
+    repo_data = await _verify_repo_access(owner, repo, user)
+
+    # Use the app's shared router instance (app.state.llm) — never a one-off import.
+    llm = getattr(req.app.state, "llm", None) or LLMRouter()
+    orchestrator = IssueOrchestrator(llm_client=llm)
+
+    result = await orchestrator.resolve_issue(
+        repo_url=request.repo_url,
+        issue_description=request.issue_description,
+        branch=request.branch
+    )
+
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+
+    return result
 
 @router.get("/{owner}/{repo}/sections")
 async def repo_sections(

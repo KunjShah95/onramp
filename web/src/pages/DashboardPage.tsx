@@ -22,6 +22,7 @@ import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import FirstRunDashboard from '../components/dashboard/FirstRunDashboard'
 import RampPanel, { isLeaderRole } from '../components/dashboard/RampPanel'
+import AutopilotPanel from '../components/dashboard/AutopilotPanel'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -371,6 +372,13 @@ export default function DashboardPage() {
           {showRamp && (
             <motion.div variants={item} className="mb-5">
               <RampPanel />
+            </motion.div>
+          )}
+
+          {/* ── Autopilot · Repo Pipeline ──────────────────────────────── */}
+          {showRamp && (
+            <motion.div variants={item} className="mb-5">
+              <AutopilotPanel />
             </motion.div>
           )}
 

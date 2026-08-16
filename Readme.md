@@ -2,7 +2,11 @@
 
 **AI-powered developer onboarding & team acceleration platform.**
 
-Onramp helps engineering teams onboard new developers faster, automate code reviews, track skill progression, and give leadership visibility into team health — all powered by multi-provider AI agents.
+Onramp helps engineering teams onboard new developers faster, automate code
+reviews, track skill progression, and give leadership visibility into team
+health — all powered by multi-provider AI agents with a free-first model
+router, a token-efficient repo-analysis pipeline, and an end-to-end **Repo
+Autopilot** that turns any GitHub repository into assigned, reviewed work.
 
 [![Backend CI](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml)
@@ -11,22 +15,91 @@ Onramp helps engineering teams onboard new developers faster, automate code revi
 
 ## ✨ Features
 
-### 🧠 AI-Powered Developer Tools
+### 🤖 Repo Autopilot — repo URL → issues → tasks → PRs → review
 
-| Tool | Description |
+The flagship pipeline. Feed it **any GitHub repository** (or a local checkout)
+and it runs the full 9-step loop, then turns the results into real work inside
+Onramp:
 
-| -----
- | ------------- |
-| **Architecture Explorer** | Visualize repo structure as an interactive force-directed graph |
-| **First PR Accelerator** | Find beginner-friendly issues with step-by-step contribution guides |
-| **Learning Path Generator** | Generate personalized learning paths from any codebase |
-| **Repo Q&A** | Chat with your codebase via streaming SSE responses |
-| **PR Description Generator** | Auto-generate PR titles, descriptions, and changelogs |
-| **Code Health Scorer** | Analyze repos for complexity, maintainability, test coverage |
-| **Pattern Recognition** | Find similar code patterns across repos |
-| **Silent Pair Programming** | AI-guided walkthroughs for solving issues |
-| **Quiz Generator** | Module-level quizzes with multiple formats |
-| **Regression Test Generator** | Generate test checklists from PR diffs |
+1. **Ingest** — shallow clone (or `git pull` refresh) + **update detection**
+   (reports exactly which files changed since the last run)
+2. **Graph** — AST parse (`ParserService`, Python `ast` + tree-sitter, 20+
+   languages) + dependency graph (`build_dependency_graph`) →
+   `entities.json` / `graph.json`
+3. **Entity graph** — second-pass relationship extraction: class / function /
+   API-route nodes with **calls / inheritance / contains / serves** edges →
+   `relationships.json`
+4. **Visualize** — standalone `visualization.html` (D3 force-directed graph
+   with file + entity modes)
+5. **Query** — model-routed AI analysis via `LLMRouter` (reasoning →
+   structured), with per-call provider/free attribution recorded
+6. **Issues** — AI-found issues (or real GitHub issues), classified by
+   difficulty and **assigned by role**: easy → intern, medium → junior dev,
+   hard → senior dev
+7. **Tasks** — each issue becomes a **real Onramp task**, auto-assigned to a
+   team member holding the matching role (see *Load-aware assignment* below)
+8. **Solve** — `AutonomousCodingAgent` opens one GitHub PR per issue;
+   role-based GitHub labels (`good-first-issue` / `good-second-issue` /
+   `senior-review`) are created and applied automatically
+9. **Validate + Review** — fetches each PR head, re-parses + re-graphs it,
+   graph-diffs against the base (broken edges, new cycles), AI-verifies
+   resolution + regressions, retries unresolved issues (bounded), and emits a
+   structured `SENIOR_REVIEW.md` per issue (root cause, files affected,
+   changes, validation, risks, tests)
+
+**Load-aware assignment.** Task assignment weights each member's *current
+workload*: the member with the fewest active (non-terminal) tasks gets the
+next issue, with the round-robin cycle as the tie-breaker. An overloaded
+member is skipped until their queue drains. The cycle is seeded from the
+team's task history, so consecutive pipeline runs keep balancing.
+
+**The state machine runs itself.** When the pipeline opens a PR, the linked
+task auto-advances `pending → assigned → in_progress → submitted` with the PR
+URL attached, landing in the senior-review queue. When the PR **merges**, the
+task is auto-approved + completed and — if the task was seeded from a real
+GitHub issue — the **originating issue is auto-closed** with a comment linking
+the merged PR. The loop from issue → task → PR → merge is fully closed.
+
+**Three surfaces, one pipeline:**
+
+```bash
+# 1. CLI — analyze + visualize + find issues
+python scripts/repo_autopilot.py --repo https://github.com/owner/repo
+
+#    Full pipeline: solve → validate → senior review (needs GITHUB_TOKEN)
+python scripts/repo_autopilot.py --repo https://github.com/owner/repo \
+    --solve --max-issues 5 --github-token ghp_...
+
+#    Also ingest open GitHub issues as work items
+python scripts/repo_autopilot.py --repo https://github.com/owner/repo \
+    --github-issues 10 --solve
+
+#    Local checkout + refresh mode (re-run detects updates, rebuilds graph/JSON)
+python scripts/repo_autopilot.py --repo ../some/repo --out ./out
+```
+
+```bash
+# 2. In-app API (authenticated, quota-metered)
+#    Repo URL → issues → Onramp tasks
+curl -X POST http://localhost:8000/api/v1/autopilot/analyze \
+  -H "Authorization: Bearer <jwt>" -H "Content-Type: application/json" \
+  -d '{"repo_url": "https://github.com/owner/repo", "max_issues": 5}'
+
+#    Full pipeline: analyze → solve → PRs → validate → senior review
+curl -X POST http://localhost:8000/api/v1/autopilot/run \
+  -H "Authorization: Bearer <jwt>" -H "Content-Type: application/json" \
+  -d '{"repo_url": "https://github.com/owner/repo", "max_issues": 5, "max_solve": 3, "max_retry": 1}'
+```
+
+3. **Dashboard panel** — Mission Control → *Autopilot · Repo Pipeline*: paste
+   a repo URL, click **Run Pipeline**, and the created tasks appear instantly
+   (title, state badge, role chip, priority) with links into the Tasks console.
+
+CLI output lands in `autopilot_out/<owner-repo>/` — `entities.json`,
+`graph.json`, `relationships.json`, `visualization.html`, `report.json`,
+`REVIEW.md`, `SENIOR_REVIEW.md`. Task creation is idempotent (re-runs skip
+already-imported issues, matched by GitHub issue number or title + repo) and
+can be disabled with `"create_tasks": false`.
 
 ### 🧠 AI Model Routing (Query Types)
 
@@ -42,6 +115,7 @@ provider chain per task — free-first, with a fallback chain per type:
 | `SilentPairProgramming` | `code` | Claude (Anthropic) | paid |
 | `TaskQA` | `code` | Claude (Anthropic) | paid |
 | `RegressionTestGenerator` | `code` | Claude (Anthropic) | paid |
+| `IssueResolutionAgent` | `code` | Claude (Anthropic) | paid |
 | `ArchitectureExplorer` | `reasoning` | Gemini | free |
 | `PatternRecognition` | `reasoning` | Gemini | free |
 | `LearningPathGenerator` | `reasoning` | Gemini | free |
@@ -83,9 +157,9 @@ await router.chat_stream("summarize this", query_type=QueryType.SUMMARIZATION)
 
 > **Trade-off:** `json_chat` on the `code` agents (FirstPR, SilentPair,
 > Autonomous, RegressionTest) routes via CODE (Claude first, paid) because
-the agent declares its content type. If JSON reliability matters more than
-model strength, pass `query_type=QueryType.STRUCTURED` (Groq first, free) as
-shown above.
+> the agent declares its content type. If JSON reliability matters more than
+> model strength, pass `query_type=QueryType.STRUCTURED` (Groq first, free) as
+> shown above.
 
 Every served request also reports its actual provider via the `X-LLM-Route`
 response header and records free-vs-paid attribution + dollar savings in the
@@ -120,28 +194,23 @@ from `git log`, never via the LLM.
 **2. Requirement-driven context selection.**
 `GET /repos/index/{index_id}/context?requirement=...&max_tokens=4000` scores
 files against the task and returns only the relevant slice, so agents never
-receive the whole repository. Each agent already declares its `query_type`
-(above); now it also pulls just the context it is bound to. All LLM-backed
-agents (health, learn, quiz, drift, patterns, explore) accept `index_id` in
-place of a full `repo_structure` body: whole-repo scoring uses the cached
-entities, while every LLM prompt embeds a token-budgeted requirement slice.
+receive the whole repository. All LLM-backed agents (health, learn, quiz,
+drift, patterns, explore) accept `index_id` in place of a full
+`repo_structure` body: whole-repo scoring uses the cached entities, while
+every LLM prompt embeds a token-budgeted requirement slice.
 
 **3. Redis LLM response cache (exact + semantic).** Repeated prompts (same
 query type + normalized prompt + system + max_tokens) are served from Redis
 instead of a provider — keyed via `app/services/llm_cache.py`, TTL 1h
 (`LLM_CACHE_TTL`). Cache hits are attributed as a `cache/redis` route with
-`free=true` and **$0 price**, so they show up in the cost-savings dashboard
-as requests that avoided the full baseline cost. On top of exact matching,
-**near-duplicate questions also hit**: prompts are embedded locally (hashed
-n-grams — no embedding API, so probing stays free) and a stored answer is
-served only when cosine similarity ≥ `LLM_SEMANTIC_THRESHOLD` (0.85) AND
-the new question's content words are a subset of the stored prompt's — the
-subset gate blocks one-word rewrites (`sort`→`reverse`) that raw similarity
-can't tell apart. Semantic hits report as `cache/semantic` (free, $0). The
-`/v1` gateway reports `X-LLM-Cache: HIT/MISS` plus `X-LLM-Cache-Tier`
-(`redis`/`semantic`/`MISS`). Streaming responses are not cached. Disable or
-retune via `LLM_SEMANTIC_CACHE=0`, `LLM_SEMANTIC_THRESHOLD`,
-`LLM_SEMANTIC_BUCKET_CAP`.
+`free=true` and **$0 price**. On top of exact matching, **near-duplicate
+questions also hit**: prompts are embedded locally (hashed n-grams — no
+embedding API) and a stored answer is served only when cosine similarity ≥
+`LLM_SEMANTIC_THRESHOLD` (0.85) AND the new question's content words are a
+subset of the stored prompt's. Semantic hits report as `cache/semantic`
+(free, $0). The `/v1` gateway reports `X-LLM-Cache: HIT/MISS` plus
+`X-LLM-Cache-Tier` (`redis`/`semantic`/`MISS`). Streaming responses are not
+cached.
 
 **4. Token budgets.** Every selected context slice is trimmed to
 `max_tokens` (~4 chars/token, `app/services/llm_costs.estimate_tokens`)
@@ -164,11 +233,12 @@ truncated, so prompts stay small.
 ### 📋 Task Management
 
 - Full task lifecycle: create → assign → start → submit → review → approve → complete
-- AI-assisted code review with inline issue detection
+- State-machine enforced transitions with timestamps + review-cycle tracking
+- Task dependency DAG (`depends_on`) + optional module-quiz gates on start
+- Peer review (reviewer ≠ assignee) plus senior review and product sign-off
+- Auto-links PRs to tasks via GitHub issue `source_issue` matching
 - Review queue with status badges (under_review, needs_changes, approved, product_review)
-- Direct approve / route-to-product from submitted state
-- Product sign-off gate with structured feedback
-- Dedicated review queue page with filtering and bulk actions
+- Time tracking (estimated vs actual, overrun alerts), team/user progress, bulk assign
 
 ### 📊 CTO / Leadership Dashboard
 
@@ -177,23 +247,22 @@ truncated, so prompts stay small.
 - Pending reviews & recent activity timeline
 - Action items requiring attention
 - Activity trend analysis (7-day velocity)
-- Executive dashboard for CEO/CTO role
-- Senior developer space for team leads
-- HR dashboard for team health metrics
+- **Ramp · Senior-Time** — senior cost + stuck-dev telemetry, first-PR benchmarks
+- **Autopilot · Repo Pipeline** — run the repo pipeline from the dashboard
+- Executive dashboard for CEO/CTO role, senior space, HR dashboard
 
 ### 📈 Production Observability & Ops
 
-- **Prometheus `/metrics`** — dependency-free text-format registry with 10 metric
-  families: HTTP request totals/latency/in-flight, LLM calls by provider &
-  free/paid, LLM cache hits (redis/semantic) & misses, embedding calls,
-  WebSocket connections. Scrape with Prometheus + Grafana (docker-compose.prod.yml).
-- **Structured JSON logging** — `LOG_FORMAT=json` emits one JSON object per line
-  (Loki / Datadog / CloudWatch ready). `LOG_LEVEL` controls verbosity.
+- **Prometheus `/metrics`** — dependency-free text-format registry: HTTP
+  request totals/latency/in-flight, LLM calls by provider & free/paid, LLM
+  cache hits (redis/semantic) & misses, embedding calls, WebSocket
+  connections. Scrape with Prometheus + Grafana (docker-compose.prod.yml).
+- **Structured JSON logging** — `LOG_FORMAT=json` emits one JSON object per
+  line (Loki / Datadog / CloudWatch ready). `LOG_LEVEL` controls verbosity.
 - **Request correlation IDs** — every request gets an `X-Request-ID` echoed in
   the response and logged, so failures trace end-to-end.
 - **Liveness & readiness probes** — `GET /health` (process up) and `GET /ready`
-  (DB + Redis reachable, returns 503 when a dependency is down) for K8s/Docker
-  orchestrators.
+  (DB + Redis reachable, returns 503 when a dependency is down).
 - **Security headers** — HSTS (prod), `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: DENY`, Referrer-Policy, Permissions-Policy; opt-in CSP via
   `CSP_HEADER`.
@@ -217,22 +286,23 @@ truncated, so prompts stay small.
 
 ### 🔐 Enterprise-Grade Security
 
-- JWT-based auth (HS256, 7-day expiry)
-- bcrypt password hashing
-- Fernet field-level encryption for PII
+- JWT-based auth (HS256, rotating refresh tokens)
+- bcrypt password hashing + Fernet field-level encryption for PII
 - RBAC with 9 roles (new_dev, developer, senior_dev, tester, cto, ceo, owner, member, hr)
-- OAuth2 social login (Google, GitHub) with CSRF state tokens
+- OAuth2 social login (Google, GitHub) with CSRF state tokens + account linking
 - Password reset flow with short-lived JWT reset tokens
-- Alembic database migrations (8 versions)
+- Alembic database migrations (26 versions)
 - CORS allowlist + Vercel regex
 - Production env validation on boot
+- GitHub webhook HMAC-SHA256 signature verification
 
 ### 💳 Billing & API Gateway
 
-- Razorpay subscription management (free / pro / enterprise)
-- API key management with usage tracking
-- Rate limiting (200 req/min, Redis-backed)
-- Usage quotas with endpoint-level breakdown
+- Razorpay subscription management (free / pro / enterprise, INR)
+- API key management with usage tracking, credit limits, expiry
+- OpenAI-compatible `/v1` gateway (chat, streaming, embeddings, models)
+- Rate limiting (Redis-backed) + usage quotas with endpoint-level breakdown
+- Per-team provider keys (BYOK) stored encrypted, with multi-key round-robin
 
 ### 🔔 Notifications & Integrations
 
@@ -241,7 +311,7 @@ truncated, so prompts stay small.
 - Notification bell with real-time badge count and dropdown preview
 - Mark all read, pagination, type-filtered views
 - Webhooks (create, test, rotate secrets, delivery logs)
-- GitHub integration (token validation, scope checking)
+- GitHub integration (token validation, scope checking, PR-merge auto-complete)
 - Slack integration (channel config, event-driven)
 - Email via SendGrid (digest, alerts)
 
@@ -253,12 +323,13 @@ truncated, so prompts stay small.
 
 | Component | Technology |
 | ----------- | ----------- |
-| **Framework** | Python 3.12, FastAPI |
+| **Framework** | Python 3.12+ (3.13 local), FastAPI |
 | **Database** | PostgreSQL 16 (asyncpg, SQLAlchemy 2.0) |
 | **Migrations** | Alembic |
-| **Cache** | Redis (distributed rate limiting, caching) |
+| **Cache / Broker** | Redis (rate limiting, LLM cache, Celery broker) |
+| **Async tasks** | Celery (worker + beat: digests, sweeps, repo indexes) |
 | **Observability** | Prometheus + Grafana (dependency-free /metrics) |
-| **AI** | Multi-provider: OpenRouter, Gemini, Groq, OpenAI, Anthropic |
+| **AI** | Multi-provider: OpenRouter, Gemini, Groq, NVIDIA, Mistral, HuggingFace, OpenAI, Anthropic, Ollama |
 | **Auth** | Custom JWT (bcrypt + Fernet encryption) |
 | **Billing** | Razorpay (INR) |
 | **Monitoring** | Sentry |
@@ -270,10 +341,10 @@ truncated, so prompts stay small.
 | ----------- | ----------- |
 | **Framework** | React 19, TypeScript (strict mode) |
 | **Build** | Vite 6 |
-| **Styling** | Tailwind CSS 3 |
+| **Styling** | Tailwind CSS |
 | **Animation** | Framer Motion |
 | **Charts** | Recharts |
-| **HTTP** | fetch (custom wrapper with auto-auth) |
+| **HTTP** | fetch (custom wrapper with silent token refresh) |
 | **State** | TanStack React Query |
 | **Icons** | Phosphor Icons |
 | **Testing** | Vitest, React Testing Library, Playwright |
@@ -282,10 +353,11 @@ truncated, so prompts stay small.
 
 | Component | Technology |
 | ----------- | ----------- |
-| **Backend Hosting** | Railway |
+| **Backend Hosting** | Render (blueprint: API + Celery workers + Redis) or Railway |
 | **Frontend Hosting** | Vercel |
 | **Containerization** | Docker Compose (hardened: non-root, healthchecks) |
 | **Reverse Proxy** | Nginx (non-root, port 8080) |
+| **Orchestration** | Kubernetes manifests (`kubernetes/`) |
 | **Monitoring** | Prometheus + Grafana (docker-compose.prod.yml) |
 | **CI/CD** | GitHub Actions |
 
@@ -303,7 +375,6 @@ truncated, so prompts stay small.
 ### 1. Clone & Install
 
 ```bash
-# Clone the repo
 git clone https://github.com/KunjShah95/onramp.git
 cd onramp
 
@@ -529,7 +600,7 @@ All accounts share the same password: **`demo123`**
 ### 🧪 Running Tests
 
 ```bash
-# Backend tests (177+ tests covering services, APIs, and DB migrations; dual storage backends)
+# Backend tests (1300+ tests covering services, APIs, and DB migrations; dual storage backends)
 cd backend
 python -m pytest tests/ -q                          # All tests (memory backend)
 python -m pytest tests/test_task_service.py          # Single test file
@@ -542,8 +613,8 @@ python -m pytest tests/test_gamification.py --run-postgres
 
 # Frontend tests
 cd web
-npx vitest run                                       # Unit tests (49+ tests)
-npx tsc --noEmit                                     # TypeScript check (strict mode, zero errors)
+npx vitest run                                       # Unit tests
+npx tsc --noEmit                                     # TypeScript check (strict mode)
 npx playwright test                                   # E2E tests (auth, dashboard, review-queue)
 ```
 
@@ -582,31 +653,18 @@ python ../scripts/migrate_dynamic_to_tables.py --collection onramp_tasks  # Sing
 ### 🔄 Git Workflow
 
 ```bash
-# Create a feature branch
 git checkout -b feat/my-feature
-
-# Make changes and commit
-# Use conventional commits: feat:, fix:, chore:, docs:, test:, refactor:
-git commit -m "feat: add cohort onboarding endpoint"
-
-# Push and open a PR
+git commit -m "feat: add cohort onboarding endpoint"   # conventional commits
 git push origin feat/my-feature
 ```
 
 ### 🐳 Docker Development
 
 ```bash
-# Start full stack with Docker
-docker compose up -d
-
-# Run seed inside the container
-docker compose exec backend python /app/scripts/seed_dev_user.py
-
-# Run tests inside the container
-docker compose exec backend python -m pytest tests/ -q
-
-# View backend logs
-docker compose logs -f backend
+docker compose up -d                                   # Start full stack
+docker compose exec backend python /app/scripts/seed_dev_user.py   # Seed
+docker compose exec backend python -m pytest tests/ -q # Tests in container
+docker compose logs -f backend                         # Backend logs
 ```
 
 ---
@@ -615,11 +673,10 @@ docker compose logs -f backend
 
 See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milestones.
 
-### What's next (v1.2)
+### What's next
 
-- Real-time WebSocket notifications
-- Local AI model support (Ollama)
-- Milestone tracking with roadmap view
+- Real-time WebSocket notifications everywhere
+- Local AI model support (Ollama) as a first-class routing tier
 - PR review auto-apply suggestions
 - GitLab & Bitbucket integration
 - Community playbook marketplace
@@ -644,11 +701,12 @@ See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milesto
 │  ▸ AI Agents    ▸ Dashboard     ▸ Notifications     │
 │  ▸ Billing      ▸ Admin         ▸ Integrations      │
 │  ▸ Gamification ▸ Reports       ▸ Quiz              │
+│  ▸ Autopilot    ▸ Explore       ▸ Review Ops        │
 └──────────────────┬──────────────────────────────────┘
-                   │ asyncpg / Redis
+                   │ asyncpg / Redis / Celery
                    ▼
 ┌─────────────────────────────────────────────────────┐
-│           PostgreSQL 16 + Redis                      │
+│           PostgreSQL 16 + Redis + Celery             │
 │  Users / Teams / Tasks / API Keys / Gamification     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -658,7 +716,7 @@ The backend uses a **layered middleware** approach:
 1. `CORSMiddleware` (outermost)
 2. `LoggingMiddleware` (request/response logging)
 3. `ResponseWrapperMiddleware` (unified `{success, data}` envelope)
-4. `RateLimitMiddleware` (200 req/min per IP)
+4. `RateLimitMiddleware` (Redis-backed)
 5. `AuthMiddleware` (JWT verification, public path allowlist)
 
 ---
@@ -669,26 +727,30 @@ The backend uses a **layered middleware** approach:
 onramp/
 ├── backend/
 │   ├── app/
-│   │   ├── agents/          # 10 AI agents (HealthScorer, etc.)
-│   │   ├── api/v1/          # 25+ route modules
-│   │   ├── database/        # SQLAlchemy models, config
-│   │   ├── middleware/       # Auth, RateLimit, Logging, ResponseWrapper
-│   │   └── services/        # Business logic (billing, github, etc.)
-│   ├── alembic/             # Database migrations (8 versions)
-│   ├── tests/               # 177+ pytest tests (dual memory+postgres storage)
-│   └── scripts/             # Dev utilities
+│   │   ├── agents/          # 17 AI agents (HealthScorer, IssueResolutionAgent, …)
+│   │   ├── api/v1/          # 44 route modules (auth, tasks, autopilot, explore, …)
+│   │   ├── database/        # SQLAlchemy models (36), config
+│   │   ├── middleware/      # Auth, RateLimit, Logging, ResponseWrapper
+│   │   └── services/        # Business logic (autopilot, github, task, ramp, …)
+│   ├── alembic/             # Database migrations (26 versions)
+│   ├── tests/               # 1300+ pytest tests (dual memory+postgres storage)
+│   └── scripts/             # Dev utilities (e2e flows, secrets, migrations)
 ├── web/
 │   ├── src/
-│   │   ├── components/      # Reusable UI (Sidebar, Cards, etc.)
+│   │   ├── components/      # Reusable UI (Sidebar, ConsolePanel, dashboard panels)
 │   │   ├── context/         # AuthContext, ThemeContext, ToastContext
 │   │   ├── lib/             # API client, utils, types
-│   │   ├── pages/           # 44 page components (role-gated with 15+ skeleton variants)
-│   │   ├── hooks/           # Custom hooks
-│   │   └── test/            # 49 Vitest tests
+│   │   ├── pages/           # 68 page components (role-gated)
+│   │   └── test/            # Vitest tests
 │   ├── e2e/                 # Playwright tests
 │   └── public/
+├── sdk/                     # TypeScript SDK (@onramp/sdk)
+├── scripts/                 # Repo-level scripts (repo_autopilot.py, seed_dev_user.py, …)
+├── docs/                    # API, architecture, routing, deployment guides
 ├── kubernetes/              # K8s manifests (optional)
 ├── docker-compose.yml       # Local dev environment
+├── docker-compose.prod.yml  # Production (Prometheus + Grafana)
+├── render.yaml              # Render blueprint (API + workers + Redis)
 └── nginx.conf               # Reverse proxy config
 ```
 
@@ -705,15 +767,24 @@ onramp/
 | `ENV` | ✅ | `development` or `production` |
 | `OPENROUTER_API_KEY` | ⬜ | Provider keys can be set here **or** via the Admin Console → *Provider Keys · Platform* (encrypted in the DB — no .env edit needed); at least one key is required per provider |
 | `GEMINI_API_KEY` | ⬜ | Google Gemini key (or set via Admin Console) |
-| `MISTRAL_API_KEY` | ⚠️ | Mistral models (OpenAI-compatible) |
-| `HUGGINGFACE_API_KEY` | ⚠️ | HuggingFace router (OpenAI-compatible) |
-| `RAZORPAY_KEY_ID` | ⬜ | Razorpay billing key (INR) |
-| `RAZORPAY_KEY_SECRET` | ⬜ | Razorpay billing secret |
-| `RAZORPAY_WEBHOOK_SECRET` | ⬜ | Razorpay webhook signature verification |
-| `RAZORPAY_PLAN_STARTUP` / `RAZORPAY_PLAN_PROFESSIONAL` / `RAZORPAY_PLAN_USAGE_BASED` | ⬜ | Razorpay plan IDs per tier |
+| `GROQ_API_KEY` | ⬜ | Groq key (fast structured output, free tier) |
+| `ANTHROPIC_API_KEY` | ⬜ | Claude key (code agents) |
+| `OPENAI_API_KEY` | ⬜ | OpenAI key |
+| `NVIDIA_API_KEY` | ⬜ | NVIDIA NIM key |
+| `MISTRAL_API_KEY` | ⬜ | Mistral models (OpenAI-compatible) |
+| `HUGGINGFACE_API_KEY` | ⬜ | HuggingFace router (OpenAI-compatible) |
+| `OLLAMA_BASE_URL` | ⬜ | Local Ollama endpoint (no API key) |
+| `GITHUB_TOKEN` | ⬜ | GitHub PAT — PR solving, labels, auto-close issues |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | ⬜ | Fernet key for stored GitHub tokens |
+| `GITHUB_WEBHOOK_SECRET` | ⬜ | HMAC secret for GitHub webhooks |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | ⬜ | Razorpay billing (INR) |
+| `RAZORPAY_PLAN_*` | ⬜ | Razorpay plan IDs per tier |
 | `SENDGRID_API_KEY` | ⬜ | Transactional email |
-| `REDIS_URL` | ⬜ | For distributed rate limiting |
+| `REDIS_URL` | ⬜ | Distributed rate limiting + LLM cache + Celery broker |
 | `SENTRY_DSN` | ⬜ | Error monitoring |
+| `LOG_FORMAT` / `LOG_LEVEL` | ⬜ | JSON logging / verbosity |
+| `LLM_CACHE_TTL` | ⬜ | Redis LLM cache TTL (default 1h) |
+| `LLM_SEMANTIC_CACHE` / `LLM_SEMANTIC_THRESHOLD` | ⬜ | Semantic cache tuning |
 
 ### Frontend (`web/.env`)
 
