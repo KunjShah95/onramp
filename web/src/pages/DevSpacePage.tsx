@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { NavLink } from 'react-router-dom'
 import {
-  Code, Compass, ChatCircleDots, GitPullRequest, Heartbeat,
+  Compass, ChatCircleDots, GitPullRequest, Heartbeat,
   Key, Eye, ListChecks, ShieldCheck, Clock,
   GitFork, Users, ArrowRight,
 } from '@phosphor-icons/react'
@@ -16,6 +16,7 @@ import PageTransition from '../components/ui/page-transition'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
+import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { fetchSeedRoleData } from '../lib/api'
 
@@ -61,9 +62,9 @@ const stateTone: Record<string, 'go' | 'standby' | 'caution'> = {
   submitted: 'caution',
 }
 const stateLabel: Record<string, string> = {
-  completed: 'DONE',
-  in_progress: 'IN PROGRESS',
-  submitted: 'SUBMITTED',
+  completed: 'Done',
+  in_progress: 'In progress',
+  submitted: 'Submitted',
 }
 
 export default function DevSpacePage() {
@@ -109,22 +110,14 @@ export default function DevSpacePage() {
         animate="show"
         className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6"
       >
-        {/* Header */}
-        <motion.div variants={item} className="flex items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="tile tile-go">Dev Space</span>
-              <span className="designator opacity-50">CREW · TOOLS</span>
-            </div>
-            <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
-              <Code size={28} weight="fill" className="text-go shrink-0" />
-              Developer Space
-            </h1>
-            <p className="text-body-sm text-ink-secondary mt-1 font-code">
-              Full-access developer portal and tools.
-            </p>
-          </div>
-        </motion.div>
+      {/* Header */}
+      <motion.div variants={item}>
+        <PageHeader
+          eyebrow="Folio 02 · Developer"
+          title="Developer Space"
+          subtitle="Full-access developer portal and tools."
+        />
+      </motion.div>
 
         {error && (
           <motion.div variants={item}>
@@ -150,7 +143,7 @@ export default function DevSpacePage() {
           <>
             {/* Telemetry */}
             <motion.div variants={item}>
-              <ReadoutBank callsign="DEV TELEMETRY" items={readouts} columns={4} />
+              <ReadoutBank callsign="Developer" items={readouts} columns={4} />
             </motion.div>
 
             {/* Quick access */}
@@ -167,7 +160,7 @@ export default function DevSpacePage() {
                       <NavLink to={link.to} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-go rounded-tile">
                         <div className="h-full p-3 rounded-tile bg-well border border-seam hover:border-seam-strong transition-colors group">
                           <div className="flex items-center gap-2.5 mb-1.5">
-                            <span className="w-7 h-7 rounded-tile bg-go-muted border border-go/25 flex items-center justify-center text-go shrink-0">
+                            <span className="w-7 h-7 rounded-tile bg-go/10 border border-go/25 flex items-center justify-center text-go shrink-0">
                               <link.icon size={14} weight="fill" />
                             </span>
                             <span className="font-code text-caption text-ink-secondary truncate">{link.title}</span>
@@ -212,7 +205,7 @@ export default function DevSpacePage() {
                           animate={{ opacity: 1, x: 0 }}
                           className="flex items-center gap-3 py-2.5 px-1 hover:bg-well/40 transition-colors rounded-tile"
                         >
-                          <StatusTile status={tone} label={stateLabel[event.state] ?? event.state.toUpperCase()} />
+                          <StatusTile status={tone} label={stateLabel[event.state] ?? event.state} />
                           <div className="flex-1 min-w-0">
                             <p className="text-body-sm text-ink truncate">{event.title}</p>
                             <div className="flex items-center gap-2 mt-0.5">

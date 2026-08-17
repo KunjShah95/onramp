@@ -25,9 +25,27 @@ export function TBody({ children, className }: { children: ReactNode; className?
   return <tbody className={className}>{children}</tbody>
 }
 
-export function TR({ children, className, hoverable }: { children: ReactNode; className?: string; hoverable?: boolean }) {
+export function TR({
+  children,
+  className,
+  hoverable,
+  onClick,
+}: {
+  children: ReactNode
+  className?: string
+  hoverable?: boolean
+  onClick?: () => void
+}) {
   return (
-    <tr className={cn('border-b border-seam last:border-b-0', hoverable && 'transition-colors hover:bg-well/50', className)}>
+    <tr
+      onClick={onClick}
+      className={cn(
+        'border-b border-seam last:border-b-0',
+        hoverable && 'transition-colors hover:bg-well/50',
+        onClick && 'cursor-pointer',
+        className,
+      )}
+    >
       {children}
     </tr>
   )
@@ -38,7 +56,7 @@ export function TH({ children, className, ...rest }: ThHTMLAttributes<HTMLTableC
     <th
       scope="col"
       className={cn(
-        'overline text-ink-muted font-semibold px-4 py-2.5 text-left whitespace-nowrap first:pl-5 last:pr-5',
+        'overline text-ink-muted font-semibold px-3 py-2 text-left whitespace-nowrap first:pl-4 last:pr-4',
         className,
       )}
       {...rest}
@@ -52,7 +70,7 @@ export function TD({ children, className, ...rest }: TdHTMLAttributes<HTMLTableC
   return (
     <td
       className={cn(
-        'px-4 py-3 align-middle text-body-sm text-ink first:pl-5 last:pr-5',
+        'px-3 py-2.5 align-middle text-body-sm text-ink first:pl-4 last:pr-4',
         className,
       )}
       {...rest}

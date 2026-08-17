@@ -10,6 +10,7 @@ import {
   Users,
 } from '@phosphor-icons/react'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import { Modal } from '../components/ui/modal'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -165,21 +166,12 @@ export default function MarketplacePage() {
     >
       {/* ── Mission header ── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <Storefront size={11} weight="fill" className="mr-1.5" />
-              Marketplace
-            </span>
-            <span className="designator opacity-50">PLAYBOOK EXCHANGE</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg font-display font-bold text-ink">
-            Playbook Marketplace
-          </h1>
-          <p className="text-caption text-ink-secondary mt-0.5 font-code">
-            Discover, import, and rate onboarding playbooks from the community.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Folio · Marketplace"
+          title="Playbook Marketplace"
+          subtitle="Discover, import, and rate onboarding playbooks from the community."
+          flush
+        />
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}

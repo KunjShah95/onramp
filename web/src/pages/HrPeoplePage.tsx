@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PageHeader } from '../components/ui/page-header'
 import { cn } from '../lib/utils'
 import { fetchHrDevelopers, fetchHrHeatmap, listTeams } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -363,14 +364,12 @@ export default function HrPeoplePage() {
             <div className="w-11 h-11 rounded-card bg-well border border-seam flex items-center justify-center">
               <Users size={20} className="text-ink-tertiary" weight="regular" />
             </div>
-            <div>
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <span className="tile tile-go">People</span>
-                <span className="designator opacity-50">HR · CREW ROSTER</span>
-              </div>
-              <h1 className="text-display-md md:text-display-lg text-ink">Developer Onboarding</h1>
-              <p className="text-body-sm text-ink-secondary mt-1 font-code">{devData?.developers.length || 0} developers across {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
-            </div>
+            <PageHeader
+              eyebrow="Folio · People"
+              title="Developer Onboarding"
+              subtitle={`${devData?.developers.length || 0} developers across ${teams.length} team${teams.length !== 1 ? 's' : ''}`}
+              flush
+            />
           </div>
           <div className="flex items-center gap-3">
             {teams.length > 1 && (

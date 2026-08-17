@@ -27,9 +27,8 @@ const LED = {
 const PAD = { default: 'p-5', dense: 'p-4', none: '' } as const
 
 /**
- * Seated instrument card. One seam, one call-sign rail, one body. Same DNA as
- * the Mission Control console panel, but leaner — no shadow lift on hover,
- * no LED pulse. Use when the surface needs to feel seated, not interactive.
+ * Seated instrument panel. One seam, one ruled rail, one body. Use when the
+ * surface groups a real section of content — not for decorative boxes.
  */
 export default function ConsoleCard({
   children, rail, designator, status, action, pad = 'default', className,
@@ -40,7 +39,7 @@ export default function ConsoleCard({
       {hasRail && (
         <div className="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-seam">
           {status && <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', LED[status])} />}
-          {rail && <span className="callsign opacity-60">{rail}</span>}
+          {rail && <span className="font-heading text-[13px] font-semibold text-ink">{rail}</span>}
           {designator && <span className="designator">{designator}</span>}
           {action && <div className="ml-auto flex items-center gap-2">{action}</div>}
         </div>

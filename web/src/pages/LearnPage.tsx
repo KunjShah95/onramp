@@ -190,7 +190,7 @@ export default function LearnPage() {
 
         {/* Header */}
         <PageHeader
-          eyebrow="LEARNING PATH · FLIGHT · TRAINING"
+          eyebrow="Folio 03 · Learn"
           title="Pick a level. Get a path."
           subtitle="Generate a personalized module path from any repo. Quiz each module. Convert the path into tracked tasks."
         />
@@ -613,10 +613,10 @@ export default function LearnPage() {
                         {quizResult.percentage}%
                       </div>
                       <p className={cn(
-                        'font-display text-[14px] font-semibold mb-1 callsign',
+                        'font-display text-[14px] font-semibold mb-1',
                         quizResult.passed ? 'text-go' : 'text-abort'
                       )}>
-                        {quizResult.passed ? 'PASSED' : 'NEEDS IMPROVEMENT'}
+                        {quizResult.passed ? 'Passed' : 'Needs improvement'}
                       </p>
                       <p className="font-code text-[12px] text-ink-tertiary">
                         {quizResult.score} / {quizResult.total} correct

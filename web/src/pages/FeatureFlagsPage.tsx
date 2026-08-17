@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { ToggleLeft, ToggleRight, Plus, Trash, Spinner, Flag } from '@phosphor-icons/react'
+import { ToggleLeft, ToggleRight, Plus, Trash, Spinner } from '@phosphor-icons/react'
 import { useAuth } from '../context/AuthContext'
+import { PageHeader } from '../components/ui/page-header'
 import {
   listFeatureFlags,
   setFeatureFlag,
@@ -102,18 +103,12 @@ export default function FeatureFlagsPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-3xl mx-auto px-4 sm:px-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <Flag size={11} weight="fill" className="mr-1.5" />
-              Feature Flags
-            </span>
-            <span className="designator opacity-50">CONFIG SWITCHES</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">Feature Flags</h1>
-          <p className="text-body-xs text-ink-secondary font-code">Toggle team-level features on and off.</p>
-        </div>
+      <div className="mb-6">
+        <PageHeader
+          eyebrow="Folio · Feature flags"
+          title="Feature Flags"
+          subtitle="Toggle team-level features on and off."
+        />
       </div>
 
       {!activeTeamId && (

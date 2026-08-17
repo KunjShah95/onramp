@@ -134,8 +134,8 @@ export default function AutonomousCodingPage() {
 
         {/* ── Side panel ── */}
         <aside className="w-64 shrink-0 bg-panel border-r border-seam flex flex-col min-h-0">
-          <div className="console-rail justify-between">
-            <span className="callsign opacity-60">{panel === 'explorer' ? 'Explorer' : 'Run History'}</span>
+          <div className="flex items-center justify-between gap-3 border-b border-seam px-4 py-2.5">
+            <span className="font-display text-[13px] font-semibold text-ink">{panel === 'explorer' ? 'Explorer' : 'Run History'}</span>
             <DotsThreeVertical size={14} className="text-ink-muted" />
           </div>
 
@@ -257,10 +257,10 @@ export default function AutonomousCodingPage() {
 
           {/* ── Terminal / agent panel ── */}
           <div className={cn('border-t border-seam bg-panel shrink-0 flex flex-col', termOpen ? 'h-56' : 'h-9')}>
-            <div className="console-rail justify-between cursor-pointer" onClick={() => setTermOpen((o) => !o)}>
+            <div className="flex items-center justify-between gap-3 border-b border-seam px-4 py-2.5 cursor-pointer" onClick={() => setTermOpen((o) => !o)}>
               <div className="flex items-center gap-3">
-                <span className="callsign opacity-60">Agent Output</span>
-                <span className="designator">TERMINAL</span>
+                <span className="font-display text-[13px] font-semibold text-ink">Agent Output</span>
+                <span className="designator">Terminal</span>
               </div>
               <CaretDown size={14} className={cn('text-ink-muted transition-transform', termOpen ? '' : 'rotate-180')} />
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { PageHeader } from '../components/ui/page-header'
 import {
   Code, Lock, CheckCircle,
 } from '@phosphor-icons/react'
@@ -47,18 +48,11 @@ export default function ModuleHealthPage() {
 
         {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="designator opacity-50">ACCESS CONTROL</span>
-            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-            <span className="designator opacity-50">TEAM SCOPE</span>
-          </div>
-          <h1 className="font-display text-display-md md:text-display-lg text-ink font-bold tracking-tight">
-            Granted at a glance.
-          </h1>
-          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
-            Module-level permissions your team holds. Each module unlocks as trainees
-            complete onboarding tasks.
-          </p>
+          <PageHeader
+            eyebrow="Folio · Module health"
+            title="Module Health"
+            subtitle="Module-level permissions your team holds — each module unlocks as trainees complete onboarding tasks."
+          />
         </motion.header>
 
         {/* Error */}

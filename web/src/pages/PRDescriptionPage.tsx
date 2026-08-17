@@ -99,7 +99,7 @@ export default function PRDescriptionPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <PageHeader
-          eyebrow="PR ASSISTANT · PULL REQUEST"
+          eyebrow="Folio 09 · PR describe"
           title="PR Description"
           subtitle="Generate AI-powered pull request descriptions from your changes"
         />

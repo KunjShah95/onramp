@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToast } from '../context/ToastContext'
 import { detectArchitectureDrift, type DriftResult } from '../lib/api'
+import { PageHeader } from '../components/ui/page-header'
 import {
   GitBranch,
   Warning,
@@ -107,18 +108,11 @@ export default function DriftDetectionPage() {
 
         {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade}>
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="designator opacity-50">DRIFT DETECTION</span>
-            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-            <span className="designator opacity-50">DOCS × CODE</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
-            One verdict. Two lists.
-          </h1>
-          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
-            Paste your architecture docs. Optionally list code paths. Find what's missing,
-            what's undocumented, and how far the codebase has drifted.
-          </p>
+          <PageHeader
+            eyebrow="Folio · Drift detection"
+            title="Drift Detection"
+            subtitle="Paste your architecture docs, optionally list code paths — find what's missing, what's undocumented, and how far the codebase has drifted."
+          />
         </motion.header>
 
         {/* Input panel */}

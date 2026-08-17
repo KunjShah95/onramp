@@ -6,6 +6,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
+import { PageHeader } from '../components/ui/page-header'
 import InputField from '../components/ui/first-principles/InputField'
 import { useToast } from '../context/ToastContext'
 import { fetchHealthScore } from '../lib/api'
@@ -76,20 +77,13 @@ export default function CodeHealthPage() {
     <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 
-        {/* Hero — thesis + verb */}
+        {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="designator opacity-50">FLIGHT · TELEMETRY</span>
-            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-            <span className="designator opacity-50">REPO HEALTH</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
-            One score, four signals.
-          </h1>
-          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
-            Score a GitHub repo on test coverage, maintainability, complexity, and overall health.
-            One dominant read. Drill down if you need to.
-          </p>
+          <PageHeader
+            eyebrow="Folio · Code health"
+            title="Code Health"
+            subtitle="Score a GitHub repo on test coverage, maintainability, complexity, and overall health — one dominant read, drill down if you need to."
+          />
         </motion.header>
 
         {/* Action row */}
@@ -148,7 +142,7 @@ export default function CodeHealthPage() {
         {/* Empty */}
         {!loading && !result && (
           <motion.div initial="hidden" animate="show" variants={fade}>
-            <ConsolePanel rail="Awaiting" designator="NO TELEMETRY" status="idle" className="py-16 text-center">
+            <ConsolePanel rail="Awaiting" designator="No data yet" status="idle" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <Heartbeat size={26} className="text-ink-disabled" weight="duotone" />
               </div>
@@ -197,7 +191,7 @@ export default function CodeHealthPage() {
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="callsign text-ink mb-1.5">{scoreLabel.toUpperCase()}</div>
+                      <div className="font-display text-body-lg font-semibold text-ink mb-1.5">{scoreLabel}</div>
                       <p className="font-body text-[14px] text-ink-secondary leading-relaxed">
                         {score >= 80 && 'Tests run. Code reads clean. Complexity stays inside the lines.'}
                         {score < 80 && score >= 60 && 'Some drift. Coverage or complexity needs attention before the next push.'}

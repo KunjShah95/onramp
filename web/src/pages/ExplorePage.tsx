@@ -140,7 +140,7 @@ export default function ExplorePage() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink max-w-full overflow-x-hidden relative">
         {/* Header */}
         <PageHeader
-          eyebrow="EXPLORER · ARCHITECTURE GRAPH"
+          eyebrow="Folio 08 · Explore"
           title="Architecture Explorer"
           subtitle="Deep codebase analysis — dependency graph, service map, circular deps detection"
           actions={

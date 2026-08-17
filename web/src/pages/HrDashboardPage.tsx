@@ -19,6 +19,7 @@ import type {
 } from '../lib/api'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
+import { PageHeader } from '../components/ui/page-header'
 import { Hash, CaretDown } from '@phosphor-icons/react'
 import { ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from 'recharts'
 import RampPanel from '../components/dashboard/RampPanel'
@@ -401,7 +402,7 @@ export default function HrDashboardPage() {
   if (cohortError || !cohort) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-        <ConsolePanel rail="Signal Lost" designator="PERSONNEL" status="abort" className="max-w-md w-full">
+        <ConsolePanel rail="Signal lost" designator="Personnel" status="abort" className="max-w-md w-full">
           <p className="text-abort text-body-sm font-code mb-1">Failed to load HR metrics.</p>
           <p className="text-ink-muted text-caption font-code mb-5">Check that the backend is running and the team has members.</p>
           <button onClick={() => window.location.reload()} className="btn">Reacquire</button>
@@ -422,21 +423,18 @@ export default function HrDashboardPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden space-y-6">
       {/* Header */}
-      <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Personnel Console</span>
-            <span className="designator opacity-50">EECOM · COHORT</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">HR Console</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">{member_count} member{member_count !== 1 ? 's' : ''} in cohort</p>
-        </div>
-        <TeamSelector teams={teams} selected={teamId} onChange={setSelectedTeamId} />
+      <motion.div variants={item}>
+        <PageHeader
+          eyebrow="Folio 07 · People"
+          title="HR Console"
+          subtitle={`${member_count} member${member_count !== 1 ? 's' : ''} in cohort`}
+          actions={<TeamSelector teams={teams} selected={teamId} onChange={setSelectedTeamId} />}
+        />
       </motion.div>
 
       {/* Cohort telemetry */}
       <motion.div variants={item}>
-        <ReadoutBank callsign="COHORT TELEMETRY" items={readouts} columns={4} />
+        <ReadoutBank callsign="Cohort" items={readouts} columns={4} />
       </motion.div>
 
       {/* Row 1 */}

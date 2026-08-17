@@ -29,7 +29,7 @@ export default function AppShell({ sidebar, topbar, children }: AppShellProps) {
         {topbar}
 
         {/* Content */}
-        <main className="flex-1 p-6 overflow-auto relative min-h-0">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto relative min-h-0">
           {children}
         </main>
       </div>

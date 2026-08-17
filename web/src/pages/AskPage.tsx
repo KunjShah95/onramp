@@ -197,7 +197,7 @@ export default function AskPage() {
         {/* Header */}
         <PageHeader
           flush
-          eyebrow="CODEBASE QUERY · FLIGHT · DIALOG"
+          eyebrow="Folio 02 · Ask"
           title="One anchor. One stream."
           subtitle="Pin a repo. Ask the code. The repo indexes on first question."
           actions={

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Clock, ChartLineUp, Warning } from '@phosphor-icons/react'
+import { ChartLineUp } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
+import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { API_BASE, authHeaders } from '../lib/api'
 
 // ── Types mirroring hr_metrics_service.cohort_summary ──────────────────────
@@ -61,18 +63,11 @@ export default function HRDashboard() {
     <PageTransition>
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-2">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="tile tile-go">HR Analytics</span>
-              <span className="designator opacity-50">PEOPLE TELEMETRY</span>
-            </div>
-            <h1 className="text-display-md md:text-display-lg text-ink">HR Onboarding Analytics</h1>
-            <p className="text-body-sm text-ink-secondary mt-1 font-code">
-              Cohort ramp time, completion, engagement, and attrition risk.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Folio 07 · People"
+          title="HR Onboarding Analytics"
+          subtitle="Cohort ramp time, completion, engagement, and attrition risk."
+        />
 
         {error && (
           <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm">
@@ -81,51 +76,31 @@ export default function HRDashboard() {
         )}
 
         {loading && (
-          <CardSpotlight className="p-6">
+          <ConsolePanel rail="Loading" designator="Cohort">
             <p className="text-body-sm text-ink-tertiary">Loading cohort metrics…</p>
-          </CardSpotlight>
+          </ConsolePanel>
         )}
 
         {!loading && !error && data && (
           <div className="space-y-4">
-            {/* Summary tiles */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
-                  <Clock className="w-4 h-4" weight="duotone" />
-                  <span className="text-caption">Avg. ramp time</span>
-                </div>
-                <p className="text-display-sm font-display text-ink">
-                  {data.ramp_time.team_average_days ?? '—'}
-                  {data.ramp_time.team_average_days != null && (
-                    <span className="text-body-sm text-ink-tertiary ml-1">days</span>
-                  )}
-                </p>
-              </CardSpotlight>
-              <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
-                  <ChartLineUp className="w-4 h-4" weight="duotone" />
-                  <span className="text-caption">Active streaks</span>
-                </div>
-                <p className="text-display-sm font-display text-ink">
-                  {data.engagement.active_streaks}
-                  <span className="text-body-sm text-ink-tertiary ml-1">/ {data.member_count}</span>
-                </p>
-              </CardSpotlight>
-              <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
-                  <Warning className="w-4 h-4" weight="duotone" />
-                  <span className="text-caption">At risk</span>
-                </div>
-                <p className="text-display-sm font-display text-ink">
-                  {data.attrition_risk.at_risk_count}
-                </p>
-              </CardSpotlight>
-            </div>
+            {/* Summary metrics */}
+            <MetricStrip className="grid-cols-1 sm:grid-cols-3">
+              <MetricCell
+                label="Avg ramp time"
+                value={data.ramp_time.team_average_days ?? '—'}
+                sub={data.ramp_time.team_average_days != null ? 'days to first PR' : undefined}
+              />
+              <MetricCell label="Active streaks" value={data.engagement.active_streaks} sub={`/ ${data.member_count} members`} />
+              <MetricCell
+                label="At risk"
+                value={data.attrition_risk.at_risk_count}
+                accent={(data.attrition_risk.at_risk_count ?? 0) > 0 ? 'text-abort' : undefined}
+                sub="stalled or disengaged"
+              />
+            </MetricStrip>
 
             {/* Completion % per member */}
-            <CardSpotlight className="p-6">
-              <h3 className="text-body font-medium text-ink mb-4">Onboarding completion</h3>
+            <ConsolePanel rail="Onboarding completion">
               <div className="space-y-3">
                 {data.onboarding_completion.members.map((m) => {
                   const ramp = data.ramp_time.members.find((r) => r.user_id === m.user_id)
@@ -153,11 +128,10 @@ export default function HRDashboard() {
                   <p className="text-body-sm text-ink-tertiary">No members in this team.</p>
                 )}
               </div>
-            </CardSpotlight>
+            </ConsolePanel>
 
             {/* Engagement */}
-            <CardSpotlight className="p-6">
-              <h3 className="text-body font-medium text-ink mb-4">Engagement</h3>
+            <ConsolePanel rail="Engagement">
               <div className="space-y-2">
                 {data.engagement.members.map((m) => (
                   <div key={m.user_id} className="flex items-center justify-between text-body-sm">
@@ -168,14 +142,10 @@ export default function HRDashboard() {
                   </div>
                 ))}
               </div>
-            </CardSpotlight>
+            </ConsolePanel>
 
             {/* Attrition risk */}
-            <CardSpotlight className="p-6 border border-abort/10">
-              <h3 className="text-body font-medium text-ink mb-4 flex items-center gap-2">
-                <Warning className="w-4 h-4 text-abort" weight="duotone" />
-                Attrition risk
-              </h3>
+            <ConsolePanel rail="Attrition risk" status="abort">
               {data.attrition_risk.at_risk.length === 0 ? (
                 <EmptyState
                   icon={<ChartLineUp className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
@@ -196,7 +166,7 @@ export default function HRDashboard() {
                   ))}
                 </div>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
           </div>
         )}
       </div>

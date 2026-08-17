@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   GitPullRequest,
   Clock,
-  CheckCircle,
   Eye,
   ArrowRight,
   UserCircle,
   ChatCircleDots,
   Code,
-  WarningCircle,
 } from '@phosphor-icons/react'
 import { ReviewQueueSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +15,7 @@ import { listTeams, listTasks, getTeamMembers } from '../lib/api'
 import type { WorkflowTask, TeamsResponse } from '../lib/api'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
+import { PageHeader } from '../components/ui/page-header'
 import ReviewOpsPanel from '../components/dashboard/ReviewOpsPanel'
 
 const STATUS_CONFIG: Record<string, { label: string; tone: 'go' | 'mission' | 'caution' | 'abort' | 'idle' }> = {
@@ -135,19 +134,13 @@ export default function ReviewQueuePage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade}>
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="designator opacity-50">PR GATE</span>
-            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-            <span className="designator opacity-50">FLIGHT · REVIEW</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
-            Triage by state. Act by row.
-          </h1>
-          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
-            Pending PRs in one place. Filter by state, take action on the row that needs it.
-          </p>
-        </motion.header>
+        <motion.div initial="hidden" animate="show" variants={fade}>
+          <PageHeader
+            eyebrow="Folio 11 · Reviews"
+            title="Review Queue"
+            subtitle="Pending PRs in one place — filter by state and act on the row that needs it."
+          />
+        </motion.div>
 
         {/* Verdict bar */}
         <motion.div initial="hidden" animate="show" variants={fade}>
@@ -166,31 +159,16 @@ export default function ReviewQueuePage() {
               </button>
             }
           >
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-seam">
               {[
-                { label: 'Pending', value: counts.pending, icon: Clock, tone: 'caution' as const },
-                { label: 'In Review', value: counts['in-progress'], icon: Eye, tone: 'mission' as const },
-                { label: 'Approved', value: counts.approved, icon: CheckCircle, tone: 'go' as const },
-                { label: 'Changes', value: counts.changes, icon: WarningCircle, tone: 'abort' as const },
+                { label: 'Pending', value: counts.pending, color: 'text-caution' },
+                { label: 'In review', value: counts['in-progress'], color: 'text-mission' },
+                { label: 'Approved', value: counts.approved, color: 'text-go' },
+                { label: 'Changes', value: counts.changes, color: 'text-abort' },
               ].map((stat) => (
-                <div key={stat.label} className="flex items-center gap-2.5">
-                  <div className={cn('w-7 h-7 rounded-[3px] border flex items-center justify-center',
-                    stat.tone === 'go' && 'bg-go/10 border-go/20',
-                    stat.tone === 'mission' && 'bg-mission/10 border-mission/20',
-                    stat.tone === 'caution' && 'bg-caution/10 border-caution/20',
-                    stat.tone === 'abort' && 'bg-abort/10 border-abort/20',
-                  )}>
-                    <stat.icon size={12} weight="fill" className={cn(
-                      stat.tone === 'go' && 'text-go',
-                      stat.tone === 'mission' && 'text-mission',
-                      stat.tone === 'caution' && 'text-caution',
-                      stat.tone === 'abort' && 'text-abort',
-                    )} />
-                  </div>
-                  <div>
-                    <p className="font-mono text-lg font-semibold text-ink tabular-nums leading-none">{stat.value}</p>
-                    <p className="text-[10px] text-ink-tertiary uppercase tracking-wider mt-0.5">{stat.label}</p>
-                  </div>
+                <div key={stat.label} className="px-4 py-3">
+                  <p className={cn('font-code text-2xl font-semibold tabular-nums leading-none', stat.color)}>{stat.value}</p>
+                  <p className="overline mt-1.5">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -284,7 +262,7 @@ export default function ReviewQueuePage() {
                       <h3 className="font-display text-[14px] text-ink font-semibold group-hover:text-go transition-colors truncate">
                         {task.title}
                       </h3>
-                      <span className={cn('px-2 py-0.5 rounded-[2px] text-[10px] font-semibold uppercase tracking-wider border', TONE_CLASS[style.tone])}>
+                      <span className={cn('px-2 py-0.5 rounded-[2px] text-[10px] font-semibold border', TONE_CLASS[style.tone])}>
                         {style.label}
                       </span>
                       {task.priority && (

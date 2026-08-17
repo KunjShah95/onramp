@@ -12,10 +12,8 @@ interface StatCardProps {
 }
 
 /**
- * Stat card — a seated instrument panel for a single telemetry value.
- * Flat by default (hairline seam, no float-shadow), lifts only on hover
- * when interactive. Values render in tabular mono; the label reads as a
- * call-sign. No motion-lift springs, no accent gradient washes.
+ * Stat card — a flat, seated cell. Label reads as a small-cap caption,
+ * value as tabular mono. No float shadow, no lift unless interactive.
  */
 export function StatCard({
   label,
@@ -32,24 +30,22 @@ export function StatCard({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={cn(
-        'rounded-card border border-seam bg-panel shadow-seam p-5 overflow-hidden',
+        'rounded-card border border-seam bg-panel p-4 overflow-hidden',
         'transition-[border-color,box-shadow] duration-200',
-        onClick && 'cursor-pointer hover:border-seam-strong hover:shadow-lift',
+        onClick && 'cursor-pointer hover:border-seam-strong',
         className
       )}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className={cn('font-code tabular-nums text-2xl md:text-3xl font-semibold tracking-tight leading-none', color)}>
+          <div className="overline text-ink-muted/80">{label}</div>
+          <div className={cn('font-code tabular-nums text-2xl font-semibold tracking-tight leading-none mt-2', color)}>
             {value}
           </div>
-          <div className="text-overline text-ink-muted/60 mt-2">
-            {label}
-          </div>
-          {sub && <div className="text-caption text-ink-muted/40 mt-1">{sub}</div>}
+          {sub && <div className="text-caption text-ink-muted mt-1.5">{sub}</div>}
         </div>
         {icon && (
-          <div className="ml-3 shrink-0 text-ink-muted/30">{icon}</div>
+          <div className="shrink-0 text-ink-muted/40 mt-0.5">{icon}</div>
         )}
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
+import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
@@ -88,15 +89,12 @@ export default function ExecutivePage() {
   return (
     <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={item} className="flex items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Flight · Executive</span>
-            <span className="designator opacity-50">BIG BOARD · ORG</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">Executive Console</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">Revenue trajectory · fleet status · treasury.</p>
-        </div>
+      <motion.div variants={item}>
+        <PageHeader
+          eyebrow="Folio 03 · Executive"
+          title="Executive Console"
+          subtitle="Revenue trajectory · fleet status · treasury."
+        />
       </motion.div>
 
       {error && (
@@ -120,7 +118,7 @@ export default function ExecutivePage() {
         <>
           {/* Big board readouts */}
           <motion.div variants={item}>
-            <ReadoutBank callsign="ORG TELEMETRY" items={readouts} columns={4} />
+            <ReadoutBank callsign="Org" items={readouts} columns={4} />
           </motion.div>
 
           {/* Revenue trajectory + fleet */}
@@ -147,8 +145,8 @@ export default function ExecutivePage() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
-                      <XAxis dataKey="month" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={44}
+                      <XAxis dataKey="month" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={44}
                         tickFormatter={(v) => `$${v >= 1000 ? `${Math.round(v / 1000)}k` : v}`} />
                       <Tooltip contentStyle={TOOLTIP} formatter={(v) => [`$${Number(v).toLocaleString()}`, 'MRR']} />
                       <Area type="monotone" dataKey="mrr" stroke={SIG.go} fill="url(#mrrFill)" strokeWidth={2} dot={false} />
@@ -274,7 +272,7 @@ export default function ExecutivePage() {
 
           {/* Credential cost tracking — live API key budgets for the C-suite */}
           <motion.div variants={item}>
-            <ConsolePanel rail="Credential Cost · Tracking" designator="COST TELEMETRY" status="go">
+            <ConsolePanel rail="Credential Cost · Tracking" designator="Live · gateway" status="go">
               <p className="text-caption text-ink-muted mb-4 font-code">
                 API key spend vs. budget — live from the gateway.
               </p>

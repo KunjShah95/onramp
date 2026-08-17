@@ -79,9 +79,9 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={months} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
-                <XAxis dataKey="label" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false}
+                <XAxis dataKey="label" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false}
                   interval="preserveStartEnd" />
-                <YAxis allowDecimals={false} tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={26} />
+                <YAxis allowDecimals={false} tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={26} />
                 <Tooltip
                   contentStyle={TOOLTIP}
                   formatter={(v, name) => [`${v}`, name === 'joined' ? 'joined' : name === 'deactivated' ? 'left' : 'headcount']}

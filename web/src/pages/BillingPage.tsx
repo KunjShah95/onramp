@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
+import { PageHeader } from '../components/ui/page-header'
 import ConsolePanel from '../components/ui/console-panel'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
@@ -166,14 +167,13 @@ export default function BillingPage() {
       animate="visible"
       className="relative w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink"
     >
-      {/* ── Mission header ── */}
+      {/* ── Header ── */}
       <motion.div variants={itemVariants} className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <span className="tile tile-go">Billing</span>
-          <span className="designator opacity-50">STATION ENGINEER · FINANCE</span>
-        </div>
-        <h1 className="text-display-md md:text-display-lg text-ink">Billing &amp; Plans</h1>
-        <p className="text-body-sm text-ink-secondary mt-1 font-code">Manage your subscription and team quota</p>
+        <PageHeader
+          eyebrow="Folio · Billing"
+          title="Billing & Plans"
+          subtitle="Manage your subscription and team quota"
+        />
       </motion.div>
 
       {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}

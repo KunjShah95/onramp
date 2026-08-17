@@ -94,8 +94,8 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
-                    <XAxis dataKey="day" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={30}
+                    <XAxis dataKey="day" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={30}
                       tickFormatter={(v) => `${v}%`} />
                     <Tooltip
                       contentStyle={TOOLTIP}

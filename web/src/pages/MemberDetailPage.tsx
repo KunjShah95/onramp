@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { PageHeader } from '../components/ui/page-header'
 import {
   CalendarBlank, GitPullRequest, CheckCircle,
   ArrowLeft, ShieldCheck, Code, Bug, User,
@@ -52,12 +53,11 @@ export default function MemberDetailPage() {
 
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Team Members</span>
-            <span className="designator opacity-50">TEAM ROSTER</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">Team Members</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">Per-member onboarding progress and contribution stats</p>
+          <PageHeader
+            eyebrow="Folio · People"
+            title="Team Members"
+            subtitle="Per-member onboarding progress and contribution stats"
+          />
         </motion.div>
 
         <AnimatePresence>

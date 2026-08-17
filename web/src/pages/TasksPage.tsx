@@ -14,7 +14,7 @@ import {
   type TaskTemplate, type BulkAssignResult, type StarterAssignmentResult,
 } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
-import { StatCard } from '../components/ui/stat-card'
+import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
 import StatusBadge from '../components/ui/status-badge'
@@ -78,7 +78,7 @@ function sortMembers(members: TeamMember[]): TeamMember[] {
   return [...members].sort((a, b) => roleIdx(a.role) - roleIdx(b.role) || (a.name || a.user_id).localeCompare(b.name || b.user_id))
 }
 
-function MemberSelect({ members, value, onChange, placeholder = 'Select memberâ€¦', className }: {
+function MemberSelect({ members, value, onChange, placeholder = 'Select member…', className }: {
   members: TeamMember[]; value: string; onChange: (v: string) => void; placeholder?: string; className?: string
 }) {
   return (
@@ -445,6 +445,7 @@ export default function TasksPage() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-ink relative">
         <PageHeader
           title="Tasks"
+          eyebrow="Folio 02 · Tasks"
           subtitle="Senior â†’ Trainee workflow â€” assign, work, review, approve, unlock"
           actions={
             <>
@@ -491,9 +492,8 @@ export default function TasksPage() {
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
-              <div className="flex items-center gap-2 mb-4">
-                <GithubLogo className="w-4 h-4 text-ink-tertiary" weight="bold" />
-                <h3 className="callsign text-ink-secondary tracking-wide">Import GitHub Issue as Task</h3>
+              <div className="border-b border-seam pb-2.5 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Import GitHub Issue as Task</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="md:col-span-2">
@@ -568,9 +568,8 @@ export default function TasksPage() {
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
-              <div className="flex items-center gap-2 mb-5">
-                <Copy className="w-4 h-4 text-ink-tertiary" weight="bold" />
-                <h3 className="callsign text-ink-secondary tracking-wide">Task Templates &amp; Plan Assignment</h3>
+              <div className="border-b border-seam pb-2.5 mb-5">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Task Templates &amp; Plan Assignment</h3>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -692,7 +691,7 @@ export default function TasksPage() {
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="w-4 h-4 text-ink-tertiary" weight="bold" />
-                <h3 className="callsign text-ink-secondary tracking-wide">Time Tracking â€” Estimated vs Actual</h3>
+                <h3 className="font-display text-[13px] font-semibold text-ink">Time Tracking — Estimated vs Actual</h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                 {[
@@ -748,20 +747,14 @@ export default function TasksPage() {
         )}
 
         {progress && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-6">
-            {[
-              { label: 'Total', value: progress.total, color: 'text-ink' },
-              { label: 'Completed', value: progress.completed, color: 'text-go' },
-              { label: 'In Progress', value: progress.in_progress, color: 'text-mission' },
-              { label: 'Pending Rev.', value: progress.pending_review, color: 'text-caution' },
-              { label: 'Blocked', value: progress.blocked, color: 'text-abort' },
-            ].map((stat) => (
-              <motion.div key={stat.label} variants={itemVariants}>
-                <CardSpotlight>
-                  <StatCard label={stat.label} value={stat.value} color={stat.color} />
-                </CardSpotlight>
-              </motion.div>
-            ))}
+          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mb-6">
+            <MetricStrip className="grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+              <MetricCell label="Total" value={progress.total} />
+              <MetricCell label="Completed" value={progress.completed} accent="text-go" />
+              <MetricCell label="In progress" value={progress.in_progress} accent="text-mission" />
+              <MetricCell label="Pending review" value={progress.pending_review} accent="text-caution" />
+              <MetricCell label="Blocked" value={progress.blocked} accent="text-abort" />
+            </MetricStrip>
           </motion.div>
         )}
 
@@ -773,7 +766,7 @@ export default function TasksPage() {
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
                 <Plus className="w-4 h-4 text-ink-tertiary" weight="bold" />
-                <h3 className="callsign text-ink-secondary tracking-wide">Create New Task</h3>
+                <h3 className="font-display text-[13px] font-semibold text-ink">Create New Task</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="md:col-span-2">
