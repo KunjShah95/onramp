@@ -71,7 +71,7 @@ export default function HeroLockup({ links = [], cta = null, ghost = null, hero 
             {cta && (
               <Link
                 to={cta.href}
-                className="group inline-flex items-center gap-1.5 rounded-btn bg-go px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-lit transition-all hover:bg-go-lit active:translate-y-px"
+                className="group inline-flex items-center gap-1.5 rounded-btn bg-go px-3.5 py-1.5 text-[13px] font-semibold text-white shadow-seam transition-all hover:bg-go-lit active:translate-y-px"
               >
                 {cta.label}
                 <ArrowRight size={12} weight="bold" className="transition-transform group-hover:translate-x-0.5" />

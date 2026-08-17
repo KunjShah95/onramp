@@ -42,7 +42,7 @@ export default function MarketingFooter() {
     <footer className="relative overflow-hidden border-t border-black/5 bg-room">
       {/* ambient glows */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 right-[14%] h-[280px] w-[460px] rounded-full bg-accent-primary/[0.08] blur-[110px]" />
+        <div className="absolute -top-24 right-[14%] h-[280px] w-[460px] rounded-full bg-go/[0.08] blur-[110px]" />
         <div className="absolute -bottom-28 left-[8%] h-[260px] w-[420px] rounded-full bg-go/[0.06] blur-[110px]" />
       </div>
       {/* gradient seam on the top edge */}

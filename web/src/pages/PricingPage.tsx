@@ -56,7 +56,7 @@ function Segmented({ options, value, onChange, pillId }: {
   pillId: string
 }) {
   return (
-    <div className="relative flex items-center rounded-btn border border-seam bg-panel-raised p-1 shadow-card">
+    <div className="relative flex items-center rounded-btn border border-seam bg-panel-raised p-1 shadow-seam">
       {options.map((label) => {
         const active = value === label
         return (
@@ -72,7 +72,7 @@ function Segmented({ options, value, onChange, pillId }: {
             {active && (
               <motion.span
                 layoutId={pillId}
-                className="absolute inset-0 -z-10 rounded-[3px] bg-accent-from shadow-lit"
+                className="absolute inset-0 -z-10 rounded-[3px] bg-go shadow-seam"
                 transition={{ type: 'spring', stiffness: 400, damping: 32 }}
               />
             )}
@@ -308,7 +308,7 @@ export default function PricingPage() {
             <details key={faq.question} className="group p-5 cursor-pointer">
               <summary className="flex items-center justify-between gap-4 list-none font-semibold text-sm text-[hsl(var(--foreground))] font-body">
                 <span>{faq.question}</span>
-                <ArrowRight size={14} weight="bold" className="text-text-muted/50 transition-transform group-open:rotate-90 shrink-0" />
+                <ArrowRight size={14} weight="bold" className="text-ink-muted/50 transition-transform group-open:rotate-90 shrink-0" />
               </summary>
               <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))] leading-relaxed font-body">
                 {faq.answer}

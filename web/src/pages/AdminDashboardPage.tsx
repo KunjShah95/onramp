@@ -144,10 +144,10 @@ export default function AdminDashboardPage() {
   const series = usageDetail?.provider_series ?? []
 
   const readouts: Readout[] = [
-    { label: 'API Calls · 24h', value: usage ?? '—', color: 'text-success' },
-    { label: 'Active Teams', value: teams ?? '—', color: 'text-info' },
-    { label: 'Active Members', value: members ?? '—', color: 'text-text-primary' },
-    { label: 'Active API Keys', value: keys ?? '—', color: 'text-info' },
+    { label: 'API Calls · 24h', value: usage ?? '—', color: 'text-go' },
+    { label: 'Active Teams', value: teams ?? '—', color: 'text-mission' },
+    { label: 'Active Members', value: members ?? '—', color: 'text-ink' },
+    { label: 'Active API Keys', value: keys ?? '—', color: 'text-mission' },
   ]
 
   return (
@@ -159,11 +159,11 @@ export default function AdminDashboardPage() {
             <span className="tile tile-go">Flight · Admin</span>
             <span className="designator opacity-50">SYSTEMS · ORG</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary flex items-center gap-3">
+          <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
             <ShieldCheck size={30} weight="fill" className="text-go shrink-0" />
             Admin Console
           </h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">System-wide monitoring and management.</p>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">System-wide monitoring and management.</p>
         </div>
         <button onClick={fetchAdminData} disabled={loading} className="btn-glass hidden sm:inline-flex disabled:opacity-50">Refresh</button>
       </motion.div>
@@ -172,7 +172,7 @@ export default function AdminDashboardPage() {
         <motion.div variants={item}>
           <ConsolePanel rail="Signal Lost" designator="SYSTEMS" status="abort">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-error text-body-sm font-code">{error}</p>
+              <p className="text-abort text-body-sm font-code">{error}</p>
               <button onClick={fetchAdminData} disabled={loading} className="btn-glass !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
             </div>
           </ConsolePanel>
@@ -197,8 +197,8 @@ export default function AdminDashboardPage() {
               live
               action={usageDetail && usageDetail.tracked_requests > 0 ? (
                 <div className="flex items-center gap-3 text-caption">
-                  <span className="flex items-center gap-1.5 text-text-muted"><span className="w-2 h-2 rounded-tile" style={{ backgroundColor: SIG.go }} /> Free</span>
-                  <span className="flex items-center gap-1.5 text-text-muted"><span className="w-2 h-2 rounded-tile" style={{ backgroundColor: SIG.blue }} /> Paid</span>
+                  <span className="flex items-center gap-1.5 text-ink-muted"><span className="w-2 h-2 rounded-tile" style={{ backgroundColor: SIG.go }} /> Free</span>
+                  <span className="flex items-center gap-1.5 text-ink-muted"><span className="w-2 h-2 rounded-tile" style={{ backgroundColor: SIG.blue }} /> Paid</span>
                 </div>
               ) : undefined}
             >
@@ -208,15 +208,15 @@ export default function AdminDashboardPage() {
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
                     {[
-                      { label: 'Free traffic', value: `${usageDetail.free_pct}%`, sub: `${usageDetail.free_requests} free · ${usageDetail.paid_requests} paid`, color: 'text-success' },
-                      { label: 'Cost avoided', value: fmtUsd(usageDetail.total_cost_avoided_usd), sub: 'vs paid baseline model', color: 'text-success' },
-                      { label: 'Actual cost', value: fmtUsd(usageDetail.total_cost_usd), sub: `${usageDetail.tracked_requests} tracked requests`, color: 'text-info' },
-                      { label: 'Total requests', value: fmt(usageDetail.total_requests), sub: 'all endpoints', color: 'text-text-primary' },
+                      { label: 'Free traffic', value: `${usageDetail.free_pct}%`, sub: `${usageDetail.free_requests} free · ${usageDetail.paid_requests} paid`, color: 'text-go' },
+                      { label: 'Cost avoided', value: fmtUsd(usageDetail.total_cost_avoided_usd), sub: 'vs paid baseline model', color: 'text-go' },
+                      { label: 'Actual cost', value: fmtUsd(usageDetail.total_cost_usd), sub: `${usageDetail.tracked_requests} tracked requests`, color: 'text-mission' },
+                      { label: 'Total requests', value: fmt(usageDetail.total_requests), sub: 'all endpoints', color: 'text-ink' },
                     ].map((stat) => (
                       <div key={stat.label} className="rounded-tile border border-seam bg-well p-3">
-                        <p className="text-caption text-text-muted">{stat.label}</p>
+                        <p className="text-caption text-ink-muted">{stat.label}</p>
                         <p className={`font-code tabular-nums text-body font-semibold mt-0.5 ${stat.color}`}>{stat.value}</p>
-                        <p className="text-caption text-text-muted/60 mt-0.5">{stat.sub}</p>
+                        <p className="text-caption text-ink-muted/60 mt-0.5">{stat.sub}</p>
                       </div>
                     ))}
                   </div>
@@ -255,8 +255,8 @@ export default function AdminDashboardPage() {
               status={Object.keys(providerKeys).length ? 'go' : 'standby'}
               live={Object.keys(providerKeys).length > 0}
             >
-              <p className="text-caption text-text-muted mb-4">
-                Platform-wide LLM &amp; embedding provider keys — configured here instead of <span className="font-code text-text-primary/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
+              <p className="text-caption text-ink-muted mb-4">
+                Platform-wide LLM &amp; embedding provider keys — configured here instead of <span className="font-code text-ink/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {PROVIDER_OPTIONS.map((p) => {
@@ -267,17 +267,17 @@ export default function AdminDashboardPage() {
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className={`w-2 h-2 rounded-tile shrink-0 ${configured ? 'bg-go' : 'bg-well-strong'}`} />
-                          <span className="text-body-xs font-medium text-text-primary truncate">{p.label}</span>
+                          <span className="text-body-xs font-medium text-ink truncate">{p.label}</span>
                         </div>
                         {configured ? (
-                          <span className="font-code text-[9px] uppercase tracking-wider text-success bg-well-strong px-1.5 py-0.5 rounded shrink-0">Set</span>
+                          <span className="font-code text-[9px] uppercase tracking-wider text-go bg-well-strong px-1.5 py-0.5 rounded shrink-0">Set</span>
                         ) : (
-                          <span className="font-code text-[9px] uppercase tracking-wider text-text-muted/60 shrink-0">Env/Unset</span>
+                          <span className="font-code text-[9px] uppercase tracking-wider text-ink-muted/60 shrink-0">Env/Unset</span>
                         )}
                       </div>
-                      <p className="font-code text-[9px] text-text-muted/60 mb-2 truncate">overrides {p.envVar}</p>
+                      <p className="font-code text-[9px] text-ink-muted/60 mb-2 truncate">overrides {p.envVar}</p>
                       {configured && info.updated_at && (
-                        <p className="text-caption text-text-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
+                        <p className="text-caption text-ink-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
                       )}
                       <div className="flex items-center gap-3">
                         <button
@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
                               setEditingProvider(p.id); setProviderKeyInput('')
                             }
                           }}
-                          className="flex items-center gap-1.5 text-caption text-success hover:text-success/80 transition-colors"
+                          className="flex items-center gap-1.5 text-caption text-go hover:text-go/80 transition-colors"
                         >
                           <PencilSimple size={12} />
                           {configured ? 'Update' : 'Add key'}
@@ -296,7 +296,7 @@ export default function AdminDashboardPage() {
                         {configured && (confirmDeleteProvider !== p.id ? (
                           <button
                             onClick={() => setConfirmDeleteProvider(p.id)}
-                            className="flex items-center gap-1.5 text-caption text-text-muted hover:text-error transition-colors"
+                            className="flex items-center gap-1.5 text-caption text-ink-muted hover:text-abort transition-colors"
                           >
                             <Trash size={12} />
                             Remove
@@ -305,7 +305,7 @@ export default function AdminDashboardPage() {
                           <button
                             onClick={() => handleDeleteProviderKey(p.id)}
                             onBlur={() => setConfirmDeleteProvider(null)}
-                            className="flex items-center gap-1.5 text-caption font-semibold text-error hover:text-error/80 transition-colors"
+                            className="flex items-center gap-1.5 text-caption font-semibold text-abort hover:text-abort/80 transition-colors"
                           >
                             <Trash size={12} />
                             Confirm?
@@ -320,7 +320,7 @@ export default function AdminDashboardPage() {
                             onChange={(e) => setProviderKeyInput(e.target.value)}
                             placeholder="sk-..."
                             autoFocus
-                            className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-text-primary placeholder:text-text-muted/30 outline-none focus:border-success/50 transition-colors"
+                            className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-ink placeholder:text-ink-muted/30 outline-none focus:border-go/50 transition-colors"
                           />
                           <button
                             onClick={handleSaveProviderKey}
@@ -335,7 +335,7 @@ export default function AdminDashboardPage() {
                   )
                 })}
               </div>
-              <div className="flex items-center gap-2 mt-4 text-caption text-text-muted/70">
+              <div className="flex items-center gap-2 mt-4 text-caption text-ink-muted/70">
                 <Lock size={12} className="shrink-0" />
                 Keys are Fernet-encrypted at rest and win over environment variables. Per-team BYOK keys (Developer Portal) still take precedence for that team's gateway calls.
               </div>
@@ -354,8 +354,8 @@ export default function AdminDashboardPage() {
                     { label: 'Requests · 24h', value: usage ?? 0 },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-1.5 border-b border-seam last:border-0">
-                      <span className="text-body-sm text-text-secondary">{row.label}</span>
-                      <span className="readout text-text-primary tabular-nums">{fmt(row.value as number)}</span>
+                      <span className="text-body-sm text-ink-secondary">{row.label}</span>
+                      <span className="readout text-ink tabular-nums">{fmt(row.value as number)}</span>
                     </div>
                   ))}
                 </div>
@@ -375,12 +375,12 @@ export default function AdminDashboardPage() {
                           className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
                           <StatusTile status={tone.tone} label={tone.label} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-body-xs text-text-primary truncate">
+                            <p className="text-body-xs text-ink truncate">
                               <span className="font-medium">{entry.actor_id}</span>
-                              <span className="text-text-muted"> → {entry.target_id || '—'}</span>
+                              <span className="text-ink-muted"> → {entry.target_id || '—'}</span>
                             </p>
                           </div>
-                          <span className="text-caption text-text-muted readout shrink-0">{relativeTime(entry.timestamp)}</span>
+                          <span className="text-caption text-ink-muted readout shrink-0">{relativeTime(entry.timestamp)}</span>
                         </motion.div>
                       )
                     })}

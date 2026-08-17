@@ -59,14 +59,14 @@ export default function AgentBenchmarkPanel() {
   const isReact = current.team_stack === 'react' || current.team_stack === 'mixed'
 
   return (
-    <section className="rounded-tile bg-bg-primary border border-border p-4 shadow-card">
+    <section className="rounded-tile bg-base border border-seam p-4 shadow-seam">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg text-accent-from">terminal</span>
-          <h2 className="text-body-sm font-semibold text-text-primary">Agents vs Onramp · Terminal CLIs</h2>
+          <span className="material-symbols-outlined text-lg text-go">terminal</span>
+          <h2 className="text-body-sm font-semibold text-ink">Agents vs Onramp · Terminal CLIs</h2>
           <span className={cn(
             'px-1.5 py-0.5 rounded-md text-caption font-medium',
-            isReact ? 'bg-info/10 text-info' : 'bg-bg-tertiary text-text-muted'
+            isReact ? 'bg-mission/10 text-mission' : 'bg-well text-ink-muted'
           )}>
             {current.team_stack === 'unknown' ? 'no repos yet' : `${current.team_stack} codebase`}
           </span>
@@ -75,23 +75,23 @@ export default function AgentBenchmarkPanel() {
           <button
             onClick={() => snapshotMutation.mutate()}
             disabled={snapshotMutation.isPending}
-            className="text-caption text-text-muted hover:text-text-primary transition-colors shrink-0"
+            className="text-caption text-ink-muted hover:text-ink transition-colors shrink-0"
           >
             {snapshotMutation.isPending ? 'Recording…' : 'Record snapshot'}
           </button>
         )}
       </div>
 
-      <p className="text-caption text-text-muted mb-3 font-code">
+      <p className="text-caption text-ink-muted mb-3 font-code">
         {current.dev_count} dev{current.dev_count === 1 ? '' : 's'} · Onramp {fmtOnrampPrice(current.onramp_monthly_usd, current.onramp_price_inr)} flat
         {' '}·{' '}
         <span className={cn(
-          current.price_source === 'subscription' ? 'text-go' : current.price_source === 'team' ? 'text-info' : 'text-text-muted'
+          current.price_source === 'subscription' ? 'text-go' : current.price_source === 'team' ? 'text-mission' : 'text-ink-muted'
         )}>
           {PRICE_SOURCE_LABEL[current.price_source ?? 'platform']}
         </span>
         {cheapest && (
-          <> · cheapest: <span className="text-text-primary readout">{cheapest.name} {cheapest.plan}</span> at {fmtUsd(cheapest.team_monthly_usd)}/mo</>
+          <> · cheapest: <span className="text-ink readout">{cheapest.name} {cheapest.plan}</span> at {fmtUsd(cheapest.team_monthly_usd)}/mo</>
         )}
       </p>
 
@@ -99,18 +99,18 @@ export default function AgentBenchmarkPanel() {
         {rows.map((a) => {
           const onrampCheaper = a.vs_onramp_usd >= 0
           return (
-            <div key={a.slug} className="flex items-center gap-3 py-1.5 border-b border-border/50 last:border-0">
+            <div key={a.slug} className="flex items-center gap-3 py-1.5 border-b border-seam/50 last:border-0">
               <div className="w-44 shrink-0 min-w-0">
-                <div className="text-body-xs text-text-primary font-medium truncate">{a.name}</div>
-                <div className="text-caption text-text-muted truncate">{a.plan}</div>
+                <div className="text-body-xs text-ink font-medium truncate">{a.name}</div>
+                <div className="text-caption text-ink-muted truncate">{a.plan}</div>
               </div>
-              <div className="flex-1 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+              <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
                 <div
                   className={cn('h-full', a.team_monthly_usd === 0 ? 'bg-go' : onrampCheaper ? 'bg-go' : 'bg-caution')}
                   style={{ width: `${Math.min((a.team_monthly_usd / Math.max(current.onramp_monthly_usd, 1)) * 100, 100)}%` }}
                 />
               </div>
-              <span className="w-16 shrink-0 text-right readout text-caption tabular-nums text-text-primary">
+              <span className="w-16 shrink-0 text-right readout text-caption tabular-nums text-ink">
                 {fmtUsd(a.team_monthly_usd)}
               </span>
               <span className={cn(
@@ -125,12 +125,12 @@ export default function AgentBenchmarkPanel() {
       </div>
 
       {history.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-border space-y-1">
-          <div className="overline text-text-muted/60 text-[10px]">Snapshot history</div>
+        <div className="mt-3 pt-3 border-t border-seam space-y-1">
+          <div className="overline text-ink-muted/60 text-[10px]">Snapshot history</div>
           {history.slice(0, 3).map((s) => {
             const cheapestRow = [...s.agents].sort((x, y) => x.team_monthly_usd - y.team_monthly_usd)[0]
             return (
-              <div key={s.generated_at} className="flex items-center justify-between text-caption text-text-muted font-code">
+              <div key={s.generated_at} className="flex items-center justify-between text-caption text-ink-muted font-code">
                 <span>{new Date(s.generated_at).toLocaleDateString()} · {s.dev_count} devs</span>
                 <span>
                   Onramp {fmtOnrampPrice(s.onramp_monthly_usd, s.onramp_price_inr)} ({PRICE_SOURCE_LABEL[s.price_source ?? 'platform']}) · cheapest {cheapestRow ? `${cheapestRow.name} ${cheapestRow.plan}` : '—'} {fmtUsd(cheapestRow?.team_monthly_usd ?? 0)}

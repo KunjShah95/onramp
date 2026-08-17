@@ -20,14 +20,14 @@ export default function ProtectedRoute() {
           <SkeletonHeading />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="card border-border/30">
+              <div key={i} className="card border-seam/30">
                 <SkeletonText className="w-16 h-3" />
                 <SkeletonBase className="h-8 w-12 mt-2" />
                 <SkeletonText className="w-20 h-3 mt-2" />
               </div>
             ))}
           </div>
-          <div className="card border-border/30 space-y-3">
+          <div className="card border-seam/30 space-y-3">
             <SkeletonBase className="h-5 w-36" />
             {[...Array(3)].map((_, i) => (
               <SkeletonBase key={i} className="h-12 w-full rounded-btn" />

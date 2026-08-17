@@ -23,11 +23,11 @@ const LEVELS = [
 function renderContent(content: any) {
   if (content == null) return null
   if (typeof content === 'string') {
-    return <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-line">{content}</p>
+    return <p className="text-body-sm text-ink-secondary leading-relaxed whitespace-pre-line">{content}</p>
   }
   if (Array.isArray(content)) {
     return (
-      <ul className="space-y-1 list-disc list-inside text-body-sm text-text-secondary">
+      <ul className="space-y-1 list-disc list-inside text-body-sm text-ink-secondary">
         {content.map((item: any, i: number) => (
           <li key={i}>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</li>
         ))}
@@ -36,17 +36,17 @@ function renderContent(content: any) {
   }
   if (typeof content === 'object') {
     return (
-      <div className="space-y-1 text-body-sm text-text-secondary">
+      <div className="space-y-1 text-body-sm text-ink-secondary">
         {Object.entries(content).map(([k, v]) => (
           <div key={k} className="flex gap-2">
-            <span className="text-text-tertiary capitalize min-w-[120px]">{k.replace(/_/g, ' ')}:</span>
+            <span className="text-ink-tertiary capitalize min-w-[120px]">{k.replace(/_/g, ' ')}:</span>
             <span className="flex-1">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
           </div>
         ))}
       </div>
     )
   }
-  return <p className="text-body-sm text-text-secondary">{String(content)}</p>
+  return <p className="text-body-sm text-ink-secondary">{String(content)}</p>
 }
 
 const containerVariants = {
@@ -119,8 +119,8 @@ export default function OnboardingReportPage() {
               </span>
               <span className="designator opacity-50">ONBOARDING BRIEF</span>
             </div>
-            <h1 className="text-display-md md:text-display-lg text-text-primary">Onboarding Report</h1>
-            <p className="text-body-sm text-text-secondary mt-1 font-code">
+            <h1 className="text-display-md md:text-display-lg text-ink">Onboarding Report</h1>
+            <p className="text-body-sm text-ink-secondary mt-1 font-code">
               Generate a professional onboarding report for any repository.
             </p>
           </div>
@@ -142,24 +142,24 @@ export default function OnboardingReportPage() {
       {/* Controls */}
       <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-3 md:items-center">
         <div className="relative flex items-center w-full md:flex-1">
-          <GitBranch size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
+          <GitBranch size={16} className="absolute left-3.5 text-ink-tertiary/40 pointer-events-none" />
           <input
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
             placeholder="github.com/owner/repo"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
+            className="w-full bg-panel border border-seam text-ink text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-ink-tertiary/40"
           />
         </div>
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-well/30 w-fit">
           {LEVELS.map((l) => (
             <button
               key={l.key}
               onClick={() => setUserLevel(l.key)}
               className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
                 userLevel === l.key
-                  ? 'bg-bg-primary text-text-primary shadow-sm'
-                  : 'text-text-tertiary hover:text-text-secondary'
+                  ? 'bg-base text-ink shadow-sm'
+                  : 'text-ink-tertiary hover:text-ink-secondary'
               }`}
             >
               {l.label}
@@ -179,9 +179,9 @@ export default function OnboardingReportPage() {
       </motion.div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </motion.div>
       )}
 
@@ -191,7 +191,7 @@ export default function OnboardingReportPage() {
         <motion.div variants={itemVariants}>
           <CardSpotlight className="border border-go/10">
             <EmptyState
-              icon={<FileText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+              icon={<FileText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
               title="Enter a GitHub repository above"
               description="We'll compile a repository overview, architecture, learning path, and good-first-issues into a report."
               action={
@@ -200,7 +200,7 @@ export default function OnboardingReportPage() {
                   whileTap={{ scale: 0.97 }}
                   onClick={handleGenerate}
                   disabled={!repoUrl.trim()}
-                  className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40"
+                  className="mt-2 px-5 py-2 rounded-btn text-caption border border-seam text-ink-muted hover:text-ink hover:bg-well transition-colors font-code disabled:opacity-40"
                 >
                   Generate
                 </motion.button>
@@ -220,7 +220,7 @@ export default function OnboardingReportPage() {
               transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
             >
               <CardSpotlight className="p-6">
-                <h3 className="text-body font-medium text-text-primary mb-3">{section.title}</h3>
+                <h3 className="text-body font-medium text-ink mb-3">{section.title}</h3>
                 {renderContent(section.content)}
               </CardSpotlight>
             </motion.div>

@@ -19,6 +19,7 @@ import RoastModeToggle from '../components/ui/RoastModeToggle'
 import ModelPicker from '../components/ui/ModelPicker'
 import RoutingModePicker, { type RoutingModeValue } from '../components/ui/RoutingModePicker'
 import ConsolePanel from '../components/ui/console-panel'
+import { PageHeader } from '../components/ui/page-header'
 
 const fade = {
   hidden: { opacity: 0, y: 8 },
@@ -190,39 +191,29 @@ export default function AskPage() {
   }
 
   return (
-    <div className="bg-[hsl(var(--background))]">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-base">
       <div className="max-w-4xl mx-auto h-[calc(100vh-4rem)] flex flex-col px-4 sm:px-6 py-6">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade} className="mb-4 shrink-0 flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <span className="designator opacity-50">CODEBASE QUERY</span>
-              <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-              <span className="designator opacity-50">FLIGHT · DIALOG</span>
-            </div>
-            <h1 className="font-display text-3xl md:text-4xl text-ink font-bold tracking-tight leading-[1.05]">
-              One anchor. One stream.
-            </h1>
-            <p className="font-body text-[13.5px] text-ink-secondary mt-1.5">
-              Pin a repo. Ask the code. The repo indexes on first question.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 mt-2">
-            <RoastModeToggle />
-            <ModelPicker value={model} onChange={setModel} />
-            <RoutingModePicker value={routingMode} onChange={setRoutingMode} />
-            {messages.length > 1 && (
-              <button
-                onClick={handleClear}
-                className="inline-flex items-center gap-1.5 rounded-[3px] border border-seam-strong bg-panel-raised px-3 py-1.5 text-[12px] font-medium text-ink hover:border-seam-strong hover:bg-base transition-colors"
-              >
-                <Trash className="w-3.5 h-3.5" />
-                Clear
-              </button>
-            )}
-          </div>
-        </motion.header>
+        <PageHeader
+          flush
+          eyebrow="CODEBASE QUERY · FLIGHT · DIALOG"
+          title="One anchor. One stream."
+          subtitle="Pin a repo. Ask the code. The repo indexes on first question."
+          actions={
+            <>
+              <RoastModeToggle />
+              <ModelPicker value={model} onChange={setModel} />
+              <RoutingModePicker value={routingMode} onChange={setRoutingMode} />
+              {messages.length > 1 && (
+                <button onClick={handleClear} className="btn-secondary">
+                  <Trash className="w-3.5 h-3.5" weight="bold" />
+                  Clear
+                </button>
+              )}
+            </>
+          }
+        />
 
         {/* Anchor — repo input (status panel, not just a field) */}
         <motion.div initial="hidden" animate="show" variants={fade} className="mb-4 shrink-0">

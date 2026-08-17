@@ -46,9 +46,9 @@ export default function JoinPage() {
 
   return (
     <PageTransition>
-      <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
+      <div className="min-h-screen bg-room text-ink antialiased">
       <Seo title="Join Your Team — Onramp" description="Accept your team invitation and start onboarding with Onramp." path="/join" noindex />
-      <div className="min-h-screen bg-bg-void flex items-center justify-center p-4 sm:p-8">
+      <div className="min-h-screen bg-room flex items-center justify-center p-4 sm:p-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={status}
@@ -72,16 +72,12 @@ export default function JoinPage() {
 
               {status === 'success' && (
                 <div className="flex flex-col items-center gap-5 py-4">
-                  <motion.div
-                    animate={{ scale: [1, 1.15, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="w-14 h-14 rounded-tile bg-success-muted border border-success/20 flex items-center justify-center"
-                  >
-                    <UserPlus size={28} className="text-success" weight="fill" />
-                  </motion.div>
+                  <div className="w-14 h-14 rounded-tile bg-go/10 border border-go/20 flex items-center justify-center">
+                    <UserPlus size={28} className="text-go" weight="fill" />
+                  </div>
                   <div>
                     <h2 className="font-heading text-display-xs font-semibold text-ink mb-2">Welcome!</h2>
-                    <p className="text-body-sm text-ink-primary mb-1">
+                    <p className="text-body-sm text-ink mb-1">
                       You've joined <span className="font-semibold text-go">{teamName}</span>
                     </p>
                     <p className="text-caption text-ink-muted">Redirecting to your dashboard...</p>
@@ -91,12 +87,12 @@ export default function JoinPage() {
 
               {status === 'error' && (
                 <div className="flex flex-col items-center gap-5 py-4">
-                  <div className="w-14 h-14 rounded-tile bg-error-muted border border-error/20 flex items-center justify-center">
-                    <X size={28} className="text-error" weight="bold" />
+                  <div className="w-14 h-14 rounded-tile bg-abort/10 border border-abort/20 flex items-center justify-center">
+                    <X size={28} className="text-abort" weight="bold" />
                   </div>
                   <div>
                     <h2 className="font-heading text-display-xs font-semibold text-ink mb-2">Invite Error</h2>
-                    <p className="text-caption text-error mb-2">{errorMsg}</p>
+                    <p className="text-caption text-abort mb-2">{errorMsg}</p>
                     <p className="text-caption text-ink-muted">Try asking your team lead to send a new invitation.</p>
                   </div>
                   <Link

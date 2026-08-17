@@ -173,10 +173,10 @@ export default function MarketplacePage() {
             </span>
             <span className="designator opacity-50">PLAYBOOK EXCHANGE</span>
           </div>
-          <h1 className="text-xl sm:text-display-sm font-display font-medium text-text-primary">
+          <h1 className="text-display-md md:text-display-lg font-display font-bold text-ink">
             Playbook Marketplace
           </h1>
-          <p className="text-caption text-text-secondary mt-0.5 font-code">
+          <p className="text-caption text-ink-secondary mt-0.5 font-code">
             Discover, import, and rate onboarding playbooks from the community.
           </p>
         </div>

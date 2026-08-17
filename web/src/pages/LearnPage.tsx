@@ -24,6 +24,7 @@ import type { QuizQuestion, SubmitQuizResponse } from '../lib/api'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
 import InputField from '../components/ui/first-principles/InputField'
+import { PageHeader } from '../components/ui/page-header'
 
 const fade = {
   hidden: { opacity: 0, y: 8 },
@@ -184,24 +185,15 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-base">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="designator opacity-50">LEARNING PATH</span>
-            <span className="w-1 h-1 rounded-full bg-ink-disabled" />
-            <span className="designator opacity-50">FLIGHT · TRAINING</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
-            Pick a level. Get a path.
-          </h1>
-          <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">
-            Generate a personalized module path from any repo. Quiz each module.
-            Convert the path into tracked tasks.
-          </p>
-        </motion.header>
+        <PageHeader
+          eyebrow="LEARNING PATH · FLIGHT · TRAINING"
+          title="Pick a level. Get a path."
+          subtitle="Generate a personalized module path from any repo. Quiz each module. Convert the path into tracked tasks."
+        />
 
         {/* Input rail — repo + level + generate */}
         <motion.div initial="hidden" animate="show" variants={fade} className="mb-8">
@@ -229,7 +221,7 @@ export default function LearnPage() {
                       className={cn(
                         'flex-1 px-2.5 py-1.5 rounded-[2px] text-[12px] font-semibold transition-colors',
                         userLevel === l.key
-                          ? 'bg-go text-white shadow-lit'
+                          ? 'bg-go text-white shadow-seam'
                           : 'text-ink-secondary hover:text-ink'
                       )}
                     >
@@ -243,7 +235,7 @@ export default function LearnPage() {
                 disabled={loading || !repoUrl.trim()}
                 className={cn(
                   'inline-flex items-center justify-center gap-2 rounded-[3px] bg-go px-5 py-2.5',
-                  'text-[13px] font-semibold text-white shadow-lit transition-all',
+                  'text-[13px] font-semibold text-white shadow-seam transition-all',
                   'hover:bg-go-lit active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed',
                   'md:mb-0.5'
                 )}
@@ -316,7 +308,7 @@ export default function LearnPage() {
                     title={activeTeamId ? 'Create a task per module' : 'Join a team first'}
                     className={cn(
                       'inline-flex items-center gap-1.5 rounded-[3px] bg-go px-3.5 py-1.5',
-                      'text-[12px] font-semibold text-white shadow-lit transition-colors',
+                      'text-[12px] font-semibold text-white shadow-seam transition-colors',
                       'hover:bg-go-lit active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed'
                     )}
                   >
@@ -418,7 +410,7 @@ export default function LearnPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4"
             onClick={closeQuiz}
           >
             <motion.div
@@ -469,7 +461,7 @@ export default function LearnPage() {
                     </p>
                     <button
                       onClick={startQuiz}
-                      className="inline-flex items-center gap-2 rounded-[3px] bg-go px-5 py-2.5 text-[13px] font-semibold text-white shadow-lit hover:bg-go-lit transition-colors"
+                      className="inline-flex items-center gap-2 rounded-[3px] bg-go px-5 py-2.5 text-[13px] font-semibold text-white shadow-seam hover:bg-go-lit transition-colors"
                     >
                       Start Quiz
                     </button>

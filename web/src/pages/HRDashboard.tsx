@@ -67,22 +67,22 @@ export default function HRDashboard() {
               <span className="tile tile-go">HR Analytics</span>
               <span className="designator opacity-50">PEOPLE TELEMETRY</span>
             </div>
-            <h1 className="text-display-md md:text-display-lg text-text-primary">HR Onboarding Analytics</h1>
-            <p className="text-body-sm text-text-secondary mt-1 font-code">
+            <h1 className="text-display-md md:text-display-lg text-ink">HR Onboarding Analytics</h1>
+            <p className="text-body-sm text-ink-secondary mt-1 font-code">
               Cohort ramp time, completion, engagement, and attrition risk.
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">
+          <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm">
             {error}
           </div>
         )}
 
         {loading && (
           <CardSpotlight className="p-6">
-            <p className="text-body-sm text-text-tertiary">Loading cohort metrics…</p>
+            <p className="text-body-sm text-ink-tertiary">Loading cohort metrics…</p>
           </CardSpotlight>
         )}
 
@@ -91,33 +91,33 @@ export default function HRDashboard() {
             {/* Summary tiles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-text-tertiary mb-1">
+                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
                   <Clock className="w-4 h-4" weight="duotone" />
                   <span className="text-caption">Avg. ramp time</span>
                 </div>
-                <p className="text-display-sm font-display text-text-primary">
+                <p className="text-display-sm font-display text-ink">
                   {data.ramp_time.team_average_days ?? '—'}
                   {data.ramp_time.team_average_days != null && (
-                    <span className="text-body-sm text-text-tertiary ml-1">days</span>
+                    <span className="text-body-sm text-ink-tertiary ml-1">days</span>
                   )}
                 </p>
               </CardSpotlight>
               <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-text-tertiary mb-1">
+                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
                   <ChartLineUp className="w-4 h-4" weight="duotone" />
                   <span className="text-caption">Active streaks</span>
                 </div>
-                <p className="text-display-sm font-display text-text-primary">
+                <p className="text-display-sm font-display text-ink">
                   {data.engagement.active_streaks}
-                  <span className="text-body-sm text-text-tertiary ml-1">/ {data.member_count}</span>
+                  <span className="text-body-sm text-ink-tertiary ml-1">/ {data.member_count}</span>
                 </p>
               </CardSpotlight>
               <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 text-text-tertiary mb-1">
+                <div className="flex items-center gap-2 text-ink-tertiary mb-1">
                   <Warning className="w-4 h-4" weight="duotone" />
                   <span className="text-caption">At risk</span>
                 </div>
-                <p className="text-display-sm font-display text-text-primary">
+                <p className="text-display-sm font-display text-ink">
                   {data.attrition_risk.at_risk_count}
                 </p>
               </CardSpotlight>
@@ -125,20 +125,20 @@ export default function HRDashboard() {
 
             {/* Completion % per member */}
             <CardSpotlight className="p-6">
-              <h3 className="text-body font-medium text-text-primary mb-4">Onboarding completion</h3>
+              <h3 className="text-body font-medium text-ink mb-4">Onboarding completion</h3>
               <div className="space-y-3">
                 {data.onboarding_completion.members.map((m) => {
                   const ramp = data.ramp_time.members.find((r) => r.user_id === m.user_id)
                   return (
                     <div key={m.user_id} className="space-y-1">
                       <div className="flex items-center justify-between text-body-sm">
-                        <span className="text-text-secondary">{m.name}</span>
-                        <span className="text-text-tertiary">
+                        <span className="text-ink-secondary">{m.name}</span>
+                        <span className="text-ink-tertiary">
                           {m.completed}/{m.assigned} · {m.completion_pct}%
                           {ramp?.ramp_days != null && ` · ramp ${ramp.ramp_days}d`}
                         </span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-bg-tertiary/40 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-well/40 overflow-hidden">
                         <motion.div
                           className="h-full bg-go rounded-full"
                           initial={{ width: 0 }}
@@ -150,19 +150,19 @@ export default function HRDashboard() {
                   )
                 })}
                 {data.onboarding_completion.members.length === 0 && (
-                  <p className="text-body-sm text-text-tertiary">No members in this team.</p>
+                  <p className="text-body-sm text-ink-tertiary">No members in this team.</p>
                 )}
               </div>
             </CardSpotlight>
 
             {/* Engagement */}
             <CardSpotlight className="p-6">
-              <h3 className="text-body font-medium text-text-primary mb-4">Engagement</h3>
+              <h3 className="text-body font-medium text-ink mb-4">Engagement</h3>
               <div className="space-y-2">
                 {data.engagement.members.map((m) => (
                   <div key={m.user_id} className="flex items-center justify-between text-body-sm">
-                    <span className="text-text-secondary">{m.name}</span>
-                    <span className="text-text-tertiary">
+                    <span className="text-ink-secondary">{m.name}</span>
+                    <span className="text-ink-tertiary">
                       {m.current_streak} (best {m.longest_streak})
                     </span>
                   </div>
@@ -171,23 +171,23 @@ export default function HRDashboard() {
             </CardSpotlight>
 
             {/* Attrition risk */}
-            <CardSpotlight className="p-6 border border-error/10">
-              <h3 className="text-body font-medium text-text-primary mb-4 flex items-center gap-2">
-                <Warning className="w-4 h-4 text-error" weight="duotone" />
+            <CardSpotlight className="p-6 border border-abort/10">
+              <h3 className="text-body font-medium text-ink mb-4 flex items-center gap-2">
+                <Warning className="w-4 h-4 text-abort" weight="duotone" />
                 Attrition risk
               </h3>
               {data.attrition_risk.at_risk.length === 0 ? (
                 <EmptyState
-                  icon={<ChartLineUp className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+                  icon={<ChartLineUp className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
                   title="No members flagged"
                   description="No stalled tasks or lost streaks detected in this cohort."
                 />
               ) : (
                 <div className="space-y-3">
                   {data.attrition_risk.at_risk.map((m) => (
-                    <div key={m.user_id} className="px-4 py-3 rounded-lg bg-error-muted/40 border border-error/20">
-                      <p className="text-body-sm font-medium text-text-primary">{m.name}</p>
-                      <ul className="mt-1 space-y-0.5 list-disc list-inside text-caption text-error/80">
+                    <div key={m.user_id} className="px-4 py-3 rounded-lg bg-abort/10/40 border border-abort/20">
+                      <p className="text-body-sm font-medium text-ink">{m.name}</p>
+                      <ul className="mt-1 space-y-0.5 list-disc list-inside text-caption text-abort/80">
                         {m.reasons.map((r, i) => (
                           <li key={i}>{r}</li>
                         ))}

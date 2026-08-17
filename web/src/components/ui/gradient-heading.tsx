@@ -9,7 +9,7 @@ interface GradientHeadingProps {
 export default function GradientHeading({ children, as: Tag = 'h2', className }: GradientHeadingProps) {
   return (
     <Tag className={cn(
-      'font-display font-bold text-text-primary tracking-tight',
+      'font-display font-bold text-ink tracking-tight',
       Tag === 'h1' && 'text-display-md md:text-display-lg',
       Tag === 'h2' && 'text-display-sm md:text-display-md',
       Tag === 'h3' && 'text-display-xs',

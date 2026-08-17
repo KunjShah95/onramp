@@ -52,7 +52,7 @@ export default function ModuleHealthPage() {
             <span className="w-1 h-1 rounded-full bg-ink-disabled" />
             <span className="designator opacity-50">TEAM SCOPE</span>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl text-ink font-bold tracking-tight leading-[1.05]">
+          <h1 className="font-display text-display-md md:text-display-lg text-ink font-bold tracking-tight">
             Granted at a glance.
           </h1>
           <p className="font-body text-[15px] text-ink-secondary mt-2 max-w-xl">

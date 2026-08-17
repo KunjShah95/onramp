@@ -282,9 +282,9 @@ export default function CodeEditor({
 
   if (loadError) {
     return (
-      <div className={cn('border border-error/25 bg-error-muted flex flex-col items-center justify-center gap-2 text-center px-6', className)} style={{ height }}>
-        <WarningCircle size={20} className="text-error" weight="fill" />
-        <p className="text-caption text-error font-medium">Code editor failed to load</p>
+      <div className={cn('border border-abort/25 bg-abort/10 flex flex-col items-center justify-center gap-2 text-center px-6', className)} style={{ height }}>
+        <WarningCircle size={20} className="text-abort" weight="fill" />
+        <p className="text-caption text-abort font-medium">Code editor failed to load</p>
         <p className="text-caption text-ink-muted">The editor runtime is fetched from a CDN and could not be reached. Check your network or CSP policy.</p>
         <button
           type="button"
@@ -299,15 +299,15 @@ export default function CodeEditor({
 
   if (!mounted) {
     return (
-      <div className={cn('border border-border bg-bg-secondary', className)} style={{ height }}>
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-bg-secondary/80">
+      <div className={cn('border border-seam bg-panel', className)} style={{ height }}>
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-seam bg-panel/80">
           <div className="w-2 h-2 rounded-full bg-text-tertiary/40" />
-          <span className="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">
+          <span className="font-mono text-[10px] text-ink-tertiary uppercase tracking-wider">
             {label || language}
           </span>
         </div>
         <div className="flex items-center justify-center h-full">
-          <div className="text-text-tertiary text-caption">Loading editor...</div>
+          <div className="text-ink-tertiary text-caption">Loading editor...</div>
         </div>
       </div>
     )
@@ -316,27 +316,27 @@ export default function CodeEditor({
   return (
     <div
       className={cn(
-        'border border-border bg-bg-secondary overflow-hidden flex flex-col',
+        'border border-seam bg-panel overflow-hidden flex flex-col',
         className
       )}
       style={{ height }}
     >
       {(label || readOnly) && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-bg-secondary/80 shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-seam bg-panel/80 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-accent-primary/60" />
-            <span className="font-mono text-[10px] text-text-tertiary uppercase tracking-wider">
+            <div className="w-2 h-2 rounded-full bg-go/60" />
+            <span className="font-mono text-[10px] text-ink-tertiary uppercase tracking-wider">
               {label || language}
             </span>
           </div>
           {readOnly && value && (
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 text-text-tertiary hover:text-text-primary transition-colors"
+              className="flex items-center gap-1.5 text-ink-tertiary hover:text-ink transition-colors"
               title="Copy code"
             >
               {copied ? (
-                <Check size={12} className="text-accent-primary" />
+                <Check size={12} className="text-go" />
               ) : (
                 <Copy size={12} />
               )}
@@ -352,7 +352,7 @@ export default function CodeEditor({
         onChange={onChange ? (val: string | undefined) => onChange(val || '') : undefined}
         theme={'onramp-' + theme}
         loading={
-          <div className="flex items-center justify-center h-full text-text-tertiary text-caption">
+          <div className="flex items-center justify-center h-full text-ink-tertiary text-caption">
             Loading editor...
           </div>
         }

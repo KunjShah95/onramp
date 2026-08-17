@@ -75,7 +75,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
       live={tone === 'go'}
     >
       {cohorts.length === 0 ? (
-        <p className="text-caption text-text-muted font-code py-2">
+        <p className="text-caption text-ink-muted font-code py-2">
           No cohorts yet — retention curves form as developers join.
         </p>
       ) : (
@@ -83,11 +83,11 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
           {latest && (
             <>
               <div className="flex items-baseline justify-between gap-3">
-                <p className="text-body-xs text-text-primary font-medium">
-                  {latest.label} <span className="text-text-muted font-normal">({latest.member_count}) — latest cohort</span>
+                <p className="text-body-xs text-ink font-medium">
+                  {latest.label} <span className="text-ink-muted font-normal">({latest.member_count}) — latest cohort</span>
                 </p>
-                <p className="text-caption text-text-muted">
-                  <span className="text-go font-medium">retained</span> / <span className="text-info font-medium">active</span> after joining
+                <p className="text-caption text-ink-muted">
+                  <span className="text-go font-medium">retained</span> / <span className="text-mission font-medium">active</span> after joining
                 </p>
               </div>
               <div className="h-44 bg-plot-grid rounded-tile">
@@ -110,7 +110,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
           )}
 
           {improving !== null && (
-            <p className="text-caption text-text-muted">
+            <p className="text-caption text-ink-muted">
               Retention trend:{' '}
               <span className={improving ? 'text-go font-medium' : 'text-caution font-medium'}>
                 {improving ? 'improving' : 'slipping'}
@@ -124,8 +124,8 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
               const t = retentionTone(c.retained)
               return (
                 <div key={c.label} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-caption text-text-muted truncate">{c.label}</span>
-                  <div className="flex-1 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+                  <span className="w-24 shrink-0 text-caption text-ink-muted truncate">{c.label}</span>
+                  <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${c.retained}%` }}

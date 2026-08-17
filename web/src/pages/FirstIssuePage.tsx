@@ -12,6 +12,7 @@ import {
 } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import { Modal } from '../components/ui/modal'
 import { FirstIssueSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
@@ -34,9 +35,9 @@ const containerVariants = {
 }
 
 function difficultyFromScore(score: number): { text: string; bg: string; label: string } {
-  if (score <= 4) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Easy' }
-  if (score <= 7) return { text: 'text-amber-400', bg: 'bg-amber-500/10', label: 'Medium' }
-  return { text: 'text-red-400', bg: 'bg-red-500/10', label: 'Hard' }
+  if (score <= 4) return { text: 'text-go', bg: 'bg-go/10', label: 'Easy' }
+  if (score <= 7) return { text: 'text-caution', bg: 'bg-caution/10', label: 'Medium' }
+  return { text: 'text-abort', bg: 'bg-abort/10', label: 'Hard' }
 }
 
 export default function FirstIssuePage() {
@@ -116,66 +117,53 @@ export default function FirstIssuePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative max-w-5xl mx-auto space-y-8">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="tile tile-go">
-                <Bug size={11} weight="fill" className="mr-1.5" />
-                First Issues
-              </span>
-              <span className="designator opacity-50">CONTRIBUTION GATE</span>
-            </div>
-            <h1 className="text-display-md md:text-display-lg text-text-primary">First Issues</h1>
-            <p className="text-body-sm text-text-secondary mt-1 font-code max-w-xl">
-              Curated issues perfect for getting started. Pick one and make your first contribution.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 text-caption text-text-tertiary">
-            <Warning className="w-3.5 h-3.5" />
-            {hasSearched ? `${issues.length} available` : 'Enter a repo'}
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="FIRST ISSUES · CONTRIBUTION GATE"
+          title="First Issues"
+          subtitle="Curated issues perfect for getting started. Pick one and make your first contribution."
+          pills={hasSearched ? [{ label: 'AVAILABLE', value: issues.length }] : undefined}
+        />
 
         {/* Repo input */}
-        <div className="relative flex items-center w-full w-full md:w-[520px]">
-          <Bug size={16} className="absolute left-3.5 text-text-tertiary/40 pointer-events-none" />
+        <div className="relative flex items-center w-full md:w-[520px]">
+          <Bug size={16} className="absolute left-3.5 text-ink-tertiary/40 pointer-events-none" />
           <input
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="github.com/owner/repo"
-            className="w-full bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input pl-9 pr-28 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-text-tertiary/40"
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] pl-9 pr-28 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-ink-tertiary/40"
           />
           <button
             onClick={handleSearch}
             disabled={loading || !repoUrl.trim()}
-            className="absolute right-1.5 bg-go hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] px-3 py-1.5 rounded-md text-caption font-semibold transition-all"
+            className="absolute right-1.5 bg-go hover:brightness-110 disabled:opacity-40 text-white px-3 py-1.5 rounded-[3px] text-caption font-semibold transition-all"
           >
             {loading ? 'Searching…' : 'Find Issues'}
           </button>
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+          <div className="px-4 py-3 rounded-[3px] bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={handleSearch} disabled={loading} className="text-caption underline ml-4 text-error/70 hover:text-error disabled:opacity-50">Retry</button>
+            <button onClick={handleSearch} disabled={loading} className="text-caption underline ml-4 text-abort/70 hover:text-abort disabled:opacity-50">Retry</button>
           </div>
         )}
 
         {/* Filter Tabs */}
         {hasSearched && (
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
+          <div className="flex items-center gap-1 p-1 rounded-[3px] bg-well/30 w-fit">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 onClick={() => handleTabChange(t.key)}
                 disabled={loading}
-                className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all disabled:opacity-50 ${
+                className={`px-3 py-1.5 rounded-[3px] text-caption font-medium transition-all disabled:opacity-50 ${
                   tab === t.key
-                    ? 'bg-bg-primary text-text-primary shadow-sm'
-                    : 'text-text-tertiary hover:text-text-secondary'
+                    ? 'bg-panel-raised text-ink shadow-sm'
+                    : 'text-ink-tertiary hover:text-ink-secondary'
                 }`}
               >
                 {t.label}
@@ -204,7 +192,7 @@ export default function FirstIssuePage() {
               title="Enter a GitHub repository above"
               description="We'll scan open issues, score them by complexity, and surface the best first contributions."
               action={
-                <button onClick={handleSearch} disabled={!repoUrl.trim()} className="mt-2 px-5 py-2 rounded-btn text-caption border border-border text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors font-code disabled:opacity-40">
+                <button onClick={handleSearch} disabled={!repoUrl.trim()} className="mt-2 px-5 py-2 rounded-[3px] text-caption border border-seam text-ink-muted hover:text-ink hover:bg-well transition-colors font-code disabled:opacity-40">
                   Find Issues
                 </button>
               }
@@ -232,18 +220,18 @@ export default function FirstIssuePage() {
                           href={issue.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-body font-medium text-text-primary group-hover:text-go transition-colors"
+                          className="text-body font-medium text-ink group-hover:text-go transition-colors"
                         >
                           {issue.title}
                         </a>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${diff.bg} ${diff.text}`}>
+                        <span className={`px-2 py-0.5 rounded-[3px] text-[10px] font-medium ${diff.bg} ${diff.text}`}>
                           {diff.label}
                         </span>
                       </div>
-                      <p className="text-caption text-text-tertiary mb-3 leading-relaxed line-clamp-2">
+                      <p className="text-caption text-ink-tertiary mb-3 leading-relaxed line-clamp-2">
                         {issue.body || 'No description provided.'}
                       </p>
-                      <div className="flex items-center gap-3 text-caption text-text-tertiary flex-wrap">
+                      <div className="flex items-center gap-3 font-code text-[12px] tabular-nums text-ink-tertiary flex-wrap">
                         <span className="flex items-center gap-1.5">
                           <Tag className="w-3 h-3" />#{issue.number}
                         </span>
@@ -256,7 +244,7 @@ export default function FirstIssuePage() {
                         {issue.labels.slice(0, 3).map((label) => (
                           <span
                             key={label}
-                            className="px-1.5 py-0.5 rounded text-[10px] bg-bg-tertiary/30 text-text-tertiary"
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-well/30 text-ink-tertiary"
                           >
                             {label}
                           </span>
@@ -270,21 +258,21 @@ export default function FirstIssuePage() {
                         href={issue.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2 rounded-xl text-caption font-medium flex items-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all"
+                        className="px-4 py-2 rounded-[3px] text-caption font-medium flex items-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all"
                       >
                         <GitPullRequest className="w-3.5 h-3.5" weight="bold" />
                         Open
                       </a>
                       <button
                         onClick={() => openGuide(issue)}
-                        className="px-4 py-2 rounded-xl text-caption font-medium flex items-center gap-2 bg-bg-tertiary/40 text-text-secondary hover:bg-bg-tertiary transition-all"
+                        className="px-4 py-2 rounded-[3px] text-caption font-medium flex items-center gap-2 bg-well/40 text-ink-secondary hover:bg-well transition-all"
                       >
                         <BookOpen className="w-3.5 h-3.5" weight="bold" />
                         View Guide
                       </button>
                       <button
                         onClick={() => openWalkthrough(issue)}
-                        className="px-4 py-2 rounded-xl text-caption font-medium flex items-center gap-2 bg-bg-tertiary/40 text-text-secondary hover:bg-bg-tertiary transition-all"
+                        className="px-4 py-2 rounded-[3px] text-caption font-medium flex items-center gap-2 bg-well/40 text-ink-secondary hover:bg-well transition-all"
                       >
                         <ChatCircleText className="w-3.5 h-3.5" weight="bold" />
                         Walkthrough
@@ -300,12 +288,12 @@ export default function FirstIssuePage() {
         {/* Tips */}
         <CardSpotlight className="p-5 border border-go/10">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-go/10 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-8 h-8 rounded-[3px] bg-go/10 flex items-center justify-center shrink-0 mt-0.5">
               <Warning className="w-4 h-4 text-go" weight="duotone" />
             </div>
             <div>
-              <h3 className="text-body-sm font-medium text-text-primary mb-1">Tips for Your First Issue</h3>
-              <ul className="text-caption text-text-tertiary space-y-1">
+              <h3 className="text-body-sm font-medium text-ink mb-1">Tips for Your First Issue</h3>
+              <ul className="text-caption text-ink-tertiary space-y-1">
                 <li>• Start with "Easy" issues tagged <span className="text-go">good-first-issue</span> to build confidence</li>
                 <li>• Read the contributing guidelines before starting</li>
                 <li>• Ask questions in the issue comments — the community is here to help</li>
@@ -321,23 +309,23 @@ export default function FirstIssuePage() {
         onClose={() => setGuideIssue(null)}
         title={guideIssue ? `Guide · ${guideIssue.title}` : 'Guide'}
       >
-        {guideLoading && <p className="text-caption text-text-tertiary animate-pulse">Generating step-by-step guide…</p>}
-        {guideError && <p className="text-caption text-error">{guideError}</p>}
+        {guideLoading && <p className="text-caption text-ink-tertiary animate-pulse">Generating step-by-step guide…</p>}
+        {guideError && <p className="text-caption text-abort">{guideError}</p>}
         {guide && (
           <div className="space-y-5">
             {guide.files_to_touch.length > 0 && (
               <div>
-                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Files to Touch</div>
+                <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Files to Touch</div>
                 <div className="flex flex-wrap gap-2">
                   {guide.files_to_touch.map((f) => (
-                    <span key={f} className="px-2 py-1 rounded-md text-caption bg-bg-tertiary/40 text-text-secondary font-mono">{f}</span>
+                    <span key={f} className="px-2 py-1 rounded-[3px] text-caption bg-well/40 text-ink-secondary font-mono">{f}</span>
                   ))}
                 </div>
               </div>
             )}
             <div>
-              <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Steps</div>
-              <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
+              <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Steps</div>
+              <ol className="space-y-2 list-decimal list-inside text-body-sm text-ink-secondary">
                 {guide.steps.map((s, idx) => (
                   <li key={idx} className="leading-relaxed">{s}</li>
                 ))}
@@ -345,7 +333,7 @@ export default function FirstIssuePage() {
             </div>
             {guide.similar_prs.length > 0 && (
               <div>
-                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Similar PRs</div>
+                <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Similar PRs</div>
                 <div className="space-y-2">
                   {guide.similar_prs.map((pr) => (
                     <a
@@ -373,18 +361,18 @@ export default function FirstIssuePage() {
         title={walkIssue ? `Walkthrough · ${walkIssue.title}` : 'Walkthrough'}
         maxWidth="max-w-3xl"
       >
-        {walkLoading && <p className="text-caption text-text-tertiary animate-pulse">Narrating senior-dev walkthrough…</p>}
-        {walkError && <p className="text-caption text-error">{walkError}</p>}
+        {walkLoading && <p className="text-caption text-ink-tertiary animate-pulse">Narrating senior-dev walkthrough…</p>}
+        {walkError && <p className="text-caption text-abort">{walkError}</p>}
         {walk && (
           <div className="space-y-5">
             <div>
-              <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Thought Process</div>
-              <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-line">{walk.thought_process}</p>
+              <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Thought Process</div>
+              <p className="text-body-sm text-ink-secondary leading-relaxed whitespace-pre-line">{walk.thought_process}</p>
             </div>
             {walk.key_insights.length > 0 && (
               <div>
-                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Key Insights</div>
-                <ul className="space-y-1 list-disc list-inside text-body-sm text-text-secondary">
+                <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Key Insights</div>
+                <ul className="space-y-1 list-disc list-inside text-body-sm text-ink-secondary">
                   {walk.key_insights.map((k, idx) => (
                     <li key={idx}>{k}</li>
                   ))}
@@ -392,8 +380,8 @@ export default function FirstIssuePage() {
               </div>
             )}
             <div>
-              <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Solution Steps</div>
-              <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
+              <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Solution Steps</div>
+              <ol className="space-y-2 list-decimal list-inside text-body-sm text-ink-secondary">
                 {walk.solution_steps.map((s, idx) => (
                   <li key={idx} className="leading-relaxed">{s}</li>
                 ))}
@@ -401,8 +389,8 @@ export default function FirstIssuePage() {
             </div>
             {walk.testing_approach && (
               <div>
-                <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Testing Approach</div>
-                <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-line">{walk.testing_approach}</p>
+                <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Testing Approach</div>
+                <p className="text-body-sm text-ink-secondary leading-relaxed whitespace-pre-line">{walk.testing_approach}</p>
               </div>
             )}
           </div>

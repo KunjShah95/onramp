@@ -120,8 +120,8 @@ export default function ApiKeysPage() {
             </span>
             <span className="designator opacity-50">ACCESS · CREDENTIALS</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">API Keys</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">
+          <h1 className="text-display-md md:text-display-lg text-ink">API Keys</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">
             Programmatic access — keep keys secure, treat them like passwords.
           </p>
         </div>
@@ -224,7 +224,7 @@ export default function ApiKeysPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-ink/50 z-40"
               onClick={() => !revealedRaw && setShowCreate(false)}
             />
             <motion.div

@@ -62,16 +62,16 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
       live={tone === 'go'}
     >
       {months.length === 0 ? (
-        <p className="text-caption text-text-muted font-code py-2">
+        <p className="text-caption text-ink-muted font-code py-2">
           No membership history yet — flows form as people join.
         </p>
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="text-body-xs text-text-primary font-medium">
+            <p className="text-body-xs text-ink font-medium">
               {data?.current_headcount ?? 0} on team · {data?.total_joined ?? 0} onboarded
             </p>
-            <p className="text-caption text-text-muted">
+            <p className="text-caption text-ink-muted">
               <span className="text-go font-medium">joined</span> / <span className="text-abort font-medium">left</span> · line = headcount
             </p>
           </div>
@@ -92,7 +92,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex gap-4 text-caption text-text-muted font-code">
+          <div className="flex gap-4 text-caption text-ink-muted font-code">
             <span className={growth ? 'text-go' : 'text-caution'}>
               {growth ? 'net growing' : 'net shrinking'} · {latestNet >= 0 ? `+${latestNet}` : latestNet} this month
             </span>

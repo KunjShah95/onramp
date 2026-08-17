@@ -2,7 +2,7 @@ export default function GlobalBackground({ children }: { children: React.ReactNo
   return (
     <div className="relative min-h-screen w-full">
       {/* Plain surface with a soft ambient wash — no decorative grid overlay */}
-      <div className="fixed inset-0 z-[-10] w-full h-full pointer-events-none bg-bg-void">
+      <div className="fixed inset-0 z-[-10] w-full h-full pointer-events-none bg-room">
         <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-gradient-ambient opacity-60" />
       </div>
       {/* Content */}

@@ -17,7 +17,6 @@ import { PageHeader } from '../components/ui/page-header'
 import { StatCard } from '../components/ui/stat-card'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
 import StatusBadge from '../components/ui/status-badge'
 import Pagination from '../components/ui/Pagination'
 import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
@@ -31,7 +30,7 @@ import {
 } from '@phosphor-icons/react'
 
 const PRIORITY_DOTS: Record<string, string> = {
-  low: 'bg-green-500', medium: 'bg-go', high: 'bg-red-400', urgent: 'bg-red-500',
+  low: 'bg-ink-disabled', medium: 'bg-caution', high: 'bg-abort', urgent: 'bg-abort',
 }
 
 const BOARD_COLUMNS: KanbanColumn[] = [
@@ -54,18 +53,18 @@ const itemVariants = {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-1.5 block">{children}</label>
+  return <label className="overline text-ink-muted mb-1.5 block">{children}</label>
 }
 
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <input className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors', className)} {...props} />
+    <input className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] transition-[border-color,box-shadow]', className)} {...props} />
   )
 }
 
 function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 resize-none transition-colors', className)} {...props} />
+    <textarea className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] resize-none transition-[border-color,box-shadow]', className)} {...props} />
   )
 }
 
@@ -79,12 +78,12 @@ function sortMembers(members: TeamMember[]): TeamMember[] {
   return [...members].sort((a, b) => roleIdx(a.role) - roleIdx(b.role) || (a.name || a.user_id).localeCompare(b.name || b.user_id))
 }
 
-function MemberSelect({ members, value, onChange, placeholder = 'Select member…', className }: {
+function MemberSelect({ members, value, onChange, placeholder = 'Select memberâ€¦', className }: {
   members: TeamMember[]; value: string; onChange: (v: string) => void; placeholder?: string; className?: string
 }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className={cn('w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40 transition-colors', className)}>
+      className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink outline-none focus:border-go/60 transition-colors appearance-none', className)}>
       <option value="">{placeholder}</option>
       {sortMembers(members).map((m) => (
         <option key={m.user_id} value={m.user_id}>{m.name || m.user_id} ({m.role})</option>
@@ -95,7 +94,7 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select member�
 
 /** Resolve a user UUID to a human-readable name for display in task lists/modals. */
 function memberName(members: TeamMember[], uid: string | null | undefined): string {
-  if (!uid) return '—'
+  if (!uid) return 'â€”'
   const member = members.find((m) => m.user_id === uid)
   if (member?.name) return member.name
   return uid
@@ -417,12 +416,12 @@ export default function TasksPage() {
     catch { toast.error('Failed to delete task') }
   }
 
-  /** Kanban drag-and-drop persistence — transition the task to its new state. */
+  /** Kanban drag-and-drop persistence â€” transition the task to its new state. */
   async function handleKanbanMove(taskId: string, newState: string) {
     try {
       await transitionTask(taskId, newState)
       const task = tasks.find((t) => t.task_id === taskId)
-      toast.success('Task moved', `${task?.title?.slice(0, 40) ?? 'Task'} → ${newState.replace(/_/g, ' ')}`)
+      toast.success('Task moved', `${task?.title?.slice(0, 40) ?? 'Task'} â†’ ${newState.replace(/_/g, ' ')}`)
       void fetchProgress()
     } catch (e: any) {
       toast.error('Move failed', e?.message || 'State transition rejected')
@@ -443,49 +442,44 @@ export default function TasksPage() {
   useEffect(() => { setPage(0) }, [filter])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-text-primary relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-ink relative">
         <PageHeader
           title="Tasks"
-          subtitle="Senior → Trainee workflow — assign, work, review, approve, unlock"
+          subtitle="Senior â†’ Trainee workflow â€” assign, work, review, approve, unlock"
           actions={
             <>
               <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}
-                className="bg-bg-primary border border-border text-text-secondary text-sm rounded-xl px-3 py-1.5 outline-none focus:border-go/40 transition-colors">
-                <option value="">Select team…</option>
+                className="w-auto bg-base border border-seam-strong text-ink text-sm rounded-[3px] px-3 py-2 outline-none focus:border-go/60 transition-colors">
+                <option value="">Select teamâ€¦</option>
                 {teams.map((t: any) => (<option key={t.team_id || t.id} value={t.team_id || t.id}>{t.name}</option>))}
               </select>
-              <div className="flex bg-bg-primary border border-border rounded-xl overflow-hidden p-0.5 gap-0.5">
+              <div className="flex bg-well border border-seam rounded-card overflow-hidden p-0.5 gap-0.5">
                 {(['board', 'list'] as const).map((v) => (
                   <button key={v} onClick={() => setView(v)}
-                    className={cn('px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 capitalize',
-                      view === v ? 'bg-bg-tertiary text-text-primary shadow-sm' : 'text-text-tertiary hover:text-text-secondary')}>
+                    className={cn('px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 capitalize',
+                      view === v ? 'bg-panel text-ink' : 'text-ink-muted hover:text-ink-secondary')}>
                     {v === 'board' ? <SquaresFour className="w-3.5 h-3.5" weight={view === v ? 'fill' : 'regular'} /> : <ListBullets className="w-3.5 h-3.5" weight={view === v ? 'fill' : 'regular'} />}
                   </button>
                 ))}
               </div>
-              <button onClick={() => setShowImportIssue(!showImportIssue)}
-                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+              <button onClick={() => setShowImportIssue(!showImportIssue)} className="btn-secondary">
                 <GithubLogo className="w-4 h-4" />
                 Import Issue
               </button>
-              <button onClick={() => setShowTimeStats(!showTimeStats)}
-                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+              <button onClick={() => setShowTimeStats(!showTimeStats)} className="btn-secondary">
                 <Clock className="w-4 h-4" />
                 Time Stats
               </button>
-              <button onClick={() => setShowTemplates(!showTemplates)}
-                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors">
+              <button onClick={() => setShowTemplates(!showTemplates)} className="btn-secondary">
                 <Copy className="w-4 h-4" />
                 Templates
               </button>
-              <button onClick={handleExportTasks}
-                className="flex items-center gap-1.5 bg-bg-tertiary/60 hover:bg-bg-tertiary text-text-secondary px-4 py-1.5 rounded-xl text-sm font-medium border border-border transition-colors"
+              <button onClick={handleExportTasks} className="btn-secondary"
                 title="Download all tasks as CSV">
                 <DownloadSimple className="w-4 h-4" />
                 CSV
               </button>
-              <button onClick={() => setShowCreate(!showCreate)}
-                className="flex items-center gap-1.5 bg-go hover:bg-go/90 text-white px-4 py-1.5 rounded-xl text-sm font-bold transition-colors">
+              <button onClick={() => setShowCreate(!showCreate)} className="btn">
                 <Plus className="w-4 h-4" weight="bold" />
                 New Task
               </button>
@@ -498,8 +492,8 @@ export default function TasksPage() {
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <GithubLogo className="w-4 h-4 text-text-tertiary" weight="bold" />
-                <GradientHeading as="h3">Import GitHub Issue as Task</GradientHeading>
+                <GithubLogo className="w-4 h-4 text-ink-tertiary" weight="bold" />
+                <h3 className="callsign text-ink-secondary tracking-wide">Import GitHub Issue as Task</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="md:col-span-2">
@@ -515,34 +509,34 @@ export default function TasksPage() {
               <div className="mb-4">
                 <FieldLabel>Search issues by name</FieldLabel>
                 <div className="flex gap-2">
-                  <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or auth…" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
+                  <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or authâ€¦" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
                   <button onClick={handleSearchIssues} disabled={issueSearching || !importRepoUrl.trim() || !issueQuery.trim()}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-45 whitespace-nowrap">
-                    {issueSearching ? 'Searching…' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
+                    className="bg-mission hover:bg-mission-lit text-white px-5 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-45 whitespace-nowrap">
+                    {issueSearching ? 'Searchingâ€¦' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
                   </button>
                 </div>
               </div>
 
               {issueResults.length > 0 && (
                 <div className="mb-4">
-                  <FieldLabel>Select an issue {issueResults.length > 0 && `— ${issueResults.length} match${issueResults.length === 1 ? '' : 'es'}`}</FieldLabel>
+                  <FieldLabel>Select an issue {issueResults.length > 0 && `â€” ${issueResults.length} match${issueResults.length === 1 ? '' : 'es'}`}</FieldLabel>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {issueResults.map((iss) => {
                       const selected = importIssueNumber === String(iss.number)
                       return (
                         <button key={iss.number} onClick={() => { setImportIssueNumber(String(iss.number)); setImportAssignee(importAssignee) }}
-                          className={`flex items-center gap-2.5 w-full text-left bg-bg-primary/60 border rounded-lg px-3 py-2 transition-colors ${selected ? 'border-go/60 bg-go/5' : 'border-border hover:border-go/30'}`}>
-                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${selected ? 'border-go bg-go' : 'border-border'}`}>
+                          className={`flex items-center gap-2.5 w-full text-left bg-base/60 border rounded-card px-3 py-2 transition-colors ${selected ? 'border-go/60 bg-go/5' : 'border-seam hover:border-go/30'}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${selected ? 'border-go bg-go' : 'border-seam'}`}>
                             {selected && <Check className="w-2.5 h-2.5 text-white" weight="bold" />}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs text-text-secondary truncate">{iss.title}</div>
-                            <div className="text-[10px] text-text-tertiary font-mono">
+                            <div className="text-xs text-ink-secondary truncate">{iss.title}</div>
+                            <div className="text-[10px] text-ink-tertiary font-mono">
                               #{iss.number}
-                              {iss.labels && iss.labels.length > 0 && ` · ${iss.labels.slice(0, 3).join(', ')}`}
+                              {iss.labels && iss.labels.length > 0 && ` Â· ${iss.labels.slice(0, 3).join(', ')}`}
                             </div>
                           </div>
-                          <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-text-tertiary/50 hover:text-go text-[10px] shrink-0">View ↗</a>
+                          <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-ink-tertiary/50 hover:text-go text-[10px] shrink-0">View â†—</a>
                         </button>
                       )
                     })}
@@ -555,15 +549,15 @@ export default function TasksPage() {
                   <FieldLabel>Issue Number *</FieldLabel>
                   <Input value={importIssueNumber} onChange={(e) => setImportIssueNumber(e.target.value)} placeholder="e.g., 42" type="number" />
                 </div>
-                <div className="md:col-span-2 self-end text-[11px] text-text-tertiary italic leading-relaxed">
-                  Search above to find an issue by title and pick it — then it&apos;s ready to import.
+                <div className="md:col-span-2 self-end text-[11px] text-ink-tertiary italic leading-relaxed">
+                  Search above to find an issue by title and pick it â€” then it&apos;s ready to import.
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
+                <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
                 <button onClick={handleImportIssue} disabled={importing || !importRepoUrl.trim() || !importIssueNumber.trim()}
-                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
-                  {importing ? 'Importing…' : 'Import Issue'}
+                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                  {importing ? 'Importingâ€¦' : 'Import Issue'}
                 </button>
               </div>
             </div>
@@ -575,14 +569,14 @@ export default function TasksPage() {
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-5">
-                <Copy className="w-4 h-4 text-text-tertiary" weight="bold" />
-                <GradientHeading as="h3">Task Templates &amp; Plan Assignment</GradientHeading>
+                <Copy className="w-4 h-4 text-ink-tertiary" weight="bold" />
+                <h3 className="callsign text-ink-secondary tracking-wide">Task Templates &amp; Plan Assignment</h3>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Create template */}
-                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-                  <div className="text-xs font-semibold text-text-secondary mb-3">Save a template</div>
+                <div className="bg-panel rounded-card p-4 border border-seam">
+                  <div className="text-xs font-semibold text-ink-secondary mb-3">Save a template</div>
                   <div className="space-y-3">
                     <div>
                       <FieldLabel>Template Name *</FieldLabel>
@@ -601,29 +595,29 @@ export default function TasksPage() {
                     <div>
                       <FieldLabel>Priority</FieldLabel>
                       <select value={tplPriority} onChange={(e) => setTplPriority(e.target.value)}
-                        className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40">
+                        className="w-full bg-base border border-seam rounded-card px-3 py-2 text-sm text-ink outline-none focus:border-go/40">
                         {['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                       </select>
                     </div>
                     <button onClick={handleCreateTemplate} disabled={tplCreating || !tplName.trim()}
-                      className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
-                      {tplCreating ? 'Saving…' : 'Save Template'}
+                      className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                      {tplCreating ? 'Savingâ€¦' : 'Save Template'}
                     </button>
                   </div>
                 </div>
 
                 {/* Bulk assign from templates */}
-                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-                  <div className="text-xs font-semibold text-text-secondary mb-3">Bulk assign plan</div>
+                <div className="bg-panel rounded-card p-4 border border-seam">
+                  <div className="text-xs font-semibold text-ink-secondary mb-3">Bulk assign plan</div>
                   {templates.length === 0 ? (
-                    <p className="text-xs text-text-tertiary italic">No templates yet — save one on the left to get started.</p>
+                    <p className="text-xs text-ink-tertiary italic">No templates yet â€” save one on the left to get started.</p>
                   ) : (
                     <>
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 mb-3">
                         {templates.map((tpl) => {
                           const checked = selectedTemplates.has(tpl.template_id)
                           return (
-                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-bg-primary/60 border border-border rounded-lg px-3 py-2 hover:border-go/30 transition-colors">
+                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-base/60 border border-seam rounded-card px-3 py-2 hover:border-go/30 transition-colors">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -636,12 +630,12 @@ export default function TasksPage() {
                                 className="accent-[var(--color-accent)]"
                               />
                               <div className="min-w-0 flex-1">
-                                <div className="text-xs text-text-secondary truncate">{tpl.name}</div>
-                                <div className="text-[10px] text-text-tertiary font-mono">{tpl.module || 'general'} · ~{tpl.estimated_hours ?? '—'}h</div>
+                                <div className="text-xs text-ink-secondary truncate">{tpl.name}</div>
+                                <div className="text-[10px] text-ink-tertiary font-mono">{tpl.module || 'general'} Â· ~{tpl.estimated_hours ?? 'â€”'}h</div>
                               </div>
                               <button
                                 onClick={(e) => { e.preventDefault(); if (confirm('Delete this template?')) deleteTaskTemplate(tpl.template_id).then(() => { setSelectedTemplates(prev => { const n = new Set(prev); n.delete(tpl.template_id); return n }); fetchTemplates() }) }}
-                                className="text-text-tertiary/40 hover:text-red-400 transition-colors"
+                                className="text-ink-tertiary/40 hover:text-abort transition-colors"
                                 title="Delete template"
                               >
                                 <Trash className="w-3.5 h-3.5" />
@@ -655,20 +649,20 @@ export default function TasksPage() {
                         <MemberSelect members={members} value={bulkAssignee} onChange={setBulkAssignee} />
                       </div>
                       <button onClick={handleBulkAssign} disabled={busy || selectedTemplates.size === 0 || !bulkAssignee.trim()}
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
-                        {busy ? 'Assigning…' : `Assign ${selectedTemplates.size || ''} template${selectedTemplates.size === 1 ? '' : 's'}`}
+                        className="w-full bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                        {busy ? 'Assigningâ€¦' : `Assign ${selectedTemplates.size || ''} template${selectedTemplates.size === 1 ? '' : 's'}`}
                       </button>
                     </>
                   )}
                 </div>
 
                 {/* Auto starter assignment */}
-                <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-                  <div className="text-xs font-semibold text-text-secondary mb-3 flex items-center gap-1.5">
-                    <Lightning className="w-3.5 h-3.5 text-text-tertiary" weight="fill" />
+                <div className="bg-panel rounded-card p-4 border border-seam">
+                  <div className="text-xs font-semibold text-ink-secondary mb-3 flex items-center gap-1.5">
+                    <Lightning className="w-3.5 h-3.5 text-ink-tertiary" weight="fill" />
                     Auto-assign starter tasks
                   </div>
-                  <p className="text-[11px] text-text-tertiary mb-3 leading-relaxed">
+                  <p className="text-[11px] text-ink-tertiary mb-3 leading-relaxed">
                     AI picks starter issues from the repo sized to the dev&apos;s quiz score + level.
                   </p>
                   <div className="space-y-3">
@@ -681,9 +675,9 @@ export default function TasksPage() {
                       <Input value={starterRepo} onChange={(e) => setStarterRepo(e.target.value)} placeholder="https://github.com/owner/repo" />
                     </div>
                     <button onClick={handleAutoStarter} disabled={busy || !starterRepo.trim() || !starterUserId.trim()}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
+                      className="w-full bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
                       <Lightning className="w-3.5 h-3.5" weight="fill" />
-                      {busy ? 'Assigning…' : 'Generate Starter Tasks'}
+                      {busy ? 'Assigningâ€¦' : 'Generate Starter Tasks'}
                     </button>
                   </div>
                 </div>
@@ -697,19 +691,19 @@ export default function TasksPage() {
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-text-tertiary" weight="bold" />
-                <GradientHeading as="h3">Time Tracking — Estimated vs Actual</GradientHeading>
+                <Clock className="w-4 h-4 text-ink-tertiary" weight="bold" />
+                <h3 className="callsign text-ink-secondary tracking-wide">Time Tracking â€” Estimated vs Actual</h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                 {[
                   { label: 'Tasks with actuals', value: timeStats.with_actual_count },
                   { label: 'Total estimated', value: `${timeStats.total_estimated_hours}h` },
                   { label: 'Total actual', value: `${timeStats.total_actual_hours}h` },
-                  { label: 'Avg variance', value: timeStats.avg_variance_hours != null ? `${timeStats.avg_variance_hours > 0 ? '+' : ''}${timeStats.avg_variance_hours}h` : '—' },
+                  { label: 'Avg variance', value: timeStats.avg_variance_hours != null ? `${timeStats.avg_variance_hours > 0 ? '+' : ''}${timeStats.avg_variance_hours}h` : 'â€”' },
                 ].map((stat) => (
-                  <div key={stat.label} className="bg-bg-secondary rounded-xl p-3 border border-border">
-                    <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">{stat.label}</div>
-                    <div className="text-lg font-display font-bold text-text-primary">{stat.value}</div>
+                  <div key={stat.label} className="bg-panel rounded-card p-3 border border-seam">
+                    <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">{stat.label}</div>
+                    <div className="text-lg font-display font-bold text-ink">{stat.value}</div>
                   </div>
                 ))}
               </div>
@@ -721,30 +715,30 @@ export default function TasksPage() {
                     const over = variance > 0
                     const maxH = Math.max(t.estimated_hours ?? 0, t.actual_hours ?? 0, 1)
                     return (
-                      <div key={t.task_id} className="bg-bg-secondary rounded-xl p-3 border border-border">
+                      <div key={t.task_id} className="bg-panel rounded-card p-3 border border-seam">
                         <div className="flex items-center justify-between mb-2 gap-2">
-                          <span className="text-xs text-text-secondary truncate">{t.title}</span>
-                          <span className={cn('text-[10px] font-mono shrink-0', over ? 'text-red-400' : 'text-green-400')}>
+                          <span className="text-xs text-ink-secondary truncate">{t.title}</span>
+                          <span className={cn('text-[10px] font-mono shrink-0', over ? 'text-abort' : 'text-go')}>
                             {pct > 0 ? '+' : ''}{pct}%
                           </span>
                         </div>
                         <div className="flex items-center gap-2 h-2.5">
-                          <div className="flex-1 bg-bg-primary rounded-full h-full overflow-hidden flex">
+                          <div className="flex-1 bg-base rounded-full h-full overflow-hidden flex">
                             <div className="bg-go/50 h-full" style={{ width: `${((t.estimated_hours ?? 0) / maxH) * 100}%` }} title={`Estimated ${t.estimated_hours}h`} />
-                            <div className={cn('h-full', over ? 'bg-red-400/70' : 'bg-green-400/70')} style={{ width: `${((t.actual_hours ?? 0) / maxH) * 100}%` }} title={`Actual ${t.actual_hours}h`} />
+                            <div className={cn('h-full', over ? 'bg-abort/70' : 'bg-go/70')} style={{ width: `${((t.actual_hours ?? 0) / maxH) * 100}%` }} title={`Actual ${t.actual_hours}h`} />
                           </div>
-                          <span className="text-[10px] text-text-tertiary font-mono">est {t.estimated_hours ?? '—'}h / {t.actual_hours}h</span>
+                          <span className="text-[10px] text-ink-tertiary font-mono">est {t.estimated_hours ?? 'â€”'}h / {t.actual_hours}h</span>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-text-tertiary italic">No tasks have actual hours logged yet — log hours from a task detail view.</p>
+                <p className="text-xs text-ink-tertiary italic">No tasks have actual hours logged yet â€” log hours from a task detail view.</p>
               )}
-              <div className="flex justify-end mt-4 pt-3 border-t border-border">
+              <div className="flex justify-end mt-4 pt-3 border-t border-seam">
                 <button onClick={handleExportTimeStats}
-                  className="flex items-center gap-1.5 text-text-tertiary hover:text-text-secondary text-sm transition-colors">
+                  className="flex items-center gap-1.5 text-ink-tertiary hover:text-ink-secondary text-sm transition-colors">
                   <DownloadSimple className="w-4 h-4" />
                   Export time stats CSV
                 </button>
@@ -756,8 +750,8 @@ export default function TasksPage() {
         {progress && (
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 mb-6">
             {[
-              { label: 'Total', value: progress.total, color: 'text-text-primary' },
-              { label: 'Completed', value: progress.completed, color: 'text-emerald-500' },
+              { label: 'Total', value: progress.total, color: 'text-ink' },
+              { label: 'Completed', value: progress.completed, color: 'text-go' },
               { label: 'In Progress', value: progress.in_progress, color: 'text-mission' },
               { label: 'Pending Rev.', value: progress.pending_review, color: 'text-caution' },
               { label: 'Blocked', value: progress.blocked, color: 'text-abort' },
@@ -771,15 +765,15 @@ export default function TasksPage() {
           </motion.div>
         )}
 
-        {error && <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+        {error && <div className="mb-5 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">{error}</div>}
 
         {showCreate && (
           <CardSpotlight className="mb-6">
             <div className="p-6 relative">
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
-                <Plus className="w-4 h-4 text-text-tertiary" weight="bold" />
-                <GradientHeading as="h3">Create New Task</GradientHeading>
+                <Plus className="w-4 h-4 text-ink-tertiary" weight="bold" />
+                <h3 className="callsign text-ink-secondary tracking-wide">Create New Task</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="md:col-span-2">
@@ -789,14 +783,14 @@ export default function TasksPage() {
                 <div>
                   <FieldLabel>Priority</FieldLabel>
                   <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40">
+                    className="w-full bg-base border border-seam rounded-card px-3 py-2 text-sm text-ink outline-none focus:border-go/40">
                     {['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                   </select>
                 </div>
               </div>
               <div className="mb-4">
                 <FieldLabel>Description</FieldLabel>
-                <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe the task in detail…" rows={3} />
+                <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe the task in detailâ€¦" rows={3} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
                 <div>
@@ -809,7 +803,7 @@ export default function TasksPage() {
                 </div>
                 <div>
                   <FieldLabel>Repo URL</FieldLabel>
-                  <Input value={formRepoUrl} onChange={(e) => setFormRepoUrl(e.target.value)} placeholder="https://github.com/…" />
+                  <Input value={formRepoUrl} onChange={(e) => setFormRepoUrl(e.target.value)} placeholder="https://github.com/â€¦" />
                 </div>
                 <div>
                   <FieldLabel>Unlock Modules</FieldLabel>
@@ -817,10 +811,10 @@ export default function TasksPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors">Cancel</button>
+                <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
                 <button onClick={handleCreateTask} disabled={creating || !formTitle.trim()}
-                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
-                  {creating ? 'Creating…' : 'Create Task'}
+                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                  {creating ? 'Creatingâ€¦' : 'Create Task'}
                 </button>
               </div>
             </div>
@@ -828,10 +822,10 @@ export default function TasksPage() {
         )}
 
         <div className="relative mb-5">
-          <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary/50 pointer-events-none" />
+          <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary/50 pointer-events-none" />
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by title, state, or assignee…"
-            className="w-full bg-bg-primary border border-border text-text-primary text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-go/40 placeholder:text-text-tertiary/30 transition-colors" />
+            placeholder="Filter by title, state, or assigneeâ€¦"
+            className="w-full bg-base border border-seam text-ink text-sm rounded-card pl-10 pr-4 py-2.5 outline-none focus:border-go/40 placeholder:text-ink-tertiary/30 transition-colors" />
         </div>
 
         {loading && <TasksPageSkeleton />}
@@ -867,9 +861,9 @@ export default function TasksPage() {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <div className="grid grid-cols-[100px_1fr_80px_70px_54px] gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 border-b border-border min-w-[450px] sm:min-w-[500px]">
+                    <div className="grid grid-cols-[100px_1fr_80px_70px_54px] gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 border-b border-seam min-w-[450px] sm:min-w-[500px]">
                       {['Status', 'Task', 'Assignee', 'Priority', 'Est.'].map((h) => (
-                        <span key={h} className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">{h}</span>
+                        <span key={h} className="text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold">{h}</span>
                       ))}
                     </div>
                     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
@@ -880,28 +874,28 @@ export default function TasksPage() {
                             role="button"
                             tabIndex={0}
                             aria-label={`Task: ${task.title}`}
-                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-bg-tertiary/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-go/40 rounded-lg">
+                            className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-well/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-go/40 rounded-card">
                             <StatusBadge state={task.state} />
                             <div className="min-w-0">
-                              <div className="text-xs sm:text-sm text-text-secondary group-hover:text-text-primary truncate font-medium transition-colors">{task.title}</div>
+                              <div className="text-xs sm:text-sm text-ink-secondary group-hover:text-ink truncate font-medium transition-colors">{task.title}</div>
                               {task.module && <div className="text-[10px] text-go/50 font-mono mt-0.5">{task.module}</div>}
                             </div>
-                            <div className="text-xs text-text-tertiary truncate flex items-center gap-1">
+                            <div className="text-xs text-ink-tertiary truncate flex items-center gap-1">
                               <UserCircle className="w-3 h-3" weight="fill" />
                               {memberName(members, task.assigned_to)}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
-                              <span className="text-[10px] font-medium capitalize text-text-tertiary">{task.priority}</span>
+                              <span className="text-[10px] font-medium capitalize text-ink-tertiary">{task.priority}</span>
                             </div>
-                            <span className="text-[11px] text-text-tertiary font-mono">{task.estimated_hours ? `~${task.estimated_hours}h` : '—'}</span>
+                            <span className="text-[11px] text-ink-tertiary font-mono">{task.estimated_hours ? `~${task.estimated_hours}h` : 'â€”'}</span>
                           </div>
                         </motion.div>
                       ))}
                     </motion.div>
                   </div>
                   {totalPages > 1 && (
-                    <div className="flex justify-end px-5 py-3 border-t border-border">
+                    <div className="flex justify-end px-5 py-3 border-t border-seam">
                       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
                     </div>
                   )}
@@ -913,56 +907,54 @@ export default function TasksPage() {
 
         {/* Task Detail Modal */}
         {selectedTask && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelectedTask(null)} role="presentation">
-            <div className="bg-bg-primary border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 shadow-2xl relative"
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setSelectedTask(null)} role="presentation">
+            <div className="bg-base border border-seam rounded-card w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 shadow-overhead relative"
               onClick={(e) => e.stopPropagation()}>
-              <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
-
-              <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-seam">
                 <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge state={selectedTask.state} />
-                  <span className="flex items-center gap-1"><span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[selectedTask.priority] ?? PRIORITY_DOTS.medium)} /><span className="text-[10px] font-medium capitalize text-text-tertiary">{selectedTask.priority}</span></span>
+                  <span className="flex items-center gap-1"><span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[selectedTask.priority] ?? PRIORITY_DOTS.medium)} /><span className="text-[10px] font-medium capitalize text-ink-tertiary">{selectedTask.priority}</span></span>
                 </div>
-                <button onClick={() => setSelectedTask(null)} className="text-text-tertiary hover:text-text-primary transition-colors">
+                <button onClick={() => setSelectedTask(null)} className="text-ink-tertiary hover:text-ink transition-colors">
                   <X className="w-5 h-5" weight="bold" />
                 </button>
               </div>
 
               <div className="p-6 space-y-5">
                 <div>
-                  <h2 className="font-display text-lg font-bold text-text-primary mb-1.5">{selectedTask.title}</h2>
-                  {selectedTask.description && <p className="text-sm text-text-secondary leading-relaxed">{selectedTask.description}</p>}
+                  <h2 className="font-display text-lg font-bold text-ink mb-1.5">{selectedTask.title}</h2>
+                  {selectedTask.description && <p className="text-sm text-ink-secondary leading-relaxed">{selectedTask.description}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                   {selectedTask.module && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Module</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Module</div>
                       <div className="text-go font-mono">{selectedTask.module}</div>
                     </div>
                   )}
                   {selectedTask.assigned_to && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Assigned To</div>
-                      <div className="text-text-primary flex items-center gap-1.5" title={selectedTask.assigned_to}>
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Assigned To</div>
+                      <div className="text-ink flex items-center gap-1.5" title={selectedTask.assigned_to}>
                         <UserCircle className="w-3.5 h-3.5" weight="fill" />
                         {memberName(members, selectedTask.assigned_to)}
                       </div>
                     </div>
                   )}
                   {selectedTask.estimated_hours && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Est. Time</div>
-                      <div className="text-text-primary">{selectedTask.estimated_hours}h</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Est. Time</div>
+                      <div className="text-ink">{selectedTask.estimated_hours}h</div>
                     </div>
                   )}
                   {selectedTask.actual_hours != null && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Actual Time</div>
-                      <div className={cn('text-text-primary', selectedTask.estimated_hours != null && selectedTask.actual_hours > selectedTask.estimated_hours + 0.01 ? 'text-red-400' : 'text-green-400')}>
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Actual Time</div>
+                      <div className={cn('text-ink', selectedTask.estimated_hours != null && selectedTask.actual_hours > selectedTask.estimated_hours + 0.01 ? 'text-abort' : 'text-go')}>
                         {selectedTask.actual_hours}h
                         {selectedTask.estimated_hours != null && (
-                          <span className="text-[10px] text-text-tertiary ml-1.5 font-mono">
+                          <span className="text-[10px] text-ink-tertiary ml-1.5 font-mono">
                             ({selectedTask.actual_hours - selectedTask.estimated_hours > 0 ? '+' : ''}{(selectedTask.actual_hours - selectedTask.estimated_hours).toFixed(1)}h)
                           </span>
                         )}
@@ -970,16 +962,16 @@ export default function TasksPage() {
                     </div>
                   )}
                   {selectedTask.depends_on && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <Lock className="w-3 h-3" /> Dependency
                       </div>
-                      <div className="text-xs text-blue-400 font-mono">Blocked until {selectedTask.depends_on} completes</div>
+                      <div className="text-xs text-mission font-mono">Blocked until {selectedTask.depends_on} completes</div>
                     </div>
                   )}
                   {selectedTask.source_issue && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <GithubLogo className="w-3 h-3" /> Source Issue
                       </div>
                       {(typeof selectedTask.source_issue === 'object'
@@ -996,11 +988,11 @@ export default function TasksPage() {
                     </div>
                   )}
                   {selectedTask.quiz_required && selectedTask.module && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <GraduationCap className="w-3 h-3" /> Quiz Gate
                       </div>
-                      <div className={cn('text-xs flex items-center gap-1.5', quizGateMap[selectedTask.task_id]?.passed ? 'text-green-400' : 'text-yellow-400')}>
+                      <div className={cn('text-xs flex items-center gap-1.5', quizGateMap[selectedTask.task_id]?.passed ? 'text-go' : 'text-caution')}>
                         {quizGateMap[selectedTask.task_id]?.passed
                           ? <><Check className="w-3 h-3" weight="bold" /> Module quiz passed</>
                           : <><Lock className="w-3 h-3" weight="fill" /> Pass module quiz to start</>}
@@ -1008,95 +1000,95 @@ export default function TasksPage() {
                     </div>
                   )}
                   {selectedTask.peer_reviewed_by && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
                         <UsersThree className="w-3 h-3" /> Peer Reviewer
                       </div>
-                      <div className="text-xs text-text-primary font-mono">{selectedTask.peer_reviewed_by}</div>
+                      <div className="text-xs text-ink font-mono">{selectedTask.peer_reviewed_by}</div>
                     </div>
                   )}
                   {selectedTask.repo_url && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-2">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">Repository</div>
-                      <div className="text-blue-400 font-mono text-[11px] break-all">{selectedTask.repo_url}</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Repository</div>
+                      <div className="text-mission font-mono text-[11px] break-all">{selectedTask.repo_url}</div>
                     </div>
                   )}
                   {selectedTask.pr_url && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-2">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1">PR URL</div>
-                      <a href={selectedTask.pr_url} target="_blank" rel="noreferrer" className="text-blue-400 font-mono text-[11px] break-all hover:underline">{selectedTask.pr_url}</a>
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">PR URL</div>
+                      <a href={selectedTask.pr_url} target="_blank" rel="noreferrer" className="text-mission font-mono text-[11px] break-all hover:underline">{selectedTask.pr_url}</a>
                     </div>
                   )}
                   {selectedTask.unlock_modules && selectedTask.unlock_modules.length > 0 && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2">Unlocks Modules</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Unlocks Modules</div>
                       <div className="flex flex-wrap gap-1.5">
                         {selectedTask.unlock_modules.map((m, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/15">{m}</span>
+                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/20">{m}</span>
                         ))}
                       </div>
                     </div>
                   )}
                   {selectedTask.assigned_to && moduleAccessMap[selectedTask.assigned_to] && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2">Module Access</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Module Access</div>
                       <div className="flex flex-wrap gap-1.5">
                         {Array.from(moduleAccessMap[selectedTask.assigned_to]).map((m, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-400 text-[10px] font-mono border border-green-500/20 inline-flex items-center gap-1">
+                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/25 inline-flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5" weight="fill" />{m}
                           </span>
                         ))}
                         {moduleAccessMap[selectedTask.assigned_to].size === 0 && (
-                          <span className="text-[10px] text-text-tertiary italic">No modules unlocked yet</span>
+                          <span className="text-[10px] text-ink-tertiary italic">No modules unlocked yet</span>
                         )}
                       </div>
                     </div>
                   )}
                   {selectedTask.review_feedback && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2">Review Feedback</div>
-                      <div className="text-xs text-text-secondary leading-relaxed">{typeof selectedTask.review_feedback === 'string' ? selectedTask.review_feedback : JSON.stringify(selectedTask.review_feedback)}</div>
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Review Feedback</div>
+                      <div className="text-xs text-ink-secondary leading-relaxed">{typeof selectedTask.review_feedback === 'string' ? selectedTask.review_feedback : JSON.stringify(selectedTask.review_feedback)}</div>
                     </div>
                   )}
                   {selectedTask.pr_comments && selectedTask.pr_comments.length > 0 && (
-                    <div className="bg-bg-secondary rounded-xl p-3 border border-border md:col-span-3">
-                      <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2 flex items-center gap-1.5">
                         <GithubLogo className="w-3 h-3" /> PR Inline Comments ({selectedTask.pr_comments.length})
                       </div>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {selectedTask.pr_comments.map((c, i) => (
-                          <div key={i} className="text-[11px] bg-bg-primary/60 border border-border rounded-lg p-2.5">
+                          <div key={i} className="text-[11px] bg-base/60 border border-seam rounded-card p-2.5">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-go font-mono font-semibold">@{c.user}</span>
-                              {c.path && <span className="text-text-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
+                              {c.path && <span className="text-ink-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
                             </div>
-                            <p className="text-text-secondary leading-relaxed">{c.body}</p>
+                            <p className="text-ink-secondary leading-relaxed">{c.body}</p>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                   {selectedTask.ai_review && (
-                    <div className="bg-bg-secondary rounded-xl p-4 border border-blue-500/20 md:col-span-3 space-y-3">
+                    <div className="bg-panel rounded-card p-4 border border-mission/25 md:col-span-3 space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="text-[10px] text-blue-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                        <div className="text-[10px] text-mission uppercase tracking-widest font-semibold flex items-center gap-1.5">
                           <Star className="w-3 h-3" weight="fill" /> AI Code Review
                         </div>
-                        <div className={cn('text-sm font-bold font-mono px-2.5 py-1 rounded-lg',
-                          selectedTask.ai_review.score >= 80 ? 'bg-green-500/15 text-green-400' :
-                          selectedTask.ai_review.score >= 60 ? 'bg-go/15 text-go' : 'bg-red-500/15 text-red-400')}>
+                        <div className={cn('text-sm font-bold font-mono px-2.5 py-1 rounded-card',
+                          selectedTask.ai_review.score >= 80 ? 'bg-go/15 text-go' :
+                          selectedTask.ai_review.score >= 60 ? 'bg-go/15 text-go' : 'bg-abort/15 text-abort')}>
                           {selectedTask.ai_review.score}/100
                         </div>
                       </div>
-                      <p className="text-xs text-text-secondary leading-relaxed">{selectedTask.ai_review.summary}</p>
+                      <p className="text-xs text-ink-secondary leading-relaxed">{selectedTask.ai_review.summary}</p>
                       {selectedTask.ai_review.issues.length > 0 && (
                         <div>
-                          <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1.5">Issues ({selectedTask.ai_review.issues.length})</div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Issues ({selectedTask.ai_review.issues.length})</div>
                           <div className="space-y-1.5">
                             {selectedTask.ai_review.issues.map((issue, i) => (
-                              <div key={i} className={cn('text-[11px] px-2.5 py-2 rounded-lg border flex items-start gap-2',
-                                issue.severity === 'error' ? 'bg-red-500/5 border-red-500/15 text-red-300' :
-                                issue.severity === 'warning' ? 'bg-go/5 border-go/15 text-go' : 'bg-bg-tertiary/50 border-border text-text-tertiary')}>
+                              <div key={i} className={cn('text-[11px] px-2.5 py-2 rounded-card border flex items-start gap-2',
+                                issue.severity === 'error' ? 'bg-abort/5 border-abort/15 text-abort-300' :
+                                issue.severity === 'warning' ? 'bg-go/5 border-go/15 text-go' : 'bg-well/50 border-seam text-ink-tertiary')}>
                                 <span className="font-mono shrink-0 text-[10px] mt-0.5">{issue.file}:{issue.line}</span>
                                 <span className="flex-1">{issue.message}</span>
                               </div>
@@ -1106,11 +1098,11 @@ export default function TasksPage() {
                       )}
                       {selectedTask.ai_review.positives.length > 0 && (
                         <div>
-                          <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1.5">Positives</div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Positives</div>
                           <div className="space-y-1">
                             {selectedTask.ai_review.positives.map((p, i) => (
-                              <div key={i} className="text-[11px] text-green-400/80 flex items-start gap-1.5">
-                                <Check className="w-3 h-3 text-green-500 mt-0.5" weight="bold" />{p}
+                              <div key={i} className="text-[11px] text-go/80 flex items-start gap-1.5">
+                                <Check className="w-3 h-3 text-go mt-0.5" weight="bold" />{p}
                               </div>
                             ))}
                           </div>
@@ -1118,11 +1110,11 @@ export default function TasksPage() {
                       )}
                       {selectedTask.ai_review.recommendations.length > 0 && (
                         <div>
-                          <div className="text-[10px] text-text-tertiary uppercase tracking-widest mb-1.5">Recommendations</div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Recommendations</div>
                           <div className="space-y-1">
                             {selectedTask.ai_review.recommendations.map((r, i) => (
-                              <div key={i} className="text-[11px] text-text-secondary flex items-start gap-1.5">
-                                <ArrowRight className="w-3 h-3 text-blue-400 mt-0.5" weight="bold" />{r}
+                              <div key={i} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
+                                <ArrowRight className="w-3 h-3 text-mission mt-0.5" weight="bold" />{r}
                               </div>
                             ))}
                           </div>
@@ -1132,99 +1124,99 @@ export default function TasksPage() {
                   )}
                 </div>
 
-                <div className="border-t border-border pt-4 space-y-3">
+                <div className="border-t border-seam pt-4 space-y-3">
                   {selectedTask.state === 'pending' && (
                     <div className="flex gap-2 items-center">
-                      <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a member…" className="flex-1" />
+                      <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a memberâ€¦" className="flex-1" />
                       <button onClick={() => handleAssign(selectedTask.task_id, assignUserId)} disabled={!assignUserId.trim()}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap">Assign</button>
-                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                        className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap">Assign</button>
+                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
                   {selectedTask.state === 'assigned' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Start Working</button>
-                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">Start Working</button>
+                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
                   {selectedTask.state === 'in_progress' && (
                     <div className="flex gap-2">
-                      <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Paste PR URL…" className="flex-1" />
+                      <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Paste PR URLâ€¦" className="flex-1" />
                       <button onClick={() => handleSubmit(selectedTask.task_id, prUrlInput)} disabled={!prUrlInput.trim()}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
+                        className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
                     </div>
                   )}
                   {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review' || selectedTask.state === 'peer_review') && (
                     <div className="space-y-3">
-                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} />
+                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedbackâ€¦" rows={3} />
                       <div className="flex gap-2 flex-wrap">
                         {selectedTask.state === 'peer_review' ? (
                           <>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Route to Product</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
-                            <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Route to Product</button>
-                            <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve</button>
-                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
+                            <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Route to Product</button>
+                            <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve</button>
+                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors inline-flex items-center gap-1.5">
                               <UsersThree className="w-3.5 h-3.5" /> Peer Review
                             </button>
                           </>
                         )}
-                        <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                        <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                       </div>
                     </div>
                   )}
                   {selectedTask.state === 'needs_changes' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">Resume Working</button>
-                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">Resume Working</button>
+                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
                   {selectedTask.state === 'product_review' && (
                     <div className="space-y-3">
-                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Product sign-off notes…" rows={2} />
+                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Product sign-off notesâ€¦" rows={2} />
                       <div className="flex gap-2">
-                        <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Request Changes</button>
-                        <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">Approve & Sign Off</button>
+                        <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
+                        <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve & Sign Off</button>
                       </div>
                     </div>
                   )}
                   {selectedTask.state === 'approved' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleComplete(selectedTask.task_id)} className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl text-sm font-bold transition-colors">
+                      <button onClick={() => handleComplete(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">
                         <Check className="w-4 h-4" weight="bold" /> Mark Completed & Unlock Modules
                       </button>
-                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-red-400/50 hover:text-red-400 text-sm px-3 transition-colors">Cancel</button>
+                      <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
                   {(selectedTask.state === 'completed' || selectedTask.state === 'in_progress' || selectedTask.state === 'needs_changes') && (
                     <div className="flex gap-2">
-                      <Input value={actualHoursInput} onChange={(e) => setActualHoursInput(e.target.value)} placeholder="Hours spent…" type="number" min="0" step="0.5" className="w-32" />
+                      <Input value={actualHoursInput} onChange={(e) => setActualHoursInput(e.target.value)} placeholder="Hours spentâ€¦" type="number" min="0" step="0.5" className="w-32" />
                       <button onClick={() => handleLogActualHours(selectedTask.task_id)} disabled={!actualHoursInput}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
+                        className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" /> Log Hours
                       </button>
                     </div>
                   )}
                   {selectedTask.state === 'completed' && selectedTask.unlock_modules && selectedTask.unlock_modules.length > 0 && (
-                    <div className="bg-green-500/5 border border-green-500/15 rounded-xl p-4">
-                      <div className="text-green-400 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <div className="bg-go/5 border border-go/15 rounded-card p-4">
+                      <div className="text-go text-sm font-semibold mb-2 flex items-center gap-1.5">
                         <Check className="w-4 h-4" weight="bold" /> Modules Unlocked
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {selectedTask.unlock_modules.map((m, i) => (
-                          <span key={i} className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-mono border border-green-500/20">{m}</span>
+                          <span key={i} className="px-2.5 py-1 rounded-card bg-go/10 text-go text-xs font-mono border border-go/25">{m}</span>
                         ))}
                       </div>
                     </div>
                   )}
                   {(selectedTask.state === 'completed' || selectedTask.state === 'cancelled') && (
                     <button onClick={() => handleDelete(selectedTask.task_id)}
-                      className="text-red-400/40 hover:text-red-400 text-xs transition-colors flex items-center gap-1.5">
+                      className="text-abort/40 hover:text-abort text-xs transition-colors flex items-center gap-1.5">
                       <Trash className="w-3.5 h-3.5" />
                       Delete Task
                     </button>
@@ -1237,3 +1229,9 @@ export default function TasksPage() {
     </motion.div>
   )
 }
+
+
+
+
+
+

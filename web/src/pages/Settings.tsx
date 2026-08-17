@@ -346,13 +346,13 @@ export default function Settings() {
           <span className="tile tile-go">Settings</span>
           <span className="designator opacity-50">STATION ENGINEER · CONFIG</span>
         </div>
-        <h1 className="text-display-md md:text-display-lg text-text-primary">Mission Configuration</h1>
-        <p className="text-body-sm text-text-secondary mt-1 font-code">Identity · signal routing · outbound links · federation · appearance</p>
+        <h1 className="text-display-md md:text-display-lg text-ink">Mission Configuration</h1>
+        <p className="text-body-sm text-ink-secondary mt-1 font-code">Identity · signal routing · outbound links · federation · appearance</p>
       </motion.div>
 
       {/* ── Seat selector (segmented control) ── */}
       <motion.div variants={item} className="mb-6">
-        <div className="flex items-center gap-1 rounded-btn border border-seam bg-panel-raised p-1 shadow-card w-fit max-w-full overflow-x-auto">
+        <div className="flex items-center gap-1 rounded-btn border border-seam bg-panel-raised p-1 shadow-seam w-fit max-w-full overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -466,7 +466,7 @@ export default function Settings() {
                     </div>
                   )}
                   <div className="flex items-center justify-end gap-4 pt-2">
-                    {savedMsg && <span className="text-caption text-success">{savedMsg}</span>}
+                    {savedMsg && <span className="text-caption text-go">{savedMsg}</span>}
                     <button
                       onClick={handleSaveProfile}
                       disabled={saving || !user}
@@ -506,7 +506,7 @@ export default function Settings() {
                 )}
               </p>
 
-              {keyError && <div className="mb-4 text-caption text-error bg-error-muted border border-error/20 rounded-btn px-3 py-2">{keyError}</div>}
+              {keyError && <div className="mb-4 text-caption text-abort bg-abort/10 border border-abort/20 rounded-btn px-3 py-2">{keyError}</div>}
 
               {showCreateKey && canManageKeys && (
                 <div className="mb-5 p-5 bg-well border border-seam rounded-card space-y-4">
@@ -557,8 +557,8 @@ export default function Settings() {
               )}
 
               {newKey && (
-                <div className="mb-4 bg-warning-muted border border-warning/25 rounded-card p-4">
-                  <p className="text-caption font-semibold mb-1 flex items-center gap-1.5 text-warning">
+                <div className="mb-4 bg-caution/10 border border-caution/25 rounded-card p-4">
+                  <p className="text-caption font-semibold mb-1 flex items-center gap-1.5 text-caution">
                     <Key size={14} weight="fill" />
                     Save this key — it won't be shown again:
                   </p>
@@ -593,7 +593,7 @@ export default function Settings() {
                                     / {k.credit_limit} budget {exhausted && '· limit reached'}
                                   </span>
                                 )}
-                                {!k.is_active && <span className="text-error">revoked</span>}
+                                {!k.is_active && <span className="text-abort">revoked</span>}
                               </p>
                               <p className="text-caption text-ink-muted/70 mt-1 font-code">
                                 Created {formatKeyDate(k.created_at)}
@@ -612,7 +612,7 @@ export default function Settings() {
                           </div>
                           {k.is_active && canManageKeys && (
                             <button onClick={() => handleRevoke(k.key_id)}
-                              className="p-1.5 text-error/60 hover:text-error transition-colors shrink-0" title="Revoke" aria-label="Revoke key">
+                              className="p-1.5 text-abort/60 hover:text-abort transition-colors shrink-0" title="Revoke" aria-label="Revoke key">
                               <Trash size={16} />
                             </button>
                           )}
@@ -677,7 +677,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex items-center justify-end mt-4">
-                    {notifPrefsMsg && <span className="text-caption text-success mr-3">{notifPrefsMsg}</span>}
+                    {notifPrefsMsg && <span className="text-caption text-go mr-3">{notifPrefsMsg}</span>}
                     {notifPrefsSaving && <span className="text-caption text-ink-muted animate-pulse">Saving…</span>}
                   </div>
                 </>
@@ -757,7 +757,7 @@ export default function Settings() {
             <ConsolePanel rail="Senior Dev Roast Mode" designator="PERSONA" status="abort">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-tile bg-error-muted flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-tile bg-abort/10 flex items-center justify-center">
                     <Fire size={18} className="text-abort" weight="fill" />
                   </div>
                   <div>
@@ -880,7 +880,7 @@ export default function Settings() {
                     </button>
                   </div>
                   {githubTestResult && (
-                    <div className={cn('text-caption flex items-center gap-2', githubTestResult.valid ? 'text-success' : 'text-error')}>
+                    <div className={cn('text-caption flex items-center gap-2', githubTestResult.valid ? 'text-go' : 'text-abort')}>
                       {githubTestResult.valid ? (
                         <><Check size={16} weight="bold" /> Valid — {githubTestResult.username} ({githubTestResult.scopes?.join(', ') || ''})</>
                       ) : (
@@ -892,7 +892,7 @@ export default function Settings() {
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="text-caption text-ink-muted flex items-center gap-2">
-                    <Check size={16} className="text-success" weight="bold" /> Token configured
+                    <Check size={16} className="text-go" weight="bold" /> Token configured
                   </div>
                   <button onClick={handleDisconnectGithub} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
                 </div>
@@ -972,8 +972,8 @@ export default function Settings() {
                     </button>
                   </div>
                   {webhookCreated && (
-                    <div className="bg-warning-muted border border-warning/25 rounded-card p-4 mt-4">
-                      <p className="text-caption text-warning font-semibold mb-2 flex items-center gap-1.5">
+                    <div className="bg-caution/10 border border-caution/25 rounded-card p-4 mt-4">
+                      <p className="text-caption text-caution font-semibold mb-2 flex items-center gap-1.5">
                         <Lock size={14} weight="fill" />
                         Webhook created! Save this secret — it won't be shown again:
                       </p>
@@ -1010,7 +1010,7 @@ export default function Settings() {
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <span className="text-caption text-ink-muted">
                             {wh.delivery_count} deliveries
-                            {wh.failure_count > 0 && <span className="text-error ml-1">({wh.failure_count} failed)</span>}
+                            {wh.failure_count > 0 && <span className="text-abort ml-1">({wh.failure_count} failed)</span>}
                           </span>
                           <div className="flex gap-1 flex-wrap">
                             {wh.events.slice(0, 3).map((evt) => (
@@ -1026,7 +1026,7 @@ export default function Settings() {
                         <button onClick={() => handleTestWebhook(wh.webhook_id)}
                           className="text-caption text-ink-muted hover:text-ink px-2 py-1 rounded-sm border border-seam transition-colors" title="Test">Ping</button>
                         <button onClick={() => handleDeleteWebhook(wh.webhook_id)}
-                          className="text-error/50 hover:text-error transition-colors" title="Delete" aria-label="Delete webhook">
+                          className="text-abort/50 hover:text-abort transition-colors" title="Delete" aria-label="Delete webhook">
                           <Trash size={16} />
                         </button>
                       </div>
@@ -1038,8 +1038,8 @@ export default function Settings() {
               {webhookTestResult && (
                 <div className={cn('mt-4 text-caption px-4 py-2 rounded-btn',
                   webhookTestResult.startsWith('✓')
-                    ? 'bg-success-muted text-success border border-success/20'
-                    : 'bg-error-muted text-error border border-error/20')}>
+                    ? 'bg-go/10 text-go border border-go/20'
+                    : 'bg-abort/10 text-abort border border-abort/20')}>
                   {webhookTestResult}
                 </div>
               )}
@@ -1180,7 +1180,7 @@ function ThemeTabContent() {
                 </div>
                 <div className="flex gap-1 mb-3">
                   <span className="px-2 py-0.5 rounded-sm text-caption font-code bg-go/10 text-go border border-go/25">badge</span>
-                  <span className="px-2 py-0.5 rounded-sm text-caption font-code bg-success-muted text-success border border-success/20">active</span>
+                  <span className="px-2 py-0.5 rounded-sm text-caption font-code bg-go/10 text-go border border-go/20">active</span>
                 </div>
                 <p className="text-caption text-ink-muted">Badges and status indicators.</p>
               </div>
@@ -1297,8 +1297,8 @@ function SsoConfigSection() {
           {message && (
             <div className={cn('mb-4 px-4 py-3 rounded-btn text-caption border',
               message.includes('OK') || message.includes('saved')
-                ? 'bg-success-muted text-success border-success/20'
-                : 'bg-error-muted text-error border-error/20'
+                ? 'bg-go/10 text-go border-go/20'
+                : 'bg-abort/10 text-abort border-abort/20'
             )}>
               {message}
             </div>
@@ -1521,7 +1521,7 @@ function JiraIntegrationSection() {
             </button>
           </div>
           {testResult && (
-            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-success' : 'text-error')}>
+            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-go' : 'text-abort')}>
               {testResult.valid ? (
                 <><Check size={16} weight="bold" /> Connected as {testResult.display_name}</>
               ) : (
@@ -1555,7 +1555,7 @@ function JiraIntegrationSection() {
       ) : (
         <div className="flex items-center justify-between">
           <div className="text-caption text-ink-muted flex items-center gap-2">
-            <Check size={16} className="text-success" weight="bold" /> Connected to {config.base_url || 'Jira'}
+            <Check size={16} className="text-go" weight="bold" /> Connected to {config.base_url || 'Jira'}
             {config.project_key && <span className="text-ink-secondary ml-1">({config.project_key})</span>}
           </div>
           <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
@@ -1663,7 +1663,7 @@ function LinearIntegrationSection() {
             </button>
           </div>
           {testResult && (
-            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-success' : 'text-error')}>
+            <div className={cn('text-caption flex items-center gap-2', testResult.valid ? 'text-go' : 'text-abort')}>
               {testResult.valid ? (
                 <><Check size={16} weight="bold" /> Connected as {testResult.name} ({testResult.email})</>
               ) : (
@@ -1697,7 +1697,7 @@ function LinearIntegrationSection() {
       ) : (
         <div className="flex items-center justify-between">
           <div className="text-caption text-ink-muted flex items-center gap-2">
-            <Check size={16} className="text-success" weight="bold" /> Connected to Linear
+            <Check size={16} className="text-go" weight="bold" /> Connected to Linear
             {teamId && <span className="text-ink-secondary ml-1">(team: {teams.find((t: any) => t.id === teamId)?.name || teamId})</span>}
           </div>
           <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>

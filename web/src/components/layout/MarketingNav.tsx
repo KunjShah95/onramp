@@ -81,7 +81,7 @@ export default function MarketingNav({
           <Link
             to="/register"
             {...prefetchProps('/register')}
-            className="inline-flex items-center rounded-sm bg-accent-primary px-4 py-2 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(8,145,178,0.25)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+            className="inline-flex items-center rounded-sm bg-go px-4 py-2 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(8,145,178,0.25)] transition-all hover:bg-go-lit active:translate-y-px"
           >
             Try for free
           </Link>

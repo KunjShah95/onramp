@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Compass, Info } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import {
   fetchRampSummary,
@@ -15,6 +16,10 @@ import { isLeaderRole } from '../components/dashboard/RampPanel'
 import CostModelPanel from '../components/dashboard/CostModelPanel'
 import AgentBenchmarkPanel from '../components/dashboard/AgentBenchmarkPanel'
 import EfficiencyBenchmarkPanel from '../components/dashboard/EfficiencyBenchmarkPanel'
+import ConsolePanel from '../components/ui/console-panel'
+import { PageHeader } from '../components/ui/page-header'
+import StatusTile from '../components/ui/status-tile'
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 
 function formatDays(days: number | null | undefined): string {
   if (days == null) return '—'
@@ -26,37 +31,25 @@ function formatUsd(v: number): string {
 }
 
 function StatCard({
-  icon,
   label,
   value,
   sub,
   tone = 'default',
 }: {
-  icon: string
   label: string
   value: string
   sub?: string
   tone?: 'default' | 'accent' | 'warn'
 }) {
+  const toneColor =
+    tone === 'accent' ? 'text-mission' : tone === 'warn' ? 'text-abort' : 'text-ink'
   return (
-    <div className="rounded-tile bg-bg-primary border border-border p-4 shadow-card">
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            'material-symbols-outlined text-lg',
-            tone === 'accent' && 'text-accent-from',
-            tone === 'warn' && 'text-error',
-            tone === 'default' && 'text-text-muted'
-          )}
-        >
-          {icon}
-        </span>
-        <span className="overline text-text-muted/70">{label}</span>
-      </div>
-      <div className="mt-2 text-2xl font-semibold text-text-primary tracking-tight font-display">
+    <div className="rounded-card border border-seam bg-panel p-5">
+      <div className="overline text-ink-muted">{label}</div>
+      <div className={cn('mt-2 font-code tabular-nums text-2xl md:text-3xl font-semibold tracking-tight leading-none', toneColor)}>
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-caption text-text-muted">{sub}</div>}
+      {sub && <div className="mt-1.5 text-caption text-ink-muted">{sub}</div>}
     </div>
   )
 }
@@ -65,47 +58,33 @@ function StuckCard({ entry }: { entry: RampStuckEntry }) {
   return (
     <div
       className={cn(
-        'rounded-tile border p-3.5 flex flex-col gap-2',
+        'rounded-card border p-3.5 flex flex-col gap-2',
         entry.severity === 'high'
-          ? 'bg-error/[0.04] border-error/30'
-          : 'bg-amber-500/[0.04] border-amber-500/30'
+          ? 'bg-abort/[0.03] border-abort/25'
+          : 'bg-caution/[0.03] border-caution/25'
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className={cn(
-              'material-symbols-outlined text-lg shrink-0',
-              entry.severity === 'high' ? 'text-error' : 'text-amber-400'
-            )}
-          >
-            {entry.severity === 'high' ? 'priority_high' : 'warning'}
-          </span>
-          <span className="text-body-sm font-semibold text-text-primary truncate">
+          <StatusTile
+            status={entry.severity === 'high' ? 'abort' : 'caution'}
+            label={entry.severity === 'high' ? 'STUCK' : 'AT RISK'}
+          />
+          <span className="text-body-sm font-semibold text-ink truncate">
             {entry.name}
           </span>
-          <span
-            className={cn(
-              'px-1.5 py-0.5 rounded-md text-caption font-medium uppercase tracking-wide',
-              entry.severity === 'high'
-                ? 'bg-error/10 text-error'
-                : 'bg-amber-500/10 text-amber-400'
-            )}
-          >
-            {entry.severity}
-          </span>
         </div>
-        <span className="text-caption text-text-muted font-mono shrink-0">
+        <span className="text-caption text-ink-muted font-code tabular-nums shrink-0">
           ~{formatUsd(entry.senior_cost_usd)} senior cost
         </span>
       </div>
       <ul className="flex flex-col gap-1">
         {entry.signals.map((s, i) => (
-          <li key={i} className="flex items-start gap-1.5 text-caption text-text-secondary">
-            <span className="material-symbols-outlined text-sm text-text-muted shrink-0 mt-px">chevron_right</span>
+          <li key={i} className="flex items-start gap-1.5 text-caption text-ink-secondary">
+            <span className="text-ink-muted mt-px">›</span>
             <span>
-              <span className="text-text-primary font-medium">{s.label}</span>
-              <span className="text-text-muted"> — {s.detail}</span>
+              <span className="text-ink font-medium">{s.label}</span>
+              <span className="text-ink-muted"> — {s.detail}</span>
             </span>
           </li>
         ))}
@@ -114,60 +93,63 @@ function StuckCard({ entry }: { entry: RampStuckEntry }) {
   )
 }
 
-const GRADE_CHIP: Record<string, { label: string; cls: string }> = {
-  healthy: { label: 'Healthy', cls: 'bg-success/10 text-success' },
-  at_risk: { label: 'At risk', cls: 'bg-amber-500/10 text-amber-400' },
-  critical: { label: 'Critical', cls: 'bg-error/10 text-error' },
-  no_data: { label: 'No data', cls: 'bg-bg-tertiary text-text-muted' },
+const GRADE_STATUS: Record<string, 'go' | 'caution' | 'abort' | 'idle'> = {
+  healthy: 'go',
+  at_risk: 'caution',
+  critical: 'abort',
+  no_data: 'idle',
+}
+const GRADE_LABEL: Record<string, string> = {
+  healthy: 'HEALTHY',
+  at_risk: 'AT RISK',
+  critical: 'CRITICAL',
+  no_data: 'NO DATA',
 }
 
 function HealthCard({ health }: { health: RampHealth | undefined }) {
   if (!health) return null
-  const chip = GRADE_CHIP[health.grade] ?? GRADE_CHIP.no_data
+  const status = GRADE_STATUS[health.grade] ?? 'idle'
+  const label = GRADE_LABEL[health.grade] ?? 'NO DATA'
   const comps = Object.entries(health.components ?? {})
   const tone = (score: number) =>
-    score >= 80 ? 'bg-success' : score >= 50 ? 'bg-amber-400' : 'bg-error'
+    score >= 80 ? 'bg-go' : score >= 50 ? 'bg-caution' : 'bg-abort'
   return (
-    <section className="rounded-tile bg-bg-primary border border-border p-4 shadow-card">
+    <section className="rounded-card border border-seam bg-panel p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-accent-from">monitor_heart</span>
-            <span className="overline text-text-muted/70">Org ramp health</span>
-            <span className={`px-1.5 py-0.5 rounded-md text-caption font-medium ${chip.cls}`}>
-              {chip.label}
-            </span>
+            <StatusTile status={status} label={label} />
           </div>
-          <div className="mt-2 text-4xl font-semibold text-text-primary tracking-tight font-display tabular-nums">
+          <div className="mt-3 text-4xl font-semibold text-ink tracking-tight font-code tabular-nums">
             {health.health_score ?? '—'}
-            <span className="text-body-sm text-text-muted font-normal ml-2">/ 100</span>
+            <span className="text-body-sm text-ink-muted font-normal ml-2">/ 100</span>
           </div>
-          <p className="text-caption text-text-muted mt-1">
+          <p className="text-caption text-ink-muted mt-1">
             {health.trainee_count} trainee{health.trainee_count === 1 ? '' : 's'} · {health.stuck_count} stuck · {health.at_risk_count} at risk
           </p>
         </div>
         <div className="flex-1 min-w-[260px] w-full max-w-xl space-y-2.5">
           {comps.length === 0 && (
-            <p className="text-caption text-text-muted py-4">
-              No trainees yet — add new-dev members and the score will compute from ramp, review, and PR data.
+            <p className="text-caption text-ink-muted py-4">
+              No trainees yet — add junior-dev members and the score will compute from ramp, review, and PR data.
             </p>
           )}
           {comps.map(([key, c]) => (
             <div key={key}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-caption font-medium text-text-secondary capitalize">
+                <span className="text-caption font-medium text-ink-secondary capitalize">
                   {key.replace(/_/g, ' ')}
-                  <span className="text-text-muted/60 ml-1">· {Math.round(c.weight * 100)}%</span>
+                  <span className="text-ink-muted/60 ml-1">· {Math.round(c.weight * 100)}%</span>
                 </span>
-                <span className="text-caption text-text-muted font-mono">{c.score}</span>
+                <span className="text-caption text-ink-muted font-code tabular-nums">{c.score}</span>
               </div>
-              <div className="h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-border">
+              <div className="h-1.5 rounded-sm bg-well overflow-hidden border border-seam">
                 <div
                   className={`h-full ${tone(c.score)} transition-all`}
                   style={{ width: `${c.score}%` }}
                 />
               </div>
-              <p className="text-caption text-text-muted mt-0.5">{c.detail}</p>
+              <p className="text-caption text-ink-muted mt-0.5">{c.detail}</p>
             </div>
           ))}
         </div>
@@ -178,15 +160,15 @@ function HealthCard({ health }: { health: RampHealth | undefined }) {
 
 function RampStatusBadge({ profile }: { profile: RampTraineeProfile }) {
   if (profile.stuck_severity === 'high') {
-    return <span className="px-1.5 py-0.5 rounded-md bg-error/10 text-error text-caption font-medium">Stuck</span>
+    return <StatusTile status="abort" label="STUCK" />
   }
   if (profile.stuck_severity === 'medium') {
-    return <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-caption font-medium">At risk</span>
+    return <StatusTile status="caution" label="AT RISK" />
   }
   if (profile.ramp_days != null) {
-    return <span className="px-1.5 py-0.5 rounded-md bg-success/10 text-success text-caption font-medium">Ramped</span>
+    return <StatusTile status="go" label="RAMPED" />
   }
-  return <span className="px-1.5 py-0.5 rounded-md bg-bg-tertiary text-text-muted text-caption font-medium">Onboarding</span>
+  return <StatusTile status="idle" label="ONBOARDING" />
 }
 
 export default function RampPage() {
@@ -224,38 +206,25 @@ export default function RampPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary font-display tracking-tight">
-            Ramp Visibility
-          </h1>
-          <p className="text-body-sm text-text-muted mt-1 max-w-2xl">
-            Track new-developer ramp-up, put a cost on the senior time it consumes, and
-            intercept stuck devs before they burn more. The v1.4 wedge.
-          </p>
-        </div>
-        {canRunCheck && (
+      <PageHeader
+        eyebrow="Ramp Visibility"
+        title="Ramp Visibility"
+        subtitle="Track new-developer ramp-up, put a cost on the senior time it consumes, and intercept stuck devs before they burn more."
+        actions={canRunCheck && (
           <button
             onClick={() => checkMutation.mutate()}
             disabled={checkMutation.isPending}
-            className={cn(
-              'inline-flex items-center gap-2 px-4 py-2 rounded-btn text-body-sm font-medium transition-all',
-              'bg-accent-from text-white shadow-lit hover:opacity-90 active:scale-[0.98]',
-              checkMutation.isPending && 'opacity-60 pointer-events-none'
-            )}
+            className="btn"
           >
-            <span className="material-symbols-outlined text-base">
-              {checkMutation.isPending ? 'progress_activity' : 'radar'}
-            </span>
+            <Compass size={16} weight="bold" />
             {checkMutation.isPending ? 'Checking…' : 'Run stuck check'}
           </button>
         )}
-      </div>
+      />
 
       {checkResult && (
-        <div className="flex items-center gap-2 text-caption text-text-secondary bg-bg-tertiary/60 border border-border rounded-tile px-3.5 py-2.5">
-          <span className="material-symbols-outlined text-base text-accent-from">info</span>
+        <div className="flex items-center gap-2 text-caption text-ink-secondary bg-well/70 border border-seam rounded-card px-3.5 py-2.5">
+          <Info size={15} className="text-mission shrink-0" />
           {checkResult}
         </div>
       )}
@@ -263,13 +232,13 @@ export default function RampPage() {
       {isLoading && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-[92px] rounded-tile bg-bg-tertiary/50 animate-pulse" />
+            <div key={i} className="h-[92px] rounded-card border border-seam bg-panel animate-pulse" />
           ))}
         </div>
       )}
 
       {error && (
-        <div className="rounded-tile border border-error/30 bg-error/[0.04] px-4 py-3 text-caption text-error">
+        <div className="rounded-card border border-abort/30 bg-abort/[0.04] px-4 py-3 text-caption text-abort">
           Failed to load ramp data — {error.message}
         </div>
       )}
@@ -282,26 +251,22 @@ export default function RampPage() {
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              icon="flag"
               label="Team benchmark"
               value={formatDays(data.benchmark_days)}
               sub={`to first task · ${formatDays(data.first_pr_benchmark_days)} to first PR`}
             />
             <StatCard
-              icon="groups"
               label="Trainees"
               value={`${ramped}/${data.trainee_count}`}
               sub="ramped / total tracked"
             />
             <StatCard
-              icon="schedule"
               label="Senior time"
               value={`${Math.round(data.totals.senior_hours * 10) / 10}h`}
               sub="estimated senior hours consumed"
               tone="accent"
             />
             <StatCard
-              icon="payments"
               label="Senior cost"
               value={formatUsd(data.totals.senior_cost_usd)}
               sub={`~${data.cost_model?.settings?.senior_hourly_rate_usd ?? 90}/hr fully-loaded estimate`}
@@ -320,107 +285,96 @@ export default function RampPage() {
 
           {/* Stuck panel */}
           {stuck.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-error">person_search</span>
-                <h2 className="text-body-sm font-semibold text-text-primary">
-                  Stuck devs — intercept now
-                </h2>
-                <span className="px-1.5 py-0.5 rounded-md bg-error/10 text-error text-caption font-medium">
-                  {stuck.length}
-                </span>
-              </div>
-              <div className="grid md:grid-cols-2 gap-3">
+            <ConsolePanel
+              rail="Stuck Devs — Intercept Now"
+              designator={`${stuck.length} INTERVENTION`}
+              status="abort"
+              pad="none"
+            >
+              <div className="grid md:grid-cols-2 gap-3 p-3.5">
                 {stuck.map((entry) => (
                   <StuckCard key={entry.user_id} entry={entry} />
                 ))}
               </div>
-            </section>
+            </ConsolePanel>
           )}
 
           {/* Trainee table */}
-          <section className="rounded-tile bg-bg-primary border border-border overflow-hidden shadow-card">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h2 className="text-body-sm font-semibold text-text-primary">Per-trainee ramp</h2>
-              <span className="text-caption text-text-muted">sorted: not-yet-ramped first</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-body-sm">
-                <thead>
-                  <tr className="text-caption text-text-muted/70 border-b border-border/60">
-                    <th className="px-4 py-2.5 font-medium">Trainee</th>
-                    <th className="px-3 py-2.5 font-medium">Ramp</th>
-                    <th className="px-3 py-2.5 font-medium">First PR</th>
-                    <th className="px-3 py-2.5 font-medium">Complete</th>
-                    <th className="px-3 py-2.5 font-medium">Rework</th>
-                    <th className="px-3 py-2.5 font-medium">Asked</th>
-                    <th className="px-3 py-2.5 font-medium">Senior cost</th>
-                    <th className="px-4 py-2.5 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.profiles.map((p) => {
-                    const delta = p.vs_benchmark_days
-                    return (
-                      <tr key={p.user_id} className="border-b border-border/40 last:border-0 hover:bg-bg-tertiary/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-text-primary">{p.name}</div>
-                          <div className="text-caption text-text-muted">{p.role}</div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="text-text-primary font-medium">{formatDays(p.ramp_days)}</div>
-                          {delta != null && (
-                            <div
-                              className={cn(
-                                'text-caption font-mono',
-                                delta <= 0 ? 'text-success' : 'text-error'
-                              )}
-                            >
-                              {delta <= 0 ? '−' : '+'}
-                              {Math.abs(Math.round(delta * 10) / 10)}d vs benchmark
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="text-text-primary font-medium">{formatDays(p.days_to_first_pr)}</div>
-                          {p.first_pr_source && (
-                            <div className="text-caption text-text-muted">
-                              {p.first_pr_source === 'github' ? 'via GitHub' : 'via merged PR'}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-text-secondary">
-                          {p.tasks_completed}/{p.tasks_total} · {p.completion_pct}%
-                        </td>
-                        <td className="px-3 py-3 text-text-secondary">
-                          {p.review_cycles > 0 ? (
-                            <span className="text-error">{p.review_cycles} cycle{p.review_cycles === 1 ? '' : 's'}</span>
-                          ) : (
-                            <span className="text-text-muted">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-text-secondary">{p.questions_asked}</td>
-                        <td className="px-3 py-3">
-                          <div className="text-text-primary font-medium">{formatUsd(p.senior_cost_usd)}</div>
-                          <div className="text-caption text-text-muted">{p.senior_hours}h</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <RampStatusBadge profile={p} />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {data.profiles.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-caption text-text-muted">
-                        No trainees on this team yet — add new-dev members to start tracking ramps.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <ConsolePanel
+            rail="Per-Trainee Ramp"
+            action={<span className="text-caption text-ink-muted">sorted: not-yet-ramped first</span>}
+            pad="none"
+          >
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Trainee</TH>
+                  <TH>Ramp</TH>
+                  <TH>First PR</TH>
+                  <TH>Complete</TH>
+                  <TH>Rework</TH>
+                  <TH>Asked</TH>
+                  <TH>Senior cost</TH>
+                  <TH>Status</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {data.profiles.map((p) => {
+                  const delta = p.vs_benchmark_days
+                  return (
+                    <TR key={p.user_id} hoverable>
+                      <TD>
+                        <div className="font-medium text-ink">{p.name}</div>
+                        <div className="text-caption text-ink-muted">{p.role}</div>
+                      </TD>
+                      <TD>
+                        <div className="text-ink font-medium font-code tabular-nums">{formatDays(p.ramp_days)}</div>
+                        {delta != null && (
+                          <div className={cn('text-caption font-code tabular-nums', delta <= 0 ? 'text-go' : 'text-abort')}>
+                            {delta <= 0 ? '−' : '+'}
+                            {Math.abs(Math.round(delta * 10) / 10)}d vs benchmark
+                          </div>
+                        )}
+                      </TD>
+                      <TD>
+                        <div className="text-ink font-medium font-code tabular-nums">{formatDays(p.days_to_first_pr)}</div>
+                        {p.first_pr_source && (
+                          <div className="text-caption text-ink-muted">
+                            {p.first_pr_source === 'github' ? 'via GitHub' : 'via merged PR'}
+                          </div>
+                        )}
+                      </TD>
+                      <TD className="text-ink-secondary font-code tabular-nums">
+                        {p.tasks_completed}/{p.tasks_total} · {p.completion_pct}%
+                      </TD>
+                      <TD className="text-ink-secondary font-code tabular-nums">
+                        {p.review_cycles > 0 ? (
+                          <span className="text-caution">{p.review_cycles} cycle{p.review_cycles === 1 ? '' : 's'}</span>
+                        ) : (
+                          <span className="text-ink-muted">—</span>
+                        )}
+                      </TD>
+                      <TD className="text-ink-secondary font-code tabular-nums">{p.questions_asked}</TD>
+                      <TD>
+                        <div className="text-ink font-medium font-code tabular-nums">{formatUsd(p.senior_cost_usd)}</div>
+                        <div className="text-caption text-ink-muted font-code tabular-nums">{p.senior_hours}h</div>
+                      </TD>
+                      <TD>
+                        <RampStatusBadge profile={p} />
+                      </TD>
+                    </TR>
+                  )
+                })}
+                {data.profiles.length === 0 && (
+                  <TR>
+                    <TD colSpan={8} className="text-center text-ink-muted py-10">
+                      No trainees on this team yet — add junior-dev members to start tracking ramps.
+                    </TD>
+                  </TR>
+                )}
+              </TBody>
+            </Table>
+          </ConsolePanel>
         </>
       )}
     </div>

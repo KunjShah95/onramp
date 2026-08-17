@@ -172,8 +172,8 @@ export default function BillingPage() {
           <span className="tile tile-go">Billing</span>
           <span className="designator opacity-50">STATION ENGINEER · FINANCE</span>
         </div>
-        <h1 className="text-display-md md:text-display-lg text-text-primary">Billing &amp; Plans</h1>
-        <p className="text-body-sm text-text-secondary mt-1 font-code">Manage your subscription and team quota</p>
+        <h1 className="text-display-md md:text-display-lg text-ink">Billing &amp; Plans</h1>
+        <p className="text-body-sm text-ink-secondary mt-1 font-code">Manage your subscription and team quota</p>
       </motion.div>
 
       {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}

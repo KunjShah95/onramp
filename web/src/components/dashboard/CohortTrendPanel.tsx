@@ -44,13 +44,13 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
       live={improving === true}
     >
       {cohorts.length === 0 ? (
-        <p className="text-caption text-text-muted font-code py-2">
+        <p className="text-caption text-ink-muted font-code py-2">
           No cohorts yet — groups form as developers join.
         </p>
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
           {improving !== null && (
-            <p className="text-caption text-text-muted">
+            <p className="text-caption text-ink-muted">
               Ramp trend:{' '}
               <span className={improving ? 'text-go font-medium' : 'text-caution font-medium'}>
                 {improving ? 'improving' : 'slipping'}
@@ -61,14 +61,14 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
           {cohorts.map((c, i) => (
             <div key={c.cohort}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-body-xs text-text-primary font-medium truncate">
-                  {c.label} <span className="text-text-muted font-normal">({c.member_count})</span>
+                <span className="text-body-xs text-ink font-medium truncate">
+                  {c.label} <span className="text-ink-muted font-normal">({c.member_count})</span>
                 </span>
-                <span className="readout text-caption tabular-nums text-text-muted">
+                <span className="readout text-caption tabular-nums text-ink-muted">
                   {c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'} ramp
                 </span>
               </div>
-              <div className="h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+              <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(((c.avg_ramp_days ?? 30) / 30) * 100, 100)}%` }}
@@ -81,7 +81,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
                   )}
                 />
               </div>
-              <div className="flex gap-3 mt-1 text-caption text-text-muted font-code">
+              <div className="flex gap-3 mt-1 text-caption text-ink-muted font-code">
                 <span>{c.avg_days_to_first_pr != null ? `1st PR ${c.avg_days_to_first_pr}d` : 'no 1st PR'}</span>
                 <span>completion {c.avg_completion_pct ?? 0}%</span>
                 <span className={c.blocker_count > 0 ? 'text-caution' : ''}>blockers {c.blocker_count}</span>

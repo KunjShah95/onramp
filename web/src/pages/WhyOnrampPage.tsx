@@ -150,8 +150,8 @@ export default function WhyOnrampPage() {
               icon: Lightning,
               title: 'Speed Builds Confidence',
               desc: 'Fast onboarding lets devs contribute quickly. First PR on day two beats "understanding" on day thirty.',
-              color: 'text-accent-from',
-              bg: 'bg-accent-from/10',
+              color: 'text-go',
+              bg: 'bg-go/10',
             },
           ].map((pillar, idx) => (
             <motion.div

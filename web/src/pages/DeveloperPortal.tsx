@@ -242,7 +242,7 @@ export default function DeveloperPortal() {
       />
 
       {!activeTeamId && (
-        <motion.div variants={itemVariants} className="card p-6 text-center text-text-tertiary text-body-sm">
+        <motion.div variants={itemVariants} className="card p-6 text-center text-ink-tertiary text-body-sm">
           Select a team to access developer settings.
         </motion.div>
       )}
@@ -257,7 +257,7 @@ export default function DeveloperPortal() {
                   <Key className="w-5 h-5 text-go" weight="fill" />
                   <div>
                     <h3 className="font-display font-bold">API Keys</h3>
-                    <p className="text-xs text-text-tertiary">Manage API keys for programmatic access</p>
+                    <p className="text-xs text-ink-tertiary">Manage API keys for programmatic access</p>
                   </div>
                 </div>
                 <button
@@ -272,22 +272,22 @@ export default function DeveloperPortal() {
               </div>
 
               {showCreateForm && canManageKeys && (
-                <div className="mb-5 p-5 rounded-xl bg-bg-secondary border border-border space-y-4">
+                <div className="mb-5 p-5 rounded-xl bg-panel border border-seam space-y-4">
                   <div className="flex items-center gap-2">
                     <Key className="w-4 h-4 text-go" weight="fill" />
                     <span className="font-mono text-[11px] text-go uppercase tracking-wider">New Credential</span>
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Key Name</label>
+                    <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Key Name</label>
                     <input
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
                       placeholder="e.g., CI pipeline, staging, prod"
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                      className="w-full bg-base border border-seam rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Tier</label>
+                    <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Tier</label>
                     <div className="flex flex-wrap gap-2">
                       {['free', 'pro', 'team', 'enterprise'].map((t) => (
                         <button
@@ -296,7 +296,7 @@ export default function DeveloperPortal() {
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
                             newKeyTier === t
                               ? 'bg-go/15 text-go border border-go/30'
-                              : 'bg-bg-tertiary/50 text-text-tertiary border border-border hover:border-border-hover'
+                              : 'bg-well/50 text-ink-tertiary border border-seam hover:border-seam-strong'
                           }`}
                         >
                           {t}
@@ -305,8 +305,8 @@ export default function DeveloperPortal() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
-                      Cost Limit <span className="text-text-tertiary/30 normal-case">(credits / month)</span>
+                    <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
+                      Cost Limit <span className="text-ink-tertiary/30 normal-case">(credits / month)</span>
                     </label>
                     <input
                       value={newKeyCostLimit}
@@ -314,24 +314,24 @@ export default function DeveloperPortal() {
                       type="number"
                       min={0}
                       placeholder="e.g., 5000 — leave blank for no limit"
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                      className="w-full bg-base border border-seam rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors"
                     />
-                    <p className="text-[10px] text-text-tertiary mt-1.5">The key stops working once its usage reaches this budget.</p>
+                    <p className="text-[10px] text-ink-tertiary mt-1.5">The key stops working once its usage reaches this budget.</p>
                   </div>
                   <div>
-                    <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
-                      Expires On <span className="text-text-tertiary/30 normal-case">(optional)</span>
+                    <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
+                      Expires On <span className="text-ink-tertiary/30 normal-case">(optional)</span>
                     </label>
                     <input
                       value={newKeyExpiry}
                       onChange={(e) => setNewKeyExpiry(e.target.value)}
                       type="date" min={today}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                      className="w-full bg-base border border-seam rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors"
                     />
-                    <p className="text-[10px] text-text-tertiary mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
+                    <p className="text-[10px] text-ink-tertiary mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
                   </div>
                   <div className="flex justify-end gap-3 pt-1">
-                    <button onClick={() => setShowCreateForm(false)} className="px-3 py-1.5 rounded-lg text-xs text-text-tertiary hover:text-text-primary transition-colors">
+                    <button onClick={() => setShowCreateForm(false)} className="px-3 py-1.5 rounded-lg text-xs text-ink-tertiary hover:text-ink transition-colors">
                       Cancel
                     </button>
                     <button
@@ -381,28 +381,28 @@ export default function DeveloperPortal() {
                     const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
                     const exhausted = limit > 0 && used >= limit
                     return (
-                      <div key={key.key_id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-bg-secondary border border-border">
+                      <div key={key.key_id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-panel border border-seam">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <Key className="w-4 h-4 text-text-tertiary shrink-0" />
+                          <Key className="w-4 h-4 text-ink-tertiary shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium text-text-primary truncate">{key.name || 'Unnamed Key'}</p>
-                            <p className="font-mono text-[10px] text-text-tertiary truncate">
+                            <p className="font-medium text-ink truncate">{key.name || 'Unnamed Key'}</p>
+                            <p className="font-mono text-[10px] text-ink-tertiary truncate">
                               {key.key_id} • {key.tier} • {key.is_active ? 'Active' : 'Revoked'}
                             </p>
-                            <p className="font-mono text-[10px] text-text-tertiary/60 mt-0.5">
+                            <p className="font-mono text-[10px] text-ink-tertiary/60 mt-0.5">
                               Created {formatKeyDate(key.created_at)}
                               {key.last_used_at && <> · last used {formatKeyDate(key.last_used_at)}</>}
                               {key.expires_at && <> · expires {formatKeyDate(key.expires_at)}</>}
                             </p>
                             {key.credit_limit != null && (
                               <div className="flex items-center gap-2 mt-1.5">
-                                <div className="h-1.5 w-24 rounded-full bg-bg-tertiary/50 overflow-hidden">
+                                <div className="h-1.5 w-24 rounded-full bg-well/50 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all ${exhausted ? 'bg-red-500' : 'bg-go'}`}
                                     style={{ width: `${pct}%` }}
                                   />
                                 </div>
-                                <span className={`font-mono text-[10px] ${exhausted ? 'text-red-400' : 'text-text-tertiary'}`}>
+                                <span className={`font-mono text-[10px] ${exhausted ? 'text-red-400' : 'text-ink-tertiary'}`}>
                                   {used}/{key.credit_limit} credits{exhausted ? ' • limit reached' : ''}
                                 </span>
                               </div>
@@ -413,7 +413,7 @@ export default function DeveloperPortal() {
                           <button
                             onClick={() => handleRevokeKey(key.key_id)}
                             disabled={!key.is_active || loading || !canManageKeys}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-error hover:bg-error/10 transition-all disabled:opacity-30"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-muted hover:text-abort hover:bg-abort/10 transition-all disabled:opacity-30"
                           >
                             <Trash size={14} />
                           </button>
@@ -423,7 +423,7 @@ export default function DeveloperPortal() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-text-tertiary text-sm">
+                <div className="text-center py-8 text-ink-tertiary text-sm">
                   No API keys found. Create one to get started.
                 </div>
               )}
@@ -437,7 +437,7 @@ export default function DeveloperPortal() {
                 <Lock className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Provider Keys (BYOK)</h3>
-                  <p className="text-xs text-text-tertiary">
+                  <p className="text-xs text-ink-tertiary">
                     Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway — requests made with this team's API key use your keys instead of the platform defaults.
                   </p>
                 </div>
@@ -449,21 +449,21 @@ export default function DeveloperPortal() {
                   const configured = !!info?.configured
                   const keyCount = providerKeyCounts[p.id] || 0
                   return (
-                    <div key={p.id} className="bg-bg-secondary border border-border rounded-xl p-3.5">
+                    <div key={p.id} className="bg-panel border border-seam rounded-xl p-3.5">
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${configured ? 'bg-go' : 'bg-bg-tertiary'}`} />
-                          <span className="font-medium text-text-primary text-xs truncate">{p.label}</span>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${configured ? 'bg-go' : 'bg-well'}`} />
+                          <span className="font-medium text-ink text-xs truncate">{p.label}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {configured ? (
                             <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded">Configured</span>
                           ) : (
-                            <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50">Platform</span>
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-ink-tertiary/50">Platform</span>
                           )}
                           {keyCount > 1 && (
                             <span
-                              className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/70 bg-bg-tertiary/40 px-1.5 py-0.5 rounded"
+                              className="font-mono text-[9px] uppercase tracking-wider text-ink-tertiary/70 bg-well/40 px-1.5 py-0.5 rounded"
                               title={`${keyCount} keys in this provider's pool — the router rotates across them`}
                             >
                               {keyCount} keys
@@ -471,9 +471,9 @@ export default function DeveloperPortal() {
                           )}
                         </div>
                       </div>
-                      <p className="font-mono text-[9px] text-text-tertiary/60 mb-2.5 truncate">overrides {p.envVar}</p>
+                      <p className="font-mono text-[9px] text-ink-tertiary/60 mb-2.5 truncate">overrides {p.envVar}</p>
                       {configured && info.updated_at && (
-                        <p className="text-[10px] text-text-tertiary/70 mb-2.5">Updated {formatKeyDate(info.updated_at)}</p>
+                        <p className="text-[10px] text-ink-tertiary/70 mb-2.5">Updated {formatKeyDate(info.updated_at)}</p>
                       )}
                       {canManageKeys && (
                         <div className="flex items-center gap-3 flex-wrap">
@@ -500,7 +500,7 @@ export default function DeveloperPortal() {
                                 setEditingProvider(p.id)
                                 setProviderKeyInput('')
                               }}
-                              className="flex items-center gap-1.5 text-[11px] text-text-tertiary hover:text-go transition-colors"
+                              className="flex items-center gap-1.5 text-[11px] text-ink-tertiary hover:text-go transition-colors"
                               title="Add another key — traffic rotates round-robin across the pool"
                             >
                               <Plus size={12} />
@@ -510,7 +510,7 @@ export default function DeveloperPortal() {
                           {configured && (confirmDeleteProvider !== p.id ? (
                             <button
                               onClick={() => setConfirmDeleteProvider(p.id)}
-                              className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-error transition-colors"
+                              className="flex items-center gap-1.5 text-[11px] text-ink-muted hover:text-abort transition-colors"
                             >
                               <Trash size={12} />
                               Remove
@@ -535,7 +535,7 @@ export default function DeveloperPortal() {
                             onChange={(e) => setProviderKeyInput(e.target.value)}
                             placeholder={addingPoolKey ? 'sk-... (extra pool key)' : 'sk-...'}
                             autoFocus
-                            className="flex-1 min-w-0 bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors"
+                            className="flex-1 min-w-0 bg-base border border-seam rounded-lg px-2.5 py-1.5 text-xs font-mono text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors"
                           />
                           <button
                             onClick={handleSaveProviderKey}
@@ -551,8 +551,8 @@ export default function DeveloperPortal() {
                 })}
               </div>
 
-              <p className="text-[10px] text-text-tertiary/60">
-                Keys are encrypted at rest and apply to OpenAI-compatible gateway calls (<code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code>, <code className="font-mono text-[9px] bg-bg-tertiary/50 px-1 rounded">/v1/embeddings</code>) authenticated with this team's API key. Leave a provider on “Platform” to use the shared platform key.
+              <p className="text-[10px] text-ink-tertiary/60">
+                Keys are encrypted at rest and apply to OpenAI-compatible gateway calls (<code className="font-mono text-[9px] bg-well/50 px-1 rounded">/v1/chat/completions</code>, <code className="font-mono text-[9px] bg-well/50 px-1 rounded">/v1/embeddings</code>) authenticated with this team's API key. Leave a provider on “Platform” to use the shared platform key.
               </p>
             </CardSpotlight>
           </motion.div>
@@ -565,8 +565,8 @@ export default function DeveloperPortal() {
                   <Gauge className="w-5 h-5 text-go" weight="fill" />
                   <div>
                     <h3 className="font-display font-bold">Routing Mode</h3>
-                    <p className="text-xs text-text-tertiary">
-                      Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code> both honor this.
+                    <p className="text-xs text-ink-tertiary">
+                      Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-mono text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code> both honor this.
                     </p>
                   </div>
                 </div>
@@ -574,7 +574,7 @@ export default function DeveloperPortal() {
                 {routingModeLoading ? (
                   <div className="flex items-center gap-2 py-3">
                     <Spinner className="w-4 h-4 text-go animate-spin" />
-                    <span className="text-xs text-text-tertiary">Loading routing preference…</span>
+                    <span className="text-xs text-ink-tertiary">Loading routing preference…</span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -589,28 +589,28 @@ export default function DeveloperPortal() {
                           key={preset.label}
                           onClick={() => handleSetRoutingMode(preset.value)}
                           disabled={savingRoutingMode}
-                          className={`text-left bg-bg-primary border rounded-xl p-3.5 transition-all ${
+                          className={`text-left bg-base border rounded-xl p-3.5 transition-all ${
                             active
                               ? 'border-go/40 bg-go/5 ring-1 ring-go/20'
-                              : 'border-border hover:border-border-hover hover:bg-bg-secondary'
+                              : 'border-seam hover:border-seam-strong hover:bg-panel'
                           } disabled:opacity-50`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="font-bold text-text-primary text-xs">{preset.label}</span>
+                            <span className="font-bold text-ink text-xs">{preset.label}</span>
                             {active && (
                               <span className="font-mono text-[9px] uppercase tracking-wider text-go bg-go/10 border border-go/20 px-1.5 py-0.5 rounded">
                                 Active
                               </span>
                             )}
                           </div>
-                          <p className="text-[10px] text-text-tertiary leading-relaxed">{preset.sub}</p>
+                          <p className="text-[10px] text-ink-tertiary leading-relaxed">{preset.sub}</p>
                         </button>
                       )
                     })}
                   </div>
                 )}
 
-                <p className="text-[10px] text-text-tertiary/60 mt-3">
+                <p className="text-[10px] text-ink-tertiary/60 mt-3">
                   Takes effect on your team's next request — no restart, no redeploy. The router still picks the best provider per question; this dial just biases how far up the quality/price ladder it goes.
                 </p>
               </CardSpotlight>
@@ -624,8 +624,8 @@ export default function DeveloperPortal() {
                 <Stack className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Model Catalog</h3>
-                  <p className="text-xs text-text-tertiary">
-                    Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1 rounded">/v1/chat/completions</code>.
+                  <p className="text-xs text-ink-tertiary">
+                    Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-mono text-[10px] bg-well/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-mono text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code>.
                   </p>
                 </div>
               </div>
@@ -635,23 +635,23 @@ export default function DeveloperPortal() {
                   <Spinner className="w-5 h-5 text-go animate-spin" />
                 </div>
               ) : !catalog ? (
-                <div className="text-center py-8 text-text-tertiary text-sm">
+                <div className="text-center py-8 text-ink-tertiary text-sm">
                   <Stack className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>Model catalog unavailable.</p>
                 </div>
               ) : (
                 <>
                   {/* Query-type routing */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Lightning className="w-4 h-4 text-go" />
                       <span className="font-mono text-[11px] text-go uppercase tracking-wider">Query-Type Routing</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {Object.entries(catalog.query_types || {}).map(([qtype, qinfo]) => (
-                        <div key={qtype} className="bg-bg-primary border border-border rounded-lg p-3">
-                          <p className="font-bold text-text-primary text-xs mb-0.5">{qtype}</p>
-                          <p className="text-[10px] text-text-tertiary leading-relaxed mb-1.5">{qinfo.description}</p>
+                        <div key={qtype} className="bg-base border border-seam rounded-lg p-3">
+                          <p className="font-bold text-ink text-xs mb-0.5">{qtype}</p>
+                          <p className="text-[10px] text-ink-tertiary leading-relaxed mb-1.5">{qinfo.description}</p>
                           <p className="font-mono text-[9px] text-go/80 truncate">
                             {(qinfo.preferred_providers || []).join(' → ') || 'free-first fallback chain'}
                           </p>
@@ -661,17 +661,17 @@ export default function DeveloperPortal() {
                   </div>
 
                   {/* Pinned provider defaults */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Terminal className="w-4 h-4 text-go" />
                       <span className="font-mono text-[11px] text-go uppercase tracking-wider">Pinned Defaults</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {Object.entries(catalog.providers || {}).map(([provider, pinfo]) => (
-                        <div key={provider} className="flex items-center justify-between gap-2 bg-bg-primary border border-border rounded-lg px-3 py-2">
+                        <div key={provider} className="flex items-center justify-between gap-2 bg-base border border-seam rounded-lg px-3 py-2">
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-text-primary capitalize truncate">{provider}</p>
-                            <p className="font-mono text-[9px] text-text-tertiary truncate">{pinfo.model}</p>
+                            <p className="text-xs font-medium text-ink capitalize truncate">{provider}</p>
+                            <p className="font-mono text-[9px] text-ink-tertiary truncate">{pinfo.model}</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {pinfo.free ? (
@@ -680,7 +680,7 @@ export default function DeveloperPortal() {
                               <span className="font-mono text-[9px] uppercase tracking-wider text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">Paid</span>
                             )}
                             {!pinfo.available && (
-                              <span className="font-mono text-[9px] uppercase tracking-wider text-text-tertiary/50">unconfigured</span>
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-ink-tertiary/50">unconfigured</span>
                             )}
                           </div>
                         </div>
@@ -689,22 +689,22 @@ export default function DeveloperPortal() {
                   </div>
 
                   {/* Dynamic OpenRouter catalog */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
                         <Stack className="w-4 h-4 text-go" />
                         <span className="font-mono text-[11px] text-go uppercase tracking-wider">OpenRouter Catalog</span>
                         {!!catalog.openrouter_catalog?.length && (
-                          <span className="font-mono text-[9px] text-text-tertiary/60">{catalog.openrouter_catalog.length} models</span>
+                          <span className="font-mono text-[9px] text-ink-tertiary/60">{catalog.openrouter_catalog.length} models</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 w-52">
-                        <MagnifyingGlass size={12} className="text-text-tertiary/50 shrink-0" />
+                      <div className="flex items-center gap-1.5 bg-base border border-seam rounded-lg px-2.5 py-1.5 w-52">
+                        <MagnifyingGlass size={12} className="text-ink-tertiary/50 shrink-0" />
                         <input
                           value={catalogSearch}
                           onChange={(e) => setCatalogSearch(e.target.value)}
                           placeholder="Filter by vendor or id…"
-                          className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-text-primary placeholder:text-text-tertiary/30 outline-none"
+                          className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-ink placeholder:text-ink-tertiary/30 outline-none"
                         />
                       </div>
                     </div>
@@ -717,7 +717,7 @@ export default function DeveloperPortal() {
                         onCopy={handleCopy}
                       />
                     ) : (
-                      <p className="text-[11px] text-text-tertiary py-3">
+                      <p className="text-[11px] text-ink-tertiary py-3">
                         {catalog.catalog_fetched === false
                           ? 'The live catalog could not be fetched right now — passthrough model ids still work; they are just not listed here.'
                           : 'Live OpenRouter catalog not yet merged. Pin a provider key above and refresh; any vendor/model id still routes through the gateway.'}
@@ -736,7 +736,7 @@ export default function DeveloperPortal() {
                 <ShieldCheck className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Rate Limits</h3>
-                  <p className="text-xs text-text-tertiary">API rate limits per tier — live from server</p>
+                  <p className="text-xs text-ink-tertiary">API rate limits per tier — live from server</p>
                 </div>
               </div>
 
@@ -744,23 +744,23 @@ export default function DeveloperPortal() {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs mb-6">
                     {Object.entries(tierInfo.tiers).map(([tier, limits]) => (
-                      <div key={tier} className="bg-bg-secondary border border-border rounded-lg p-4">
-                        <p className="font-bold text-text-primary mb-2 capitalize">{tier} Tier</p>
+                      <div key={tier} className="bg-panel border border-seam rounded-lg p-4">
+                        <p className="font-bold text-ink mb-2 capitalize">{tier} Tier</p>
                         <div className="grid grid-cols-2 gap-y-2 gap-x-3">
                           <div>
-                            <span className="text-[10px] text-text-tertiary block">Per Minute</span>
+                            <span className="text-[10px] text-ink-tertiary block">Per Minute</span>
                             <span className="font-mono text-xs text-go">{limits.requests_per_minute}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-text-tertiary block">Per Day</span>
+                            <span className="text-[10px] text-ink-tertiary block">Per Day</span>
                             <span className="font-mono text-xs text-go">{limits.requests_per_day.toLocaleString()}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-text-tertiary block">Credits/Month</span>
+                            <span className="text-[10px] text-ink-tertiary block">Credits/Month</span>
                             <span className="font-mono text-xs text-go">{limits.credits_per_month > 0 ? limits.credits_per_month.toLocaleString() : 'Unlimited'}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-text-tertiary block">Max Repos</span>
+                            <span className="text-[10px] text-ink-tertiary block">Max Repos</span>
                             <span className="font-mono text-xs text-go">{limits.max_repos < 0 ? 'Unlimited' : limits.max_repos}</span>
                           </div>
                         </div>
@@ -769,12 +769,12 @@ export default function DeveloperPortal() {
                   </div>
 
                   {/* Route Group Limits */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Lightning className="w-4 h-4 text-go" />
                       <span className="font-mono text-[11px] text-go uppercase tracking-wider">Route-Specific Limits</span>
                     </div>
-                    <p className="text-xs text-text-tertiary mb-3">Different API routes have independent rate limit buckets:</p>
+                    <p className="text-xs text-ink-tertiary mb-3">Different API routes have independent rate limit buckets:</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
                         { group: 'LLM', limit: '20/min', routes: '/ask, /ai, /explore' },
@@ -782,51 +782,51 @@ export default function DeveloperPortal() {
                         { group: 'Admin', limit: '60/min', routes: '/admin/*' },
                         { group: 'General', limit: '200/min', routes: 'All other endpoints' },
                       ].map((r) => (
-                        <div key={r.group} className="bg-bg-primary border border-border rounded-lg p-3">
-                          <p className="font-bold text-text-primary text-xs mb-1">{r.group}</p>
+                        <div key={r.group} className="bg-base border border-seam rounded-lg p-3">
+                          <p className="font-bold text-ink text-xs mb-1">{r.group}</p>
                           <p className="font-mono text-[11px] text-go">{r.limit}</p>
-                          <p className="text-[10px] text-text-tertiary mt-1">{r.routes}</p>
+                          <p className="text-[10px] text-ink-tertiary mt-1">{r.routes}</p>
                         </div>
                       ))}
                     </div>
-                    <p className="text-[10px] text-text-tertiary mt-2 italic">
+                    <p className="text-[10px] text-ink-tertiary mt-2 italic">
                       Limits can be overridden via environment variables: RATE_LIMIT_LLM, RATE_LIMIT_AUTH, etc.
                     </p>
                   </div>
 
                   {/* Response Headers Documentation */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4 mb-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Info className="w-4 h-4 text-go" />
                       <span className="font-mono text-[11px] text-go uppercase tracking-wider">Response Headers</span>
                     </div>
-                    <p className="text-xs text-text-tertiary mb-3">Every API response includes rate limit headers:</p>
+                    <p className="text-xs text-ink-tertiary mb-3">Every API response includes rate limit headers:</p>
                     {codeBlock('Rate Limit Headers', `X-RateLimit-Limit: 200
 X-RateLimit-Remaining: 185
 X-RateLimit-Reset: 1704067200`)}
                     <div className="mt-3 space-y-1.5 text-xs">
                       <div className="flex items-start gap-2">
-                        <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Limit</code>
-                        <span className="text-text-tertiary">The maximum number of requests allowed in the current window</span>
+                        <code className="font-mono text-[10px] bg-well/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Limit</code>
+                        <span className="text-ink-tertiary">The maximum number of requests allowed in the current window</span>
                       </div>
                       <div className="flex items-start gap-2">
-                        <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Remaining</code>
-                        <span className="text-text-tertiary">How many requests remain in the current window</span>
+                        <code className="font-mono text-[10px] bg-well/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Remaining</code>
+                        <span className="text-ink-tertiary">How many requests remain in the current window</span>
                       </div>
                       <div className="flex items-start gap-2">
-                        <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Reset</code>
-                        <span className="text-text-tertiary">Unix timestamp when the window resets</span>
+                        <code className="font-mono text-[10px] bg-well/50 px-1.5 py-0.5 rounded shrink-0">X-RateLimit-Reset</code>
+                        <span className="text-ink-tertiary">Unix timestamp when the window resets</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Error Handling */}
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Warning className="w-4 h-4 text-amber-400" />
                       <span className="font-mono text-[11px] text-amber-400 uppercase tracking-wider">Error Handling</span>
                     </div>
-                    <p className="text-xs text-text-tertiary mb-3">
+                    <p className="text-xs text-ink-tertiary mb-3">
                       When a rate limit is exceeded, the API returns HTTP 429 Too Many Requests:
                     </p>
                     {codeBlock('429 Response', `{
@@ -842,10 +842,10 @@ X-RateLimit-Reset: 1704067200`)}
                         <Eye className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                         <div>
                           <p className="font-medium text-amber-400">Best Practice</p>
-                          <p className="text-text-tertiary mt-0.5">
-                            Check the <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1">X-RateLimit-Remaining</code> header
+                          <p className="text-ink-tertiary mt-0.5">
+                            Check the <code className="font-mono text-[10px] bg-well/50 px-1">X-RateLimit-Remaining</code> header
                             on every response. When it drops below 10%, throttle your requests by
-                            waiting for the <code className="font-mono text-[10px] bg-bg-tertiary/50 px-1">X-RateLimit-Reset</code> time.
+                            waiting for the <code className="font-mono text-[10px] bg-well/50 px-1">X-RateLimit-Reset</code> time.
                           </p>
                         </div>
                       </div>
@@ -853,7 +853,7 @@ X-RateLimit-Reset: 1704067200`)}
                   </div>
                 </>
               ) : (
-                <div className="text-center py-6 text-text-tertiary text-sm">
+                <div className="text-center py-6 text-ink-tertiary text-sm">
                   <ShieldCheck className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p>Rate limit tiers available after server connection.</p>
                   <p className="text-xs mt-1">Default limits are shown in the API documentation below.</p>
@@ -869,25 +869,25 @@ X-RateLimit-Reset: 1704067200`)}
                 <Clock className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">Credit Quotas</h3>
-                  <p className="text-xs text-text-tertiary">Monthly credit usage by action</p>
+                  <p className="text-xs text-ink-tertiary">Monthly credit usage by action</p>
                 </div>
               </div>
 
               {usage ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="bg-bg-secondary border border-border rounded-lg p-4">
-                      <p className="font-bold text-text-primary mb-1">Total Credits</p>
+                    <div className="bg-panel border border-seam rounded-lg p-4">
+                      <p className="font-bold text-ink mb-1">Total Credits</p>
                       <p className="text-2xl font-bold text-go">{usage.total_credits}</p>
-                      <p className="text-text-tertiary">/{usage.monthly_limit} credits</p>
+                      <p className="text-ink-tertiary">/{usage.monthly_limit} credits</p>
                     </div>
-                    <div className="bg-bg-secondary border border-border rounded-lg p-4">
-                      <p className="font-bold text-text-primary mb-1">Period</p>
-                      <p className="text-text-tertiary">{new Date(usage.period_start).toLocaleDateString()} - {new Date(usage.period_end).toLocaleDateString()}</p>
+                    <div className="bg-panel border border-seam rounded-lg p-4">
+                      <p className="font-bold text-ink mb-1">Period</p>
+                      <p className="text-ink-tertiary">{new Date(usage.period_start).toLocaleDateString()} - {new Date(usage.period_end).toLocaleDateString()}</p>
                     </div>
                   </div>
 
-                  <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                  <div className="bg-panel border border-seam rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <ArrowRight className="w-4 h-4 text-go" />
                       <span className="font-mono text-[11px] text-go uppercase tracking-wider">Usage by Endpoint</span>
@@ -895,15 +895,15 @@ X-RateLimit-Reset: 1704067200`)}
                     <div className="space-y-2">
                       {Object.entries(usage.endpoint_breakdown || {}).map(([endpoint, count]) => (
                         <div key={endpoint} className="flex items-center justify-between gap-4 text-xs">
-                          <code className="font-mono text-text-primary bg-bg-tertiary/50 px-2 py-0.5 rounded">{endpoint}</code>
-                          <span className="font-mono text-text-tertiary">{String(count)} requests</span>
+                          <code className="font-mono text-ink bg-well/50 px-2 py-0.5 rounded">{endpoint}</code>
+                          <span className="font-mono text-ink-tertiary">{String(count)} requests</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-text-tertiary text-sm">
+                <div className="text-center py-8 text-ink-tertiary text-sm">
                   No usage data available.
                 </div>
               )}
@@ -917,29 +917,29 @@ X-RateLimit-Reset: 1704067200`)}
                 <Code className="w-5 h-5 text-go" weight="fill" />
                 <div>
                   <h3 className="font-display font-bold">API Documentation</h3>
-                  <p className="text-xs text-text-tertiary">Endpoints and usage examples</p>
+                  <p className="text-xs text-ink-tertiary">Endpoints and usage examples</p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                <div className="bg-panel border border-seam rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-mono text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded">POST</span>
-                    <span className="font-mono text-[11px] text-text-primary">/api/v1/analyze</span>
+                    <span className="font-mono text-[11px] text-ink">/api/v1/analyze</span>
                   </div>
-                  <p className="text-xs text-text-tertiary mb-2">Analyze a GitHub repository</p>
+                  <p className="text-xs text-ink-tertiary mb-2">Analyze a GitHub repository</p>
                   {codeBlock('Request', `{
   "repo_url": "https://github.com/owner/repo",
   "branch": "main"
 }`)}
                 </div>
 
-                <div className="bg-bg-secondary border border-border rounded-xl p-4">
+                <div className="bg-panel border border-seam rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-mono text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded">POST</span>
-                    <span className="font-mono text-[11px] text-text-primary">/api/v1/ask</span>
+                    <span className="font-mono text-[11px] text-ink">/api/v1/ask</span>
                   </div>
-                  <p className="text-xs text-text-tertiary mb-2">Ask questions about an indexed repository</p>
+                  <p className="text-xs text-ink-tertiary mb-2">Ask questions about an indexed repository</p>
                   {codeBlock('Request', `{
   "index_id": "abc123",
   "question": "Where is the webhook signature verified?"
@@ -980,28 +980,28 @@ function CatalogModelList({ models, search, copiedId, onCopy }: {
 
   return (
     <>
-      <p className="font-mono text-[9px] text-text-tertiary/60 mb-2">
+      <p className="font-mono text-[9px] text-ink-tertiary/60 mb-2">
         {models.length} models · {freeCount} free · {models.length - freeCount} paid
       </p>
       <div className="max-h-[320px] overflow-y-auto space-y-1.5 pr-1">
         {filtered.length === 0 && (
-          <p className="text-[11px] text-text-tertiary py-3">No models match “{search}”.</p>
+          <p className="text-[11px] text-ink-tertiary py-3">No models match “{search}”.</p>
         )}
         {filtered.map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between gap-3 bg-bg-primary border border-border rounded-lg px-3 py-2 hover:border-go/30 transition-colors"
+            className="flex items-center justify-between gap-3 bg-base border border-seam rounded-lg px-3 py-2 hover:border-go/30 transition-colors"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-text-primary truncate">{m.id}</span>
+                <span className="font-mono text-[11px] text-ink truncate">{m.id}</span>
                 {m.free ? (
                   <span className="font-mono text-[9px] uppercase tracking-wider text-go/80 bg-go/10 border border-go/20 px-1.5 py-0.5 rounded shrink-0">Free</span>
                 ) : (
                   <span className="font-mono text-[9px] uppercase tracking-wider text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0">Paid</span>
                 )}
               </div>
-              <p className="text-[10px] text-text-tertiary/80 truncate mt-0.5">
+              <p className="text-[10px] text-ink-tertiary/80 truncate mt-0.5">
                 {m.name}
                 {m.context_length > 0 && <> · {m.context_length.toLocaleString()} ctx</>}
                 {m.pricing.prompt > 0 && <> · ${m.pricing.prompt}/1M in · ${m.pricing.completion}/1M out</>}
@@ -1009,7 +1009,7 @@ function CatalogModelList({ models, search, copiedId, onCopy }: {
             </div>
             <button
               onClick={() => onCopy(`model-${m.id}`, m.id)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-go hover:bg-go/10 transition-all shrink-0"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-muted hover:text-go hover:bg-go/10 transition-all shrink-0"
               aria-label={`Copy model id ${m.id}`}
               title="Copy model id"
             >
@@ -1071,13 +1071,13 @@ function APIPlaygroundSection() {
           <Play className="w-5 h-5 text-go" weight="fill" />
           <div>
             <h3 className="font-display font-bold">API Playground</h3>
-            <p className="text-xs text-text-tertiary">Test AI agents with an API key or your JWT session</p>
+            <p className="text-xs text-ink-tertiary">Test AI agents with an API key or your JWT session</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Agent</label>
+            <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">Agent</label>
             <div className="flex flex-wrap gap-1.5">
               {agents.map((a) => (
                 <button
@@ -1086,7 +1086,7 @@ function APIPlaygroundSection() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     selectedAgent === a.name
                       ? 'bg-go/15 text-go border border-go/30'
-                      : 'bg-bg-tertiary/50 text-text-tertiary border border-border hover:border-border-hover'
+                      : 'bg-well/50 text-ink-tertiary border border-seam hover:border-seam-strong'
                   }`}
                 >
                   <Robot size={12} className="inline-block mr-1" />
@@ -1095,7 +1095,7 @@ function APIPlaygroundSection() {
               ))}
             </div>
             {agent && (
-              <div className="text-[11px] text-text-tertiary mt-2 space-y-0.5">
+              <div className="text-[11px] text-ink-tertiary mt-2 space-y-0.5">
                 <p>
                   {agent.description} — costs {agent.credit_cost} credit(s)
                 </p>
@@ -1109,16 +1109,16 @@ function APIPlaygroundSection() {
           </div>
 
           <div>
-            <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
-              API Key <span className="text-text-tertiary/30">(optional — uses session if empty)</span>
+            <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
+              API Key <span className="text-ink-tertiary/30">(optional — uses session if empty)</span>
             </label>
-            <div className="flex items-center gap-2 bg-bg-secondary border border-border rounded-lg px-3 py-2">
-              <Key size={12} className="text-text-tertiary/40 shrink-0" />
+            <div className="flex items-center gap-2 bg-panel border border-seam rounded-lg px-3 py-2">
+              <Key size={12} className="text-ink-tertiary/40 shrink-0" />
               <input
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 placeholder="cf_..."
-                className="flex-1 bg-transparent text-[12px] font-mono text-text-primary placeholder:text-text-tertiary/20 outline-none border-none"
+                className="flex-1 bg-transparent text-[12px] font-mono text-ink placeholder:text-ink-tertiary/20 outline-none border-none"
               />
             </div>
           </div>
@@ -1126,11 +1126,11 @@ function APIPlaygroundSection() {
 
         <div className="mt-4">
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[10px] text-text-tertiary/60 uppercase tracking-wider font-medium">
-              Params <span className="text-text-tertiary/30">(JSON)</span>
+            <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium">
+              Params <span className="text-ink-tertiary/30">(JSON)</span>
             </label>
             {agent && (
-              <span className="text-[10px] text-text-tertiary/40">
+              <span className="text-[10px] text-ink-tertiary/40">
                 Required: {agent.required_params.join(', ')}
               </span>
             )}
@@ -1162,11 +1162,11 @@ function APIPlaygroundSection() {
           <div className="mt-4">
             <div className="flex items-center gap-2 mb-2">
               <Terminal size={12} className="text-emerald-400" />
-              <span className="text-[11px] font-medium text-text-primary">
+              <span className="text-[11px] font-medium text-ink">
                 Result — {result.credits_used} credit(s) used ({result.tier} tier)
               </span>
             </div>
-            <pre className="bg-bg-secondary border border-border rounded-xl p-4 font-mono text-[11px] text-text-secondary overflow-x-auto max-h-[400px] overflow-y-auto leading-relaxed">
+            <pre className="bg-panel border border-seam rounded-xl p-4 font-mono text-[11px] text-ink-secondary overflow-x-auto max-h-[400px] overflow-y-auto leading-relaxed">
               {JSON.stringify(result.result, null, 2)}
             </pre>
           </div>

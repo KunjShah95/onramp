@@ -187,7 +187,7 @@ export default function DriftDetectionPage() {
                   disabled={loading || !docs.trim()}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-[3px] bg-go px-5 py-2.5',
-                    'text-[13px] font-semibold text-white shadow-lit transition-all',
+                    'text-[13px] font-semibold text-white shadow-seam transition-all',
                     'hover:bg-go-lit active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed'
                   )}
                 >

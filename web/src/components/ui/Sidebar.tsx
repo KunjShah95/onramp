@@ -3,79 +3,12 @@ import { NavLink } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { prefetchProps } from '../../lib/prefetch'
 import { useAuth } from '../../context/AuthContext'
-import { X } from '@phosphor-icons/react'
-import {
-  House, Compass, ChatCircleDots, GraduationCap,
-  GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
-  BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
-  Star, Key, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
-  Users, CaretLeft, CaretRight, TrendUp,
-} from '@phosphor-icons/react'
+import { X, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { navSections, bottomItems, type NavItem } from '../../lib/nav'
 
 const SIDEBAR_KEY = 'onramp-sidebar-collapsed'
 
-/** Role-based portal pages — the "hub" for each persona. */
-const portalItems = [
-  { to: '/dev-space',      label: 'Dev Space',     Icon: Code,        roles: ['developer', 'tester', 'senior_dev', 'admin', 'ceo', 'cto'] },
-  { to: '/executive',      label: 'Executive',     Icon: ChartBar,    roles: ['admin', 'ceo', 'cto'] },
-  { to: '/senior-space',   label: 'Senior',        Icon: ShieldCheck, roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/onboarding-hub', label: 'Onboarding',    Icon: GraduationCap, roles: ['junior_dev', 'member'] },
-]
-
-/** Daily workspace — things you open every day. */
-const workspaceItems = [
-  { to: '/dashboard',   label: 'Dashboard',   Icon: House,          roles: ['senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/explore',     label: 'Explore',     Icon: Compass,        roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/learn',       label: 'Learn',        Icon: GraduationCap, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/notifications', label: 'Notifications', Icon: Bell,       roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior', 'hr'] },
-]
-
-/** Build — focused coding & delivery tools. */
-const buildItems = [
-  { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['junior_dev', 'member'] },
-  { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-]
-
-/** HR — people & team operations. */
-const hrItems = [
-  { to: '/hr/people',    label: 'People',       Icon: Users,    roles: ['hr'] },
-  { to: '/hr-dashboard', label: 'HR Dashboard', Icon: ChartBar, roles: ['hr'] },
-]
-
-/** Manage — reviews, quality and administration. */
-const manageItems = [
-  { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr'] },
-  { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/developer-portal', label: 'Developer Portal', Icon: Code,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/api-keys',         label: 'API Keys',        Icon: Key,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/admin',            label: 'Admin',           Icon: ShieldCheck, roles: ['admin', 'ceo', 'cto'] },
-  { to: '/admin/feature-flags', label: 'Feature Flags', Icon: Flag,       roles: ['admin', 'ceo', 'cto'] },
-]
-
-/** System links (bottom section). */
-const bottomItems = [
-  { to: '/settings', label: 'Settings', Icon: Gear },
-  { to: '/docs',     label: 'Docs',     Icon: BookOpenText },
-  { to: '/support',  label: 'Support',  Icon: Question },
-]
-
-interface NavItemData {
-  to: string
-  label: string
-  Icon: any
-  roles?: string[]
-}
-
-function NavItem({ to, label, Icon, collapsed }: NavItemData & { collapsed: boolean }) {
+function NavItem({ to, label, Icon, collapsed }: NavItem & { collapsed: boolean }) {
   return (
     <NavLink
       to={to}
@@ -90,20 +23,20 @@ function NavItem({ to, label, Icon, collapsed }: NavItemData & { collapsed: bool
             ? 'justify-center h-9 w-9 mx-auto rounded-btn'
             : 'gap-2.5 px-2.5 py-1.5 w-full rounded-btn',
           isActive
-            ? 'text-text-primary font-medium bg-accent-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
-            : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/40'
+            ? 'text-ink font-medium bg-well'
+            : 'text-ink-muted hover:text-ink-secondary hover:bg-well/50'
         )
       }
     >
       {({ isActive }) => (
         <>
           {isActive && !collapsed && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-accent-from" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-go" />
           )}
           <Icon
             size={17}
             weight={isActive ? 'fill' : 'regular'}
-            className={cn('shrink-0', isActive ? 'text-accent-from' : 'text-text-muted')}
+            className={cn('shrink-0', isActive ? 'text-go' : 'text-ink-muted')}
           />
           {!collapsed && <span className="truncate">{label}</span>}
         </>
@@ -118,7 +51,7 @@ function NavGroup({
   collapsed,
 }: {
   title: string
-  items: NavItemData[]
+  items: NavItem[]
   collapsed: boolean
 }) {
   const { role } = useAuth()
@@ -128,10 +61,10 @@ function NavGroup({
   return (
     <div>
       {collapsed ? (
-        <div className="mx-3.5 my-2 h-px bg-border-subtle" aria-hidden />
+        <div className="mx-3.5 my-2 h-px bg-seam" aria-hidden />
       ) : (
         <div className="px-2.5 pb-1 pt-1">
-          <span className="overline text-text-muted/70">{title}</span>
+          <span className="overline text-ink-muted/70">{title}</span>
         </div>
       )}
       <div className={cn(collapsed ? 'flex flex-col items-center space-y-1' : 'space-y-0.5')}>
@@ -189,7 +122,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
       {/* Mobile backdrop — only below lg, only when the drawer is open */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-ink/50 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -199,8 +132,8 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
       aria-label="Primary navigation"
       className={cn(
         // Desktop: sticky rail. Mobile: fixed off-canvas drawer.
-        'app-sidebar bg-bg-primary border-r border-border/50 flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
-        'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
+        'app-sidebar bg-panel border-r border-seam flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
+        'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-overhead max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
         open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
         'lg:sticky lg:top-0 lg:self-start lg:h-full',
         collapsed ? 'w-[64px]' : 'w-[220px]'
@@ -212,7 +145,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
           type="button"
           onClick={onClose}
           aria-label="Close menu"
-          className="absolute right-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-btn border border-border text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors lg:hidden"
+          className="absolute right-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-btn border border-seam text-ink-muted hover:text-ink hover:bg-well/60 transition-colors lg:hidden"
         >
           <X size={16} />
         </button>
@@ -226,12 +159,11 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
           title={collapsed ? 'Onramp' : undefined}
           aria-label="Onramp home"
         >
-          <div className="relative w-7 h-7 rounded-tile bg-accent-from flex items-center justify-center shadow-lit transition-transform duration-200 group-hover:scale-105">
-            <span className="absolute inset-0 rounded-tile bg-accent-to opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <span className="relative text-[11px] font-bold text-white font-display tracking-tight">OR</span>
+          <div className="w-7 h-7 rounded-tile bg-ink text-panel-raised flex items-center justify-center transition-colors duration-200 group-hover:bg-go">
+            <span className="text-[11px] font-bold font-display tracking-tight">OR</span>
           </div>
           {!collapsed && (
-            <span className="font-display text-sm font-bold text-text-primary tracking-tight uppercase">
+            <span className="font-display text-sm font-bold text-ink tracking-tight uppercase">
               Onramp
             </span>
           )}
@@ -240,15 +172,15 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
 
       {/* Navigation */}
       <div className={cn('flex-1 overflow-y-auto', collapsed ? 'px-1.5 space-y-1' : 'px-2 space-y-5')}>
-        <NavGroup title="Portals" items={portalItems} collapsed={collapsed} />
-        <NavGroup title="Workspace" items={workspaceItems} collapsed={collapsed} />
-        <NavGroup title="Build" items={buildItems} collapsed={collapsed} />
-        <NavGroup title="HR" items={hrItems} collapsed={collapsed} />
-        {showManage && <NavGroup title="Manage" items={manageItems} collapsed={collapsed} />}
+        {navSections
+          .filter((s) => s.title !== 'Manage' || showManage)
+          .map((s) => (
+            <NavGroup key={s.title} title={s.title} items={s.items} collapsed={collapsed} />
+          ))}
       </div>
 
       {/* Bottom section */}
-      <div className={cn('py-3 border-t border-border/40 mt-2', collapsed ? 'px-1.5' : 'px-2')}>
+      <div className={cn('py-3 border-t border-seam mt-2', collapsed ? 'px-1.5' : 'px-2')}>
         <div className={cn(collapsed ? 'flex flex-col items-center space-y-1' : 'space-y-0.5')}>
           {bottomItems.map((item) => (
             <NavItem key={item.to} {...item} collapsed={collapsed} />
@@ -260,15 +192,15 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className={cn(
-              'relative flex items-center rounded-lg text-[13px] transition-all duration-150 text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/40',
+              'relative flex items-center rounded-btn text-[13px] transition-all duration-150 text-ink-muted hover:text-ink-secondary hover:bg-well/50',
               collapsed ? 'justify-center h-9 w-9 mx-auto' : 'gap-2.5 px-2.5 py-1.5 w-full'
             )}
           >
             {collapsed ? (
-              <CaretRight size={17} className="shrink-0 text-text-muted" />
+              <CaretRight size={17} className="shrink-0 text-ink-muted" />
             ) : (
               <>
-                <CaretLeft size={17} className="shrink-0 text-text-muted" />
+                <CaretLeft size={17} className="shrink-0 text-ink-muted" />
                 <span>Collapse</span>
               </>
             )}

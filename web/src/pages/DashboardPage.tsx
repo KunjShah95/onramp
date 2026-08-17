@@ -55,8 +55,8 @@ const container = {
   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
 }
 const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 80, damping: 16 } },
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
 function Panel({ callsign, designator, action, className, children }: {
@@ -148,15 +148,15 @@ export default function DashboardPage() {
   if (error || !dashboard) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-        <div className="max-w-md w-full rounded-card border border-error/25 bg-bg-secondary shadow-card overflow-hidden">
-          <div className="console-rail !bg-error-muted">
-            <span className="callsign text-error">SIGNAL LOST</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-error ml-auto animate-blink" />
+        <div className="max-w-md w-full rounded-card border border-abort/25 bg-panel shadow-seam overflow-hidden">
+          <div className="console-rail !bg-abort/10">
+            <span className="callsign text-abort">SIGNAL LOST</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-abort ml-auto animate-blink" />
           </div>
           <div className="p-6 text-center">
-            <WarningCircle size={28} className="text-error mx-auto mb-4" />
-            <p className="text-error text-body-sm font-code mb-1">{(error as Error)?.message || 'Failed to acquire dashboard telemetry.'}</p>
-            <p className="text-text-muted text-caption font-code mb-5">Confirm the backend is on station.</p>
+            <WarningCircle size={28} className="text-abort mx-auto mb-4" />
+            <p className="text-abort text-body-sm font-code mb-1">{(error as Error)?.message || 'Failed to acquire dashboard telemetry.'}</p>
+            <p className="text-ink-muted text-caption font-code mb-5">Confirm the backend is on station.</p>
             <button onClick={() => window.location.reload()} className="btn-glass">Reacquire</button>
           </div>
         </div>
@@ -207,30 +207,30 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2.5 mb-1.5">
             <span className="designator opacity-50">FLIGHT · CTO CONSOLE</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Mission Control</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">
+          <h1 className="text-display-md md:text-display-lg text-ink">Mission Control</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">
             {total_members} crew · {total_trainees} trainee{total_trainees !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-bg-secondary rounded-btn border border-border p-0.5 gap-0.5">
+          <div className="flex bg-well rounded-btn border border-seam p-0.5 gap-0.5">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
                   'relative px-3 py-1.5 text-caption font-display uppercase tracking-wide rounded-[2px] transition-colors',
-                  activeTab === tab.key ? 'text-[hsl(var(--accent-foreground))]' : 'text-text-muted hover:text-text-primary'
+                  activeTab === tab.key ? 'text-panel-raised' : 'text-ink-muted hover:text-ink'
                 )}
                 style={{ letterSpacing: '0.06em' }}
               >
                 {activeTab === tab.key && (
-                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-accent-from rounded-[2px]" />
+                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-ink rounded-[2px]" />
                 )}
                 <span className="relative z-10 flex items-center gap-1.5">
                   {tab.label}
                   {tab.count !== undefined && tab.count > 0 && (
-                    <span className={cn('font-code text-[11px]', activeTab === tab.key ? 'text-[hsl(var(--accent-foreground))] opacity-80' : 'text-text-muted/70')}>
+                    <span className={cn('font-code text-[11px]', activeTab === tab.key ? 'text-panel-raised opacity-80' : 'text-ink-muted/70')}>
                       {tab.count}
                     </span>
                   )}
@@ -266,7 +266,7 @@ export default function DashboardPage() {
           <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-5">
             <ConsoleCard rail="Active Engineers" designator="CREW">
               <div className="space-y-1">
-                <div className="font-code tabular-nums text-3xl md:text-4xl font-semibold leading-none text-text-primary">{total_members}</div>
+                <div className="font-code tabular-nums text-3xl md:text-4xl font-semibold leading-none text-ink">{total_members}</div>
                 <div className="overline text-ink-muted/60 mt-2">+ {total_trainees} trainee{total_trainees !== 1 ? 's' : ''}</div>
               </div>
             </ConsoleCard>
@@ -283,14 +283,14 @@ export default function DashboardPage() {
 
             <ConsoleCard rail="Last Deploy" designator="SHIP">
               <div className="space-y-1">
-                <div className="font-code tabular-nums text-2xl md:text-3xl font-semibold leading-none text-text-primary">{lastDeploy}</div>
+                <div className="font-code tabular-nums text-2xl md:text-3xl font-semibold leading-none text-ink">{lastDeploy}</div>
                 <div className="overline text-ink-muted/60 mt-2">{completion_rate}% completion</div>
               </div>
             </ConsoleCard>
 
             <ConsoleCard rail="Repo Health" designator="CODE" status={codeHealth !== null && codeHealth >= 70 ? 'go' : codeHealth !== null && codeHealth >= 50 ? 'caution' : 'idle'}>
               <div className="space-y-1">
-                <div className="font-code tabular-nums text-3xl md:text-4xl font-semibold leading-none text-text-primary">
+                <div className="font-code tabular-nums text-3xl md:text-4xl font-semibold leading-none text-ink">
                   {codeHealth !== null ? `${codeHealth}%` : '—'}
                 </div>
                 <div className="overline text-ink-muted/60 mt-2">{total_tasks} tasks total</div>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
               className="lg:col-span-8"
             >
               {activityTrendData.length === 0 ? (
-                <div className="text-center py-8 text-text-muted text-body-sm">No trajectory yet.</div>
+                <div className="text-center py-8 text-ink-muted text-body-sm">No trajectory yet.</div>
               ) : (
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
@@ -339,7 +339,7 @@ export default function DashboardPage() {
               className="lg:col-span-4"
             >
               {total_tasks === 0 ? (
-                <div className="text-center py-6 text-text-muted text-body-sm">No tasks on station.</div>
+                <div className="text-center py-6 text-ink-muted text-body-sm">No tasks on station.</div>
               ) : (
                 <div className="flex items-center gap-4">
                   <div className="w-28 h-28 shrink-0 relative">
@@ -357,9 +357,9 @@ export default function DashboardPage() {
                       <div key={d.name} className="flex items-center justify-between text-caption">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
-                          <span className="text-text-secondary truncate">{d.name}</span>
+                          <span className="text-ink-secondary truncate">{d.name}</span>
                         </div>
-                        <span className="font-code tabular-nums text-text-primary">{d.value}</span>
+                        <span className="font-code tabular-nums text-ink">{d.value}</span>
                       </div>
                     ))}
                   </div>
@@ -385,9 +385,9 @@ export default function DashboardPage() {
           {/* ── Review Rail ────────────────────────────────────────────── */}
           <motion.div variants={item} className="mb-5">
             <Panel callsign="Review Queue" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
-              action={<button onClick={() => navigate('/reviews')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
+              action={<button onClick={() => navigate('/reviews')} className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
               {pending_reviews.length === 0 ? (
-                <div className="text-center py-6 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
+                <div className="text-center py-6 text-ink-muted text-body-sm">Review queue clear. Good velocity.</div>
               ) : (
                 <div className="divide-y divide-seam -mx-5">
                   {pending_reviews.slice(0, 5).map((pr, i) => {
@@ -395,14 +395,14 @@ export default function DashboardPage() {
                     return (
                       <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                         onClick={() => navigate('/reviews')}
-                        className="flex items-start gap-3 px-5 py-3 hover:bg-bg-tertiary/40 cursor-pointer transition-colors">
+                        className="flex items-start gap-3 px-5 py-3 hover:bg-well/60 cursor-pointer transition-colors">
                         <div className="w-1 self-stretch rounded-sm shrink-0" style={{ backgroundColor: priority }} />
                         <div className="flex-1 min-w-0">
-                          <div className="text-body-sm text-text-primary font-medium truncate">{pr.title}</div>
+                          <div className="text-body-sm text-ink font-medium truncate">{pr.title}</div>
                           <div className="flex items-center gap-2 mt-1">
                             <StatusBadge state={pr.state} />
-                            {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
-                            {pr.assigned_to && <span className="text-caption text-text-muted">by {memberName(pr.assigned_to)}</span>}
+                            {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} onClick={(e) => e.stopPropagation()} className="text-caption text-mission hover:text-mission-lit font-code transition-colors">{pr.module}</Link>}
+                            {pr.assigned_to && <span className="text-caption text-ink-muted">by {memberName(pr.assigned_to)}</span>}
                           </div>
                         </div>
                       </motion.div>
@@ -426,28 +426,28 @@ export default function DashboardPage() {
       {activeTab === 'reviews' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Panel callsign="Pending Reviews" designator={pending_reviews.length ? `${pending_reviews.length} HOLDING` : 'CLEAR'}
-            action={<button onClick={() => navigate('/reviews')} className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
+            action={<button onClick={() => navigate('/reviews')} className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
             {pending_reviews.length === 0 ? (
-              <div className="text-center py-8 text-text-muted text-body-sm">Review queue clear. Good velocity.</div>
+              <div className="text-center py-8 text-ink-muted text-body-sm">Review queue clear. Good velocity.</div>
             ) : (
               <div className="space-y-2">
                 {pending_reviews.map((pr, i) => (
                   <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
                     onClick={() => navigate('/reviews')}
-                    className="flex items-start gap-3 p-2.5 rounded-tile bg-bg-tertiary/60 border border-border cursor-pointer hover:border-warning/40 transition-colors">
+                    className="flex items-start gap-3 p-2.5 rounded-tile bg-well/60 border border-seam cursor-pointer hover:border-caution/40 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <div className="text-body-xs text-text-primary font-medium truncate">{pr.title}</div>
+                      <div className="text-body-xs text-ink font-medium truncate">{pr.title}</div>
                       <div className="flex items-center gap-2 mt-1">
                         <StatusBadge state={pr.state} />
-                        {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-info hover:text-info-lit font-code transition-colors">{pr.module}</Link>}
-                        {pr.assigned_to && <span className="text-caption text-text-muted">by {memberName(pr.assigned_to)}</span>}
+                        {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-mission hover:text-mission-lit font-code transition-colors">{pr.module}</Link>}
+                        {pr.assigned_to && <span className="text-caption text-ink-muted">by {memberName(pr.assigned_to)}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {pr.pr_url && (
-                        <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-info hover:text-info-lit hover:underline">View PR →</a>
+                        <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-mission hover:text-mission-lit hover:underline">View PR →</a>
                       )}
-                      <span className="text-caption text-text-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
+                      <span className="text-caption text-ink-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
                     </div>
                   </motion.div>
                 ))}

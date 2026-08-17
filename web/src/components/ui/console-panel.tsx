@@ -3,21 +3,16 @@ import { cn } from '../../lib/utils'
 
 interface ConsolePanelProps {
   children: ReactNode
-  /** Call-sign header (tracked uppercase). Names a real console position. */
   rail?: string
-  /** Mono designator shown next to the call-sign (position code / count). */
   designator?: string
-  /** Status LED colour. `go` also pulses when `live`. */
   status?: 'go' | 'standby' | 'caution' | 'abort' | 'idle'
-  /** Right-aligned control(s) in the rail (e.g. a "view all" link). */
   action?: ReactNode
-  /** Blink the LED to signal a live telemetry feed. */
   live?: boolean
   raised?: boolean
   className?: string
-  /** Body padding preset. `dense` = 12–16px for tables. */
   pad?: 'default' | 'dense' | 'none'
   hoverable?: boolean
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void
 }
 
 const dotMap = {
@@ -35,38 +30,37 @@ const padMap = {
 } as const
 
 /**
- * Console Panel (signature). A seated instrument panel with an optional
- * call-sign rail carrying a position label, mono designator, live LED, and
- * an action slot. Flat by default — lifts only on hover when interactive.
+ * Section panel. Open grouping with an optional header row.
+ * Cards only when the grouping is real; otherwise prefer a ruled heading.
  */
 export default function ConsolePanel({
   children, rail, designator, status, action, live,
-  raised, className, pad = 'default', hoverable,
+  raised, className, pad = 'default', hoverable, onClick,
 }: ConsolePanelProps) {
   const hasRail = rail || designator || status || action
   return (
     <div
+      onClick={onClick}
       className={cn(
-        'rounded-card border border-seam bg-panel shadow-seam overflow-hidden',
+        'rounded-card border border-seam bg-panel overflow-hidden',
         raised && 'bg-panel-raised',
-        (hoverable || raised) && 'transition-[box-shadow,border-color,transform] duration-200',
-        hoverable && 'cursor-pointer hover:shadow-lift hover:border-seam-strong',
+        hoverable && 'cursor-pointer transition-colors hover:border-seam-strong hover:bg-panel-raised',
         className,
       )}
     >
       {hasRail && (
-        <div className="console-rail">
+        <div className="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-seam">
           {status && (
             <span
               className={cn(
                 'w-1.5 h-1.5 rounded-full shrink-0',
                 dotMap[status],
-                live && status === 'go' && 'motion-safe:animate-pulse-glow',
+                live && status === 'go' && 'motion-safe:animate-pulse',
               )}
             />
           )}
-          {rail && <span className="callsign text-ink-secondary">{rail}</span>}
-          {designator && <span className="designator text-ink-secondary">{designator}</span>}
+          {rail && <span className="font-heading text-[13px] font-semibold text-ink">{rail}</span>}
+          {designator && <span className="designator">{designator}</span>}
           {action && <div className="ml-auto flex items-center">{action}</div>}
         </div>
       )}

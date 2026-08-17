@@ -1,20 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Bell,
-  Check,
-  X,
-  GitPullRequest,
-  UserCircle,
-  ShieldCheck,
-  Bug,
-  ChartBar,
-  CheckCircle,
-  WarningCircle,
+  Bell, Check, X, GitPullRequest, UserCircle, ShieldCheck, Bug, ChartBar, CheckCircle, WarningCircle,
 } from '@phosphor-icons/react'
-import { EmptyState } from '../components/ui/empty-state'
-import { NotificationsSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import {
   listNotifications,
@@ -25,11 +13,14 @@ import {
   notificationLink,
 } from '../lib/api'
 import type { OnrampNotification } from '../lib/api'
+import { PageHeader } from '../components/ui/page-header'
+import ConsolePanel from '../components/ui/console-panel'
+import { EmptyState } from '../components/ui/empty-state'
+import { NotificationsSkeleton } from '../components/ui/Skeleton'
 import Pagination from '../components/ui/Pagination'
+import { cn } from '../lib/utils'
 
-// Keyed on the notification `type` values the backend actually emits
-// (task_assigned, task_submitted, quiz_graded, …). Legacy keys like
-// `review`/`pr`/`task` never matched, so every row fell back to the bell icon.
+// Icons keyed on the notification `type` values the backend actually emits.
 const ICON_MAP: Record<string, React.ElementType> = {
   task_assigned: CheckCircle,
   task_started: CheckCircle,
@@ -46,51 +37,6 @@ const ICON_MAP: Record<string, React.ElementType> = {
   milestone_reached: ChartBar,
   quiz_graded: ChartBar,
   dev_stuck: WarningCircle,
-}
-
-const COLOR_MAP: Record<string, string> = {
-  task_assigned: 'text-blue-400',
-  task_started: 'text-go',
-  task_submitted: 'text-purple-400',
-  task_reviewed: 'text-yellow-400',
-  task_approved: 'text-emerald-400',
-  task_needs_changes: 'text-red-400',
-  task_completed: 'text-emerald-400',
-  task_cancelled: 'text-text-tertiary',
-  module_granted: 'text-emerald-400',
-  team_invite: 'text-pink-400',
-  system_alert: 'text-red-400',
-  pr_merged: 'text-cyan-400',
-  milestone_reached: 'text-go',
-  quiz_graded: 'text-amber-400',
-  dev_stuck: 'text-red-400',
-}
-
-const BG_MAP: Record<string, string> = {
-  task_assigned: 'bg-blue-500/10',
-  task_started: 'bg-go/10',
-  task_submitted: 'bg-purple-500/10',
-  task_reviewed: 'bg-yellow-500/10',
-  task_approved: 'bg-emerald-500/10',
-  task_needs_changes: 'bg-red-500/10',
-  task_completed: 'bg-emerald-500/10',
-  task_cancelled: 'bg-bg-tertiary/40',
-  module_granted: 'bg-emerald-500/10',
-  team_invite: 'bg-pink-500/10',
-  system_alert: 'bg-red-500/10',
-  pr_merged: 'bg-cyan-500/10',
-  milestone_reached: 'bg-go/10',
-  quiz_graded: 'bg-amber-500/10',
-  dev_stuck: 'bg-red-500/10',
-}
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
 }
 
 function relativeTime(iso: string): string {
@@ -127,13 +73,10 @@ export default function NotificationsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [filter])
-
+  useEffect(() => { fetchNotifications() }, [filter])
   useEffect(() => { setPage(0) }, [filter])
 
-  // Clamp page when list shrinks (dismiss/clear) so you don't get stranded on an empty page
+  // Clamp page when the list shrinks (dismiss/clear) so we never strand on an empty page.
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(notifications.length / PAGE_SIZE))
     if (page > totalPages - 1) setPage(totalPages - 1)
@@ -143,11 +86,8 @@ export default function NotificationsPage() {
 
   async function markRead(id: string) {
     setNotifications((prev) => prev.map((n) => (n.notification_id === id ? { ...n, read: true } : n)))
-    try {
-      await markNotificationsRead([id])
-    } catch (err: any) {
-      toast.error('Could not mark read', err.message)
-    }
+    try { await markNotificationsRead([id]) }
+    catch (err: any) { toast.error('Could not mark read', err.message) }
   }
 
   async function markAllRead() {
@@ -164,12 +104,8 @@ export default function NotificationsPage() {
   async function dismiss(id: string) {
     const prev = notifications
     setNotifications((cur) => cur.filter((n) => n.notification_id !== id))
-    try {
-      await deleteNotification(id)
-    } catch (err: any) {
-      setNotifications(prev)
-      toast.error('Could not dismiss', err.message)
-    }
+    try { await deleteNotification(id) }
+    catch (err: any) { setNotifications(prev); toast.error('Could not dismiss', err.message) }
   }
 
   async function clearRead() {
@@ -182,166 +118,142 @@ export default function NotificationsPage() {
     }
   }
 
+  const pills = [
+    { label: 'total', value: notifications.length },
+    { label: 'unread', value: unreadCount, color: unreadCount > 0 ? 'text-go' : undefined },
+  ]
+
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-3xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0 relative"
-    >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <Bell size={11} weight="fill" className="mr-1.5" />
-              Notifications
-            </span>
-            <span className="designator opacity-50">EVENT BUS</span>
-            {unreadCount > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                className="px-2 py-0.5 rounded-pill bg-go/15 text-go text-caption font-medium"
-              >
-                {unreadCount} new
-              </motion.span>
-            )}
+    <div className="min-h-[calc(100vh-4rem)]">
+      <div className="max-w-3xl mx-auto px-4 sm:px-0 py-8 sm:py-10 space-y-6">
+        <PageHeader
+          eyebrow="Event Bus"
+          title="Notifications"
+          subtitle="Activity from tasks, reviews, and system signals across your team."
+          pills={pills}
+          actions={
+            <>
+              {unreadCount > 0 && (
+                <button onClick={markAllRead} className="btn btn-secondary">
+                  <Check className="w-4 h-4" weight="bold" />
+                  Mark all read
+                </button>
+              )}
+              {notifications.some((n) => n.read) && (
+                <button onClick={clearRead} className="btn btn-ghost">
+                  <X className="w-4 h-4" weight="bold" />
+                  Clear read
+                </button>
+              )}
+            </>
+          }
+        />
+
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2">
+          {(['all', 'unread'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                'px-3 py-1.5 rounded-sm font-sans text-xs font-semibold tracking-wide uppercase transition-all',
+                filter === f
+                  ? 'bg-well text-ink border border-seam shadow-sm'
+                  : 'text-ink-muted hover:text-ink hover:bg-well/50'
+              )}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="p-4 rounded-md bg-abort/10 border border-abort/30 text-abort text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={fetchNotifications} className="text-xs underline hover:text-abort font-mono">
+              RETRY
+            </button>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Notifications</h1>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {unreadCount > 0 && (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={markAllRead}
-              className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5" weight="bold" />
-              Mark all read
-            </motion.button>
-          )}
-          {notifications.some((n) => n.read) && (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={clearRead}
-              className="btn btn-secondary text-caption px-3 py-1.5 flex items-center gap-1.5"
-            >
-              <X className="w-3.5 h-3.5" weight="bold" />
-              Clear read
-            </motion.button>
-          )}
-        </div>
-      </motion.div>
+        )}
 
-      {/* Filter Tabs */}
-      <motion.div variants={itemVariants} className="flex items-center gap-1 p-1 rounded-xl bg-bg-tertiary/30 w-fit">
-        {(['all', 'unread'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-lg text-caption font-medium transition-all ${
-              filter === f
-                ? 'bg-bg-primary text-text-primary shadow-sm'
-                : 'text-text-tertiary hover:text-text-secondary'
-            }`}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </motion.div>
+        {loading && <NotificationsSkeleton />}
 
-      {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchNotifications} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
-        </motion.div>
-      )}
-
-      {loading && <motion.div variants={itemVariants}><NotificationsSkeleton /></motion.div>}
-
-      {!loading && notifications.length === 0 && (
-        <motion.div variants={itemVariants}>
+        {!loading && notifications.length === 0 && (
           <EmptyState
-            icon={<Bell className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            icon={<Bell className="w-10 h-10 text-ink-muted/40" weight="duotone" />}
             title={filter === 'unread' ? 'No unread notifications' : 'All caught up'}
-            description={filter === 'unread' ? 'You have read everything.' : 'No notifications yet.'}
+            description={filter === 'unread' ? 'You have read all notifications.' : 'No notifications in your event bus.'}
           />
-        </motion.div>
-      )}
+        )}
 
-      {/* List */}
-      {!loading && notifications.length > 0 && (
-        <>
-          <motion.div variants={itemVariants} className="space-y-1">
-            <AnimatePresence mode="popLayout">
-              {notifications.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((notification) => {
-                const Icon = ICON_MAP[notification.type] ?? Bell
-                const key = notification.type ?? 'default'
-                return (
-                  <motion.div
-                    key={notification.notification_id}
-                    layout
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                    className={`group relative flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer hover:bg-bg-tertiary/20 ${
-                      !notification.read ? 'bg-go/[0.03]' : ''
-                    }`}
-                    onClick={() => {
-                      // dev_stuck deep-links by recipient: leaders → the Ramp
-                      // intervention view, the trainee's own nudge → Ask Codebase.
-                      const link = notificationLink(notification)
-                      if (link) navigate(link)
-                      if (!notification.read) markRead(notification.notification_id)
-                    }}
-                  >
-                    {!notification.read && (
-                      <span className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-go" />
-                    )}
-                    <div className={`w-9 h-9 rounded-lg ${BG_MAP[key] ?? 'bg-bg-tertiary/40'} flex items-center justify-center shrink-0`}>
-                      <Icon className={`w-4.5 h-4.5 ${COLOR_MAP[key] ?? 'text-text-tertiary'}`} weight="fill" />
+        {/* List */}
+        {!loading && notifications.length > 0 && (
+          <div className="space-y-3">
+            {notifications.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((notification) => {
+              const Icon = ICON_MAP[notification.type] ?? Bell
+              return (
+                <ConsolePanel
+                  key={notification.notification_id}
+                  rail={notification.type.toUpperCase().replace(/_/g, ' ')}
+                  designator={relativeTime(notification.created_at)}
+                  status={notification.read ? 'idle' : 'go'}
+                  className={cn(
+                    'transition-all cursor-pointer hover:border-seam-strong',
+                    !notification.read && 'border-l-2 border-l-go'
+                  )}
+                  onClick={() => {
+                    const link = notificationLink(notification)
+                    if (link) navigate(link)
+                    if (!notification.read) markRead(notification.notification_id)
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={cn(
+                      'w-8 h-8 rounded-sm flex items-center justify-center shrink-0 mt-0.5',
+                      notification.read ? 'bg-well text-ink-muted' : 'bg-go/10 text-go'
+                    )}>
+                      <Icon className="w-4 h-4" weight="bold" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-body-sm ${!notification.read ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>
+                      <p className={cn('text-sm', !notification.read ? 'font-semibold text-ink' : 'text-ink-secondary')}>
                         {notification.title}
                       </p>
-                      <p className="text-caption text-text-tertiary mt-0.5">{notification.message}</p>
-                      <p className="text-[11px] text-text-tertiary/60 mt-1">{relativeTime(notification.created_at)}</p>
+                      <p className="text-xs text-ink-muted mt-1 leading-relaxed">{notification.message}</p>
+                      <p className="text-[11px] font-mono text-ink-tertiary mt-2">
+                        {new Date(notification.created_at).toLocaleString()}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 shrink-0">
                       {!notification.read && (
                         <button
                           onClick={(e) => { e.stopPropagation(); markRead(notification.notification_id) }}
-                          className="w-7 h-7 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-text-primary"
+                          className="p-1.5 rounded-sm hover:bg-well text-ink-muted hover:text-go transition-colors"
                           title="Mark read"
                         >
-                          <CheckCircle className="w-3.5 h-3.5" />
+                          <Check className="w-4 h-4" />
                         </button>
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); dismiss(notification.notification_id) }}
-                        className="w-7 h-7 rounded-lg bg-bg-tertiary/50 flex items-center justify-center text-text-tertiary hover:text-red-400"
+                        className="p-1.5 rounded-sm hover:bg-well text-ink-muted hover:text-abort transition-colors"
                         title="Dismiss"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          </motion.div>
-          {Math.ceil(notifications.length / PAGE_SIZE) > 1 && (
-            <motion.div variants={itemVariants} className="flex justify-end pt-4">
-              <Pagination page={page} totalPages={Math.ceil(notifications.length / PAGE_SIZE)} onPageChange={setPage} />
-            </motion.div>
-          )}
-        </>
-      )}
-    </motion.div>
+                  </div>
+                </ConsolePanel>
+              )
+            })}
+
+            {Math.ceil(notifications.length / PAGE_SIZE) > 1 && (
+              <div className="flex justify-end pt-4">
+                <Pagination page={page} totalPages={Math.ceil(notifications.length / PAGE_SIZE)} onPageChange={setPage} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

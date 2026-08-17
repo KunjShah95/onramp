@@ -79,10 +79,10 @@ export default function ExecutivePage() {
   }, [mrr, growth])
 
   const readouts: Readout[] = [
-    { label: 'Monthly Revenue', value: mrr, prefix: '$', color: 'text-success', delta: growth },
-    { label: 'Active Teams', value: d?.stats?.active_teams ?? 0, color: 'text-info' },
-    { label: 'Active Users', value: d?.stats?.total_users ?? 0, color: 'text-text-primary' },
-    { label: 'Credits · 24h', value: d?.stats?.api_calls_24h ?? 0, color: 'text-info' },
+    { label: 'Monthly Revenue', value: mrr, prefix: '$', color: 'text-go', delta: growth },
+    { label: 'Active Teams', value: d?.stats?.active_teams ?? 0, color: 'text-mission' },
+    { label: 'Active Users', value: d?.stats?.total_users ?? 0, color: 'text-ink' },
+    { label: 'Credits · 24h', value: d?.stats?.api_calls_24h ?? 0, color: 'text-mission' },
   ]
 
   return (
@@ -94,15 +94,15 @@ export default function ExecutivePage() {
             <span className="tile tile-go">Flight · Executive</span>
             <span className="designator opacity-50">BIG BOARD · ORG</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Executive Console</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">Revenue trajectory · fleet status · treasury.</p>
+          <h1 className="text-display-md md:text-display-lg text-ink">Executive Console</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">Revenue trajectory · fleet status · treasury.</p>
         </div>
       </motion.div>
 
       {error && (
         <motion.div variants={item}>
           <ConsolePanel rail="Signal Lost" designator="ORG" status="abort">
-            <p className="text-error text-body-sm font-code">{error}</p>
+            <p className="text-abort text-body-sm font-code">{error}</p>
           </ConsolePanel>
         </motion.div>
       )}
@@ -128,14 +128,14 @@ export default function ExecutivePage() {
             <motion.div variants={item} className="lg:col-span-3">
               <ConsolePanel rail="Revenue Trajectory" designator="MRR · 6-MO" status="go" live>
                 <div className="flex items-baseline gap-3 mb-3">
-                  <span className="font-code tabular-nums text-3xl md:text-4xl font-semibold text-success leading-none">
+                  <span className="font-code tabular-nums text-3xl md:text-4xl font-semibold text-go leading-none">
                     ${mrr.toLocaleString()}
                   </span>
                   <span className={cn('inline-flex items-center gap-0.5 font-code text-caption tabular-nums', growth >= 0 ? 'text-go' : 'text-abort')}>
                     {growth >= 0 ? <CaretUp size={11} weight="bold" /> : <CaretDown size={11} weight="bold" />}
                     {Math.abs(growth)}% MoM
                   </span>
-                  <span className="text-caption text-text-muted">· {d?.active_subscriptions ?? 0} active subs</span>
+                  <span className="text-caption text-ink-muted">· {d?.active_subscriptions ?? 0} active subs</span>
                 </div>
                 <div className="h-48 bg-plot-grid rounded-tile">
                   <ResponsiveContainer width="100%" height="100%">
@@ -169,19 +169,19 @@ export default function ExecutivePage() {
                       <motion.div key={team.name} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                         className="p-2.5 rounded-tile bg-well border border-seam">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-body-xs font-medium text-text-primary truncate">{team.name}</span>
-                          <span className="text-caption text-text-muted font-code">{team.members} crew</span>
+                          <span className="text-body-xs font-medium text-ink truncate">{team.name}</span>
+                          <span className="text-caption text-ink-muted font-code">{team.members} crew</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+                          <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
                             <motion.div initial={{ width: 0 }} animate={{ width: `${team.completion_rate}%` }} transition={{ duration: 0.7, delay: i * 0.05 }}
                               className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} />
                           </div>
-                          <span className={cn('readout text-caption tabular-nums', team.completion_rate >= 80 ? 'text-success' : team.completion_rate >= 60 ? 'text-info' : 'text-error')}>
+                          <span className={cn('readout text-caption tabular-nums', team.completion_rate >= 80 ? 'text-go' : team.completion_rate >= 60 ? 'text-mission' : 'text-abort')}>
                             {team.completion_rate}%
                           </span>
                         </div>
-                        <div className="mt-1.5 flex items-center gap-1 text-caption text-text-muted">
+                        <div className="mt-1.5 flex items-center gap-1 text-caption text-ink-muted">
                           <TrendUp size={11} weight="bold" /> <span className="font-code">Velocity {team.velocity}x</span>
                         </div>
                       </motion.div>
@@ -210,12 +210,12 @@ export default function ExecutivePage() {
                     return (
                       <div key={t.key} className="flex items-center gap-3">
                         <span className="w-20 shrink-0"><StatusTile status={t.tone} label={t.tier} /></span>
-                        <div className="flex-1 h-2 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+                        <div className="flex-1 h-2 rounded-tile bg-well overflow-hidden border border-seam">
                           <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className={cn('h-full', t.bar)} />
                         </div>
                         <span className="flex items-center gap-1.5 shrink-0">
-                          <span className="readout text-text-primary tabular-nums">{count}</span>
-                          <span className="text-caption text-text-muted">{pct}%</span>
+                          <span className="readout text-ink tabular-nums">{count}</span>
+                          <span className="text-caption text-ink-muted">{pct}%</span>
                         </span>
                       </div>
                     )
@@ -238,11 +238,11 @@ export default function ExecutivePage() {
                           className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
                           <StatusTile status={isDeploy ? 'go' : 'standby'} label={isDeploy ? 'Deploy' : 'Auth'} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-body-xs text-text-primary truncate">
-                              <span className="font-medium">{event.actor}</span> <span className="text-text-muted">{event.action}</span>
+                            <p className="text-body-xs text-ink truncate">
+                              <span className="font-medium">{event.actor}</span> <span className="text-ink-muted">{event.action}</span>
                             </p>
                           </div>
-                          <span className="text-caption text-text-muted readout shrink-0">{event.time}</span>
+                          <span className="text-caption text-ink-muted readout shrink-0">{event.time}</span>
                         </motion.div>
                       )
                     })}
@@ -275,7 +275,7 @@ export default function ExecutivePage() {
           {/* Credential cost tracking — live API key budgets for the C-suite */}
           <motion.div variants={item}>
             <ConsolePanel rail="Credential Cost · Tracking" designator="COST TELEMETRY" status="go">
-              <p className="text-caption text-text-muted mb-4 font-code">
+              <p className="text-caption text-ink-muted mb-4 font-code">
                 API key spend vs. budget — live from the gateway.
               </p>
               <ApiCostTracking />

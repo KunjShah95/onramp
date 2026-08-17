@@ -50,11 +50,11 @@ export default function SupportPage() {
           className="w-full max-w-2xl text-center"
         >
           <motion.div variants={item} className="flex flex-col items-center">
-            <div className="w-14 h-14 rounded-2xl bg-accent-muted border border-accent/20 flex items-center justify-center mb-6">
-              <Lifebuoy className="w-7 h-7 text-accent-from" weight="duotone" />
+            <div className="w-14 h-14 rounded-2xl bg-go/10 border border-go/20 flex items-center justify-center mb-6">
+              <Lifebuoy className="w-7 h-7 text-go" weight="duotone" />
             </div>
-            <h1 className="font-display text-display-md text-text-primary mb-3">How can we help?</h1>
-            <p className="text-body text-text-tertiary max-w-md mx-auto">
+            <h1 className="font-display text-display-md text-ink mb-3">How can we help?</h1>
+            <p className="text-body text-ink-tertiary max-w-md mx-auto">
               Pick a channel below — we usually respond within one business day.
             </p>
           </motion.div>
@@ -64,19 +64,19 @@ export default function SupportPage() {
               const isExternal = href.startsWith('http') || href.startsWith('mailto')
               const card = (
                 <>
-                  <div className="w-9 h-9 rounded-xl bg-accent-muted flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 text-accent-from" weight="fill" />
+                  <div className="w-9 h-9 rounded-xl bg-go/10 flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5 text-go" weight="fill" />
                   </div>
-                  <h2 className="font-display text-body-sm font-bold text-text-primary">{title}</h2>
-                  <p className="text-caption text-text-tertiary mt-1.5 flex-1 leading-relaxed">{description}</p>
-                  <span className="inline-flex items-center gap-1 text-caption font-semibold text-accent-from mt-4 group-hover:underline underline-offset-4">
+                  <h2 className="font-display text-body-sm font-bold text-ink">{title}</h2>
+                  <p className="text-caption text-ink-tertiary mt-1.5 flex-1 leading-relaxed">{description}</p>
+                  <span className="inline-flex items-center gap-1 text-caption font-semibold text-go mt-4 group-hover:underline underline-offset-4">
                     {cta}
                     <ArrowUpRight size={13} weight="bold" />
                   </span>
                 </>
               )
               const cls =
-                'group rounded-2xl border border-border bg-bg-secondary hover:border-accent/40 hover:bg-bg-tertiary/50 transition-colors p-5 text-left flex flex-col'
+                'group rounded-2xl border border-seam bg-panel hover:border-go/40 hover:bg-well/50 transition-colors p-5 text-left flex flex-col'
               return isExternal ? (
                 <a key={title} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className={cls}>
                   {card}
@@ -90,13 +90,13 @@ export default function SupportPage() {
           </motion.div>
 
           <motion.div variants={item} className="mt-10">
-            <p className="text-caption text-text-tertiary">
+            <p className="text-caption text-ink-tertiary">
               Something urgent?{' '}
-              <Link to="/docs" className="text-accent-from font-semibold hover:underline underline-offset-4">
+              <Link to="/docs" className="text-go font-semibold hover:underline underline-offset-4">
                 Check the docs first
               </Link>
               {' '}— or head back to your{' '}
-              <Link to="/dashboard" className="text-accent-from font-semibold hover:underline underline-offset-4">
+              <Link to="/dashboard" className="text-go font-semibold hover:underline underline-offset-4">
                 dashboard
               </Link>.
             </p>

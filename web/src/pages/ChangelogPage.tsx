@@ -81,12 +81,12 @@ const entries = [
 ]
 
 const tagStyles: Record<string, string> = {
-    major:       'bg-accent-muted text-foreground border-accent/25',
+    major:       'bg-go/10 text-foreground border-go/25',
   // Hardcoded light-theme hex values fail contrast on the dark landing
   // surface — use the semantic info/success tokens so badges adapt per theme.
-  feature:     'bg-info/10 text-info border-info/25',
-  improvement: 'bg-info/10 text-info border-info/25',
-  fix:         'bg-success/10 text-success border-success/25',
+  feature:     'bg-mission/10 text-mission border-mission/25',
+  improvement: 'bg-mission/10 text-mission border-mission/25',
+  fix:         'bg-go/10 text-go border-go/25',
 }
 
 const tagIcons: Record<string, string> = {

@@ -120,11 +120,11 @@ export default function AdminCreateAccount() {
           <span className="tile tile-go">Provisioning</span>
           <span className="designator opacity-50">CAPCOM · ACCOUNT</span>
         </div>
-        <h1 className="text-display-md md:text-display-lg text-text-primary flex items-center gap-3">
+        <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
           <UserPlus size={26} weight="fill" className="text-go shrink-0" />
           Create Developer Account
         </h1>
-        <p className="text-body-sm text-text-secondary mt-1 font-code">
+        <p className="text-body-sm text-ink-secondary mt-1 font-code">
           Provision a new developer account with a temporary password.
         </p>
       </motion.div>

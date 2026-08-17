@@ -5,6 +5,7 @@ import { cn } from '../lib/utils'
 import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import StatusTile from '../components/ui/status-tile'
+import { Modal } from '../components/ui/modal'
 import {
   Rocket, Target, Users, Fire, Lightbulb,
   Handshake, Code, TrendUp, X, ListChecks,
@@ -15,11 +16,11 @@ import {
 const CATEGORY_CONFIG: Record<string, { label: string; hue: string; icon: any }> = {
   // Mission Control: category identity is carried by the label + mono designator,
   // never by decorative color. Every chip seats on the neutral room surface.
-  technical: { label: 'Technical', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Code },
-  cultural: { label: 'Cultural', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Handshake },
-  process: { label: 'Process', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: ListChecks },
-  product: { label: 'Product', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Lightbulb },
-  social: { label: 'Social', hue: 'bg-bg-tertiary text-text-tertiary border-seam', icon: Users },
+  technical: { label: 'Technical', hue: 'bg-well text-ink-tertiary border-seam', icon: Code },
+  cultural: { label: 'Cultural', hue: 'bg-well text-ink-tertiary border-seam', icon: Handshake },
+  process: { label: 'Process', hue: 'bg-well text-ink-tertiary border-seam', icon: ListChecks },
+  product: { label: 'Product', hue: 'bg-well text-ink-tertiary border-seam', icon: Lightbulb },
+  social: { label: 'Social', hue: 'bg-well text-ink-tertiary border-seam', icon: Users },
 }
 
 const SENTIMENT = [
@@ -35,11 +36,11 @@ const ASSIGNEE: Record<string, string> = {
 }
 
 const ASSIGNEE_COLORS: Record<string, string> = {
-  developer: 'text-text-tertiary border-seam bg-bg-tertiary',
-  hr: 'text-text-tertiary border-seam bg-bg-tertiary',
-  it: 'text-text-tertiary border-seam bg-bg-tertiary',
-  manager: 'text-text-tertiary border-seam bg-bg-tertiary',
-  buddy: 'text-text-tertiary border-seam bg-bg-tertiary',
+  developer: 'text-ink-tertiary border-seam bg-well',
+  hr: 'text-ink-tertiary border-seam bg-well',
+  it: 'text-ink-tertiary border-seam bg-well',
+  manager: 'text-ink-tertiary border-seam bg-well',
+  buddy: 'text-ink-tertiary border-seam bg-well',
 }
 
 function ProgressRing({ pct, size = 88 }: { pct: number; size?: number }) {
@@ -75,8 +76,8 @@ function ProgressRing({ pct, size = 88 }: { pct: number; size?: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-display-sm font-bold text-text-primary tabular-nums leading-none">{display}</span>
-        <span className="text-[8px] text-text-muted/40 tracking-widest uppercase mt-0.5">pct</span>
+        <span className="font-display text-display-sm font-bold text-ink tabular-nums leading-none">{display}</span>
+        <span className="text-[8px] text-ink-muted/40 tracking-widest uppercase mt-0.5">pct</span>
       </div>
     </div>
   )
@@ -99,91 +100,64 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
   })
 
   const avg = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / 4)
-  const avgColor = avg >= 7 ? 'text-emerald-400' : avg >= 4 ? 'text-amber-400' : 'text-red-400'
+  const avgColor = avg >= 7 ? 'text-go' : avg >= 4 ? 'text-caution' : 'text-abort'
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 24 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg mx-4 rounded-2xl border border-border bg-bg-secondary shadow-elevated-lg overflow-hidden"
-      >
-        <div className="relative p-6 pb-0">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-md bg-bg-tertiary border border-border flex items-center justify-center">
-                <Waveform size={18} className="text-amber-400" weight="fill" />
-              </div>
-              <div>
-                <h2 className="text-body font-bold text-text-primary">Weekly Pulse</h2>
-                <p className="text-caption text-text-muted/50">How's the onboarding feeling?</p>
-              </div>
-            </div>
-            <button onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border flex items-center justify-center text-text-muted hover:text-text-primary transition-all">
-              <X size={14} />
-            </button>
+    <Modal open onClose={onClose} title="Weekly Pulse" maxWidth="max-w-lg">
+      <div className="space-y-5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-tile bg-well border border-seam flex items-center justify-center text-mission">
+            <Waveform size={18} weight="fill" />
           </div>
+          <p className="text-caption text-ink-muted">How's the onboarding feeling?</p>
+        </div>
 
-          <div className="flex items-center justify-between mb-6 p-3 rounded-xl bg-bg-tertiary/60 border border-border">
-            <span className="text-body-xs text-text-muted/60">Week</span>
-            <div className="flex gap-1">
-              {[1,2,4,6,8,12].map(w => (
-                <button key={w} onClick={() => setWeek(w)}
-                  className={cn('px-3 py-1.5 rounded-md text-caption font-code transition-all',
-                    week === w ? 'bg-bg-tertiary text-text-primary border border-seam-strong' : 'text-text-muted/40 hover:text-text-muted')}>
-                  {w}
-                </button>
-              ))}
-            </div>
+        <div className="flex items-center justify-between gap-3 p-3 rounded-card bg-well/70 border border-seam">
+          <span className="text-caption text-ink-muted">Week</span>
+          <div className="flex gap-1">
+            {[1,2,4,6,8,12].map(w => (
+              <button key={w} onClick={() => setWeek(w)}
+                className={cn('px-3 py-1.5 rounded-md text-caption font-code tabular-nums transition-all',
+                  week === w ? 'bg-panel text-ink border border-seam-strong' : 'text-ink-muted/40 hover:text-ink-muted')}>
+                {w}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="px-6 space-y-4">
+        <div className="space-y-4">
           {(['confidence', 'clarity', 'support', 'workload'] as const).map((key) => (
             <div key={key}>
               <div className="flex justify-between text-caption mb-1.5">
-                <span className="text-text-muted/60 capitalize">{key}</span>
+                <span className="text-ink-muted capitalize">{key}</span>
                 <span className={cn('font-code text-sm tabular-nums', avgColor)}>{scores[key]}/10</span>
               </div>
-              <div className="relative h-1.5 rounded bg-bg-tertiary overflow-hidden">
-                <motion.div
-                  className={cn('h-full rounded', key === 'workload' ? 'bg-caution' : 'bg-mission')}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${scores[key] * 10}%` }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
+              <div className="relative h-1.5 rounded-sm bg-well overflow-hidden">
+                <div
+                  className={cn('h-full rounded-sm', key === 'workload' ? 'bg-caution' : 'bg-mission')}
+                  style={{ width: `${scores[key] * 10}%` }}
                 />
               </div>
               <input type="range" min={1} max={10} value={scores[key]}
                 onChange={(e) => setScores(s => ({ ...s, [key]: Number(e.target.value) }))}
                 className="w-full mt-1 opacity-0 absolute top-0 left-0 h-8 cursor-pointer"
               />
-              <div className="flex justify-between text-[9px] text-text-muted/20 px-0.5 -mt-0.5">
+              <div className="flex justify-between text-[9px] text-ink-muted/40 px-0.5 -mt-0.5">
                 <span>1</span><span>5</span><span>10</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="px-6 pt-5">
-          <label className="text-caption text-text-muted/60 mb-2 block">Mood</label>
+        <div>
+          <label className="text-caption text-ink-muted mb-2 block">Mood</label>
           <div className="flex gap-2">
             {SENTIMENT.map(s => (
               <button key={s.value} onClick={() => setSentiment(s.value)}
                 className={cn('flex-1 py-2.5 rounded-md border text-center transition-all',
                   sentiment === s.value
-                    ? 'bg-bg-tertiary border-seam-strong text-text-primary'
-                    : 'border-border text-text-muted/30 hover:text-text-muted/60 bg-bg-tertiary/40')}>
+                    ? 'bg-well border-seam-strong text-ink'
+                    : 'border-seam text-ink-muted/30 hover:text-ink-muted/60 bg-well/40')}>
                 <s.icon size={16} className="mx-auto mb-0.5" weight={sentiment === s.value ? 'fill' : 'regular'} />
                 <span className="text-[9px] block font-medium">{s.label}</span>
               </button>
@@ -191,23 +165,21 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
           </div>
         </div>
 
-        <div className="px-6 pt-4 pb-6">
+        <div>
           <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)}
             placeholder="Anything on your mind? Blockers, wins, questions..."
-            className="w-full bg-bg-tertiary border border-border rounded-md px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/30 transition-all"
+            className="w-full bg-base border border-seam-strong rounded-sm px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] transition-all"
           />
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="pt-1">
           <button onClick={() => pulseMutation.mutate()} disabled={pulseMutation.isPending}
             className="btn btn-primary w-full py-3 text-sm font-semibold disabled:opacity-50">
-            {pulseMutation.isPending ? (
-              <span className="flex items-center justify-center gap-2"><span className="loader w-4 h-4" /> Submitting...</span>
-            ) : 'Submit Pulse'}
+            {pulseMutation.isPending ? 'Submitting…' : 'Submit Pulse'}
           </button>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </Modal>
   )
 }
 
@@ -221,35 +193,30 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
   })
 
   return (
-    <motion.div variants={item} className="relative">
+    <div className="relative">
       <div className="sticky top-20 z-10 mb-4">
         <div className="flex items-center gap-3 mb-1">
-          <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center border', hue)}>
+          <div className={cn('w-9 h-9 rounded-tile flex items-center justify-center border', hue)}>
             <Icon size={16} weight="fill" />
           </div>
           <div>
-            <div className="text-body-sm font-bold text-text-primary">{label}</div>
-            <div className="text-caption text-text-muted/40 tabular-nums">{done}/{data.length} complete</div>
+            <div className="text-body-sm font-bold text-ink">{label}</div>
+            <div className="text-caption text-ink-muted/60 font-code tabular-nums">{done}/{data.length} complete</div>
           </div>
         </div>
       </div>
 
-      <div className="relative ml-[18px] pl-6 border-l border-border/40">
+      <div className="relative ml-[18px] pl-6 border-l border-seam">
         {data.length === 0 ? (
-          <p className="text-caption text-text-muted/20 italic py-3">No milestones yet</p>
+          <p className="text-caption text-ink-muted/40 italic py-3">No milestones yet</p>
         ) : (
           <div className="space-y-0">
-            {data.map((m, i) => {
+            {data.map((m) => {
               const cat = CATEGORY_CONFIG[m.category] || CATEGORY_CONFIG.technical
               const CatIcon = cat.icon
               return (
-                <motion.div
+                <div
                   key={m.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  whileHover={{ y: -2 }}
-                  viewport={{ once: true, margin: '-40px' }}
-                  transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className={cn(
                     'relative group pb-3',
                     m.is_completed ? 'opacity-50' : ''
@@ -259,45 +226,45 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
                     'absolute -left-[25px] top-2.5 w-2 h-2 rounded-[2px] border transition-all',
                     m.is_completed
                       ? 'bg-go border-go'
-                      : 'bg-bg-tertiary border-border group-hover:border-emerald-500/40'
+                      : 'bg-well border-seam group-hover:border-go/40'
                   )} />
                   <div className={cn(
-                    'p-3 rounded-xl border transition-all',
+                    'p-3 rounded-card border transition-all',
                     m.is_completed
-                      ? 'bg-bg-tertiary/30 border-border'
-                      : 'bg-bg-secondary border-border group-hover:border-border-hover'
+                      ? 'bg-well/40 border-seam'
+                      : 'bg-panel border-seam group-hover:border-seam-strong'
                   )}>
                     <div className="flex items-start gap-2.5">
                       <button onClick={() => !m.is_completed && completeMutation.mutate(m.id)}
                         disabled={m.is_completed}
                         className={cn(
-                          'w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 transition-all',
+                          'w-5 h-5 rounded-sm flex items-center justify-center shrink-0 mt-0.5 transition-all',
                           m.is_completed
                             ? 'bg-go text-[var(--panel-raised)]'
-                            : 'bg-bg-tertiary border border-border text-text-muted/20 hover:border-emerald-500/40 hover:text-emerald-500'
+                            : 'bg-well border border-seam text-ink-muted/40 hover:border-go/50 hover:text-go'
                         )}>
                         {m.is_completed ? <Check size={10} weight="bold" /> : <Circle size={10} />}
                       </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <CatIcon size={10} className="text-text-muted/40" />
-                          <span className={cn('text-body-xs', m.is_completed ? 'text-text-muted/50 line-through' : 'text-text-primary')}>
+                          <CatIcon size={10} className="text-ink-muted/40" />
+                          <span className={cn('text-body-xs', m.is_completed ? 'text-ink-muted/50 line-through' : 'text-ink')}>
                             {m.title}
                           </span>
                         </div>
                         {m.description && (
-                          <p className="text-caption text-text-muted/30 leading-relaxed">{m.description}</p>
+                          <p className="text-caption text-ink-muted/50 leading-relaxed">{m.description}</p>
                         )}
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -369,8 +336,8 @@ export default function OnboardingPlanPage() {
                 {planToShow ? (
                   <ProgressRing pct={progressPct} />
                 ) : (
-                  <div className="w-[88px] h-[88px] rounded-full bg-bg-tertiary border border-border flex items-center justify-center">
-                    <Target size={32} className="text-text-muted/30" />
+                  <div className="w-[88px] h-[88px] rounded-full bg-well border border-seam flex items-center justify-center">
+                    <Target size={32} className="text-ink-muted/30" />
                   </div>
                 )}
               </div>
@@ -379,8 +346,8 @@ export default function OnboardingPlanPage() {
                   <span className="tile tile-go">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</span>
                   <span className="designator opacity-50">ONBOARDING JOURNEY</span>
                 </div>
-                <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</h1>
-                <p className="text-body-sm text-text-secondary font-code">
+                <h1 className="text-display-md md:text-display-lg text-ink mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</h1>
+                <p className="text-body-sm text-ink-secondary font-code">
                   {planToShow
                     ? `${allDone}/${allTotal} milestones · Pre-boarding ${preDone}/${preBoard.length}`
                     : 'Create a 30-60-90 day plan to track your onboarding'}
@@ -390,7 +357,7 @@ export default function OnboardingPlanPage() {
             <div className="flex items-center gap-3">
               {planToShow ? (
                 <button onClick={() => setShowPulse(true)}
-                  className="group flex items-center gap-2.5 bg-bg-tertiary hover:bg-bg-elevated border border-border px-4 py-2.5 rounded-md text-body-xs font-medium text-text-primary transition-all">
+                  className="group flex items-center gap-2.5 bg-well hover:bg-panel-raised border border-seam px-4 py-2.5 rounded-md text-body-xs font-medium text-ink transition-all">
                   <span aria-hidden="true" className="w-2 h-2 rounded-[2px] bg-go" />
                   Pulse Check
                 </button>
@@ -420,7 +387,7 @@ export default function OnboardingPlanPage() {
                 transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
               />
             </div>
-            <span className="readout text-[10px] text-text-muted/60 tabular-nums uppercase tracking-wider shrink-0">
+            <span className="readout text-[10px] text-ink-muted/60 tabular-nums uppercase tracking-wider shrink-0">
               OVERALL · {progressPct}%
             </span>
           </motion.div>
@@ -430,11 +397,11 @@ export default function OnboardingPlanPage() {
           <motion.div variants={item}>
             <div className="rounded-card border border-seam bg-panel p-12 flex items-center justify-center min-h-[400px]">
               <div className="text-center max-w-sm">
-                <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-5">
-                  <Compass size={30} className="text-text-muted/20" />
+                <div className="w-16 h-16 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-5">
+                  <Compass size={30} className="text-ink-muted/20" />
                 </div>
-                <p className="text-text-muted/40 text-body-sm mb-1 font-medium">No plan yet</p>
-                <p className="text-caption text-text-muted/20 mb-6">Set up a personalized 30-60-90 day plan with milestones, pre-boarding tasks, and weekly pulse checks.</p>
+                <p className="text-ink-muted/40 text-body-sm mb-1 font-medium">No plan yet</p>
+                <p className="text-caption text-ink-muted/20 mb-6">Set up a personalized 30-60-90 day plan with milestones, pre-boarding tasks, and weekly pulse checks.</p>
                 <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}
                   className="btn flex items-center gap-2 mx-auto">
                   <Flag size={14} />
@@ -448,21 +415,21 @@ export default function OnboardingPlanPage() {
             {/* Pulse trend bar */}
             {pulses.length > 0 && (
               <motion.div variants={item} className="mb-8">
-                <div className="relative overflow-hidden rounded-md border border-border bg-bg-secondary shadow-card p-5">
+                <div className="relative overflow-hidden rounded-md border border-seam bg-panel shadow-seam p-5">
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-4">
-                      <Fire size={14} className="text-text-tertiary" weight="fill" />
-                      <span className="text-body-xs font-semibold text-text-primary">Wellness Trend</span>
-                      <span className="text-caption text-text-muted/30 tabular-nums readout">{pulses.length} check-ins</span>
+                      <Fire size={14} className="text-ink-tertiary" weight="fill" />
+                      <span className="text-body-xs font-semibold text-ink">Wellness Trend</span>
+                      <span className="text-caption text-ink-muted/30 tabular-nums readout">{pulses.length} check-ins</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {([
-                        { label: 'Confidence', val: trends.confidence_avg, color: 'text-text-primary' },
-                        { label: 'Clarity', val: trends.clarity_avg, color: 'text-text-primary' },
-                        { label: 'Support', val: trends.support_avg, color: 'text-text-primary' },
-                        { label: 'Workload', val: trends.workload_avg, color: 'text-text-primary' },
+                        { label: 'Confidence', val: trends.confidence_avg, color: 'text-ink' },
+                        { label: 'Clarity', val: trends.clarity_avg, color: 'text-ink' },
+                        { label: 'Support', val: trends.support_avg, color: 'text-ink' },
+                        { label: 'Workload', val: trends.workload_avg, color: 'text-ink' },
                       ] as const).map(t => (
-                        <div key={t.label} className="text-center p-2.5 rounded-md bg-bg-tertiary/40 border border-border/40">
+                        <div key={t.label} className="text-center p-2.5 rounded-md bg-well/40 border border-seam/40">
                           <motion.div
                             className={cn('font-code text-display-sm font-bold tabular-nums', t.color)}
                             initial={{ opacity: 0, y: 8 }}
@@ -471,7 +438,7 @@ export default function OnboardingPlanPage() {
                           >
                             {t.val !== null && t.val !== undefined ? Number(t.val).toFixed(1) : '—'}
                           </motion.div>
-                          <div className="text-overline text-text-muted/40">{t.label}</div>
+                          <div className="text-overline text-ink-muted/40">{t.label}</div>
                         </div>
                       ))}
                     </div>
@@ -484,9 +451,9 @@ export default function OnboardingPlanPage() {
             {preBoard.length > 0 && (
               <motion.div variants={item} className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <ListChecks size={14} className="text-text-tertiary" />
-                  <h2 className="text-body-sm font-bold text-text-primary">Pre-Boarding</h2>
-                  <span className="text-caption text-text-muted/30 tabular-nums">{preDone}/{preBoard.length}</span>
+                  <ListChecks size={14} className="text-ink-tertiary" />
+                  <h2 className="text-body-sm font-bold text-ink">Pre-Boarding</h2>
+                  <span className="text-caption text-ink-muted/30 tabular-nums">{preDone}/{preBoard.length}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                   {preBoard.map((t: any) => {
@@ -497,16 +464,16 @@ export default function OnboardingPlanPage() {
                         whileHover={{ y: -2 }}
                         className={cn(
                           'p-3 rounded-xl border transition-all',
-                          done ? 'bg-bg-tertiary/30 border-border/30' : 'bg-bg-secondary border-border hover:border-border-hover'
+                          done ? 'bg-well/30 border-seam/30' : 'bg-panel border-seam hover:border-seam-strong'
                         )}
                       >
                         <div className={cn(
                           'text-[10px] font-code px-1.5 py-0.5 rounded-md border inline-block mb-2',
-                          ASSIGNEE_COLORS[t.assignee] || 'text-text-muted/40 border-border bg-bg-tertiary'
+                          ASSIGNEE_COLORS[t.assignee] || 'text-ink-muted/40 border-seam bg-well'
                         )}>
                           {ASSIGNEE[t.assignee] || t.assignee}
                         </div>
-                        <p className={cn('text-body-xs leading-relaxed', done ? 'text-text-muted/40 line-through' : 'text-text-primary')}>
+                        <p className={cn('text-body-xs leading-relaxed', done ? 'text-ink-muted/40 line-through' : 'text-ink')}>
                           {t.title}
                         </p>
                       </motion.div>
@@ -520,9 +487,9 @@ export default function OnboardingPlanPage() {
             {roadmap && roadmap.milestones.length > 0 && (
               <motion.div variants={item} className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
-                  <ListChecks size={14} className="text-text-tertiary" />
-                  <h2 className="text-body-sm font-bold text-text-primary">Roadmap</h2>
-                  <span className="text-caption text-text-muted/30 tabular-nums">
+                  <ListChecks size={14} className="text-ink-tertiary" />
+                  <h2 className="text-body-sm font-bold text-ink">Roadmap</h2>
+                  <span className="text-caption text-ink-muted/30 tabular-nums">
                     {roadmap.milestones.filter((m) => m.is_completed).length}/{roadmap.milestones.length} · statuses from milestone dependencies
                   </span>
                 </div>
@@ -539,19 +506,19 @@ export default function OnboardingPlanPage() {
                           transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                           className={cn(
                             'w-44 p-3 rounded-md border transition-all',
-                            m.status === 'completed' && 'bg-bg-tertiary/30 border-border',
-                            m.status === 'in_progress' && 'bg-bg-secondary border-go',
-                            m.status === 'available' && 'bg-bg-secondary border-border hover:border-border-hover',
-                            m.status === 'locked' && 'bg-bg-tertiary/40 border-border/50 opacity-50'
+                            m.status === 'completed' && 'bg-well/30 border-seam',
+                            m.status === 'in_progress' && 'bg-panel border-go',
+                            m.status === 'available' && 'bg-panel border-seam hover:border-seam-strong',
+                            m.status === 'locked' && 'bg-well/40 border-seam/50 opacity-50'
                           )}
                         >
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <cat.icon size={10} className="text-text-muted/40" />
+                            <cat.icon size={10} className="text-ink-muted/40" />
                             <span className="text-overline font-semibold uppercase tracking-widest">
                               Day {m.day_target ?? '—'}
                             </span>
                           </div>
-                          <p className={cn('text-body-xs leading-snug mb-2', m.is_completed ? 'line-through text-text-muted/50' : 'text-text-primary')}>
+                          <p className={cn('text-body-xs leading-snug mb-2', m.is_completed ? 'line-through text-ink-muted/50' : 'text-ink')}>
                             {m.title}
                           </p>
                           <div className={cn(
@@ -565,13 +532,13 @@ export default function OnboardingPlanPage() {
                             />
                           </div>
                           {m.depends_on.length > 0 && (
-                            <div className="mt-2 text-[9px] text-text-muted/30 font-code truncate">
+                            <div className="mt-2 text-[9px] text-ink-muted/30 font-code truncate">
                               needs {m.depends_on.length} prior
                             </div>
                           )}
                         </motion.div>
                         {i < roadmap.milestones.length - 1 && (
-                          <div className="hidden sm:flex items-center text-text-muted/20">
+                          <div className="hidden sm:flex items-center text-ink-muted/20">
                             <CaretDoubleDown size={10} className="rotate-[-90deg]" />
                           </div>
                         )}
@@ -586,13 +553,13 @@ export default function OnboardingPlanPage() {
             <motion.div variants={item}>
               <div className="relative flex items-center gap-2 mb-6">
                 <div className="flex-1 h-px bg-border" />
-                <CaretDoubleDown size={14} className="text-text-muted/40" />
-                <span className="text-overline text-text-muted/60">Milestone Plan</span>
+                <CaretDoubleDown size={14} className="text-ink-muted/40" />
+                <span className="text-overline text-ink-muted/60">Milestone Plan</span>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <PhaseColumn label="30 Days — Foundation" data={milestones30} icon={Compass} hue="text-text-secondary border-border bg-bg-tertiary" />
-                <PhaseColumn label="60 Days — Growth" data={milestones60} icon={Target} hue="text-text-secondary border-border bg-bg-tertiary" />
-                <PhaseColumn label="90 Days — Flight" data={milestones90} icon={Rocket} hue="text-text-secondary border-border bg-bg-tertiary" />
+                <PhaseColumn label="30 Days — Foundation" data={milestones30} icon={Compass} hue="text-ink-secondary border-seam bg-well" />
+                <PhaseColumn label="60 Days — Growth" data={milestones60} icon={Target} hue="text-ink-secondary border-seam bg-well" />
+                <PhaseColumn label="90 Days — Flight" data={milestones90} icon={Rocket} hue="text-ink-secondary border-seam bg-well" />
               </div>
             </motion.div>
           </>

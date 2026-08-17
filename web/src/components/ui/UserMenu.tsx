@@ -93,23 +93,23 @@ export default function UserMenu() {
         aria-label="Account menu"
         className={cn(
           'flex items-center rounded-lg transition-colors duration-150',
-          open ? 'bg-bg-tertiary/50' : 'hover:bg-bg-tertiary/40'
+          open ? 'bg-well/50' : 'hover:bg-well/40'
         )}
       >
         <span className="flex items-center gap-2">
           {user?.photoURL ? (
             <img src={user.photoURL} alt="" className="w-7 h-7 rounded-lg object-cover" />
           ) : (
-            <span className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
-              <span className="text-caption font-semibold text-accent-from">{initial}</span>
+            <span className="w-7 h-7 rounded-lg bg-go/10 flex items-center justify-center">
+              <span className="text-caption font-semibold text-go">{initial}</span>
             </span>
           )}
           <span className="hidden sm:flex items-center gap-1.5 pr-1.5">
-            <span className="text-body-xs text-text-muted max-w-[140px] truncate">{name}</span>
+            <span className="text-body-xs text-ink-muted max-w-[140px] truncate">{name}</span>
             <CaretDown
               size={11}
               weight="bold"
-              className={cn('text-text-muted transition-transform duration-150', open && 'rotate-180')}
+              className={cn('text-ink-muted transition-transform duration-150', open && 'rotate-180')}
             />
           </span>
         </span>
@@ -123,12 +123,12 @@ export default function UserMenu() {
           role="menu"
           aria-label="Account menu"
           onKeyDown={handleMenuKeyDown}
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-xl border border-border bg-bg-primary shadow-overhead animate-fade-in origin-top-right"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-xl border border-seam bg-base shadow-overhead animate-fade-in origin-top-right"
         >
           {/* Header: name + email */}
-          <div className="px-4 py-3 border-b border-border/50">
-            <p className="text-body-sm font-semibold text-text-primary truncate">{name}</p>
-            <p className="text-caption text-text-tertiary truncate">{user?.email}</p>
+          <div className="px-4 py-3 border-b border-seam/50">
+            <p className="text-body-sm font-semibold text-ink truncate">{name}</p>
+            <p className="text-caption text-ink-tertiary truncate">{user?.email}</p>
           </div>
 
           {/* Links */}
@@ -136,29 +136,29 @@ export default function UserMenu() {
             <button
               role="menuitem"
               onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-ink-secondary hover:text-ink hover:bg-well/40 transition-colors text-left"
             >
-              <User size={16} className="text-text-muted" />
+              <User size={16} className="text-ink-muted" />
               Profile
             </button>
             <button
               role="menuitem"
               onClick={() => navigate('/settings')}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-ink-secondary hover:text-ink hover:bg-well/40 transition-colors text-left"
             >
-              <Gear size={16} className="text-text-muted" />
+              <Gear size={16} className="text-ink-muted" />
               Settings
             </button>
           </div>
 
-          <div className="border-t border-border/50" />
+          <div className="border-t border-seam/50" />
 
           {/* Sign out */}
           <div className="p-1.5">
             <button
               role="menuitem"
               onClick={handleSignOut}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-abort hover:bg-error/10 transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-body-sm text-abort hover:bg-abort/10 transition-colors text-left"
             >
               <SignOut size={16} />
               Sign Out

@@ -9,7 +9,7 @@ interface Props {
 export default function KeyboardShortcutHelp({ shortcuts, onClose }: Props) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60"
       onClick={onClose}
       role="presentation"
     >
@@ -30,7 +30,7 @@ export default function KeyboardShortcutHelp({ shortcuts, onClose }: Props) {
           {shortcuts.map(s => (
             <div key={s.key} className="flex items-center justify-between text-sm">
               <span className="text-white/70">{s.description}</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/5 text-warning-lit font-mono text-[11px] border border-white/10">
+              <kbd className="px-2 py-0.5 rounded bg-white/5 text-caution-lit font-mono text-[11px] border border-white/10">
                 {s.key === 'Escape' ? 'Esc' : s.key.startsWith('g ') ? s.key : `g ${s.key}`}
               </kbd>
             </div>

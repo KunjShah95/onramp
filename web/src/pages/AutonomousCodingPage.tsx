@@ -78,7 +78,7 @@ export default function AutonomousCodingPage() {
 
       if (stageTimer.current) window.clearInterval(stageTimer.current)
 
-      const success = res.status === 'proposed_and_applied'
+      const success = res.success === true
       setStage(success ? 4 : -2)
       setResult(res)
       setRuns((r) => [{ id: crypto.randomUUID(), repo: shortRepo(url), issue, result: res, at: Date.now() }, ...r].slice(0, 12))
@@ -127,7 +127,7 @@ export default function AutonomousCodingPage() {
               <Icon size={20} weight={panel === key ? 'fill' : 'regular'} />
             </button>
           ))}
-          <div className="mt-auto w-8 h-8 rounded-tile bg-go flex items-center justify-center shadow-lit" title="Auto-Coding agent">
+          <div className="mt-auto w-8 h-8 rounded-tile bg-go flex items-center justify-center shadow-seam" title="Auto-Coding agent">
             <Robot size={16} weight="fill" className="text-panel-raised" />
           </div>
         </nav>

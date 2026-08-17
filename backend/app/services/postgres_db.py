@@ -240,6 +240,16 @@ class PostgresStorage:
             return int(doc_id)  # auto-increment int PK
         return doc_id
 
+    @staticmethod
+    def _pk_attr(pk_field: str | None) -> str:
+        """Resolve the PK attribute name for where-clauses.
+
+        ``None`` marks an auto-increment int PK (e.g. ``team_members``), which
+        always lives on the ``id`` column. Using it directly in ``getattr``
+        raises ``TypeError: attribute name must be string, not 'NoneType'``.
+        """
+        return pk_field or "id"
+
     async def _get_model_instance(
         self, session: AsyncSession, model, pk_field: str | None, doc_id: str,
     ):
@@ -332,7 +342,7 @@ class PostgresStorage:
         if has_members:
             result = await session.execute(
                 select(model_cls).options(selectinload(db_models.Team.members))
-                .where(getattr(model_cls, pk_field) == self._get_pk_value(model_cls, pk_field, doc_id))
+                .where(getattr(model_cls, self._pk_attr(pk_field)) == self._get_pk_value(model_cls, pk_field, doc_id))
             )
             obj = result.scalar_one_or_none()
         else:
@@ -360,12 +370,12 @@ class PostgresStorage:
         if hasattr(model_cls, "updated_at"):
             data["updated_at"] = datetime.now(timezone.utc)
 
-        stmt = update(model_cls).where(getattr(model_cls, pk_field) == pk_val).values(**data)
+        stmt = update(model_cls).where(getattr(model_cls, self._pk_attr(pk_field)) == pk_val).values(**data)
         await session.execute(stmt)
 
         if has_members:
             query = select(model_cls).options(selectinload(db_models.Team.members)).where(
-                getattr(model_cls, pk_field) == pk_val
+                getattr(model_cls, self._pk_attr(pk_field)) == pk_val
             )
             result = await session.execute(query)
             obj = result.scalar_one_or_none()
@@ -386,7 +396,7 @@ class PostgresStorage:
 
         model_cls, pk_field, is_tm, _ = entry
         pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
-        await session.execute(delete(model_cls).where(getattr(model_cls, pk_field) == pk_val))
+        await session.execute(delete(model_cls).where(getattr(model_cls, self._pk_attr(pk_field)) == pk_val))
 
     async def _list_in_session(self, session: AsyncSession, collection: str) -> List[dict]:
         """List all documents in a collection inside an existing session."""

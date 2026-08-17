@@ -41,8 +41,8 @@ const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transiti
 function CardReadout({ value, unit, color }: { value: string | number; unit: string; color?: string }) {
   return (
     <div className="flex items-baseline gap-2 mb-4">
-      <span className={cn('font-code tabular-nums text-3xl font-semibold leading-none', color ?? 'text-text-primary')}>{value}</span>
-      <span className="text-caption text-text-muted">{unit}</span>
+      <span className={cn('font-code tabular-nums text-3xl font-semibold leading-none', color ?? 'text-ink')}>{value}</span>
+      <span className="text-caption text-ink-muted">{unit}</span>
     </div>
   )
 }
@@ -58,7 +58,7 @@ function TeamSelector({ teams, selected, onChange }: {
         value={selected}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Select team"
-        className="bg-transparent text-body-sm text-text-primary font-medium py-1.5 pr-6 rounded focus:outline-none cursor-pointer appearance-none"
+        className="bg-transparent text-body-sm text-ink font-medium py-1.5 pr-6 rounded focus:outline-none cursor-pointer appearance-none"
       >
         {teams.map((t) => (
           <option key={t.team_id || t.id} value={t.team_id || t.id} className="bg-panel-raised">{t.name}</option>
@@ -77,19 +77,19 @@ function RampTimeCard({ rampTime }: { rampTime: HrRampTime | undefined }) {
     .slice(0, 5)
   return (
     <ConsolePanel rail="Ramp Time" designator="DAYS TO 1ST PR" status="standby">
-      <CardReadout value={rampTime.team_average_days ?? '—'} unit="days avg" color="text-info" />
-      <p className="text-caption text-text-muted mb-3">Slowest members</p>
+      <CardReadout value={rampTime.team_average_days ?? '—'} unit="days avg" color="text-mission" />
+      <p className="text-caption text-ink-muted mb-3">Slowest members</p>
       <div className="space-y-2">
-        {topSlowest.length === 0 && <p className="text-caption text-text-disabled italic">No completions yet.</p>}
+        {topSlowest.length === 0 && <p className="text-caption text-ink-disabled italic">No completions yet.</p>}
         {topSlowest.map((m, i) => (
           <div key={m.user_id} className="flex items-center gap-2">
-            <span className="w-4 text-caption text-text-muted tabular-nums">{i + 1}.</span>
+            <span className="w-4 text-caption text-ink-muted tabular-nums">{i + 1}.</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <span className="text-body-xs text-text-primary truncate">{m.name}</span>
-                <span className={cn('readout text-caption tabular-nums', (m.ramp_days || 0) > 10 ? 'text-error' : 'text-text-muted')}>{m.ramp_days}d</span>
+                <span className="text-body-xs text-ink truncate">{m.name}</span>
+                <span className={cn('readout text-caption tabular-nums', (m.ramp_days || 0) > 10 ? 'text-abort' : 'text-ink-muted')}>{m.ramp_days}d</span>
               </div>
-              <div className="h-1 rounded-tile bg-bg-tertiary overflow-hidden mt-1 border border-seam">
+              <div className="h-1 rounded-tile bg-well overflow-hidden mt-1 border border-seam">
                 <div className={cn('h-full', (m.ramp_days || 0) > 10 ? 'bg-error' : 'bg-info')} style={{ width: `${Math.min(((m.ramp_days || 0) / 20) * 100, 100)}%` }} />
               </div>
             </div>
@@ -105,16 +105,16 @@ function CompletionRatesCard({ members }: { members: HrCompletionMember[] | unde
   const avgPct = members.length > 0 ? Math.round(members.reduce((s, m) => s + m.completion_pct, 0) / members.length) : 0
   return (
     <ConsolePanel rail="Onboarding Completion" designator="TEAM AVG" status="go">
-      <CardReadout value={`${avgPct}%`} unit="team avg" color="text-success" />
+      <CardReadout value={`${avgPct}%`} unit="team avg" color="text-go" />
       <div className="space-y-2.5">
-        {members.length === 0 && <p className="text-caption text-text-disabled italic">No team members yet.</p>}
+        {members.length === 0 && <p className="text-caption text-ink-disabled italic">No team members yet.</p>}
         {members.map((m) => (
           <div key={m.user_id}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-body-xs text-text-primary truncate">{m.name}</span>
-              <span className="readout text-caption tabular-nums text-text-muted">{m.completed}/{m.assigned}</span>
+              <span className="text-body-xs text-ink truncate">{m.name}</span>
+              <span className="readout text-caption tabular-nums text-ink-muted">{m.completed}/{m.assigned}</span>
             </div>
-            <div className="h-2 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+            <div className="h-2 rounded-tile bg-well overflow-hidden border border-seam">
               <motion.div initial={{ width: 0 }} animate={{ width: `${m.completion_pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
                 className={cn('h-full', m.completion_pct >= 80 ? 'bg-success' : m.completion_pct >= 50 ? 'bg-info' : m.completion_pct >= 25 ? 'bg-warning' : 'bg-error')} />
             </div>
@@ -156,9 +156,9 @@ function CohortFunnelCard({ members }: { members: HrCompletionMember[] | undefin
               <div key={d.name} className="flex items-center justify-between text-caption">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-tile" style={{ backgroundColor: d.color }} />
-                  <span className="text-text-secondary">{d.name}</span>
+                  <span className="text-ink-secondary">{d.name}</span>
                 </div>
-                <span className="readout tabular-nums text-text-primary">{d.value}<span className="text-text-muted ml-1">({pct}%)</span></span>
+                <span className="readout tabular-nums text-ink">{d.value}<span className="text-ink-muted ml-1">({pct}%)</span></span>
               </div>
             )
           })}
@@ -173,14 +173,14 @@ function EngagementCard({ engagement }: { engagement: HrEngagement | undefined }
   const memberCount = engagement.members.length
   return (
     <ConsolePanel rail="Engagement" designator="ACTIVE STREAKS" status="caution">
-      <CardReadout value={engagement.active_streaks} unit={`/ ${memberCount} active streaks`} color="text-warning" />
+      <CardReadout value={engagement.active_streaks} unit={`/ ${memberCount} active streaks`} color="text-caution" />
       <div className="space-y-1.5">
-        {engagement.members.length === 0 && <p className="text-caption text-text-disabled italic">No streak data.</p>}
+        {engagement.members.length === 0 && <p className="text-caption text-ink-disabled italic">No streak data.</p>}
         {engagement.members.slice(0, 6).map((m) => (
           <div key={m.user_id} className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
-            <span className="flex-1 text-body-xs text-text-primary truncate">{m.name}</span>
-            <span className={cn('readout text-caption tabular-nums', m.current_streak > 0 ? 'text-warning' : 'text-text-disabled')}>{m.current_streak}d</span>
-            {m.longest_streak > m.current_streak && <span className="text-caption text-text-muted">best {m.longest_streak}d</span>}
+            <span className="flex-1 text-body-xs text-ink truncate">{m.name}</span>
+            <span className={cn('readout text-caption tabular-nums', m.current_streak > 0 ? 'text-caution' : 'text-ink-disabled')}>{m.current_streak}d</span>
+            {m.longest_streak > m.current_streak && <span className="text-caption text-ink-muted">best {m.longest_streak}d</span>}
           </div>
         ))}
       </div>
@@ -194,26 +194,26 @@ function ReviewAnalyticsCard({ analytics }: { analytics: ReviewAnalytics | undef
     <ConsolePanel rail="Review Analytics" designator="EECOM" status="standby">
       <div className="grid grid-cols-2 gap-2.5 mb-4">
         {[
-          { label: 'Rework rate', value: `${analytics.rework_rate_pct}%`, color: analytics.rework_rate_pct > 30 ? 'text-error' : analytics.rework_rate_pct > 15 ? 'text-warning' : 'text-success' },
-          { label: 'Tasks reworked', value: String(analytics.reworked_task_count), color: 'text-text-primary' },
-          { label: 'Avg turnaround', value: analytics.avg_review_turnaround_hours != null ? `${analytics.avg_review_turnaround_hours}h` : '—', color: 'text-text-primary' },
-          { label: 'Pending review', value: String(analytics.pending_review_count), color: analytics.pending_review_count > 0 ? 'text-warning' : 'text-success' },
+          { label: 'Rework rate', value: `${analytics.rework_rate_pct}%`, color: analytics.rework_rate_pct > 30 ? 'text-abort' : analytics.rework_rate_pct > 15 ? 'text-caution' : 'text-go' },
+          { label: 'Tasks reworked', value: String(analytics.reworked_task_count), color: 'text-ink' },
+          { label: 'Avg turnaround', value: analytics.avg_review_turnaround_hours != null ? `${analytics.avg_review_turnaround_hours}h` : '—', color: 'text-ink' },
+          { label: 'Pending review', value: String(analytics.pending_review_count), color: analytics.pending_review_count > 0 ? 'text-caution' : 'text-go' },
         ].map((s) => (
           <div key={s.label} className="bg-well rounded-tile p-2.5 border border-seam">
-            <div className="text-caption text-text-muted mb-0.5">{s.label}</div>
+            <div className="text-caption text-ink-muted mb-0.5">{s.label}</div>
             <div className={cn('readout text-body font-semibold tabular-nums', s.color)}>{s.value}</div>
           </div>
         ))}
       </div>
       {analytics.top_reviewers.length > 0 && (
         <div>
-          <div className="overline text-text-muted/70 mb-2">Top reviewers</div>
+          <div className="overline text-ink-muted/70 mb-2">Top reviewers</div>
           <div className="space-y-1.5">
             {analytics.top_reviewers.slice(0, 5).map((r, i) => (
               <div key={r.user_id} className="flex items-center gap-2">
-                <span className="w-4 text-caption text-text-muted tabular-nums">{i + 1}.</span>
-                <span className="flex-1 text-body-xs text-text-primary truncate">{r.name || r.user_id}</span>
-                <span className="readout text-caption tabular-nums text-info">{r.reviews}</span>
+                <span className="w-4 text-caption text-ink-muted tabular-nums">{i + 1}.</span>
+                <span className="flex-1 text-body-xs text-ink truncate">{r.name || r.user_id}</span>
+                <span className="readout text-caption tabular-nums text-mission">{r.reviews}</span>
               </div>
             ))}
           </div>
@@ -229,24 +229,24 @@ function CohortComparisonCard({ cohorts }: { cohorts: CohortComparisonEntry[] | 
   const best = sorted[0]
   return (
     <ConsolePanel rail="Cohort Comparison" designator="TRAJ" status="standby">
-      <p className="text-caption text-text-muted mb-4">
-        Fastest: <span className="text-success font-medium">{best.label}</span> at {best.avg_ramp_days ?? '—'}d avg ramp
+      <p className="text-caption text-ink-muted mb-4">
+        Fastest: <span className="text-go font-medium">{best.label}</span> at {best.avg_ramp_days ?? '—'}d avg ramp
       </p>
       <div className="space-y-3">
         {cohorts.slice(0, 6).map((c) => (
           <div key={c.cohort}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-body-xs text-text-primary font-medium truncate">{c.label} <span className="text-text-muted">({c.member_count})</span></span>
-              <span className="readout text-caption tabular-nums text-text-muted">{c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'}</span>
+              <span className="text-body-xs text-ink font-medium truncate">{c.label} <span className="text-ink-muted">({c.member_count})</span></span>
+              <span className="readout text-caption tabular-nums text-ink-muted">{c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'}</span>
             </div>
-            <div className="h-1.5 rounded-tile bg-bg-tertiary overflow-hidden border border-seam">
+            <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
               <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(((c.avg_ramp_days ?? 999) / 30) * 100, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
                 className={cn('h-full', c.avg_ramp_days != null && c.avg_ramp_days <= 7 ? 'bg-success' : c.avg_ramp_days != null && c.avg_ramp_days <= 14 ? 'bg-info' : 'bg-warning')} />
             </div>
-            <div className="flex gap-3 mt-1 text-caption text-text-muted">
+            <div className="flex gap-3 mt-1 text-caption text-ink-muted">
               <span>{c.avg_days_to_first_pr != null ? `1st PR ${c.avg_days_to_first_pr}d` : 'no 1st PR'}</span>
               <span>completion {c.avg_completion_pct ?? 0}%</span>
-              <span className={c.blocker_count > 0 ? 'text-warning' : ''}>blockers {c.blocker_count}</span>
+              <span className={c.blocker_count > 0 ? 'text-caution' : ''}>blockers {c.blocker_count}</span>
             </div>
           </div>
         ))}
@@ -264,7 +264,7 @@ function MentorMatchCard({ match, members, selectedId, onSelect }: {
   if (members.length === 0) return null
   return (
     <ConsolePanel rail="Mentor Matches" designator="CAPCOM" status="caution">
-      <label htmlFor="mentor-dev-select" className="block text-caption text-text-muted mb-1.5">New dev</label>
+      <label htmlFor="mentor-dev-select" className="block text-caption text-ink-muted mb-1.5">New dev</label>
       <div className="relative mb-3">
         <select id="mentor-dev-select" aria-label="Select new dev" value={selectedId} onChange={(e) => onSelect(e.target.value)}
           className="w-full appearance-none input pr-8">
@@ -273,24 +273,24 @@ function MentorMatchCard({ match, members, selectedId, onSelect }: {
         <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
       </div>
       {!match || match.matches.length === 0 ? (
-        <p className="text-caption text-text-disabled italic py-4 text-center">No mentor matches yet — assign tasks to build their language profile.</p>
+        <p className="text-caption text-ink-disabled italic py-4 text-center">No mentor matches yet — assign tasks to build their language profile.</p>
       ) : (
         <>
-          <p className="text-caption text-text-muted mb-3 truncate">
-            Languages: <span className="text-info readout">{match.new_dev_languages.join(', ') || '—'}</span>
+          <p className="text-caption text-ink-muted mb-3 truncate">
+            Languages: <span className="text-mission readout">{match.new_dev_languages.join(', ') || '—'}</span>
           </p>
           <div className="space-y-2">
             {match.matches.slice(0, 4).map((m) => (
               <div key={m.user_id} className="flex items-center gap-3 p-2.5 rounded-tile bg-well border border-seam">
-                <div className="w-8 h-8 rounded-tile bg-info-muted border border-info/25 flex items-center justify-center text-caption font-bold text-info font-display shrink-0">
+                <div className="w-8 h-8 rounded-tile bg-mission/10 border border-mission/25 flex items-center justify-center text-caption font-bold text-mission font-display shrink-0">
                   {m.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-body-xs font-medium text-text-primary truncate">{m.name}</span>
-                    <span className="readout text-caption tabular-nums text-info">{m.score}</span>
+                    <span className="text-body-xs font-medium text-ink truncate">{m.name}</span>
+                    <span className="readout text-caption tabular-nums text-mission">{m.score}</span>
                   </div>
-                  <div className="text-caption text-text-muted truncate">
+                  <div className="text-caption text-ink-muted truncate">
                     {m.shared_languages.length > 0 ? `Shared: ${m.shared_languages.join(', ')}` : 'No shared languages'}
                   </div>
                 </div>
@@ -309,26 +309,26 @@ function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
     return (
       <ConsolePanel rail="Attrition Risk" designator="ALL NOMINAL" status="go">
         <div className="text-center py-6">
-          <p className="text-text-secondary text-body-sm">No members at risk. Team is healthy.</p>
+          <p className="text-ink-secondary text-body-sm">No members at risk. Team is healthy.</p>
         </div>
       </ConsolePanel>
     )
   }
   return (
     <ConsolePanel rail="Attrition Risk" designator={`${risk.at_risk_count} FLAGGED`} status="abort">
-      <CardReadout value={risk.at_risk_count} unit="member(s) flagged" color="text-error" />
+      <CardReadout value={risk.at_risk_count} unit="member(s) flagged" color="text-abort" />
       <div className="space-y-2">
         {risk.at_risk.map((m, i) => (
           <motion.div key={m.user_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-            className="p-3 rounded-tile bg-error-muted/40 border border-error/20">
+            className="p-3 rounded-tile bg-abort/10/40 border border-abort/20">
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-5 h-5 rounded-tile bg-error-muted border border-error/25 flex items-center justify-center text-caption font-bold text-error">{m.name.charAt(0).toUpperCase()}</div>
-              <span className="text-body-xs font-medium text-text-primary">{m.name}</span>
+              <div className="w-5 h-5 rounded-tile bg-abort/10 border border-abort/25 flex items-center justify-center text-caption font-bold text-abort">{m.name.charAt(0).toUpperCase()}</div>
+              <span className="text-body-xs font-medium text-ink">{m.name}</span>
             </div>
             <ul className="space-y-0.5">
               {m.reasons.map((reason, ri) => (
-                <li key={ri} className="flex items-start gap-1.5 text-caption text-text-secondary">
-                  <span className="text-error mt-0.5">•</span><span>{reason}</span>
+                <li key={ri} className="flex items-start gap-1.5 text-caption text-ink-secondary">
+                  <span className="text-abort mt-0.5">•</span><span>{reason}</span>
                 </li>
               ))}
             </ul>
@@ -402,8 +402,8 @@ export default function HrDashboardPage() {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
         <ConsolePanel rail="Signal Lost" designator="PERSONNEL" status="abort" className="max-w-md w-full">
-          <p className="text-error text-body-sm font-code mb-1">Failed to load HR metrics.</p>
-          <p className="text-text-muted text-caption font-code mb-5">Check that the backend is running and the team has members.</p>
+          <p className="text-abort text-body-sm font-code mb-1">Failed to load HR metrics.</p>
+          <p className="text-ink-muted text-caption font-code mb-5">Check that the backend is running and the team has members.</p>
           <button onClick={() => window.location.reload()} className="btn">Reacquire</button>
         </ConsolePanel>
       </div>
@@ -413,10 +413,10 @@ export default function HrDashboardPage() {
   const { ramp_time, onboarding_completion, engagement, attrition_risk, member_count } = cohort
 
   const readouts: Readout[] = [
-    { label: 'Cohort Size', value: member_count, color: 'text-text-primary' },
-    { label: 'Avg Ramp', value: ramp_time?.team_average_days ?? '—', suffix: ramp_time?.team_average_days != null ? 'd' : '', color: ramp_time?.team_average_days != null && ramp_time.team_average_days > 10 ? 'text-error' : 'text-info' },
-    { label: 'Active Streaks', value: engagement?.active_streaks ?? 0, color: 'text-warning' },
-    { label: 'At Risk', value: attrition_risk?.at_risk_count ?? 0, color: (attrition_risk?.at_risk_count ?? 0) > 0 ? 'text-error' : 'text-success' },
+    { label: 'Cohort Size', value: member_count, color: 'text-ink' },
+    { label: 'Avg Ramp', value: ramp_time?.team_average_days ?? '—', suffix: ramp_time?.team_average_days != null ? 'd' : '', color: ramp_time?.team_average_days != null && ramp_time.team_average_days > 10 ? 'text-abort' : 'text-mission' },
+    { label: 'Active Streaks', value: engagement?.active_streaks ?? 0, color: 'text-caution' },
+    { label: 'At Risk', value: attrition_risk?.at_risk_count ?? 0, color: (attrition_risk?.at_risk_count ?? 0) > 0 ? 'text-abort' : 'text-go' },
   ]
 
   return (
@@ -428,8 +428,8 @@ export default function HrDashboardPage() {
             <span className="tile tile-go">Personnel Console</span>
             <span className="designator opacity-50">EECOM · COHORT</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">HR Console</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">{member_count} member{member_count !== 1 ? 's' : ''} in cohort</p>
+          <h1 className="text-display-md md:text-display-lg text-ink">HR Console</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">{member_count} member{member_count !== 1 ? 's' : ''} in cohort</p>
         </div>
         <TeamSelector teams={teams} selected={teamId} onChange={setSelectedTeamId} />
       </motion.div>

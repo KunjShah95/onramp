@@ -45,7 +45,7 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
   const maxVal = Math.max(...days.map((d) => d.tasks + d.logins), 1)
 
   const intensity = (val: number) => {
-    if (val === 0) return 'bg-bg-tertiary/30'
+    if (val === 0) return 'bg-well/30'
     const ratio = val / maxVal
     if (ratio <= 0.25) return 'bg-amber-500/15'
     if (ratio <= 0.5) return 'bg-amber-500/35'
@@ -66,7 +66,7 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
         <div className="shrink-0 w-8">
           {monthLabels.map((ml) => (
             <div key={ml.index} style={{ marginTop: ml.index > 0 ? `${(ml.index / 7) * 10}px` : 0 }}
-              className="text-[8px] text-text-muted/30 font-code text-right pr-1.5 h-4">
+              className="text-[8px] text-ink-muted/30 font-code text-right pr-1.5 h-4">
               {ml.label}
             </div>
           ))}
@@ -79,7 +79,7 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
                 return (
                   <div key={di} className="group relative">
                     <div className={cn('w-[10px] h-[10px] rounded-[3px] transition-colors', intensity(val))} />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-lg bg-bg-elevated border border-border text-caption text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-elevated">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-lg bg-panel-raised border border-seam text-caption text-ink whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lift">
                       {day.date}: {val} acts
                     </div>
                   </div>
@@ -90,14 +90,14 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
         </div>
       </div>
       <div className="flex items-center justify-end gap-1 mt-2.5">
-        <span className="text-[8px] text-text-muted/30">Less</span>
+        <span className="text-[8px] text-ink-muted/30">Less</span>
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className={cn(
             'w-[10px] h-[10px] rounded-[3px]',
-            i === 0 ? 'bg-bg-tertiary/30' : i <= 1 ? 'bg-amber-500/15' : i <= 2 ? 'bg-amber-500/35' : i <= 3 ? 'bg-amber-500/60' : 'bg-amber-400'
+            i === 0 ? 'bg-well/30' : i <= 1 ? 'bg-amber-500/15' : i <= 2 ? 'bg-amber-500/35' : i <= 3 ? 'bg-amber-500/60' : 'bg-amber-400'
           )} />
         ))}
-        <span className="text-[8px] text-text-muted/30">More</span>
+        <span className="text-[8px] text-ink-muted/30">More</span>
       </div>
     </div>
   )
@@ -120,7 +120,7 @@ function DeveloperList({
   return (
     <div className="space-y-1">
       {filtered.length === 0 && (
-        <p className="text-caption text-text-muted/20 italic py-6 text-center">No developers match</p>
+        <p className="text-caption text-ink-muted/20 italic py-6 text-center">No developers match</p>
       )}
       {filtered.map((dev, i) => {
         const stage = STAGE_CONFIG[dev.stage]
@@ -137,32 +137,32 @@ function DeveloperList({
               'w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group',
               isSelected
                 ? 'bg-amber-400/8 border border-amber-400/20 shadow-glow-sm'
-                : 'hover:bg-bg-tertiary/30 border border-transparent'
+                : 'hover:bg-well/30 border border-transparent'
             )}
           >
             <div className={cn(
               'w-10 h-10 rounded-xl flex items-center justify-center font-display text-body-sm font-bold transition-all',
-              isSelected ? 'bg-amber-400/15 text-amber-400' : 'bg-bg-tertiary border border-border text-text-muted/40'
+              isSelected ? 'bg-amber-400/15 text-amber-400' : 'bg-well border border-seam text-ink-muted/40'
             )}>
               {dev.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-body-sm font-medium text-text-primary truncate">{dev.name}</span>
+                <span className="text-body-sm font-medium text-ink truncate">{dev.name}</span>
                 {dev.at_risk && (
                   <WarningCircle size={12} className="text-red-400 shrink-0" weight="fill" />
                 )}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <StageIcon size={10} className={cn(stage?.color || 'text-text-muted')} weight="fill" />
-                <span className={cn('text-caption font-code', stage?.color || 'text-text-muted')}>
+                <StageIcon size={10} className={cn(stage?.color || 'text-ink-muted')} weight="fill" />
+                <span className={cn('text-caption font-code', stage?.color || 'text-ink-muted')}>
                   {stage?.label || dev.stage}
                 </span>
-                <span className="text-caption text-text-muted/20">·</span>
-                <span className="text-caption text-text-muted/40 tabular-nums">{dev.completion_pct}%</span>
+                <span className="text-caption text-ink-muted/20">·</span>
+                <span className="text-caption text-ink-muted/40 tabular-nums">{dev.completion_pct}%</span>
               </div>
             </div>
-            <ArrowRight size={14} className={cn('shrink-0 transition-all', isSelected ? 'text-amber-400 opacity-100' : 'text-text-muted/10 group-hover:text-text-muted/40')} />
+            <ArrowRight size={14} className={cn('shrink-0 transition-all', isSelected ? 'text-amber-400 opacity-100' : 'text-ink-muted/10 group-hover:text-ink-muted/40')} />
           </motion.button>
         )
       })}
@@ -180,13 +180,13 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
         <div className="relative">
           <ProgressRing pct={dev.completion_pct} size={72} strokeWidth={4} />
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-display text-body-sm font-bold text-text-primary">{dev.name.charAt(0).toUpperCase()}</span>
+            <span className="font-display text-body-sm font-bold text-ink">{dev.name.charAt(0).toUpperCase()}</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-display text-body font-bold text-text-primary">{dev.name}</h3>
+          <h3 className="font-display text-body font-bold text-ink">{dev.name}</h3>
           <div className="flex items-center gap-2 mt-0.5">
-            <StageIcon size={13} className={stage?.color || 'text-text-muted'} weight="fill" />
+            <StageIcon size={13} className={stage?.color || 'text-ink-muted'} weight="fill" />
             <span className={cn('text-body-xs font-code', stage?.color)}>{stage?.label || dev.stage}</span>
             {dev.at_risk && (
               <span className="flex items-center gap-1 text-caption text-red-400 ml-1">
@@ -194,7 +194,7 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
               </span>
             )}
           </div>
-          <p className="text-caption text-text-muted/30 mt-0.5">{dev.completion_pct}% through {dev.stage} stage</p>
+          <p className="text-caption text-ink-muted/30 mt-0.5">{dev.completion_pct}% through {dev.stage} stage</p>
         </div>
       </div>
 
@@ -203,29 +203,29 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
           { label: 'Tasks', val: `${dev.completed}/${dev.assigned}`, sub: 'completed', color: 'text-emerald-400', icon: CheckCircle },
           { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : '—', sub: 'to first PR', color: 'text-amber-400', icon: Clock },
           { label: 'Streak', val: `${dev.current_streak}d`, sub: `best ${dev.longest_streak}d`, color: 'text-orange-400', icon: Fire },
-          { label: 'Stage', val: stage?.label || dev.stage, sub: 'onboarding', color: stage?.color || 'text-text-muted', icon: ChartBar },
+          { label: 'Stage', val: stage?.label || dev.stage, sub: 'onboarding', color: stage?.color || 'text-ink-muted', icon: ChartBar },
         ].map((stat) => (
           <motion.div
             key={stat.label}
             whileHover={{ y: -1 }}
-            className="p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 transition-all"
+            className="p-3 rounded-xl bg-well/40 border border-seam/40 transition-all"
           >
             <div className="flex items-center gap-1.5 mb-1">
               <stat.icon size={11} className={stat.color} weight="fill" />
-              <span className="text-caption text-text-muted/40">{stat.label}</span>
+              <span className="text-caption text-ink-muted/40">{stat.label}</span>
             </div>
             <div className={cn('font-display text-body font-bold tabular-nums', stat.color)}>{stat.val}</div>
-            <div className="text-caption text-text-muted/20">{stat.sub}</div>
+            <div className="text-caption text-ink-muted/20">{stat.sub}</div>
           </motion.div>
         ))}
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-caption text-text-muted/50 font-medium">Onboarding Progress</span>
-          <span className="text-caption font-code text-text-muted/30 tabular-nums">{dev.completion_pct}%</span>
+          <span className="text-caption text-ink-muted/50 font-medium">Onboarding Progress</span>
+          <span className="text-caption font-code text-ink-muted/30 tabular-nums">{dev.completion_pct}%</span>
         </div>
-        <div className="relative h-2 rounded-full bg-bg-tertiary overflow-hidden">
+        <div className="relative h-2 rounded-full bg-well overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${dev.completion_pct}%` }}
@@ -328,17 +328,17 @@ export default function HrPeoplePage() {
       <div className="min-h-[calc(100vh-4rem)] p-6 space-y-5 max-w-6xl mx-auto px-4 sm:px-6 animate-in">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-7 w-48 bg-bg-secondary rounded-lg animate-pulse" />
-            <div className="h-4 w-64 bg-bg-secondary rounded animate-pulse" />
+            <div className="h-7 w-48 bg-panel rounded-lg animate-pulse" />
+            <div className="h-4 w-64 bg-panel rounded animate-pulse" />
           </div>
-          <div className="h-9 w-36 bg-bg-secondary rounded-xl animate-pulse" />
+          <div className="h-9 w-36 bg-panel rounded-xl animate-pulse" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-bg-secondary border border-border animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-panel border border-seam animate-pulse" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-1 h-96 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-          <div className="lg:col-span-2 h-96 rounded-xl bg-bg-secondary border border-border animate-pulse" />
+          <div className="lg:col-span-1 h-96 rounded-xl bg-panel border border-seam animate-pulse" />
+          <div className="lg:col-span-2 h-96 rounded-xl bg-panel border border-seam animate-pulse" />
         </div>
       </div>
     )
@@ -360,29 +360,29 @@ export default function HrPeoplePage() {
           className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8"
         >
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center">
-              <Users size={20} className="text-blue-400" weight="duotone" />
+            <div className="w-11 h-11 rounded-card bg-well border border-seam flex items-center justify-center">
+              <Users size={20} className="text-ink-tertiary" weight="regular" />
             </div>
             <div>
               <div className="flex items-center gap-2.5 mb-1.5">
                 <span className="tile tile-go">People</span>
                 <span className="designator opacity-50">HR · CREW ROSTER</span>
               </div>
-              <h1 className="text-display-md md:text-display-lg text-text-primary">Developer Onboarding</h1>
-              <p className="text-body-sm text-text-secondary mt-1 font-code">{devData?.developers.length || 0} developers across {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
+              <h1 className="text-display-md md:text-display-lg text-ink">Developer Onboarding</h1>
+              <p className="text-body-sm text-ink-secondary mt-1 font-code">{devData?.developers.length || 0} developers across {teams.length} team{teams.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             {teams.length > 1 && (
-              <div className="flex items-center gap-2 bg-bg-secondary border border-border rounded-xl px-3 py-1.5">
-                <Hash size={14} className="text-text-muted/30" />
+              <div className="flex items-center gap-2 bg-panel border border-seam rounded-xl px-3 py-1.5">
+                <Hash size={14} className="text-ink-muted/30" />
                 <select
                   value={selectedTeamId}
                   onChange={(e) => { setSelectedTeamId(e.target.value); setSelectedDevId(null) }}
-                  className="bg-transparent text-body-xs text-text-primary font-medium py-1 outline-none cursor-pointer appearance-none"
+                  className="bg-transparent text-body-xs text-ink font-medium py-1 outline-none cursor-pointer appearance-none"
                 >
                   {teams.map((t: any) => (
-                    <option key={t.team_id || t.id} value={t.team_id || t.id} className="bg-bg-secondary">
+                    <option key={t.team_id || t.id} value={t.team_id || t.id} className="bg-panel">
                       {t.name}
                     </option>
                   ))}
@@ -409,10 +409,10 @@ export default function HrPeoplePage() {
           className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
         >
           {[
-            { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/8 border-blue-400/15', hue: 'from-blue-500/10 to-blue-600/5' },
-            { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-emerald-400' : 'text-amber-400', bg: avgCompletion >= 50 ? 'bg-emerald-400/8 border-emerald-400/15' : 'bg-amber-400/8 border-amber-400/15', hue: 'from-emerald-500/10 to-emerald-600/5' },
-            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : '—', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/8 border-amber-400/15', hue: 'from-amber-500/10 to-amber-600/5' },
-            { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: atRiskCount > 0 ? 'bg-red-400/8 border-red-400/15' : 'bg-emerald-400/8 border-emerald-400/15', hue: 'from-red-500/10 to-red-600/5' },
+            { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/8 border-blue-400/15' },
+            { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-emerald-400' : 'text-amber-400', bg: avgCompletion >= 50 ? 'bg-emerald-400/8 border-emerald-400/15' : 'bg-amber-400/8 border-amber-400/15' },
+            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : '—', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/8 border-amber-400/15' },
+            { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: atRiskCount > 0 ? 'bg-red-400/8 border-red-400/15' : 'bg-emerald-400/8 border-emerald-400/15' },
           ].map((m, i) => (
             <motion.div
               key={m.label}
@@ -420,15 +420,12 @@ export default function HrPeoplePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 + i * 0.04, duration: 0.4 }}
             >
-              <div className={cn('relative overflow-hidden p-4 rounded-xl border shadow-card transition-all group', m.bg)}>
-                <div className={cn('absolute inset-0 bg-gradient-to-br opacity-30', m.hue)} />
-                <div className="relative">
-                  <div className="flex items-start justify-between mb-2">
-                    <m.icon size={18} className={m.color} weight="fill" />
-                  </div>
-                  <div className={cn('font-display text-display-sm font-bold tracking-tight', m.color)}>{m.value}</div>
-                  <div className="text-caption text-text-muted/40 mt-0.5">{m.label}</div>
+              <div className={cn('relative p-4 rounded-card border shadow-seam transition-colors group', m.bg)}>
+                <div className="flex items-start justify-between mb-2">
+                  <m.icon size={18} className={m.color} weight="regular" />
                 </div>
+                <div className={cn('font-display text-display-sm font-bold tracking-tight', m.color)}>{m.value}</div>
+                <div className="text-caption text-ink-muted/40 mt-0.5">{m.label}</div>
               </div>
             </motion.div>
           ))}
@@ -449,7 +446,7 @@ export default function HrPeoplePage() {
                 'px-3 py-1.5 rounded-lg text-caption font-code border transition-all',
                 stageFilter === f.key
                   ? f.activeColor
-                  : 'border-border text-text-muted/40 hover:text-text-muted/70 bg-transparent hover:bg-bg-tertiary/30'
+                  : 'border-seam text-ink-muted/40 hover:text-ink-muted/70 bg-transparent hover:bg-well/30'
               )}
             >
               {f.label}
@@ -468,13 +465,13 @@ export default function HrPeoplePage() {
           <div>
             <CardSpotlight className="p-4">
               <div className="relative mb-3">
-                <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted/30" />
+                <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted/30" />
                 <input
                   type="text"
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-bg-tertiary border border-border rounded-xl pl-8 pr-3 py-2 text-body-xs text-text-primary placeholder:text-text-muted/20 focus:outline-none focus:ring-1 focus:ring-amber-400/20 transition-all"
+                  className="w-full bg-well border border-seam rounded-xl pl-8 pr-3 py-2 text-body-xs text-ink placeholder:text-ink-muted/20 focus:outline-none focus:ring-1 focus:ring-amber-400/20 transition-all"
                 />
               </div>
               <DeveloperList
@@ -508,8 +505,8 @@ export default function HrPeoplePage() {
                           <CaretCircleRight size={16} className="text-amber-400" />
                         </div>
                         <div>
-                          <h2 className="font-display text-body-sm font-bold text-text-primary">Activity Heatmap</h2>
-                          <p className="text-caption text-text-muted/40">{selectedHeatmap.total} activities over 12 weeks</p>
+                          <h2 className="font-display text-body-sm font-bold text-ink">Activity Heatmap</h2>
+                          <p className="text-caption text-ink-muted/40">{selectedHeatmap.total} activities over 12 weeks</p>
                         </div>
                       </div>
                       <ActivityHeatmap days={selectedHeatmap.days} />
@@ -525,11 +522,11 @@ export default function HrPeoplePage() {
                 >
                   <CardSpotlight className="p-10 flex items-center justify-center min-h-[300px]">
                     <div className="text-center max-w-xs">
-                      <div className="w-14 h-14 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-4">
-                        <User size={26} className="text-text-muted/20" />
+                      <div className="w-14 h-14 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-4">
+                        <User size={26} className="text-ink-muted/20" />
                       </div>
-                      <p className="text-text-muted/40 text-body-sm mb-1 font-medium">Select a developer</p>
-                      <p className="text-caption text-text-muted/20">Click any name to view onboarding details, progress, and activity patterns.</p>
+                      <p className="text-ink-muted/40 text-body-sm mb-1 font-medium">Select a developer</p>
+                      <p className="text-caption text-ink-muted/20">Click any name to view onboarding details, progress, and activity patterns.</p>
                     </div>
                   </CardSpotlight>
                 </motion.div>

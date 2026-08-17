@@ -72,7 +72,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       action={
         <Link
           to="/tasks"
-          className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1"
+          className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1"
         >
           Tasks <span aria-hidden>→</span>
         </Link>
@@ -109,12 +109,12 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       </div>
 
       {error && (
-        <div className="text-error text-body-sm font-code mb-3">{error}</div>
+        <div className="text-abort text-body-sm font-code mb-3">{error}</div>
       )}
 
       {/* Empty state */}
       {!result && !running && !error && (
-        <p className="text-caption text-text-muted font-code">
+        <p className="text-caption text-ink-muted font-code">
           Analyze a repo → issues are discovered by the model router and created as real
           Onramp tasks, auto-assigned by role.
         </p>
@@ -123,7 +123,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       {running && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-tile bg-bg-tertiary/40 animate-pulse" />
+            <div key={i} className="h-14 rounded-tile bg-well/40 animate-pulse" />
           ))}
         </div>
       )}
@@ -132,7 +132,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       {result && !running && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           {tasks.length === 0 ? (
-            <p className="text-caption text-text-muted font-code">
+            <p className="text-caption text-ink-muted font-code">
               Analysis complete — no tasks created
               {issues.length ? ' (task creation may have been skipped or disabled)' : ''}.
             </p>
@@ -142,15 +142,15 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
                 <Link
                   key={t.task_id}
                   to="/tasks"
-                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-bg-tertiary/40 transition-colors"
+                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-well/40 transition-colors"
                 >
                   <span className="w-1 self-stretch rounded-sm shrink-0 bg-mission" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-body-sm text-text-primary font-medium truncate">{t.title}</span>
+                      <span className="text-body-sm text-ink font-medium truncate">{t.title}</span>
                       <StatusBadge state={t.state} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1 text-caption text-text-muted">
+                    <div className="flex items-center gap-2 mt-1 text-caption text-ink-muted">
                       <span className="font-code uppercase tracking-wide text-mission">
                         {ROLE_LABELS[t.team_role] || t.team_role}
                       </span>
@@ -168,7 +168,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
           {issues.length > 0 && (
             <div className="flex items-center gap-3">
               <span className="overline text-ink-muted/60 shrink-0">Discovered</span>
-              <span className="text-caption text-text-muted font-code truncate">
+              <span className="text-caption text-ink-muted font-code truncate">
                 {issues.map((i) => i.title).join(' · ')}
               </span>
             </div>

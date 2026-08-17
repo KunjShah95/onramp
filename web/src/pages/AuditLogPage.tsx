@@ -119,8 +119,8 @@ export default function AuditLogPage() {
             <ShieldCheck className="w-5 h-5 text-amber-400" weight="duotone" />
           </div>
           <div>
-            <h1 className="text-display-sm font-display font-medium text-text-primary">Audit Log</h1>
-            <p className="text-body-sm text-text-tertiary">
+            <h1 className="text-display-md md:text-display-lg font-display font-bold text-ink">Audit Log</h1>
+            <p className="text-body-sm text-ink-tertiary">
               Security and configuration events across all teams.
             </p>
           </div>
@@ -128,14 +128,14 @@ export default function AuditLogPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleExport('csv')}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70 transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5"
           >
             <FileCsv className="w-3.5 h-3.5" />
             CSV
           </button>
           <button
             onClick={() => handleExport('json')}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70 transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5"
           >
             <FileJs className="w-3.5 h-3.5" />
             JSON
@@ -144,18 +144,18 @@ export default function AuditLogPage() {
             onClick={() => setFilterVisible(!filterVisible)}
             className={`px-3 py-2 rounded-lg text-caption font-medium border transition-colors flex items-center gap-1.5 ${
               filterVisible || filterType || filterActor
-                ? 'border-go/40 text-accent-from bg-go/5'
-                : 'border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70'
+                ? 'border-go/40 text-go bg-go/5'
+                : 'border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70'
             }`}
           >
             <FunnelSimple className="w-3.5 h-3.5" />
             Filters
-            {(filterType || filterActor) && <span className="w-1.5 h-1.5 rounded-full bg-accent-from" />}
+            {(filterType || filterActor) && <span className="w-1.5 h-1.5 rounded-full bg-go" />}
           </button>
           <button
             onClick={fetchEvents}
             disabled={loading}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-border text-text-secondary hover:bg-bg-tertiary/20 hover:border-border/70 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             <ArrowCounterClockwise className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -168,17 +168,17 @@ export default function AuditLogPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-bg-secondary border border-border"
+          className="p-4 rounded-xl bg-panel border border-seam"
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-body-sm font-medium text-text-primary">Filter Events</h3>
-            <button onClick={() => { setFilterType(''); setFilterActor(''); setPage(0) }} className="text-caption text-accent-from/70 hover:text-accent-from transition-colors">
+            <h3 className="text-body-sm font-medium text-ink">Filter Events</h3>
+            <button onClick={() => { setFilterType(''); setFilterActor(''); setPage(0) }} className="text-caption text-go/70 hover:text-go transition-colors">
               Clear all
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-caption text-text-tertiary mb-1.5 block">Event Type</label>
+              <label className="text-caption text-ink-tertiary mb-1.5 block">Event Type</label>
               <div className="flex flex-wrap gap-1.5">
                 {EVENT_TYPES.map((t) => (
                   <button
@@ -186,8 +186,8 @@ export default function AuditLogPage() {
                     onClick={() => { setFilterType(t); setPage(0) }}
                     className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors ${
                       filterType === t
-                        ? 'bg-go/10 text-accent-from border border-go/20'
-                        : 'bg-bg-tertiary/20 text-text-secondary border border-transparent hover:bg-bg-tertiary/40'
+                        ? 'bg-go/10 text-go border border-go/20'
+                        : 'bg-well/20 text-ink-secondary border border-transparent hover:bg-well/40'
                     }`}
                   >
                     {t || 'All'}
@@ -196,18 +196,18 @@ export default function AuditLogPage() {
               </div>
             </div>
             <div>
-              <label className="text-caption text-text-tertiary mb-1.5 block">Actor ID</label>
+              <label className="text-caption text-ink-tertiary mb-1.5 block">Actor ID</label>
               <div className="relative">
-                <MagnifyingGlass className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                <MagnifyingGlass className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-tertiary" />
                 <input
                   type="text"
                   value={filterActor}
                   onChange={(e) => { setFilterActor(e.target.value); setPage(0) }}
                   placeholder="Search by actor ID…"
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-bg-tertiary/20 border border-border text-body-sm text-text-primary placeholder:text-text-tertiary/50 focus:outline-none focus:border-go/40 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-well/20 border border-seam text-body-sm text-ink placeholder:text-ink-tertiary/50 focus:outline-none focus:border-go/40 transition-colors"
                 />
                 {filterActor && (
-                  <button onClick={() => setFilterActor('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary">
+                  <button onClick={() => setFilterActor('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-tertiary hover:text-ink">
                     <X className="w-3 h-3" />
                   </button>
                 )}
@@ -219,9 +219,9 @@ export default function AuditLogPage() {
 
       {/* Error */}
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+        <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchEvents} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          <button onClick={fetchEvents} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </div>
       )}
 
@@ -231,10 +231,10 @@ export default function AuditLogPage() {
           <div className="p-8 space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 animate-pulse">
-                <div className="w-7 h-7 rounded-lg bg-bg-tertiary/30" />
+                <div className="w-7 h-7 rounded-lg bg-well/30" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-32 bg-bg-tertiary/30 rounded" />
-                  <div className="h-2.5 w-48 bg-bg-tertiary/20 rounded" />
+                  <div className="h-3 w-32 bg-well/30 rounded" />
+                  <div className="h-2.5 w-48 bg-well/20 rounded" />
                 </div>
               </div>
             ))}
@@ -242,7 +242,7 @@ export default function AuditLogPage() {
         ) : pageEvents.length === 0 ? (
           <div className="p-8">
             <EmptyState
-              icon={<ShieldCheck className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+              icon={<ShieldCheck className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
               title="No events found"
               description={filterType || filterActor ? 'Try adjusting your filters.' : 'Security and configuration events will appear here.'}
             />
@@ -251,12 +251,12 @@ export default function AuditLogPage() {
           <div className="overflow-x-auto">
             <table className="border-collapse text-left w-full table-auto">
               <thead>
-                <tr className="border-b border-border sticky top-0 z-10 bg-panel">
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Event</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Actor</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Target</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Team</th>
-                  <th className="text-right px-4 py-3 text-caption font-medium text-text-tertiary uppercase tracking-wider align-middle">Time</th>
+                <tr className="border-b border-seam sticky top-0 z-10 bg-panel">
+                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Event</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Actor</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Target</th>
+                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Team</th>
+                  <th className="text-right px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
@@ -269,7 +269,7 @@ export default function AuditLogPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.025 }}
-                      className="hover:bg-bg-tertiary/10 transition-colors group"
+                      className="hover:bg-well/10 transition-colors group"
                     >
                       <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-3">
@@ -277,32 +277,32 @@ export default function AuditLogPage() {
                             <Icon className={`w-3.5 h-3.5 ${style.color}`} weight="fill" />
                           </div>
                           <div>
-                            <p className="text-body-sm text-text-secondary capitalize font-medium">
+                            <p className="text-body-sm text-ink-secondary capitalize font-medium">
                               {entry.event_type.replace(/_/g, ' ')}
                             </p>
                             {entry.metadata?.action && (
-                              <p className="text-[11px] text-text-tertiary/50">{entry.metadata.action}</p>
+                              <p className="text-[11px] text-ink-tertiary/50">{entry.metadata.action}</p>
                             )}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <code className="text-body-xs text-text-secondary font-mono bg-bg-tertiary/20 px-1.5 py-0.5 rounded text-[12px]">
+                        <code className="text-body-xs text-ink-secondary font-mono bg-well/20 px-1.5 py-0.5 rounded text-[12px]">
                           {entry.actor_id?.slice(0, 12)}…
                         </code>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
+                        <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
                           {entry.target_id ? `${entry.target_id.slice(0, 12)}…` : '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <span className="text-body-xs text-text-tertiary font-mono text-[12px]">
+                        <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
                           {entry.team_id ? `${entry.team_id.slice(0, 8)}…` : '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right align-middle">
-                        <span className="text-body-xs text-text-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
+                        <span className="text-body-xs text-ink-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
                           {relativeTime(entry.timestamp)}
                         </span>
                       </td>
@@ -316,15 +316,15 @@ export default function AuditLogPage() {
 
         {/* Pagination */}
         {totalCount > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
-            <span className="text-caption text-text-tertiary">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-seam/50">
+            <span className="text-caption text-ink-tertiary">
               {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-tertiary hover:text-ink hover:bg-well/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <CaretLeft className="w-4 h-4" />
               </button>
@@ -337,8 +337,8 @@ export default function AuditLogPage() {
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-caption font-medium transition-colors ${
                       p === page
-                        ? 'bg-go/10 text-accent-from'
-                        : 'text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/20'
+                        ? 'bg-go/10 text-go'
+                        : 'text-ink-tertiary hover:text-ink hover:bg-well/20'
                     }`}
                   >
                     {p + 1}
@@ -348,7 +348,7 @@ export default function AuditLogPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-tertiary/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-tertiary hover:text-ink hover:bg-well/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <CaretRight className="w-4 h-4" />
               </button>

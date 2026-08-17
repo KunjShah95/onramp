@@ -8,9 +8,9 @@ import { SkeletonBase, SkeletonText, SkeletonAvatar } from './Skeleton'
  */
 export default function SidebarSkeleton() {
   return (
-    <aside className="w-[260px] h-full bg-bg-secondary border-r border-border flex flex-col shrink-0">
+    <aside className="w-[260px] h-full bg-panel border-r border-seam flex flex-col shrink-0">
       {/* Logo area */}
-      <div className="px-6 py-5 border-b border-border">
+      <div className="px-6 py-5 border-b border-seam">
         <SkeletonBase className="h-7 w-28" />
       </div>
 
@@ -28,7 +28,7 @@ export default function SidebarSkeleton() {
       </div>
 
       {/* User info area */}
-      <div className="px-3 py-3 border-t border-border">
+      <div className="px-3 py-3 border-t border-seam">
         <div className="flex items-center gap-3 px-3 py-2">
           <SkeletonAvatar />
           <div className="space-y-1.5 flex-1">
@@ -39,7 +39,7 @@ export default function SidebarSkeleton() {
       </div>
 
       {/* Bottom links area */}
-      <div className="px-3 py-4 border-t border-border space-y-1">
+      <div className="px-3 py-4 border-t border-seam space-y-1">
         {['Settings', 'Profile', 'Sign Out'].map((label) => (
           <div
             key={label}

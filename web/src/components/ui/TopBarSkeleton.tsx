@@ -5,7 +5,7 @@ import { SkeletonAvatar } from './Skeleton'
  */
 export default function TopBarSkeleton() {
   return (
-    <header className="h-14 border-b border-border bg-bg-primary flex items-center justify-end px-6">
+    <header className="h-14 border-b border-seam bg-base flex items-center justify-end px-6">
       <SkeletonAvatar />
     </header>
   )

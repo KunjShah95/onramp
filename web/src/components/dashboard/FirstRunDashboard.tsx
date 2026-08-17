@@ -104,10 +104,10 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             {hasTeam ? 'NEW TEAM · GETTING STARTED' : 'FIRST CONTACT · GETTING STARTED'}
           </span>
         </div>
-        <h1 className="text-display-md md:text-display-lg text-text-primary mb-1">
+        <h1 className="text-display-md md:text-display-lg text-ink mb-1">
           {firstName ? `Welcome aboard, ${firstName}` : 'Welcome aboard'}
         </h1>
-        <p className="text-body-sm text-text-secondary mt-1 font-code">
+        <p className="text-body-sm text-ink-secondary mt-1 font-code">
           {hasTeam
             ? 'Your team is on station — stock it with members and take your first flight.'
             : 'Your station is live — set up your workspace and take your first flight.'}
@@ -143,19 +143,19 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
               className="h-full transition-all duration-200 hover:border-seam-strong hover:shadow-lift"
             >
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-tile bg-bg-tertiary/60 border border-border flex items-center justify-center text-text-secondary group-hover:text-accent-from group-hover:border-accent-from/30 transition-colors shrink-0">
+                <div className="w-10 h-10 rounded-tile bg-well/60 border border-seam flex items-center justify-center text-ink-secondary group-hover:text-go group-hover:border-go/30 transition-colors shrink-0">
                   <s.Icon size={20} weight="duotone" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-body-sm font-semibold text-text-primary group-hover:text-accent-from transition-colors">
+                  <h3 className="text-body-sm font-semibold text-ink group-hover:text-go transition-colors">
                     {s.rail}
                   </h3>
-                  <p className="text-caption text-text-muted mt-1.5 leading-relaxed">{s.desc}</p>
+                  <p className="text-caption text-ink-muted mt-1.5 leading-relaxed">{s.desc}</p>
                 </div>
                 <ArrowRight
                   size={16}
                   weight="bold"
-                  className="text-text-muted/30 group-hover:text-accent-from group-hover:translate-x-0.5 transition-all shrink-0 mt-1"
+                  className="text-ink-muted/30 group-hover:text-go group-hover:translate-x-0.5 transition-all shrink-0 mt-1"
                 />
               </div>
             </ConsoleCard>
@@ -170,9 +170,9 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             {CAPABILITIES.map((c) => (
               <span
                 key={c.label}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-tertiary/50 border border-border text-caption text-text-secondary"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-well/50 border border-seam text-caption text-ink-secondary"
               >
-                <c.Icon size={15} weight="duotone" className="text-accent-from" />
+                <c.Icon size={15} weight="duotone" className="text-go" />
                 {c.label}
               </span>
             ))}

@@ -16,8 +16,8 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
         className={cn(
           'relative w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
           enabled
-            ? 'bg-error/15 text-error'
-            : 'text-text-muted hover:text-text-secondary'
+            ? 'bg-abort/15 text-abort'
+            : 'text-ink-muted hover:text-ink-secondary'
         )}
         aria-label={enabled ? 'Roast Mode ON' : 'Roast Mode OFF'}
         title={enabled ? 'Roast Mode ON' : 'Roast Mode OFF'}
@@ -37,8 +37,8 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
       className={cn(
         'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-all duration-200',
         enabled
-          ? 'bg-error/15 text-error border border-error/25 shadow-sm'
-          : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:text-text-secondary'
+          ? 'bg-abort/15 text-abort border border-abort/25 shadow-sm'
+          : 'bg-well/30 text-ink-tertiary border border-seam hover:text-ink-secondary'
       )}
     >
       <Fire

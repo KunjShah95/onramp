@@ -7,14 +7,14 @@ interface PaginationProps {
 }
 
 const pageBtn =
-  'w-7 h-7 rounded-lg bg-bg-secondary border border-border flex items-center justify-center text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all disabled:opacity-25 disabled:cursor-not-allowed'
+  'w-7 h-7 rounded-lg bg-panel border border-seam flex items-center justify-center text-[11px] text-ink-secondary hover:text-ink hover:bg-well transition-all disabled:opacity-25 disabled:cursor-not-allowed'
 
 const numBtn = (active: boolean) =>
   cn(
     'w-7 h-7 rounded-lg text-[11px] font-mono transition-all',
     active
-      ? 'bg-warning/15 text-warning border border-warning/30'
-      : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+      ? 'bg-caution/15 text-caution border border-caution/30'
+      : 'text-ink-muted hover:text-ink hover:bg-well'
   )
 
 export default function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
@@ -34,7 +34,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
         }
       }}
     >
-      <span className="text-[10px] text-text-muted/70 font-mono mr-1">
+      <span className="text-[10px] text-ink-muted/70 font-mono mr-1">
         Page {page + 1} of {totalPages}
       </span>
 
@@ -70,7 +70,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
           </button>
 
           {/* Left ellipsis */}
-          {page > 2 && <span className="text-text-disabled text-[11px] px-0.5">…</span>}
+          {page > 2 && <span className="text-ink-disabled text-[11px] px-0.5">…</span>}
 
           {/* Adjacent pages */}
           {Array.from({ length: totalPages }, (_, i) => i)
@@ -86,7 +86,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
             ))}
 
           {/* Right ellipsis */}
-          {page < totalPages - 3 && <span className="text-text-disabled text-[11px] px-0.5">…</span>}
+          {page < totalPages - 3 && <span className="text-ink-disabled text-[11px] px-0.5">…</span>}
 
           {/* Last page */}
           <button

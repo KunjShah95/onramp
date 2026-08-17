@@ -138,20 +138,20 @@ export default function NotificationBell() {
 
   const typeColors: Record<string, string> = {
     task_assigned: 'text-blue-400',
-    task_started: 'text-accent-from',
+    task_started: 'text-go',
     task_submitted: 'text-purple-400',
     task_reviewed: 'text-yellow-400',
-    task_approved: 'text-success',
-    task_needs_changes: 'text-error',
-    task_completed: 'text-success',
-    task_cancelled: 'text-text-muted',
+    task_approved: 'text-go',
+    task_needs_changes: 'text-abort',
+    task_completed: 'text-go',
+    task_cancelled: 'text-ink-muted',
     module_granted: 'text-emerald-400',
     team_invite: 'text-pink-400',
-    system_alert: 'text-error',
-    pr_merged: 'text-info',
-    milestone_reached: 'text-accent-from',
+    system_alert: 'text-abort',
+    pr_merged: 'text-mission',
+    milestone_reached: 'text-go',
     quiz_graded: 'text-amber-400',
-    dev_stuck: 'text-error',
+    dev_stuck: 'text-abort',
   }
 
   const timeAgo = (dateStr: string): string => {
@@ -183,8 +183,8 @@ export default function NotificationBell() {
         className={cn(
           'relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
           open
-            ? 'bg-accent-muted text-accent-from'
-            : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+            ? 'bg-go/10 text-go'
+            : 'text-ink-muted hover:text-ink hover:bg-well'
         )}
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={open}
@@ -194,37 +194,37 @@ export default function NotificationBell() {
           {unreadCount > 0 ? 'notifications_active' : 'notifications'}
         </span>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 flex items-center justify-center rounded-full bg-error text-white text-[9px] font-bold leading-none min-w-[18px] min-h-[18px]">
+          <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 flex items-center justify-center rounded-full bg-abort text-white text-[9px] font-bold leading-none min-w-[18px] min-h-[18px]">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown — portaled to <body> so the TopBar's backdrop-blur stacking
-          context can't trap it behind the dashboard. Fixed coords stay valid. */}
+      {/* Dropdown — portaled to <body> so the TopBar's stacking context can't
+          trap it behind the dashboard. Fixed coords stay valid. */}
       {open && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
           style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
-          className="w-[380px] max-h-[520px] bg-bg-primary border border-border rounded-xl shadow-card shadow-black/15 overflow-y-auto"
+          className="w-[380px] max-h-[520px] bg-panel border border-seam rounded-card shadow-overhead overflow-y-auto"
           role="menu"
           aria-label="Notifications list"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-body-sm font-semibold text-text-primary">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-seam">
+            <h3 className="text-body-sm font-semibold text-ink">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-caption text-accent-from hover:underline"
+                  className="text-caption text-go hover:underline"
                 >
                   Mark all read
                 </button>
               )}
               <button
                 onClick={handleViewAll}
-                className="text-caption text-text-muted hover:text-text-primary transition-colors"
+                className="text-caption text-ink-muted hover:text-ink transition-colors"
               >
                 View all
               </button>
@@ -235,7 +235,7 @@ export default function NotificationBell() {
           <div className="overflow-y-auto max-h-[400px]">
             {loading && notifications.length === 0 && (
               <div className="flex items-center justify-center py-8">
-                <svg className="w-5 h-5 animate-spin text-accent-from" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 animate-spin text-go" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
@@ -244,10 +244,10 @@ export default function NotificationBell() {
 
             {!loading && notifications.length === 0 && (
               <div className="flex flex-col items-center py-8 text-center">
-                <span className="material-symbols-outlined text-3xl text-text-muted/30 mb-2">
+                <span className="material-symbols-outlined text-3xl text-ink-muted/30 mb-2">
                   notifications_off
                 </span>
-                <p className="text-caption text-text-muted/50">No notifications yet</p>
+                <p className="text-caption text-ink-muted/50">No notifications yet</p>
               </div>
             )}
 
@@ -256,14 +256,14 @@ export default function NotificationBell() {
                 key={n.notification_id}
                 onClick={() => handleOpen(n)}
                 className={cn(
-                  'w-full text-left px-4 py-3 border-b border-border/50 transition-colors hover:bg-bg-tertiary/20',
-                  !n.read && 'bg-accent-primary/[0.03]'
+                  'w-full text-left px-4 py-3 border-b border-seam transition-colors hover:bg-well/60',
+                  !n.read && 'bg-go/[0.03]'
                 )}
               >
                 <div className="flex items-start gap-3">
                   <span className={cn(
                     'material-symbols-outlined text-lg mt-0.5 shrink-0',
-                    typeColors[n.type] || 'text-text-muted'
+                    typeColors[n.type] || 'text-ink-muted'
                   )}>
                     {typeIcons[n.type] || 'notifications'}
                   </span>
@@ -271,23 +271,23 @@ export default function NotificationBell() {
                     <div className="flex items-center justify-between gap-2">
                       <span className={cn(
                         'text-body-xs font-medium truncate',
-                        !n.read ? 'text-text-primary' : 'text-text-secondary'
+                        !n.read ? 'text-ink' : 'text-ink-secondary'
                       )}>
                         {n.title}
                       </span>
-                      <span className="text-caption text-text-muted/40 font-mono shrink-0">
+                      <span className="text-caption text-ink-muted/40 font-mono shrink-0">
                         {timeAgo(n.created_at)}
                       </span>
                     </div>
                     <p className={cn(
                       'text-caption mt-0.5 line-clamp-2 leading-snug',
-                      !n.read ? 'text-text-secondary' : 'text-text-muted'
+                      !n.read ? 'text-ink-secondary' : 'text-ink-muted'
                     )}>
                       {n.message}
                     </p>
                     {!n.read && (
                       <div className="flex items-center gap-1 mt-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent-from" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-go" />
                       </div>
                     )}
                   </div>
@@ -297,10 +297,10 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2.5 border-t border-border/50">
+          <div className="px-4 py-2.5 border-t border-seam">
             <button
               onClick={handleViewAll}
-              className="w-full text-center text-caption text-text-muted hover:text-text-primary transition-colors"
+              className="w-full text-center text-caption text-ink-muted hover:text-ink transition-colors"
             >
               View all notifications
             </button>

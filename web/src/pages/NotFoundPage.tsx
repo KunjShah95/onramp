@@ -16,48 +16,48 @@ export default function NotFoundPage() {
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-md w-full"
         >
-          <div className="w-16 h-16 rounded-2xl bg-accent-muted border border-accent/20 flex items-center justify-center mx-auto mb-6">
-            <Compass className="w-7 h-7 text-accent-from" weight="duotone" />
+          <div className="w-16 h-16 rounded-2xl bg-go/10 border border-go/20 flex items-center justify-center mx-auto mb-6">
+            <Compass className="w-7 h-7 text-go" weight="duotone" />
           </div>
 
-          <p className="font-code text-caption uppercase tracking-[0.2em] text-text-tertiary mb-2">
+          <p className="font-code text-caption uppercase tracking-[0.2em] text-ink-tertiary mb-2">
             Error 404
           </p>
-          <h1 className="font-display text-display-lg font-medium text-text-primary mb-3">
+          <h1 className="font-display text-display-lg font-medium text-ink mb-3">
             Page not found
           </h1>
-          <p className="text-body text-text-tertiary mb-8 leading-relaxed">
+          <p className="text-body text-ink-tertiary mb-8 leading-relaxed">
             This page doesn't exist — it may have been moved, or the link might be wrong.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <NavLink
               to="/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-from text-white text-body-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto justify-center"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-go text-white text-body-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto justify-center"
             >
               <House size={16} weight="fill" />
               Back to Dashboard
             </NavLink>
             <NavLink
               to="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/40 transition-colors w-full sm:w-auto justify-center"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-seam text-ink-secondary hover:text-ink hover:bg-well/40 transition-colors w-full sm:w-auto justify-center"
             >
               <ArrowLeft size={16} />
               Go to Home
             </NavLink>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-border/50">
-            <p className="text-caption text-text-tertiary mb-3">Looking for something specific?</p>
+          <div className="mt-8 pt-6 border-t border-seam/50">
+            <p className="text-caption text-ink-tertiary mb-3">Looking for something specific?</p>
             <div className="flex items-center justify-center gap-5">
-              <Link to="/explore" className="text-caption font-medium text-accent-from hover:underline underline-offset-4">
+              <Link to="/explore" className="text-caption font-medium text-go hover:underline underline-offset-4">
                 Explore
               </Link>
-              <Link to="/docs" className="inline-flex items-center gap-1 text-caption font-medium text-accent-from hover:underline underline-offset-4">
+              <Link to="/docs" className="inline-flex items-center gap-1 text-caption font-medium text-go hover:underline underline-offset-4">
                 <BookOpenText size={13} />
                 Docs
               </Link>
-              <Link to="/support" className="text-caption font-medium text-accent-from hover:underline underline-offset-4">
+              <Link to="/support" className="text-caption font-medium text-go hover:underline underline-offset-4">
                 Support
               </Link>
             </div>

@@ -20,15 +20,15 @@ function Panel({ callsign, designator, className, children }: { callsign: string
   )
 }
 
-const CLASS_BG: Record<string, string> = { elite: 'bg-success/10 border-success/20', high: 'bg-info/10 border-info/20', medium: 'bg-warning/10 border-warning/20', low: 'bg-error/10 border-error/20', none: 'bg-bg-tertiary/40 border-border' }
-const CLASS_COLORS: Record<string, string> = { elite: 'text-success', high: 'text-info', medium: 'text-warning', low: 'text-error', none: 'text-text-muted' }
+const CLASS_BG: Record<string, string> = { elite: 'bg-go/10 border-go/20', high: 'bg-mission/10 border-mission/20', medium: 'bg-caution/10 border-caution/20', low: 'bg-abort/10 border-abort/20', none: 'bg-well/40 border-seam' }
+const CLASS_COLORS: Record<string, string> = { elite: 'text-go', high: 'text-mission', medium: 'text-caution', low: 'text-abort', none: 'text-ink-muted' }
 const TOOLTIP = { background: 'rgb(var(--bg-elevated))', border: '1px solid rgb(var(--border-rgb) / 0.18)', borderRadius: '4px', fontSize: '12px', color: 'rgb(var(--text-primary))', boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)' }
 
 function MetricBadge({ classification, value, label }: { classification: string; value: string; label: string }) {
   return (
     <div className={cn('rounded-tile border p-4', CLASS_BG[classification] || CLASS_BG.none)}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-caption text-text-muted font-code">{label}</span>
+        <span className="text-caption text-ink-muted font-code">{label}</span>
         <span className={cn('text-[10px] font-semibold uppercase tracking-wider', CLASS_COLORS[classification] || CLASS_COLORS.none)}>{classification}</span>
       </div>
       <div className={cn('text-lg font-semibold font-code', CLASS_COLORS[classification] || CLASS_COLORS.none)}>{value}</div>
@@ -80,7 +80,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
   })
 
   if (isLoading) {
-    return <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-bg-tertiary/40 animate-pulse" />)}</div>
+    return <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-well/40 animate-pulse" />)}</div>
   }
 
   const m = dora?.metrics
@@ -96,7 +96,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
           <span className="text-display-sm font-bold font-code" style={{ color: (dora?.overall_score || 0) >= 75 ? '#17A34A' : (dora?.overall_score || 0) >= 50 ? '#2472C4' : '#D6870F' }}>
             {dora?.overall_score ?? '—'}
           </span>
-          <span className="text-body-sm text-text-muted font-code">DORA<br />Score</span>
+          <span className="text-body-sm text-ink-muted font-code">DORA<br />Score</span>
         </div>
       </motion.div>
 
@@ -143,7 +143,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
       )}
 
       {!dora && (
-        <div className="text-center py-10 text-text-muted text-body-sm font-code">No DORA data yet. Complete tasks to generate metrics.</div>
+        <div className="text-center py-10 text-ink-muted text-body-sm font-code">No DORA data yet. Complete tasks to generate metrics.</div>
       )}
     </motion.div>
   )

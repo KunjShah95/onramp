@@ -37,7 +37,7 @@ function Readout({ label, value, tone }: { label: string; value: string; tone?: 
           tone === 'go' && 'text-go',
           tone === 'caution' && 'text-caution',
           tone === 'abort' && 'text-abort',
-          !tone && 'text-text-primary'
+          !tone && 'text-ink'
         )}
       >
         {value}
@@ -101,7 +101,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
       action={
         <Link
           to="/ramp"
-          className="text-caption text-text-muted/50 hover:text-text-secondary transition-colors font-semibold flex items-center gap-1"
+          className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1"
         >
           Ramp <span aria-hidden>→</span>
         </Link>
@@ -110,13 +110,13 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
       {isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-tile bg-bg-tertiary/40 animate-pulse" />
+            <div key={i} className="h-14 rounded-tile bg-well/40 animate-pulse" />
           ))}
         </div>
       )}
 
       {error && (
-        <div className="text-error text-body-sm font-code">Ramp telemetry unavailable.</div>
+        <div className="text-abort text-body-sm font-code">Ramp telemetry unavailable.</div>
       )}
 
       {data && !error && (
@@ -154,7 +154,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
                 <Link
                   key={s.user_id}
                   to="/ramp"
-                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-bg-tertiary/40 transition-colors"
+                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-well/40 transition-colors"
                 >
                   <span
                     className={cn(
@@ -164,7 +164,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-body-sm text-text-primary font-medium truncate">{s.name}</span>
+                      <span className="text-body-sm text-ink font-medium truncate">{s.name}</span>
                       <span
                         className={cn(
                           'text-caption font-semibold uppercase tracking-wide',
@@ -174,19 +174,19 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
                         {s.severity}
                       </span>
                     </div>
-                    <div className="text-caption text-text-muted truncate mt-0.5">
+                    <div className="text-caption text-ink-muted truncate mt-0.5">
                       {s.signals[0]?.label}
                       {s.signals.length > 1 && ` +${s.signals.length - 1} more`}
                     </div>
                   </div>
-                  <span className="text-caption text-text-muted font-mono shrink-0">
+                  <span className="text-caption text-ink-muted font-mono shrink-0">
                     {fmtUsd(s.senior_cost_usd)}
                   </span>
                 </Link>
               ))}
             </div>
           ) : (
-            <p className="text-caption text-text-muted font-code">
+            <p className="text-caption text-ink-muted font-code">
               No stuck devs · {data.trainee_count} trainee{data.trainee_count === 1 ? '' : 's'} on ramp
             </p>
           )}

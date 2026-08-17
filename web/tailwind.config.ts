@@ -1,10 +1,14 @@
 import type { Config } from 'tailwindcss'
 
 /**
- * Legacy signal ramp — maps the stock Tailwind palette hues onto the
- * Mission Control 4-signal tokens so any component written against the
- * default palette still inherits the console language (GO green /
- * mission blue / caution amber / abort red) in every theme.
+ * ONRAMP FOLIO — token layer.
+ * The Stacks: a research library for a living codebase.
+ * Cool reading-room ground, buckram-teal spine, Schibsted + Source Sans 3.
+ * See DESIGN.md.
+ *
+ * Two naming layers over ONE palette:
+ *  - Folio-native: room/base/panel/ink/go/mission/caution/abort/seam
+ *  - Legacy semantic: bg.* / accent.* / text.* / border.* / success|warning|error|info
  */
 const signalRamp = (base: string, lit: string) => ({
   '50': `rgb(var(${base}) / 0.06)`,
@@ -21,15 +25,9 @@ const signalRamp = (base: string, lit: string) => ({
 })
 
 /**
- * ONRAMP MISSION CONTROL — token layer (superset).
- * The Flight Operations Room: a daylit console floor. Cool gray-green ground,
- * near-white instrument panels seamed by hairlines, ink nomenclature, strict
- * four-signal status palette (GO / mission blue / caution / abort). See DESIGN.md.
- *
- * Two naming layers over ONE palette:
- *  - Mission-native: room/base/panel/ink/go/mission/caution/abort/seam
- *  - Legacy semantic: bg.* / accent.* / text.* / border.* / success|warning|error|info
- * Both resolve to identical Mission Control values so every page renders.
+ * Legacy signal ramp — maps stock Tailwind hues onto Folio status tokens
+ * (buckram / cobalt / ochre / binding red) so older palette class names
+ * still inherit the product language.
  */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -56,7 +54,7 @@ export default {
         pink: signalRamp('--info', '--info-lit'),
         fuchsia: signalRamp('--info', '--info-lit'),
 
-        // ── Mission-native names (var-driven → real light/dark themes) ──
+        // ── Folio-native names (var-driven → real light/dark themes) ──
         room: 'var(--room)',
         panel: 'var(--panel)',
         'panel-raised': 'var(--panel-raised)',
@@ -127,65 +125,57 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Archivo Expanded"', 'Archivo', 'system-ui', 'sans-serif'],
-        heading: ['Archivo', 'system-ui', 'sans-serif'],
-        body: ['"Public Sans"', 'Inter', 'system-ui', 'sans-serif'],
-        code: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        display: ['"Schibsted Grotesk"', '"Source Sans 3"', 'system-ui', 'sans-serif'],
+        heading: ['"Schibsted Grotesk"', '"Source Sans 3"', 'system-ui', 'sans-serif'],
+        body: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
+        code: ['"Azeret Mono"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
-        // Mission-native semantic
-        'display': ['clamp(1.75rem, 4vw, 3.25rem)', { lineHeight: '1.02', letterSpacing: '-0.02em', fontWeight: '800' }],
-        'heading': ['1.25rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
-        'callsign': ['0.6875rem', { lineHeight: '1', letterSpacing: '0.14em', fontWeight: '700' }],
-        'readout': ['0.8125rem', { lineHeight: '1.4', fontWeight: '500' }],
-        // Legacy display ramp (headings)
-        'display-2xl': ['64px', { lineHeight: '1.02', letterSpacing: '-0.03em', fontWeight: '800' }],
-        'display-xl': ['52px', { lineHeight: '1.04', letterSpacing: '-0.025em', fontWeight: '800' }],
-        'display-lg': ['40px', { lineHeight: '1.06', letterSpacing: '-0.02em', fontWeight: '800' }],
-        'display-md': ['30px', { lineHeight: '1.12', letterSpacing: '-0.02em', fontWeight: '700' }],
-        'display-sm': ['22px', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '700' }],
-        'display-xs': ['18px', { lineHeight: '1.3', letterSpacing: '0em', fontWeight: '700' }],
-        // Body ramp
-        'body-lg': ['17px', { lineHeight: '1.6', fontWeight: '400' }],
-        'body-md': ['15px', { lineHeight: '1.6', fontWeight: '400' }],
-        'body': ['0.875rem', { lineHeight: '1.6', fontWeight: '400' }],
-        'body-sm': ['14px', { lineHeight: '1.55', fontWeight: '400' }],
-        'body-xs': ['13px', { lineHeight: '1.5', fontWeight: '400' }],
-        'caption': ['12px', { lineHeight: '1.4', fontWeight: '500' }],
-        'overline': ['11px', { lineHeight: '1', letterSpacing: '0.14em', fontWeight: '700' }],
-        'code-sm': ['13px', { lineHeight: '1.5', fontWeight: '500' }],
+        display: ['1.75rem', { lineHeight: '1.15', letterSpacing: '-0.03em', fontWeight: '700' }],
+        heading: ['1.125rem', { lineHeight: '1.25', letterSpacing: '-0.02em', fontWeight: '650' }],
+        callsign: ['0.8125rem', { lineHeight: '1.2', letterSpacing: '-0.01em', fontWeight: '650' }],
+        readout: ['0.8125rem', { lineHeight: '1.4', fontWeight: '500' }],
+        'display-2xl': ['40px', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-xl': ['32px', { lineHeight: '1.12', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-lg': ['28px', { lineHeight: '1.15', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-md': ['22px', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'display-sm': ['18px', { lineHeight: '1.25', letterSpacing: '-0.02em', fontWeight: '650' }],
+        'display-xs': ['16px', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '650' }],
+        'body-lg': ['17px', { lineHeight: '1.55', fontWeight: '400' }],
+        'body-md': ['15px', { lineHeight: '1.55', fontWeight: '400' }],
+        body: ['0.9375rem', { lineHeight: '1.55', fontWeight: '400' }],
+        'body-sm': ['14px', { lineHeight: '1.5', fontWeight: '400' }],
+        'body-xs': ['13px', { lineHeight: '1.45', fontWeight: '400' }],
+        caption: ['12px', { lineHeight: '1.4', fontWeight: '500' }],
+        overline: ['11px', { lineHeight: '1.2', letterSpacing: '0.02em', fontWeight: '600' }],
+        'code-sm': ['12px', { lineHeight: '1.5', fontWeight: '500' }],
       },
       borderRadius: {
-        tile: '2px',
-        sm: '3px',
-        md: '4px',
-        card: '4px',
-        btn: '3px',
-        input: '3px',
+        tile: '4px',
+        sm: '6px',
+        md: '8px',
+        card: '8px',
+        btn: '6px',
+        input: '6px',
         pill: '9999px',
-        // Enforce the console radius language site-wide: everything that
-        // was written against the stock ramp (rounded-lg/xl/2xl/3xl)
-        // resolves to the instrument panel radius instead of soft corners.
-        lg: '4px',
-        xl: '4px',
-        '2xl': '4px',
-        '3xl': '4px',
+        lg: '8px',
+        xl: '10px',
+        '2xl': '12px',
+        '3xl': '16px',
       },
       boxShadow: {
-        // Mission-native
-        seam: '0 0 0 1px rgba(24,27,24,0.10), 0 1px 2px rgba(24,27,24,0.06)',
-        lift: '0 0 0 1px rgba(24,27,24,0.10), 0 4px 16px rgba(24,27,24,0.10)',
-        overhead: '0 0 0 1px rgba(24,27,24,0.12), 0 12px 32px rgba(24,27,24,0.14)',
-        'lit-inner': 'inset 0 1px 0 rgba(255,255,255,0.30)',
-        // Legacy aliases
-        card: '0 0 0 1px rgba(24,27,24,0.02), 0 1px 2px rgba(24,27,24,0.06)',
-        elevated: '0 0 0 1px rgba(24,27,24,0.04), 0 4px 16px rgba(24,27,24,0.10)',
-        'elevated-lg': '0 0 0 1px rgba(24,27,24,0.06), 0 12px 32px rgba(24,27,24,0.14)',
-        glow: '0 0 0 1px rgba(14,122,60,0.35)',
-        'glow-strong': '0 0 0 1px rgba(14,122,60,0.55)',
-        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.5)',
-        lit: 'inset 0 1px 0 rgba(255,255,255,0.30), 0 1px 2px rgba(24,27,24,0.12)',
-        dashboard: '0 1px 2px rgba(24,27,24,0.06), 0 0 0 1px rgba(24,27,24,0.08)',
+        seam: '0 0 0 1px rgba(26,35,50,0.08)',
+        lift: '0 8px 24px rgba(26,35,50,0.10), 0 0 0 1px rgba(26,35,50,0.08)',
+        overhead: '0 16px 40px rgba(26,35,50,0.16)',
+        'lit-inner': 'none',
+        card: '0 0 0 1px rgba(26,35,50,0.08)',
+        elevated: '0 8px 24px rgba(26,35,50,0.10), 0 0 0 1px rgba(26,35,50,0.08)',
+        'elevated-lg': '0 16px 40px rgba(26,35,50,0.16)',
+        glow: '0 0 0 2px color-mix(in srgb, var(--go) 35%, transparent)',
+        'glow-strong': '0 0 0 2px color-mix(in srgb, var(--go) 55%, transparent)',
+        'inner-glow': 'none',
+        lit: '0 0 0 1px rgba(26,35,50,0.08)',
+        dashboard: '0 0 0 1px rgba(26,35,50,0.08)',
       },
       transitionTimingFunction: {
         'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -218,10 +208,10 @@ export default {
         blink: { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.25' } },
       },
       backgroundImage: {
-        'gradient-accent': 'linear-gradient(180deg, #17A34A 0%, #0E7A3C 100%)',
-        'gradient-accent-soft': 'linear-gradient(180deg, rgba(14,122,60,0.14) 0%, rgba(14,122,60,0.05) 100%)',
-        'gradient-ambient': 'radial-gradient(ellipse 700px 420px at 50% 0%, rgba(14,122,60,0.05) 0%, transparent 70%)',
-        'gradient-hero': 'linear-gradient(180deg, rgba(14,122,60,0.06) 0%, transparent 100%)',
+        'gradient-accent': 'linear-gradient(180deg, #178F88 0%, #0F6B66 100%)',
+        'gradient-accent-soft': 'linear-gradient(180deg, rgba(15,107,102,0.12) 0%, rgba(15,107,102,0.04) 100%)',
+        'gradient-ambient': 'radial-gradient(ellipse 700px 420px at 50% 0%, rgba(15,107,102,0.05) 0%, transparent 70%)',
+        'gradient-hero': 'linear-gradient(180deg, rgba(15,107,102,0.05) 0%, transparent 100%)',
       },
     },
   },

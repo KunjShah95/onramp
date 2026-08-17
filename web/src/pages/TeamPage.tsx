@@ -9,20 +9,19 @@ import {
 } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
-import CardSpotlight from '../components/ui/card-spotlight'
-import GradientHeading from '../components/ui/gradient-heading'
+import ConsolePanel from '../components/ui/console-panel'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { TeamSettingsSkeleton } from '../components/ui/Skeleton'
 import {
-  Users, UserPlus, EnvelopeSimple, X, ArrowRight,
-  Shield, Lock, Key, Star
+  Users, EnvelopeSimple, X, ArrowRight,
+  Shield, Lock, Key
 } from '@phosphor-icons/react'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold mb-1.5 block">{label}</label>
+      <label className="text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold mb-1.5 block">{label}</label>
       {children}
     </div>
   )
@@ -31,7 +30,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input className={cn(
-      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40 transition-colors',
+      'w-full bg-base border border-seam rounded-btn px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors',
       className
     )} {...props} />
   )
@@ -40,7 +39,7 @@ function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputEleme
 function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select className={cn(
-      'w-full bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-go/40 transition-colors',
+      'w-full bg-base border border-seam rounded-btn px-3 py-2 text-sm text-ink outline-none focus:border-go/40 transition-colors',
       className
     )} {...props} />
   )
@@ -55,8 +54,8 @@ const containerVariants = {
   visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
 export default function TeamPage() {
@@ -189,7 +188,7 @@ export default function TeamPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-text-primary relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink relative">
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}
@@ -198,12 +197,12 @@ export default function TeamPage() {
             { label: 'tier', value: TIER_LABELS[currentTeam.tier] || currentTeam.tier, color: 'text-go' },
           ] : undefined}
           actions={teamId ? (
-            <div className="flex bg-bg-primary border border-border rounded-xl overflow-hidden p-0.5 gap-0.5">
+            <div className="flex bg-base border border-seam rounded-btn overflow-hidden p-0.5 gap-0.5">
               {(['teams', 'modules'] as const).map((tab) => (
                 <button key={tab} onClick={() => setActiveSection(tab)}
                   className={cn(
                     'px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-150',
-                    activeSection === tab ? 'bg-bg-tertiary text-go shadow-sm' : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary/50'
+                    activeSection === tab ? 'bg-well text-go shadow-sm' : 'text-ink-tertiary hover:text-ink-secondary hover:bg-well/50'
                   )}>
                   {tab === 'teams' ? 'Team' : 'Module Access'}
                 </button>
@@ -213,9 +212,9 @@ export default function TeamPage() {
         />
 
         {error && (
-          <div className="mb-5 flex items-center justify-between px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm">
+          <div className="mb-5 flex items-center justify-between px-4 py-3 rounded-btn bg-abort/10 border border-abort/20 text-abort text-sm">
             <span>{error}</span>
-            <button onClick={() => setError('')} className="ml-3 text-red-400/50 hover:text-red-400 transition-colors">
+            <button onClick={() => setError('')} className="ml-3 text-abort/60 hover:text-abort transition-colors">
               <X className="w-3.5 h-3.5" weight="bold" />
             </button>
           </div>
@@ -225,11 +224,7 @@ export default function TeamPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
               {/* Create team */}
-              <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <UserPlus className="w-4 h-4 text-go" weight="fill" />
-                  <GradientHeading as="h3" className="text-sm font-bold">Create Team</GradientHeading>
-                </div>
+              <ConsolePanel rail="Create Team" designator="NEW">
                 <div className="space-y-3">
                   <Field label="Team Name">
                     <Input value={teamName} onChange={(e) => setTeamName(e.target.value)}
@@ -244,119 +239,111 @@ export default function TeamPage() {
                     </Select>
                   </Field>
                   <button onClick={handleCreateTeam} disabled={loading || !teamName.trim()}
-                    className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40">
+                    className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-btn text-sm font-bold transition-colors disabled:opacity-40">
                     {loading ? 'Creating…' : 'Create Team'}
                   </button>
                 </div>
-              </CardSpotlight>
+              </ConsolePanel>
 
               {/* Add member */}
               {teamId ? (
-                <CardSpotlight className="p-5 space-y-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <UserPlus className="w-4 h-4 text-go" weight="fill" />
-                    <GradientHeading as="h3" className="text-sm font-bold">Add Member</GradientHeading>
-                  </div>
+                <ConsolePanel rail="Add Member" designator="INVITE" className="space-y-4">
                   <div className="space-y-3">
                     <Field label="Email or User ID">
                       <Input value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)}
                         placeholder="user@company.com" onKeyDown={(e) => e.key === 'Enter' && handleAddMember()} />
                     </Field>
                     <button onClick={handleAddMember} disabled={!memberEmail.trim()}
-                      className="w-full bg-bg-tertiary hover:bg-bg-tertiary/80 text-text-secondary hover:text-text-primary px-4 py-2 rounded-xl text-sm font-medium border border-border transition-colors disabled:opacity-40">
+                      className="w-full bg-well hover:bg-well/80 text-ink-secondary hover:text-ink px-4 py-2 rounded-btn text-sm font-medium border border-seam transition-colors disabled:opacity-40">
                       Add Member
                     </button>
                   </div>
 
                   {/* Invite Member */}
-                  <div className="border-t border-border pt-4 space-y-3">
-                    <h4 className="text-sm font-semibold text-text-primary tracking-wide flex items-center gap-1.5">
+                  <div className="border-t border-seam pt-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-ink tracking-wide flex items-center gap-1.5">
                       <EnvelopeSimple className="w-4 h-4" />
                       Invite by Email
                     </h4>
-                    <p className="text-xs text-text-tertiary">Send an email invitation. The user will receive a link to join.</p>
+                    <p className="text-xs text-ink-tertiary">Send an email invitation. The user will receive a link to join.</p>
                     <div className="flex gap-2">
                       <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                         placeholder="newmember@company.com"
-                        className="flex-1 bg-bg-primary border border-border rounded-xl px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary/30 outline-none focus:border-go/40"
+                        className="flex-1 bg-base border border-seam rounded-btn px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40"
                         onKeyDown={e => e.key === 'Enter' && handleCreateInvite()} />
                       <button onClick={handleCreateInvite} disabled={inviteLoading || !inviteEmail.trim()}
-                        className="px-4 py-2 bg-go text-white text-sm font-bold rounded-xl hover:bg-go/90 disabled:opacity-40 transition-colors">
+                        className="px-4 py-2 bg-go text-white text-sm font-bold rounded-btn hover:bg-go/90 disabled:opacity-40 transition-colors">
                         {inviteLoading ? 'Sending...' : 'Send Invite'}
                       </button>
                     </div>
-                    {inviteError && <p className="text-xs text-red-400">{inviteError}</p>}
+                    {inviteError && <p className="text-xs text-abort">{inviteError}</p>}
 
                     {invites.length > 0 && (
                       <div className="space-y-2 mt-4">
-                        <h4 className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold">
+                        <h4 className="text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold">
                           Pending Invites ({invites.filter(i => i.status === 'pending').length})
                         </h4>
                         {invites.filter(i => i.status === 'pending').map(inv => (
-                          <div key={inv.id} className="flex items-center justify-between bg-bg-primary rounded-xl px-3 py-2">
+                          <div key={inv.id} className="flex items-center justify-between bg-base rounded-btn px-3 py-2">
                             <div className="flex items-center gap-2">
-                              <EnvelopeSimple className="w-3.5 h-3.5 text-text-tertiary" />
-                              <span className="text-sm text-text-primary">{inv.email}</span>
+                              <EnvelopeSimple className="w-3.5 h-3.5 text-ink-tertiary" />
+                              <span className="text-sm text-ink">{inv.email}</span>
                               <span className="ml-1 text-[10px] uppercase tracking-wider text-go/60">{inv.role}</span>
                             </div>
-                            <button onClick={() => handleCancelInvite(inv.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">Cancel</button>
+                            <button onClick={() => handleCancelInvite(inv.id)} className="text-xs text-abort hover:text-abort-lit transition-colors">Cancel</button>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                </CardSpotlight>
+                </ConsolePanel>
               ) : (
-                <CardSpotlight className="p-5 flex items-center justify-center">
-                  <p className="text-xs text-text-tertiary text-center">Create a team first to add members</p>
-                </CardSpotlight>
+                <ConsolePanel className="flex items-center justify-center">
+                  <p className="text-xs text-ink-tertiary text-center">Create a team first to add members</p>
+                </ConsolePanel>
               )}
             </div>
 
             {/* Tier switcher */}
             {teamId && (
-              <CardSpotlight className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="w-4 h-4 text-go" weight="fill" />
-                  <GradientHeading as="h3" className="text-sm font-bold">Subscription Tier</GradientHeading>
-                </div>
+              <ConsolePanel rail="Subscription" designator="TIER">
                 <div className="flex flex-wrap gap-2">
                   {['free', 'startup', 'professional', 'enterprise'].map((t) => (
                     <button key={t} onClick={() => handleChangeTier(t)}
                       className={cn(
-                        'px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all',
+                        'px-4 py-2 rounded-btn text-sm font-medium capitalize transition-all',
                         tier === t
-                          ? 'bg-go text-white shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                          : 'bg-bg-tertiary text-text-tertiary hover:bg-bg-tertiary/80 hover:text-text-secondary border border-border'
+                          ? 'bg-go text-white shadow-seam'
+                          : 'bg-well text-ink-tertiary hover:bg-well/80 hover:text-ink-secondary border border-seam'
                       )}>
                       {t}
                     </button>
                   ))}
                 </div>
-              </CardSpotlight>
+              </ConsolePanel>
             )}
 
             {/* Teams list */}
             {teams.length > 0 && (
-              <CardSpotlight className="overflow-hidden">
-                <div className="px-5 py-4 border-b border-border">
+              <ConsolePanel pad="none" className="overflow-hidden">
+                <div className="px-5 py-4 border-b border-seam">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-go" weight="fill" />
-                    <GradientHeading as="h3" className="text-sm font-bold">Your Teams</GradientHeading>
+                    <h3 className="font-display text-display-xs font-bold text-ink tracking-tight">Your Teams</h3>
                   </div>
                 </div>
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
                   {teams.map((t: any) => (
                     <motion.div key={t.team_id} variants={itemVariants}
-                      className={cn('flex items-center justify-between px-5 py-4 hover:bg-bg-tertiary/30 transition-colors', teamId === t.team_id && 'bg-go/3')}>
+                      className={cn('flex items-center justify-between px-5 py-4 hover:bg-well/30 transition-colors', teamId === t.team_id && 'bg-go/5')}>
                       <div className="flex items-center gap-3">
-                        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold',
-                          teamId === t.team_id ? 'bg-go/20 text-go' : 'bg-bg-tertiary text-text-tertiary')}>
+                        <div className={cn('w-8 h-8 rounded-btn flex items-center justify-center text-xs font-bold',
+                          teamId === t.team_id ? 'bg-go/20 text-go' : 'bg-well text-ink-tertiary')}>
                           {t.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-text-primary">{t.name}</p>
-                          <p className="text-[10px] text-text-tertiary mt-0.5">
+                          <p className="text-sm font-medium text-ink">{t.name}</p>
+                          <p className="text-[10px] text-ink-tertiary mt-0.5">
                             {t.members?.length || 0} members · <span className="capitalize">{t.tier}</span> tier
                           </p>
                         </div>
@@ -369,17 +356,17 @@ export default function TeamPage() {
                     </motion.div>
                   ))}
                 </motion.div>
-              </CardSpotlight>
+              </ConsolePanel>
             )}
 
             {teams.length === 0 && !loading && (
-              <CardSpotlight>
+              <ConsolePanel>
                 <EmptyState
                   title="No teams yet"
                   description="Create a team to start managing members and module access"
                   icon={<Users className="w-8 h-8" weight="thin" />}
                 />
-              </CardSpotlight>
+              </ConsolePanel>
             )}
           </div>
         )}
@@ -388,14 +375,10 @@ export default function TeamPage() {
         {activeSection === 'modules' && teamId && (
           <div className="space-y-5">
             {/* Grant form */}
-            <CardSpotlight className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Lock className="w-4 h-4 text-go" weight="fill" />
-                <GradientHeading as="h3" className="text-sm font-bold">Grant Module Access</GradientHeading>
-              </div>
-              <p className="text-xs text-text-tertiary mb-4 leading-relaxed">
-                Grant access to a codebase module (e.g. <code className="text-go bg-go/8 px-1 rounded">api-core</code>).
-                Also auto-granted when a task with <code className="text-go/70 bg-go/8 px-1 rounded">unlock_modules</code> completes.
+            <ConsolePanel rail="Grant Access" designator="MODULES">
+              <p className="text-xs text-ink-tertiary mb-4 leading-relaxed">
+                Grant access to a codebase module (e.g. <code className="text-go bg-go/10 px-1 rounded">api-core</code>).
+                Also auto-granted when a task with <code className="text-go/70 bg-go/10 px-1 rounded">unlock_modules</code> completes.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                 <Field label="Team Member">
@@ -413,25 +396,25 @@ export default function TeamPage() {
                 </Field>
                 <Field label="Action">
                   <button onClick={handleGrantModule} disabled={!selectedUserId || !newModuleName.trim()}
-                    className="w-full bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 h-[38px]">
+                    className="w-full bg-go hover:bg-go-lit text-white px-4 py-2 rounded-btn text-sm font-medium transition-colors disabled:opacity-40 h-[38px]">
                     Grant Access
                   </button>
                 </Field>
               </div>
-            </CardSpotlight>
+            </ConsolePanel>
 
             {/* Per-member summary */}
-            <CardSpotlight className="overflow-hidden">
-              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <ConsolePanel pad="none" className="overflow-hidden">
+              <div className="px-5 py-4 border-b border-seam flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-go" weight="fill" />
-                  <GradientHeading as="h3" className="text-sm font-bold">
+                  <h3 className="font-display text-display-xs font-bold text-ink tracking-tight">
                     Module Permissions
-                    <span className="ml-2 text-text-tertiary font-mono">{permissions.length} grants</span>
-                  </GradientHeading>
+                    <span className="ml-2 text-ink-tertiary font-mono">{permissions.length} grants</span>
+                  </h3>
                 </div>
                 {selectedUserId && (
-                  <button onClick={() => handleRevokeAll(selectedUserId)} className="text-xs text-red-400/50 hover:text-red-400 transition-colors">Revoke all for selected</button>
+                  <button onClick={() => handleRevokeAll(selectedUserId)} className="text-xs text-abort/60 hover:text-abort transition-colors">Revoke all for selected</button>
                 )}
               </div>
               {permissions.length === 0 ? (
@@ -441,30 +424,30 @@ export default function TeamPage() {
                   icon={<Lock className="w-8 h-8" weight="thin" />}
                 />
               ) : (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
                   {Object.entries(membersWithModules).map(([uid, info]) => (
                     <motion.div key={uid} variants={itemVariants} className="px-5 py-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-go/15 text-go flex items-center justify-center text-[11px] font-bold">
+                          <div className="w-7 h-7 rounded-full bg-go/10 text-go flex items-center justify-center text-[11px] font-bold">
                             {(info.name || uid).charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium text-text-primary">{info.name || uid}</span>
+                          <span className="text-sm font-medium text-ink">{info.name || uid}</span>
                           <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-mono border',
                             info.sources.includes('task_completion')
-                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                              ? 'bg-go/10 text-go border-go/20'
                               : 'bg-go/10 text-go border-go/20'
                           )}>
                             {info.sources.includes('task_completion') ? 'Auto' : 'Manual'}
                           </span>
                         </div>
-                        <button onClick={() => handleRevokeAll(uid)} className="text-[10px] text-red-400/40 hover:text-red-400 transition-colors">Revoke all</button>
+                        <button onClick={() => handleRevokeAll(uid)} className="text-[10px] text-abort/60 hover:text-abort transition-colors">Revoke all</button>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {info.modules.map((mod) => (
-                          <span key={mod} className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-go/8 border border-go/15 text-go text-[11px] font-mono">
+                          <span key={mod} className="group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-go/10 border border-go/20 text-go text-[11px] font-mono">
                             {mod}
-                            <button onClick={() => handleRevokeModule(uid, mod)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all leading-none">
+                            <button onClick={() => handleRevokeModule(uid, mod)} className="opacity-0 group-hover:opacity-100 text-abort hover:text-abort-lit transition-all leading-none">
                               <X className="w-2.5 h-2.5" weight="bold" />
                             </button>
                           </span>
@@ -474,64 +457,64 @@ export default function TeamPage() {
                   ))}
                 </motion.div>
               )}
-            </CardSpotlight>
+            </ConsolePanel>
 
             {/* Full table */}
             {permissions.length > 0 && (
-              <CardSpotlight className="overflow-hidden">
-                <div className="px-5 py-4 border-b border-border">
+              <ConsolePanel pad="none" className="overflow-hidden">
+                <div className="px-5 py-4 border-b border-seam">
                   <div className="flex items-center gap-2">
                     <Key className="w-4 h-4 text-go" weight="fill" />
-                    <GradientHeading as="h3" className="text-sm font-bold">
+                    <h3 className="font-display text-display-xs font-bold text-ink tracking-tight">
                       All Grants
-                      <span className="ml-2 text-text-tertiary font-mono">{permissions.length} total</span>
-                    </GradientHeading>
+                      <span className="ml-2 text-ink-tertiary font-mono">{permissions.length} total</span>
+                    </h3>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="border-collapse text-left w-full table-auto text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-panel sticky top-0 z-10 backdrop-blur-sm">
+                      <tr className="border-b border-seam bg-panel sticky top-0 z-10">
                         {['User', 'Module', 'Source', 'Granted', ''].map((h, i) => (
-                          <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-text-tertiary font-semibold align-middle', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
+                          <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold align-middle', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <motion.tbody variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
+                    <motion.tbody variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
                       {permissions.map((p) => (
-                        <motion.tr key={p.id} variants={itemVariants} className="hover:bg-bg-tertiary/30 transition-colors">
-                          <td className="px-5 py-3 text-sm text-text-secondary align-middle">{p.user_name || p.user_id}</td>
+                        <motion.tr key={p.id} variants={itemVariants} className="hover:bg-well/30 transition-colors">
+                          <td className="px-5 py-3 text-sm text-ink-secondary align-middle">{p.user_name || p.user_id}</td>
                           <td className="px-4 py-3 align-middle">
-                            <span className="px-2 py-0.5 rounded-lg bg-go/8 text-go text-[11px] font-mono border border-go/15">{p.module}</span>
+                            <span className="px-2 py-0.5 rounded-lg bg-go/10 text-go text-[11px] font-mono border border-go/20">{p.module}</span>
                           </td>
                           <td className="px-4 py-3 align-middle">
                             <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium',
-                              p.source === 'task_completion' ? 'bg-green-500/10 text-green-400' : 'bg-go/10 text-go')}>
+                              p.source === 'task_completion' ? 'bg-go/10 text-go' : 'bg-go/10 text-go')}>
                               {p.source === 'task_completion' ? 'Task Auto' : 'Manual'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-[11px] text-text-tertiary font-mono align-middle">{new Date(p.granted_at).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-[11px] text-ink-tertiary font-mono align-middle">{new Date(p.granted_at).toLocaleDateString()}</td>
                           <td className="px-5 py-3 text-right align-middle">
-                            <button onClick={() => handleRevokeModule(p.user_id, p.module)} className="text-[10px] text-red-400/40 hover:text-red-400 transition-colors">Revoke</button>
+                            <button onClick={() => handleRevokeModule(p.user_id, p.module)} className="text-[10px] text-abort/60 hover:text-abort transition-colors">Revoke</button>
                           </td>
                         </motion.tr>
                       ))}
                     </motion.tbody>
                   </table>
                 </div>
-              </CardSpotlight>
+              </ConsolePanel>
             )}
           </div>
         )}
 
         {!teamId && activeSection === 'modules' && (
-          <CardSpotlight>
+          <ConsolePanel>
             <EmptyState
               title="No team selected"
               description="Select or create a team first to manage module access"
               icon={<Users className="w-8 h-8" weight="thin" />}
             />
-          </CardSpotlight>
+          </ConsolePanel>
         )}
     </motion.div>
   )

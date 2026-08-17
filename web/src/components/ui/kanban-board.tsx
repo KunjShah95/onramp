@@ -123,13 +123,13 @@ export default function KanbanBoard({
                 'flex w-60 shrink-0 flex-col rounded-md border transition-all duration-200',
                 isOver
                   ? 'border-go/50 bg-go/[0.04] shadow-[0_0_0_1px_rgba(14,122,60,0.25),0_8px_24px_-12px_rgba(14,122,60,0.35)]'
-                  : 'border-border bg-bg-secondary/40'
+                  : 'border-seam bg-well/40'
               )}
             >
               {/* column rail */}
               <div className="flex items-center gap-2 px-3 pt-3 pb-2">
                 <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', col.dot, hasDraggingSource && isOver && 'animate-pulse-glow')} />
-                <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+                <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {col.label}
                 </h3>
                 <motion.span
@@ -175,9 +175,9 @@ export default function KanbanBoard({
                       tabIndex={0}
                       aria-label={`Task: ${task.title} (${task.state.replace(/_/g, ' ')})`}
                       className={cn(
-                        'group relative cursor-grab rounded-md border border-border bg-bg-secondary p-3 shadow-sm',
-                        'transition-colors hover:border-accent-primary/40 active:cursor-grabbing',
-                        'focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-primary/50',
+                        'group relative cursor-grab rounded-card border border-seam bg-well p-3 shadow-seam',
+                        'transition-colors hover:border-go/40 active:cursor-grabbing',
+                        'focus:outline-none focus-visible:ring-1 focus-visible:ring-go/50',
                         draggingId === task.task_id && 'opacity-40'
                       )}
                       onClick={() => {
@@ -193,35 +193,35 @@ export default function KanbanBoard({
                       }}
                     >
                       {/* top hairline — lights up on hover */}
-                      <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                      <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-go/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
                       <div className="mb-2 flex items-center gap-2">
-                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-widest text-ink-muted">
                           {task.state.replace(/_/g, ' ')}
                         </span>
                         <span className={cn('h-1.5 w-1.5 rounded-full', priorityDot[task.priority ?? 'medium'] ?? priorityDot.medium)} />
                       </div>
 
-                      <h4 className="line-clamp-2 text-sm font-medium leading-snug text-text-primary">
+                      <h4 className="line-clamp-2 text-sm font-medium leading-snug text-ink">
                         {task.title}
                       </h4>
 
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         {task.module && (
-                          <span className="rounded-sm border border-accent-primary/20 bg-accent-primary/5 px-1.5 py-0.5 font-code text-[10px] text-accent-primary">
+                          <span className="rounded-sm border border-go/20 bg-go/5 px-1.5 py-0.5 font-code text-[10px] text-go">
                             {task.module}
                           </span>
                         )}
                         {task.estimated_hours != null && (
-                          <span className="font-code text-[10px] text-text-tertiary">~{task.estimated_hours}h</span>
+                          <span className="font-code text-[10px] text-ink-muted">~{task.estimated_hours}h</span>
                         )}
                         {task.depends_on && (
-                          <span className="rounded-sm border border-mission/20 bg-mission/5 px-1.5 py-0.5 font-code text-[10px] text-info" title={`Blocked until ${task.depends_on} completes`}>
+                          <span className="rounded-sm border border-mission/20 bg-mission/5 px-1.5 py-0.5 font-code text-[10px] text-mission" title={`Blocked until ${task.depends_on} completes`}>
                             dep
                           </span>
                         )}
                         {task.assigned_to && (
-                          <span className="ml-auto max-w-[72px] truncate font-code text-[10px] text-text-muted" title={task.assigned_to}>
+                          <span className="ml-auto max-w-[72px] truncate font-code text-[10px] text-ink-muted" title={task.assigned_to}>
                             {task.assigned_to}
                           </span>
                         )}
@@ -232,8 +232,8 @@ export default function KanbanBoard({
                 </AnimatePresence>
 
                 {colTasks.length === 0 && (
-                  <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-border/80 py-8">
-                    <p className="text-[10px] uppercase tracking-widest text-text-tertiary/40">{emptyLabel}</p>
+                  <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-seam py-8">
+                    <p className="text-[10px] uppercase tracking-widest text-ink-muted/40">{emptyLabel}</p>
                   </div>
                 )}
               </div>
@@ -249,12 +249,12 @@ export default function KanbanBoard({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="sticky bottom-2 z-10 mt-1 flex w-fit items-center gap-2 rounded-md border border-border bg-bg-elevated px-3 py-1.5 shadow-elevated"
+            className="sticky bottom-2 z-10 mt-1 flex w-fit items-center gap-2 rounded-card border border-seam bg-panel-raised px-3 py-1.5 shadow-overhead"
           >
             {moving ? (
               <>
-                <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-accent-primary/30 border-t-accent-primary" />
-                <span className="font-code text-[11px] text-text-secondary">SYNCING MISSION DATA…</span>
+                <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-go/30 border-t-go" />
+                <span className="font-code text-[11px] text-ink-secondary">SYNCING MISSION DATA…</span>
               </>
             ) : (
               <>

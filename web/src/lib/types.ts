@@ -134,11 +134,30 @@ export interface ResolveIssueRequest {
 }
 
 export interface ResolveIssueResult {
-  status: string
+  /** Whether the agent completed its run and opened a pull request. */
+  success: boolean
+  /** URL to the opened pull request (present when success is true). */
+  pr_url?: string
+  /** Pull request number (present when success is true). */
+  pr_number?: number
+  /** The branch the changes were pushed to. */
+  branch?: string
+  /** Human-readable summary written by the agent. */
+  summary?: string
+  /** Number of files touched by applied patches. */
+  files_changed?: number
+  /** Number of patches that committed cleanly. */
+  patches_applied?: number
+  /** Number of patches that failed to apply. */
+  patches_failed?: number
+  /** Failure message when success is false. */
+  error?: string
+  /** Legacy status string (kept for backward compatibility). */
+  status?: string
+  /** Raw patches produced by the agent (present on partial success). */
+  applied_patches?: Array<{ file_path?: string; error?: string; commit_sha?: string }>
   analysis?: AnalysisResult
   fixes?: ProposedFix[]
-  application?: Array<{ status: string; result?: any; error?: string }>
+  application?: Array<{ status: string; result?: unknown; error?: string }>
   validation?: string
-  summary?: string
-  error?: string
 }

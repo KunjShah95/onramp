@@ -44,7 +44,7 @@ export default function MemberDetailPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Back */}
         <motion.div variants={item} className="mb-6">
-          <button className="flex items-center gap-1.5 text-caption text-text-muted/40 hover:text-text-primary transition-colors group">
+          <button className="flex items-center gap-1.5 text-caption text-ink-muted/40 hover:text-ink transition-colors group">
             <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
             Back to Team
           </button>
@@ -56,8 +56,8 @@ export default function MemberDetailPage() {
             <span className="tile tile-go">Team Members</span>
             <span className="designator opacity-50">TEAM ROSTER</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Team Members</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">Per-member onboarding progress and contribution stats</p>
+          <h1 className="text-display-md md:text-display-lg text-ink">Team Members</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">Per-member onboarding progress and contribution stats</p>
         </motion.div>
 
         <AnimatePresence>
@@ -82,11 +82,11 @@ export default function MemberDetailPage() {
         ) : members.length === 0 ? (
           <motion.div variants={item}>
             <CardSpotlight className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-bg-tertiary border border-border flex items-center justify-center mx-auto mb-4">
-                <User size={26} className="text-text-muted/20" />
+              <div className="w-14 h-14 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-4">
+                <User size={26} className="text-ink-muted/20" />
               </div>
-              <p className="text-body-sm text-text-muted/40 font-medium mb-1">No members yet</p>
-              <p className="text-caption text-text-muted/20">Invite teammates to see their progress here.</p>
+              <p className="text-body-sm text-ink-muted/40 font-medium mb-1">No members yet</p>
+              <p className="text-caption text-ink-muted/20">Invite teammates to see their progress here.</p>
             </CardSpotlight>
           </motion.div>
         ) : (
@@ -103,22 +103,22 @@ export default function MemberDetailPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.035 }}
                 >
-                  <CardSpotlight className="p-5 group hover:border-border-hover transition-all">
+                  <CardSpotlight className="p-5 group hover:border-seam-strong transition-all">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-400/15 flex items-center justify-center shrink-0">
-                        <span className="font-display text-body font-bold text-amber-400">{initials}</span>
+                      <div className="w-12 h-12 rounded-card bg-well border border-seam flex items-center justify-center shrink-0">
+                        <span className="font-display text-body font-bold text-ink-tertiary">{initials}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <h2 className="font-display text-body font-bold text-text-primary">{m.name || m.user_id}</h2>
-                            <p className="text-body-xs text-text-muted/50 capitalize mt-0.5">{m.role}</p>
+                            <h2 className="font-display text-body font-bold text-ink">{m.name || m.user_id}</h2>
+                            <p className="text-body-xs text-ink-muted/50 capitalize mt-0.5">{m.role}</p>
                           </div>
                           <div className={cn('font-code text-body-xs font-semibold tabular-nums', rateColor)}>{rate}%</div>
                         </div>
 
                         <div className="mt-3 mb-4">
-                          <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-well overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${rate}%` }}
@@ -135,15 +135,15 @@ export default function MemberDetailPage() {
                             { label: 'Pending', value: m.pending_review, icon: Bug, color: 'text-amber-400' },
                             { label: 'Total', value: m.total_tasks, icon: Code, color: 'text-purple-400' },
                           ].map((stat) => (
-                            <div key={stat.label} className="p-2.5 rounded-xl bg-bg-tertiary/30 border border-border/40 text-center">
+                            <div key={stat.label} className="p-2.5 rounded-xl bg-well/30 border border-seam/40 text-center">
                               <stat.icon size={12} className={cn(stat.color, 'mx-auto mb-1')} weight="fill" />
-                              <p className="text-body-xs font-semibold text-text-primary tabular-nums">{stat.value}</p>
-                              <p className="text-overline text-text-muted/30 mt-0.5">{stat.label}</p>
+                              <p className="text-body-xs font-semibold text-ink tabular-nums">{stat.value}</p>
+                              <p className="text-overline text-ink-muted/30 mt-0.5">{stat.label}</p>
                             </div>
                           ))}
                         </div>
 
-                        <div className="flex items-center gap-3 mt-3 flex-wrap text-caption text-text-muted/30">
+                        <div className="flex items-center gap-3 mt-3 flex-wrap text-caption text-ink-muted/30">
                           <span className="flex items-center gap-1.5">
                             <ShieldCheck size={11} />
                             {m.modules_unlocked.length} unlocked

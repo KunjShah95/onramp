@@ -86,10 +86,10 @@ export default function DevSpacePage() {
   const calls = d?.stats?.api_calls_24h ?? 0
 
   const readouts: Readout[] = [
-    { label: 'Repos Analyzed', value: repos, color: 'text-info' },
+    { label: 'Repos Analyzed', value: repos, color: 'text-mission' },
     { label: 'Active Teams', value: teams, color: 'text-go' },
-    { label: 'Total Users', value: users, color: 'text-info' },
-    { label: 'API Calls · 24h', value: calls, color: 'text-warning' },
+    { label: 'Total Users', value: users, color: 'text-mission' },
+    { label: 'API Calls · 24h', value: calls, color: 'text-caution' },
   ]
 
   const activity: ActivityEvent[] = d?.recent_activity?.map((a: any, i: number) => ({
@@ -116,11 +116,11 @@ export default function DevSpacePage() {
               <span className="tile tile-go">Dev Space</span>
               <span className="designator opacity-50">CREW · TOOLS</span>
             </div>
-            <h1 className="text-display-md md:text-display-lg text-text-primary flex items-center gap-3">
+            <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
               <Code size={28} weight="fill" className="text-go shrink-0" />
               Developer Space
             </h1>
-            <p className="text-body-sm text-text-secondary mt-1 font-code">
+            <p className="text-body-sm text-ink-secondary mt-1 font-code">
               Full-access developer portal and tools.
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function DevSpacePage() {
           <motion.div variants={item}>
             <ConsolePanel rail="Signal Lost" designator="DEV" status="abort">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-error text-body-sm font-code">{error}</p>
+                <p className="text-abort text-body-sm font-code">{error}</p>
               </div>
             </ConsolePanel>
           </motion.div>
@@ -172,7 +172,7 @@ export default function DevSpacePage() {
                             </span>
                             <span className="font-code text-caption text-ink-secondary truncate">{link.title}</span>
                           </div>
-                          <p className="text-caption text-text-muted line-clamp-2 mb-2 min-h-[2.4em]">
+                          <p className="text-caption text-ink-muted line-clamp-2 mb-2 min-h-[2.4em]">
                             {link.description}
                           </p>
                           <div className="flex items-center gap-1 text-caption text-ink-muted/60 group-hover:text-go transition-colors">

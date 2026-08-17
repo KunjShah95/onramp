@@ -6,6 +6,7 @@ import Seo from '../seo/Seo'
 import TransitionOverlay from '../ui/TransitionOverlay'
 import PageTransition from '../ui/page-transition'
 import KeyboardShortcutHelp from '../ui/KeyboardShortcutHelp'
+import CommandPalette from '../ui/command-palette'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import AppShell from './AppShell'
 
@@ -36,6 +37,7 @@ export default function Layout() {
           onClose={() => setShowHelp(false)}
         />
       )}
+      <CommandPalette />
     </AppShell>
   )
 }

@@ -1,24 +1,15 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { NavLink } from 'react-router-dom'
 import {
-  GraduationCap, Compass, BookOpenText, BugBeetle,
+  Compass, BookOpenText, BugBeetle,
   CheckCircle, Circle, ArrowRight, Clock, Code,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 interface ChecklistItem {
   label: string
@@ -61,210 +52,160 @@ export default function OnboardingHubPage() {
   ]
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-6xl mx-auto space-y-8 relative"
-    >
-      {/* Header with welcome */}
-      <motion.div variants={itemVariants} className="flex items-center gap-3 relative">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <GraduationCap size={11} weight="fill" className="mr-1.5" />
-              Onboarding
-            </span>
-            <span className="designator opacity-50">CREW ORIENTATION</span>
+    <div className="max-w-6xl mx-auto space-y-8 relative">
+      <PageHeader
+        eyebrow="Onboarding · Crew Orientation"
+        title="Your Onboarding Hub"
+        subtitle={`Welcome${user?.displayName ? `, ${user.displayName}` : ''}. Let's get you up to speed.`}
+        pills={[
+          { label: 'Checklist', value: `${completedCount}/${totalCount}` },
+          { label: 'Tasks', value: `${seedData?.completed_tasks ?? 0}/${seedData?.total_tasks ?? 0}` },
+        ]}
+      />
+
+      {error && (
+        <div className="px-4 py-3 rounded-card border border-abort/20 bg-abort/5 text-abort text-body-sm">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-72 rounded-card border border-seam bg-panel animate-pulse" />
+            <div className="h-72 rounded-card border border-seam bg-panel animate-pulse" />
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Your Onboarding Hub</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">
-            Welcome{user?.displayName ? `, ${user.displayName}` : ''}. Let's get you up to speed.
-          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-28 rounded-card border border-seam bg-panel animate-pulse" />
+            ))}
+          </div>
         </div>
-      </motion.div>
-
-        {error && (
-          <div className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm">{error}</div>
-        )}
-
-        {loading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 h-72 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-              <div className="h-72 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-28 rounded-xl bg-bg-secondary border border-border animate-pulse" />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Getting Started + Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Checklist */}
-              <motion.div variants={itemVariants} className="lg:col-span-2">
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-success-muted border border-success/20 flex items-center justify-center">
-                        <CheckCircle className="w-4 h-4 text-success" weight="fill" />
-                      </div>
-                      <h2 className="font-display text-body-sm font-bold text-text-primary">Getting Started</h2>
-                    </div>
-                    <span className="text-caption text-text-tertiary/60 font-code">{completedCount}/{totalCount} done</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden mb-5">
+      ) : (
+        <>
+          {/* Getting Started + Quick Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Checklist */}
+            <div className="lg:col-span-2">
+              <ConsolePanel rail="Getting Started" designator={`${completedCount}/${totalCount} DONE`}>
+                <div className="mb-5">
+                  <div className="h-1.5 rounded-sm bg-well overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-success transition-all duration-700"
-                      style={{ width: `${(completedCount / totalCount) * 100}%` }}
+                      className="h-full bg-go transition-all duration-700"
+                      style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }}
                     />
                   </div>
-                  <div className="space-y-1">
-                    {checklist.map((item, i) => (
-                      <motion.div
-                        key={item.label}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        onClick={() => {
-                          if (!item.done) {
-                            setChecklist((prev) =>
-                              prev.map((c) => (c.label === item.label ? { ...c, done: true } : c))
-                            )
-                          }
-                        }}
-                        className={cn(
-                          'flex items-center gap-3 p-2.5 rounded-lg transition-all cursor-pointer',
-                          item.done ? 'opacity-60' : 'hover:bg-bg-tertiary/30'
-                        )}
-                      >
-                        {item.done ? (
-                          <CheckCircle className="w-5 h-5 text-success shrink-0" weight="fill" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-text-tertiary/40 shrink-0" />
-                        )}
-                        <span className={cn('text-body-sm', item.done ? 'text-text-tertiary line-through' : 'text-text-primary')}>
-                          {item.label}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </CardSpotlight>
-              </motion.div>
-
-              {/* Quick Actions */}
-              <motion.div variants={itemVariants}>
-                <CardSpotlight className="p-5 h-full">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/20 flex items-center justify-center">
-                      <Compass className="w-4 h-4 text-accent-from" weight="fill" />
+                </div>
+                <div className="space-y-1">
+                  {checklist.map((item) => (
+                    <div
+                      key={item.label}
+                      onClick={() => {
+                        if (!item.done) {
+                          setChecklist((prev) =>
+                            prev.map((c) => (c.label === item.label ? { ...c, done: true } : c))
+                          )
+                        }
+                      }}
+                      className={cn(
+                        'flex items-center gap-3 p-2.5 rounded-tile transition-colors cursor-pointer',
+                        item.done ? 'opacity-60' : 'hover:bg-well/50'
+                      )}
+                    >
+                      {item.done ? (
+                        <CheckCircle className="w-5 h-5 text-go shrink-0" weight="fill" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-ink-muted/40 shrink-0" />
+                      )}
+                      <span className={cn('text-body-sm', item.done ? 'text-ink-tertiary line-through' : 'text-ink')}>
+                        {item.label}
+                      </span>
                     </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Quick Actions</h2>
-                  </div>
-                  <div className="space-y-3">
-                    {quickActions.map((action) => (
-                      <NavLink key={action.to} to={action.to}>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary/20 border border-border hover:border-accent/30 hover:bg-bg-tertiary/40 transition-all group cursor-pointer">
-                          <div className="w-8 h-8 rounded-lg bg-accent-muted border border-accent/15 flex items-center justify-center shrink-0 group-hover:bg-accent-muted/70 transition-colors">
-                            <action.icon className="w-4 h-4 text-accent-from" weight="fill" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-body-xs font-medium text-text-primary">{action.label}</p>
-                            <p className="text-caption text-text-tertiary/60">{action.desc}</p>
-                          </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-text-tertiary/30 group-hover:text-accent-from transition-colors mt-1" weight="bold" />
-                        </div>
-                      </NavLink>
-                    ))}
-                  </div>
-                </CardSpotlight>
-              </motion.div>
+                  ))}
+                </div>
+              </ConsolePanel>
             </div>
 
-            {/* Learning Progress + Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Learning Progress */}
-              <motion.div variants={itemVariants}>
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-info-muted border border-info/20 flex items-center justify-center">
-                      <BookOpenText className="w-4 h-4 text-info" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Learning Progress</h2>
-                  </div>
-                  {!seedData?.learning_modules?.length ? (
-                    <EmptyState icon={<BookOpenText className="w-8 h-8 text-text-tertiary/30" weight="duotone" />} title="No modules" description="Learning modules will appear once assigned." />
-                  ) : (
-                    <div className="space-y-4">
-                      {seedData.learning_modules.map((mod: any) => (
-                        <div key={mod.name}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-body-xs text-text-primary font-medium">{mod.name}</span>
-                            <span className="text-caption font-code tabular-nums text-text-tertiary/60">{mod.progress}%</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-700',
-                                mod.progress >= 100 ? 'bg-success' : mod.progress > 0 ? 'bg-accent-from' : 'bg-bg-tertiary'
-                              )}
-                              style={{ width: `${mod.progress}%` }}
-                            />
-                          </div>
+            {/* Quick Actions */}
+            <div>
+              <ConsolePanel rail="Quick Actions" status="standby" className="h-full">
+                <div className="space-y-3">
+                  {quickActions.map((action) => (
+                    <NavLink key={action.to} to={action.to} className="block">
+                      <div className="flex items-start gap-3 p-3 rounded-tile bg-well border border-seam hover:border-seam-strong hover:bg-panel transition-colors group cursor-pointer">
+                        <div className="w-8 h-8 rounded-tile bg-panel-raised border border-seam flex items-center justify-center shrink-0 text-ink-tertiary">
+                          <action.icon className="w-4 h-4" weight="fill" />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-caption text-text-tertiary/50">
-                    <span>Tasks completed</span>
-                    <span className="font-code text-text-primary font-medium">
-                      {seedData?.completed_tasks ?? 0}/{seedData?.total_tasks ?? 0}
-                    </span>
-                  </div>
-                </CardSpotlight>
-              </motion.div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body-xs font-medium text-ink">{action.label}</p>
+                          <p className="text-caption text-ink-muted">{action.desc}</p>
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-ink-muted/40 group-hover:text-ink mt-1 transition-colors" weight="bold" />
+                      </div>
+                    </NavLink>
+                  ))}
+                </div>
+              </ConsolePanel>
+            </div>
+          </div>
 
-              {/* Recent Activity */}
-              <motion.div variants={itemVariants}>
-                <CardSpotlight className="p-5">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-amber-400" weight="fill" />
-                    </div>
-                    <h2 className="font-display text-body-sm font-bold text-text-primary">Recent Activity</h2>
-                  </div>
-                  {!seedData?.recent_activity?.length ? (
-                    <EmptyState icon={<Clock className="w-8 h-8 text-text-tertiary/30" weight="duotone" />} title="No activity yet" description="Your onboarding activity will show here." />
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute left-3.5 top-0 bottom-0 w-px bg-border" />
-                      <div className="space-y-0">
-                        {seedData.recent_activity.map((event: any, i: number) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.06 }}
-                            className="relative flex gap-4 pl-10 py-3"
-                          >
-                            <div className="absolute left-2.5 w-[7px] h-[7px] rounded-full bg-accent-from border-2 border-bg-secondary mt-1.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-body-xs text-text-primary">{event.title}</p>
-                              <p className="text-caption text-text-tertiary/50 mt-0.5">{event.time}</p>
-                            </div>
-                          </motion.div>
-                        ))}
+          {/* Learning Progress + Recent Activity */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Learning Progress */}
+            <ConsolePanel rail="Learning Progress" status="standby">
+              {!seedData?.learning_modules?.length ? (
+                <EmptyState icon={<BookOpenText className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No modules" description="Learning modules will appear once assigned." />
+              ) : (
+                <div className="space-y-4">
+                  {seedData.learning_modules.map((mod: any) => (
+                    <div key={mod.name}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-body-xs text-ink font-medium">{mod.name}</span>
+                        <span className="text-caption font-code tabular-nums text-ink-muted">{mod.progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-sm bg-well overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-sm transition-all duration-700',
+                            mod.progress >= 100 ? 'bg-go' : mod.progress > 0 ? 'bg-mission' : 'bg-well'
+                          )}
+                          style={{ width: `${mod.progress}%` }}
+                        />
                       </div>
                     </div>
-                  )}
-                </CardSpotlight>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </motion.div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-4 pt-3 border-t border-seam flex items-center justify-between text-caption text-ink-tertiary">
+                <span>Tasks completed</span>
+                <span className="font-code text-ink font-medium">
+                  {seedData?.completed_tasks ?? 0}/{seedData?.total_tasks ?? 0}
+                </span>
+              </div>
+            </ConsolePanel>
+
+            {/* Recent Activity */}
+            <ConsolePanel rail="Recent Activity" status="go">
+              {!seedData?.recent_activity?.length ? (
+                <EmptyState icon={<Clock className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No activity yet" description="Your onboarding activity will show here." />
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-3.5 top-0 bottom-0 w-px bg-seam" />
+                  <div className="space-y-0">
+                    {seedData.recent_activity.map((event: any, i: number) => (
+                      <div key={i} className="relative flex gap-4 pl-10 py-3">
+                        <div className="absolute left-2.5 w-[7px] h-[7px] rounded-[2px] bg-go border-2 border-panel mt-1.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body-xs text-ink">{event.title}</p>
+                          <p className="text-caption text-ink-muted mt-0.5">{event.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </ConsolePanel>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

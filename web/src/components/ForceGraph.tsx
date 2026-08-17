@@ -315,7 +315,7 @@ export default function ForceGraph({
           className="absolute z-50 pointer-events-none"
           style={{ left: tooltipData.x, top: tooltipData.y }}
         >
-          <div className="bg-[#1C1C1E] border border-[#FDFBF8]/10 rounded-xl p-3 shadow-2xl backdrop-blur-xl max-w-[260px]">
+          <div className="bg-ink border border-seam rounded-card p-3 shadow-overhead max-w-[260px]">
             <div className="flex items-center gap-2 mb-1.5">
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"

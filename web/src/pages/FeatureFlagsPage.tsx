@@ -111,13 +111,13 @@ export default function FeatureFlagsPage() {
             </span>
             <span className="designator opacity-50">CONFIG SWITCHES</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Feature Flags</h1>
-          <p className="text-body-xs text-text-secondary font-code">Toggle team-level features on and off.</p>
+          <h1 className="text-display-md md:text-display-lg text-ink">Feature Flags</h1>
+          <p className="text-body-xs text-ink-secondary font-code">Toggle team-level features on and off.</p>
         </div>
       </div>
 
       {!activeTeamId && (
-        <div className="card p-6 text-center text-text-tertiary text-body-sm">
+        <div className="card p-6 text-center text-ink-tertiary text-body-sm">
           Select a team to manage feature flags.
         </div>
       )}
@@ -144,17 +144,17 @@ export default function FeatureFlagsPage() {
                       </code>
                       <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                        enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-bg-tertiary text-text-muted'
+                        enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-well text-ink-muted'
                       )}>
                         {enabled ? 'ON' : 'OFF'}
                       </span>
                     </div>
-                    <p className="text-caption text-text-tertiary mt-1">{preset.description}</p>
+                    <p className="text-caption text-ink-tertiary mt-1">{preset.description}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => handleDelete(preset.name)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-error hover:bg-error/10 transition-all"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-muted hover:text-abort hover:bg-abort/10 transition-all"
                       title="Remove flag"
                     >
                       <Trash size={14} />
@@ -162,7 +162,7 @@ export default function FeatureFlagsPage() {
                     <button
                       onClick={() => handleToggle(preset.name, enabled)}
                       disabled={toggling !== null}
-                      className="text-text-tertiary hover:text-go transition-colors"
+                      className="text-ink-tertiary hover:text-go transition-colors"
                     >
                       {togglingThis ? (
                         <Spinner className="w-6 h-6 animate-spin text-go" />
@@ -180,27 +180,27 @@ export default function FeatureFlagsPage() {
 
           {/* Custom flags */}
           <div className="space-y-2">
-            <h3 className="text-body-sm font-medium text-text-primary mb-3">Custom Flags</h3>
+            <h3 className="text-body-sm font-medium text-ink mb-3">Custom Flags</h3>
             {flags.filter((f) => !PRESET_FLAGS.some((p) => p.name === f.flag_name)).length === 0 && (
-              <p className="text-caption text-text-tertiary/60 mb-3">No custom flags yet.</p>
+              <p className="text-caption text-ink-tertiary/60 mb-3">No custom flags yet.</p>
             )}
             {flags
               .filter((f) => !PRESET_FLAGS.some((p) => p.name === f.flag_name))
               .map((flag) => (
                 <motion.div key={flag.id} variants={itemVariants} className="card p-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <code className="text-caption font-code text-text-primary bg-bg-tertiary/50 px-2 py-0.5 rounded">{flag.flag_name}</code>
+                    <code className="text-caption font-code text-ink bg-well/50 px-2 py-0.5 rounded">{flag.flag_name}</code>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDelete(flag.flag_name)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-error hover:bg-error/10 transition-all"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-muted hover:text-abort hover:bg-abort/10 transition-all"
                     >
                       <Trash size={14} />
                     </button>
                     <button
                       onClick={() => handleToggle(flag.flag_name, flag.enabled)}
-                      className="text-text-tertiary hover:text-go transition-colors"
+                      className="text-ink-tertiary hover:text-go transition-colors"
                     >
                       {flag.enabled ? (
                         <ToggleRight size={24} className="text-go" weight="fill" />
@@ -220,7 +220,7 @@ export default function FeatureFlagsPage() {
                 onChange={(e) => setCustomName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
                 placeholder="custom_flag_name"
-                className="flex-1 bg-bg-secondary border border-border text-text-primary text-body-sm rounded-input px-3 py-2 focus:outline-none focus:border-go/60 placeholder:text-text-tertiary/40"
+                className="flex-1 bg-panel border border-seam text-ink text-body-sm rounded-input px-3 py-2 focus:outline-none focus:border-go/60 placeholder:text-ink-tertiary/40"
               />
               <button
                 onClick={handleAddCustom}

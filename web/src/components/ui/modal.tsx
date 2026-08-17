@@ -27,27 +27,26 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-2xl' }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className={`bg-bg-primary border border-border rounded-2xl w-full ${maxWidth} max-h-[85vh] overflow-y-auto shadow-2xl relative`}
+        className={`bg-base border border-seam rounded-card w-full ${maxWidth} max-h-[85vh] overflow-y-auto shadow-overhead relative`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'Dialog'}
       >
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent rounded-t-2xl" />
         {title !== undefined && (
-          <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-bg-primary z-10">
-            <div className="text-body font-medium text-text-primary pr-4">{title}</div>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-seam sticky top-0 bg-base z-10">
+            <div className="callsign text-ink-secondary pr-4">{title}</div>
             <button
               onClick={onClose}
-              className="text-text-tertiary hover:text-text-primary transition-colors shrink-0"
+              className="flex h-7 w-7 items-center justify-center rounded-btn border border-seam text-ink-tertiary hover:text-ink hover:bg-well transition-colors shrink-0"
               aria-label="Close"
             >
-              <X className="w-5 h-5" weight="bold" />
+              <X className="w-4 h-4" weight="bold" />
             </button>
           </div>
         )}

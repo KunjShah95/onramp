@@ -48,7 +48,7 @@ export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGu
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center font-mono text-text-muted">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center font-mono text-ink-muted">
         Authenticating role permissions...
       </div>
     )

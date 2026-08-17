@@ -131,8 +131,8 @@ export default function PlaybooksPage() {
             </span>
             <span className="designator opacity-50">WORKFLOW REGISTRY</span>
           </div>
-          <h1 className="text-display-md md:text-display-lg text-text-primary">Playbooks</h1>
-          <p className="text-body-sm text-text-secondary mt-1 font-code">
+          <h1 className="text-display-md md:text-display-lg text-ink">Playbooks</h1>
+          <p className="text-body-sm text-ink-secondary mt-1 font-code">
             Automated workflows and guided processes to standardize engineering operations.
           </p>
         </div>
@@ -149,9 +149,9 @@ export default function PlaybooksPage() {
       </motion.div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-error-muted border border-error/20 text-error text-body-sm flex items-center justify-between">
+        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-error/70 hover:text-error">Retry</button>
+          <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </motion.div>
       )}
 
@@ -160,7 +160,7 @@ export default function PlaybooksPage() {
       {!loading && playbooks.length === 0 && !error && (
         <motion.div variants={itemVariants}>
           <EmptyState
-            icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+            icon={<BookOpenText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
             title="No playbooks yet"
             description="Create a reusable onboarding or review playbook for your team."
             action={
@@ -177,7 +177,7 @@ export default function PlaybooksPage() {
           {/* Search & Filters */}
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-tertiary" />
               <input
                 type="text"
                 value={search}
@@ -194,7 +194,7 @@ export default function PlaybooksPage() {
                   className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
                     category === cat
                       ? 'bg-go/15 text-go border border-go/30'
-                      : 'bg-bg-tertiary/30 text-text-tertiary border border-border hover:border-border-hover'
+                      : 'bg-well/30 text-ink-tertiary border border-seam hover:border-seam-strong'
                   }`}
                 >
                   {cat}
@@ -206,7 +206,7 @@ export default function PlaybooksPage() {
           {filtered.length === 0 ? (
             <motion.div variants={itemVariants}>
               <EmptyState
-                icon={<BookOpenText className="w-10 h-10 text-text-tertiary/30" weight="duotone" />}
+                icon={<BookOpenText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
                 title="No playbooks found"
                 description={search ? 'Try a different search term' : 'No playbooks available in this category'}
               />
@@ -228,17 +228,17 @@ export default function PlaybooksPage() {
                       <button
                         onClick={() => handleArchive(playbook.playbook_id)}
                         disabled={archiving === playbook.playbook_id}
-                        className="text-text-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
+                        className="text-ink-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
                         title="Archive"
                       >
                         <Trash className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <h3 className="text-body font-medium text-text-primary mb-1.5 group-hover:text-accent-from transition-colors">{playbook.title}</h3>
-                    <p className="text-caption text-text-tertiary leading-relaxed mb-5 flex-1">
+                    <h3 className="text-body font-medium text-ink mb-1.5 group-hover:text-go transition-colors">{playbook.title}</h3>
+                    <p className="text-caption text-ink-tertiary leading-relaxed mb-5 flex-1">
                       {playbook.description || 'No description.'}
                     </p>
-                    <div className="flex items-center gap-4 text-caption text-text-tertiary mb-4">
+                    <div className="flex items-center gap-4 text-caption text-ink-tertiary mb-4">
                       <span className="flex items-center gap-1.5">
                         <CheckCircle className="w-3.5 h-3.5" />
                         {playbook.steps.length} steps
@@ -269,7 +269,7 @@ export default function PlaybooksPage() {
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New Playbook">
         <div className="space-y-4">
           <div>
-            <label className="block text-caption font-medium text-text-secondary mb-1.5">Title</label>
+            <label className="block text-caption font-medium text-ink-secondary mb-1.5">Title</label>
             <input
               type="text"
               value={newTitle}
@@ -279,7 +279,7 @@ export default function PlaybooksPage() {
             />
           </div>
           <div>
-            <label className="block text-caption font-medium text-text-secondary mb-1.5">Description</label>
+            <label className="block text-caption font-medium text-ink-secondary mb-1.5">Description</label>
             <input
               type="text"
               value={newDesc}
@@ -289,7 +289,7 @@ export default function PlaybooksPage() {
             />
           </div>
           <div>
-            <label className="block text-caption font-medium text-text-secondary mb-1.5">Steps (one per line)</label>
+            <label className="block text-caption font-medium text-ink-secondary mb-1.5">Steps (one per line)</label>
             <textarea
               value={newSteps}
               onChange={(e) => setNewSteps(e.target.value)}
@@ -315,10 +315,10 @@ export default function PlaybooksPage() {
       <Modal open={openBook !== null} onClose={() => setOpenBook(null)} title={openBook?.title} maxWidth="max-w-xl">
         {openBook && (
           <div className="space-y-4">
-            <p className="text-caption text-text-tertiary">{openBook.description}</p>
+            <p className="text-caption text-ink-tertiary">{openBook.description}</p>
             <div>
-              <div className="text-overline text-text-tertiary/50 font-semibold mb-2">Steps</div>
-              <ol className="space-y-2 list-decimal list-inside text-body-sm text-text-secondary">
+              <div className="text-overline text-ink-tertiary/50 font-semibold mb-2">Steps</div>
+              <ol className="space-y-2 list-decimal list-inside text-body-sm text-ink-secondary">
                 {openBook.steps.map((s, idx) => (
                   <li key={idx} className="leading-relaxed">{s}</li>
                 ))}

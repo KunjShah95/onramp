@@ -22,23 +22,23 @@ import type { GamificationSummary, LeaderboardEntry, BadgeInfo } from '../../lib
 
 function getLevelColor(level: number): string {
   if (level >= 20) return 'text-white'
-  if (level >= 10) return 'text-warning'
-  if (level >= 5) return 'text-success'
-  return 'text-info'
+  if (level >= 10) return 'text-caution'
+  if (level >= 5) return 'text-go'
+  return 'text-mission'
 }
 
 function getLevelBg(level: number): string {
-  if (level >= 20) return 'bg-gradient-to-br from-go to-go-lit shadow-lit'
-  if (level >= 10) return 'bg-warning/10'
-  if (level >= 5) return 'bg-success/10'
-  return 'bg-info/10'
+  if (level >= 20) return 'bg-go shadow-seam'
+  if (level >= 10) return 'bg-caution/10'
+  if (level >= 5) return 'bg-go/10'
+  return 'bg-mission/10'
 }
 
 function getProgressColor(xp: number, needed: number): string {
   const pct = (xp / needed) * 100
-  if (pct >= 80) return 'bg-gradient-to-r from-amber-400 to-emerald-400'
-  if (pct >= 50) return 'bg-gradient-to-r from-amber-500/80 to-amber-400'
-  return 'bg-gradient-to-r from-accent-primary/60 to-accent-primary'
+  if (pct >= 80) return 'bg-go'
+  if (pct >= 50) return 'bg-caution'
+  return 'bg-mission'
 }
 
 // ── Rank medal emojis ─────────────────────────────────────────
@@ -101,7 +101,7 @@ export default function GamificationPanel() {
   if (loading && !summary) {
     return (
       <CardSpotlight className="p-4 min-h-[200px] flex items-center justify-center">
-        <div className="flex items-center gap-2 text-text-tertiary/60">
+        <div className="flex items-center gap-2 text-ink-tertiary/60">
           <Sparkle className="w-4 h-4 animate-pulse" weight="duotone" />
           <span className="text-caption">Loading gamification...</span>
         </div>
@@ -111,12 +111,12 @@ export default function GamificationPanel() {
 
   if (!summary) {
     return (
-      <CardSpotlight className="p-4 border border-accent-primary/10">
+      <CardSpotlight className="p-4 border border-go/10">
         <div className="flex items-center gap-3">
-          <Trophy className="w-5 h-5 text-text-tertiary/40" weight="duotone" />
+          <Trophy className="w-5 h-5 text-ink-tertiary/40" weight="duotone" />
           <div>
-            <p className="text-body-sm font-medium text-text-primary">Gamification</p>
-            <p className="text-caption text-text-tertiary/60">Earn XP by completing tasks and quizzes.</p>
+            <p className="text-body-sm font-medium text-ink">Gamification</p>
+            <p className="text-caption text-ink-tertiary/60">Earn XP by completing tasks and quizzes.</p>
           </div>
         </div>
       </CardSpotlight>
@@ -127,7 +127,7 @@ export default function GamificationPanel() {
   const progressPct = xp_needed > 0 ? Math.min((xp_progress / xp_needed) * 100, 100) : 0
 
   return (
-    <CardSpotlight className="p-4 border border-accent-primary/10">
+    <CardSpotlight className="p-4 border border-go/10">
       {/* ── Header / Level Badge ── */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -135,9 +135,9 @@ export default function GamificationPanel() {
             <Trophy className={`w-5 h-5 ${getLevelColor(level)}`} weight="duotone" />
           </div>
           <div>
-            <p className="text-body-sm font-medium text-text-primary flex items-center gap-1.5">
+            <p className="text-body-sm font-medium text-ink flex items-center gap-1.5">
               Level {level}
-              <span className="text-caption text-text-tertiary/60 font-normal">· {total_xp} XP</span>
+              <span className="text-caption text-ink-tertiary/60 font-normal">· {total_xp} XP</span>
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function GamificationPanel() {
           className={`flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium ${
             streak.current_streak > 0
               ? 'bg-orange-500/10 text-orange-400'
-              : 'bg-bg-tertiary/30 text-text-tertiary/50'
+              : 'bg-well/30 text-ink-tertiary/50'
           }`}
           animate={loginStreakFlame ? { scale: [1, 1.2, 1], rotate: [0, -5, 5, 0] } : {}}
           transition={{ duration: 0.5 }}
@@ -160,12 +160,12 @@ export default function GamificationPanel() {
       {/* ── XP Progress Bar ── */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-caption text-text-tertiary/70">Next level</span>
-          <span className="text-caption text-text-tertiary/60">
+          <span className="text-caption text-ink-tertiary/70">Next level</span>
+          <span className="text-caption text-ink-tertiary/60">
             {xp_progress} / {xp_needed} XP
           </span>
         </div>
-        <div className="h-2 bg-bg-tertiary/30 rounded-full overflow-hidden">
+        <div className="h-2 bg-well/30 rounded-full overflow-hidden">
           <motion.div
             className={`h-full rounded-full ${getProgressColor(xp_progress, xp_needed)}`}
             initial={{ width: 0 }}
@@ -176,15 +176,15 @@ export default function GamificationPanel() {
       </div>
 
       {/* ── Tab Nav ── */}
-      <div className="flex gap-1 mb-3 bg-bg-tertiary/20 rounded-lg p-0.5">
+      <div className="flex gap-1 mb-3 bg-well/20 rounded-lg p-0.5">
         {(['overview', 'badges', 'leaderboard'] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-1.5 rounded-md text-caption font-medium transition-all capitalize ${
               activeTab === tab
-                ? 'bg-accent-primary/10 text-accent-primary shadow-sm'
-                : 'text-text-tertiary/60 hover:text-text-secondary hover:bg-bg-tertiary/30'
+                ? 'bg-go/10 text-go shadow-sm'
+                : 'text-ink-tertiary/60 hover:text-ink-secondary hover:bg-well/30'
             }`}
           >
             {tab === 'leaderboard' ? 'Rank' : tab === 'badges' ? `${badges_count} Badges` : 'Overview'}
@@ -246,8 +246,8 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
     <div className="space-y-3">
       {/* Streak detail */}
       <div className="flex items-center justify-between">
-        <span className="text-caption text-text-tertiary/70">Longest streak</span>
-        <span className="text-body-sm font-medium text-text-primary">
+        <span className="text-caption text-ink-tertiary/70">Longest streak</span>
+        <span className="text-body-sm font-medium text-ink">
           <Fire className="w-3.5 h-3.5 inline mr-0.5 text-orange-400" weight="fill" />
           {streak.longest_streak} days
         </span>
@@ -255,19 +255,19 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
 
       {/* XP breakdown */}
       <div>
-        <p className="text-caption text-text-tertiary/70 mb-1.5">XP Sources</p>
+        <p className="text-caption text-ink-tertiary/70 mb-1.5">XP Sources</p>
         <div className="space-y-1">
           {sortedSources.map(([source, amount]) => (
             <div key={source} className="flex items-center justify-between text-caption">
-              <span className="text-text-secondary">
+              <span className="text-ink-secondary">
                 <span className="mr-1">{sourceIcons[source] || '•'}</span>
                 {sourceLabels[source] || source.replace(/_/g, ' ')}
               </span>
-              <span className="text-text-primary font-medium">{amount} XP</span>
+              <span className="text-ink font-medium">{amount} XP</span>
             </div>
           ))}
           {sortedSources.length === 0 && (
-            <p className="text-caption text-text-tertiary/40 italic">No XP earned yet. Start exploring!</p>
+            <p className="text-caption text-ink-tertiary/40 italic">No XP earned yet. Start exploring!</p>
           )}
         </div>
       </div>
@@ -281,9 +281,9 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
   if (badges.length === 0) {
     return (
       <div className="py-6 text-center">
-        <Medal className="w-8 h-8 mx-auto mb-2 text-text-tertiary/30" weight="duotone" />
-        <p className="text-caption text-text-tertiary/50 italic">No badges earned yet.</p>
-        <p className="text-caption text-text-tertiary/40 mt-1">Complete tasks and modules to earn badges!</p>
+        <Medal className="w-8 h-8 mx-auto mb-2 text-ink-tertiary/30" weight="duotone" />
+        <p className="text-caption text-ink-tertiary/50 italic">No badges earned yet.</p>
+        <p className="text-caption text-ink-tertiary/40 mt-1">Complete tasks and modules to earn badges!</p>
       </div>
     )
   }
@@ -296,15 +296,15 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: i * 0.04 }}
-          className="p-2.5 rounded-lg bg-bg-tertiary/10 border border-accent-primary/5 hover:border-accent-primary/20 transition-colors"
+          className="p-2.5 rounded-lg bg-well/10 border border-go/5 hover:border-go/20 transition-colors"
         >
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg">{badge.icon}</span>
-            <span className="text-body-sm font-medium text-text-primary truncate">
+            <span className="text-body-sm font-medium text-ink truncate">
               {badge.badge_name}
             </span>
           </div>
-          <p className="text-caption text-text-tertiary/60 leading-tight">{badge.description}</p>
+          <p className="text-caption text-ink-tertiary/60 leading-tight">{badge.description}</p>
           {badge.xp_bonus > 0 && (
             <div className="mt-1 flex items-center gap-1">
               <Lightning className="w-3 h-3 text-amber-400" weight="fill" />
@@ -323,9 +323,9 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
   if (entries.length === 0) {
     return (
       <div className="py-6 text-center">
-        <Crown className="w-8 h-8 mx-auto mb-2 text-text-tertiary/30" weight="duotone" />
-        <p className="text-caption text-text-tertiary/50 italic">No leaderboard data yet.</p>
-        <p className="text-caption text-text-tertiary/40 mt-1">Join a team to see rankings!</p>
+        <Crown className="w-8 h-8 mx-auto mb-2 text-ink-tertiary/30" weight="duotone" />
+        <p className="text-caption text-ink-tertiary/50 italic">No leaderboard data yet.</p>
+        <p className="text-caption text-ink-tertiary/40 mt-1">Join a team to see rankings!</p>
       </div>
     )
   }
@@ -341,26 +341,26 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
           className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
             entry.rank <= 3
               ? 'bg-amber-500/5 border border-amber-500/10'
-              : 'hover:bg-bg-tertiary/20'
+              : 'hover:bg-well/20'
           }`}
         >
           {/* Rank */}
-          <span className="w-6 text-center text-body-sm font-mono font-bold text-text-primary">
+          <span className="w-6 text-center text-body-sm font-mono font-bold text-ink">
             {rankMedal(entry.rank)}
           </span>
 
           {/* Name */}
           <div className="flex-1 min-w-0">
-            <p className="text-body-sm font-medium text-text-primary truncate">{entry.name}</p>
-            <p className="text-[10px] text-text-tertiary/50">
+            <p className="text-body-sm font-medium text-ink truncate">{entry.name}</p>
+            <p className="text-[10px] text-ink-tertiary/50">
               {entry.badges_count} badge{entry.badges_count !== 1 ? 's' : ''}
               {entry.current_streak > 0 && ` · ${entry.current_streak}d`}
             </p>
           </div>
 
           {/* XP */}
-          <span className="text-body-sm font-medium text-text-primary font-mono">{entry.xp.toLocaleString()}</span>
-          <span className="text-caption text-text-tertiary/50">XP</span>
+          <span className="text-body-sm font-medium text-ink font-mono">{entry.xp.toLocaleString()}</span>
+          <span className="text-caption text-ink-tertiary/50">XP</span>
         </motion.div>
       ))}
     </div>
