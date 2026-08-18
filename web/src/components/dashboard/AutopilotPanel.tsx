@@ -133,7 +133,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           {tasks.length === 0 ? (
             <p className="text-caption text-ink-muted font-code">
-              Analysis complete — no tasks created
+              Analysis complete · no tasks created
               {issues.length ? ' (task creation may have been skipped or disabled)' : ''}.
             </p>
           ) : (

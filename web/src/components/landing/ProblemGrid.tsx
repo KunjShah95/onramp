@@ -70,7 +70,7 @@ function HealthLoop() {
         {[0, 1].map((i) => (
           <div key={i} className="rounded-md border border-black/10 bg-slate-50 p-3">
             <div className="font-code text-[10px] text-ink-tertiary">onboarding</div>
-            <div className="mt-1 font-body text-lg font-semibold text-ink-tertiary">—</div>
+            <div className="mt-1 font-body text-lg font-semibold text-ink-tertiary">N/A</div>
           </div>
         ))}
       </div>
@@ -160,19 +160,19 @@ export default function ProblemGrid() {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-70"
-        style={{ background: 'radial-gradient(ellipse 60% 40% at 20% 0%, rgba(8,145,178,0.05), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse 60% 40% at 20% 0%, rgba(79,70,229,0.05), transparent 60%)' }}
       />
       <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
           eyebrow="The problem"
           heading={<>Onboarding takes weeks. It shouldn't.</>}
-          sub="Before the map exists, every team pays the same tax — four ways the missing architecture costs you, week after week."
+          sub="Before the map exists, every team pays the same tax. Four ways the missing architecture costs you, week after week."
         />
         <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {TILES.map((t) => (
             <motion.div key={t.key} {...fadeUp(t.delay)} className="h-full">
               <SpotlightCard
-                glow="rgba(8,145,178,0.09)"
+                glow="rgba(79,70,229,0.09)"
                 className="h-full rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
               >
                 <div className="flex h-full flex-col p-6">

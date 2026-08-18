@@ -111,9 +111,9 @@ export default function ReviewQueuePage() {
   }, [teamId])
 
   const memberName = (uid: string | null | undefined) => {
-    if (!uid) return ''
+    if (!uid) return 'N/A'
     const m = members.find((x) => x.user_id === uid)
-    return m?.name || uid
+    return m?.name || 'N/A'
   }
 
   const reviewItems = tasks.map((t) => ({ task: t, status: tabForState(t.state) }))
@@ -138,7 +138,7 @@ export default function ReviewQueuePage() {
           <PageHeader
             eyebrow="Folio 11 · Reviews"
             title="Review Queue"
-            subtitle="Pending PRs in one place — filter by state and act on the row that needs it."
+            subtitle="Pending PRs in one place. Filter by state and act on the row that needs it."
           />
         </motion.div>
 

@@ -27,7 +27,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Your content',
     paragraphs: [
-      'You retain all rights to code, repositories, and other content you submit. You grant us a limited license to process that content solely to provide the service — for example, sending relevant snippets to LLM providers to answer your questions. We do not train models on your code.',
+      'You retain all rights to code, repositories, and other content you submit. You grant us a limited license to process that content solely to provide the service, for example by sending relevant snippets to LLM providers to answer your questions. We do not train models on your code.',
     ],
   },
   {
@@ -80,9 +80,9 @@ export default function TermsPage() {
       label="Legal"
       title="Terms of Service"
       lastUpdated="July 2, 2026"
-      intro="These terms govern your use of Onramp. Please read them carefully — they include limits on our liability and your responsibilities when using AI-generated output."
+      intro="These terms govern your use of Onramp. Please read them carefully; they include limits on our liability and your responsibilities when using AI-generated output."
       sections={sections}
-      seo={{ title: 'Terms of Service — Onramp', description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.', path: '/terms' }}
+      seo={{ title: 'Terms of Service · Onramp', description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.', path: '/terms' }}
     />
   )
 }

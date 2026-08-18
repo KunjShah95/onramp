@@ -8,7 +8,7 @@ export default function NotFoundPage() {
   return (
     <PageTransition>
       <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased">
-      <Seo title="Page Not Found — Onramp" description="The page you're looking for doesn't exist or may have moved." path="/404" noindex />
+      <Seo title="Page Not Found · Onramp" description="The page you're looking for doesn't exist or may have moved." path="/404" noindex />
       <div className="min-h-screen flex px-4 items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -27,7 +27,7 @@ export default function NotFoundPage() {
             Page not found
           </h1>
           <p className="text-body text-ink-tertiary mb-8 leading-relaxed">
-            This page doesn't exist — it may have been moved, or the link might be wrong.
+            This page doesn't exist. It may have been moved, or the link might be wrong.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -282,19 +282,37 @@ export default function AuditLogPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <code className="text-body-xs text-ink-secondary font-mono bg-well/20 px-1.5 py-0.5 rounded text-[12px]">
-                          {entry.actor_id?.slice(0, 12)}…
-                        </code>
+                        {entry.actor_name ? (
+                          <span className="text-body-sm text-ink-secondary font-medium">{entry.actor_name}</span>
+                        ) : entry.actor_id ? (
+                          <code className="text-body-xs text-ink-secondary font-mono bg-well/20 px-1.5 py-0.5 rounded text-[12px]">
+                            {entry.actor_id.slice(0, 12)}…
+                          </code>
+                        ) : (
+                          <span className="text-body-xs text-ink-tertiary">N/A</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
-                          {entry.target_id ? `${entry.target_id.slice(0, 12)}…` : '—'}
-                        </span>
+                        {entry.target_name ? (
+                          <span className="text-body-xs text-ink-tertiary font-medium">{entry.target_name}</span>
+                        ) : entry.target_id ? (
+                          <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
+                            {entry.target_id.slice(0, 12)}…
+                          </span>
+                        ) : (
+                          <span className="text-body-xs text-ink-tertiary">N/A</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
-                          {entry.team_id ? `${entry.team_id.slice(0, 8)}…` : '—'}
-                        </span>
+                        {entry.team_name ? (
+                          <span className="text-body-xs text-ink-tertiary font-medium">{entry.team_name}</span>
+                        ) : entry.team_id ? (
+                          <span className="text-body-xs text-ink-tertiary font-mono text-[12px]">
+                            {entry.team_id.slice(0, 8)}…
+                          </span>
+                        ) : (
+                          <span className="text-body-xs text-ink-tertiary">N/A</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right align-middle">
                         <span className="text-body-xs text-ink-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>

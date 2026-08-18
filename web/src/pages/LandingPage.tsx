@@ -28,7 +28,7 @@ export default function LandingPage() {
       className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
     >
       <Seo
-        title="Onramp — AI-Powered Developer Onboarding"
+        title="Onramp · AI-Powered Developer Onboarding"
         description="Go from codebase to contribution in minutes. Onramp analyzes your repositories to create custom onboarding paths and guide developers through their first PR."
         path="/"
       />

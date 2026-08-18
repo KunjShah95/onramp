@@ -21,7 +21,7 @@ export function isLeaderRole(role?: string | null): boolean {
 }
 
 const fmtDays = (v: number | null | undefined) =>
-  v == null ? '—' : `${Math.round(v * 10) / 10}d`
+  v == null ? 'N/A' : `${Math.round(v * 10) / 10}d`
 const fmtUsd = (v: number) => `$${Math.round(v).toLocaleString()}`
 
 const hasHighStuck = (stuck: { severity: string }[]) =>
@@ -129,7 +129,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <Readout
               label="Health"
-              value={health?.health_score != null ? String(health.health_score) : '—'}
+              value={health?.health_score != null ? String(health.health_score) : 'N/A'}
               tone={grade === 'healthy' ? 'go' : grade === 'at_risk' ? 'caution' : grade === 'critical' ? 'abort' : undefined}
             />
             <Readout label="Benchmark" value={fmtDays(data.benchmark_days)} />

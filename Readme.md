@@ -426,6 +426,49 @@ Navigate to [http://localhost:5173](http://localhost:5173) and register a new ac
 
 ---
 
+## 🏋️ Load & Performance Testing
+
+Three layers cover responsiveness, loadiness, and full-scale load:
+
+**1. Backend — k6 (HTTP-level, extensive load)**
+
+`k6-load-test.js` runs five scenarios: smoke, load (ramp to 50 VUs), stress
+(ramp to 200 VUs), spike (150 VUs instantly), soak (40 VUs for 10 min).
+
+```bash
+# against a deployed/staging env
+k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1
+# pick one scenario
+k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1 -e SCENARIO=stress
+# local (clean in-memory backend, no rate-limit noise)
+ENV=test STORAGE_BACKEND=memory uvicorn app.main:app --port 8003 &
+k6 run k6-load-test.js -e BASE_URL=http://localhost:8003/api/v1
+```
+
+**2. Backend — pytest (in-process, CI-runnable)**
+
+```bash
+cd backend && python -m pytest tests/test_load_performance.py -v --timeout=120
+```
+
+Covers per-endpoint latency, average latency, 10-way concurrency, 100-request
+stress, 25-way high concurrency, a sustained burst, and throughput stability.
+
+**3. Frontend — bundle, CWV, and concurrent-load checks**
+
+```bash
+cd web
+npm run build && npx vitest run test/bundle/bundle-analysis.test.ts   # JS/CSS size budgets
+npx playwright test e2e/performance/load.spec.ts --project=chromium   # 8 concurrent visitors
+npx playwright test e2e/performance/lighthouse.test.ts --project=chromium --workers=1
+node scripts/cwv-audit.mjs          # throttled-mobile FCP/LCP/CLS against the dev server
+node scripts/mobile-audit.mjs       # horizontal-overflow sweep of every route at 3 viewports
+```
+
+See `k6-load-test.js` for full docs, including the note that local Windows
+machines add ~200ms to the *first* connection per VU (OS connection
+inspection) — keep-alive requests after that are sub-millisecond.
+
 ## 🐳 Docker Quick Start (One Command)
 
 Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI) with one command:

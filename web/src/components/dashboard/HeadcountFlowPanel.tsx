@@ -63,7 +63,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
     >
       {months.length === 0 ? (
         <p className="text-caption text-ink-muted font-code py-2">
-          No membership history yet — flows form as people join.
+          No membership history yet. Flows form as people join.
         </p>
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">

@@ -117,7 +117,7 @@ export default function ModelPicker({ value, onChange }: ModelPickerProps) {
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={value ? `Pinned model: ${value}` : 'Auto — router picks the best model'}
+        title={value ? `Pinned model: ${value}` : 'Auto · router picks the best model'}
       >
         <span className="font-code text-[10px] tracking-wider uppercase opacity-60 mr-0.5">Model</span>
         <span className="font-code text-[12px] max-w-[140px] truncate">
@@ -185,7 +185,7 @@ export default function ModelPicker({ value, onChange }: ModelPickerProps) {
                 ))}
                 {catalogTruncated && (
                   <p className="px-3 py-2 text-[10.5px] text-ink-tertiary">
-                    +{catalogModels.length - catalogOptions.length} more — keep typing to narrow.
+                    +{catalogModels.length - catalogOptions.length} more · keep typing to narrow.
                   </p>
                 )}
               </>
@@ -196,7 +196,7 @@ export default function ModelPicker({ value, onChange }: ModelPickerProps) {
             )}
             {catalogUnavailable && !showProviders && (
               <p className="px-3 py-4 text-[11px] text-ink-tertiary leading-relaxed">
-                Model catalog unavailable right now — pick Auto and the router will keep routing normally.
+                Model catalog unavailable right now · pick Auto and the router will keep routing normally.
               </p>
             )}
           </div>

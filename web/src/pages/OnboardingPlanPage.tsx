@@ -435,7 +435,7 @@ export default function OnboardingPlanPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.1 }}
                           >
-                            {t.val !== null && t.val !== undefined ? Number(t.val).toFixed(1) : '—'}
+                            {t.val !== null && t.val !== undefined ? Number(t.val).toFixed(1) : 'N/A'}
                           </motion.div>
                           <div className="text-overline text-ink-muted/40">{t.label}</div>
                         </div>
@@ -514,7 +514,7 @@ export default function OnboardingPlanPage() {
                           <div className="flex items-center gap-1.5 mb-1.5">
                             <cat.icon size={10} className="text-ink-muted/40" />
                             <span className="text-overline font-semibold uppercase tracking-widest">
-                              Day {m.day_target ?? '—'}
+                              Day {m.day_target ?? 'N/A'}
                             </span>
                           </div>
                           <p className={cn('text-body-xs leading-snug mb-2', m.is_completed ? 'line-through text-ink-muted/50' : 'text-ink')}>
@@ -556,9 +556,9 @@ export default function OnboardingPlanPage() {
                 <span className="text-overline text-ink-muted/60">Milestone Plan</span>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <PhaseColumn label="30 Days — Foundation" data={milestones30} icon={Compass} hue="text-ink-secondary border-seam bg-well" />
-                <PhaseColumn label="60 Days — Growth" data={milestones60} icon={Target} hue="text-ink-secondary border-seam bg-well" />
-                <PhaseColumn label="90 Days — Flight" data={milestones90} icon={Rocket} hue="text-ink-secondary border-seam bg-well" />
+                <PhaseColumn label="30 Days · Foundation" data={milestones30} icon={Compass} hue="text-ink-secondary border-seam bg-well" />
+                <PhaseColumn label="60 Days · Growth" data={milestones60} icon={Target} hue="text-ink-secondary border-seam bg-well" />
+                <PhaseColumn label="90 Days · Flight" data={milestones90} icon={Rocket} hue="text-ink-secondary border-seam bg-well" />
               </div>
             </motion.div>
           </>

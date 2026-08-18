@@ -29,7 +29,7 @@ export default function WhyOnrampPage() {
       navLinks={navLinks}
       seo={{
         title: 'Why Onramp, Not Coding Agents | Onramp',
-        description: 'Coding agents burn tokens re-reading your codebase on every change. Onramp indexes it once and answers from real context — a fraction of the cost at any team size.',
+        description: 'Coding agents burn tokens re-reading your codebase on every change. Onramp indexes it once and answers from real context, a fraction of the cost at any team size.',
         path: '/why-onramp',
       }}
     >
@@ -41,7 +41,7 @@ export default function WhyOnrampPage() {
             Why Onramp, Not Coding Agents
           </h1>
           <p className="text-[hsl(var(--muted-foreground))] text-lg mb-8 max-w-2xl mx-auto font-body">
-            Agents burn tokens re-reading your codebase on every change. Onramp indexes it once, updates the graph when it changes, and answers from real context — a fraction of the cost, at any team size.
+            Agents burn tokens re-reading your codebase on every change. Onramp indexes it once, updates the graph when it changes, and answers from real context, a fraction of the cost, at any team size.
           </p>
         </motion.div>
       </div>
@@ -67,11 +67,11 @@ export default function WhyOnrampPage() {
           <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context whenever it changes — multiplied by every developer and every product.</span>
+              <span><strong>Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context whenever it changes, multiplied by every developer and every product.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn — the bill grows with every hire.</span>
+              <span><strong>Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn. The bill grows with every hire.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-abort font-bold mt-0.5">✗</span>
@@ -95,11 +95,11 @@ export default function WhyOnrampPage() {
           <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
             <li className="flex gap-3">
               <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Reads your actual code.</strong> We parse it, index it, understand architecture — then explain it.</span>
+              <span><strong>Reads your actual code.</strong> We parse it, index it, understand architecture, then explain it.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Accessible to all levels.</strong> Senior engineer or first-time contributor — everyone gets context.</span>
+              <span><strong>Accessible to all levels.</strong> Senior engineer or first-time contributor. Everyone gets context.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-go font-bold mt-0.5">✓</span>
@@ -196,9 +196,9 @@ export default function WhyOnrampPage() {
               </thead>
               <tbody className="divide-y divide-seam">
                 {[
-                  ['Context', 'Re-reads the whole codebase per change', 'Indexed once — graph updates on change'],
+                  ['Context', 'Re-reads the whole codebase per change', 'Indexed once · graph updates on change'],
                   ['Cost model', 'Per-seat subs + per-dev token burn', 'Flat per-workspace price'],
-                  ['Cost at scale', 'Grows with devs × products × changes', 'Flat — never moves'],
+                  ['Cost at scale', 'Grows with devs × products × changes', 'Flat · never moves'],
                   ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
                   ['Understand WHY', 'No, just HOW', 'Yes, full context'],
                 ].map((row, idx) => (
@@ -227,7 +227,7 @@ export default function WhyOnrampPage() {
         </motion.h2>
         <motion.p variants={itemVariants} className="text-[hsl(var(--muted-foreground))] font-body text-center max-w-2xl mx-auto mb-10">
           Coding agents charge per seat AND re-read every codebase into every developer's context on
-          every change — so the bill multiplies with every hire and every product. Onramp's flat
+          every change, so the bill multiplies with every hire and every product. Onramp's flat
           price stays put. Move the sliders.
         </motion.p>
         <motion.div variants={itemVariants}>

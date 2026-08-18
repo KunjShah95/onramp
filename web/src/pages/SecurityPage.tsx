@@ -22,7 +22,7 @@ const categories = [
     icon: Lock,
     title: 'Encryption',
     items: [
-      { label: 'Data in transit', value: 'TLS 1.3 (min) — all traffic encrypted via HTTPS and WSS' },
+      { label: 'Data in transit', value: 'TLS 1.3 (min) · all traffic encrypted via HTTPS and WSS' },
       { label: 'Data at rest', value: 'AES-256 encryption for all stored data, including backups' },
       { label: 'Key management', value: 'Per-tenant encryption keys, rotated automatically every 90 days' },
     ],
@@ -60,14 +60,14 @@ const certifications = [
   { name: 'SOC 2 Type II', status: 'In progress', desc: 'Annual third-party audit for security, availability, and confidentiality.' },
   { name: 'GDPR', status: 'Compliant', desc: 'Full compliance with EU General Data Protection Regulation requirements.' },
   { name: 'DPA', status: 'Available', desc: 'Standard Data Processing Agreement available for all customers.' },
-  { name: 'Data residency', status: 'US / EU', desc: 'Choose data storage region — US (Virginia) or EU (Frankfurt).' },
+  { name: 'Data residency', status: 'US / EU', desc: 'Choose data storage region: US (Virginia) or EU (Frankfurt).' },
 ]
 
 export default function SecurityPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Security — Onramp', description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.', path: '/security' }}
+      seo={{ title: 'Security · Onramp', description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.', path: '/security' }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}

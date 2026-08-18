@@ -186,7 +186,7 @@ export default function BillingPage() {
             {teams.length > 0 ? (
               <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
                 className="bg-panel border border-seam rounded-input px-4 py-2.5 text-sm text-ink focus:border-go/40 outline-none min-w-[200px]">
-                {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || t.team_id}</option>))}
+                {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || 'Untitled team'}</option>))}
               </select>
             ) : (<div className="text-sm text-ink-muted">No teams found. <a href="/team" className="underline text-go hover:text-go/80">Create one</a>.</div>)}
           </div>

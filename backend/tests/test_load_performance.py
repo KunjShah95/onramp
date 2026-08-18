@@ -260,3 +260,148 @@ class TestStressErrorRate:
         assert error_rate == 0, (
             f"Error rate {error_rate:.1f}% ({len(errors)} errors out of {self.TOTAL_REQUESTS})"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Extended Load Suite — heavier concurrency, sustained bursts, throughput
+# ═══════════════════════════════════════════════════════════════════════
+# These mirror the k6 scenarios (k6-load-test.js) but run in-process, so
+# they exercise the route handlers + middleware without network or DB.
+# Run the k6 suite against a deployed environment for end-to-end numbers.
+
+
+class TestHighConcurrencyLoad:
+    """25 concurrent users hammering mixed endpoints — p95 stays bounded."""
+
+    CONCURRENT = 25
+    REQUESTS_PER_USER = 10
+    P95_THRESHOLD_MS = 1500
+    LOAD_TIMEOUT_S = 60
+
+    ENDPOINTS = [
+        ("GET", "/"),
+        ("GET", "/health"),
+        ("GET", "/api/v1/billing/pricing"),
+        ("GET", "/api/v1/ai/tiers"),
+        ("GET", "/api/v1/explore/health"),
+    ]
+
+    def test_high_concurrency_mixed_load(self, client):
+        """25 workers × 10 requests across 5 endpoints — no 5xx, p95 bounded."""
+        errors = []
+        all_times = []
+
+        def _worker(endpoint):
+            method, path = endpoint
+            times = []
+            for _ in range(self.REQUESTS_PER_USER):
+                start = time.perf_counter()
+                resp = client.request(method, path)
+                elapsed = (time.perf_counter() - start) * 1000
+                if resp.status_code >= 500:
+                    errors.append(f"{method} {path} -> {resp.status_code}")
+                    continue
+                times.append(elapsed)
+            return times
+
+        with ThreadPoolExecutor(max_workers=self.CONCURRENT) as pool:
+            futures = [
+                pool.submit(_worker, self.ENDPOINTS[i % len(self.ENDPOINTS)])
+                for i in range(self.CONCURRENT)
+            ]
+            for future in as_completed(futures, timeout=self.LOAD_TIMEOUT_S):
+                try:
+                    all_times.extend(future.result())
+                except Exception as e:
+                    errors.append(str(e))
+
+        p95 = statistics.quantiles(all_times, n=20)[-1] if len(all_times) >= 20 else max(all_times)
+        print(f"\n  [LOAD-HI] {len(all_times)} requests, {self.CONCURRENT} workers, 5 endpoints")
+        print(f"  [LOAD-HI]   avg={statistics.mean(all_times):.1f}ms  p95={p95:.1f}ms")
+
+        assert not errors, f"High-concurrency errors: {errors[:3]}"
+        assert p95 < self.P95_THRESHOLD_MS, (
+            f"p95 {p95:.1f}ms exceeds {self.P95_THRESHOLD_MS}ms under 25-way concurrency"
+        )
+
+
+class TestSustainedBurst:
+    """A sustained rapid-fire burst — mini soak — stays error-free."""
+
+    WAVES = 10
+    PER_WAVE = 30
+    WAVE_DELAY_S = 0.05
+    P95_THRESHOLD_MS = 2000
+
+    def test_sustained_burst_no_errors(self, client):
+        """300 requests in 10 waves across ~5s — zero 5xx."""
+        all_times = []
+        errors = []
+
+        for _ in range(self.WAVES):
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                futures = [
+                    pool.submit(client.get, "/")
+                    for _ in range(self.PER_WAVE)
+                ]
+                for f in as_completed(futures, timeout=15):
+                    try:
+                        start = time.perf_counter()
+                        resp = f.result()
+                        all_times.append((time.perf_counter() - start) * 1000)
+                        if resp.status_code >= 500:
+                            errors.append(str(resp.status_code))
+                    except Exception as e:
+                        errors.append(str(e))
+            time.sleep(self.WAVE_DELAY_S)
+
+        p95 = statistics.quantiles(all_times, n=20)[-1] if len(all_times) >= 20 else max(all_times)
+        print(f"\n  [SOAK-MINI] {len(all_times)} requests in {self.WAVES} waves")
+        print(f"  [SOAK-MINI]   avg={statistics.mean(all_times):.1f}ms  p95={p95:.1f}ms  errors={len(errors)}")
+
+        assert not errors, f"Sustained burst produced {len(errors)} errors: {errors[:3]}"
+        assert p95 < self.P95_THRESHOLD_MS, (
+            f"p95 {p95:.1f}ms exceeds {self.P95_THRESHOLD_MS}ms during sustained burst"
+        )
+
+
+class TestThroughputStability:
+    """Request throughput must not collapse as concurrency increases.
+
+    In-process TestClient is GIL-bound (a single Python process), so threads
+    do not scale linearly — the honest scaling signal comes from the k6 suite
+    against a real uvicorn server. This test guards against *pathological*
+    regressions: a serializing lock, O(n²) contention, or deadlock. The bar is
+    deliberately low (35% of low-concurrency throughput, plus an absolute
+    floor) to stay robust on noisy dev machines.
+    """
+
+    LOW_WORKERS = 4
+    HIGH_WORKERS = 16
+    REQUESTS = 80
+    MIN_RATIO = 0.35
+    MIN_REQ_S = 15.0
+
+    @staticmethod
+    def _throughput(client, workers: int, requests: int) -> float:
+        """Run `requests` GET / calls across `workers` threads, return req/s."""
+        start = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(lambda _: client.get("/"), range(requests)))
+        elapsed = time.perf_counter() - start
+        return requests / elapsed
+
+    def test_throughput_does_not_collapse(self, client):
+        """16-worker throughput stays above a floor and a fraction of 4-worker."""
+        low = self._throughput(client, self.LOW_WORKERS, self.REQUESTS)
+        high = self._throughput(client, self.HIGH_WORKERS, self.REQUESTS)
+        ratio = high / low if low > 0 else 0
+        print(f"\n  [THROUGHPUT] {self.LOW_WORKERS} workers: {low:.0f} req/s   "
+              f"{self.HIGH_WORKERS} workers: {high:.0f} req/s   ratio={ratio:.2f}")
+
+        assert high > self.MIN_REQ_S, (
+            f"Throughput collapsed to {high:.0f} req/s (< {self.MIN_REQ_S:.0f}) under concurrency"
+        )
+        assert ratio > self.MIN_RATIO, (
+            f"Throughput degraded {ratio:.2f}x (16 workers vs 4) — expected > {self.MIN_RATIO}x"
+        )

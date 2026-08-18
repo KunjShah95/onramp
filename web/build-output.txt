@@ -1,0 +1,106 @@
+
+> onramp-web@0.0.1 build
+> tsc -b && vite build
+
+[36mvite v6.4.3 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 5869 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                               [39m[1m[2m    5.47 kB[22m[1m[22m[2m │ gzip:   1.66 kB[22m
+[2mdist/[22m[32mdist/stats.html                          [39m[1m[2m3,045.23 kB[22m[1m[22m[2m │ gzip: 281.85 kB[22m
+[2mdist/[22m[35massets/index-CT9ZCqzF.css                [39m[1m[2m  114.89 kB[22m[1m[22m[2m │ gzip:  20.83 kB[22m
+[2mdist/[22m[36massets/card-spotlight-D-BQtSNb.js        [39m[1m[2m    0.25 kB[22m[1m[22m[2m │ gzip:   0.19 kB[22m
+[2mdist/[22m[36massets/status-tile-Cj28oBhV.js           [39m[1m[2m    0.46 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/metric-strip-yAdAz8vu.js          [39m[1m[2m    0.61 kB[22m[1m[22m[2m │ gzip:   0.34 kB[22m
+[2mdist/[22m[36massets/providers-CpD9RN5m.js             [39m[1m[2m    0.68 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/empty-state-B2JqDVpK.js           [39m[1m[2m    0.74 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mdist/[22m[36massets/status-badge-DxPQ0M3l.js          [39m[1m[2m    0.80 kB[22m[1m[22m[2m │ gzip:   0.37 kB[22m
+[2mdist/[22m[36massets/console-panel-BjkN5EB3.js         [39m[1m[2m    1.05 kB[22m[1m[22m[2m │ gzip:   0.56 kB[22m
+[2mdist/[22m[36massets/table-DM6Q4cEc.js                 [39m[1m[2m    1.09 kB[22m[1m[22m[2m │ gzip:   0.46 kB[22m
+[2mdist/[22m[36massets/InputField-DkKz2m9n.js            [39m[1m[2m    1.10 kB[22m[1m[22m[2m │ gzip:   0.65 kB[22m
+[2mdist/[22m[36massets/page-header-CkM5qlI2.js           [39m[1m[2m    1.27 kB[22m[1m[22m[2m │ gzip:   0.59 kB[22m
+[2mdist/[22m[36massets/modal-xu3vSVtY.js                 [39m[1m[2m    1.34 kB[22m[1m[22m[2m │ gzip:   0.70 kB[22m
+[2mdist/[22m[36massets/auth-shell-B2bEFQue.js            [39m[1m[2m    1.41 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mdist/[22m[36massets/heatmap-gem-C8H_3tcv.js           [39m[1m[2m    1.51 kB[22m[1m[22m[2m │ gzip:   0.77 kB[22m
+[2mdist/[22m[36massets/blog-C7DFrCDK.js                  [39m[1m[2m    1.60 kB[22m[1m[22m[2m │ gzip:   0.77 kB[22m
+[2mdist/[22m[36massets/Pagination-BwLGtvX5.js            [39m[1m[2m    1.76 kB[22m[1m[22m[2m │ gzip:   0.80 kB[22m
+[2mdist/[22m[36massets/readout-bank-mWw3lPr1.js          [39m[1m[2m    2.35 kB[22m[1m[22m[2m │ gzip:   1.10 kB[22m
+[2mdist/[22m[36massets/SetPassword-Bm6ri2Tv.js           [39m[1m[2m    2.44 kB[22m[1m[22m[2m │ gzip:   1.29 kB[22m
+[2mdist/[22m[36massets/VerifyEmail-x7P-lxAv.js           [39m[1m[2m    2.66 kB[22m[1m[22m[2m │ gzip:   1.18 kB[22m
+[2mdist/[22m[36massets/NotFoundPage-CsQS-k27.js          [39m[1m[2m    2.72 kB[22m[1m[22m[2m │ gzip:   1.08 kB[22m
+[2mdist/[22m[36massets/LegalLayout-Eq4b-9av.js           [39m[1m[2m    2.97 kB[22m[1m[22m[2m │ gzip:   1.06 kB[22m
+[2mdist/[22m[36massets/SupportPage-DIDg-4q_.js           [39m[1m[2m    3.06 kB[22m[1m[22m[2m │ gzip:   1.33 kB[22m
+[2mdist/[22m[36massets/ForgotPassword-DDprVlRa.js        [39m[1m[2m    3.16 kB[22m[1m[22m[2m │ gzip:   1.49 kB[22m
+[2mdist/[22m[36massets/AuthCallback-CMrSVlr6.js          [39m[1m[2m    3.23 kB[22m[1m[22m[2m │ gzip:   1.28 kB[22m
+[2mdist/[22m[36massets/JoinPage-B65Agr8O.js              [39m[1m[2m    3.57 kB[22m[1m[22m[2m │ gzip:   1.31 kB[22m
+[2mdist/[22m[36massets/ResetPassword-uXCf8EyQ.js         [39m[1m[2m    3.66 kB[22m[1m[22m[2m │ gzip:   1.56 kB[22m
+[2mdist/[22m[36massets/landing-motion-C98XG5w7.js        [39m[1m[2m    3.80 kB[22m[1m[22m[2m │ gzip:   1.62 kB[22m
+[2mdist/[22m[36massets/Register-DF1aZZS1.js              [39m[1m[2m    3.87 kB[22m[1m[22m[2m │ gzip:   1.64 kB[22m
+[2mdist/[22m[36massets/BlogPage-tDj-hOTK.js              [39m[1m[2m    3.95 kB[22m[1m[22m[2m │ gzip:   1.48 kB[22m
+[2mdist/[22m[36massets/HRDashboard-D8RmOE5a.js           [39m[1m[2m    4.02 kB[22m[1m[22m[2m │ gzip:   1.66 kB[22m
+[2mdist/[22m[36massets/RetentionCurvesPanel-CLwxpzm1.js  [39m[1m[2m    4.07 kB[22m[1m[22m[2m │ gzip:   1.81 kB[22m
+[2mdist/[22m[36massets/RampPanel-B1uE7Mtr.js             [39m[1m[2m    4.12 kB[22m[1m[22m[2m │ gzip:   1.71 kB[22m
+[2mdist/[22m[36massets/PrivacyPage-DKueDVzd.js           [39m[1m[2m    4.24 kB[22m[1m[22m[2m │ gzip:   1.99 kB[22m
+[2mdist/[22m[36massets/AboutPage-BvLK0Fm-.js             [39m[1m[2m    4.33 kB[22m[1m[22m[2m │ gzip:   1.89 kB[22m
+[2mdist/[22m[36massets/Login-Ch6Y8sGM.js                 [39m[1m[2m    4.49 kB[22m[1m[22m[2m │ gzip:   1.91 kB[22m
+[2mdist/[22m[36massets/TermsPage-B82RYwwg.js             [39m[1m[2m    4.51 kB[22m[1m[22m[2m │ gzip:   2.02 kB[22m
+[2mdist/[22m[36massets/Profile-BwNZrB2D.js               [39m[1m[2m    4.83 kB[22m[1m[22m[2m │ gzip:   1.95 kB[22m
+[2mdist/[22m[36massets/ModuleHealthPage-BqqEeYEZ.js      [39m[1m[2m    5.06 kB[22m[1m[22m[2m │ gzip:   1.95 kB[22m
+[2mdist/[22m[36massets/ChangelogPage-B8kkAscc.js         [39m[1m[2m    5.08 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
+[2mdist/[22m[36massets/OnboardingReportPage-C47dyOgQ.js  [39m[1m[2m    5.12 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
+[2mdist/[22m[36massets/MemberDetailPage-DkkMaedB.js      [39m[1m[2m    5.40 kB[22m[1m[22m[2m │ gzip:   1.99 kB[22m
+[2mdist/[22m[36massets/FeatureFlagsPage-B9Fk3Wd6.js      [39m[1m[2m    5.49 kB[22m[1m[22m[2m │ gzip:   2.07 kB[22m
+[2mdist/[22m[36massets/NotificationsPage-DA5iDUWG.js     [39m[1m[2m    5.55 kB[22m[1m[22m[2m │ gzip:   2.32 kB[22m
+[2mdist/[22m[36massets/ContactPage-2DjAQSO-.js           [39m[1m[2m    5.92 kB[22m[1m[22m[2m │ gzip:   1.76 kB[22m
+[2mdist/[22m[36massets/SecurityPage-BBzATlEn.js          [39m[1m[2m    6.15 kB[22m[1m[22m[2m │ gzip:   2.28 kB[22m
+[2mdist/[22m[36massets/DevSpacePage-roMAJleT.js          [39m[1m[2m    6.23 kB[22m[1m[22m[2m │ gzip:   2.35 kB[22m
+[2mdist/[22m[36massets/OnboardingHubPage-B6Mcn2yR.js     [39m[1m[2m    6.23 kB[22m[1m[22m[2m │ gzip:   2.21 kB[22m
+[2mdist/[22m[36massets/AdminCreateAccount-B6YxKd8y.js    [39m[1m[2m    6.67 kB[22m[1m[22m[2m │ gzip:   2.32 kB[22m
+[2mdist/[22m[36massets/DPAPage-Ce608tre.js               [39m[1m[2m    6.77 kB[22m[1m[22m[2m │ gzip:   2.27 kB[22m
+[2mdist/[22m[36massets/SOC2Page-7pcxV9Ds.js              [39m[1m[2m    7.05 kB[22m[1m[22m[2m │ gzip:   2.38 kB[22m
+[2mdist/[22m[36massets/MarketingLayout-DNQicpsW.js       [39m[1m[2m    7.10 kB[22m[1m[22m[2m │ gzip:   2.35 kB[22m
+[2mdist/[22m[36massets/ApiCostTracking-CkzLnsh0.js       [39m[1m[2m    7.26 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mdist/[22m[36massets/MarketplacePage-CN_n5gbM.js       [39m[1m[2m    7.48 kB[22m[1m[22m[2m │ gzip:   2.75 kB[22m
+[2mdist/[22m[36massets/CustomersPage-WCwJXzgn.js         [39m[1m[2m    7.60 kB[22m[1m[22m[2m │ gzip:   2.54 kB[22m
+[2mdist/[22m[36massets/PlaybooksPage-BOu-T_5M.js         [39m[1m[2m    7.90 kB[22m[1m[22m[2m │ gzip:   2.77 kB[22m
+[2mdist/[22m[36massets/CodeHealthPage-Tm5hmJa_.js        [39m[1m[2m    8.12 kB[22m[1m[22m[2m │ gzip:   3.00 kB[22m
+[2mdist/[22m[36massets/SeniorSpacePage-CNLY0Ok5.js       [39m[1m[2m    8.42 kB[22m[1m[22m[2m │ gzip:   2.50 kB[22m
+[2mdist/[22m[36massets/ApiKeysPage-BxJtgVSU.js           [39m[1m[2m    9.10 kB[22m[1m[22m[2m │ gzip:   3.12 kB[22m
+[2mdist/[22m[36massets/WikiPage-CvXemBmn.js              [39m[1m[2m    9.39 kB[22m[1m[22m[2m │ gzip:   2.98 kB[22m
+[2mdist/[22m[36massets/AuditLogPage-Yi-TPhuT.js          [39m[1m[2m   10.83 kB[22m[1m[22m[2m │ gzip:   3.18 kB[22m
+[2mdist/[22m[36massets/FirstIssuePage-D6cb0NRI.js        [39m[1m[2m   10.96 kB[22m[1m[22m[2m │ gzip:   3.48 kB[22m
+[2mdist/[22m[36massets/PricingPage-ChwBGRea.js           [39m[1m[2m   11.56 kB[22m[1m[22m[2m │ gzip:   3.65 kB[22m
+[2mdist/[22m[36massets/AutonomousCodingPage-wFHHDPVd.js  [39m[1m[2m   11.82 kB[22m[1m[22m[2m │ gzip:   3.66 kB[22m
+[2mdist/[22m[36massets/DriftDetectionPage-CGKBgSNp.js    [39m[1m[2m   12.13 kB[22m[1m[22m[2m │ gzip:   3.79 kB[22m
+[2mdist/[22m[36massets/AdminDashboardPage-CZCiaiS1.js    [39m[1m[2m   12.39 kB[22m[1m[22m[2m │ gzip:   4.40 kB[22m
+[2mdist/[22m[36massets/BillingPage-IPy4ElJ8.js           [39m[1m[2m   12.52 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mdist/[22m[36massets/PRDescriptionPage-vSqONEUZ.js     [39m[1m[2m   12.63 kB[22m[1m[22m[2m │ gzip:   3.64 kB[22m
+[2mdist/[22m[36massets/ReviewQueuePage-DEZ7dPfc.js       [39m[1m[2m   12.81 kB[22m[1m[22m[2m │ gzip:   4.11 kB[22m
+[2mdist/[22m[36massets/DocsPage-D4HCYofY.js              [39m[1m[2m   14.12 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mdist/[22m[36massets/ExecutivePage-C_zXf1jT.js         [39m[1m[2m   14.65 kB[22m[1m[22m[2m │ gzip:   4.61 kB[22m
+[2mdist/[22m[36massets/BlogPostPage-DwIqUYhJ.js          [39m[1m[2m   14.96 kB[22m[1m[22m[2m │ gzip:   5.91 kB[22m
+[2mdist/[22m[36massets/TraineeDashboard-BFhl_aXw.js      [39m[1m[2m   16.25 kB[22m[1m[22m[2m │ gzip:   5.01 kB[22m
+[2mdist/[22m[36massets/AskPage-B9REOWJm.js               [39m[1m[2m   16.73 kB[22m[1m[22m[2m │ gzip:   5.19 kB[22m
+[2mdist/[22m[36massets/HrPeoplePage-rxlYqPau.js          [39m[1m[2m   16.73 kB[22m[1m[22m[2m │ gzip:   4.94 kB[22m
+[2mdist/[22m[36massets/HrDashboardPage-BZggWaYt.js       [39m[1m[2m   16.93 kB[22m[1m[22m[2m │ gzip:   4.99 kB[22m
+[2mdist/[22m[36massets/LearnPage-Cx1QvY-O.js             [39m[1m[2m   17.09 kB[22m[1m[22m[2m │ gzip:   5.00 kB[22m
+[2mdist/[22m[36massets/TeamPage-B9v1wKFW.js              [39m[1m[2m   17.14 kB[22m[1m[22m[2m │ gzip:   4.80 kB[22m
+[2mdist/[22m[36massets/OnboardingPlanPage-CoMr1Y55.js    [39m[1m[2m   17.87 kB[22m[1m[22m[2m │ gzip:   5.43 kB[22m
+[2mdist/[22m[36massets/WhyOnrampPage-CujmnhYx.js         [39m[1m[2m   18.12 kB[22m[1m[22m[2m │ gzip:   4.44 kB[22m
+[2mdist/[22m[36massets/ExplorePage-DVFgUJHo.js           [39m[1m[2m   22.10 kB[22m[1m[22m[2m │ gzip:   7.06 kB[22m
+[2mdist/[22m[36massets/monaco-editor-CqiDCR9a.js         [39m[1m[2m   24.79 kB[22m[1m[22m[2m │ gzip:   7.64 kB[22m
+[2mdist/[22m[36massets/DashboardPage-CGW7Uek5.js         [39m[1m[2m   29.18 kB[22m[1m[22m[2m │ gzip:   8.72 kB[22m
+[2mdist/[22m[36massets/RampPage-DVBPYwQp.js              [39m[1m[2m   33.04 kB[22m[1m[22m[2m │ gzip:   7.89 kB[22m
+[2mdist/[22m[36massets/DeveloperPortal-EC1ZgR1f.js       [39m[1m[2m   37.62 kB[22m[1m[22m[2m │ gzip:   8.85 kB[22m
+[2mdist/[22m[36massets/vendor-query-Dbt96dcX.js          [39m[1m[2m   41.32 kB[22m[1m[22m[2m │ gzip:  12.30 kB[22m
+[2mdist/[22m[36massets/LandingPage-BTEZn9GC.js           [39m[1m[2m   50.63 kB[22m[1m[22m[2m │ gzip:  11.84 kB[22m
+[2mdist/[22m[36massets/TasksPage-ihIPZ93n.js             [39m[1m[2m   51.36 kB[22m[1m[22m[2m │ gzip:  11.92 kB[22m
+[2mdist/[22m[36massets/Settings-dNhxU22J.js              [39m[1m[2m   53.02 kB[22m[1m[22m[2m │ gzip:  12.60 kB[22m
+[2mdist/[22m[36massets/vendor-d3-D_0q_MdS.js             [39m[1m[2m  115.96 kB[22m[1m[22m[2m │ gzip:  37.93 kB[22m
+[2mdist/[22m[36massets/vendor-motion-Da3mqOHV.js         [39m[1m[2m  127.88 kB[22m[1m[22m[2m │ gzip:  42.90 kB[22m
+[2mdist/[22m[36massets/index-Blssdh6j.js                 [39m[1m[2m  149.55 kB[22m[1m[22m[2m │ gzip:  40.18 kB[22m
+[2mdist/[22m[36massets/vendor-react-24KLDefN.js          [39m[1m[2m  231.42 kB[22m[1m[22m[2m │ gzip:  74.04 kB[22m
+[2mdist/[22m[36massets/vendor-charts-BuUDzpxG.js         [39m[1m[2m  333.68 kB[22m[1m[22m[2m │ gzip:  94.67 kB[22m
+[2mdist/[22m[36massets/vendor-icons-Cruwijvn.js          [39m[1m[2m  443.83 kB[22m[1m[22m[2m │ gzip:  99.12 kB[22m
+[32m✓ built in 1m 45s[39m

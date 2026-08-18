@@ -60,7 +60,7 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen bg-room text-ink antialiased">
-      <Seo title="Signing in — Onramp" description="Completing your Onramp sign in." path="/auth/callback" noindex />
+      <Seo title="Signing in · Onramp" description="Completing your Onramp sign in." path="/auth/callback" noindex />
       <AuthShell
         rail="Authentication"
         designator={meta.designator}

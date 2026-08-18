@@ -88,7 +88,7 @@ export default function EfficiencyBenchmarkPanel() {
           </div>
           <p className="text-caption text-ink-muted mt-1 max-w-2xl">
             Coding agents re-read the whole repo on every change. We re-embed only the changed
-            files and update the graph — and serve most of it on free keys.
+            files and update the graph · and serve most of it on free keys.
           </p>
         </div>
         <span className={cn(
@@ -109,7 +109,7 @@ export default function EfficiencyBenchmarkPanel() {
           <ol className="space-y-1.5 text-caption text-ink-secondary list-none">
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">1</span>
-              <span><span className="text-ink font-medium">Re-reads the whole repo</span> — every file back into context</span>
+              <span><span className="text-ink font-medium">Re-reads the whole repo</span> · every file back into context</span>
             </li>
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">2</span>
@@ -117,11 +117,11 @@ export default function EfficiencyBenchmarkPanel() {
             </li>
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">3</span>
-              <span>× {data.simulated_dev_count} devs = <span className="text-abort tabular-nums">{fmtTokens(agent.tokens_per_change)}</span> per change — every dev's agent holds its own copy</span>
+              <span>× {data.simulated_dev_count} devs = <span className="text-abort tabular-nums">{fmtTokens(agent.tokens_per_change)}</span> per change · every dev's agent holds its own copy</span>
             </li>
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">4</span>
-              <span>Re-does it on every session, every PR, every sync — all on paid keys</span>
+              <span>Re-does it on every session, every PR, every sync · all on paid keys</span>
             </li>
           </ol>
           <div className="mt-2 pt-2 border-t border-abort/20 font-code text-caption">
@@ -142,7 +142,7 @@ export default function EfficiencyBenchmarkPanel() {
             </li>
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">2</span>
-              <span>Merges the delta into the <span className="text-ink font-medium">persisted graph</span> — the rest is untouched</span>
+              <span>Merges the delta into the <span className="text-ink font-medium">persisted graph</span> · the rest is untouched</span>
             </li>
             <li className="flex gap-2">
               <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">3</span>
@@ -188,7 +188,7 @@ export default function EfficiencyBenchmarkPanel() {
             <div className="text-caption font-medium text-ink">
               Hire more devs?{' '}
               <span className="text-ink-muted font-normal">
-                agents charge per seat — Onramp doesn't
+                agents charge per seat · Onramp doesn't
               </span>
             </div>
             <p className="text-caption text-ink-muted mt-0.5 font-code">
@@ -249,7 +249,7 @@ export default function EfficiencyBenchmarkPanel() {
           <p className="text-caption text-caution mt-2 font-code">
             Agent monthly cost at {headcountValue} devs: {fmtUsd(agent.monthly_usd)} (subs{' '}
             {fmtUsd(agent.subscription_monthly_usd)} + tokens {fmtUsd(agent.token_cost_usd)})
-            {perDev && ` — ${fmtTokens(agent.monthly_tokens_burned)} tokens, one re-read per dev`}
+            {perDev && ` · ${fmtTokens(agent.monthly_tokens_burned)} tokens, one re-read per dev`}
             {' '}· Onramp: {fmtUsd(onramp.monthly_usd)}. Save {fmtUsd(data.monthly_savings_usd)}/mo.
           </p>
         )}

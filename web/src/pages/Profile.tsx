@@ -40,11 +40,11 @@ export default function Profile() {
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'User'
   const position = user?.position || ''
-  const email = user?.email || '—'
+  const email = user?.email || 'N/A'
   const initial = displayName.charAt(0).toUpperCase()
   const memberSince = user?.metadata?.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
-    : '—'
+    : 'N/A'
 
   const handleSignOut = async () => {
     if (signingOut) return
@@ -132,7 +132,7 @@ export default function Profile() {
           <div className="grid grid-cols-2 gap-3">
             <ConsolePanel rail="Repositories" designator="REPOS">
               <div className="font-mono tabular-nums text-3xl md:text-4xl font-semibold text-ink leading-none">
-                {repoCount ?? '—'}
+                {repoCount ?? 'N/A'}
               </div>
               {user?.githubUsername ? (
                 <div className="mt-3 flex items-center gap-3 text-caption">

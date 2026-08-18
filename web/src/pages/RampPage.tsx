@@ -22,7 +22,7 @@ import StatusTile from '../components/ui/status-tile'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 
 function formatDays(days: number | null | undefined): string {
-  if (days == null) return '—'
+  if (days == null) return 'N/A'
   return `${Math.round(days * 10) / 10}d`
 }
 
@@ -84,7 +84,7 @@ function StuckCard({ entry }: { entry: RampStuckEntry }) {
             <span className="text-ink-muted mt-px">›</span>
             <span>
               <span className="text-ink font-medium">{s.label}</span>
-              <span className="text-ink-muted"> — {s.detail}</span>
+              <span className="text-ink-muted"> · {s.detail}</span>
             </span>
           </li>
         ))}
@@ -121,7 +121,7 @@ function HealthCard({ health }: { health: RampHealth | undefined }) {
             <StatusTile status={status} label={label} />
           </div>
           <div className="mt-3 text-4xl font-semibold text-ink tracking-tight font-code tabular-nums">
-            {health.health_score ?? '—'}
+            {health.health_score ?? 'N/A'}
             <span className="text-body-sm text-ink-muted font-normal ml-2">/ 100</span>
           </div>
           <p className="text-caption text-ink-muted mt-1">
@@ -131,7 +131,7 @@ function HealthCard({ health }: { health: RampHealth | undefined }) {
         <div className="flex-1 min-w-[260px] w-full max-w-xl space-y-2.5">
           {comps.length === 0 && (
             <p className="text-caption text-ink-muted py-4">
-              No trainees yet — add junior-dev members and the score will compute from ramp, review, and PR data.
+              No trainees yet. Add junior-dev members and the score will compute from ramp, review, and PR data.
             </p>
           )}
           {comps.map(([key, c]) => (
@@ -192,10 +192,10 @@ export default function RampPage() {
       queryClient.invalidateQueries({ queryKey: ['ramp-summary'] })
       setCheckResult(
         res.alerts_fired > 0
-          ? `${res.alerts_fired} alert${res.alerts_fired === 1 ? '' : 's'} sent — leaders notified`
+          ? `${res.alerts_fired} alert${res.alerts_fired === 1 ? '' : 's'} sent · leaders notified`
           : res.stuck_count > 0
-            ? 'Alerts already sent in the last 24h — no duplicates fired'
-            : 'No stuck devs found — team looks healthy'
+            ? 'Alerts already sent in the last 24h · no duplicates fired'
+            : 'No stuck devs found · team looks healthy'
       )
     },
     onError: (e: Error) => setCheckResult(`Check failed: ${e.message}`),
@@ -239,7 +239,7 @@ export default function RampPage() {
 
       {error && (
         <div className="rounded-card border border-abort/30 bg-abort/[0.04] px-4 py-3 text-caption text-abort">
-          Failed to load ramp data — {error.message}
+          Failed to load ramp data · {error.message}
         </div>
       )}
 
@@ -286,7 +286,7 @@ export default function RampPage() {
           {/* Stuck panel */}
           {stuck.length > 0 && (
             <ConsolePanel
-              rail="Stuck Devs — Intercept Now"
+              rail="Stuck Devs · Intercept Now"
               designator={`${stuck.length} INTERVENTION`}
               status="abort"
               pad="none"
@@ -351,7 +351,7 @@ export default function RampPage() {
                         {p.review_cycles > 0 ? (
                           <span className="text-caution">{p.review_cycles} cycle{p.review_cycles === 1 ? '' : 's'}</span>
                         ) : (
-                          <span className="text-ink-muted">—</span>
+                          <span className="text-ink-muted">N/A</span>
                         )}
                       </TD>
                       <TD className="text-ink-secondary font-code tabular-nums">{p.questions_asked}</TD>
@@ -368,7 +368,7 @@ export default function RampPage() {
                 {data.profiles.length === 0 && (
                   <TR>
                     <TD colSpan={8} className="text-center text-ink-muted py-10">
-                      No trainees on this team yet — add junior-dev members to start tracking ramps.
+                      No trainees on this team yet. Add junior-dev members to start tracking ramps.
                     </TD>
                   </TR>
                 )}

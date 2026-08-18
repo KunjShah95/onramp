@@ -45,7 +45,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
     >
       {cohorts.length === 0 ? (
         <p className="text-caption text-ink-muted font-code py-2">
-          No cohorts yet — groups form as developers join.
+          No cohorts yet. Groups form as developers join.
         </p>
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -65,7 +65,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
                   {c.label} <span className="text-ink-muted font-normal">({c.member_count})</span>
                 </span>
                 <span className="readout text-caption tabular-nums text-ink-muted">
-                  {c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'} ramp
+                  {c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : 'N/A'} ramp
                 </span>
               </div>
               <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">

@@ -56,7 +56,7 @@ export default function ResetPassword() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Reset Password — Onramp" description="Set a new password for your Onramp account." path="/reset-password" noindex />
+        <Seo title="Reset Password · Onramp" description="Set a new password for your Onramp account." path="/reset-password" noindex />
         <AuthShell
           rail="Access"
           designator={pageState === 'success' ? 'PASSWORD UPDATED' : 'SET NEW PASSWORD'}

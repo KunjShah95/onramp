@@ -115,7 +115,7 @@ export default function ChangelogPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Changelog — Onramp', description: 'Product updates and release notes for Onramp — the AI-powered developer onboarding platform.', path: '/changelog' }}
+      seo={{ title: 'Changelog · Onramp', description: 'Product updates and release notes for Onramp · the AI-powered developer onboarding platform.', path: '/changelog' }}
     >
       <div className="max-w-2xl mx-auto px-6 pt-16 pb-24">
         {/* Header */}

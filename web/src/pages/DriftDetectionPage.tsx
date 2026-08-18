@@ -111,7 +111,7 @@ export default function DriftDetectionPage() {
           <PageHeader
             eyebrow="Folio · Drift detection"
             title="Drift Detection"
-            subtitle="Paste your architecture docs, optionally list code paths — find what's missing, what's undocumented, and how far the codebase has drifted."
+            subtitle="Paste your architecture docs, optionally list code paths · find what's missing, what's undocumented, and how far the codebase has drifted."
           />
         </motion.header>
 

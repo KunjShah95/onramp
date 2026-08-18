@@ -72,7 +72,7 @@ export default function Login() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Sign in — Onramp" description="Sign in to access your team's codebase insights, onboarding plans, and AI-powered mentorship." path="/login" noindex />
+        <Seo title="Sign in · Onramp" description="Sign in to access your team's codebase insights, onboarding plans, and AI-powered mentorship." path="/login" noindex />
         <AuthShell
           rail="Access"
           designator={stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}

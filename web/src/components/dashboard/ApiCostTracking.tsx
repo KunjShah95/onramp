@@ -94,7 +94,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
 
           {/* Provider attribution — free-first routing savings */}
           {providerUsage && providerUsage.tracked_requests === 0 && (
-            <p className="text-center py-3 text-ink-tertiary text-xs">No provider attribution yet — appears once requests are routed.</p>
+            <p className="text-center py-3 text-ink-tertiary text-xs">No provider attribution yet · appears once requests are routed.</p>
           )}
           {providerUsage && providerUsage.tracked_requests > 0 && (
             <div>
@@ -155,7 +155,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
           {/* Per-key budget state */}
           {keys.length === 0 ? (
             <p className="text-center py-6 text-ink-tertiary text-sm">
-              No API keys yet — create one in Settings or the Developer Portal.
+              No API keys yet · create one in Settings or the Developer Portal.
             </p>
           ) : (
             <div className="space-y-2">

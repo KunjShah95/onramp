@@ -94,7 +94,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
       <motion.div variants={item} className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-3">
           <span className="text-display-sm font-bold font-code" style={{ color: (dora?.overall_score || 0) >= 75 ? '#17A34A' : (dora?.overall_score || 0) >= 50 ? '#2472C4' : '#D6870F' }}>
-            {dora?.overall_score ?? '—'}
+            {dora?.overall_score ?? 'N/A'}
           </span>
           <span className="text-body-sm text-ink-muted font-code">DORA<br />Score</span>
         </div>

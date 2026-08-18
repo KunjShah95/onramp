@@ -36,7 +36,7 @@ export default function PhilosophyHero() {
           </div>
           <div className="space-y-2">
             <motion.div variants={lineVariants} className="text-ink-secondary">
-              $ codebase changed — re-reading repo…
+              $ codebase changed · re-reading repo…
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary">
               $ read 250K tokens into context
@@ -54,7 +54,7 @@ export default function PhilosophyHero() {
               $ re-reading repo again… (250K tokens)
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary">
-              $ session ended — context gone
+              $ session ended · context gone
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary">
               $ tomorrow: re-read everything again
@@ -80,7 +80,7 @@ export default function PhilosophyHero() {
               Ask: "How do I set up this repo?"
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
-              <span className="text-go">→</span> Indexed already — reading the graph
+              <span className="text-go">→</span> Indexed already · reading the graph
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px] leading-relaxed">
               <span className="text-go">→</span> Found 3 entry points: setup.rs, build.sh, deploy.py
@@ -95,7 +95,7 @@ export default function PhilosophyHero() {
               Start with: npm install && python -m pip install boto3
             </motion.div>
             <motion.div variants={lineVariants} className="text-ink-secondary text-[12px]">
-              <span className="text-go">→</span> Graph persists — no re-read, no token burn
+              <span className="text-go">→</span> Graph persists · no re-read, no token burn
             </motion.div>
           </div>
         </motion.div>

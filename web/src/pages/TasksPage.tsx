@@ -86,7 +86,7 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select member�
       className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink outline-none focus:border-go/60 transition-colors appearance-none', className)}>
       <option value="">{placeholder}</option>
       {sortMembers(members).map((m) => (
-        <option key={m.user_id} value={m.user_id}>{m.name || m.user_id} ({m.role})</option>
+        <option key={m.user_id} value={m.user_id}>{m.name || 'N/A'} ({m.role})</option>
       ))}
     </select>
   )
@@ -94,10 +94,10 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select member�
 
 /** Resolve a user UUID to a human-readable name for display in task lists/modals. */
 function memberName(members: TeamMember[], uid: string | null | undefined): string {
-  if (!uid) return 'â€”'
+  if (!uid) return 'N/A'
   const member = members.find((m) => m.user_id === uid)
   if (member?.name) return member.name
-  return uid
+  return 'N/A'
 }
 
 export default function TasksPage() {
@@ -416,12 +416,12 @@ export default function TasksPage() {
     catch { toast.error('Failed to delete task') }
   }
 
-  /** Kanban drag-and-drop persistence â€” transition the task to its new state. */
+  /** Kanban drag-and-drop persistence · transition the task to its new state. */
   async function handleKanbanMove(taskId: string, newState: string) {
     try {
       await transitionTask(taskId, newState)
       const task = tasks.find((t) => t.task_id === taskId)
-      toast.success('Task moved', `${task?.title?.slice(0, 40) ?? 'Task'} â†’ ${newState.replace(/_/g, ' ')}`)
+      toast.success('Task moved', `${task?.title?.slice(0, 40) ?? 'Task'} → ${newState.replace(/_/g, ' ')}`)
       void fetchProgress()
     } catch (e: any) {
       toast.error('Move failed', e?.message || 'State transition rejected')
@@ -446,12 +446,12 @@ export default function TasksPage() {
         <PageHeader
           title="Tasks"
           eyebrow="Folio 02 · Tasks"
-          subtitle="Senior â†’ Trainee workflow â€” assign, work, review, approve, unlock"
+          subtitle="Senior → Trainee workflow · assign, work, review, approve, unlock"
           actions={
             <>
               <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}
                 className="w-auto bg-base border border-seam-strong text-ink text-sm rounded-[3px] px-3 py-2 outline-none focus:border-go/60 transition-colors">
-                <option value="">Select teamâ€¦</option>
+                <option value="">Select team…</option>
                 {teams.map((t: any) => (<option key={t.team_id || t.id} value={t.team_id || t.id}>{t.name}</option>))}
               </select>
               <div className="flex bg-well border border-seam rounded-card overflow-hidden p-0.5 gap-0.5">
@@ -509,17 +509,17 @@ export default function TasksPage() {
               <div className="mb-4">
                 <FieldLabel>Search issues by name</FieldLabel>
                 <div className="flex gap-2">
-                  <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or authâ€¦" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
+                  <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or auth…" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
                   <button onClick={handleSearchIssues} disabled={issueSearching || !importRepoUrl.trim() || !issueQuery.trim()}
                     className="bg-mission hover:bg-mission-lit text-white px-5 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-45 whitespace-nowrap">
-                    {issueSearching ? 'Searchingâ€¦' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
+                    {issueSearching ? 'Searching…' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
                   </button>
                 </div>
               </div>
 
               {issueResults.length > 0 && (
                 <div className="mb-4">
-                  <FieldLabel>Select an issue {issueResults.length > 0 && `â€” ${issueResults.length} match${issueResults.length === 1 ? '' : 'es'}`}</FieldLabel>
+                  <FieldLabel>Select an issue {issueResults.length > 0 && `· ${issueResults.length} match${issueResults.length === 1 ? '' : 'es'}`}</FieldLabel>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {issueResults.map((iss) => {
                       const selected = importIssueNumber === String(iss.number)
@@ -536,7 +536,7 @@ export default function TasksPage() {
                               {iss.labels && iss.labels.length > 0 && ` Â· ${iss.labels.slice(0, 3).join(', ')}`}
                             </div>
                           </div>
-                          <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-ink-tertiary/50 hover:text-go text-[10px] shrink-0">View â†—</a>
+                          <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-ink-tertiary/50 hover:text-go text-[10px] shrink-0">View ↗</a>
                         </button>
                       )
                     })}
@@ -550,14 +550,14 @@ export default function TasksPage() {
                   <Input value={importIssueNumber} onChange={(e) => setImportIssueNumber(e.target.value)} placeholder="e.g., 42" type="number" />
                 </div>
                 <div className="md:col-span-2 self-end text-[11px] text-ink-tertiary italic leading-relaxed">
-                  Search above to find an issue by title and pick it â€” then it&apos;s ready to import.
+                  Search above to find an issue by title and pick it · then it&apos;s ready to import.
                 </div>
               </div>
               <div className="flex justify-end gap-3">
                 <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
                 <button onClick={handleImportIssue} disabled={importing || !importRepoUrl.trim() || !importIssueNumber.trim()}
                   className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
-                  {importing ? 'Importingâ€¦' : 'Import Issue'}
+                  {importing ? 'Importing…' : 'Import Issue'}
                 </button>
               </div>
             </div>
@@ -600,7 +600,7 @@ export default function TasksPage() {
                     </div>
                     <button onClick={handleCreateTemplate} disabled={tplCreating || !tplName.trim()}
                       className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
-                      {tplCreating ? 'Savingâ€¦' : 'Save Template'}
+                      {tplCreating ? 'Saving…' : 'Save Template'}
                     </button>
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export default function TasksPage() {
                 <div className="bg-panel rounded-card p-4 border border-seam">
                   <div className="text-xs font-semibold text-ink-secondary mb-3">Bulk assign plan</div>
                   {templates.length === 0 ? (
-                    <p className="text-xs text-ink-tertiary italic">No templates yet â€” save one on the left to get started.</p>
+                    <p className="text-xs text-ink-tertiary italic">No templates yet. Save one on the left to get started.</p>
                   ) : (
                     <>
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 mb-3">
@@ -630,7 +630,7 @@ export default function TasksPage() {
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="text-xs text-ink-secondary truncate">{tpl.name}</div>
-                                <div className="text-[10px] text-ink-tertiary font-mono">{tpl.module || 'general'} Â· ~{tpl.estimated_hours ?? 'â€”'}h</div>
+                                <div className="text-[10px] text-ink-tertiary font-mono">{tpl.module || 'general'} · ~{tpl.estimated_hours ?? 'N/A'}h</div>
                               </div>
                               <button
                                 onClick={(e) => { e.preventDefault(); if (confirm('Delete this template?')) deleteTaskTemplate(tpl.template_id).then(() => { setSelectedTemplates(prev => { const n = new Set(prev); n.delete(tpl.template_id); return n }); fetchTemplates() }) }}
@@ -649,7 +649,7 @@ export default function TasksPage() {
                       </div>
                       <button onClick={handleBulkAssign} disabled={busy || selectedTemplates.size === 0 || !bulkAssignee.trim()}
                         className="w-full bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
-                        {busy ? 'Assigningâ€¦' : `Assign ${selectedTemplates.size || ''} template${selectedTemplates.size === 1 ? '' : 's'}`}
+                        {busy ? 'Assigning…' : `Assign ${selectedTemplates.size || ''} template${selectedTemplates.size === 1 ? '' : 's'}`}
                       </button>
                     </>
                   )}
@@ -676,7 +676,7 @@ export default function TasksPage() {
                     <button onClick={handleAutoStarter} disabled={busy || !starterRepo.trim() || !starterUserId.trim()}
                       className="w-full bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
                       <Lightning className="w-3.5 h-3.5" weight="fill" />
-                      {busy ? 'Assigningâ€¦' : 'Generate Starter Tasks'}
+                      {busy ? 'Assigning…' : 'Generate Starter Tasks'}
                     </button>
                   </div>
                 </div>
@@ -691,14 +691,14 @@ export default function TasksPage() {
               <div className="absolute inset-x-0 top-0 h-px bg-border/60" />
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="w-4 h-4 text-ink-tertiary" weight="bold" />
-                <h3 className="font-display text-[13px] font-semibold text-ink">Time Tracking — Estimated vs Actual</h3>
+                <h3 className="font-display text-[13px] font-semibold text-ink">Time Tracking · Estimated vs Actual</h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                 {[
                   { label: 'Tasks with actuals', value: timeStats.with_actual_count },
                   { label: 'Total estimated', value: `${timeStats.total_estimated_hours}h` },
                   { label: 'Total actual', value: `${timeStats.total_actual_hours}h` },
-                  { label: 'Avg variance', value: timeStats.avg_variance_hours != null ? `${timeStats.avg_variance_hours > 0 ? '+' : ''}${timeStats.avg_variance_hours}h` : 'â€”' },
+                  { label: 'Avg variance', value: timeStats.avg_variance_hours != null ? `${timeStats.avg_variance_hours > 0 ? '+' : ''}${timeStats.avg_variance_hours}h` : 'N/A' },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-panel rounded-card p-3 border border-seam">
                     <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">{stat.label}</div>
@@ -726,14 +726,14 @@ export default function TasksPage() {
                             <div className="bg-go/50 h-full" style={{ width: `${((t.estimated_hours ?? 0) / maxH) * 100}%` }} title={`Estimated ${t.estimated_hours}h`} />
                             <div className={cn('h-full', over ? 'bg-abort/70' : 'bg-go/70')} style={{ width: `${((t.actual_hours ?? 0) / maxH) * 100}%` }} title={`Actual ${t.actual_hours}h`} />
                           </div>
-                          <span className="text-[10px] text-ink-tertiary font-mono">est {t.estimated_hours ?? 'â€”'}h / {t.actual_hours}h</span>
+                          <span className="text-[10px] text-ink-tertiary font-mono">est {t.estimated_hours ?? 'N/A'}h / {t.actual_hours}h</span>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-ink-tertiary italic">No tasks have actual hours logged yet â€” log hours from a task detail view.</p>
+                <p className="text-xs text-ink-tertiary italic">No tasks have actual hours logged yet. Log hours from a task detail view.</p>
               )}
               <div className="flex justify-end mt-4 pt-3 border-t border-seam">
                 <button onClick={handleExportTimeStats}
@@ -783,7 +783,7 @@ export default function TasksPage() {
               </div>
               <div className="mb-4">
                 <FieldLabel>Description</FieldLabel>
-                <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe the task in detailâ€¦" rows={3} />
+                <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Describe the task in detail…" rows={3} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
                 <div>
@@ -796,7 +796,7 @@ export default function TasksPage() {
                 </div>
                 <div>
                   <FieldLabel>Repo URL</FieldLabel>
-                  <Input value={formRepoUrl} onChange={(e) => setFormRepoUrl(e.target.value)} placeholder="https://github.com/â€¦" />
+                  <Input value={formRepoUrl} onChange={(e) => setFormRepoUrl(e.target.value)} placeholder="https://github.com/…" />
                 </div>
                 <div>
                   <FieldLabel>Unlock Modules</FieldLabel>
@@ -807,7 +807,7 @@ export default function TasksPage() {
                 <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
                 <button onClick={handleCreateTask} disabled={creating || !formTitle.trim()}
                   className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
-                  {creating ? 'Creatingâ€¦' : 'Create Task'}
+                  {creating ? 'Creating…' : 'Create Task'}
                 </button>
               </div>
             </div>
@@ -817,7 +817,7 @@ export default function TasksPage() {
         <div className="relative mb-5">
           <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary/50 pointer-events-none" />
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by title, state, or assigneeâ€¦"
+            placeholder="Filter by title, state, or assignee…"
             className="w-full bg-base border border-seam text-ink text-sm rounded-card pl-10 pr-4 py-2.5 outline-none focus:border-go/40 placeholder:text-ink-tertiary/30 transition-colors" />
         </div>
 
@@ -831,6 +831,7 @@ export default function TasksPage() {
               priorityDot={PRIORITY_DOTS}
               onMoveTask={handleKanbanMove}
               onTaskClick={(task) => setSelectedTask(task as any)}
+              memberName={(uid) => memberName(members, uid)}
               renderCardMeta={(task) =>
                 task.actual_hours != null && task.estimated_hours != null && task.actual_hours > task.estimated_hours + 0.01 ? (
                   <span className="rounded-sm border border-abort/20 bg-abort/5 px-1.5 py-0.5 font-code text-[10px] text-abort" title="Over estimated time">
@@ -881,7 +882,7 @@ export default function TasksPage() {
                               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[task.priority] ?? PRIORITY_DOTS.medium)} />
                               <span className="text-[10px] font-medium capitalize text-ink-tertiary">{task.priority}</span>
                             </div>
-                            <span className="text-[11px] text-ink-tertiary font-mono">{task.estimated_hours ? `~${task.estimated_hours}h` : 'â€”'}</span>
+                            <span className="text-[11px] text-ink-tertiary font-mono">{task.estimated_hours ? `~${task.estimated_hours}h` : 'N/A'}</span>
                           </div>
                         </motion.div>
                       ))}
@@ -1120,7 +1121,7 @@ export default function TasksPage() {
                 <div className="border-t border-seam pt-4 space-y-3">
                   {selectedTask.state === 'pending' && (
                     <div className="flex gap-2 items-center">
-                      <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a memberâ€¦" className="flex-1" />
+                      <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a member…" className="flex-1" />
                       <button onClick={() => handleAssign(selectedTask.task_id, assignUserId)} disabled={!assignUserId.trim()}
                         className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40 whitespace-nowrap">Assign</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
@@ -1134,14 +1135,14 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'in_progress' && (
                     <div className="flex gap-2">
-                      <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Paste PR URLâ€¦" className="flex-1" />
+                      <Input value={prUrlInput} onChange={(e) => setPrUrlInput(e.target.value)} placeholder="Paste PR URL…" className="flex-1" />
                       <button onClick={() => handleSubmit(selectedTask.task_id, prUrlInput)} disabled={!prUrlInput.trim()}
                         className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40">Submit for Review</button>
                     </div>
                   )}
                   {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review' || selectedTask.state === 'peer_review') && (
                     <div className="space-y-3">
-                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedbackâ€¦" rows={3} />
+                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} />
                       <div className="flex gap-2 flex-wrap">
                         {selectedTask.state === 'peer_review' ? (
                           <>
@@ -1171,7 +1172,7 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'product_review' && (
                     <div className="space-y-3">
-                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Product sign-off notesâ€¦" rows={2} />
+                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Product sign-off notes…" rows={2} />
                       <div className="flex gap-2">
                         <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
                         <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve & Sign Off</button>
@@ -1188,7 +1189,7 @@ export default function TasksPage() {
                   )}
                   {(selectedTask.state === 'completed' || selectedTask.state === 'in_progress' || selectedTask.state === 'needs_changes') && (
                     <div className="flex gap-2">
-                      <Input value={actualHoursInput} onChange={(e) => setActualHoursInput(e.target.value)} placeholder="Hours spentâ€¦" type="number" min="0" step="0.5" className="w-32" />
+                      <Input value={actualHoursInput} onChange={(e) => setActualHoursInput(e.target.value)} placeholder="Hours spent…" type="number" min="0" step="0.5" className="w-32" />
                       <button onClick={() => handleLogActualHours(selectedTask.task_id)} disabled={!actualHoursInput}
                         className="bg-mission hover:bg-mission-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" /> Log Hours

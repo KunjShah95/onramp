@@ -51,7 +51,7 @@ export default function SOC2Page() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'SOC 2 Type II — Onramp', description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.', path: '/soc-2' }}
+      seo={{ title: 'SOC 2 Type II · Onramp', description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.', path: '/soc-2' }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
@@ -66,7 +66,7 @@ export default function SOC2Page() {
             compliance.
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl">
-            Onramp is undergoing SOC 2 Type II certification — audited by an independent third party against
+            Onramp is undergoing SOC 2 Type II certification, audited by an independent third party against
             the AICPA Trust Services Criteria for Security, Confidentiality, Availability, and Processing Integrity.
           </p>
         </motion.div>
@@ -75,7 +75,7 @@ export default function SOC2Page() {
         <motion.div {...fadeUp(0.08)} className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex items-start gap-4">
           <FileText size={24} weight="duotone" className="text-[hsl(var(--accent))] shrink-0 mt-0.5" />
           <div>
-            <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II — In progress</h2>
+            <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II · In progress</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
               Our audit is currently underway with an independent AICPA-accredited auditor. We expect to complete the certification process by Q4 2026.
               In the meantime, we operate with controls that meet or exceed SOC 2 requirements.

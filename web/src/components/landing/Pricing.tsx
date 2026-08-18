@@ -42,7 +42,7 @@ export default function Pricing() {
         <SectionHeading
           eyebrow="Pricing"
           heading={<>One flat price. Your whole team.</>}
-          sub="No per-seat math. Every engineer can ask, explore, and onboard — you pay one price per workspace."
+          sub="No per-seat math. Every engineer can ask, explore, and onboard; you pay one price per workspace."
         />
 
         <motion.div
@@ -83,7 +83,7 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.05, ease: EASE }}
             className="h-full"
           >
-            <SpotlightCard glow="rgba(8,145,178,0.05)" className={SIDE_CARD}>
+            <SpotlightCard glow="rgba(79,70,229,0.07)" className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
                   Free
@@ -124,7 +124,7 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
             className="relative"
           >
-            <MovingBorder speed={9} className="shadow-[0_24px_64px_rgba(8,145,178,0.15)]">
+            <MovingBorder speed={9} className="shadow-[0_24px_64px_rgba(79,70,229,0.16)]">
               <div className="relative flex h-full flex-col overflow-hidden rounded-[23px] bg-white p-7">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-primary">
@@ -153,7 +153,7 @@ export default function Pricing() {
                 </ul>
                 <Link
                   to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-white shadow-[0_8px_24px_rgba(8,145,178,0.28)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.30)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
                 >
                   Start 14-day trial
                   <ArrowRight size={14} weight="bold" />
@@ -170,7 +170,7 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.19, ease: EASE }}
             className="h-full"
           >
-            <SpotlightCard glow="rgba(8,145,178,0.05)" className={SIDE_CARD}>
+            <SpotlightCard glow="rgba(79,70,229,0.07)" className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
                   Enterprise

@@ -393,8 +393,8 @@ export default function AskPage() {
           </div>
           <p className="font-code text-[10px] text-ink-tertiary mt-1.5 text-center">
             {model
-              ? `Model pinned: ${model} — every question uses it`
-              : 'Auto routing — the router picks the best model per question'}
+        ? `Model pinned: ${model} · every question uses it`
+        : 'Auto routing · the router picks the best model per question'}
             {routingMode != null && (
               <>
                 {' · '}routing mode: {String(routingMode)}

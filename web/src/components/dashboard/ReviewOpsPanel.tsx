@@ -175,7 +175,7 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
                       'px-1.5 py-0.5 rounded-[2px] text-[10px] font-semibold tabular-nums border',
                       TONE_CLASS[tone]
                     )}>
-                      {r.score != null ? r.score : '—'}
+                      {r.score != null ? r.score : 'N/A'}
                     </span>
                   </div>
                 )

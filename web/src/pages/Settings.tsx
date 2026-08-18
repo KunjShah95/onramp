@@ -448,7 +448,7 @@ export default function Settings() {
                         className="input pl-10 text-ink-muted cursor-not-allowed"
                       />
                     </div>
-                    <p className="text-caption text-ink-muted mt-1.5">Managed by your sign-in provider — not editable here.</p>
+                    <p className="text-caption text-ink-muted mt-1.5">Managed by your sign-in provider · not editable here.</p>
                   </div>
                   {(role || user?.createdAt) && (
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-ink-muted">
@@ -537,7 +537,7 @@ export default function Settings() {
                   <div>
                     <label className="overline text-ink-muted mb-1.5 block">Cost Limit <span className="text-ink-muted/60 normal-case">(credits / month)</span></label>
                     <input value={newKeyCostLimit} onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
-                      type="number" min={0} placeholder="e.g., 5000 — leave blank for no limit"
+                      type="number" min={0} placeholder="e.g., 5000 · leave blank for no limit"
                       className="input" />
                     <p className="text-caption text-ink-muted mt-1.5">The key stops working once its usage reaches this budget.</p>
                   </div>
@@ -560,7 +560,7 @@ export default function Settings() {
                 <div className="mb-4 bg-caution/10 border border-caution/25 rounded-card p-4">
                   <p className="text-caption font-semibold mb-1 flex items-center gap-1.5 text-caution">
                     <Key size={14} weight="fill" />
-                    Save this key — it won't be shown again:
+                    Save this key · it won't be shown again:
                   </p>
                   <code className="text-caption bg-panel-raised px-3 py-2 rounded-sm block font-code break-all select-all border border-seam">{newKey}</code>
                 </div>
@@ -789,7 +789,7 @@ export default function Settings() {
                 )}
               </div>
               {notifPrefs?.roast_mode_enabled && (
-                <p className="text-caption text-abort/70 italic mt-3">"Finally, someone who wants the truth. Buckle up." — Senior Dev Roast Bot</p>
+                <p className="text-caption text-abort/70 italic mt-3">"Finally, someone who wants the truth. Buckle up." · Senior Dev Roast Bot</p>
               )}
             </ConsolePanel>
           </motion.div>
@@ -882,7 +882,7 @@ export default function Settings() {
                   {githubTestResult && (
                     <div className={cn('text-caption flex items-center gap-2', githubTestResult.valid ? 'text-go' : 'text-abort')}>
                       {githubTestResult.valid ? (
-                        <><Check size={16} weight="bold" /> Valid — {githubTestResult.username} ({githubTestResult.scopes?.join(', ') || ''})</>
+                        <><Check size={16} weight="bold" /> Valid · {githubTestResult.username} ({githubTestResult.scopes?.join(', ') || ''})</>
                       ) : (
                         <><X size={16} weight="bold" /> {githubTestResult.error}</>
                       )}
@@ -975,7 +975,7 @@ export default function Settings() {
                     <div className="bg-caution/10 border border-caution/25 rounded-card p-4 mt-4">
                       <p className="text-caption text-caution font-semibold mb-2 flex items-center gap-1.5">
                         <Lock size={14} weight="fill" />
-                        Webhook created! Save this secret — it won't be shown again:
+                        Webhook created! Save this secret · it won't be shown again:
                       </p>
                       <code className="block text-caption font-code bg-panel-raised px-3 py-2 rounded-sm select-all break-all text-ink-secondary border border-seam">{webhookCreated.secret}</code>
                     </div>

@@ -22,12 +22,14 @@ const DIST_DIR = path.resolve(__dirname, '../../dist')
 // Gzip budgets are real zlib-gzipped KB. Raw budgets (index.html, total
 // assets) measure bytes on disk. Adjust these as the app grows — run
 // `npm run build` and check sizes.
-// Current actuals (Aug 2026): 1067KB JS gzipped, 274KB largest chunk
-// gzipped, 21KB CSS gzipped, 12.1MB total raw assets. The largest chunk is
-// Babylon's shared math.vector hub (~1.1MB raw / ~274KB gzip) — it cannot be
-// split across chunks: Babylon's internal circular imports throw TDZ
-// ReferenceErrors when split, so Rollup keeps the circular graph in one
-// chunk. JS and raw-asset budgets carry ~10-25% headroom so real regressions
+// Current actuals (Aug 2026): 683KB JS gzipped, 92KB largest chunk
+// gzipped (vendor-charts/Recharts), 20KB CSS gzipped, 5.2MB total raw
+// assets. @phosphor-icons is deliberately NOT in a manual chunk (see
+// vite.config.ts) — forcing it into one chunk put 443KB raw / ~96KB gzip on
+// every page's critical path via modulepreload; Rollup now co-locates icons
+// with the pages that use them. Babylon is lazy-only (the landing hero uses
+// the static SVG map).
+// JS and raw-asset budgets carry ~10-25% headroom so real regressions
 // (accidental duplicate deps, un-lazy-loaded pages) still fail CI; CSS and
 // index.html are generous caps that mainly guard against runaway growth.
 const BUDGETS = {

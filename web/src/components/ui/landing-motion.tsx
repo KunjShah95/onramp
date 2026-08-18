@@ -268,7 +268,7 @@ export function Beams({ className }: { className?: string }) {
             opacity: b.op,
             rotate: b.rotate,
             background:
-              'linear-gradient(90deg, transparent 0%, rgba(0,217,255,0.28) 30%, rgba(16,185,129,0.36) 55%, rgba(52,211,153,0.18) 70%, transparent 100%)',
+              'linear-gradient(90deg, transparent 0%, rgba(79,70,229,0.28) 30%, rgba(34,211,238,0.30) 55%, rgba(139,92,246,0.20) 70%, transparent 100%)',
             filter: 'blur(0.5px)',
           }}
           animate={
@@ -283,6 +283,82 @@ export function Beams({ className }: { className?: string }) {
         />
       ))}
     </div>
+  )
+}
+
+/* ── Magnetic — cursor-attracted element ──────────────────────
+ * The child is drawn a few px toward the pointer with a weighted spring
+ * and returns home on leave. transform-only, honors prefers-reduced-motion.
+ * Wrap CTAs / buttons for the premium "magnetic hover" feel. */
+export function Magnetic({
+  children,
+  className,
+  strength = 0.25,
+}: {
+  children: React.ReactNode
+  className?: string
+  strength?: number
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
+  const mx = useMotionValue(0)
+  const my = useMotionValue(0)
+  const x = useSpring(mx, { stiffness: 180, damping: 14, mass: 0.4 })
+  const y = useSpring(my, { stiffness: 180, damping: 14, mass: 0.4 })
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (reduced) return
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    mx.set((e.clientX - (r.left + r.width / 2)) * strength)
+    my.set((e.clientY - (r.top + r.height / 2)) * strength)
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onPointerMove={onPointerMove}
+      onPointerLeave={() => {
+        mx.set(0)
+        my.set(0)
+      }}
+      className={cn('inline-block', className)}
+      style={{ x, y }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ── HeroSpotlight — section-wide cursor-follow glow ──────────
+ * A soft indigo/cyan radial pool drifts under the pointer across the
+ * hero. transform-only springs, pointer-events-none, reduced-motion safe. */
+export function HeroSpotlight({ className }: { className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
+  const mx = useMotionValue(-800)
+  const my = useMotionValue(-800)
+  const x = useSpring(mx, { stiffness: 55, damping: 18, mass: 1 })
+  const y = useSpring(my, { stiffness: 55, damping: 18, mass: 1 })
+  const bg = useMotionTemplate`radial-gradient(640px circle at ${x}px ${y}px, rgba(79,70,229,0.075), rgba(34,211,238,0.05) 45%, transparent 72%)`
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (reduced) return
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    mx.set(e.clientX - r.left)
+    my.set(e.clientY - r.top)
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onPointerMove={onPointerMove}
+      className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}
+      aria-hidden
+    >
+      <motion.div className="absolute inset-0" style={{ background: bg }} />
+    </motion.div>
   )
 }
 
@@ -313,7 +389,7 @@ export function MovingBorder({
         className="absolute -inset-[120%]"
         style={{
           background:
-            'conic-gradient(from var(--angle), transparent 0deg, rgba(0,217,255,0.6) 70deg, rgba(52,211,153,0.7) 120deg, rgba(255,255,255,0.08) 160deg, transparent 200deg, transparent 360deg)',
+            'conic-gradient(from var(--angle), transparent 0deg, rgba(79,70,229,0.6) 70deg, rgba(34,211,238,0.55) 120deg, rgba(139,92,246,0.5) 160deg, rgba(255,255,255,0.08) 200deg, transparent 240deg, transparent 360deg)',
           ['--angle' as string]: '0deg',
         }}
         animate={

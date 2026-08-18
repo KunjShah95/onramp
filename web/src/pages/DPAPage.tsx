@@ -24,7 +24,7 @@ const sections = [
   },
   {
     title: 'Who needs to sign?',
-    content: 'If your organization operates in the EU, UK, or California — or processes personal data of individuals in those jurisdictions — you need a signed DPA with us. We provide a standard DPA that covers all Onramp services. Enterprise customers may request custom terms as part of their contract.',
+    content: 'If your organization operates in the EU, UK, or California, or processes personal data of individuals in those jurisdictions, you need a signed DPA with us. We provide a standard DPA that covers all Onramp services. Enterprise customers may request custom terms as part of their contract.',
   },
   {
     title: 'Our commitments',
@@ -33,12 +33,12 @@ const sections = [
 ]
 
 const subprocessors = [
-  'Amazon Web Services (AWS) — Cloud infrastructure (US, EU)',
-  'Google Cloud Platform (GCP) — Cloud infrastructure (US, EU)',
-  'Vercel Inc. — Frontend hosting',
-  'Railway Corp. — Backend hosting',
-  'Neon Inc. — Database hosting',
-  'Razorpay Inc. — Payment processing',
+  'Amazon Web Services (AWS) · Cloud infrastructure (US, EU)',
+  'Google Cloud Platform (GCP) · Cloud infrastructure (US, EU)',
+  'Vercel Inc. · Frontend hosting',
+  'Railway Corp. · Backend hosting',
+  'Neon Inc. · Database hosting',
+  'Razorpay Inc. · Payment processing',
 ]
 
 const steps = [
@@ -52,7 +52,7 @@ export default function DPAPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Data Processing Agreement — Onramp', description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.', path: '/dpa' }}
+      seo={{ title: 'Data Processing Agreement · Onramp', description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.', path: '/dpa' }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
@@ -66,7 +66,7 @@ export default function DPAPage() {
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl">
             Our standard Data Processing Agreement outlines how we handle, process, and protect your personal data.
-            It's available for all customers — no procurement delays.
+            It's available for all customers, with no procurement delays.
           </p>
         </motion.div>
 

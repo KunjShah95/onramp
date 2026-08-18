@@ -42,7 +42,7 @@ const channels = [
 export default function SupportPage() {
   return (
     <PageTransition>
-      <Seo title="Support — Onramp" description="How can we help? Pick a channel and we usually respond within one business day." path="/support" />
+      <Seo title="Support · Onramp" description="How can we help? Pick a channel and we usually respond within one business day." path="/support" />
       <div className="min-h-screen px-4 sm:px-6 py-16 sm:py-24 flex items-center justify-center relative overflow-hidden">
         <motion.div
           variants={stagger}
@@ -54,7 +54,7 @@ export default function SupportPage() {
             <PageHeader
               eyebrow="Folio · Support"
               title="How can we help?"
-              subtitle="Pick a channel below — we usually respond within one business day."
+              subtitle="Pick a channel below · we usually respond within one business day."
             />
           </motion.div>
 
@@ -94,7 +94,7 @@ export default function SupportPage() {
               <Link to="/docs" className="text-go font-semibold hover:underline underline-offset-4">
                 Check the docs first
               </Link>
-              {' '}— or head back to your{' '}
+              {' '}· or head back to your{' '}
               <Link to="/dashboard" className="text-go font-semibold hover:underline underline-offset-4">
                 dashboard
               </Link>.

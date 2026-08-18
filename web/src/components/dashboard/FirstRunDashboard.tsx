@@ -43,7 +43,7 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
         designator: 'CREW',
         Icon: UserPlus,
         to: '/team',
-        desc: 'Your team is created — bring colleagues on board and assign roles.',
+        desc: 'Your team is created. Bring colleagues on board and assign roles.',
       }
     : {
         n: '01',
@@ -51,7 +51,7 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
         designator: 'TEAM',
         Icon: Users,
         to: '/team',
-        desc: 'Set up your workspace — members, roles, and module-level access all live here.',
+        desc: 'Set up your workspace: members, roles, and module-level access all live here.',
       }
 
   const steps = [
@@ -109,8 +109,8 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
         </h1>
         <p className="text-body-sm text-ink-secondary mt-1 font-code">
           {hasTeam
-            ? 'Your team is on station — stock it with members and take your first flight.'
-            : 'Your station is live — set up your workspace and take your first flight.'}
+            ? 'Your team is on station. Stock it with members and take your first flight.'
+            : 'Your station is live. Set up your workspace and take your first flight.'}
         </p>
       </motion.div>
 
@@ -122,7 +122,7 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
           detail={
             hasTeam
               ? 'Invite your colleagues, then explore a repo to light up the mission console.'
-              : "You're signed in and your account is active. Everything below is optional — move at your own pace."
+              : "You're signed in and your account is active. Everything below is optional. Move at your own pace."
           }
           action={
             <button onClick={() => navigate('/team')} className="btn-glass">

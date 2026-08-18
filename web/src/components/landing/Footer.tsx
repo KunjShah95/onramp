@@ -56,7 +56,7 @@ export default function Footer() {
           {/* brand */}
           <div className="sm:col-span-2">
             <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary to-go text-white shadow-[0_4px_16px_rgba(8,145,178,0.25)] ring-1 ring-black/10 transition-transform duration-200 group-hover:scale-105">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-white shadow-[0_4px_16px_rgba(79,70,229,0.25)] ring-1 ring-black/10 transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={17} weight="bold" />
               </span>
               <span className="font-display text-base font-bold tracking-tight text-ink">ONRAMP</span>
@@ -73,7 +73,7 @@ export default function Footer() {
                 {col.links.map((l) => (
                   <li key={l.to}>
                     <Link to={l.to} className="group relative inline-flex items-center text-[13.5px] text-ink-secondary transition-colors hover:text-ink">
-                      <span aria-hidden className="absolute -left-3 h-px w-0 bg-gradient-to-r from-accent-primary to-go transition-all duration-300 group-hover:w-2" />
+                      <span aria-hidden className="absolute -left-3 h-px w-0 bg-gradient-to-r from-accent-primary to-accent-via transition-all duration-300 group-hover:w-2" />
                       {l.label}
                     </Link>
                   </li>

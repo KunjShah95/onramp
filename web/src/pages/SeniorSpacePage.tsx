@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   Eye, Heartbeat, Users, CheckCircle,
@@ -62,10 +62,21 @@ export default function SeniorSpacePage() {
   }, [])
 
   const d = dashboard
+  // Map user UUID → display name so review rows show names, not ids.
+  const memberNames = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const m of d?.member_progress ?? []) {
+      if (m.user_id && m.name) map[m.user_id] = m.name
+    }
+    return map
+  }, [d?.member_progress])
+  const resolveName = (uid?: string | null) =>
+    (uid && memberNames[uid]) || 'Unknown'
+
   const reviews: ReviewItem[] = d?.pending_reviews?.map((r: any) => ({
     id: r.task_id,
     title: r.title,
-    author: r.assigned_to ?? 'unknown',
+    author: resolveName(r.assigned_to),
     module: r.module,
     status: r.state === 'submitted' ? 'submitted' : r.state === 'under_review' ? 'under_review' : 'needs_changes',
     timestamp: r.created_at,

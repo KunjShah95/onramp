@@ -232,10 +232,10 @@ export default function TeamPage() {
                   </Field>
                   <Field label="Initial Tier">
                     <Select value={tier} onChange={(e) => setTier(e.target.value)}>
-                      <option value="free">Free — 1 member</option>
-                      <option value="startup">Startup — $49/mo, 5 members</option>
-                      <option value="professional">Professional — $299/mo, 20 members</option>
-                      <option value="enterprise">Enterprise — Custom</option>
+                      <option value="free">Free · 1 member</option>
+                      <option value="startup">Startup · $49/mo, 5 members</option>
+                      <option value="professional">Professional · $299/mo, 20 members</option>
+                      <option value="enterprise">Enterprise · Custom</option>
                     </Select>
                   </Field>
                   <button onClick={handleCreateTeam} disabled={loading || !teamName.trim()}
@@ -384,7 +384,7 @@ export default function TeamPage() {
                 <Field label="Team Member">
                   <Select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
                     <option value="">Select member…</option>
-                    {teamMembers.map((m) => (<option key={m.user_id} value={m.user_id}>{m.name || m.user_id} ({m.role})</option>))}
+                    {teamMembers.map((m) => (<option key={m.user_id} value={m.user_id}>{m.name || 'N/A'} ({m.role})</option>))}
                     {Object.keys(membersWithModules).filter(uid => !teamMembers.some(m => m.user_id === uid)).map(uid => (
                       <option key={uid} value={uid}>{membersWithModules[uid].name || uid}</option>
                     ))}
@@ -483,7 +483,7 @@ export default function TeamPage() {
                     <motion.tbody variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
                       {permissions.map((p) => (
                         <motion.tr key={p.id} variants={itemVariants} className="hover:bg-well/30 transition-colors">
-                          <td className="px-5 py-3 text-sm text-ink-secondary align-middle">{p.user_name || p.user_id}</td>
+                          <td className="px-5 py-3 text-sm text-ink-secondary align-middle">{p.user_name || 'N/A'}</td>
                           <td className="px-4 py-3 align-middle">
                             <span className="px-2 py-0.5 rounded-lg bg-go/10 text-go text-[11px] font-mono border border-go/20">{p.module}</span>
                           </td>

@@ -64,7 +64,7 @@ export default function Register() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Create Account — Onramp" description="Create your free Onramp account and start shipping faster with AI-powered onboarding." path="/register" noindex />
+        <Seo title="Create Account · Onramp" description="Create your free Onramp account and start shipping faster with AI-powered onboarding." path="/register" noindex />
         <AuthShell
           rail="Access"
           designator="CREATE ACCOUNT"

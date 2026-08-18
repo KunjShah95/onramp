@@ -24,9 +24,13 @@ export default defineConfig({
           if (id.includes('node_modules/framer-motion')) {
             return 'vendor-motion'
           }
-          if (id.includes('node_modules/@phosphor-icons')) {
-            return 'vendor-icons'
-          }
+          // NOTE: @phosphor-icons is intentionally NOT in a manual chunk.
+          // The app uses ~200 icons across 89 files but only a handful on the
+          // landing page (entry chunk). Forcing them all into one manual chunk
+          // put 443KB raw / ~96KB gzip on every page's critical path via
+          // modulepreload. Letting Rollup tree-shake + co-locate means the
+          // landing page only downloads the icons it renders; the rest load
+          // with the lazy pages that use them.
           if (id.includes('node_modules/@tanstack/react-query')) {
             return 'vendor-query'
           }

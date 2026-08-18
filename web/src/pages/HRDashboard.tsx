@@ -87,7 +87,7 @@ export default function HRDashboard() {
             <MetricStrip className="grid-cols-1 sm:grid-cols-3">
               <MetricCell
                 label="Avg ramp time"
-                value={data.ramp_time.team_average_days ?? '—'}
+                value={data.ramp_time.team_average_days ?? 'N/A'}
                 sub={data.ramp_time.team_average_days != null ? 'days to first PR' : undefined}
               />
               <MetricCell label="Active streaks" value={data.engagement.active_streaks} sub={`/ ${data.member_count} members`} />

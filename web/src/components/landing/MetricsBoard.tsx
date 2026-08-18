@@ -33,13 +33,13 @@ export default function MetricsBoard() {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 0%, rgba(8,145,178,0.05), transparent 65%)' }}
+        style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 0%, rgba(79,70,229,0.05), transparent 65%)' }}
       />
       <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
           eyebrow="Results"
           heading={<>Onboarding stops being a bet.</>}
-          sub="Once the map exists, teams see real movement in their first month — and the readings keep improving from there."
+          sub="Once the map exists, teams see real movement in their first month, and the readings keep improving from there."
         />
 
         <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -148,7 +148,7 @@ export default function MetricsBoard() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-6 font-code text-[11px] text-ink-tertiary"
         >
-          Illustrative demo readings — the first index replaces them with your repository's numbers.
+          Illustrative demo readings · the first index replaces them with your repository's numbers.
         </motion.p>
       </div>
     </section>

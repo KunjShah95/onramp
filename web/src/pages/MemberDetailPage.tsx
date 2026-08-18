@@ -92,7 +92,7 @@ export default function MemberDetailPage() {
         ) : (
           <motion.div variants={item} className="space-y-3">
             {members.map((m, i) => {
-              const initials = (m.name || m.user_id || '?').slice(0, 2).toUpperCase()
+              const initials = (m.name || '?').slice(0, 2).toUpperCase()
               // Backend completion_rate is already a percentage (0–100) — do NOT multiply.
               const rate = Math.round(m.completion_rate ?? 0)
               const rateColor = rate >= 70 ? 'text-emerald-400' : rate >= 40 ? 'text-amber-400' : 'text-red-400'
@@ -111,7 +111,7 @@ export default function MemberDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <h2 className="font-display text-body font-bold text-ink">{m.name || m.user_id}</h2>
+                            <h2 className="font-display text-body font-bold text-ink">{m.name || 'N/A'}</h2>
                             <p className="text-body-xs text-ink-muted/50 capitalize mt-0.5">{m.role}</p>
                           </div>
                           <div className={cn('font-code text-body-xs font-semibold tabular-nums', rateColor)}>{rate}%</div>

@@ -105,7 +105,7 @@ export default function TopBar({ lastShortcut, onMenuClick }: TopBarProps) {
           </>
         ) : (
           <div className="w-7 h-7 rounded-tile bg-well flex items-center justify-center">
-            <span className="font-code text-[10px] text-ink-muted">—</span>
+            <span className="font-code text-[10px] text-ink-muted">·</span>
           </div>
         )}
       </div>

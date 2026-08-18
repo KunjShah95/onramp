@@ -30,7 +30,7 @@ const values = [
   {
     icon: Globe,
     title: 'Open ecosystems',
-    desc: 'We integrate with the tools you already use — GitHub, GitLab, Slack, Linear — and never lock you in.',
+    desc: 'We integrate with the tools you already use: GitHub, GitLab, Slack, Linear · and never lock you in.',
   },
   {
     icon: ShieldCheck,
@@ -43,7 +43,7 @@ export default function AboutPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'About — Onramp', description: 'The team and mission behind Onramp — AI-powered developer onboarding for modern engineering teams.', path: '/about' }}
+      seo={{ title: 'About · Onramp', description: 'The team and mission behind Onramp · AI-powered developer onboarding for modern engineering teams.', path: '/about' }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
@@ -57,7 +57,7 @@ export default function AboutPage() {
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl">
             Onramp was founded in 2025 by engineers who were tired of watching new hires spend weeks lost in unfamiliar codebases.
-            We believe that context shouldn't be tribal knowledge — it should be a living map that every engineer can explore.
+            We believe that context shouldn't be tribal knowledge. It should be a living map that every engineer can explore.
           </p>
         </motion.div>
 
@@ -71,7 +71,7 @@ export default function AboutPage() {
             </p>
             <p>
               We built Onramp to change that. By automatically mapping architecture, ownership, and data flows, Onramp turns
-              an unfamiliar repository into a guided learning path — so new hires ship their first PR in days, not weeks.
+              an unfamiliar repository into a guided learning path, so new hires ship their first PR in days, not weeks.
             </p>
             <p>
               Today, Onramp indexes tens of thousands of repositories for engineering teams around the world. We're backed

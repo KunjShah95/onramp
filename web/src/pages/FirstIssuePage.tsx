@@ -296,8 +296,8 @@ export default function FirstIssuePage() {
               <ul className="text-caption text-ink-tertiary space-y-1">
                 <li>• Start with "Easy" issues tagged <span className="text-go">good-first-issue</span> to build confidence</li>
                 <li>• Read the contributing guidelines before starting</li>
-                <li>• Ask questions in the issue comments — the community is here to help</li>
-                <li>• Don't worry about perfect code — focus on learning and iterating</li>
+                <li>• Ask questions in the issue comments · the community is here to help</li>
+                <li>• Don't worry about perfect code · focus on learning and iterating</li>
               </ul>
             </div>
           </div>

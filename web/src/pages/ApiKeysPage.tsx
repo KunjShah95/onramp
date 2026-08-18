@@ -78,7 +78,7 @@ export default function ApiKeysPage() {
       const res = await createApiKey(orgName, newTier, newKeyName.trim() || undefined, costLimit, daysUntilExpiry(newKeyExpiry))
       setRevealedRaw(res.raw_key)
       await fetchKeys()
-      toast.success('API key created', 'Copy it now — it will not be shown again.')
+      toast.success('API key created', 'Copy it now · it will not be shown again.')
     } catch (err: any) {
       toast.error('Could not create key', err.message)
     } finally {
@@ -116,7 +116,7 @@ export default function ApiKeysPage() {
         <PageHeader
           eyebrow="Folio · API keys"
           title="API Keys"
-          subtitle="Programmatic access — keep keys secure, treat them like passwords."
+          subtitle="Programmatic access · keep keys secure, treat them like passwords."
           flush
         />
         <motion.button
@@ -296,7 +296,7 @@ export default function ApiKeysPage() {
                         value={newKeyCostLimit}
                         onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
                         type="number" min={0}
-                        placeholder="e.g., 5000 — blank for no limit"
+                        placeholder="e.g., 5000 · blank for no limit"
                         className="input"
                       />
                     </div>
@@ -339,7 +339,7 @@ export default function ApiKeysPage() {
               Security Best Practices
             </h3>
             <ul className="text-caption text-ink-muted space-y-1">
-              <li>• Use specific tiers — grant only the permissions needed</li>
+              <li>• Use specific tiers · grant only the permissions needed</li>
               <li>• Rotate keys regularly, especially for production use</li>
               <li>• Never share keys in client-side code or version control</li>
               <li>• Revoke unused or compromised keys immediately</li>

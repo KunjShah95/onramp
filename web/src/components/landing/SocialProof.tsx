@@ -38,7 +38,7 @@ export default function SocialProof() {
         <SectionHeading
           eyebrow="Customers"
           heading={<>Teams that stopped searching start shipping.</>}
-          sub="Engineering leaders use Onramp to make their architecture visible — and to get out of the way."
+          sub="Engineering leaders use Onramp to make their architecture visible, and to get out of the way."
         />
 
         {/* wordmark strip */}

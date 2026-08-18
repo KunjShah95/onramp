@@ -2409,6 +2409,10 @@ export interface AdminAuditEvent {
   team_id: string
   metadata: Record<string, any>
   timestamp: string
+  /** Resolved by the backend from the users/teams collections. */
+  actor_name?: string
+  target_name?: string
+  team_name?: string
 }
 
 export interface AdminAuditResponse {

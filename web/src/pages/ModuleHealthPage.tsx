@@ -51,7 +51,7 @@ export default function ModuleHealthPage() {
           <PageHeader
             eyebrow="Folio · Module health"
             title="Module Health"
-            subtitle="Module-level permissions your team holds — each module unlocks as trainees complete onboarding tasks."
+            subtitle="Module-level permissions your team holds · each module unlocks as trainees complete onboarding tasks."
           />
         </motion.header>
 
@@ -179,7 +179,7 @@ export default function ModuleHealthPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-code text-[13px] text-ink truncate">{p.module}</p>
                           <p className="font-code text-[11px] text-ink-tertiary mt-0.5">
-                            Granted to {p.user_name || p.user_id}
+                            Granted to {p.user_name || 'N/A'}
                             {p.granted_at ? ` · ${new Date(p.granted_at).toLocaleDateString()}` : ''}
                             {p.source ? ` · ${p.source}` : ''}
                           </p>

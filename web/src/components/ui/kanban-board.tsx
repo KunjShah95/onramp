@@ -41,6 +41,8 @@ interface KanbanBoardProps {
   onTaskClick?: (task: KanbanTask) => void
   priorityDot?: Record<string, string>
   renderCardMeta?: (task: KanbanTask) => ReactNode
+  /** Resolve an assignee UUID to a display name (falls back to N/A). */
+  memberName?: (uid: string | null | undefined) => string
   className?: string
   emptyLabel?: string
 }
@@ -56,6 +58,7 @@ export default function KanbanBoard({
   onTaskClick,
   priorityDot = DEFAULT_PRIORITY_DOT,
   renderCardMeta,
+  memberName,
   className,
   emptyLabel = 'Clear',
 }: KanbanBoardProps) {
@@ -89,7 +92,7 @@ export default function KanbanBoard({
     try {
       await onMoveTask(taskId, toState)
     } catch (e) {
-      setDropError(e instanceof Error ? e.message : 'Move failed — reverted')
+      setDropError(e instanceof Error ? e.message : 'Move failed · reverted')
       setLocalTasks((prev) => prev.map((t) => (t.task_id === taskId ? { ...t, state: task.state } : t)))
     } finally {
       justDraggedAtRef.current = Date.now()
@@ -220,8 +223,8 @@ export default function KanbanBoard({
                           </span>
                         )}
                         {task.assigned_to && (
-                          <span className="ml-auto max-w-[72px] truncate font-code text-[10px] text-ink-muted" title={task.assigned_to}>
-                            {task.assigned_to}
+                          <span className="ml-auto max-w-[72px] truncate font-code text-[10px] text-ink-muted" title={memberName?.(task.assigned_to) ?? task.assigned_to}>
+                            {memberName?.(task.assigned_to) || 'N/A'}
                           </span>
                         )}
                         {renderCardMeta?.(task)}

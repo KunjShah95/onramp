@@ -135,7 +135,7 @@ export default function PricingPage() {
     <MarketingLayout
       navLinks={navLinks}
       seo={{
-        title: 'Pricing — One flat price. Your whole team. | Onramp',
+        title: 'Pricing · One flat price. Your whole team. | Onramp',
         description: 'No per-seat math. Every engineer can ask, explore, and onboard for one flat price per workspace. Free, Team, and Enterprise plans with a 14-day trial.',
         path: '/pricing',
       }}

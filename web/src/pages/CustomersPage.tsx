@@ -31,14 +31,14 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
-    quote: "Onramp cut our new-hire ramp time from 4 weeks to 5 days. New engineers ship to production in their first week — it's changed how we think about onboarding entirely.",
+    quote: "Onramp cut our new-hire ramp time from 4 weeks to 5 days. New engineers ship to production in their first week. It's changed how we think about onboarding entirely.",
     author: 'Sarah Chen',
     role: 'VP of Engineering',
     company: 'Linear',
     stars: 5,
   },
   {
-    quote: "The architecture map alone saved us hours of documentation time. Every PR now comes with automatic context — our code reviews are faster and more meaningful.",
+    quote: "The architecture map alone saved us hours of documentation time. Every PR now comes with automatic context. Our code reviews are faster and more meaningful.",
     author: 'Marcus Rivera',
     role: 'CTO',
     company: 'Supabase',
@@ -82,7 +82,7 @@ export default function CustomersPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Customers — Onramp', description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.', path: '/customers' }}
+      seo={{ title: 'Customers · Onramp', description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.', path: '/customers' }}
     >
       <div className="max-w-5xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
@@ -95,7 +95,7 @@ export default function CustomersPage() {
             Trusted by <span className="italic text-[hsl(var(--accent))]">engineering teams</span> worldwide.
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl mx-auto">
-            From fast-growing startups to established engineering organizations — Onramp helps teams ship faster, onboard smoother, and stay in flow.
+            From fast-growing startups to established engineering organizations. Onramp helps teams ship faster, onboard smoother, and stay in flow.
           </p>
         </motion.div>
 

@@ -47,7 +47,7 @@ export default function JoinPage() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-      <Seo title="Join Your Team — Onramp" description="Accept your team invitation and start onboarding with Onramp." path="/join" noindex />
+      <Seo title="Join Your Team · Onramp" description="Accept your team invitation and start onboarding with Onramp." path="/join" noindex />
       <div className="min-h-screen bg-room flex items-center justify-center p-4 sm:p-8">
         <AnimatePresence mode="wait">
           <motion.div

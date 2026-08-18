@@ -229,7 +229,7 @@ export default function PRDescriptionPage() {
               <div>
                 <h3 className="text-body-xs font-medium text-ink mb-1.5">Writing Tips</h3>
                 <ul className="text-caption text-ink-muted/40 space-y-1">
-                  <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-caution/30" /> Explain the "why" — what problem does this solve?</li>
+                  <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-caution/30" /> Explain the "why" · what problem does this solve?</li>
                   <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-caution/30" /> Highlight breaking changes and migration steps</li>
                   <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-caution/30" /> Include performance data, screenshots, or benchmarks</li>
                   <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-caution/30" /> Link to related issues, docs, or design documents</li>

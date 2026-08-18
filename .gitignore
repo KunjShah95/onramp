@@ -84,5 +84,8 @@ backend/restore_users.csv
 # Repo Autopilot output
 /autopilot_out/
 
+# Locally-downloaded tooling (k6 binary, etc.)
+/tools/
+
 # Database dumps/backups
 *.dump

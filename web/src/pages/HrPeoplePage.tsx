@@ -202,7 +202,7 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
       <div className="grid grid-cols-2 gap-2.5">
         {[
           { label: 'Tasks', val: `${dev.completed}/${dev.assigned}`, sub: 'completed', color: 'text-emerald-400', icon: CheckCircle },
-          { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : '—', sub: 'to first PR', color: 'text-amber-400', icon: Clock },
+          { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : 'N/A', sub: 'to first PR', color: 'text-amber-400', icon: Clock },
           { label: 'Streak', val: `${dev.current_streak}d`, sub: `best ${dev.longest_streak}d`, color: 'text-orange-400', icon: Fire },
           { label: 'Stage', val: stage?.label || dev.stage, sub: 'onboarding', color: stage?.color || 'text-ink-muted', icon: ChartBar },
         ].map((stat) => (
@@ -410,7 +410,7 @@ export default function HrPeoplePage() {
           {[
             { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/8 border-blue-400/15' },
             { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-emerald-400' : 'text-amber-400', bg: avgCompletion >= 50 ? 'bg-emerald-400/8 border-emerald-400/15' : 'bg-amber-400/8 border-amber-400/15' },
-            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : '—', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/8 border-amber-400/15' },
+            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : 'N/A', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/8 border-amber-400/15' },
             { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: atRiskCount > 0 ? 'bg-red-400/8 border-red-400/15' : 'bg-emerald-400/8 border-emerald-400/15' },
           ].map((m, i) => (
             <motion.div

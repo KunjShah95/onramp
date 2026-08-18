@@ -83,7 +83,7 @@ export default function PrivacyPage() {
       lastUpdated="July 2, 2026"
       intro="This policy explains what information Onramp collects, how we use it, and the choices you have. It applies to the Onramp web application, API, and SDK."
       sections={sections}
-      seo={{ title: 'Privacy Policy — Onramp', description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.', path: '/privacy' }}
+      seo={{ title: 'Privacy Policy · Onramp', description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.', path: '/privacy' }}
     />
   )
 }

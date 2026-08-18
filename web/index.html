@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f8fafc" />    <meta data-seo="robots" name="robots" content="index, follow" />
-    <meta data-seo="description" name="description" content="Onramp — AI-powered developer onboarding. Go from codebase to contribution in minutes with a live architecture map and an AI mentor grounded in your real code." />
+    <meta data-seo="description" name="description" content="Onramp · AI-powered developer onboarding. Go from codebase to contribution in minutes with a live architecture map and an AI mentor grounded in your real code." />
     <link data-seo="canonical" rel="canonical" href="%VITE_APP_URL%/"/>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -13,15 +13,22 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/icon-192.svg" />
-    <title>Onramp — AI-Powered Developer Onboarding</title>
+    <title>Onramp · AI-Powered Developer Onboarding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+    <!-- Fonts load async (media="print" onload trick) so they never block first paint;
+         font-display=swap means text renders immediately in the fallback and swaps in.
+         Keep this URL in sync with the old @import removed from src/index.css. -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Schibsted+Grotesk:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Schibsted+Grotesk:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+    </noscript>
     
     <!-- Open Graph / Facebook (data-seo attrs let the Seo component update them per page) -->
     <meta data-seo="og:type" property="og:type" content="website" />
-    <meta data-seo="og:title" property="og:title" content="Onramp — AI-Powered Developer Onboarding" />
+    <meta data-seo="og:title" property="og:title" content="Onramp · AI-Powered Developer Onboarding" />
     <meta data-seo="og:description" property="og:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
     <meta data-seo="og:url" property="og:url" content="%VITE_APP_URL%/" />
     <meta data-seo="og:image" property="og:image" content="%VITE_APP_URL%/og-image.png" />
@@ -31,7 +38,7 @@
 
     <!-- Twitter -->
     <meta data-seo="twitter:card" name="twitter:card" content="summary_large_image" />
-    <meta data-seo="twitter:title" name="twitter:title" content="Onramp — AI-Powered Developer Onboarding" />
+    <meta data-seo="twitter:title" name="twitter:title" content="Onramp · AI-Powered Developer Onboarding" />
     <meta data-seo="twitter:description" name="twitter:description" content="Go from codebase to contribution in minutes. Onramp uses advanced AI to analyze repositories, create custom onboarding paths, generate quizzes, and guide developers through their first PR." />
     <meta data-seo="twitter:image" name="twitter:image" content="%VITE_APP_URL%/og-image.png" />
 

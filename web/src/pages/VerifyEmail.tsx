@@ -49,7 +49,7 @@ export default function VerifyEmail() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Verify Email — Onramp" description="Verify your email address to activate your Onramp account." path="/verify-email" noindex />
+        <Seo title="Verify Email · Onramp" description="Verify your email address to activate your Onramp account." path="/verify-email" noindex />
         <AuthShell
           rail="Verification"
           designator={meta.designator}

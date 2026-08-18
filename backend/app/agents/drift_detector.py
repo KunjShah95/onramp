@@ -278,7 +278,7 @@ class DriftDetector(BaseAgent):
         if status == "aligned":
             return f"Docs and code are well aligned (drift {score}). No significant divergence detected."
         if status == "undocumented":
-            return "No architecture docs found — cannot assess drift. Documentation is the first gap to close."
+            return "No architecture docs found. Cannot assess drift. Documentation is the first gap to close."
         if status == "no_code":
             return "Docs exist but no code structure was provided to compare against."
         missing = len(result.get("documented_but_missing", []))

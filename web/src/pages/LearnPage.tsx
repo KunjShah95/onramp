@@ -365,7 +365,7 @@ export default function LearnPage() {
                         <div className="text-[10px] text-ink-tertiary font-semibold uppercase tracking-wider mb-1.5">Objectives</div>
                         <ul className="space-y-0.5">
                           {mod.objectives.map((o) => (
-                            <li key={o} className="font-body text-[12px] text-ink-secondary pl-3 relative before:content-['—'] before:absolute before:left-0 before:text-ink-disabled">
+                            <li key={o} className="font-body text-[12px] text-ink-secondary pl-3 relative before:content-['·'] before:absolute before:left-0 before:text-ink-disabled">
                               {o}
                             </li>
                           ))}

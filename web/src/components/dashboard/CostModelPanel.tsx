@@ -186,7 +186,7 @@ export default function CostModelPanel() {
           {elapsedVsAssumption !== null && (
             <span className={elapsedVsAssumption ? 'text-caution' : 'text-go'}>
               vs {fmtPct(settings.review_hours_per_cycle)}h assumption
-              {elapsedVsAssumption ? ' — elapsed ≠ senior time, pressure-test' : ''}
+              {elapsedVsAssumption ? ' · elapsed ≠ senior time, pressure-test' : ''}
             </span>
           )}
         </div>

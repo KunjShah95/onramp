@@ -129,7 +129,7 @@ export default function CostAtScaleCalculator() {
           </div>
           <p className="text-center text-[hsl(var(--foreground))] font-body text-sm">
             At <strong>{devs} developers × {products} products</strong>, agents cost{' '}
-            <span className="text-abort font-semibold">{fmtUsd(agentTotal)}/mo</span> —{' '}
+            <span className="text-abort font-semibold">{fmtUsd(agentTotal)}/mo</span> ·{' '}
             <span className="text-go font-semibold">{ratio.toFixed(0)}× more</span> than Onramp.{' '}
             <strong className="text-go">{fmtUsd(savings)} saved /mo.</strong>
           </p>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from '@phosphor-icons/react'
+import { Magnetic, SpotlightCard } from '../ui/landing-motion'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -9,7 +10,7 @@ const EASE = [0.16, 1, 0.3, 1] as const
  *
  * Rendered as its own distinct white container on the slate band (clearly
  * separate from the white pricing section above it) and kept fully in the
- * light premium system: Inter type, slate ink, single cyan accent.
+ * light premium system: Inter type, slate ink, indigo/cyan/violet accents.
  */
 export default function ClosingCta() {
   return (
@@ -23,12 +24,13 @@ export default function ClosingCta() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.35 }}
           transition={{ duration: 0.8, ease: EASE }}
-          className="relative overflow-hidden rounded-3xl border border-black/10 bg-white px-6 py-20 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_64px_rgba(15,23,42,0.06)] sm:px-14 lg:py-28"
+          className="relative overflow-hidden rounded-3xl border border-black/10 px-6 py-20 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_64px_rgba(15,23,42,0.06)] sm:px-14 lg:py-28"
         >
-          {/* soft ambient tint */}
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="absolute left-1/2 top-0 h-[280px] w-[600px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent-primary/[0.06] blur-[100px]" />
-          </div>
+          <SpotlightCard glow="rgba(79,70,229,0.08)" className="h-full w-full rounded-3xl bg-white">
+            {/* soft ambient tint */}
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="absolute left-1/2 top-0 h-[280px] w-[600px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-accent-primary/[0.07] blur-[100px]" />
+            </div>
 
           <div className="relative">
             <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-accent-primary">
@@ -39,17 +41,19 @@ export default function ClosingCta() {
             </h2>
             <p className="mx-auto mt-4 max-w-md text-[16px] leading-[1.65] text-ink-secondary">
               Install the GitHub App, pick a repository, and watch your architecture draw
-              itself — fresh on every push.
+              itself · fresh on every push.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                to="/register"
-                className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-8 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(8,145,178,0.28)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_10px_32px_rgba(8,145,178,0.34)] active:translate-y-px"
-              >
-                Try for free
-                <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <Magnetic strength={0.2}>
+                <Link
+                  to="/register"
+                  className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-8 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.30)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_10px_32px_rgba(79,70,229,0.38)] active:translate-y-px"
+                >
+                  Try for free
+                  <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </Magnetic>
               <Link
                 to="/pricing"
                 className="inline-flex h-12 items-center rounded-md border border-black/10 bg-white px-8 text-[15px] font-semibold text-ink transition-all hover:border-accent-primary/40 active:translate-y-px"
@@ -61,6 +65,7 @@ export default function ClosingCta() {
               No credit card required · Read-only GitHub access · Cancel anytime
             </p>
           </div>
+          </SpotlightCard>
         </motion.div>
       </div>
     </section>

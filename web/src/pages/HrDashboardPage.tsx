@@ -78,7 +78,7 @@ function RampTimeCard({ rampTime }: { rampTime: HrRampTime | undefined }) {
     .slice(0, 5)
   return (
     <ConsolePanel rail="Ramp Time" designator="DAYS TO 1ST PR" status="standby">
-      <CardReadout value={rampTime.team_average_days ?? '—'} unit="days avg" color="text-mission" />
+      <CardReadout value={rampTime.team_average_days ?? 'N/A'} unit="days avg" color="text-mission" />
       <p className="text-caption text-ink-muted mb-3">Slowest members</p>
       <div className="space-y-2">
         {topSlowest.length === 0 && <p className="text-caption text-ink-disabled italic">No completions yet.</p>}
@@ -197,7 +197,7 @@ function ReviewAnalyticsCard({ analytics }: { analytics: ReviewAnalytics | undef
         {[
           { label: 'Rework rate', value: `${analytics.rework_rate_pct}%`, color: analytics.rework_rate_pct > 30 ? 'text-abort' : analytics.rework_rate_pct > 15 ? 'text-caution' : 'text-go' },
           { label: 'Tasks reworked', value: String(analytics.reworked_task_count), color: 'text-ink' },
-          { label: 'Avg turnaround', value: analytics.avg_review_turnaround_hours != null ? `${analytics.avg_review_turnaround_hours}h` : '—', color: 'text-ink' },
+          { label: 'Avg turnaround', value: analytics.avg_review_turnaround_hours != null ? `${analytics.avg_review_turnaround_hours}h` : 'N/A', color: 'text-ink' },
           { label: 'Pending review', value: String(analytics.pending_review_count), color: analytics.pending_review_count > 0 ? 'text-caution' : 'text-go' },
         ].map((s) => (
           <div key={s.label} className="bg-well rounded-tile p-2.5 border border-seam">
@@ -213,7 +213,7 @@ function ReviewAnalyticsCard({ analytics }: { analytics: ReviewAnalytics | undef
             {analytics.top_reviewers.slice(0, 5).map((r, i) => (
               <div key={r.user_id} className="flex items-center gap-2">
                 <span className="w-4 text-caption text-ink-muted tabular-nums">{i + 1}.</span>
-                <span className="flex-1 text-body-xs text-ink truncate">{r.name || r.user_id}</span>
+                <span className="flex-1 text-body-xs text-ink truncate">{r.name || 'N/A'}</span>
                 <span className="readout text-caption tabular-nums text-mission">{r.reviews}</span>
               </div>
             ))}
@@ -231,14 +231,14 @@ function CohortComparisonCard({ cohorts }: { cohorts: CohortComparisonEntry[] | 
   return (
     <ConsolePanel rail="Cohort Comparison" designator="TRAJ" status="standby">
       <p className="text-caption text-ink-muted mb-4">
-        Fastest: <span className="text-go font-medium">{best.label}</span> at {best.avg_ramp_days ?? '—'}d avg ramp
+        Fastest: <span className="text-go font-medium">{best.label}</span> at {best.avg_ramp_days ?? 'N/A'}d avg ramp
       </p>
       <div className="space-y-3">
         {cohorts.slice(0, 6).map((c) => (
           <div key={c.cohort}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-body-xs text-ink font-medium truncate">{c.label} <span className="text-ink-muted">({c.member_count})</span></span>
-              <span className="readout text-caption tabular-nums text-ink-muted">{c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : '—'}</span>
+              <span className="readout text-caption tabular-nums text-ink-muted">{c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : 'N/A'}</span>
             </div>
             <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
               <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(((c.avg_ramp_days ?? 999) / 30) * 100, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -274,11 +274,11 @@ function MentorMatchCard({ match, members, selectedId, onSelect }: {
         <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
       </div>
       {!match || match.matches.length === 0 ? (
-        <p className="text-caption text-ink-disabled italic py-4 text-center">No mentor matches yet — assign tasks to build their language profile.</p>
+        <p className="text-caption text-ink-disabled italic py-4 text-center">No mentor matches yet. Assign tasks to build their language profile.</p>
       ) : (
         <>
           <p className="text-caption text-ink-muted mb-3 truncate">
-            Languages: <span className="text-mission readout">{match.new_dev_languages.join(', ') || '—'}</span>
+            Languages: <span className="text-mission readout">{match.new_dev_languages.join(', ') || 'N/A'}</span>
           </p>
           <div className="space-y-2">
             {match.matches.slice(0, 4).map((m) => (
@@ -415,7 +415,7 @@ export default function HrDashboardPage() {
 
   const readouts: Readout[] = [
     { label: 'Cohort Size', value: member_count, color: 'text-ink' },
-    { label: 'Avg Ramp', value: ramp_time?.team_average_days ?? '—', suffix: ramp_time?.team_average_days != null ? 'd' : '', color: ramp_time?.team_average_days != null && ramp_time.team_average_days > 10 ? 'text-abort' : 'text-mission' },
+    { label: 'Avg Ramp', value: ramp_time?.team_average_days ?? 'N/A', suffix: ramp_time?.team_average_days != null ? 'd' : '', color: ramp_time?.team_average_days != null && ramp_time.team_average_days > 10 ? 'text-abort' : 'text-mission' },
     { label: 'Active Streaks', value: engagement?.active_streaks ?? 0, color: 'text-caution' },
     { label: 'At Risk', value: attrition_risk?.at_risk_count ?? 0, color: (attrition_risk?.at_risk_count ?? 0) > 0 ? 'text-abort' : 'text-go' },
   ]

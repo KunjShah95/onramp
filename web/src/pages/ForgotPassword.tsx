@@ -43,7 +43,7 @@ export default function ForgotPassword() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Reset Password — Onramp" description="Reset your Onramp password with a secure email link." path="/forgot-password" noindex />
+        <Seo title="Reset Password · Onramp" description="Reset your Onramp password with a secure email link." path="/forgot-password" noindex />
         <AuthShell
           rail="Access"
           designator={pageState === 'sent' ? 'LINK SENT' : 'PASSWORD RESET'}

@@ -133,7 +133,7 @@ export default function AgentBenchmarkPanel() {
               <div key={s.generated_at} className="flex items-center justify-between text-caption text-ink-muted font-code">
                 <span>{new Date(s.generated_at).toLocaleDateString()} · {s.dev_count} devs</span>
                 <span>
-                  Onramp {fmtOnrampPrice(s.onramp_monthly_usd, s.onramp_price_inr)} ({PRICE_SOURCE_LABEL[s.price_source ?? 'platform']}) · cheapest {cheapestRow ? `${cheapestRow.name} ${cheapestRow.plan}` : '—'} {fmtUsd(cheapestRow?.team_monthly_usd ?? 0)}
+                  Onramp {fmtOnrampPrice(s.onramp_monthly_usd, s.onramp_price_inr)} ({PRICE_SOURCE_LABEL[s.price_source ?? 'platform']}) · cheapest {cheapestRow ? `${cheapestRow.name} ${cheapestRow.plan}` : 'N/A'} {fmtUsd(cheapestRow?.team_monthly_usd ?? 0)}
                 </span>
               </div>
             )

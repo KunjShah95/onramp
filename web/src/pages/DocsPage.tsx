@@ -211,18 +211,18 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     title: 'LLM providers',
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
-        <p>Onramp runs a multi-provider router with free-first fallback. Set any subset of keys in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">.env</code> — providers without a key are skipped, and the router falls through free → paid → local.</p>
+        <p>Onramp runs a multi-provider router with free-first fallback. Set any subset of keys in your <code className="font-mono text-xs bg-[hsl(var(--secondary))]/80 px-1.5 py-0.5 rounded border border-[hsl(var(--border))] text-[hsl(var(--accent))]">.env</code> · providers without a key are skipped, and the router falls through free → paid → local.</p>
         <div className="space-y-3">
           {[
             { provider: 'openrouter', vars: 'OPENROUTER_API_KEY', note: 'Free tier, huge model catalog.' },
             { provider: 'gemini', vars: 'GEMINI_API_KEY', note: 'Free tier, strong reasoning.' },
             { provider: 'groq', vars: 'GROQ_API_KEY', note: 'Free tier, very fast inference.' },
             { provider: 'nvidia', vars: 'NVIDIA_API_KEY', note: 'Free tier via NVIDIA NIM.' },
-            { provider: 'mistral', vars: 'MISTRAL_API_KEY', note: 'OpenAI-compatible — Mistral models.' },
-            { provider: 'openai', vars: 'OPENAI_API_KEY', note: 'Paid fallback — GPT models.' },
-            { provider: 'anthropic', vars: 'ANTHROPIC_API_KEY', note: 'Paid fallback — Claude models.' },
+            { provider: 'mistral', vars: 'MISTRAL_API_KEY', note: 'OpenAI-compatible · Mistral models.' },
+            { provider: 'openai', vars: 'OPENAI_API_KEY', note: 'Paid fallback · GPT models.' },
+            { provider: 'anthropic', vars: 'ANTHROPIC_API_KEY', note: 'Paid fallback · Claude models.' },
             { provider: 'huggingface', vars: 'HUGGINGFACE_API_KEY', note: 'OpenAI-compatible router (router.huggingface.co).' },
-            { provider: 'ollama', vars: 'OLLAMA_BASE_URL (default: localhost:11434)', note: 'Fully local — no data leaves your machine.' },
+            { provider: 'ollama', vars: 'OLLAMA_BASE_URL (default: localhost:11434)', note: 'Fully local · no data leaves your machine.' },
           ].map((p) => (
             <div key={p.provider} className="bg-[hsl(var(--secondary))]/60 border border-[hsl(var(--border))] rounded-xl p-4">
               <code className="font-mono text-xs text-[hsl(var(--accent))] font-bold">{p.provider}</code>
@@ -256,7 +256,7 @@ export default function DocsPage() {
     <MarketingLayout
       navLinks={navLinks}
       topPadding="pt-0"
-      seo={{ title: 'Documentation — Onramp', description: 'Guides, API references, and setup walkthroughs for the whole Onramp platform.', path: '/docs' }}
+      seo={{ title: 'Documentation · Onramp', description: 'Guides, API references, and setup walkthroughs for the whole Onramp platform.', path: '/docs' }}
     >
       <div className="flex max-w-6xl mx-auto">
         {/* Sidebar */}

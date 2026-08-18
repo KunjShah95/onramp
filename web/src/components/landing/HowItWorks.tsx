@@ -136,7 +136,7 @@ export default function HowItWorks() {
         <SectionHeading
           eyebrow="How it works"
           heading={<>Three steps to a map that never goes stale.</>}
-          sub="No onboarding deck, no wiki crawl. The map draws itself — and keeps drawing itself on every push."
+          sub="No onboarding deck, no wiki crawl. The map draws itself, and keeps drawing itself on every push."
         />
         <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
           {STEPS.map((s, i) => (
@@ -149,7 +149,7 @@ export default function HowItWorks() {
               className="h-full"
             >
               <SpotlightCard
-                glow="rgba(8,145,178,0.07)"
+                glow="rgba(79,70,229,0.07)"
                 className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-accent-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
               >
                 <div className="flex items-center justify-between">

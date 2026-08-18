@@ -59,7 +59,7 @@ export default function SetPassword() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-room text-ink antialiased">
-        <Seo title="Set Password — Onramp" description="Create a password for your Onramp account." path="/set-password" noindex />
+        <Seo title="Set Password · Onramp" description="Create a password for your Onramp account." path="/set-password" noindex />
         <AuthShell
           rail="Access"
           designator="SET PASSWORD"

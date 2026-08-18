@@ -64,14 +64,14 @@ export default function MarketingFooter() {
           {/* brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary to-go text-white shadow-[0_4px_16px_rgba(8,145,178,0.25)] ring-1 ring-black/10 transition-transform duration-200 group-hover:scale-105">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-white shadow-[0_4px_16px_rgba(79,70,229,0.25)] ring-1 ring-black/10 transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={17} weight="bold" />
               </span>
               <span className="font-display text-base font-bold tracking-tight text-ink">ONRAMP</span>
             </Link>
             <p className="mt-4 max-w-xs text-[13px] leading-[1.6] text-ink-tertiary">
               AI-powered developer onboarding for modern engineering teams. The live architecture
-              map for your repo — new hires stop asking seniors.
+              map for your repo · new hires stop asking seniors.
             </p>
           </div>
 

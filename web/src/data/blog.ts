@@ -13,7 +13,7 @@ export const posts: BlogPost[] = [
     slug: 'onboarding-hidden-tax-engineering-velocity',
     category: 'Engineering',
     date: 'Jul 22, 2026',
-    excerpt: 'Every new hire spends their first weeks piecing together tribal knowledge. Here\'s how that adds up — and what you can do about it.',
+    excerpt: 'Every new hire spends their first weeks piecing together tribal knowledge. Here\'s how that adds up, and what you can do about it.',
     readTime: '6 min read',
   },
   {
@@ -29,7 +29,7 @@ export const posts: BlogPost[] = [
     slug: 'how-we-built-codebase-aware-ai-mentor',
     category: 'Engineering',
     date: 'Jul 8, 2026',
-    excerpt: 'Behind the scenes of Onramp\'s AI: how we parse, index, and ground answers in real repository structure — without storing source code.',
+    excerpt: 'Behind the scenes of Onramp\'s AI: how we parse, index, and ground answers in real repository structure, without storing source code.',
     readTime: '12 min read',
   },
   {

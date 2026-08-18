@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
       await adminSetProviderKey(editingProvider, providerKeyInput.trim())
       setEditingProvider(null); setProviderKeyInput('')
       await fetchProviderKeys()
-      toast.success('Saved', `${editingProvider} key updated — applied to the router immediately`)
+      toast.success('Saved', `${editingProvider} key updated · applied to the router immediately`)
     } catch (err: any) {
       toast.error('Failed', err.message || 'Failed to save provider key')
     }
@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
       await adminDeleteProviderKey(provider)
       await fetchProviderKeys()
       setConfirmDeleteProvider(null)
-      toast.success('Removed', `${provider} key removed — platform fallback now applies`)
+      toast.success('Removed', `${provider} key removed · platform fallback now applies`)
     } catch (err: any) {
       toast.error('Failed', err.message || 'Failed to remove provider key')
     }
@@ -140,15 +140,15 @@ export default function AdminDashboardPage() {
 
   useEffect(() => { fetchAdminData() }, [])
 
-  const fmt = (n: number | null) => (n == null ? '—' : n.toLocaleString())
+  const fmt = (n: number | null) => (n == null ? 'N/A' : n.toLocaleString())
   const fmtUsd = (n: number) => (n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`)
   const series = usageDetail?.provider_series ?? []
 
   const readouts: Readout[] = [
-    { label: 'API Calls · 24h', value: usage ?? '—', color: 'text-go' },
-    { label: 'Active Teams', value: teams ?? '—', color: 'text-mission' },
-    { label: 'Active Members', value: members ?? '—', color: 'text-ink' },
-    { label: 'Active API Keys', value: keys ?? '—', color: 'text-mission' },
+    { label: 'API Calls · 24h', value: usage ?? 'N/A', color: 'text-go' },
+    { label: 'Active Teams', value: teams ?? 'N/A', color: 'text-mission' },
+    { label: 'Active Members', value: members ?? 'N/A', color: 'text-ink' },
+    { label: 'Active API Keys', value: keys ?? 'N/A', color: 'text-mission' },
   ]
 
   return (
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
               live={Object.keys(providerKeys).length > 0}
             >
               <p className="text-caption text-ink-muted mb-4">
-                Platform-wide LLM &amp; embedding provider keys — configured here instead of <span className="font-code text-ink/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
+                Platform-wide LLM &amp; embedding provider keys · configured here instead of <span className="font-code text-ink/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {PROVIDER_OPTIONS.map((p) => {
@@ -374,7 +374,7 @@ export default function AdminDashboardPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-body-xs text-ink truncate">
                               <span className="font-medium">{entry.actor_id}</span>
-                              <span className="text-ink-muted"> → {entry.target_id || '—'}</span>
+                              <span className="text-ink-muted"> → {entry.target_id || 'N/A'}</span>
                             </p>
                           </div>
                           <span className="text-caption text-ink-muted readout shrink-0">{relativeTime(entry.timestamp)}</span>

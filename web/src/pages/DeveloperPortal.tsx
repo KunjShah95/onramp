@@ -176,7 +176,7 @@ export default function DeveloperPortal() {
       setProviderKeyInput('')
       await fetchProviderKeys()
       toast.success('Saved', addingPoolKey
-        ? `${editingProvider} pool key added — traffic now rotates across ${(providerKeyCounts[editingProvider] || 0) + 1} keys`
+        ? `${editingProvider} pool key added · traffic now rotates across ${(providerKeyCounts[editingProvider] || 0) + 1} keys`
         : `${editingProvider} key updated`)
     } catch (err: any) {
       toast.error('Failed', err.message || 'Failed to save provider key')
@@ -190,7 +190,7 @@ export default function DeveloperPortal() {
       await deleteProviderKey(activeTeamId, provider)
       await fetchProviderKeys()
       setConfirmDeleteProvider(null)
-      toast.success('Removed', `${provider} key removed — platform key will be used`)
+      toast.success('Removed', `${provider} key removed · platform key will be used`)
     } catch (err: any) {
       toast.error('Failed', err.message || 'Failed to remove provider key')
     }
@@ -208,7 +208,7 @@ export default function DeveloperPortal() {
       setNewKey(data.raw_key)
       setShowCreateForm(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyExpiry('')
       await fetchKeys()
-      toast.success('Created', 'API key created — copy it now')
+      toast.success('Created', 'API key created · copy it now')
     } catch (err: any) {
       setKeyError(err.message || 'Failed to create API key')
     }
@@ -311,7 +311,7 @@ export default function DeveloperPortal() {
                       onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
                       type="number"
                       min={0}
-                      placeholder="e.g., 5000 — leave blank for no limit"
+                      placeholder="e.g., 5000 · leave blank for no limit"
                       className="w-full bg-base border border-seam rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-tertiary/30 outline-none focus:border-go/40 transition-colors"
                     />
                     <p className="text-[10px] text-ink-tertiary mt-1.5">The key stops working once its usage reaches this budget.</p>
@@ -434,7 +434,7 @@ export default function DeveloperPortal() {
               <div className="border-b border-seam pb-3 mb-4">
                 <h3 className="font-display text-[13px] font-semibold text-ink">Provider Keys (BYOK)</h3>
                 <p className="text-xs text-ink-tertiary mt-0.5">
-                  Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway — requests made with this team's API key use your keys instead of the platform defaults.
+                  Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway · requests made with this team's API key use your keys instead of the platform defaults.
                 </p>
               </div>
 
@@ -459,7 +459,7 @@ export default function DeveloperPortal() {
                           {keyCount > 1 && (
                             <span
                               className="font-mono text-[9px] uppercase tracking-wider text-ink-tertiary/70 bg-well/40 px-1.5 py-0.5 rounded"
-                              title={`${keyCount} keys in this provider's pool — the router rotates across them`}
+                              title={`${keyCount} keys in this provider's pool · the router rotates across them`}
                             >
                               {keyCount} keys
                             </span>
@@ -496,7 +496,7 @@ export default function DeveloperPortal() {
                                 setProviderKeyInput('')
                               }}
                               className="flex items-center gap-1.5 text-[11px] text-ink-tertiary hover:text-go transition-colors"
-                              title="Add another key — traffic rotates round-robin across the pool"
+                              title="Add another key · traffic rotates round-robin across the pool"
                             >
                               <Plus size={12} />
                               Add key
@@ -559,7 +559,7 @@ export default function DeveloperPortal() {
                 <div className="border-b border-seam pb-3 mb-4">
                   <h3 className="font-display text-[13px] font-semibold text-ink">Routing Mode</h3>
                   <p className="text-xs text-ink-tertiary mt-0.5">
-                    Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code> both honor this.
+                    Cost/quality dial for the model router · how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code> both honor this.
                   </p>
                 </div>
 
@@ -571,9 +571,9 @@ export default function DeveloperPortal() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {([
-                      { value: 2, label: 'Cost', sub: 'Cheapest first — free providers dominate' },
+                      { value: 2, label: 'Cost', sub: 'Cheapest first · free providers dominate' },
                       { value: 5, label: 'Balanced', sub: 'Trust the router\u2019s per-task ranking' },
-                      { value: 8, label: 'Intelligence', sub: 'Strongest models first — quality over price' },
+                      { value: 8, label: 'Intelligence', sub: 'Strongest models first · quality over price' },
                     ] as const).map((preset) => {
                       const active = routingMode === preset.value
                       return (
@@ -603,7 +603,7 @@ export default function DeveloperPortal() {
                 )}
 
                 <p className="text-[10px] text-ink-tertiary/60 mt-3">
-                  Takes effect on your team's next request — no restart, no redeploy. The router still picks the best provider per question; this dial just biases how far up the quality/price ladder it goes.
+                  Takes effect on your team's next request · no restart, no redeploy. The router still picks the best provider per question; this dial just biases how far up the quality/price ladder it goes.
                 </p>
               </CardSpotlight>
             </motion.div>
@@ -615,7 +615,7 @@ export default function DeveloperPortal() {
               <div className="border-b border-seam pb-3 mb-4">
                 <h3 className="font-display text-[13px] font-semibold text-ink">Model Catalog</h3>
                 <p className="text-xs text-ink-tertiary mt-0.5">
-                  Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-code text-[10px] bg-well/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code>.
+                  Query-type routing, pinned defaults, and the live OpenRouter catalog · pick any <code className="font-code text-[10px] bg-well/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code>.
                 </p>
               </div>
 
@@ -708,7 +708,7 @@ export default function DeveloperPortal() {
                     ) : (
                       <p className="text-[11px] text-ink-tertiary py-3">
                         {catalog.catalog_fetched === false
-                          ? 'The live catalog could not be fetched right now — passthrough model ids still work; they are just not listed here.'
+                          ? 'The live catalog could not be fetched right now · passthrough model ids still work; they are just not listed here.'
                           : 'Live OpenRouter catalog not yet merged. Pin a provider key above and refresh; any vendor/model id still routes through the gateway.'}
                       </p>
                     )}
@@ -723,7 +723,7 @@ export default function DeveloperPortal() {
             <CardSpotlight className="p-6">
               <div className="border-b border-seam pb-3 mb-4">
                 <h3 className="font-display text-[13px] font-semibold text-ink">Rate Limits</h3>
-                <p className="text-xs text-ink-tertiary mt-0.5">API rate limits per tier — live from server</p>
+                <p className="text-xs text-ink-tertiary mt-0.5">API rate limits per tier · live from server</p>
               </div>
 
               {tierInfo ? (
@@ -1074,12 +1074,12 @@ function APIPlaygroundSection() {
             {agent && (
               <div className="text-[11px] text-ink-tertiary mt-2 space-y-0.5">
                 <p>
-                  {agent.description} — costs {agent.credit_cost} credit(s)
+                  {agent.description} · costs {agent.credit_cost} credit(s)
                 </p>
                 <p className="font-mono text-[10px] text-go/80">
                   {agent.model
                     ? `${agent.query_type} → ${agent.model}`
-                    : 'No LLM — rule-based agent'}
+                    : 'No LLM · rule-based agent'}
                 </p>
               </div>
             )}
@@ -1087,7 +1087,7 @@ function APIPlaygroundSection() {
 
           <div>
             <label className="text-[10px] text-ink-tertiary/60 uppercase tracking-wider font-medium block mb-1.5">
-              API Key <span className="text-ink-tertiary/30">(optional — uses session if empty)</span>
+              API Key <span className="text-ink-tertiary/30">(optional · uses session if empty)</span>
             </label>
             <div className="flex items-center gap-2 bg-panel border border-seam rounded-lg px-3 py-2">
               <Key size={12} className="text-ink-tertiary/40 shrink-0" />
@@ -1140,7 +1140,7 @@ function APIPlaygroundSection() {
             <div className="flex items-center gap-2 mb-2">
               <Terminal size={12} className="text-emerald-400" />
               <span className="text-[11px] font-medium text-ink">
-                Result — {result.credits_used} credit(s) used ({result.tier} tier)
+                Result · {result.credits_used} credit(s) used ({result.tier} tier)
               </span>
             </div>
             <pre className="bg-panel border border-seam rounded-xl p-4 font-mono text-[11px] text-ink-secondary overflow-x-auto max-h-[400px] overflow-y-auto leading-relaxed">

@@ -138,7 +138,7 @@ export default function DashboardPage() {
     return map
   }, [dashboard?.member_progress])
   const memberName = (uid: string | null | undefined) =>
-    (uid && memberNames[uid]) || (uid ? uid.slice(0, 8) : '')
+    (uid && memberNames[uid]) || ''
 
   const taskDistribution = useMemo(() => [
     { name: 'Completed', value: completed_tasks, color: sig.go },
@@ -196,8 +196,8 @@ export default function DashboardPage() {
   const verdict: 'go' | 'hold' | 'standby' = !missionGo ? 'hold' : heavyReview ? 'standby' : 'go'
   const verdictLabel =
     verdict === 'go' ? 'All systems go' :
-    verdict === 'hold' ? 'Hold — blocked work' :
-    'Standby — review queue'
+    verdict === 'hold' ? 'Hold · blocked work' :
+    'Standby · review queue'
   const verdictDetail =
     verdict === 'go' ? `${total_members} engineers on the bench · ${pending_review_tasks} review${pending_review_tasks !== 1 ? 's' : ''} pending` :
     verdict === 'hold' ? `${blocked_tasks} task${blocked_tasks !== 1 ? 's' : ''} blocked · clear them to resume` :
@@ -212,7 +212,7 @@ export default function DashboardPage() {
   // Four readouts only — Active Engineers, Open Reviews, Last Deploy, Repo Health
   const lastDeploy = first_prs_merged > 0
     ? `${first_prs_merged} PR${first_prs_merged !== 1 ? 's' : ''} merged`
-    : '—'
+    : 'N/A'
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden">
@@ -291,7 +291,7 @@ export default function DashboardPage() {
               <MetricCell label="Last deploy" value={lastDeploy} sub={`${completion_rate}% completion`} />
               <MetricCell
                 label="Repo health"
-                value={codeHealth !== null ? `${codeHealth}%` : '—'}
+                value={codeHealth !== null ? `${codeHealth}%` : 'N/A'}
                 accent={codeHealth !== null && codeHealth < 50 ? 'text-abort' : undefined}
                 sub={`${total_tasks} tasks total`}
               />
@@ -415,15 +415,15 @@ export default function DashboardPage() {
                               {pr.module}
                             </Link>
                           ) : (
-                            <span className="text-ink-muted">—</span>
+                            <span className="text-ink-muted">N/A</span>
                           )}
                         </TD>
                         <TD className="hidden md:table-cell text-ink-secondary">
-                          {memberName(pr.assigned_to) || '—'}
+                          {memberName(pr.assigned_to) || 'N/A'}
                         </TD>
                         <TD className="hidden sm:table-cell">
                           <span className="font-code text-caption text-ink-muted tabular-nums">
-                            {pr.created_at ? new Date(pr.created_at).toLocaleDateString() : '—'}
+                            {pr.created_at ? new Date(pr.created_at).toLocaleDateString() : 'N/A'}
                           </span>
                         </TD>
                       </TR>
@@ -461,7 +461,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <StatusBadge state={pr.state} />
                         {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-mission hover:text-mission-lit font-code transition-colors">{pr.module}</Link>}
-                        {pr.assigned_to && <span className="text-caption text-ink-muted">by {memberName(pr.assigned_to)}</span>}
+                        {pr.assigned_to && memberName(pr.assigned_to) && <span className="text-caption text-ink-muted">by {memberName(pr.assigned_to)}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">

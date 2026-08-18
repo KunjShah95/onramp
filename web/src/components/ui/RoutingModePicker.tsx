@@ -18,13 +18,13 @@ const OPTIONS: Array<{
   {
     id: null,
     label: 'Auto',
-    sub: 'Team default (Cost / Balanced / Intelligence) — set in Developer Portal',
+    sub: 'Team default (Cost / Balanced / Intelligence) · set in Developer Portal',
     icon: <Gauge size={12} weight="fill" />,
   },
   {
     id: 'cost',
     label: 'Cost',
-    sub: 'Cheapest models first — free providers dominate',
+    sub: 'Cheapest models first · free providers dominate',
     icon: <Coin size={12} weight="fill" />,
   },
   {
@@ -36,7 +36,7 @@ const OPTIONS: Array<{
   {
     id: 'intelligence',
     label: 'Intelligence',
-    sub: 'Strongest models first — quality over price',
+    sub: 'Strongest models first · quality over price',
     icon: <Brain size={12} weight="fill" />,
   },
 ]

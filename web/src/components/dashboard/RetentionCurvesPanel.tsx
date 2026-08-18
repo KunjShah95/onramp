@@ -76,7 +76,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
     >
       {cohorts.length === 0 ? (
         <p className="text-caption text-ink-muted font-code py-2">
-          No cohorts yet — retention curves form as developers join.
+          No cohorts yet. Retention curves form as developers join.
         </p>
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
@@ -84,7 +84,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
             <>
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-body-xs text-ink font-medium">
-                  {latest.label} <span className="text-ink-muted font-normal">({latest.member_count}) — latest cohort</span>
+                  {latest.label} <span className="text-ink-muted font-normal">({latest.member_count}) · latest cohort</span>
                 </p>
                 <p className="text-caption text-ink-muted">
                   <span className="text-go font-medium">retained</span> / <span className="text-mission font-medium">active</span> after joining

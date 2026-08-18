@@ -1,18 +1,9 @@
-import { lazy, Suspense, useRef } from 'react'
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useScroll, useTransform } from 'framer-motion'
-import { ArrowRight, Play } from '@phosphor-icons/react'
-import LazyMount from '../ui/LazyMount'
-
-const HeroScene = lazy(() => import('./HeroScene'))
-
-function SceneFallback() {
-  return (
-    <div className="flex h-full items-center justify-center font-code text-[11px] uppercase tracking-[0.18em] text-slate-400">
-      Initializing map…
-    </div>
-  )
-}
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { ArrowRight, CaretDown, Check, Play } from '@phosphor-icons/react'
+import { HeroSpotlight, Magnetic } from '../ui/landing-motion'
+import ArchitectureMapStatic from './ArchitectureMapStatic'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -35,6 +26,7 @@ function Word({ children, i }: { children: string; i: number }) {
 
 export default function Hero() {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
   const sceneY = useTransform(scrollYProgress, [0, 1], [0, 60])
   const copyOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
@@ -42,11 +34,27 @@ export default function Hero() {
 
   return (
     <section ref={ref} className="relative overflow-hidden bg-room pt-28 pb-20 sm:pt-32 lg:pb-28">
-      {/* quiet ambient tints */}
+      {/* animated aurora mesh — slow, GPU-friendly, decorative */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-48 left-1/4 h-[480px] w-[680px] -translate-x-1/2 rounded-full bg-accent-primary/[0.07] blur-[120px]" />
-        <div className="absolute right-0 top-1/3 h-[380px] w-[440px] rounded-full bg-accent-via/[0.06] blur-[110px]" />
+        <motion.div
+          className="absolute -top-48 left-1/4 h-[480px] w-[680px] -translate-x-1/2 rounded-full bg-accent-primary/[0.09] blur-[120px]"
+          animate={reduced ? undefined : { y: [0, 32, 0], scale: [1, 1.06, 1] }}
+          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute right-0 top-1/3 h-[380px] w-[440px] rounded-full bg-accent-via/[0.09] blur-[110px]"
+          animate={reduced ? undefined : { y: [0, -28, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 17, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+        />
+        <motion.div
+          className="absolute -bottom-24 left-[8%] h-[320px] w-[420px] rounded-full bg-accent-to/[0.07] blur-[110px]"
+          animate={reduced ? undefined : { y: [0, 24, 0], scale: [1, 1.05, 1] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+        />
+        <div className="noise-overlay" />
       </div>
+      {/* cursor-follow spotlight */}
+      <HeroSpotlight />
       {/* dot grid floor */}
       <div
         aria-hidden
@@ -83,7 +91,7 @@ export default function Hero() {
               ))}
               <br />
               <Word i={HEADLINE.length}>Make</Word>{' '}
-              <span className="text-accent-primary">
+              <span className="text-gradient">
                 <Word i={HEADLINE.length + 1}>it</Word> <Word i={HEADLINE.length + 2}>visible.</Word>
               </span>
             </h1>
@@ -95,7 +103,7 @@ export default function Hero() {
               className="mt-6 max-w-lg text-[clamp(1.1rem,1.6vw,1.35rem)] font-medium leading-[1.4] text-ink-secondary"
             >
               Onramp reads your repositories and draws the architecture your team actually
-              has — services, dependencies, ownership — fresh on every push.
+              has: services, dependencies, ownership · fresh on every push.
             </motion.p>
 
             <motion.div
@@ -104,13 +112,15 @@ export default function Hero() {
               transition={{ duration: 0.7, delay: 0.95, ease: EASE }}
               className="mt-9 flex flex-wrap items-center gap-4"
             >
-              <Link
-                to="/register"
-                className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-7 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(8,145,178,0.28)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_10px_32px_rgba(8,145,178,0.34)] active:translate-y-px"
-              >
-                Try for free
-                <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <Magnetic strength={0.2}>
+                <Link
+                  to="/register"
+                  className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-7 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.30)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_10px_32px_rgba(79,70,229,0.38)] active:translate-y-px"
+                >
+                  Try for free
+                  <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </Magnetic>
               <Link
                 to="/pricing"
                 className="group inline-flex h-12 items-center gap-2.5 rounded-md text-[15px] font-semibold text-ink transition-colors hover:text-accent-primary-hover"
@@ -152,17 +162,76 @@ export default function Hero() {
                   <span className="w-8" />
                 </div>
                 <div className="relative h-[380px] sm:h-[460px]">
-                  <LazyMount className="h-full w-full" delayMs={700} fallback={<SceneFallback />}>
-                    <Suspense fallback={<SceneFallback />}>
-                      <HeroScene className="h-full w-full" />
-                    </Suspense>
-                  </LazyMount>
+                  <ArchitectureMapStatic className="h-full w-full" />
                 </div>
               </div>
+
+              {/* floating telemetry cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1.15, ease: EASE }}
+                className="absolute -left-5 top-16 z-30 hidden md:block"
+              >
+                <motion.div
+                  animate={reduced ? undefined : { y: [0, -7, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/85 px-3.5 py-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <div className="leading-tight">
+                    <p className="font-code text-[10.5px] font-semibold text-ink">Map updated</p>
+                    <p className="font-code text-[9.5px] text-ink-tertiary">2m ago · 14 services</p>
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1.3, ease: EASE }}
+                className="absolute -bottom-5 -right-4 z-30 hidden md:block"
+              >
+                <motion.div
+                  animate={reduced ? undefined : { y: [0, 6, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/85 px-3.5 py-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-primary text-white">
+                    <Check size={12} weight="bold" />
+                  </span>
+                  <div className="leading-tight">
+                    <p className="font-code text-[10.5px] font-semibold text-ink">First PR merged</p>
+                    <p className="font-code text-[9.5px] text-ink-tertiary">+2h to value · #147</p>
+                  </div>
+                </motion.div>
+              </motion.div>
             </motion.div>
           </motion.div>
         </div>
       </div>
+
+      {/* scroll indicator */}
+      <motion.a
+        href="#the-gap"
+        aria-label="Scroll to see the problem"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.7, duration: 0.8 }}
+        className="absolute bottom-5 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-1.5 lg:flex"
+      >
+        <span className="font-code text-[9.5px] uppercase tracking-[0.2em] text-ink-tertiary">Scroll</span>
+        <motion.span
+          animate={reduced ? undefined : { y: [0, 5, 0] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          className="text-ink-tertiary"
+        >
+          <CaretDown size={13} />
+        </motion.span>
+      </motion.a>
     </section>
   )
 }

@@ -230,7 +230,7 @@ export default function MarketplacePage() {
           <EmptyState
             icon={<Storefront className="w-10 h-10 text-ink-disabled/40" weight="duotone" />}
             title={search ? 'No matching playbooks' : 'The marketplace is empty'}
-            description={search ? 'Try a different search term.' : 'Be the first — publish one of your team playbooks.'}
+            description={search ? 'Try a different search term.' : 'Be the first · publish one of your team playbooks.'}
           />
         </motion.div>
       )}

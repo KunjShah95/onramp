@@ -48,7 +48,7 @@ export default function ExplorePage() {
     try {
       const data = await analyzeArchitecture(repoUrl)
       setResult(data)
-      toast.success('Analysis complete', `${repoUrl.split('/').pop()} — ${data.entities.files.length} files mapped`)
+      toast.success('Analysis complete', `${repoUrl.split('/').pop()} · ${data.entities.files.length} files mapped`)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze repository.')
       toast.error('Analysis failed', err.message)
@@ -142,7 +142,7 @@ export default function ExplorePage() {
         <PageHeader
           eyebrow="Folio 08 · Explore"
           title="Architecture Explorer"
-          subtitle="Deep codebase analysis — dependency graph, service map, circular deps detection"
+          subtitle="Deep codebase analysis · dependency graph, service map, circular deps detection"
           actions={
             <div className="relative flex items-center w-full md:w-[360px]">
               <MagnifyingGlass size={16} className="absolute left-3 text-ink-muted/40 pointer-events-none" />
@@ -176,12 +176,12 @@ export default function ExplorePage() {
         {/* ── Metric cards ────────────────────────────────── */}
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {([
-            { label: 'Total Files', value: result?.entities.files.length ?? '—', color: result ? 'text-ink' : 'text-ink-disabled/40' },
-            { label: 'Classes', value: result?.entities.classes.length ?? '—', color: result ? 'text-ink' : 'text-ink-disabled/40' },
-            { label: 'Functions', value: result?.entities.functions.length ?? '—', color: result ? 'text-ink' : 'text-ink-disabled/40' },
+            { label: 'Total Files', value: result?.entities.files.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
+            { label: 'Classes', value: result?.entities.classes.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
+            { label: 'Functions', value: result?.entities.functions.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
             {
               label: 'Circular Deps',
-              value: result?.circular_dependencies.length ?? '—',
+              value: result?.circular_dependencies.length ?? 'N/A',
               color: result
                 ? (result.circular_dependencies.length > 0 ? 'text-abort' : 'text-go')
                 : 'text-ink-disabled/40',

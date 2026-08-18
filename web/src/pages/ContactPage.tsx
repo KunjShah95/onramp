@@ -61,7 +61,7 @@ export default function ContactPage() {
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Contact — Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
+      seo={{ title: 'Contact · Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}

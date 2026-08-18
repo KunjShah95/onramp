@@ -94,8 +94,8 @@ test.describe('New Dev → Allocated Repo Access', () => {
     await signInAsNewDev(page)
 
     await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
-    // No repo → health never fetched → Repo Health renders the em-dash placeholder
+    // No repo → health never fetched → Repo Health renders the N/A placeholder
     await expect(page.getByText('Repo Health').first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('—').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('N/A').first()).toBeVisible({ timeout: 10_000 })
   })
 })

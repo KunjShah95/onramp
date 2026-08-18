@@ -1,0 +1,413 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.9 [39m[90mC:/AHS 2026/web[39m
+
+[90mstdout[2m | test/bundle/bundle-analysis.test.ts[2m > [22m[2mBundle Size Budgets[2m > [22m[2mtotal JS (gzipped) is under budget
+[22m[39m
+  [BUNDLE] JS files: 94
+  [BUNDLE] Total JS: 643KB gzipped
+  [BUNDLE]   assets\AboutPage-BvLK0Fm-.js: 4KB raw, 1.8KB gzip
+  [BUNDLE]   assets\AdminCreateAccount-B6YxKd8y.js: 7KB raw, 2.3KB gzip
+  [BUNDLE]   assets\AdminDashboardPage-CZCiaiS1.js: 12KB raw, 4.3KB gzip
+  [BUNDLE]   assets\ApiCostTracking-CkzLnsh0.js: 7KB raw, 2.1KB gzip
+  [BUNDLE]   assets\ApiKeysPage-BxJtgVSU.js: 9KB raw, 3.0KB gzip
+  [BUNDLE]   assets\AskPage-B9REOWJm.js: 16KB raw, 5.1KB gzip
+  [BUNDLE]   assets\AuditLogPage-Yi-TPhuT.js: 11KB raw, 3.1KB gzip
+  [BUNDLE]   assets\auth-shell-B2bEFQue.js: 1KB raw, 0.6KB gzip
+  [BUNDLE]   assets\AuthCallback-CMrSVlr6.js: 3KB raw, 1.2KB gzip
+  [BUNDLE]   assets\AutonomousCodingPage-wFHHDPVd.js: 12KB raw, 3.6KB gzip
+
+[90mstdout[2m | test/bundle/bundle-analysis.test.ts[2m > [22m[2mBundle Size Budgets[2m > [22m[2mlargest JS chunk (gzipped) is under budget
+[22m[39m
+  [BUNDLE] Largest chunk: assets\vendor-icons-Cruwijvn.js — 433KB raw, 96.4KB gzip
+
+[90mstdout[2m | test/bundle/bundle-analysis.test.ts[2m > [22m[2mBundle Size Budgets[2m > [22m[2mtotal CSS (gzipped) is under budget
+[22m[39m
+  [BUNDLE] CSS files: 1
+  [BUNDLE] Total CSS: 20KB gzipped
+
+[90mstdout[2m | test/bundle/bundle-analysis.test.ts[2m > [22m[2mBundle Size Budgets[2m > [22m[2mindex.html size is under budget
+[22m[39m
+  [BUNDLE] index.html: 5.3KB raw
+
+[90mstdout[2m | test/bundle/bundle-analysis.test.ts[2m > [22m[2mBundle Size Budgets[2m > [22m[2mtotal built assets are under budget
+[22m[39m
+  [BUNDLE] All built assets: 103 files, 5.96MB raw
+
+ [32m✓[39m test/bundle/bundle-analysis.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 3165[2mms[22m[39m
+     [33m[2m✓[22m[39m total JS (gzipped) is under budget [33m 1871[2mms[22m[39m
+     [33m[2m✓[22m[39m largest JS chunk (gzipped) is under budget [33m 1167[2mms[22m[39m
+ [32m✓[39m src/test/auth-redirect.spec.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+ [32m✓[39m src/components/ui/Skeleton.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 685[2mms[22m[39m
+     [33m[2m✓[22m[39m renders a dashboard shell of seated instrument panels [33m 653[2mms[22m[39m
+[90mstderr[2m | src/components/dashboard/RetentionCurvesPanel.test.tsx[2m > [22m[2mRetentionCurvesPanel[2m > [22m[2mrenders the newest cohort curves and the across-cohort 180d trend for a leader
+[22m[39mThe width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+[90mstderr[2m | src/components/dashboard/RetentionCurvesPanel.test.tsx[2m > [22m[2mRetentionCurvesPanel[2m > [22m[2mrenders the newest cohort curves and the across-cohort 180d trend for a leader
+[22m[39mThe width(0) and height(0) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+
+ [32m✓[39m src/components/dashboard/RetentionCurvesPanel.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1528[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the newest cohort curves and the across-cohort 180d trend for a leader [33m 1279[2mms[22m[39m
+ [32m✓[39m src/components/dashboard/DoraMetricsPanel.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1285[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the four DORA metric badges from the summary [33m 1261[2mms[22m[39m
+ [32m✓[39m src/components/ui/RoutingModePicker.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1246[2mms[22m[39m
+     [33m[2m✓[22m[39m shows Auto by default and opens the preset list on click [33m 760[2mms[22m[39m
+ [32m✓[39m src/test/user-menu.spec.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 838[2mms[22m[39m
+     [33m[2m✓[22m[39m is closed initially and opens when the trigger is clicked [33m 528[2mms[22m[39m
+ [32m✓[39m src/pages/JoinPage.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 671[2mms[22m[39m
+     [33m[2m✓[22m[39m shows error when no token in URL [33m 437[2mms[22m[39m
+ [32m✓[39m src/pages/ForgotPassword.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1028[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the forgot password form [33m 456[2mms[22m[39m
+     [33m[2m✓[22m[39m shows error on submit (password reset not available) [33m 421[2mms[22m[39m
+ [32m✓[39m src/pages/Login.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1702[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the login form (two-stage: email → password) [33m 468[2mms[22m[39m
+     [33m[2m✓[22m[39m calls auth login on valid submit [33m 1067[2mms[22m[39m
+ [32m✓[39m src/test/first-run-dashboard.spec.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1716[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the welcome experience with the four next steps [33m 510[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the welcome experience instead of Mission Control when the user has no team [33m 829[2mms[22m[39m
+     [33m[2m✓[22m[39m adapts the first step when the user already has an empty team [33m 359[2mms[22m[39m
+ [32m✓[39m src/pages/Register.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 5084[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the registration form [33m 450[2mms[22m[39m
+     [33m[2m✓[22m[39m validates password length [33m 1379[2mms[22m[39m
+     [33m[2m✓[22m[39m calls auth register on valid submit [33m 2875[2mms[22m[39m
+     [33m[2m✓[22m[39m navigates to login page link [33m 363[2mms[22m[39m
+ [32m✓[39m src/pages/AskPage.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 8620[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the served-by label when the stream reports the serving route [33m 2027[2mms[22m[39m
+     [33m[2m✓[22m[39m does not show a served-by label when the stream reports no route [33m 2494[2mms[22m[39m
+     [33m[2m✓[22m[39m forwards the routing-mode picker choice and active team with the request [33m 4089[2mms[22m[39m
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mCore workspace pages[2m > [22m[2mrenders TeamPage
+[22m[39mAn update to TeamPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to TeamPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mCore workspace pages[2m > [22m[2mrenders TasksPage
+[22m[39mAn update to TasksPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mCore workspace pages[2m > [22m[2mrenders Settings
+[22m[39mAn update to Settings inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Settings inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mCore workspace pages[2m > [22m[2mrenders Profile
+[22m[39mAn update to Profile inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Profile inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mCore workspace pages[2m > [22m[2mrenders BillingPage
+[22m[39mAn update to BillingPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders AskPage
+[22m[39mAn update to ModelPicker inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders NotificationsPage
+[22m[39mAn update to NotificationsPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to NotificationsPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders ApiKeysPage
+[22m[39mAn update to ApiKeysPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ApiKeysPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders ReviewQueuePage
+[22m[39mAn update to ReviewQueuePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ReviewQueuePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders AdminDashboardPage
+[22m[39mAn update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders AdminDashboardPage
+[22m[39mAn update to AdminDashboardPage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders DevSpacePage
+[22m[39mAn update to DevSpacePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DevSpacePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders SeniorSpacePage
+[22m[39mAn update to SeniorSpacePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to SeniorSpacePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/test/pages.spec.tsx[2m > [22m[2mFeature pages (recently wired)[2m > [22m[2mrenders ExecutivePage
+[22m[39mAn update to ExecutivePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ExecutivePage inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [32m✓[39m src/test/pages.spec.tsx [2m([22m[2m34 tests[22m[2m)[22m[33m 7780[2mms[22m[39m
+     [33m[2m✓[22m[39m renders Login [33m 1068[2mms[22m[39m
+     [33m[2m✓[22m[39m renders PricingPage [33m 1190[2mms[22m[39m
+     [33m[2m✓[22m[39m renders DocsPage [33m 316[2mms[22m[39m
+     [33m[2m✓[22m[39m renders PrivacyPage [33m 474[2mms[22m[39m
+     [33m[2m✓[22m[39m renders DashboardPage [33m 638[2mms[22m[39m
+     [33m[2m✓[22m[39m renders BillingPage [33m 315[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m14 passed[39m[22m[90m (14)[39m
+[2m      Tests [22m [1m[32m77 passed[39m[22m[90m (77)[39m
+[2m   Start at [22m 11:44:29
+[2m   Duration [22m 92.40s[2m (transform 27.28s, setup 27.58s, import 431.82s, tests 35.43s, environment 199.28s)[22m
+

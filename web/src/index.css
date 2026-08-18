@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Schibsted+Grotesk:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
+/* Fonts are loaded asynchronously from index.html (media="print" onload swap) so
+   they never block first paint. Keep the URL below in sync with index.html. */
 
 @tailwind base;
 @tailwind components;
@@ -825,12 +826,14 @@
     --ink-tertiary: #64748B;
     --ink-muted: #94A3B8;
     --ink-disabled: #CBD5E1;
-    --go: #047857;
+    /* Premium light system — indigo primary, cyan + violet accents (see DESIGN brief).
+       RGB triplets feed rgb(var(--token)) consumers; hex feeds raw CSS consumers. */
+    --go: #059669;
     --go-lit: #10B981;
-    --mission: #0E7490;
-    --mission-lit: #06B6D4;
-    --caution: #D97706;
-    --caution-lit: #F59E0B;
+    --mission: #4F46E5;
+    --mission-lit: #6366F1;
+    --caution: #B45309;
+    --caution-lit: #D97706;
     --abort: #DC2626;
     --abort-lit: #F87171;
     --seam: rgba(15, 23, 42, 0.08);
@@ -846,33 +849,33 @@
     --text-muted: 148 163 184;
     --text-disabled: 203 213 225;
     --border-rgb: 148 163 184;
-    --accent-from: 14 116 144;
-    --accent-via: 6 182 212;
-    --accent-to: 5 150 105;
-    --accent-muted: 14 116 144;
-    --accent-glow: 14 116 144;
-    --accent-primary: 14 116 144;
-    --accent-primary-hover: 12 83 107;
-    --success: 5 150 105;
-    --success-lit: 16 185 129;
-    --warning: 217 119 6;
-    --warning-lit: 245 158 11;
-    --error: 220 38 38;
+    --accent-from: 79 70 229;
+    --accent-via: 34 211 238;
+    --accent-to: 139 92 246;
+    --accent-muted: 79 70 229;
+    --accent-glow: 79 70 229;
+    --accent-primary: 79 70 229;
+    --accent-primary-hover: 67 56 202;
+    --success: 16 185 129;
+    --success-lit: 52 211 153;
+    --warning: 245 158 11;
+    --warning-lit: 251 191 36;
+    --error: 239 68 68;
     --error-lit: 248 113 113;
-    --info: 14 116 144;
-    --info-lit: 6 182 212;
+    --info: 79 70 229;
+    --info-lit: 99 102 241;
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
-    --primary: 188 86% 43%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 20% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 47%;
-    --accent: 188 86% 43%;
+    --accent: 243 75% 59%;
     --accent-foreground: 0 0% 100%;
     --border: 214 32% 91%;
-    --ring: 188 86% 43%;
+    --ring: 243 75% 59%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
@@ -880,8 +883,26 @@
   }
 
   .landing-light ::selection {
-    background: rgba(8, 145, 178, 0.18);
+    background: rgba(79, 70, 229, 0.18);
     color: #0F172A;
+  }
+
+  /* ── Landing premium utilities ─────────────────────────── */
+  /* Indigo → cyan → violet headline gradient (background-clip: text). */
+  .landing-premium .text-gradient {
+    background: linear-gradient(100deg, #4f46e5 0%, #22d3ee 50%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Soft film-grain over the hero so flat surfaces don't band. */
+  .landing-premium .noise-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   /* ── bg-base — section band utility ────────────────────────
@@ -1023,6 +1044,20 @@
 }
 
 @layer components {
+  /* ── HeatmapGem animations ───────────────────────────────
+   * CSS-driven rotation and scan sweep for the lightweight
+   * gem replacement. No JavaScript animation frames required. */
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+  @keyframes spin-slow {
+    to { transform: rotate(360deg) rotateY(25deg) rotateX(10deg); }
+  }
+  @keyframes gem-scan {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
   /* ── Section panel ──────────────────────────────── */
   .console-panel,
   .card {

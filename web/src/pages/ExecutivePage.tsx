@@ -274,7 +274,7 @@ export default function ExecutivePage() {
           <motion.div variants={item}>
             <ConsolePanel rail="Credential Cost · Tracking" designator="Live · gateway" status="go">
               <p className="text-caption text-ink-muted mb-4 font-code">
-                API key spend vs. budget — live from the gateway.
+                API key spend vs. budget · live from the gateway.
               </p>
               <ApiCostTracking />
             </ConsolePanel>

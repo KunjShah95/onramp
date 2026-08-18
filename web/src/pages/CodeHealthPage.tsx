@@ -82,7 +82,7 @@ export default function CodeHealthPage() {
           <PageHeader
             eyebrow="Folio · Code health"
             title="Code Health"
-            subtitle="Score a GitHub repo on test coverage, maintainability, complexity, and overall health — one dominant read, drill down if you need to."
+            subtitle="Score a GitHub repo on test coverage, maintainability, complexity, and overall health · one dominant read, drill down if you need to."
           />
         </motion.header>
 
