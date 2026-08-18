@@ -22,7 +22,7 @@ export interface Readout {
 }
 
 interface ReadoutBankProps {
-  /** Rail call-sign, e.g. "MISSION TELEMETRY". */
+  /** Quiet rail label above the bank, e.g. "Systems". */
   callsign?: string
   items: Readout[]
   /** Cells per row at the widest breakpoint. */
@@ -107,7 +107,7 @@ export default function ReadoutBank({ callsign, items, columns = 6, className }:
     <div className={cn('rounded-card border border-seam bg-panel shadow-seam overflow-hidden', className)}>
       {callsign && (
         <div className="px-5 pt-4 pb-1">
-          <span className="callsign opacity-50">{callsign}</span>
+          <span className="font-code text-[10.5px] tracking-[0.04em] text-ink-muted/70">{callsign}</span>
         </div>
       )}
       <div className={cn('grid grid-cols-2 divide-x divide-y xl:divide-y-0 divide-seam', colClass[columns])}>

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
+import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { ApiKeysSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
@@ -112,19 +113,12 @@ export default function ApiKeysPage() {
     >
       {/* ── Mission header ── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <Key size={11} weight="fill" className="mr-1.5" />
-              API Keys
-            </span>
-            <span className="designator opacity-50">ACCESS · CREDENTIALS</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">API Keys</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">
-            Programmatic access — keep keys secure, treat them like passwords.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Folio · API keys"
+          title="API Keys"
+          subtitle="Programmatic access — keep keys secure, treat them like passwords."
+          flush
+        />
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}

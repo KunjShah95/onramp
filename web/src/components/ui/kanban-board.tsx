@@ -106,7 +106,6 @@ export default function KanbanBoard({
         {columns.map((col) => {
           const colTasks = localTasks.filter((t) => t.state === col.state)
           const isOver = dragOverState === col.state && draggingId
-          const hasDraggingSource = localTasks.some((t) => t.task_id === draggingId)
 
           return (
             <div
@@ -128,7 +127,7 @@ export default function KanbanBoard({
             >
               {/* column rail */}
               <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', col.dot, hasDraggingSource && isOver && 'animate-pulse-glow')} />
+                <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', col.dot)} />
                 <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {col.label}
                 </h3>

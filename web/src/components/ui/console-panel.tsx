@@ -34,7 +34,7 @@ const padMap = {
  * Cards only when the grouping is real; otherwise prefer a ruled heading.
  */
 export default function ConsolePanel({
-  children, rail, designator, status, action, live,
+  children, rail, designator, status, action,
   raised, className, pad = 'default', hoverable, onClick,
 }: ConsolePanelProps) {
   const hasRail = rail || designator || status || action
@@ -55,7 +55,6 @@ export default function ConsolePanel({
               className={cn(
                 'w-1.5 h-1.5 rounded-full shrink-0',
                 dotMap[status],
-                live && status === 'go' && 'motion-safe:animate-pulse',
               )}
             />
           )}

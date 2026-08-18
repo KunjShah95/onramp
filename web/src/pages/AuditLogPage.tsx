@@ -13,8 +13,9 @@ import {
   CaretLeft,
   CaretRight,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import { adminListAuditEvents, exportAuditEvents } from '../lib/api'
 import type { AdminAuditEvent } from '../lib/api'
 import { formatInIST, formatKeyDate } from '../lib/utils'
@@ -113,55 +114,49 @@ export default function AuditLogPage() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 relative">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5 text-amber-400" weight="duotone" />
+      <PageHeader
+        eyebrow="Folio 13 · Audit log"
+        title="Audit Log"
+        subtitle="Security and configuration events across all teams."
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExport('csv')}
+              className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
+            >
+              <FileCsv className="w-3.5 h-3.5" />
+              CSV
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
+            >
+              <FileJs className="w-3.5 h-3.5" />
+              JSON
+            </button>
+            <button
+              onClick={() => setFilterVisible(!filterVisible)}
+              className={`px-3 py-2 rounded-btn text-caption font-medium border transition-colors flex items-center gap-1.5 ${
+                filterVisible || filterType || filterActor
+                  ? 'border-go/40 text-go bg-go/5'
+                  : 'border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong'
+              }`}
+            >
+              <FunnelSimple className="w-3.5 h-3.5" />
+              Filters
+              {(filterType || filterActor) && <span className="w-1.5 h-1.5 rounded-full bg-go" />}
+            </button>
+            <button
+              onClick={fetchEvents}
+              disabled={loading}
+              className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <ArrowCounterClockwise className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
-          <div>
-            <h1 className="text-display-md md:text-display-lg font-display font-bold text-ink">Audit Log</h1>
-            <p className="text-body-sm text-ink-tertiary">
-              Security and configuration events across all teams.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleExport('csv')}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5"
-          >
-            <FileCsv className="w-3.5 h-3.5" />
-            CSV
-          </button>
-          <button
-            onClick={() => handleExport('json')}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5"
-          >
-            <FileJs className="w-3.5 h-3.5" />
-            JSON
-          </button>
-          <button
-            onClick={() => setFilterVisible(!filterVisible)}
-            className={`px-3 py-2 rounded-lg text-caption font-medium border transition-colors flex items-center gap-1.5 ${
-              filterVisible || filterType || filterActor
-                ? 'border-go/40 text-go bg-go/5'
-                : 'border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70'
-            }`}
-          >
-            <FunnelSimple className="w-3.5 h-3.5" />
-            Filters
-            {(filterType || filterActor) && <span className="w-1.5 h-1.5 rounded-full bg-go" />}
-          </button>
-          <button
-            onClick={fetchEvents}
-            disabled={loading}
-            className="px-3 py-2 rounded-lg text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam/70 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <ArrowCounterClockwise className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filters Panel */}
       {filterVisible && (
@@ -226,7 +221,7 @@ export default function AuditLogPage() {
       )}
 
       {/* Events Table */}
-      <CardSpotlight className="overflow-hidden">
+      <ConsolePanel pad="none" className="overflow-hidden">
         {loading && events.length === 0 ? (
           <div className="p-8 space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -355,7 +350,7 @@ export default function AuditLogPage() {
             </div>
           </div>
         )}
-      </CardSpotlight>
+      </ConsolePanel>
     </motion.div>
   )
 }

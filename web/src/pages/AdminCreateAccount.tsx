@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useToast } from '../context/ToastContext'
 import { createAccount, listTeams } from '../lib/api'
+import { PageHeader } from '../components/ui/page-header'
 import ConsolePanel from '../components/ui/console-panel'
 import StatusTile from '../components/ui/status-tile'
 import {
@@ -116,17 +117,11 @@ export default function AdminCreateAccount() {
 
       {/* Header */}
       <motion.div variants={item}>
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <span className="tile tile-go">Provisioning</span>
-          <span className="designator opacity-50">CAPCOM · ACCOUNT</span>
-        </div>
-        <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
-          <UserPlus size={26} weight="fill" className="text-go shrink-0" />
-          Create Developer Account
-        </h1>
-        <p className="text-body-sm text-ink-secondary mt-1 font-code">
-          Provision a new developer account with a temporary password.
-        </p>
+        <PageHeader
+          eyebrow="Folio · Admin"
+          title="Create Developer Account"
+          subtitle="Provision a new developer account with a temporary password."
+        />
       </motion.div>
 
       {result ? (
@@ -140,7 +135,7 @@ export default function AdminCreateAccount() {
           >
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <span className="w-9 h-9 rounded-tile bg-go-muted border border-go/30 flex items-center justify-center text-go shrink-0">
+                <span className="w-9 h-9 rounded-tile bg-go/10 border border-go/30 flex items-center justify-center text-go shrink-0">
                   <Check size={18} weight="bold" />
                 </span>
                 <div>

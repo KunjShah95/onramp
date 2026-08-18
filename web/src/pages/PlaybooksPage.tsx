@@ -11,6 +11,7 @@ import {
   Spinner,
 } from '@phosphor-icons/react'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PlaybooksSkeleton } from '../components/ui/Skeleton'
 import { Modal } from '../components/ui/modal'
@@ -123,19 +124,12 @@ export default function PlaybooksPage() {
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">
-              <BookOpenText size={11} weight="fill" className="mr-1.5" />
-              Playbooks
-            </span>
-            <span className="designator opacity-50">WORKFLOW REGISTRY</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">Playbooks</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">
-            Automated workflows and guided processes to standardize engineering operations.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Folio · Playbooks"
+          title="Playbooks"
+          subtitle="Automated workflows and guided processes to standardize engineering operations."
+          flush
+        />
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}

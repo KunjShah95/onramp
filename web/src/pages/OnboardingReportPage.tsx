@@ -7,8 +7,9 @@ import {
   GitBranch,
   BookOpenText,
 } from '@phosphor-icons/react'
-import CardSpotlight from '../components/ui/card-spotlight'
+import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
+import { PageHeader } from '../components/ui/page-header'
 import { ReportSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { generateReport, generateHtmlReport } from '../lib/api'
@@ -109,34 +110,20 @@ export default function OnboardingReportPage() {
       className="max-w-4xl mx-auto px-4 sm:px-6 space-y-8 relative"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between gap-3 mb-2 relative">
-        <div className="flex items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="tile tile-go">
-                <FileText size={11} weight="fill" className="mr-1.5" />
-                Report
-              </span>
-              <span className="designator opacity-50">ONBOARDING BRIEF</span>
-            </div>
-            <h1 className="text-display-md md:text-display-lg text-ink">Onboarding Report</h1>
-            <p className="text-body-sm text-ink-secondary mt-1 font-code">
-              Generate a professional onboarding report for any repository.
-            </p>
-          </div>
-        </div>
-        {result && (
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleDownload}
-            disabled={downloading}
-            className="btn btn-secondary flex items-center gap-2 shrink-0"
-          >
-            {downloading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            HTML
-          </motion.button>
-        )}
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="Folio 12 · Onboarding report"
+          title="Onboarding Report"
+          subtitle="Generate a professional onboarding report for any repository."
+          actions={
+            result ? (
+              <button onClick={handleDownload} disabled={downloading} className="btn-secondary flex items-center gap-2">
+                {downloading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Download HTML
+              </button>
+            ) : undefined
+          }
+        />
       </motion.div>
 
       {/* Controls */}
@@ -151,14 +138,14 @@ export default function OnboardingReportPage() {
             className="w-full bg-panel border border-seam text-ink text-body-sm rounded-input pl-9 pr-4 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-ink-tertiary/40"
           />
         </div>
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-well/30 w-fit">
+        <div className="flex items-center gap-0.5 p-0.5 rounded-btn border border-seam bg-well/40 w-fit">
           {LEVELS.map((l) => (
             <button
               key={l.key}
               onClick={() => setUserLevel(l.key)}
-              className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-[3px] text-caption font-medium transition-colors ${
                 userLevel === l.key
-                  ? 'bg-base text-ink shadow-sm'
+                  ? 'bg-panel-raised text-ink'
                   : 'text-ink-tertiary hover:text-ink-secondary'
               }`}
             >
@@ -166,16 +153,10 @@ export default function OnboardingReportPage() {
             </button>
           ))}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={handleGenerate}
-          disabled={loading || !repoUrl.trim()}
-          className="px-5 py-2.5 rounded-xl text-caption font-semibold bg-go hover:brightness-110 disabled:opacity-40 text-[hsl(var(--accent-foreground))] transition-all flex items-center gap-2 shrink-0"
-        >
+        <button onClick={handleGenerate} disabled={loading || !repoUrl.trim()} className="btn shrink-0">
           <BookOpenText className="w-3.5 h-3.5" weight="fill" />
           {loading ? 'Generating…' : 'Generate'}
-        </motion.button>
+        </button>
       </motion.div>
 
       {error && (
@@ -189,24 +170,22 @@ export default function OnboardingReportPage() {
 
       {!loading && !result && (
         <motion.div variants={itemVariants}>
-          <CardSpotlight className="border border-go/10">
+          <ConsolePanel rail="Start" designator="Awaiting input">
             <EmptyState
               icon={<FileText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
               title="Enter a GitHub repository above"
               description="We'll compile a repository overview, architecture, learning path, and good-first-issues into a report."
               action={
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                <button
                   onClick={handleGenerate}
                   disabled={!repoUrl.trim()}
                   className="mt-2 px-5 py-2 rounded-btn text-caption border border-seam text-ink-muted hover:text-ink hover:bg-well transition-colors font-code disabled:opacity-40"
                 >
                   Generate
-                </motion.button>
+                </button>
               }
             />
-          </CardSpotlight>
+          </ConsolePanel>
         </motion.div>
       )}
 
@@ -219,10 +198,9 @@ export default function OnboardingReportPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
             >
-              <CardSpotlight className="p-6">
-                <h3 className="text-body font-medium text-ink mb-3">{section.title}</h3>
+              <ConsolePanel rail={section.title}>
                 {renderContent(section.content)}
-              </CardSpotlight>
+              </ConsolePanel>
             </motion.div>
           ))}
         </motion.div>

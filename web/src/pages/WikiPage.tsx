@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { PageHeader } from '../components/ui/page-header'
 import { generateWiki } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
 import {
@@ -123,12 +124,11 @@ export default function WikiPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <motion.div variants={item} className="mb-8">
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Onboarding Wiki</span>
-            <span className="designator opacity-50">CODEBASE ARCHIVE</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink">Onboarding Wiki</h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">Generate an onboarding guide from any GitHub repository</p>
+          <PageHeader
+            eyebrow="Folio · Wiki"
+            title="Onboarding Wiki"
+            subtitle="Generate an onboarding guide from any GitHub repository"
+          />
         </motion.div>
 
         {/* Repo Input */}

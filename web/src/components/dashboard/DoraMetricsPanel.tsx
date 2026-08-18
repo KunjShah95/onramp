@@ -114,8 +114,8 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
               <AreaChart data={velocityData}>
                 <defs><linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#17A34A" stopOpacity={0.2} /><stop offset="100%" stopColor="#17A34A" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-rgb) / 0.10)" />
-                <XAxis dataKey="week" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
-                <YAxis tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
+                <YAxis tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP} />
                 <Area type="monotone" dataKey="completed" stroke="#17A34A" fill="url(#completedGrad)" strokeWidth={2} />
                 <Line type="monotone" dataKey="completed_ma4" stroke="#2472C4" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
@@ -131,8 +131,8 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={throughputMembers.map(member => ({ name: member.name.length > 10 ? member.name.slice(0, 10) + '…' : member.name, completed: member.completed, inProgress: member.in_progress })).reverse()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-rgb) / 0.10)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
-                <YAxis tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
+                <YAxis tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP} />
                 <Bar dataKey="completed" fill="#17A34A" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="inProgress" fill="#2472C4" radius={[2, 2, 0, 0]} />

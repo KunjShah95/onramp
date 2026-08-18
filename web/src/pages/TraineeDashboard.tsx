@@ -66,9 +66,9 @@ export default function TraineeDashboard() {
   // ── Header (shared across error / empty / loaded states) ──
   const header = (
     <PageHeader
-      eyebrow="Trainee Console"
+      eyebrow="Folio 06 · Trainee"
       title={data?.user_name ? `${data.user_name}'s Ascent` : 'Trainee Console'}
-      subtitle="Run the checklist. Clear the modules. Reach orbit."
+      subtitle="Your personal onboarding checklist and progress."
       actions={
         <button onClick={fetchDashboard} disabled={loading} className="btn-secondary">
           Refresh
@@ -83,14 +83,14 @@ export default function TraineeDashboard() {
         <div className="flex-1 space-y-6">
           {header}
           {error ? (
-            <ConsolePanel rail="SIGNAL LOST" designator="CREW" status="abort">
+            <ConsolePanel rail="Signal lost" designator="Crew" status="abort">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-abort text-body-sm font-code">{error}</p>
                 <button onClick={fetchDashboard} disabled={loading} className="btn-secondary !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
               </div>
             </ConsolePanel>
           ) : (
-            <ConsolePanel rail="No Telemetry" designator="CREW" status="idle">
+            <ConsolePanel rail="No data yet" designator="Crew" status="idle">
               <EmptyState icon={<GraduationCap className="w-10 h-10 text-ink-tertiary/30" weight="fill" />} title="No data yet" description="Your onboarding progress will appear here." />
             </ConsolePanel>
           )}
@@ -137,7 +137,7 @@ export default function TraineeDashboard() {
         {header}
 
         {/* Telemetry */}
-        <ReadoutBank callsign="CREW TELEMETRY" items={readouts} columns={4} />
+        <ReadoutBank callsign="Trainee" items={readouts} columns={4} />
 
         {/* Flight plan */}
         <ConsolePanel rail="Flight Plan" designator={`${modules.length} STAGES CLEARED`} status="go" live>

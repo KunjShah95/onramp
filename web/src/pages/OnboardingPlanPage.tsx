@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence, useInView, useMotionValue, useSpring, useTransform, animate } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { PageHeader } from '../components/ui/page-header'
 import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import StatusTile from '../components/ui/status-tile'
@@ -341,18 +342,16 @@ export default function OnboardingPlanPage() {
                   </div>
                 )}
               </div>
-              <div>
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <span className="tile tile-go">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</span>
-                  <span className="designator opacity-50">ONBOARDING JOURNEY</span>
-                </div>
-                <h1 className="text-display-md md:text-display-lg text-ink mb-1">{planToShow ? 'Plan Active' : 'Onboarding Plan'}</h1>
-                <p className="text-body-sm text-ink-secondary font-code">
-                  {planToShow
+              <PageHeader
+                eyebrow="Folio · Onboarding plan"
+                title={planToShow ? 'Plan Active' : 'Onboarding Plan'}
+                subtitle={
+                  planToShow
                     ? `${allDone}/${allTotal} milestones · Pre-boarding ${preDone}/${preBoard.length}`
-                    : 'Create a 30-60-90 day plan to track your onboarding'}
-                </p>
-              </div>
+                    : 'Create a 30-60-90 day plan to track your onboarding'
+                }
+                flush
+              />
             </div>
             <div className="flex items-center gap-3">
               {planToShow ? (

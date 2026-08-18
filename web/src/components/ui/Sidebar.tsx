@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { prefetchProps } from '../../lib/prefetch'
 import { useAuth } from '../../context/AuthContext'
-import { X, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { CaretLeft, CaretRight, X } from '@phosphor-icons/react'
 import { navSections, bottomItems, type NavItem } from '../../lib/nav'
 
 const SIDEBAR_KEY = 'onramp-sidebar-collapsed'
@@ -18,25 +18,29 @@ function NavItem({ to, label, Icon, collapsed }: NavItem & { collapsed: boolean 
       {...prefetchProps(to)}
       className={({ isActive }) =>
         cn(
-          'relative flex items-center text-[13px] transition-all duration-150',
+          'group relative flex items-center text-[13px] leading-none transition-colors duration-150',
           collapsed
-            ? 'justify-center h-9 w-9 mx-auto rounded-btn'
-            : 'gap-2.5 px-2.5 py-1.5 w-full rounded-btn',
+            ? 'justify-center h-8 w-8 mx-auto rounded-btn'
+            : 'gap-2.5 px-3 py-[7px] w-full rounded-btn',
           isActive
-            ? 'text-ink font-medium bg-well'
-            : 'text-ink-muted hover:text-ink-secondary hover:bg-well/50'
+            ? 'text-ink font-medium'
+            : 'text-ink-muted hover:text-ink-secondary'
         )
       }
     >
       {({ isActive }) => (
         <>
-          {isActive && !collapsed && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-go" />
+          {/* 2px signal spine — the workbench index mark */}
+          {isActive && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-[2px] rounded-full bg-go" aria-hidden />
           )}
           <Icon
-            size={17}
+            size={15}
             weight={isActive ? 'fill' : 'regular'}
-            className={cn('shrink-0', isActive ? 'text-go' : 'text-ink-muted')}
+            className={cn(
+              'shrink-0 transition-colors duration-150',
+              isActive ? 'text-go' : 'text-ink-muted/55 group-hover:text-ink-tertiary'
+            )}
           />
           {!collapsed && <span className="truncate">{label}</span>}
         </>
@@ -46,10 +50,12 @@ function NavItem({ to, label, Icon, collapsed }: NavItem & { collapsed: boolean 
 }
 
 function NavGroup({
+  index,
   title,
   items,
   collapsed,
 }: {
+  index: number
   title: string
   items: NavItem[]
   collapsed: boolean
@@ -61,10 +67,17 @@ function NavGroup({
   return (
     <div>
       {collapsed ? (
-        <div className="mx-3.5 my-2 h-px bg-seam" aria-hidden />
+        <div className="mx-3.5 my-2.5 h-px bg-seam" aria-hidden />
       ) : (
-        <div className="px-2.5 pb-1 pt-1">
-          <span className="overline text-ink-muted/70">{title}</span>
+        <div className="px-3 pt-4 pb-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="font-code text-[10px] text-ink-muted/60 tabular-nums leading-none">
+              {String(index).padStart(2, '0')}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted leading-none">
+              {title}
+            </span>
+          </div>
         </div>
       )}
       <div className={cn(collapsed ? 'flex flex-col items-center space-y-1' : 'space-y-0.5')}>
@@ -122,92 +135,97 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
       {/* Mobile backdrop — only below lg, only when the drawer is open */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-ink/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-ink/40 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
-    <aside
-      aria-label="Primary navigation"
-      className={cn(
-        // Desktop: sticky rail. Mobile: fixed off-canvas drawer.
-        'app-sidebar bg-panel border-r border-seam flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
-        'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-overhead max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
-        open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
-        'lg:sticky lg:top-0 lg:self-start lg:h-full',
-        collapsed ? 'w-[64px]' : 'w-[220px]'
-      )}
-    >
-      {/* Mobile close button — only visible inside the open drawer */}
-      {open && (
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close menu"
-          className="absolute right-3 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-btn border border-seam text-ink-muted hover:text-ink hover:bg-well/60 transition-colors lg:hidden"
-        >
-          <X size={16} />
-        </button>
-      )}
-
-      {/* Brand */}
-      <div className={cn('pt-5 pb-4', collapsed ? 'flex justify-center px-0' : 'px-4')}>
-        <NavLink
-          to="/"
-          className={cn('flex items-center gap-2.5 group', collapsed && 'justify-center')}
-          title={collapsed ? 'Onramp' : undefined}
-          aria-label="Onramp home"
-        >
-          <div className="w-7 h-7 rounded-tile bg-ink text-panel-raised flex items-center justify-center transition-colors duration-200 group-hover:bg-go">
-            <span className="text-[11px] font-bold font-display tracking-tight">OR</span>
-          </div>
-          {!collapsed && (
-            <span className="font-display text-sm font-bold text-ink tracking-tight uppercase">
-              Onramp
-            </span>
-          )}
-        </NavLink>
-      </div>
-
-      {/* Navigation */}
-      <div className={cn('flex-1 overflow-y-auto', collapsed ? 'px-1.5 space-y-1' : 'px-2 space-y-5')}>
-        {navSections
-          .filter((s) => s.title !== 'Manage' || showManage)
-          .map((s) => (
-            <NavGroup key={s.title} title={s.title} items={s.items} collapsed={collapsed} />
-          ))}
-      </div>
-
-      {/* Bottom section */}
-      <div className={cn('py-3 border-t border-seam mt-2', collapsed ? 'px-1.5' : 'px-2')}>
-        <div className={cn(collapsed ? 'flex flex-col items-center space-y-1' : 'space-y-0.5')}>
-          {bottomItems.map((item) => (
-            <NavItem key={item.to} {...item} collapsed={collapsed} />
-          ))}
-
-          {/* Collapse toggle */}
+      <aside
+        aria-label="Primary navigation"
+        className={cn(
+          // Desktop: sticky rail. Mobile: fixed off-canvas drawer.
+          'app-sidebar bg-base border-r border-seam flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
+          'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-overhead max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
+          open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
+          'lg:sticky lg:top-0 lg:self-start lg:h-full',
+          collapsed ? 'w-[60px]' : 'w-[212px]'
+        )}
+      >
+        {/* Mobile close button — only visible inside the open drawer */}
+        {open && (
           <button
-            onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={cn(
-              'relative flex items-center rounded-btn text-[13px] transition-all duration-150 text-ink-muted hover:text-ink-secondary hover:bg-well/50',
-              collapsed ? 'justify-center h-9 w-9 mx-auto' : 'gap-2.5 px-2.5 py-1.5 w-full'
-            )}
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className="absolute right-3 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-btn border border-seam text-ink-muted hover:text-ink hover:bg-well/60 transition-colors lg:hidden"
           >
-            {collapsed ? (
-              <CaretRight size={17} className="shrink-0 text-ink-muted" />
-            ) : (
-              <>
-                <CaretLeft size={17} className="shrink-0 text-ink-muted" />
-                <span>Collapse</span>
-              </>
-            )}
+            <X size={14} />
           </button>
+        )}
+
+        {/* Brand */}
+        <div className={cn('pt-5 pb-4', collapsed ? 'flex justify-center px-0' : 'px-4')}>
+          <NavLink
+            to="/"
+            className={cn('flex items-center gap-2.5 group', collapsed && 'justify-center')}
+            title={collapsed ? 'Onramp' : undefined}
+            aria-label="Onramp home"
+          >
+            <div className="w-7 h-7 rounded-tile bg-ink text-panel-raised flex items-center justify-center transition-colors duration-200 group-hover:bg-go">
+              <span className="text-[11px] font-bold font-display tracking-tight">OR</span>
+            </div>
+            {!collapsed && (
+              <span className="flex flex-col leading-none">
+                <span className="font-display text-[13px] font-bold text-ink tracking-[0.08em] uppercase">
+                  Onramp
+                </span>
+                <span className="text-[9px] font-code text-ink-muted/70 mt-0.5 tracking-[0.16em] uppercase">
+                  Workbench
+                </span>
+              </span>
+            )}
+          </NavLink>
         </div>
-      </div>
-    </aside>
+
+        {/* Navigation */}
+        <div className={cn('flex-1 overflow-y-auto', collapsed ? 'px-1.5 space-y-1' : 'px-2 space-y-1')}>
+          {navSections
+            .filter((s) => s.title !== 'Manage' || showManage)
+            .map((s, i) => (
+              <NavGroup key={s.title} index={i + 1} title={s.title} items={s.items} collapsed={collapsed} />
+            ))}
+        </div>
+
+        {/* Bottom section */}
+        <div className={cn('py-3 border-t border-seam mt-2', collapsed ? 'px-1.5' : 'px-2')}>
+          <div className={cn(collapsed ? 'flex flex-col items-center space-y-1' : 'space-y-0.5')}>
+            {bottomItems.map((item) => (
+              <NavItem key={item.to} {...item} collapsed={collapsed} />
+            ))}
+
+            {/* Collapse toggle */}
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className={cn(
+                'group relative flex items-center rounded-btn text-[13px] leading-none transition-colors duration-150 text-ink-muted hover:text-ink-secondary hover:bg-well/50',
+                collapsed ? 'justify-center h-8 w-8 mx-auto' : 'gap-2.5 px-3 py-[7px] w-full'
+              )}
+            >
+              {collapsed ? (
+                <CaretRight size={15} className="shrink-0 text-ink-muted" />
+              ) : (
+                <>
+                  <CaretLeft size={15} className="shrink-0 text-ink-muted group-hover:text-ink-secondary" />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">Collapse</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </aside>
     </>
   )
 }

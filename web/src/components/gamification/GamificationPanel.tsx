@@ -102,7 +102,7 @@ export default function GamificationPanel() {
     return (
       <CardSpotlight className="p-4 min-h-[200px] flex items-center justify-center">
         <div className="flex items-center gap-2 text-ink-tertiary/60">
-          <Sparkle className="w-4 h-4 animate-pulse" weight="duotone" />
+          <Sparkle className="w-4 h-4" weight="duotone" />
           <span className="text-caption">Loading gamification...</span>
         </div>
       </CardSpotlight>

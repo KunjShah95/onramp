@@ -19,16 +19,16 @@ const TILE: Record<string, string> = {
 }
 
 const LABELS: Record<string, string> = {
-  pending: 'STANDBY',
-  assigned: 'ASSIGNED',
-  in_progress: 'IN PROGRESS',
-  submitted: 'SUBMITTED',
-  under_review: 'UNDER REVIEW',
-  needs_changes: 'CHANGES',
-  product_review: 'PRODUCT',
-  approved: 'APPROVED',
-  completed: 'DONE',
-  cancelled: 'CANCELLED',
+  pending: 'Pending',
+  assigned: 'Assigned',
+  in_progress: 'In progress',
+  submitted: 'Submitted',
+  under_review: 'Under review',
+  needs_changes: 'Changes requested',
+  product_review: 'Product review',
+  approved: 'Approved',
+  completed: 'Done',
+  cancelled: 'Cancelled',
 }
 
 export default function StatusBadge({ state, className }: StatusBadgeProps) {

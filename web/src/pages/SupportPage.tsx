@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Lifebuoy, BookOpenText, Envelope, ChatCircle, ArrowUpRight } from '@phosphor-icons/react'
+import { BookOpenText, Envelope, ChatCircle, ArrowUpRight } from '@phosphor-icons/react'
+import { PageHeader } from '../components/ui/page-header'
 import PageTransition from '../components/ui/page-transition'
 import Seo from '../components/seo/Seo'
 
@@ -49,14 +50,12 @@ export default function SupportPage() {
           animate="visible"
           className="w-full max-w-2xl text-center"
         >
-          <motion.div variants={item} className="flex flex-col items-center">
-            <div className="w-14 h-14 rounded-2xl bg-go/10 border border-go/20 flex items-center justify-center mb-6">
-              <Lifebuoy className="w-7 h-7 text-go" weight="duotone" />
-            </div>
-            <h1 className="font-display text-display-md text-ink mb-3">How can we help?</h1>
-            <p className="text-body text-ink-tertiary max-w-md mx-auto">
-              Pick a channel below — we usually respond within one business day.
-            </p>
+          <motion.div variants={item}>
+            <PageHeader
+              eyebrow="Folio · Support"
+              title="How can we help?"
+              subtitle="Pick a channel below — we usually respond within one business day."
+            />
           </motion.div>
 
           <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10">

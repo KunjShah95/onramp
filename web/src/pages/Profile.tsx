@@ -129,13 +129,13 @@ export default function Profile() {
               </button>
             </ConsolePanel>
 
-            <ConsolePanel rail="Member Since" designator="ON STATION">
-              <div className="font-mono text-2xl md:text-3xl font-semibold text-ink leading-none">
+            <ConsolePanel rail="Member since" designator="Active">
+              <div className="font-code text-2xl md:text-3xl font-semibold text-ink leading-none tabular-nums">
                 {memberSince}
               </div>
               <div className="mt-3 flex items-center gap-1.5 text-caption text-ink-tertiary">
-                <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
-                Flight status nominal
+                <span className="w-1.5 h-1.5 rounded-full bg-go-lit" />
+                Account in good standing
               </div>
             </ConsolePanel>
           </div>

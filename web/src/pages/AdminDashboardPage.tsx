@@ -11,6 +11,7 @@ import { ShieldCheck, Users, Key, Heartbeat, Lock, PencilSimple, Trash, Spinner 
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
+import { PageHeader } from '../components/ui/page-header'
 import { AdminDashboardSkeleton } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
 import {
@@ -153,19 +154,15 @@ export default function AdminDashboardPage() {
   return (
     <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={item} className="flex items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1.5">
-            <span className="tile tile-go">Flight · Admin</span>
-            <span className="designator opacity-50">SYSTEMS · ORG</span>
-          </div>
-          <h1 className="text-display-md md:text-display-lg text-ink flex items-center gap-3">
-            <ShieldCheck size={30} weight="fill" className="text-go shrink-0" />
-            Admin Console
-          </h1>
-          <p className="text-body-sm text-ink-secondary mt-1 font-code">System-wide monitoring and management.</p>
-        </div>
-        <button onClick={fetchAdminData} disabled={loading} className="btn-glass hidden sm:inline-flex disabled:opacity-50">Refresh</button>
+      <motion.div variants={item}>
+        <PageHeader
+          eyebrow="Folio 04 · Admin"
+          title="Admin Console"
+          subtitle="System-wide monitoring and management."
+          actions={
+            <button onClick={fetchAdminData} disabled={loading} className="btn-glass disabled:opacity-50">Refresh</button>
+          }
+        />
       </motion.div>
 
       {error && (
@@ -185,7 +182,7 @@ export default function AdminDashboardPage() {
         <>
           {/* Systems telemetry */}
           <motion.div variants={item}>
-            <ReadoutBank callsign="SYSTEMS TELEMETRY" items={readouts} columns={4} />
+            <ReadoutBank callsign="Systems" items={readouts} columns={4} />
           </motion.div>
 
           {/* LLM Cost Savings */}
@@ -234,8 +231,8 @@ export default function AdminDashboardPage() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
-                        <XAxis dataKey="date" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} tickFormatter={(v: string) => v.slice(5)} />
-                        <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <XAxis dataKey="date" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} tickFormatter={(v: string) => v.slice(5)} />
+                        <YAxis tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
                         <Tooltip contentStyle={TOOLTIP} formatter={(value, name) => [value, name === 'free' ? 'Free' : 'Paid']} labelFormatter={(label) => new Date(label + 'T00:00:00Z').toLocaleDateString()} />
                         <Area type="monotone" dataKey="free" stackId="traffic" stroke={SIG.go} fill="url(#freeGrad)" strokeWidth={2} />
                         <Area type="monotone" dataKey="paid" stackId="traffic" stroke={SIG.blue} fill="url(#paidGrad)" strokeWidth={2} />
@@ -266,11 +263,11 @@ export default function AdminDashboardPage() {
                     <div key={p.id} className="rounded-tile border border-seam bg-well p-3">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className={`w-2 h-2 rounded-tile shrink-0 ${configured ? 'bg-go' : 'bg-well-strong'}`} />
+                          <span className={`w-2 h-2 rounded-tile shrink-0 ${configured ? 'bg-go' : 'bg-inset'}`} />
                           <span className="text-body-xs font-medium text-ink truncate">{p.label}</span>
                         </div>
                         {configured ? (
-                          <span className="font-code text-[9px] uppercase tracking-wider text-go bg-well-strong px-1.5 py-0.5 rounded shrink-0">Set</span>
+                          <span className="font-code text-[9px] uppercase tracking-wider text-go bg-go/10 px-1.5 py-0.5 rounded shrink-0">Set</span>
                         ) : (
                           <span className="font-code text-[9px] uppercase tracking-wider text-ink-muted/60 shrink-0">Env/Unset</span>
                         )}

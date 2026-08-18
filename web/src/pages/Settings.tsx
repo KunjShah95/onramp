@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { getToken } from '../lib/neon-auth'
+import { PageHeader } from '../components/ui/page-header'
 import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
@@ -340,14 +341,13 @@ export default function Settings() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="w-full max-w-5xl pt-4 sm:pt-8 pb-12 px-4 sm:px-6">
-      {/* ── Station header ── */}
+      {/* ── Header ── */}
       <motion.div variants={item} className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <span className="tile tile-go">Settings</span>
-          <span className="designator opacity-50">STATION ENGINEER · CONFIG</span>
-        </div>
-        <h1 className="text-display-md md:text-display-lg text-ink">Mission Configuration</h1>
-        <p className="text-body-sm text-ink-secondary mt-1 font-code">Identity · signal routing · outbound links · federation · appearance</p>
+        <PageHeader
+          eyebrow="Folio · Settings"
+          title="Settings"
+          subtitle="Identity · signal routing · outbound links · federation · appearance"
+        />
       </motion.div>
 
       {/* ── Seat selector (segmented control) ── */}
@@ -397,7 +397,7 @@ export default function Settings() {
                       value={name}
                       onChange={e => setName(e.target.value)}
                       className="input"
-                      placeholder="Your callsign"
+                      placeholder="Your display name"
                     />
                   </div>
                   <div>

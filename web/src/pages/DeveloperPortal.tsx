@@ -4,7 +4,7 @@ import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, addProviderKey, fetchModelCatalog, fetchRoutingMode, setRoutingMode, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
 import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
-import { Code, Key, Clock, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, Lock, PencilSimple, Stack, MagnifyingGlass, Plus, Gauge } from '@phosphor-icons/react'
+import { Code, Key, Info, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Lightning, Eye, Warning, Play, Robot, Terminal, PencilSimple, Stack, MagnifyingGlass, Plus } from '@phosphor-icons/react'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { PageHeader } from '../components/ui/page-header'
 import CodeEditor from '../components/ui/monaco-editor'
@@ -237,6 +237,7 @@ export default function DeveloperPortal() {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-4xl mx-auto">
       <PageHeader
+        eyebrow="Folio 10 · Developer portal"
         title="Developer Portal"
         subtitle="API keys, rate limits, and usage analytics"
       />
@@ -252,18 +253,15 @@ export default function DeveloperPortal() {
           {/* API Keys */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Key className="w-5 h-5 text-go" weight="fill" />
-                  <div>
-                    <h3 className="font-display font-bold">API Keys</h3>
-                    <p className="text-xs text-ink-tertiary">Manage API keys for programmatic access</p>
-                  </div>
+              <div className="flex items-start justify-between gap-3 border-b border-seam pb-3 mb-4">
+                <div>
+                  <h3 className="font-display text-[13px] font-semibold text-ink">API Keys</h3>
+                  <p className="text-xs text-ink-tertiary mt-0.5">Manage API keys for programmatic access</p>
                 </div>
                 <button
                   onClick={() => { setNewKey(null); setShowCreateForm(!showCreateForm) }}
                   disabled={!canManageKeys}
-                  className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40"
+                  className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40 shrink-0"
                   title={canManageKeys ? (showCreateForm ? 'Cancel' : 'Create a new API key') : 'Key creation is restricted to engineering & executive seats'}
                 >
                   <Key size={14} />
@@ -433,14 +431,11 @@ export default function DeveloperPortal() {
           {/* Provider Keys (BYOK) */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <Lock className="w-5 h-5 text-go" weight="fill" />
-                <div>
-                  <h3 className="font-display font-bold">Provider Keys (BYOK)</h3>
-                  <p className="text-xs text-ink-tertiary">
-                    Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway — requests made with this team's API key use your keys instead of the platform defaults.
-                  </p>
-                </div>
+              <div className="border-b border-seam pb-3 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Provider Keys (BYOK)</h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">
+                  Bring your own LLM &amp; embedding provider keys for the OpenAI-compatible gateway — requests made with this team's API key use your keys instead of the platform defaults.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -561,14 +556,11 @@ export default function DeveloperPortal() {
           {canManageKeys && (
             <motion.div variants={itemVariants}>
               <CardSpotlight className="p-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <Gauge className="w-5 h-5 text-go" weight="fill" />
-                  <div>
-                    <h3 className="font-display font-bold">Routing Mode</h3>
-                    <p className="text-xs text-ink-tertiary">
-                      Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-mono text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code> both honor this.
-                    </p>
-                  </div>
+                <div className="border-b border-seam pb-3 mb-4">
+                  <h3 className="font-display text-[13px] font-semibold text-ink">Routing Mode</h3>
+                  <p className="text-xs text-ink-tertiary mt-0.5">
+                    Cost/quality dial for the model router — how readily your team's requests reach for a paid provider. The in-app chat and <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code> both honor this.
+                  </p>
                 </div>
 
                 {routingModeLoading ? (
@@ -620,14 +612,11 @@ export default function DeveloperPortal() {
           {/* Model Catalog */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <Stack className="w-5 h-5 text-go" weight="fill" />
-                <div>
-                  <h3 className="font-display font-bold">Model Catalog</h3>
-                  <p className="text-xs text-ink-tertiary">
-                    Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-mono text-[10px] bg-well/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-mono text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code>.
-                  </p>
-                </div>
+              <div className="border-b border-seam pb-3 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Model Catalog</h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">
+                  Query-type routing, pinned defaults, and the live OpenRouter catalog — pick any <code className="font-code text-[10px] bg-well/50 px-1 rounded">vendor/model</code> id and pass it to <code className="font-code text-[10px] bg-well/50 px-1 rounded">/v1/chat/completions</code>.
+                </p>
               </div>
 
               {catalogLoading && !catalog ? (
@@ -732,12 +721,9 @@ export default function DeveloperPortal() {
           {/* Rate Limits */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <ShieldCheck className="w-5 h-5 text-go" weight="fill" />
-                <div>
-                  <h3 className="font-display font-bold">Rate Limits</h3>
-                  <p className="text-xs text-ink-tertiary">API rate limits per tier — live from server</p>
-                </div>
+              <div className="border-b border-seam pb-3 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Rate Limits</h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">API rate limits per tier — live from server</p>
               </div>
 
               {tierInfo ? (
@@ -865,12 +851,9 @@ X-RateLimit-Reset: 1704067200`)}
           {/* Credit Quotas */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <Clock className="w-5 h-5 text-go" weight="fill" />
-                <div>
-                  <h3 className="font-display font-bold">Credit Quotas</h3>
-                  <p className="text-xs text-ink-tertiary">Monthly credit usage by action</p>
-                </div>
+              <div className="border-b border-seam pb-3 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">Credit Quotas</h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">Monthly credit usage by action</p>
               </div>
 
               {usage ? (
@@ -913,12 +896,9 @@ X-RateLimit-Reset: 1704067200`)}
           {/* API Documentation */}
           <motion.div variants={itemVariants}>
             <CardSpotlight className="p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <Code className="w-5 h-5 text-go" weight="fill" />
-                <div>
-                  <h3 className="font-display font-bold">API Documentation</h3>
-                  <p className="text-xs text-ink-tertiary">Endpoints and usage examples</p>
-                </div>
+              <div className="border-b border-seam pb-3 mb-4">
+                <h3 className="font-display text-[13px] font-semibold text-ink">API Documentation</h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">Endpoints and usage examples</p>
               </div>
 
               <div className="space-y-4">
@@ -1067,12 +1047,9 @@ function APIPlaygroundSection() {
   return (
     <motion.div variants={itemVariants}>
       <CardSpotlight className="p-6">
-        <div className="flex items-start gap-3 mb-4">
-          <Play className="w-5 h-5 text-go" weight="fill" />
-          <div>
-            <h3 className="font-display font-bold">API Playground</h3>
-            <p className="text-xs text-ink-tertiary">Test AI agents with an API key or your JWT session</p>
-          </div>
+        <div className="border-b border-seam pb-3 mb-4">
+          <h3 className="font-display text-[13px] font-semibold text-ink">API Playground</h3>
+          <p className="text-xs text-ink-tertiary mt-0.5">Test AI agents with an API key or your JWT session</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
