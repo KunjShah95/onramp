@@ -389,17 +389,22 @@ async def handle_github_callback(code: str, state: str) -> dict:
         if not link_uid:
             raise ValueError("Invalid link request — missing account reference.")
         user = await link_github_identity(link_uid, github_id, github_username, email)
-        from app.api.v1.auth import _generate_jwt
+        from app.api.v1.auth import _issue_tokens
 
-        token = _generate_jwt(
-            user["uid"], user["email"], user["name"], user.get("provider", "password")
+        tokens = await _issue_tokens(
+            user["uid"],
+            user["email"],
+            user["name"],
+            user.get("provider", "password"),
+            remember_me=True,
         )
         return {
             "uid": user["uid"],
             "email": user["email"],
             "name": user["name"],
             "provider": user.get("provider", "password"),
-            "token": token,
+            "token": tokens["token"],
+            "refresh_token": tokens.get("refresh_token"),
         }
 
     return await _find_or_create_oauth_user(
@@ -488,10 +493,8 @@ async def _find_or_create_oauth_user(
     """Find existing user by email or create a new one for OAuth login.
 
     Uses the ORM User model directly (consistent with login() path).
-    Returns a dict with 'uid', 'email', 'name', 'provider', 'token'.
+    Returns a dict with 'uid', 'email', 'name', 'provider', 'token', 'refresh_token'.
     """
-    from app.api.v1.auth import _generate_jwt
-
     await db_config.ensure_engine()
     factory = db_config.get_session_factory()
     created_new_user = False
@@ -574,11 +577,17 @@ async def _find_or_create_oauth_user(
                 "Failed to auto-create personal team for OAuth user %s", uid
             )
 
-    token = _generate_jwt(uid, raw_email, raw_name, provider)
+    # OAuth sessions persist like "remember me" password sessions — issue a
+    # rotating refresh token so the client can silently extend the session
+    # beyond the short-lived access window instead of re-prompting consent.
+    from app.api.v1.auth import _issue_tokens
+
+    tokens = await _issue_tokens(uid, raw_email, raw_name, provider, remember_me=True)
     return {
         "uid": uid,
         "email": raw_email,
         "name": raw_name,
         "provider": provider,
-        "token": token,
+        "token": tokens["token"],
+        "refresh_token": tokens.get("refresh_token"),
     }

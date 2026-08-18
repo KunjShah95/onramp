@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { fetchRepos, getGithubLinkUrl } from '../lib/api'
+import { fetchRepos, getGithubLinkUrl, unlinkGithubAccount } from '../lib/api'
 import ConsolePanel from '../components/ui/console-panel'
-import { ArrowRight, ArrowUpRight, GithubLogo, SignOut } from '@phosphor-icons/react'
+import { ArrowRight, ArrowUpRight, GithubLogo, SignOut, LinkBreak } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 
 const fadeUp = {
@@ -14,7 +14,7 @@ const fadeUp = {
 }
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -79,6 +79,21 @@ export default function Profile() {
     }
   }
 
+  const unlinkGithub = async () => {
+    try {
+      await unlinkGithubAccount()
+      // Reflect the detach locally so the rail switches back to "Connect GitHub"
+      // without a full page reload.
+      updateUser({ githubUsername: undefined })
+      toast.success('GitHub unlinked', 'Your GitHub identity was detached from this account.')
+    } catch (err) {
+      toast.error(
+        'Unlink failed',
+        err instanceof Error ? err.message : 'Could not unlink your GitHub account.'
+      )
+    }
+  }
+
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
@@ -119,14 +134,31 @@ export default function Profile() {
               <div className="font-mono tabular-nums text-3xl md:text-4xl font-semibold text-ink leading-none">
                 {repoCount ?? '—'}
               </div>
-              <button
-                onClick={connectGithub}
-                className="mt-3 inline-flex items-center gap-1.5 text-caption text-go hover:underline"
-              >
-                <GithubLogo size={12} weight="fill" />
-                {user?.githubUsername ? `Linked as @${user.githubUsername}` : 'Connect GitHub'}
-                <ArrowUpRight size={11} weight="bold" />
-              </button>
+              {user?.githubUsername ? (
+                <div className="mt-3 flex items-center gap-3 text-caption">
+                  <span className="inline-flex items-center gap-1.5 text-go">
+                    <GithubLogo size={12} weight="fill" />
+                    Linked as @{user.githubUsername}
+                  </span>
+                  <button
+                    onClick={unlinkGithub}
+                    className="inline-flex items-center gap-1 text-ink-tertiary hover:text-abort transition-colors"
+                    aria-label="Unlink GitHub account"
+                  >
+                    <LinkBreak size={12} weight="bold" />
+                    Unlink
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={connectGithub}
+                  className="mt-3 inline-flex items-center gap-1.5 text-caption text-go hover:underline"
+                >
+                  <GithubLogo size={12} weight="fill" />
+                  Connect GitHub
+                  <ArrowUpRight size={11} weight="bold" />
+                </button>
+              )}
             </ConsolePanel>
 
             <ConsolePanel rail="Member since" designator="Active">

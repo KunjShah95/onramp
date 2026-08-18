@@ -230,7 +230,8 @@ async def update_user_profile(uid: str, data: dict) -> dict | None:
     if "github_username" in data:
         update["github_username"] = _clean_github_username(data["github_username"])
     if "github_id" in data:
-        update["github_id"] = data["github_id"].strip() or None
+        raw_id = data["github_id"]
+        update["github_id"] = raw_id.strip() if raw_id is not None else None
 
     if not update:
         return _normalize(record)

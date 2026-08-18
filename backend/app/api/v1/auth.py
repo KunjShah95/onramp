@@ -363,6 +363,24 @@ async def github_callback(code: str, state: str):
         return _oauth_redirect(error=str(e))
 
 
+@router.post("/oauth/github/unlink")
+async def github_unlink(user: dict = Depends(get_current_user)):
+    """Detach a linked GitHub identity from the authenticated account.
+
+    Clears ``github_username`` / ``github_id`` so the account falls back to
+    email/password login and PR↔issue auto-matching stops keying on this
+    identity. Everything else — email, provider, teams, roles, profile
+    fields — is untouched. Requires a valid session (same as link).
+    """
+    uid = user.get("uid", "")
+    updated = await update_user_profile(
+        uid, {"github_username": None, "github_id": None}
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return updated
+
+
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest):
     """Register a new user with email/password."""

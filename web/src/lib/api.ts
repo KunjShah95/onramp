@@ -3889,6 +3889,16 @@ export async function getGithubLinkUrl(): Promise<{ url: string }> {
   return request<{ url: string }>(`${API_BASE}/auth/oauth/github/link`, {})
 }
 
+/**
+ * Detach the linked GitHub identity from the current account. Clears
+ * github_username / github_id server-side; email, provider, teams, and all
+ * other profile data are untouched. The account falls back to
+ * email/password login.
+ */
+export async function unlinkGithubAccount(): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`${API_BASE}/auth/oauth/github/unlink`, {}, 'POST')
+}
+
 // ── SSO / SAML ──────────────────────────────────────────────────────────────
 
 export interface SsoProvider {
