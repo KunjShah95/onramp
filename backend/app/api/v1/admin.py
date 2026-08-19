@@ -24,18 +24,21 @@ from app.services import platform_provider_keys
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-ROLE_HIERARCHY = {"admin": 3, "senior": 2, "member": 1}
-
-
 async def _require_owner(user: dict = Depends(get_current_user)) -> str:
     """Require the user to be an owner of at least one team."""
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
-    is_admin = any(t.get("role") == "admin" for t in teams)
+    # Check for admin, ceo, or cto — all have full admin privileges.
+    # Use hierarchy comparison: any role >= admin (level 6) qualifies.
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    is_admin = any(
+        ROLE_HIERARCHY.get(t.get("role", ""), 0) >= ROLE_HIERARCHY["admin"]
+        for t in teams
+    )
     if not is_admin:
         raise HTTPException(
             status_code=403,
-            detail="Admin access requires the 'admin' role in at least one team",
+            detail="Admin access requires the 'admin' role (or higher) in at least one team",
         )
     return uid
 
