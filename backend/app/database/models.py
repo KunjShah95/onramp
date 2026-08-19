@@ -192,7 +192,7 @@ class TeamMember(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "team_id", name="uq_team_members_user_team"),
         CheckConstraint(
-            "role IN ('admin', 'ceo', 'cto', 'senior_dev', 'developer', 'tester', 'junior_dev', 'member', 'hr')",
+            "role IN ('admin', 'ceo', 'cto', 'senior_dev', 'senior', 'developer', 'tester', 'junior_dev', 'member', 'hr')",
             name="ck_team_members_role"
         ),
         Index("ix_team_members_user_id", "user_id"),
