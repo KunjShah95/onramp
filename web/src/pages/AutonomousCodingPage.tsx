@@ -9,6 +9,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Robot, GithubLogo, GitBranch, GitPullRequest, FileCode, Play,
@@ -17,7 +18,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
-import { resolveRepoIssue, type ResolveIssueResult } from '../lib/api'
+import { resolveRepoIssue, submitTask, type ResolveIssueResult } from '../lib/api'
 import CodeEditor from '../components/ui/monaco-editor'
 
 type StageState = 'pending' | 'active' | 'done' | 'failed'
@@ -36,7 +37,12 @@ function shortRepo(url: string) {
 }
 
 export default function AutonomousCodingPage() {
-  const [repoUrl, setRepoUrl] = useState('')
+  const [searchParams] = useSearchParams()
+  // Pre-fill from task assignment: /autonomous?repo=<url>&task_id=<id>
+  const linkedTaskId = searchParams.get('task_id') ?? ''
+  const paramRepo = searchParams.get('repo') ?? ''
+
+  const [repoUrl, setRepoUrl] = useState(paramRepo)
   const [baseBranch, setBaseBranch] = useState('main')
   const [issue, setIssue] = useState('')
   const [running, setRunning] = useState(false)
@@ -46,9 +52,15 @@ export default function AutonomousCodingPage() {
   const [panel, setPanel] = useState<'explorer' | 'runs'>('explorer')
   const [termOpen, setTermOpen] = useState(true)
   const [runs, setRuns] = useState<RunRecord[]>([])
+  const [taskSubmitted, setTaskSubmitted] = useState(false)
 
   const toast = useToast()
   const stageTimer = useRef<number | undefined>(undefined)
+
+  // Sync repo URL if the query param changes (navigation)
+  useEffect(() => {
+    if (paramRepo) setRepoUrl(paramRepo)
+  }, [paramRepo])
 
   useEffect(() => () => { if (stageTimer.current) window.clearInterval(stageTimer.current) }, [])
 
@@ -83,8 +95,21 @@ export default function AutonomousCodingPage() {
       setResult(res)
       setRuns((r) => [{ id: crypto.randomUUID(), repo: shortRepo(url), issue, result: res, at: Date.now() }, ...r].slice(0, 12))
 
-      if (success) toast.success('Issue resolved', `Fixes applied to ${shortRepo(url)}`)
-      else toast.error('Agent run failed', res.error || 'Could not resolve the issue.')
+      if (success) {
+        toast.success('Issue resolved', `Fixes applied to ${shortRepo(url)}`)
+        // Auto-submit the linked task with the PR URL the agent opened
+        if (linkedTaskId && res.pr_url && !taskSubmitted) {
+          try {
+            await submitTask(linkedTaskId, res.pr_url)
+            setTaskSubmitted(true)
+            toast.success('Task submitted', 'PR submitted for senior review automatically.')
+          } catch {
+            toast.error('Task submit failed', 'PR created but could not auto-submit the task — submit manually from your dashboard.')
+          }
+        }
+      } else {
+        toast.error('Agent run failed', res.error || 'Could not resolve the issue.')
+      }
     } catch (err: any) {
       if (stageTimer.current) window.clearInterval(stageTimer.current)
       setStage(-2)
@@ -141,6 +166,17 @@ export default function AutonomousCodingPage() {
 
           {panel === 'explorer' ? (
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {/* Linked task banner */}
+              {linkedTaskId && (
+                <div className={cn(
+                  'px-2.5 py-2 rounded-tile border text-caption font-code',
+                  taskSubmitted
+                    ? 'bg-go/10 border-go/20 text-go'
+                    : 'bg-mission/10 border-mission/20 text-mission',
+                )}>
+                  {taskSubmitted ? '✓ Task submitted for review' : '⬡ Linked task — PR auto-submits on success'}
+                </div>
+              )}
               {/* Workspace config */}
               <div className="space-y-2">
                 <span className="overline text-ink-muted/70">Workspace</span>

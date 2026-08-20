@@ -807,6 +807,8 @@ export interface RepoItem {
   owner: string
   status: 'analyzing' | 'ready' | 'error'
   last_analyzed: string
+  url?: string
+  description?: string
 }
 
 export interface ReposResponse {
@@ -930,6 +932,32 @@ export interface RepoSectionsResponse {
 
 export async function fetchRepos(): Promise<ReposResponse> {
   return get<ReposResponse>(`${API_BASE}/repos`)
+}
+
+export async function fetchReposByTeam(teamId: string): Promise<ReposResponse> {
+  return get<ReposResponse>(`${API_BASE}/repos?team_id=${encodeURIComponent(teamId)}`)
+}
+
+export async function registerRepo(data: {
+  name: string
+  owner: string
+  url?: string
+  team_id?: string
+  description?: string
+}): Promise<RepoItem> {
+  const params = new URLSearchParams({ name: data.name, owner: data.owner })
+  if (data.url) params.set('url', data.url)
+  if (data.team_id) params.set('team_id', data.team_id)
+  if (data.description) params.set('description', data.description)
+  const res = await fetch(`${API_BASE}/repos?${params}`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to register repo (${res.status})`)
+  }
+  return res.json()
 }
 
 export interface TraineeDashboardProgress {
@@ -3068,6 +3096,30 @@ export async function completeTask(taskId: string): Promise<WorkflowTask> {
 
 export async function cancelTask(taskId: string): Promise<WorkflowTask> {
   return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/cancel`, {})
+}
+
+export async function raisePR(taskId: string, data: {
+  head: string
+  base?: string
+  title: string
+  body?: string
+}): Promise<WorkflowTask & { pr_url: string; pr_number: number }> {
+  return request(`${API_BASE}/tasks/${taskId}/raise-pr`, {
+    head: data.head,
+    base: data.base ?? 'main',
+    title: data.title,
+    body: data.body ?? '',
+  })
+}
+
+export async function mergePR(taskId: string, data?: {
+  merge_method?: 'merge' | 'squash' | 'rebase'
+  commit_title?: string
+}): Promise<WorkflowTask & { merged: boolean; merge_sha: string }> {
+  return request(`${API_BASE}/tasks/${taskId}/merge`, {
+    merge_method: data?.merge_method ?? 'squash',
+    commit_title: data?.commit_title ?? '',
+  })
 }
 
 export async function deleteTask(taskId: string): Promise<void> {

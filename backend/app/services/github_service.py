@@ -697,6 +697,44 @@ class GitHubService:
             logger.exception("Failed to create PR %s/%s %s->%s", owner, repo, head, base)
             return None
 
+    async def merge_pr(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        commit_title: str = "",
+        merge_method: str = "squash",
+    ) -> Optional[dict]:
+        """Merge a GitHub pull request.
+
+        Args:
+            owner: Repo owner
+            repo: Repo name
+            pr_number: PR number to merge
+            commit_title: Optional merge commit title (defaults to GitHub's auto title)
+            merge_method: "merge" | "squash" | "rebase" (default "squash")
+
+        Returns:
+            dict with ``merged``, ``sha``, ``message`` on success; None on failure.
+        """
+        try:
+            payload: dict = {"merge_method": merge_method}
+            if commit_title:
+                payload["commit_title"] = commit_title
+            data = await self._gh_request(
+                "PUT",
+                f"/repos/{owner}/{repo}/pulls/{pr_number}/merge",
+                payload,
+            )
+            return {
+                "merged": data.get("merged", True),
+                "sha": data.get("sha", ""),
+                "message": data.get("message", "Pull request merged"),
+            }
+        except Exception:
+            logger.exception("Failed to merge PR %s/%s #%d", owner, repo, pr_number)
+            return None
+
     # ── Issue / PR labeling (role-based auto-labels) ────────────────────
 
     async def ensure_labels(self, owner: str, repo: str, labels: Dict[str, str]) -> Dict[str, List[str]]:
