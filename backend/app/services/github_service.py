@@ -1087,7 +1087,9 @@ class GitHubService:
                 return ""
             owner, repo = parts[-2], parts[-1]
 
-            cache_key = f"{owner}/{repo}:{pr_number}:{self.github_token}"
+            import hashlib as _hashlib
+            _tok_hash = _hashlib.sha256((self.github_token or "").encode()).hexdigest()[:12]
+            cache_key = f"{owner}/{repo}:{pr_number}:{_tok_hash}"
             if cache_key in _diffs_cache:
                 return _diffs_cache[cache_key]
 

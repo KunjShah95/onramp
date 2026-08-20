@@ -10,8 +10,10 @@ All functions are read-only — they only query storage via
 ISO strings or native datetimes are both handled.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
+from app.services.field_encryption import decrypt_field
 from typing import Any, Optional
 
 from app.services.postgres_db import get_storage
@@ -71,27 +73,42 @@ async def _team_tasks(storage, team_id: str) -> list[dict]:
         return []
 
 
-async def _user_name(storage, user_id: str) -> str:
-    """Best-effort human name for a user id, falling back to email/id."""
+async def _user_names(storage, user_ids: list) -> dict[str, str]:
+    """Best-effort human names for a batch of user ids, in one query.
+
+    Returns {user_id: name}. Falls back to email, then the id itself.
+    """
+    ids = [uid for uid in dict.fromkeys(user_ids) if uid]
+    if not ids:
+        return {}
     try:
-        rows = await storage.query_documents("users", [("id", "==", user_id)])
-        if rows:
-            return rows[0].get("name") or rows[0].get("email") or user_id
+        rows = await storage.query_documents("users", [("id", "in", ids)])
     except Exception:
-        logger.exception("Failed to load user %s", user_id)
-    return user_id
+        logger.exception("Failed to load %d users", len(ids))
+        return {}
+    names: dict[str, str] = {}
+    for r in rows:
+        rid = r.get("id")
+        if not rid:
+            continue
+        raw_name = r.get("name") or r.get("email") or rid
+        names[rid] = decrypt_field(raw_name) if raw_name != rid else rid
+    return names
 
 
-async def _streak(storage, user_id: str) -> Optional[dict]:
-    """Return the streak row for a user, or None."""
+async def _streaks(storage, user_ids: list) -> dict[str, dict]:
+    """Fetch the streak rows for a batch of users, in one query."""
+    ids = [uid for uid in dict.fromkeys(user_ids) if uid]
+    if not ids:
+        return {}
     try:
         rows = await storage.query_documents(
-            "onramp_gamification_streaks", [("user_id", "==", user_id)]
+            "onramp_gamification_streaks", [("user_id", "in", ids)]
         )
-        return rows[0] if rows else None
     except Exception:
-        logger.exception("Failed to load streak for user %s", user_id)
-        return None
+        logger.exception("Failed to load streaks for %d users", len(ids))
+        return {}
+    return {r.get("user_id"): r for r in rows if r.get("user_id")}
 
 
 async def ramp_time(team_id: str) -> dict:
@@ -121,6 +138,7 @@ async def ramp_time(team_id: str) -> dict:
 
     per_member = []
     ramp_days_values: list[float] = []
+    names = await _user_names(storage, [m.get("user_id") for m in members])
     for m in members:
         uid = m.get("user_id")
         joined = _parse_dt(m.get("joined_at"))
@@ -131,7 +149,7 @@ async def ramp_time(team_id: str) -> dict:
             ramp_days_values.append(days)
         per_member.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": names.get(uid, uid),
             "ramp_days": days,
         })
 
@@ -159,6 +177,7 @@ async def onboarding_completion(team_id: str) -> dict:
             completed[uid] = completed.get(uid, 0) + 1
 
     per_member = []
+    names = await _user_names(storage, [m.get("user_id") for m in members])
     for m in members:
         uid = m.get("user_id")
         n_assigned = assigned.get(uid, 0)
@@ -166,7 +185,7 @@ async def onboarding_completion(team_id: str) -> dict:
         pct = round((n_completed / n_assigned) * 100, 1) if n_assigned else 0.0
         per_member.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": names.get(uid, uid),
             "assigned": n_assigned,
             "completed": n_completed,
             "completion_pct": pct,
@@ -181,16 +200,19 @@ async def engagement(team_id: str) -> dict:
 
     per_member = []
     active_count = 0
+    member_ids = [m.get("user_id") for m in members]
+    names = await _user_names(storage, member_ids)
+    streaks = await _streaks(storage, member_ids)
     for m in members:
         uid = m.get("user_id")
-        streak = await _streak(storage, uid)
+        streak = streaks.get(uid)
         current = int(streak.get("current_streak", 0)) if streak else 0
         longest = int(streak.get("longest_streak", 0)) if streak else 0
         if current > 0:
             active_count += 1
         per_member.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": names.get(uid, uid),
             "current_streak": current,
             "longest_streak": longest,
         })
@@ -235,6 +257,9 @@ async def attrition_risk(team_id: str) -> dict:
             }
 
     at_risk = []
+    member_ids = [m.get("user_id") for m in members]
+    names = await _user_names(storage, member_ids)
+    streaks = await _streaks(storage, member_ids)
     for m in members:
         uid = m.get("user_id")
         reasons = []
@@ -244,7 +269,7 @@ async def attrition_risk(team_id: str) -> dict:
                 f"stalled task '{stalled_task['title']}' in state "
                 f"'{stalled_task['state']}' for {stalled_task['age_days']}d"
             )
-        streak = await _streak(storage, uid)
+        streak = streaks.get(uid)
         current = int(streak.get("current_streak", 0)) if streak else 0
         longest = int(streak.get("longest_streak", 0)) if streak else 0
         if streak is not None and current == 0 and longest > 0:
@@ -252,7 +277,7 @@ async def attrition_risk(team_id: str) -> dict:
         if reasons:
             at_risk.append({
                 "user_id": uid,
-                "name": await _user_name(storage, uid),
+                "name": names.get(uid, uid),
                 "reasons": reasons,
                 "stalled_task": stalled_task,
             })
@@ -272,9 +297,12 @@ async def activity_heatmap(team_id: str) -> dict:
     start = now - timedelta(days=84)  # 12 weeks
 
     heatmap: dict[str, list[dict]] = {}
+    member_ids = [m.get("user_id") for m in members]
+    names = await _user_names(storage, member_ids)
+    streaks = await _streaks(storage, member_ids)
     for m in members:
         uid = m.get("user_id")
-        name = await _user_name(storage, uid)
+        name = names.get(uid, uid)
         days: dict[str, dict] = {}
 
         cur = start
@@ -292,7 +320,7 @@ async def activity_heatmap(team_id: str) -> dict:
                 if key in days:
                     days[key]["tasks"] += 1
 
-        streak = await _streak(storage, uid)
+        streak = streaks.get(uid)
         if streak:
             last_active = _parse_date(streak.get("last_active_date"))
             if last_active and last_active >= start:
@@ -312,10 +340,12 @@ async def activity_heatmap(team_id: str) -> dict:
 
 async def developer_onboarding(team_id: str) -> dict:
     """Per-developer onboarding overview: stage, progress, ramp, risk."""
-    ramp = await ramp_time(team_id)
-    completion = await onboarding_completion(team_id)
-    engage = await engagement(team_id)
-    risk = await attrition_risk(team_id)
+    ramp, completion, engage, risk = await asyncio.gather(
+        ramp_time(team_id),
+        onboarding_completion(team_id),
+        engagement(team_id),
+        attrition_risk(team_id),
+    )
     at_risk_ids = {m["user_id"] for m in risk.get("at_risk", [])}
 
     devs = []
@@ -352,10 +382,12 @@ async def developer_onboarding(team_id: str) -> dict:
 
 async def cohort_summary(team_id: str) -> dict:
     """Roll the individual metrics into a single cohort dict for a team."""
-    ramp = await ramp_time(team_id)
-    completion = await onboarding_completion(team_id)
-    engage = await engagement(team_id)
-    risk = await attrition_risk(team_id)
+    ramp, completion, engage, risk = await asyncio.gather(
+        ramp_time(team_id),
+        onboarding_completion(team_id),
+        engagement(team_id),
+        attrition_risk(team_id),
+    )
     return {
         "team_id": team_id,
         "member_count": len(completion["members"]),
@@ -691,13 +723,14 @@ async def onboarding_timeline(team_id: str) -> dict:
         by_user[uid].extend({"task_id": t.get("task_id"), "module": t.get("module", ""), "state": state, **ms} for ms in milestones)
 
     lanes = []
+    names = await _user_names(storage, [m.get("user_id") for m in members])
     for m in members:
         uid = m.get("user_id")
         ms = by_user.get(uid, [])
         ms.sort(key=lambda x: x.get("at", ""))
         lanes.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": names.get(uid, uid),
             "role": m.get("role", ""),
             "joined_at": m.get("joined_at"),
             "milestone_count": len(ms),
@@ -743,11 +776,12 @@ async def review_analytics(team_id: str) -> dict:
             pending += 1
 
     total = len(tasks)
+    reviewer_names = await _user_names(storage, list(reviewer_load.keys()))
     top_reviewers = []
     for uid, count in sorted(reviewer_load.items(), key=lambda kv: -kv[1]):
         top_reviewers.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": reviewer_names.get(uid, uid),
             "reviews": count,
         })
 
@@ -806,6 +840,7 @@ async def mentor_matching(team_id: str, new_dev_id: str, limit: int = 5) -> dict
         new_dev_langs = set(team_langs)  # planned stack = team's stack
 
     senior_roles = {"admin", "ceo", "cto", "senior_dev"}
+    names = await _user_names(storage, [m.get("user_id") for m in members])
     scored = []
     for m in members:
         uid = m.get("user_id")
@@ -816,7 +851,7 @@ async def mentor_matching(team_id: str, new_dev_id: str, limit: int = 5) -> dict
         score = len(shared) * 2 if new_dev_langs else 1
         scored.append({
             "user_id": uid,
-            "name": await _user_name(storage, uid),
+            "name": names.get(uid, uid),
             "role": m.get("role"),
             "score": score,
             "shared_languages": sorted(shared),

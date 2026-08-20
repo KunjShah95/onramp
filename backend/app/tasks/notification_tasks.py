@@ -1,4 +1,4 @@
-"""
+﻿"""
 Notification Tasks — Multi-channel notification delivery.
 
 Routed to the 'notification-tasks' queue. Each task is fire-and-forget:
@@ -16,6 +16,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 from celery import shared_task
+from app.services.field_encryption import decrypt_field
 
 logger = logging.getLogger("onramp.tasks.notification")
 
@@ -43,6 +44,7 @@ def send_email(
     async def _run() -> bool:
         return await _send(to, subject, html_body, from_email)
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -53,7 +55,8 @@ def send_email(
         logger.exception("Email task failed for %s", to)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Task Event Notifications (All Channels) ──────────────────────────────────
@@ -105,6 +108,7 @@ def notify_task_assigned(
         if errors:
             logger.warning("Task assigned notification had partial failures: %s", "; ".join(errors))
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -114,7 +118,8 @@ def notify_task_assigned(
         logger.exception("Task assigned notification failed for %s", assignee_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -163,6 +168,7 @@ def notify_task_submitted(
         if errors:
             logger.warning("Task submitted notification had partial failures: %s", "; ".join(errors))
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -172,7 +178,8 @@ def notify_task_submitted(
         logger.exception("Task submitted notification failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -225,6 +232,7 @@ def notify_task_reviewed(
         if errors:
             logger.warning("Task reviewed notification had partial failures: %s", "; ".join(errors))
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -234,7 +242,8 @@ def notify_task_reviewed(
         logger.exception("Task reviewed notification failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Digest ───────────────────────────────────────────────────────────────────
@@ -265,6 +274,7 @@ def send_user_digest(
             team_id=team_id,
         )
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -279,7 +289,8 @@ def send_user_digest(
         logger.exception("Digest generation failed for user %s", user_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -303,7 +314,7 @@ def send_all_digests(self, period: str = "daily") -> dict:
         for user in users:
             uid = user.get("id")
             email = user.get("email")
-            name = user.get("name") or user.get("display_name") or uid[:8]
+            name = decrypt_field(user.get("name") or user.get("display_name") or uid[:8])
             if not uid or not email:
                 continue
 
@@ -326,6 +337,7 @@ def send_all_digests(self, period: str = "daily") -> dict:
             "users_skipped": skipped_count,
         }
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -334,7 +346,8 @@ def send_all_digests(self, period: str = "daily") -> dict:
         logger.exception("Bulk digest send failed for period %s", period)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Slack Standup Reminders ────────────────────────────────────────────────
@@ -416,6 +429,7 @@ def send_standup_reminders(self) -> dict:
 
         return {"sent": sent, "skipped": skipped}
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -424,7 +438,8 @@ def send_standup_reminders(self) -> dict:
         logger.exception("Standup reminder batch failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Stale Task Alerts ─────────────────────────────────────────────────────
@@ -519,6 +534,7 @@ def check_stale_tasks(self) -> dict:
     """Celery wrapper for the stale-task sweep (see sweep_stale_tasks)."""
     import asyncio
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -527,7 +543,8 @@ def check_stale_tasks(self) -> dict:
         logger.exception("Stale task sweep failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Stuck-Dev Sweep (Ramp wedge) ──────────────────────────────────────────
@@ -582,6 +599,7 @@ def check_stuck_devs(self) -> dict:
     """Celery wrapper for the stuck-dev sweep (see sweep_stuck_devs)."""
     import asyncio
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -590,7 +608,8 @@ def check_stuck_devs(self) -> dict:
         logger.exception("Stuck-dev sweep failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Team Digest (Slack) ────────────────────────────────────────────────────
@@ -611,6 +630,7 @@ def send_team_digest_to_slack(self, team_id: str, team_name: str) -> dict:
         success = await bot.post_daily_digest(team_id, team_name)
         return {"team_id": team_id, "sent": success}
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -619,7 +639,8 @@ def send_team_digest_to_slack(self, team_id: str, team_name: str) -> dict:
         logger.exception("Team digest Slack post failed for team %s", team_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

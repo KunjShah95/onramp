@@ -5,7 +5,7 @@ import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
 import { CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+import { API_BASE } from '../lib/api'
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams()
@@ -22,9 +22,11 @@ export default function VerifyEmail() {
 
     const verify = async () => {
       try {
-        const res = await fetch(
-          `${API_BASE}/auth/verify-email?token=${encodeURIComponent(token)}`
-        )
+        const res = await fetch(`${API_BASE}/auth/verify-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
         const data = await res.json()
         if (!res.ok) {
           throw new Error(data.detail || data.message || 'Verification failed')

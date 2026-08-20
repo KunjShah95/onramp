@@ -44,7 +44,7 @@ export default function ExplorePage() {
 
   async function handleAnalyze() {
     if (!repoUrl.trim()) return
-    setLoading(true); setError(''); setSearchQuery(''); setSelectedNode(null); setDrillNodeId(null)
+    setLoading(true); setError(''); setSearchQuery(''); setSelectedNode(null); setDrillNodeId(null); setActiveGroups(null)
     try {
       const data = await analyzeArchitecture(repoUrl)
       setResult(data)

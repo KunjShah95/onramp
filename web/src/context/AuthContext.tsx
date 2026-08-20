@@ -175,9 +175,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [syncRoleFromTeams])
 
-  // Auto-refresh token periodically (every 4 hours) if user is signed in
+  // Auto-refresh token periodically (every 4 hours) if user is signed in.
+  // Depend on uid (not the full user object) so updateUser() patch calls
+  // don't reset the interval — only login/logout should restart it.
+  const userId = state.user?.id ?? null
   useEffect(() => {
-    if (!state.user) return
+    if (!userId) return
     const interval = setInterval(async () => {
       try {
         const resp = await refreshToken()
@@ -188,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 4 * 60 * 60 * 1000) // 4 hours
     return () => clearInterval(interval)
-  }, [state.user])
+  }, [userId])
 
   const register = useCallback(
     async (email: string, password: string, name: string) => {

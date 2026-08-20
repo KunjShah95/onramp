@@ -7,7 +7,7 @@
  *   Progress reads as a mission timeline (unlocked modules = cleared stages).
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
@@ -37,21 +37,26 @@ export default function TraineeDashboard() {
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
 
   const { activeTeamId } = useAuth()
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   async function fetchDashboard() {
     if (!activeTeamId) {
-      setLoading(false)
-      setError('Join a team to view your onboarding progress.')
+      if (mountedRef.current) { setLoading(false); setError('Join a team to view your onboarding progress.') }
       return
     }
-    setLoading(true); setError('')
+    if (mountedRef.current) { setLoading(true); setError('') }
     try {
       const res = await fetchTraineeDashboard(activeTeamId)
-      setData(res)
+      if (mountedRef.current) setData(res)
     } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard.')
+      if (mountedRef.current) setError(err.message || 'Failed to load dashboard.')
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }
 

@@ -24,12 +24,11 @@ test.describe('Review Queue', () => {
 
     // Navigate to review queue — cascading API calls: listTeams → setTeamId → listTasks
     await page.goto('/reviews')
-    await page.waitForSelector('text=Triage by state', { timeout: 30_000 })
+    await page.waitForSelector('text=Review Queue', { timeout: 30_000 })
   })
 
   test('renders review queue page with header', async ({ page }) => {
-    await expect(page.getByText('Triage by state. Act by row.').first()).toBeVisible()
-    await expect(page.getByText(/pending prs in one place/i)).toBeVisible()
+    await expect(page.getByText(/pending prs in one place/i).first()).toBeVisible()
   })
 
   test('displays task list with review-eligible items', async ({ page }) => {
@@ -56,8 +55,8 @@ test.describe('Review Queue', () => {
 
   test('shows quick stats', async ({ page }) => {
     await expect(page.getByText('Pending').first()).toBeVisible()
-    await expect(page.getByText('In Review').first()).toBeVisible()
     await expect(page.getByText('Approved').first()).toBeVisible()
+    await expect(page.getByText('Changes').first()).toBeVisible()
   })
 
   test('status labels show correct state', async ({ page }) => {

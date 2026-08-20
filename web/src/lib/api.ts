@@ -1347,21 +1347,29 @@ export async function removeTeamMember(
   teamId: string,
   user: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to remove member (${res.status})`)
+  }
 }
 
 export async function changeTeamTier(
   teamId: string,
   tier: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/teams/${teamId}/tier`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/tier`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ tier }),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to change tier (${res.status})`)
+  }
 }
 
 // ─── Playbooks ────────────────────────────────────────────────────────────
@@ -1420,10 +1428,14 @@ export async function updatePlaybook(
 export async function archivePlaybook(
   playbookId: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/playbooks/${playbookId}`, {
+  const res = await fetch(`${API_BASE}/playbooks/${playbookId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to archive playbook (${res.status})`)
+  }
 }
 
 // ─── Billing ──────────────────────────────────────────────────────────────
@@ -1472,10 +1484,14 @@ export async function updateSubscription(
 }
 
 export async function cancelSubscription(teamId: string): Promise<void> {
-  await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
+  const res = await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to cancel subscription (${res.status})`)
+  }
 }
 
 export async function attachRazorpay(
@@ -1591,10 +1607,14 @@ export async function listApiKeys(
 }
 
 export async function revokeApiKey(keyId: string): Promise<void> {
-  await fetch(`${API_BASE}/ai/keys/${keyId}`, {
+  const res = await fetch(`${API_BASE}/ai/keys/${keyId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to revoke API key (${res.status})`)
+  }
 }
 
 export async function validateApiKey(
@@ -1647,10 +1667,14 @@ export async function deleteProviderKey(
   orgName: string,
   provider: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
+  const res = await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to delete provider key (${res.status})`)
+  }
 }
 
 /**
@@ -1677,10 +1701,14 @@ export async function removeProviderKey(
   provider: string,
   keyId: string
 ): Promise<void> {
-  await fetch(
+  const res = await fetch(
     `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys/${keyId}`,
     { method: 'DELETE', headers: authHeaders() }
   )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to remove provider key (${res.status})`)
+  }
 }
 
 // ─── Model Catalog (dynamic OpenRouter fetch) ─────────────────────────────

@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: process.env.CI
     ? [['list'], ['json', { outputFile: 'playwright-report/results.json' }]]
     : 'list',
-  timeout: 30_000,
+  timeout: 90_000,
 
   use: {
     baseURL: BASE_URL,

@@ -89,7 +89,7 @@ test.describe('Login Flow — End-to-End Auth', () => {
 
     // Should redirect to dashboard — page title is "Mission Control"
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
   })
 
   test('login page redirects to dashboard when already authenticated', async ({ page }) => {

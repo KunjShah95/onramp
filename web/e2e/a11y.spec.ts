@@ -26,10 +26,30 @@ async function settleAnimations(page: any) {
   await page.waitForTimeout(50)
 }
 
+// Lazy routes render a skeleton while their chunk loads, and
+// waitForLoadState('networkidle') can resolve mid-load. Wait for the skeleton
+// to appear, then for it to disappear, so scans see the actual page rather
+// than an empty shell. If the chunk is warm and content renders instantly the
+// skeleton may never be observed as attached — that's fine, we just proceed.
+async function waitForContent(page: any) {
+  // Cold Vite dev servers compile lazy route chunks on demand; under parallel
+  // workers several chunks can compile at once and the skeleton stays up for
+  // several seconds. Give the waits generous headroom so the scan sees the
+  // settled page rather than an empty shell.
+  try {
+    await page.waitForSelector('.animate-skeleton', { state: 'attached', timeout: 15_000 })
+  } catch {
+    // Skeleton never observed: content already rendered (warm chunk).
+  }
+  await page.waitForSelector('.animate-skeleton', { state: 'detached', timeout: 45_000 })
+}
+
 // Helper: run axe and assert no critical or serious violations
 async function assertNoCriticalViolations(page: any, pageName: string) {
+  await waitForContent(page)
   await settleAnimations(page)
-  const results = await new AxeBuilder({ page })
+
+    const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()
 
@@ -170,6 +190,7 @@ test.describe('a11y — Interactive Elements', () => {
   test('navigation links are keyboard accessible', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
+    await waitForContent(page)
 
     // Check that main navigation links are focusable
     const navLinks = page.locator('nav a, nav button, header a')
@@ -208,7 +229,7 @@ test.describe('a11y — Interactive Elements', () => {
   test('color contrast passes for key text elements', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    await settleAnimations(page)
+    await waitForContent(page)
 
     // Run axe with color-contrast check specifically
     const results = await new AxeBuilder({ page })
@@ -252,6 +273,7 @@ test.describe('a11y — Keyboard & Focus', () => {
   test('PageHeader h1 is focusable or has proper heading structure', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
+    await waitForContent(page)
 
     // Check heading hierarchy
     const headings = await page.evaluate(() => {
@@ -363,6 +385,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for landing page', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
+    await waitForContent(page)
     await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })
@@ -401,6 +424,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for login page', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
+    await waitForContent(page)
     await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })
@@ -430,6 +454,7 @@ test.describe('a11y — Full Scan Summary', () => {
   test('generates comprehensive a11y report for register page', async ({ page }) => {
     await page.goto('/register')
     await page.waitForLoadState('networkidle')
+    await waitForContent(page)
     await settleAnimations(page)
 
     const results = await new AxeBuilder({ page })

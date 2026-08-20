@@ -33,6 +33,7 @@ from statistics import pstdev
 from typing import Any, Optional
 
 from app.services.postgres_db import get_storage
+from app.services.field_encryption import decrypt_field
 
 logger = logging.getLogger("onramp.review_ops")
 
@@ -87,7 +88,8 @@ async def _user_name(storage, user_id: str) -> str:
     try:
         rows = await storage.query_documents("users", [("id", "==", user_id)])
         if rows:
-            return rows[0].get("name") or rows[0].get("email") or user_id
+            raw = rows[0].get("name") or rows[0].get("email") or user_id
+            return decrypt_field(raw) if raw != user_id else user_id
     except Exception:
         logger.exception("Failed to load user %s", user_id)
     return user_id

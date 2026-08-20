@@ -468,7 +468,7 @@ export default function DashboardPage() {
                       {pr.pr_url && (
                         <a href={pr.pr_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-caption text-mission hover:text-mission-lit hover:underline">View PR →</a>
                       )}
-                      <span className="text-caption text-ink-muted readout shrink-0">{new Date(pr.created_at).toLocaleDateString()}</span>
+                      <span className="text-caption text-ink-muted readout shrink-0">{pr.created_at ? new Date(pr.created_at).toLocaleDateString() : 'N/A'}</span>
                     </div>
                   </motion.div>
                 ))}

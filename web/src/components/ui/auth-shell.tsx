@@ -47,7 +47,7 @@ export default function AuthShell({
             {children}
           </ConsolePanel>
           {footer && (
-            <div className="mt-6 flex justify-center text-caption text-ink-muted">
+            <div className="mt-6 flex justify-center text-caption text-ink-secondary">
               {footer}
             </div>
           )}

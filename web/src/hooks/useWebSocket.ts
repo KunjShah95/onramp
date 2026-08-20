@@ -165,3 +165,12 @@ export function useWebSocket(): UseWebSocketReturn {
 
   return { connected, subscribe, lastEvent }
 }
+
+// Clear module-level state on Vite HMR hot-replace so stale handler
+// references from old component closures don't accumulate across reloads.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    globalListeners.clear()
+    lastGlobalEvent = null
+  })
+}

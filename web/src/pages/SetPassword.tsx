@@ -8,7 +8,7 @@ import Seo from '../components/seo/Seo'
 import { ArrowRight, Lock } from '@phosphor-icons/react'
 import InputField from '../components/ui/first-principles/InputField'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+import { API_BASE } from '../lib/api'
 
 export default function SetPassword() {
   const [password, setPassword] = useState('')

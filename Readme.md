@@ -2,63 +2,77 @@
 
 **AI-powered developer onboarding & team acceleration platform.**
 
-Onramp helps engineering teams onboard new developers faster, automate code
-reviews, track skill progression, and give leadership visibility into team
-health — all powered by multi-provider AI agents with a free-first model
-router, a token-efficient repo-analysis pipeline, and an end-to-end **Repo
-Autopilot** that turns any GitHub repository into assigned, reviewed work.
+Onramp turns any GitHub repository into a live onboarding program. It analyzes
+a codebase with a multi-provider AI model router, generates learning paths,
+issues, tasks, PRs, and senior reviews automatically, and gives engineering
+leadership real-time visibility into team health — all free-first and
+token-efficient.
 
 [![Backend CI](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml/badge.svg)](https://github.com/KunjShah95/onramp/actions/workflows/frontend.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
 
-## ✨ Features
+## Why Onramp
 
-### 🤖 Repo Autopilot — repo URL → issues → tasks → PRs → review
+New developers typically spend weeks reading docs, guessing at architecture,
+and waiting for reviewers. Onramp replaces that with a system that:
+
+1. **Parses your repo once** into a dependency graph and context index.
+2. **Routes every AI call to the cheapest capable provider** — free tiers
+   first, paid fallbacks only when needed.
+3. **Generates real work** — issues, tasks, learning paths, quizzes, and PRs —
+   from that graph, assigned by role and balanced by workload.
+4. **Closes the loop** — tasks auto-advance on PR open/merge, issues auto-close,
+   and senior reviews land in a review queue.
+
+---
+
+## Features
+
+### Repo Autopilot — repo URL → issues → tasks → PRs → review
 
 The flagship pipeline. Feed it **any GitHub repository** (or a local checkout)
-and it runs the full 9-step loop, then turns the results into real work inside
-Onramp:
+and it runs a full 9-step loop, turning results into real work inside Onramp:
 
-1. **Ingest** — shallow clone (or `git pull` refresh) + **update detection**
-   (reports exactly which files changed since the last run)
+1. **Ingest** — shallow clone (or `git pull` refresh) + update detection that
+   reports exactly which files changed since the last run.
 2. **Graph** — AST parse (`ParserService`, Python `ast` + tree-sitter, 20+
-   languages) + dependency graph (`build_dependency_graph`) →
-   `entities.json` / `graph.json`
+   languages) + dependency graph (`build_dependency_graph`) → `entities.json`
+   / `graph.json`.
 3. **Entity graph** — second-pass relationship extraction: class / function /
    API-route nodes with **calls / inheritance / contains / serves** edges →
-   `relationships.json`
+   `relationships.json`.
 4. **Visualize** — standalone `visualization.html` (D3 force-directed graph
-   with file + entity modes)
+   with file + entity modes).
 5. **Query** — model-routed AI analysis via `LLMRouter` (reasoning →
-   structured), with per-call provider/free attribution recorded
+   structured), with per-call provider/free attribution recorded.
 6. **Issues** — AI-found issues (or real GitHub issues), classified by
    difficulty and **assigned by role**: easy → intern, medium → junior dev,
-   hard → senior dev
+   hard → senior dev.
 7. **Tasks** — each issue becomes a **real Onramp task**, auto-assigned to a
-   team member holding the matching role (see *Load-aware assignment* below)
+   team member holding the matching role (see *Load-aware assignment* below).
 8. **Solve** — `AutonomousCodingAgent` opens one GitHub PR per issue;
-   role-based GitHub labels (`good-first-issue` / `good-second-issue` /
-   `senior-review`) are created and applied automatically
+   role-based labels (`good-first-issue` / `good-second-issue` /
+   `senior-review`) are created and applied automatically.
 9. **Validate + Review** — fetches each PR head, re-parses + re-graphs it,
    graph-diffs against the base (broken edges, new cycles), AI-verifies
    resolution + regressions, retries unresolved issues (bounded), and emits a
    structured `SENIOR_REVIEW.md` per issue (root cause, files affected,
-   changes, validation, risks, tests)
+   changes, validation, risks, tests).
 
-**Load-aware assignment.** Task assignment weights each member's *current
-workload*: the member with the fewest active (non-terminal) tasks gets the
-next issue, with the round-robin cycle as the tie-breaker. An overloaded
-member is skipped until their queue drains. The cycle is seeded from the
-team's task history, so consecutive pipeline runs keep balancing.
+**Load-aware assignment.** Assignment weights each member's *current workload*:
+the member with the fewest active (non-terminal) tasks gets the next issue,
+with the round-robin cycle as tie-breaker. Overloaded members are skipped until
+their queue drains. The cycle is seeded from the team's task history, so
+consecutive runs keep balancing.
 
 **The state machine runs itself.** When the pipeline opens a PR, the linked
 task auto-advances `pending → assigned → in_progress → submitted` with the PR
 URL attached, landing in the senior-review queue. When the PR **merges**, the
-task is auto-approved + completed and — if the task was seeded from a real
-GitHub issue — the **originating issue is auto-closed** with a comment linking
-the merged PR. The loop from issue → task → PR → merge is fully closed.
+task is auto-approved + completed and — if seeded from a real GitHub issue —
+the **originating issue is auto-closed** with a comment linking the merged PR.
 
 **Three surfaces, one pipeline:**
 
@@ -74,13 +88,12 @@ python scripts/repo_autopilot.py --repo https://github.com/owner/repo \
 python scripts/repo_autopilot.py --repo https://github.com/owner/repo \
     --github-issues 10 --solve
 
-#    Local checkout + refresh mode (re-run detects updates, rebuilds graph/JSON)
+#    Local checkout + refresh mode (re-run detects updates, rebuilds graph)
 python scripts/repo_autopilot.py --repo ../some/repo --out ./out
 ```
 
 ```bash
 # 2. In-app API (authenticated, quota-metered)
-#    Repo URL → issues → Onramp tasks
 curl -X POST http://localhost:8000/api/v1/autopilot/analyze \
   -H "Authorization: Bearer <jwt>" -H "Content-Type: application/json" \
   -d '{"repo_url": "https://github.com/owner/repo", "max_issues": 5}'
@@ -91,9 +104,9 @@ curl -X POST http://localhost:8000/api/v1/autopilot/run \
   -d '{"repo_url": "https://github.com/owner/repo", "max_issues": 5, "max_solve": 3, "max_retry": 1}'
 ```
 
-3. **Dashboard panel** — Mission Control → *Autopilot · Repo Pipeline*: paste
-   a repo URL, click **Run Pipeline**, and the created tasks appear instantly
-   (title, state badge, role chip, priority) with links into the Tasks console.
+1. **Dashboard panel** — Mission Control → *Autopilot · Repo Pipeline*: paste a
+   repo URL, click **Run Pipeline**, and created tasks appear instantly (title,
+   state badge, role chip, priority) with links into the Tasks console.
 
 CLI output lands in `autopilot_out/<owner-repo>/` — `entities.json`,
 `graph.json`, `relationships.json`, `visualization.html`, `report.json`,
@@ -101,136 +114,92 @@ CLI output lands in `autopilot_out/<owner-repo>/` — `entities.json`,
 already-imported issues, matched by GitHub issue number or title + repo) and
 can be disabled with `"create_tasks": false`.
 
-### 🧠 AI Model Routing (Query Types)
+### AI Model Routing
 
-Every agent declares what kind of prompt it produces via a `query_type` class
-attribute. The router (`backend/app/llm.py`) uses that to pick the best
-provider chain per task — free-first, with a fallback chain per type:
+Every agent declares a `query_type` class attribute. The router
+(`backend/app/llm.py`) uses it to pick the best provider chain per task —
+free-first, with a fallback chain per type:
 
-| Agent | Query type | First provider tried | Cost |
-| --- | --- | --- | --- |
-| `PRReviewAgent` | `code` | Claude (Anthropic) | paid |
-| `FirstPRAccelerator` | `code` | Claude (Anthropic) | paid |
-| `AutonomousCodingAgent` | `code` | Claude (Anthropic) | paid |
-| `SilentPairProgramming` | `code` | Claude (Anthropic) | paid |
-| `TaskQA` | `code` | Claude (Anthropic) | paid |
-| `RegressionTestGenerator` | `code` | Claude (Anthropic) | paid |
-| `IssueResolutionAgent` | `code` | Claude (Anthropic) | paid |
-| `ArchitectureExplorer` | `reasoning` | Gemini | free |
-| `PatternRecognition` | `reasoning` | Gemini | free |
-| `LearningPathGenerator` | `reasoning` | Gemini | free |
-| `DriftDetector` | `reasoning` | Gemini | free |
-| `RepoQA` | `reasoning` | Gemini | free |
-| `HealthScorer` | `structured` | Groq | free |
-| `QuizGenerator` | `structured` | Groq | free |
-| `CodebaseTrailer` | `creative` | Claude (Anthropic) | paid |
-
-> `OnboardingReportGenerator` is a pure rule-based agent — it makes no LLM
-> calls and declares no query type.
+| Query type | First providers tried | Cost |
+| --- | --- | --- |
+| `code` | Anthropic → DeepSeek → OpenAI → Qwen → Gemini → Groq → OpenRouter → NVIDIA → Ollama | paid first, free fallback |
+| `reasoning` | DeepSeek → Gemini → OpenAI → Anthropic → Qwen → Groq → OpenRouter → NVIDIA → Ollama | cheap first |
+| `structured` | Groq → Gemini → OpenRouter → OpenAI → NVIDIA → Anthropic → Ollama | free-first, JSON-optimized |
+| `summarization` | Groq → Gemini → OpenRouter → NVIDIA → OpenAI → Anthropic → Ollama | free-first |
+| `translation` | Gemini → Qwen → Zhipu → Groq → OpenRouter → NVIDIA → OpenAI → Anthropic → Ollama | free-first, multilingual |
+| `creative` | Anthropic → OpenAI → Gemini → Groq → OpenRouter → NVIDIA → Ollama | paid first, best prose |
+| `chat` | default free-first chain: OpenRouter → Gemini → Groq → NVIDIA → Mistral → HuggingFace → OpenAI → Anthropic → Ollama | free-first |
 
 **How the chain is built:** each query type lists preferred providers first,
-and the remaining configured providers are appended afterwards, so any single
-provider outage falls through the whole chain. Providers without an API key
-are skipped. The seven types are `chat`, `code`, `reasoning`, `structured`,
-`summarization`, `translation`, and `creative` (`chat` uses the default
-free-first chain: OpenRouter → Gemini → Groq → NVIDIA → Mistral →
-HuggingFace → OpenAI → Anthropic → Ollama).
+and remaining configured providers are appended afterwards, so a single
+provider outage falls through the whole chain. Providers without an API key are
+skipped. Every served request reports its actual provider via the
+`X-LLM-Route` response header and records free-vs-paid attribution + dollar
+savings in the usage logs.
 
-**Override per call.** An agent's `query_type` is a *default*, not a law —
-pass `query_type=` explicitly to any LLM call and it wins:
+**Override per call.** An agent's `query_type` is a *default* — pass
+`query_type=` explicitly to any LLM call and it wins:
 
 ```python
 from app.llm import QueryType
 
-# Default: PRReviewAgent routes via CODE (Claude first, paid)
-await agent.llm.chat(prompt)
-
-# Single-call override — force cheap, JSON-optimized structured output
+await agent.llm.chat(prompt)                              # agent's default type
 await agent.llm.json_chat(prompt, query_type=QueryType.STRUCTURED)
 
-# The underlying router is directly usable too (string values accepted):
 from app.llm import LLMRouter
 router = LLMRouter()
 await router.chat("explain why the sky is blue", query_type="reasoning")
 await router.chat_stream("summarize this", query_type=QueryType.SUMMARIZATION)
 ```
 
-> **Trade-off:** `json_chat` on the `code` agents (FirstPR, SilentPair,
-> Autonomous, RegressionTest) routes via CODE (Claude first, paid) because
-> the agent declares its content type. If JSON reliability matters more than
-> model strength, pass `query_type=QueryType.STRUCTURED` (Groq first, free) as
-> shown above.
-
-Every served request also reports its actual provider via the `X-LLM-Route`
-response header and records free-vs-paid attribution + dollar savings in the
-usage logs — see `docs/API.md` (Provider Route Breakdown).
-
-### 💰 Token-Saving Pipeline (parse-once + cache + budgets)
+### Token-Saving Pipeline
 
 Beyond free-first routing, three more layers keep LLM cost low:
 
-**1. Repo context index — parse once, reuse everywhere, pre-built on a
-schedule.** `POST /repos/index` clones + parses a repo **once** (24h Redis
-TTL) into a compact JSON context document (entities + dependency graph +
-stats) keyed by a stable `index_id` derived from `repo_url@branch`.
-Re-posting returns the cached document with zero cloning/parsing; `DELETE`
-re-indexes. `POST /explore/analyze` accepts the `index_id` to skip its own
-clone/parse. (Redis optional — in-process fallback in dev.) Indexes are
-**pre-built so the first request never waits**: `POST /repos/index` with
-`"async_build": true` dispatches a Celery `build_repo_index` task and
-returns `202` + task id immediately, and the `refresh_repo_indexes` beat
-task runs nightly (03:00 UTC) to rebuild every registered repo whose index
-is missing, older than `REPO_INDEX_MAX_AGE_HOURS` (20h), or within
-`REPO_INDEX_COLD_WINDOW_HOURS` (2h) of the 24h TTL expiring — warm before
-the 24h TTL expires. **Pushes invalidate + rebuild instantly**: a GitHub
-`push` webhook (`POST /webhooks/github`) for a registered repo evicts its
-LLM cache scope (`evict_scope` — both cache tiers) and dispatches
-`build_repo_index` so the next question about that repo sees fresh code.
-Each index also carries an **`evolution` block** (git-history layer): the
-last 50 commits, top contributors, per-file ownership (changes + strongest
-author) and the head commit's changed files — computed deterministically
-from `git log`, never via the LLM.
+1. **Repo context index — parse once, reuse everywhere, pre-built on a
+   schedule.** `POST /repos/index` clones + parses a repo **once** (24h Redis
+   TTL) into a compact JSON context document (entities + dependency graph +
+   stats) keyed by a stable `index_id` derived from `repo_url@branch`.
+   Re-posting returns the cached document; `DELETE` re-indexes. Indexes are
+   **pre-built so the first request never waits**: `"async_build": true`
+   dispatches a Celery task and returns `202` immediately, a nightly beat task
+   rebuilds every registered index nearing expiry, and a GitHub `push`
+   webhook evicts + rebuilds instantly. Each index carries an **`evolution`
+   block** (last 50 commits, top contributors, per-file ownership) computed
+   deterministically from `git log`, never via the LLM.
 
-**2. Requirement-driven context selection.**
-`GET /repos/index/{index_id}/context?requirement=...&max_tokens=4000` scores
-files against the task and returns only the relevant slice, so agents never
-receive the whole repository. All LLM-backed agents (health, learn, quiz,
-drift, patterns, explore) accept `index_id` in place of a full
-`repo_structure` body: whole-repo scoring uses the cached entities, while
-every LLM prompt embeds a token-budgeted requirement slice.
+2. **Requirement-driven context selection.**
+   `GET /repos/index/{index_id}/context?requirement=...&max_tokens=4000` scores
+   files against the task and returns only the relevant slice, so agents never
+   receive the whole repository. All LLM-backed agents accept `index_id` in
+   place of a full `repo_structure` body.
 
-**3. Redis LLM response cache (exact + semantic).** Repeated prompts (same
-query type + normalized prompt + system + max_tokens) are served from Redis
-instead of a provider — keyed via `app/services/llm_cache.py`, TTL 1h
-(`LLM_CACHE_TTL`). Cache hits are attributed as a `cache/redis` route with
-`free=true` and **$0 price**. On top of exact matching, **near-duplicate
-questions also hit**: prompts are embedded locally (hashed n-grams — no
-embedding API) and a stored answer is served only when cosine similarity ≥
-`LLM_SEMANTIC_THRESHOLD` (0.85) AND the new question's content words are a
-subset of the stored prompt's. Semantic hits report as `cache/semantic`
-(free, $0). The `/v1` gateway reports `X-LLM-Cache: HIT/MISS` plus
-`X-LLM-Cache-Tier` (`redis`/`semantic`/`MISS`). Streaming responses are not
-cached.
+3. **Redis LLM response cache (exact + semantic).** Repeated prompts (same
+   query type + normalized prompt + system + max_tokens) are served from Redis
+   instead of a provider (`app/services/llm_cache.py`, TTL 1h). Exact hits
+   report as `cache/redis`, near-duplicates (hashed n-gram cosine similarity ≥
+   `LLM_SEMANTIC_THRESHOLD` with content-word subset check) as `cache/semantic`
+   — both `free=true`, **$0**. The gateway reports `X-LLM-Cache` and
+   `X-LLM-Cache-Tier` headers. Streaming responses are not cached.
 
-**4. Token budgets.** Every selected context slice is trimmed to
-`max_tokens` (~4 chars/token, `app/services/llm_costs.estimate_tokens`)
-before being embedded in a prompt; long files are dropped first, then
-truncated, so prompts stay small.
+4. **Token budgets.** Every selected context slice is trimmed to `max_tokens`
+   (~4 chars/token, `app/services/llm_costs.estimate_tokens`) before being
+   embedded in a prompt — long files dropped first, then truncated.
 
-### 👥 Onboarding & Learning
+### Onboarding & Learning
 
-- **Trainee Dashboard** — Track progress, unlocked modules, streak, XP
+- **Trainee Dashboard** — track progress, unlocked modules, streak, XP
 - **Gamification** — XP points, leveling, badges, streaks, leaderboards
-- **Module-Level Access** — Grant/revoke module access per user per team
-- **Onboarding Reports** — Auto-generated HTML/Markdown docs for any repo
+- **Module-Level Access** — grant/revoke module access per user per team
+- **Onboarding Reports** — auto-generated HTML/Markdown docs for any repo
 - **Onboarding Plans** — 30-60-90 day structured plans with milestones and pulse check-ins
-- **Learning Paths** — Persisted milestones with completion tracking
-- **Onboarding Hub** — Central portal for new developers with guided paths
-- **Quiz Generator** — Module-level quizzes with auto-grading
+- **Learning Paths** — persisted milestones with completion tracking
+- **Onboarding Hub** — central portal for new developers with guided paths
+- **Quiz Generator** — module-level quizzes with auto-grading
 - **Wiki** — AI-generated onboarding wikis from any repo URL
-- **Playbooks** — Reusable onboarding playbook templates with tagging
+- **Playbooks** — reusable onboarding playbook templates with tagging
 
-### 📋 Task Management
+### Task Management
 
 - Full task lifecycle: create → assign → start → submit → review → approve → complete
 - State-machine enforced transitions with timestamps + review-cycle tracking
@@ -240,63 +209,59 @@ truncated, so prompts stay small.
 - Review queue with status badges (under_review, needs_changes, approved, product_review)
 - Time tracking (estimated vs actual, overrun alerts), team/user progress, bulk assign
 
-### 📊 CTO / Leadership Dashboard
+### CTO / Leadership Dashboard
 
-- Task distribution & completion rate charts
-- Per-member progress with completion bars
-- Pending reviews & recent activity timeline
-- Action items requiring attention
+- Task distribution & completion rate charts, per-member progress bars
+- Pending reviews & recent activity timeline, action items
 - Activity trend analysis (7-day velocity)
 - **Ramp · Senior-Time** — senior cost + stuck-dev telemetry, first-PR benchmarks
 - **Autopilot · Repo Pipeline** — run the repo pipeline from the dashboard
 - Executive dashboard for CEO/CTO role, senior space, HR dashboard
 
-### 📈 Production Observability & Ops
+### Production Observability & Ops
 
 - **Prometheus `/metrics`** — dependency-free text-format registry: HTTP
   request totals/latency/in-flight, LLM calls by provider & free/paid, LLM
-  cache hits (redis/semantic) & misses, embedding calls, WebSocket
-  connections. Scrape with Prometheus + Grafana (docker-compose.prod.yml).
+  cache hits (redis/semantic) & misses, embedding calls, WebSocket connections
 - **Structured JSON logging** — `LOG_FORMAT=json` emits one JSON object per
-  line (Loki / Datadog / CloudWatch ready). `LOG_LEVEL` controls verbosity.
-- **Request correlation IDs** — every request gets an `X-Request-ID` echoed in
-  the response and logged, so failures trace end-to-end.
+  line (Loki / Datadog / CloudWatch ready)
+- **Request correlation IDs** — `X-Request-ID` echoed in responses and logs
 - **Liveness & readiness probes** — `GET /health` (process up) and `GET /ready`
-  (DB + Redis reachable, returns 503 when a dependency is down).
+  (DB + Redis reachable, 503 when a dependency is down)
 - **Security headers** — HSTS (prod), `X-Content-Type-Options: nosniff`,
-  `X-Frame-Options: DENY`, Referrer-Policy, Permissions-Policy; opt-in CSP via
-  `CSP_HEADER`.
+  `X-Frame-Options: DENY`, Referrer-Policy, Permissions-Policy; opt-in CSP
 - **OpenAPI security scheme** — BearerAuth declared so `/docs` has an Authorize
-  button and typed clients can be generated.
+  button and typed clients can be generated
 
-### 📱 PWA
+### PWA
 
 - Web app manifest + installable icons (any + maskable)
 - Service worker: app-shell precache, network-first navigations with offline
   fallback, cache-first hashed assets, network-only API calls
 - Registered only in production builds (dev keeps Vite HMR intact)
 
-### 📦 TypeScript SDK (`@onramp/sdk`)
+### TypeScript SDK (`@onramp/sdk`)
 
-- Typed client for the OpenAI-compatible gateway: chat, streaming chat, embeddings,
-  model listing
+- Typed client for the OpenAI-compatible gateway: chat, streaming chat,
+  embeddings, model listing
 - AIaaS agent execution, API-key validation/creation, usage + tiers
 - Zero runtime dependencies; works in Node 18+ and browsers
 - `sdk/` package — build with `npm run build`, test with `npm test`
 
-### 🔐 Enterprise-Grade Security
+### Enterprise-Grade Security
 
-- JWT-based auth (HS256, rotating refresh tokens)
-- bcrypt password hashing + Fernet field-level encryption for PII
+- **Neon Auth (Better Auth)** — JWT validation against Neon's JWKS endpoint,
+  session-based auth with silent token refresh
+- JWT-based auth (HS256, rotating refresh tokens), bcrypt password hashing
+- Fernet field-level encryption for PII + stored provider/GitHub tokens
 - RBAC with 9 roles (junior_dev, developer, senior_dev, tester, cto, ceo, admin, member, hr)
 - OAuth2 social login (Google, GitHub) with CSRF state tokens + account linking
 - Password reset flow with short-lived JWT reset tokens
-- Alembic database migrations (26 versions)
-- CORS allowlist + Vercel regex
-- Production env validation on boot
+- Alembic database migrations (28 versions)
+- CORS allowlist + Vercel regex, production env validation on boot
 - GitHub webhook HMAC-SHA256 signature verification
 
-### 💳 Billing & API Gateway
+### Billing & API Gateway
 
 - Razorpay subscription management (free / pro / enterprise, INR)
 - API key management with usage tracking, credit limits, expiry
@@ -304,7 +269,7 @@ truncated, so prompts stay small.
 - Rate limiting (Redis-backed) + usage quotas with endpoint-level breakdown
 - Per-team provider keys (BYOK) stored encrypted, with multi-key round-robin
 
-### 🔔 Notifications & Integrations
+### Notifications & Integrations
 
 - In-app notification center (read/unread, preferences, quiet hours, digest)
 - 14 notification event types with distinct icons and colors
@@ -312,25 +277,25 @@ truncated, so prompts stay small.
 - Mark all read, pagination, type-filtered views
 - Webhooks (create, test, rotate secrets, delivery logs)
 - GitHub integration (token validation, scope checking, PR-merge auto-complete)
-- Slack integration (channel config, event-driven)
+- Slack integration (channel config, event-driven standups)
 - Email via SendGrid (digest, alerts)
 
 ---
 
-## 🏗 Tech Stack
+## Tech Stack
 
 ### Backend
 
 | Component | Technology |
 | ----------- | ----------- |
 | **Framework** | Python 3.12+ (3.13 local), FastAPI |
-| **Database** | PostgreSQL 16 (asyncpg, SQLAlchemy 2.0) |
+| **Database** | PostgreSQL 16 (asyncpg, SQLAlchemy 2.0, pgvector) |
 | **Migrations** | Alembic |
 | **Cache / Broker** | Redis (rate limiting, LLM cache, Celery broker) |
 | **Async tasks** | Celery (worker + beat: digests, sweeps, repo indexes) |
-| **Observability** | Prometheus + Grafana (dependency-free /metrics) |
-| **AI** | Multi-provider: OpenRouter, Gemini, Groq, NVIDIA, Mistral, HuggingFace, OpenAI, Anthropic, Ollama |
-| **Auth** | Custom JWT (bcrypt + Fernet encryption) |
+| **Observability** | Prometheus + Grafana (dependency-free `/metrics`) |
+| **AI** | OpenRouter, Gemini, Groq, NVIDIA (free) + DeepSeek, Qwen, Zhipu, Moonshot, Mistral, OpenAI, Anthropic, HuggingFace, Ollama (paid/local) |
+| **Auth** | Neon Auth (Better Auth) + custom JWT (bcrypt + Fernet encryption) |
 | **Billing** | Razorpay (INR) |
 | **Monitoring** | Sentry |
 | **Email** | SendGrid |
@@ -342,12 +307,14 @@ truncated, so prompts stay small.
 | **Framework** | React 19, TypeScript (strict mode) |
 | **Build** | Vite 6 |
 | **Styling** | Tailwind CSS |
-| **Animation** | Framer Motion |
+| **Animation** | Framer Motion, GSAP |
 | **Charts** | Recharts |
 | **HTTP** | fetch (custom wrapper with silent token refresh) |
 | **State** | TanStack React Query |
 | **Icons** | Phosphor Icons |
-| **Testing** | Vitest, React Testing Library, Playwright |
+| **3D / Viz** | Babylon.js, D3 (force/zoom/drag) |
+| **Editing** | Monaco Editor |
+| **Testing** | Vitest, React Testing Library, Playwright (incl. a11y + Lighthouse) |
 
 ### Infrastructure
 
@@ -363,14 +330,14 @@ truncated, so prompts stay small.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.12+
 - Node.js 20+
 - PostgreSQL 16
-- Redis (optional, for rate limiting)
+- Redis (optional, for rate limiting / LLM cache)
 
 ### 1. Clone & Install
 
@@ -422,63 +389,21 @@ npm run dev
 
 ### 5. Open the App
 
-Navigate to [http://localhost:5173](http://localhost:5173) and register a new account.
+Navigate to [http://localhost:5173](http://localhost:5173) and register a new
+account, or sign in with a [seeded account](#seeded-test-accounts).
 
 ---
 
-## 🏋️ Load & Performance Testing
+## Docker Quick Start (One Command)
 
-Three layers cover responsiveness, loadiness, and full-scale load:
-
-**1. Backend — k6 (HTTP-level, extensive load)**
-
-`k6-load-test.js` runs five scenarios: smoke, load (ramp to 50 VUs), stress
-(ramp to 200 VUs), spike (150 VUs instantly), soak (40 VUs for 10 min).
-
-```bash
-# against a deployed/staging env
-k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1
-# pick one scenario
-k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1 -e SCENARIO=stress
-# local (clean in-memory backend, no rate-limit noise)
-ENV=test STORAGE_BACKEND=memory uvicorn app.main:app --port 8003 &
-k6 run k6-load-test.js -e BASE_URL=http://localhost:8003/api/v1
-```
-
-**2. Backend — pytest (in-process, CI-runnable)**
-
-```bash
-cd backend && python -m pytest tests/test_load_performance.py -v --timeout=120
-```
-
-Covers per-endpoint latency, average latency, 10-way concurrency, 100-request
-stress, 25-way high concurrency, a sustained burst, and throughput stability.
-
-**3. Frontend — bundle, CWV, and concurrent-load checks**
-
-```bash
-cd web
-npm run build && npx vitest run test/bundle/bundle-analysis.test.ts   # JS/CSS size budgets
-npx playwright test e2e/performance/load.spec.ts --project=chromium   # 8 concurrent visitors
-npx playwright test e2e/performance/lighthouse.test.ts --project=chromium --workers=1
-node scripts/cwv-audit.mjs          # throttled-mobile FCP/LCP/CLS against the dev server
-node scripts/mobile-audit.mjs       # horizontal-overflow sweep of every route at 3 viewports
-```
-
-See `k6-load-test.js` for full docs, including the note that local Windows
-machines add ~200ms to the *first* connection per VU (OS connection
-inspection) — keep-alive requests after that are sub-millisecond.
-
-## 🐳 Docker Quick Start (One Command)
-
-Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI) with one command:
+Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI) with
+one command:
 
 ```bash
 # 1. Copy the environment template (edit if needed)
 cp .env.example .env
 
 # 2. Set at least one AI provider API key in .env (GEMINI_API_KEY, OPENROUTER_API_KEY, etc.)
-#    Open .env with a text editor and fill in your key(s).
 
 # 3. Start all services
 docker compose up -d
@@ -503,30 +428,16 @@ docker compose down
 | --------- | ----- | ------------- |
 | **Frontend** | <http://localhost:8080> | React app (Nginx, proxies `/api` → backend) |
 | **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
-| **Prometheus** | <http://localhost:9090> | Metrics (scrapes backend `/metrics`, prod compose only) |
+| **Prometheus** | <http://localhost:9090> | Metrics (prod compose only) |
 | **Grafana** | <http://localhost:3000> | Dashboards (admin/admin by default, prod compose only) |
 | **Backend API** | <http://localhost:8001> | FastAPI backend |
 | **API Docs** | <http://localhost:8001/docs> | Swagger UI (interactive) |
 | **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
 | **Redis** | localhost:6379 | Cache (pass: `redis_password`) |
 
-> **Note:** Host port 5433 is used instead of 5432, and 8001 instead of 8000, to avoid conflicts with locally-running PostgreSQL and backend dev servers. All internal Docker networking is unaffected (services communicate via Docker DNS internally).
-
-### Docker Database Commands
-
-```bash
-# Connect to PostgreSQL (via Docker's internal port 5432)
-docker compose exec postgres psql -U onramp -d onramp
-
-# Or connect from host (via mapped port 5433):
-psql -h localhost -p 5433 -U onramp -d onramp
-
-# View logs
-docker compose logs postgres
-
-# Reset database (removes volumes, recreates fresh)
-docker compose down -v && docker compose up -d
-```
+> **Note:** Host port 5433 is used instead of 5432, and 8001 instead of 8000, to
+> avoid conflicts with locally-running PostgreSQL and backend dev servers. All
+> internal Docker networking is unaffected (services communicate via Docker DNS).
 
 ### Required Configuration
 
@@ -543,7 +454,9 @@ GEMINI_API_KEY=your-key-here
 
 ### Frontend API URL
 
-The frontend is pre-built as a static site served by Nginx on port 80. It uses a **relative API URL** (`/api/v1`) by default, so API calls go through Nginx's proxy (`/api/*` → `backend:8000`) on the same origin — no CORS issues.
+The frontend is pre-built as a static site served by Nginx on port 80. It uses
+a **relative API URL** (`/api/v1`) by default, so API calls go through Nginx's
+proxy (`/api/*` → `backend:8000`) on the same origin — no CORS issues.
 
 To use an absolute URL instead:
 
@@ -551,62 +464,100 @@ To use an absolute URL instead:
 VITE_API_URL=http://localhost:8000/api/v1 docker compose up -d
 ```
 
-or set `VITE_API_URL` in your `.env` file.
+---
+
+## Load & Performance Testing
+
+Three layers cover responsiveness, load, and full-scale load:
+
+**1. Backend — k6 (HTTP-level, extensive load)**
+
+`k6-load-test.js` runs five scenarios: smoke, load (ramp to 50 VUs), stress
+(ramp to 200 VUs), spike (150 VUs instantly), soak (40 VUs for 10 min).
+
+```bash
+k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1
+k6 run k6-load-test.js -e BASE_URL=https://staging.onramp.dev/api/v1 -e SCENARIO=stress
+```
+
+**2. Backend — pytest (in-process, CI-runnable)**
+
+```bash
+cd backend && python -m pytest tests/test_load_performance.py -v --timeout=120
+```
+
+Covers per-endpoint latency, average latency, 10-way concurrency, 100-request
+stress, 25-way high concurrency, sustained bursts, and throughput stability.
+
+**3. Frontend — bundle, CWV, and concurrent-load checks**
+
+```bash
+cd web
+npm run build && npx vitest run test/bundle/bundle-analysis.test.ts   # JS/CSS size budgets
+npx playwright test e2e/performance/load.spec.ts --project=chromium   # 8 concurrent visitors
+npx playwright test e2e/performance/lighthouse.test.ts --project=chromium --workers=1
+node scripts/cwv-audit.mjs          # throttled-mobile FCP/LCP/CLS against the dev server
+node scripts/mobile-audit.mjs       # horizontal-overflow sweep of every route at 3 viewports
+```
 
 ---
 
-## 🚀 Deploying to Render (API + Celery Workers + Redis)
+## Deploying to Render (API + Celery Workers + Redis)
 
-The backend runs on Render as three services sharing one Redis (Key Value) instance. A [`render.yaml`](./render.yaml) blueprint defines the whole stack — the recommended way to set it up or reproduce it.
+The backend runs on Render as three services sharing one Redis (Key Value)
+instance. A [`render.yaml`](./render.yaml) blueprint defines the whole stack.
 
 ### Blueprint (recommended)
 
-1. Dashboard → **New → Blueprint** → connect this repo (pick the branch that contains `render.yaml`).
-2. Render creates: `onramp-redis` (Key Value), `onramp-api` (web service), and `onramp-worker` + `onramp-beat` (background workers).
-3. During creation you're prompted for the `sync: false` secrets — fill them with the same values the API service already uses.
-
-> **Apply order:** the blueprint links services to `main`, and the API image depends on the `backend/Dockerfile` stage reorder (production = default target). Apply it only after this change is on `main` — otherwise the API service builds a worker image and its `/health` check fails.
+1. Dashboard → **New → Blueprint** → connect this repo (pick the branch that
+   contains `render.yaml`).
+2. Render creates: `onramp-redis` (Key Value), `onramp-api` (web service), and
+   `onramp-worker` + `onramp-beat` (background workers).
+3. During creation you're prompted for the `sync: false` secrets.
 
 | Resource | Render type | What it runs |
 | --- | --- | --- |
 | `onramp-redis` | Key Value (Redis) | Celery broker + result store — auto-wired as `REDIS_URL` |
-| `onramp-api` | Web service | `alembic upgrade head` + uvicorn (`production` Dockerfile stage), health check `/health` |
+| `onramp-api` | Web service | `alembic upgrade head` + uvicorn (production Dockerfile stage), health check `/health` |
 | `onramp-worker` | Background worker | `celery -A app.tasks.celery_app worker -Q agent-tasks,analytics-tasks,notification-tasks,default` |
 | `onramp-beat` | Background worker | `celery -A app.tasks.celery_app beat` (digests, nightly sweeps, repo indexes) |
 
-> **Why background workers?** A Web Service must bind a port and passes a deploy-time port scan. A Celery process binds none — creating it as a Web Service times out the deploy with *"No open ports detected… create a background worker instead"*. Background workers are liveness-monitored only (no port, no health check).
+> **Why background workers?** A Web Service must bind a port and passes a
+> deploy-time port scan. A Celery process binds none — creating it as a Web
+> Service times out the deploy with *"No open ports detected… create a
+> background worker instead"*.
 
-Secrets prompted on first apply (`sync: false`): `DATABASE_URL`, `JWT_SECRET`, `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `API_KEY_HMAC_SECRET`, `CORS_ALLOWED_ORIGINS`, `BACKEND_URL`, `FRONTEND_URL`, plus optional LLM/OAuth/billing keys (Gemini/OpenRouter/Groq, GitHub/Google OAuth, Razorpay, SendGrid, Sentry). All services share them via the `onramp-shared` environment group.
-
-Notes:
-
-- **Redis**: the free Key Value plan has no persistence — bump `plan` in `render.yaml` for durability. `ipAllowList: []` keeps it private-network only; Render services connect over the internal network.
-- **Deploys**: services auto-deploy on commits to `main`. Once the blueprint is live, the CD workflow's `RENDER_DEPLOY_HOOK_URL` secret is redundant.
-- **Migrations** run automatically on API deploys (`alembic upgrade head` in the Dockerfile CMD).
+Secrets prompted on first apply (`sync: false`): `DATABASE_URL`, `JWT_SECRET`,
+`PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `API_KEY_HMAC_SECRET`,
+`CORS_ALLOWED_ORIGINS`, `BACKEND_URL`, `FRONTEND_URL`, plus optional
+LLM/OAuth/billing keys. All services share them via the `onramp-shared`
+environment group.
 
 ### Manual dashboard setup (no blueprint)
 
-1. **New → Redis** → wait for *Available* → copy the **Internal URL** (`rediss://default:…@…:6379`).
-2. **New → Web Service** → root dir `backend`, Dockerfile target `production`, health check path `/health`. Add `REDIS_URL` plus the secrets above.
-3. **New → Background Worker** → root dir `backend`, start command:
+1. **New → Redis** → copy the **Internal URL** (`rediss://default:…@…:6379`).
+2. **New → Web Service** → root dir `backend`, Dockerfile target `production`,
+   health check path `/health`.
+3. **New → Background Worker** → start command:
 
    ```bash
    celery -A app.tasks.celery_app worker -l info -Q agent-tasks,analytics-tasks,notification-tasks,default
    ```
 
-4. Repeat for the scheduler (**Background Worker**):
+4. Repeat for the scheduler:
 
    ```bash
    celery -A app.tasks.celery_app beat -l info
    ```
 
-5. Set the **same env vars on every service** — env vars are per-service on Render unless you use an Environment Group.
+5. Set the **same env vars on every service** — use an Environment Group.
 
 ---
 
-## 🔑 Seeded Test Accounts
+## Seeded Test Accounts
 
-Run the seed script to populate the database with realistic sample data across all 39 tables:
+Run the seed script to populate the database with realistic sample data across
+all 39 tables:
 
 ```bash
 cd backend
@@ -627,23 +578,28 @@ All accounts share the same password: **`demo123`**
 | **James Thompson** | `james@onramp.dev` | New Dev | InnovateHub / Platform Eng |
 | **Priya Sharma** | `priya@onramp.dev` | Tester | InnovateHub |
 
-> **Tip:** Log in as **Kunj Shah** (`kunj@onramp.dev` / `demo123`) to see the CTO/Executive dashboard, or as **Emma Wilson** (`emma@onramp.dev` / `demo123`) for the trainee view.
+> **Tip:** Log in as **Kunj Shah** (`kunj@onramp.dev` / `demo123`) to see the
+> CTO/Executive dashboard, or as **Emma Wilson** (`emma@onramp.dev` /
+> `demo123`) for the trainee view.
 
-> You can also register a new account at [http://localhost:5173/register](http://localhost:5173/register) or use OAuth (Google/GitHub) if configured.
+> You can also register a new account at
+> [http://localhost:5173/register](http://localhost:5173/register) or use OAuth
+> (Google/GitHub) if configured.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-### 📋 Prerequisites
+### Prerequisites
 
 - Python 3.12+, Node.js 20+, PostgreSQL 16
 - Familiarity with FastAPI, SQLAlchemy 2.0 async, React, and Tailwind CSS
 
-### 🧪 Running Tests
+### Running Tests
 
 ```bash
-# Backend tests (1300+ tests covering services, APIs, and DB migrations; dual storage backends)
+# Backend tests (240+ test files covering services, APIs, and DB migrations;
+# dual storage backends: InMemoryStorage + PostgresStorage)
 cd backend
 python -m pytest tests/ -q                          # All tests (memory backend)
 python -m pytest tests/test_task_service.py          # Single test file
@@ -652,18 +608,15 @@ python -m pytest tests/ -x --tb=short                # Stop on first failure
 
 # Backend tests with PostgreSQL (requires running PG)
 python -m pytest tests/test_task_service.py --run-postgres
-python -m pytest tests/test_gamification.py --run-postgres
 
 # Frontend tests
 cd web
 npx vitest run                                       # Unit tests
 npx tsc --noEmit                                     # TypeScript check (strict mode)
-npx playwright test                                   # E2E tests (auth, dashboard, review-queue)
+npx playwright test                                  # E2E tests (auth, dashboard, review-queue, a11y)
 ```
 
-### 🗄 Seeding Sample Data
-
-The seed script populates all **39 database tables** with realistic demo data:
+### Seeding Sample Data
 
 ```bash
 cd backend
@@ -673,27 +626,23 @@ python ../scripts/seed_dev_user.py --dry-run           # Preview without writing
 python ../scripts/seed_dev_user.py --force             # Re-create existing data
 ```
 
-> See [🔑 Seeded Test Accounts](#-seeded-test-accounts) below for the full list of users.
-
-### 📦 Data Migration (Legacy JSONB → Real Tables)
-
-If you have existing data in the legacy `dynamic_documents` JSONB table from before migration 008:
+### Data Migration (Legacy JSONB → Real Tables)
 
 ```bash
 cd backend
 python ../scripts/migrate_dynamic_to_tables.py              # Full migrate
 python ../scripts/migrate_dynamic_to_tables.py --dry-run     # Preview only
-python ../scripts/migrate_dynamic_to_tables.py --collection onramp_tasks  # Single collection
 ```
 
-### 📝 Code Style
+### Code Style
 
 - **Backend:** Follow PEP 8, use type hints everywhere, async-first patterns
 - **Frontend:** Strict TypeScript mode, functional components with hooks
-- **Imports:** Sort standard library → third-party → local (separated by blank line)
-- **Tests:** Write parametrized tests that run against both `InMemoryStorage` and `PostgresStorage` when possible
+- **Imports:** Standard library → third-party → local (separated by blank line)
+- **Tests:** Write parametrized tests that run against both `InMemoryStorage`
+  and `PostgresStorage` when possible
 
-### 🔄 Git Workflow
+### Git Workflow
 
 ```bash
 git checkout -b feat/my-feature
@@ -701,7 +650,7 @@ git commit -m "feat: add cohort onboarding endpoint"   # conventional commits
 git push origin feat/my-feature
 ```
 
-### 🐳 Docker Development
+### Docker Development
 
 ```bash
 docker compose up -d                                   # Start full stack
@@ -712,9 +661,7 @@ docker compose logs -f backend                         # Backend logs
 
 ---
 
-## 🗺 Roadmap
-
-See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milestones.
+## Roadmap
 
 ### What's next
 
@@ -727,7 +674,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milesto
 
 ---
 
-## 🏛 Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -738,7 +685,8 @@ See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milesto
                    ▼
 ┌─────────────────────────────────────────────────────┐
 │         API Gateway (FastAPI + Nginx)                │
-│  AuthMiddleware → RateLimit → ResponseWrapper        │
+│  CORS → SecurityHeaders → Metrics → Logging →        │
+│  ResponseWrapper → RateLimit → Auth                  │
 ├─────────────────────────────────────────────────────┤
 │  ▸ Auth         ▸ Tasks         ▸ Teams             │
 │  ▸ AI Agents    ▸ Dashboard     ▸ Notifications     │
@@ -754,30 +702,30 @@ See [ROADMAP.md](./ROADMAP.md) for the full product roadmap and upcoming milesto
 └─────────────────────────────────────────────────────┘
 ```
 
-The backend uses a **layered middleware** approach:
-
-1. `CORSMiddleware` (outermost)
-2. `LoggingMiddleware` (request/response logging)
-3. `ResponseWrapperMiddleware` (unified `{success, data}` envelope)
-4. `RateLimitMiddleware` (Redis-backed)
-5. `AuthMiddleware` (JWT verification, public path allowlist)
+The backend uses a **layered middleware** stack: CORS, SecurityHeaders,
+Metrics, Logging, ResponseWrapper (unified `{success, data}` envelope),
+RateLimit (Redis-backed), BodySizeLimit, and Auth (JWT verification + API key
+acceptance with a public-path allowlist), plus Brotli/GZip compression.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 onramp/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/          # 17 AI agents (HealthScorer, IssueResolutionAgent, …)
-│   │   ├── api/v1/          # 44 route modules (auth, tasks, autopilot, explore, …)
+│   │   ├── api/v1/          # 43 route modules (auth, tasks, autopilot, explore, …)
 │   │   ├── database/        # SQLAlchemy models (36), config
-│   │   ├── middleware/      # Auth, RateLimit, Logging, ResponseWrapper
-│   │   └── services/        # Business logic (autopilot, github, task, ramp, …)
-│   ├── alembic/             # Database migrations (26 versions)
-│   ├── tests/               # 1300+ pytest tests (dual memory+postgres storage)
-│   └── scripts/             # Dev utilities (e2e flows, secrets, migrations)
+│   │   ├── middleware/      # Auth, RateLimit, Logging, ResponseWrapper, Metrics, …
+│   │   ├── schemas/         # Pydantic schemas
+│   │   ├── services/        # Business logic (autopilot, github, task, ramp, …)
+│   │   ├── tasks/           # Celery tasks + beat schedule
+│   │   └── slack_bot/       # Slack integration
+│   ├── alembic/             # Database migrations (28 versions)
+│   ├── tests/               # 240+ pytest test files (dual memory+postgres storage)
+│   └── scripts/             # Dev utilities (e2e flows, secrets)
 ├── web/
 │   ├── src/
 │   │   ├── components/      # Reusable UI (Sidebar, ConsolePanel, dashboard panels)
@@ -785,7 +733,7 @@ onramp/
 │   │   ├── lib/             # API client, utils, types
 │   │   ├── pages/           # 68 page components (role-gated)
 │   │   └── test/            # Vitest tests
-│   ├── e2e/                 # Playwright tests
+│   ├── e2e/                 # Playwright tests (auth, dashboard, review, a11y, perf)
 │   └── public/
 ├── sdk/                     # TypeScript SDK (@onramp/sdk)
 ├── scripts/                 # Repo-level scripts (repo_autopilot.py, seed_dev_user.py, …)
@@ -799,7 +747,7 @@ onramp/
 
 ---
 
-## 🔐 Environment Variables
+## Environment Variables
 
 ### Backend (`backend/.env`)
 
@@ -807,15 +755,16 @@ onramp/
 | ---------- | ---------- | ------------- |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `JWT_SECRET` | ✅ | JWT signing secret (generate with `secrets.token_urlsafe(32)`) |
-| `ENV` | ✅ | `development` or `production` |
-| `OPENROUTER_API_KEY` | ⬜ | Provider keys can be set here **or** via the Admin Console → *Provider Keys · Platform* (encrypted in the DB — no .env edit needed); at least one key is required per provider |
+| `API_KEY_HMAC_SECRET` | ✅ | HMAC secret for hashing API keys |
+| `PII_ENCRYPTION_KEY` | ✅ | Fernet key for field-level PII encryption |
 | `GEMINI_API_KEY` | ⬜ | Google Gemini key (or set via Admin Console) |
+| `OPENROUTER_API_KEY` | ⬜ | OpenRouter key (or set via Admin Console) |
 | `GROQ_API_KEY` | ⬜ | Groq key (fast structured output, free tier) |
+| `NVIDIA_API_KEY` | ⬜ | NVIDIA NIM key |
 | `ANTHROPIC_API_KEY` | ⬜ | Claude key (code agents) |
 | `OPENAI_API_KEY` | ⬜ | OpenAI key |
-| `NVIDIA_API_KEY` | ⬜ | NVIDIA NIM key |
-| `MISTRAL_API_KEY` | ⬜ | Mistral models (OpenAI-compatible) |
-| `HUGGINGFACE_API_KEY` | ⬜ | HuggingFace router (OpenAI-compatible) |
+| `DEEPSEEK_API_KEY` / `QWEN_API_KEY` / `ZHIPU_API_KEY` / `MOONSHOT_API_KEY` | ⬜ | Cheap OpenAI-compatible providers |
+| `MISTRAL_API_KEY` / `HUGGINGFACE_API_KEY` | ⬜ | Additional OpenAI-compatible fallbacks |
 | `OLLAMA_BASE_URL` | ⬜ | Local Ollama endpoint (no API key) |
 | `GITHUB_TOKEN` | ⬜ | GitHub PAT — PR solving, labels, auto-close issues |
 | `GITHUB_TOKEN_ENCRYPTION_KEY` | ⬜ | Fernet key for stored GitHub tokens |
@@ -828,6 +777,7 @@ onramp/
 | `LOG_FORMAT` / `LOG_LEVEL` | ⬜ | JSON logging / verbosity |
 | `LLM_CACHE_TTL` | ⬜ | Redis LLM cache TTL (default 1h) |
 | `LLM_SEMANTIC_CACHE` / `LLM_SEMANTIC_THRESHOLD` | ⬜ | Semantic cache tuning |
+| `ENABLE_API_DOCS` | ⬜ | Expose `/docs` in production |
 
 ### Frontend (`web/.env`)
 
@@ -837,13 +787,13 @@ onramp/
 
 ---
 
-## 📜 License
+## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 - Kunj Shah (@KunjShah95)
 - Varad Vekariya (@varadvekariya6)

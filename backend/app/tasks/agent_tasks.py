@@ -55,6 +55,7 @@ def score_repo_health(
         result["repo"] = repo
         return result
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -63,7 +64,8 @@ def score_repo_health(
         logger.exception("Health score failed for %s/%s", owner, repo)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -88,6 +90,7 @@ def analyze_pr_diffs(
         llm = LLMClient()
         return await generate_pr_review(llm, diff_content)
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -96,7 +99,8 @@ def analyze_pr_diffs(
         logger.exception("PR review failed for %s/%s#%d", owner, repo, pr_number)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -121,6 +125,7 @@ def generate_learning_path(
         path = await gen.generate(repo_structure, role=role)
         return {"user_id": user_id, "learning_path": path}
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -129,7 +134,8 @@ def generate_learning_path(
         logger.exception("Learning path generation failed for user %s", user_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -148,9 +154,12 @@ def find_first_pr_issues(
 
     async def _run() -> list:
         gh = GitHubService()
-        issues = await gh.get_good_first_issues(owner, repo)
-        return issues
+        repo_url = f"https://github.com/{owner}/{repo}"
+        # Use existing get_issues with the standard "good first issue" label.
+        issues = await gh.get_issues(repo_url, labels=["good first issue", "good-first-issue"])
+        return [i.__dict__ if hasattr(i, "__dict__") else i for i in issues]
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -159,7 +168,8 @@ def find_first_pr_issues(
         logger.exception("First PR issues fetch failed for %s/%s", owner, repo)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Autonomous Coding Task ───────────────────────────────────────────────────
@@ -199,6 +209,7 @@ def autonomous_code_change(
             base_branch=base_branch,
         )
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -214,7 +225,8 @@ def autonomous_code_change(
         logger.exception("Autonomous coding failed for %s", repo_url)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 

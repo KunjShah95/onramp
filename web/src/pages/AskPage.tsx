@@ -109,14 +109,13 @@ export default function AskPage() {
     writeStoredRoutingMode(routingMode)
   }, [routingMode])
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return
+  const handleSend = async (explicitQuestion?: string) => {
+    const question = (explicitQuestion ?? input).trim()
+    if (!question || loading) return
     if (!repoUrl.trim()) {
       toast.error('Repository required', 'Enter a GitHub repo URL to index first.')
       return
     }
-
-    const question = input.trim()
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -270,21 +269,24 @@ export default function AskPage() {
                       {msg.role === 'assistant' ? (
                         <div className="font-body text-[13.5px] text-ink-secondary leading-relaxed space-y-1">
                           {msg.content.split('\n').map((line, i) => {
+                            // Key by message id + index; existing lines keep their
+                            // index as streaming appends tokens to the end.
+                            const k = `${msg.id}-${i}`
                             if (line.startsWith('|')) return null
                             if (line.startsWith('```') || line.startsWith('``')) return null
                             if (line.startsWith('**')) {
-                              return <p key={i} className="text-ink font-semibold mb-1">{line.replace(/\*\*/g, '')}</p>
+                              return <p key={k} className="text-ink font-semibold mb-1">{line.replace(/\*\*/g, '')}</p>
                             }
                             if (line.startsWith('-') || line.startsWith('•')) {
-                              return <p key={i} className="pl-3 text-ink-secondary">{line}</p>
+                              return <p key={k} className="pl-3 text-ink-secondary">{line}</p>
                             }
                             if (line.match(/^\d+\./)) {
-                              return <p key={i} className="ml-2 text-ink-secondary">{line}</p>
+                              return <p key={k} className="ml-2 text-ink-secondary">{line}</p>
                             }
                             if (line.trim()) {
-                              return <p key={i} className="text-ink-secondary">{line}</p>
+                              return <p key={k} className="text-ink-secondary">{line}</p>
                             }
-                            return <br key={i} />
+                            return <br key={k} />
                           })}
                           {!msg.content && (
                             <p className="text-ink-tertiary italic">…</p>
@@ -357,7 +359,7 @@ export default function AskPage() {
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
-                onClick={() => { setInput(s); handleSend() }}
+                onClick={() => { setInput(s); handleSend(s) }}
                 className="px-3 py-1.5 rounded-[3px] bg-base border border-seam text-[12px] font-body text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors"
               >
                 {s}
@@ -379,7 +381,7 @@ export default function AskPage() {
               disabled={loading}
             />
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || loading}
               className="shrink-0 w-8 h-8 rounded-[3px] bg-go text-white flex items-center justify-center transition-colors hover:bg-go-lit disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Send"

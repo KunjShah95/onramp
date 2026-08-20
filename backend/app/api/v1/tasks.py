@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+from app.services.field_encryption import decrypt_field
 from app.services.task_service import (
     create_task,
     get_task,
@@ -447,7 +448,7 @@ async def assign_task_endpoint(
     try:
         task = await assign_task(task_id, request.assignee_id, uid)
         try:
-            created_by_name = user.get("name") or user.get("email", "A senior")
+            created_by_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_assigned_all_channels(task, request.assignee_id, created_by_name)
         except Exception:
@@ -559,7 +560,7 @@ async def submit_task_endpoint(
 
     # 5. Notify the task creator (senior) that work was submitted (fire-and-forget)
     try:
-        submitter_name = user.get("name") or user.get("email", "A trainee")
+        submitter_name = decrypt_field(user.get("name") or user.get("email", "A trainee"))
         if full_task:
             await notify_task_submitted_all_channels(full_task, user.get("uid", ""), submitter_name)
     except Exception:
@@ -588,7 +589,7 @@ async def review_task_endpoint(
             needs_product=request.needs_product,
         )
         try:
-            reviewer_name = user.get("name") or user.get("email", "A senior")
+            reviewer_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
         except Exception:
@@ -610,7 +611,7 @@ async def approve_task_endpoint(
     try:
         task = await approve_task(task_id, uid, feedback=request.feedback)
         try:
-            approver_name = user.get("name") or user.get("email", "A senior")
+            approver_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_approved_all_channels(task, approver_name)
         except Exception:
@@ -831,7 +832,7 @@ async def peer_review_endpoint(
                 needs_product=request.needs_product,
             )
             try:
-                reviewer_name = user.get("name") or user.get("email", "A peer")
+                reviewer_name = decrypt_field(user.get("name") or user.get("email", "A peer"))
                 if task:
                     await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
             except Exception:
