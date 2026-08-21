@@ -33,17 +33,17 @@ export default function MarketingNav({
   return (
     <nav
       className={[
-        'border-b border-black/5 bg-white/80 backdrop-blur-xl',
-        fixed ? 'fixed inset-x-0 top-0 z-50' : '',
+        'border-b backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-300',
+        fixed ? 'fixed inset-x-0 top-0 z-50 border-black/5 bg-white/80' : 'border-transparent bg-transparent',
       ].join(' ')}
     >
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
-        {/* Logo */}
+        {/* Logo — same gradient mark as LandingNav for identity unity */}
         <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-cyan-400/90 text-[#0F1419] transition-transform duration-200 group-hover:scale-105">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_4px_14px_rgba(79,70,229,0.28)] transition-transform duration-200 group-hover:scale-105">
             <TreeStructure size={16} weight="bold" />
           </span>
-          <span className="font-display text-sm font-bold tracking-tight text-ink">ONRAMP</span>
+          <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
         </Link>
 
         {/* Center nav links */}
@@ -81,7 +81,7 @@ export default function MarketingNav({
           <Link
             to="/register"
             {...prefetchProps('/register')}
-            className="inline-flex items-center rounded-sm bg-go px-4 py-2 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(79,70,229,0.25)] transition-all hover:bg-go-lit active:translate-y-px"
+            className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_16px_rgba(79,70,229,0.28)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_6px_20px_rgba(79,70,229,0.32)] active:translate-y-px"
           >
             Try for free
           </Link>

@@ -201,12 +201,13 @@ async def create_team(request: CreateTeamRequest):
 @router.get("")
 @cached("teams", ttl=120)
 async def list_teams(request: Request, user: Optional[str] = None):
-    # Resolve "current-user" to the authenticated user's UID
-    resolved_user = user
-    if user == "current-user":
-        auth_user = getattr(request.state, "user", None)
-        if auth_user:
-            resolved_user = auth_user.get("uid", "")
+    # Resolve the authenticated user's UID — always fall back to request.state.user
+    # so that GET /teams (no query param) returns the caller's own teams.
+    auth_user = getattr(request.state, "user", None)
+    if user == "current-user" or user is None:
+        resolved_user = (auth_user or {}).get("uid", "") if auth_user else (user or "")
+    else:
+        resolved_user = user
     teams = await team_service.list_teams(resolved_user or "")
     return {"teams": teams, "count": len(teams)}
 

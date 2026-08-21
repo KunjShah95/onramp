@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { useAuth } from '../context/AuthContext'
 import {
   fetchHrCohort, listTeams,
   fetchCohortComparison, fetchMentorMatch, fetchReviewAnalytics,
@@ -343,20 +344,22 @@ function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
 export default function HrDashboardPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedDevId, setSelectedDevId] = useState<string>('')
+  const { user } = useAuth()
 
   const { data: teamsList } = useQuery({
-    queryKey: ['teams'],
+    queryKey: ['teams', user?.id],
     queryFn: async () => {
-      const storedUser = localStorage.getItem('user')
-      if (!storedUser) return []
+      // Use the uid from AuthContext — falls back to 'current-user' so the
+      // backend resolves the caller from the Bearer token automatically.
+      const uid = user?.id || 'current-user'
       try {
-        const user = JSON.parse(storedUser)
-        const result = await listTeams(user.uid || user.id || '')
+        const result = await listTeams(uid)
         return (result as any).teams || result || []
       } catch {
         return []
       }
     },
+    enabled: !!user,
     staleTime: 60_000,
   })
 

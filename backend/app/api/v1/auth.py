@@ -398,7 +398,7 @@ async def register(body: RegisterRequest):
     uid = str(uuid.uuid4())
     password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     record = {
         "email": encrypt_field(body.email),
         "name": encrypt_field(body.name),
@@ -648,9 +648,12 @@ class VerifyEmailResponse(BaseModel):
     message: str
 
 
-@router.get("/verify-email", response_model=VerifyEmailResponse)
-async def verify_email(token: str):
-    """Verify email address using a token sent via email."""
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+async def _do_verify_email(token: str) -> VerifyEmailResponse:
+    """Shared logic for GET and POST email verification."""
     if not token:
         raise HTTPException(status_code=400, detail="Verification token is required")
 
@@ -676,6 +679,18 @@ async def verify_email(token: str):
         await session.commit()
 
     return VerifyEmailResponse(ok=True, message="Email verified successfully")
+
+
+@router.get("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email_get(token: str):
+    """Verify email address using a token sent via email (GET — legacy link support)."""
+    return await _do_verify_email(token)
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email_post(body: VerifyEmailRequest):
+    """Verify email address using a token (POST — token in body, not URL)."""
+    return await _do_verify_email(body.token)
 
 
 @router.get("/check-provider", response_model=ProviderCheckResponse)

@@ -35,7 +35,12 @@ async def get_client():
         return None
     try:
         import redis.asyncio as aioredis
-        _client = aioredis.from_url(url, decode_responses=True, socket_connect_timeout=2)
+        _client = aioredis.from_url(
+            url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            protocol=2,
+        )
         await _client.ping()
         logger.info("Connected to Redis at %s", url)
         return _client

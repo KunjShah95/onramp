@@ -3,6 +3,14 @@ import os
 # Must be set before any app module reads them at import time.
 os.environ.setdefault("STORAGE_BACKEND", "memory")
 os.environ.setdefault("ENV", "test")
+# Tests must be hermetic: backend/.env sets REDIS_URL, and app.main's
+# load_dotenv() would leak it into the process as soon as app.main is
+# imported, making cache/repo-index/webhook tests hit a real Redis instance
+# (with stale keys from previous runs) instead of the in-process fallback.
+# Setting it to "" (falsy) is safe because load_dotenv() uses override=False,
+# so the .env value can never re-apply over it. Tests that need Redis mock
+# get_client() or set REDIS_URL themselves via monkeypatch.
+os.environ["REDIS_URL"] = ""
 # app.main instantiates LLMClient() at import; without at least one provider
 # key it raises RuntimeError during test collection (see llm.py).
 os.environ.setdefault("GROQ_API_KEY", "test-llm-key")

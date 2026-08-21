@@ -7,8 +7,9 @@
  *   Progress reads as a mission timeline (unlocked modules = cleared stages).
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { useState, useEffect } from 'react'
-import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check } from '@phosphor-icons/react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check, GitBranch, X, Robot } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import MissionTimeline, { type Stage } from '../components/ui/mission-timeline'
@@ -18,7 +19,8 @@ import { PageHeader } from '../components/ui/page-header'
 import { TraineeDashboardSkeleton } from '../components/ui/Skeleton'
 import GamificationPanel from '../components/gamification/GamificationPanel'
 import { useAuth } from '../context/AuthContext'
-import { fetchTraineeDashboard } from '../lib/api'
+import { useToast } from '../context/ToastContext'
+import { fetchTraineeDashboard, raisePR } from '../lib/api'
 import { cn } from '../lib/utils'
 import type { TraineeDashboardResponse, TraineeTask } from '../lib/api'
 
@@ -30,28 +32,47 @@ function relativeTime(iso: string): string {
   return `${d}d ago`
 }
 
+interface RaisePRState {
+  taskId: string
+  taskTitle: string
+  repoUrl: string
+}
+
 export default function TraineeDashboard() {
   const [data, setData] = useState<TraineeDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
+  const [raisingPR, setRaisingPR] = useState<RaisePRState | null>(null)
+  const [prBranch, setPrBranch] = useState('')
+  const [prBase, setPrBase] = useState('main')
+  const [prTitle, setPrTitle] = useState('')
+  const [prBody, setPrBody] = useState('')
+  const [prSubmitting, setPrSubmitting] = useState(false)
 
   const { activeTeamId } = useAuth()
+  const toast = useToast()
+  const navigate = useNavigate()
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   async function fetchDashboard() {
     if (!activeTeamId) {
-      setLoading(false)
-      setError('Join a team to view your onboarding progress.')
+      if (mountedRef.current) { setLoading(false); setError('Join a team to view your onboarding progress.') }
       return
     }
-    setLoading(true); setError('')
+    if (mountedRef.current) { setLoading(true); setError('') }
     try {
       const res = await fetchTraineeDashboard(activeTeamId)
-      setData(res)
+      if (mountedRef.current) setData(res)
     } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard.')
+      if (mountedRef.current) setError(err.message || 'Failed to load dashboard.')
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }
 
@@ -179,6 +200,74 @@ export default function TraineeDashboard() {
           )}
         </ConsolePanel>
 
+        {/* Assigned Repo Tasks */}
+        {recent_tasks.some((t: TraineeTask) => (t as any).repo_url) && (
+          <ConsolePanel rail="Assigned Repositories" designator="WORK ON IT" status="go" live>
+            <div className="space-y-2">
+              {recent_tasks
+                .filter((t: TraineeTask) => (t as any).repo_url)
+                .map((task: TraineeTask) => {
+                  const repoUrl: string = (task as any).repo_url ?? ''
+                  const prUrl: string = (task as any).pr_url ?? ''
+                  const canRaisePR = ['in_progress', 'assigned'].includes(task.state) && !prUrl
+                  const alreadySubmitted = ['submitted', 'under_review', 'approved', 'completed'].includes(task.state)
+                  return (
+                    <div key={task.task_id} className="p-3 rounded-tile bg-well border border-seam space-y-2">
+                      <div className="flex items-start gap-3">
+                        <GitBranch size={14} className="text-go shrink-0 mt-0.5" weight="bold" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
+                          <a href={repoUrl} target="_blank" rel="noreferrer" className="text-caption text-go/80 hover:text-go font-code truncate block">
+                            {repoUrl.replace('https://github.com/', '')}
+                          </a>
+                        </div>
+                        <StatusBadge state={task.state} />
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => navigate(`/autonomous?repo=${encodeURIComponent(repoUrl)}&task_id=${encodeURIComponent(task.task_id)}`)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-base border border-seam text-ink-secondary hover:border-go/40 hover:text-go transition-colors"
+                        >
+                          <Robot size={11} weight="bold" />
+                          Open in Agent
+                        </button>
+                        {canRaisePR && (
+                          <button
+                            onClick={() => {
+                              setRaisingPR({ taskId: task.task_id, taskTitle: task.title, repoUrl })
+                              setPrBranch('')
+                              setPrBase('main')
+                              setPrTitle(`feat: ${task.title}`)
+                              setPrBody('')
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-go text-white hover:bg-go-lit transition-colors"
+                          >
+                            <GitPullRequest size={11} weight="bold" />
+                            Raise PR
+                          </button>
+                        )}
+                        {prUrl && (
+                          <a
+                            href={prUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-mission/10 border border-mission/20 text-mission hover:bg-mission/20 transition-colors"
+                          >
+                            <GitPullRequest size={11} weight="bold" />
+                            View PR
+                          </a>
+                        )}
+                        {alreadySubmitted && !prUrl && (
+                          <span className="text-caption text-ink-muted font-code">Submitted for review</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </ConsolePanel>
+        )}
+
         {/* Recent Tasks */}
         <ConsolePanel rail="Recent Tasks" designator="EVENT LOG" status="standby" live>
           {recent_tasks.length === 0 ? (
@@ -200,6 +289,87 @@ export default function TraineeDashboard() {
           )}
         </ConsolePanel>
       </div>
+
+      {/* Raise PR modal */}
+      {raisingPR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-base border border-seam rounded-[3px] shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-seam">
+              <div>
+                <p className="text-body-sm font-semibold text-ink">Raise Pull Request</p>
+                <p className="text-caption text-ink-tertiary/60 truncate">{raisingPR.repoUrl.replace('https://github.com/', '')}</p>
+              </div>
+              <button onClick={() => setRaisingPR(null)} className="text-ink-tertiary hover:text-ink">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="space-y-1">
+                <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Your branch</label>
+                <input
+                  value={prBranch}
+                  onChange={(e) => setPrBranch(e.target.value)}
+                  placeholder="feat/my-feature or fork-owner:branch"
+                  className="w-full bg-panel border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 font-code placeholder:text-ink-muted/40"
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Base branch</label>
+                  <input
+                    value={prBase}
+                    onChange={(e) => setPrBase(e.target.value)}
+                    className="w-full bg-panel border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 font-code"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">PR title</label>
+                <input
+                  value={prTitle}
+                  onChange={(e) => setPrTitle(e.target.value)}
+                  className="w-full bg-panel border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 placeholder:text-ink-muted/40"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Description <span className="normal-case text-ink-tertiary/40">(optional)</span></label>
+                <textarea
+                  value={prBody}
+                  onChange={(e) => setPrBody(e.target.value)}
+                  rows={3}
+                  placeholder="What does this PR do? Link issues, describe changes…"
+                  className="w-full bg-panel border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 resize-none placeholder:text-ink-muted/40"
+                />
+              </div>
+              <button
+                disabled={!prBranch.trim() || !prTitle.trim() || prSubmitting}
+                onClick={async () => {
+                  setPrSubmitting(true)
+                  try {
+                    await raisePR(raisingPR.taskId, {
+                      head: prBranch.trim(),
+                      base: prBase.trim() || 'main',
+                      title: prTitle.trim(),
+                      body: prBody.trim(),
+                    })
+                    toast.success('PR raised!', `"${prTitle}" submitted for senior review.`)
+                    setRaisingPR(null)
+                    fetchDashboard()
+                  } catch (err: unknown) {
+                    toast.error('PR failed', err instanceof Error ? err.message : 'Could not raise PR')
+                  } finally {
+                    setPrSubmitting(false)
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-go text-white text-body-sm font-semibold rounded-[3px] hover:bg-go-lit disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <GitPullRequest size={14} weight="bold" />
+                {prSubmitting ? 'Creating PR…' : 'Create Pull Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gamification sidebar */}
       <div className="w-80 shrink-0 hidden lg:block">

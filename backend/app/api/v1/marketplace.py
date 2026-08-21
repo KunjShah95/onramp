@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.api.v1.auth import get_current_user
+from app.services.field_encryption import decrypt_field
 from app.services.marketplace_service import MarketplaceService
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
@@ -57,7 +58,7 @@ async def publish(request: PublishRequest, user: dict = Depends(get_current_user
         return await service.publish(
             source_playbook_id=request.source_playbook_id,
             publisher_id=user.get("uid", ""),
-            publisher_name=user.get("name") or user.get("email", ""),
+            publisher_name=decrypt_field(user.get("name") or user.get("email", "")),
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

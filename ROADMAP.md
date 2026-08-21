@@ -1,7 +1,7 @@
 # 🗺️ Onramp 2.0 — Product Roadmap (Problem-First)
 
-**Last updated:** August 2026
-**Status:** v1.4 wedge built (Track → Quantify → Intercept) · v1.5 wave 1 built (review load-balancing + consistency) · v1.6 wave 3 built (headcount flows + cohort size deltas) · Phase 0 built (cost-model dials + measurement loop + ramp-vs-Onramp ROI tracker) · Next: run the 5-team validation interviews
+**Last updated:** 21 Aug 2026 (future scope v1.7–v2.2 added — problem-traceable, codebase-grounded)
+**Status:** ✅ v1.4 wedge built (Track → Quantify → Intercept) · ✅ v1.5 wave 1 (review load-balancing + consistency) · ✅ v1.6 wave 3 (headcount flows + cohort deltas) · ✅ Phase 0 (cost-model dials + ROI/efficiency benchmarks) · 🔴 **Validation gate blocking v1.7** — 5-team interviews must converge the cost model before any future code ships · Future scope v1.7–v2.2 defined below, each item traced to PROBLEM.md and to an existing file/service
 
 ---
 
@@ -25,10 +25,10 @@ Root cause: **institutional knowledge fails to flow to the people who need it.**
 
 | Pillar | Pain | Persona | Metric | Status |
 | --- | --- | --- | --- | --- |
-| **P1 · Ramp-up** | Slow ramp; senior time drained | New devs + leads | Time-to-first-merged-PR ↓ | 🔴 **v1.4 wedge** |
-| **P2 · Reviews** | Review bottleneck | Seniors, leads | Review turnaround ↓ | 🔵 v1.5 wave 1 built |
-| **P3 · Visibility** | Blind leaders | CTO / EM / HR | Stuck surfaced <24h | 🔵 v1.6 wave 3 built |
-| **P4 · Stale docs** | Docs drift from code | Everyone | Q&A without humans ↑ | 🔵 Folded into P1 |
+| **P1 · Ramp-up** | Slow ramp; senior time drained | New devs + leads | Time-to-first-merged-PR ↓ | ✅ v1.4 wedge · 🔜 v1.7 hardens intercept (deep-link nudge, Slack, WebSocket) |
+| **P2 · Reviews** | Review bottleneck | Seniors, leads | Review turnaround ↓ | ✅ v1.5 wave 1 · 🔜 v1.8 instruments it (review-events log, per-task suggest, consistency v2) |
+| **P3 · Visibility** | Blind leaders | CTO / EM / HR | Stuck surfaced <24h | ✅ v1.6 wave 3 · 🔜 v1.9 rolls up org + multi-repo + DORA join |
+| **P4 · Stale docs** | Docs drift from code | Everyone | Q&A without humans ↑ | 🔵 Folded into P1 · v1.9 adds 5% freshness signal; never standalone until interviews promote it |
 
 ---
 
@@ -60,7 +60,7 @@ Production readiness (Railway/Render + Vercel + managed PG + Redis + CI/CD + SSL
 
 ### v1.3 — Enterprise + AI Acceleration — Complete
 
-SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · Prometheus/Grafana observability · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
+SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · `/metrics` observability (Prometheus text format) · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
 
 ---
 
@@ -175,14 +175,128 @@ Reporting layer on top of P1 + P2 data.
 | Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401** | ✅ 25 tests, all passing |
 | Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip | ✅ 17 tests, all passing |
 
-### Next (wave 4)
+### Next (wave 4) — validation gate (blocking all v1.7+)
 
-- Run the 5-team validation interviews and converge the defaults from real calibration data.
-- P4 (stale docs) — drift detection + wiki freshness (built) never standalone.
+- Run the 5-team validation interviews and converge the defaults from real calibration data (`docs/validation-interview-script.md`).
+- P4 (stale docs) — drift detection + wiki freshness (built) never standalone — stays folded into P1 until interviews prove a standalone docs pain.
+
+**Gate:** No v1.7 code ships until ≥3/5 leaders land within 2× of cost assumptions and ≥4/5 confirm stuck-alert value. Per-team `PUT /ramp/cost-model` calibrations must converge.
 
 ---
 
-## ⏸️ Shelved / De-prioritized
+## 🔜 v1.7 — Intercept Hardening (close the self-serve loop)
+
+**Theme:** Alerts are worthless if they don't route to an answer. Wire every stuck signal to a self-serve surface that already exists.  
+**Est. effort:** 2–3 weeks · **Depends on:** v1.4 validation gate + existing Q&A/wiki/learn index  
+**Problem trace:** PROBLEM.md P1 Intercept — “≥70% of new-dev questions resolve without a senior”
+
+| Area | Feature | Why now (codebase grounding) |
+| --- | --- | --- |
+| Intercept | **Deep-link nudge** — `dev_stuck` notification → one-tap `Ask Codebase` (pre-filled with signal context) + `Learning Path` + `Wiki` CTA; trainee nudge carries `?signal=stalled_task&task_id=...` so the surface opens scoped to the failing task | `ramp_service.fire_stuck_alerts` → `notification_helpers.notify_dev_stuck` already splits leader vs trainee; the trainee copy is generic. Wire the task context that `stuck_signals()` already returns (`task_id`, `code`). No new collection, just payload enrichment + frontend route param. |
+| Intercept | **Slack intercept** — same deduped alert mirrored to team Slack channel (`slack_service`) with “View ramp” + “Ask” buttons; respects quiet hours | `slack_service` + `digest_service` + Celery `check_stuck_devs` every 6h already exist; add a `slack_intercept` event type (15th) and reuse webhook/Slack channel config from `integrations.py`. |
+| Track | **WebSocket ramp live** — push `stuck_count` + `health_score` delta over `ws_manager` so Ramp/Executive panels update without poll; badge on bell already real-time | `ws_manager` + `useWebSocket` exists for task presence; extend event `ramp_update` with throttling. Small payload, same infra. |
+| Measure | **Self-serve resolution rate** — log `ask/query` + `wiki` + `learn` opens that originate from a stuck nudge (`?source=stuck_nudge`) and whether the stuck signal clears within 48h; new `GET /ramp/intercept-stats` | Closes the P1 success metric loop; uses existing `onramp_conversations`, `audit_log_service`, and `detect_stuck` re-check. No PII beyond user_id. |
+| Polish | **Stale-signal hygiene** — auto-clear: when a trainee resolves the underlying task/PR, the matching `question_spike`/`stalled_task` signal drops on next `detect_stuck`; show “resolved” toast | Prevents alert fatigue; leverages existing `stuck_signals` idempotence + `task_service.transition_task` state machine. |
+
+**Exit criteria:** Nudge CTR ≥30% in dogfooding; stuck→clear within 48h ≥50%; no increase in alert volume (dedupe holds).
+
+---
+
+## 🔜 v1.8 — Review Intelligence (P2 deepening)
+
+**Theme:** Reviews are the other half of senior-time burn. Instrument what v1.5 left as a blind spot.  
+**Est. effort:** 3 weeks · **Depends on:** v1.5 wave 1 + v1.7 intercept data  
+**Problem trace:** PROBLEM.md P2 — Review bottleneck; ROADMAP P2 Next items
+
+| Area | Feature | Why now |
+| --- | --- | --- |
+| Instrument | **Review-events log** — append-only `review_events` table (reviewer_id, task_id, decision, elapsed_ms, rework flag) populated from `task_service.transition_task`; backfills from existing `reviewed_by` + `review_cycles` | `review_ops_service` docstring explicitly calls this the blind spot: “approval stickiness not measurable.” Fixes GAPS #16-adjacent observability. Powers all below. |
+| Quantify | **Turnaround folded into ramp cost** — `review_analytics.avg_review_turnaround_hours` already exists; feed it into `_measured_cost_stats` vs `REVIEW_HOURS_PER_CYCLE` so the sensitivity band tightens with real data | `ramp_service._measured_cost_stats` already computes `avg_cycle_elapsed_hours`; wire the join instead of showing them side-by-side. |
+| Load | **Per-task suggestion in queue rows** — surface `GET /review-ops/suggest?task_id=...` inline on `ReviewQueuePage` (assignee excluded, rework tie-break already in service); add “Assign” CTA that writes `reviewed_by` | Service already supports `task_id` variant — purely a `ReviewOpsPanel.tsx` + `ReviewQueuePage.tsx` UI pass. |
+| Consistency | **Calibrated consistency v2** — include review-events variance + rework rate + approval “stickiness” (same reviewer approving own prior needs_changes) into the 0–100 score; null threshold stays at 3 reviews | Extends `review_ops_service.consistency_scores` with the new log; honest null below 3 protects small samples. |
+| Assist | **PR description + regression checklist as review accelerators** — auto-attach generated `POST /pr-review/describe` + `RegressionTestGenerator` output to the review task view; gated by feature flag | Both agents/services exist (`pr_review.py`, `regression_test_generator`); just wire into the review drawer. |
+
+**Exit criteria:** Review-events log populates on every transition; queue rows show suggestion; consistency null <3 holds; turnaround appears in `GET /ramp/cost-model` measured block.
+
+---
+
+## 🔜 v1.9 — Org Scale & Multi-Repo Visibility (P3 expansion)
+
+**Theme:** One repo is a demo; real teams own 3–10 repos. Health must roll up.  
+**Est. effort:** 3–4 weeks · **Depends on:** v1.6 headcount/retention + `repo_context` index  
+**Problem trace:** PROBLEM.md “leaders blind” at org level, not just team level
+
+| Area | Feature | Grounding |
+| --- | --- | --- |
+| Index | **Multi-repo rollup** — `GET /repos/index/summary?team_id=` aggregates `file_count`, `language` stacks, and `index_id` freshness per team (stale >24h flagged); reuses `repo_context.py` 24h TTL + webhook eviction | `repo_context.py` + `parser_service` (20+ langs) + nightly Celery rebuild already model single-repo freshness; roll up rather than rebuild. |
+| Health | **Org rollup health** — `GET /ramp/health?scope=org` median across teams with `trainee_count`-weighted stuck ratio; reuses `ramp_health()` composite (6 components) without new math | `hr_metrics_service` already aggregates per-team; org is a weighted mean, not a new score. |
+| Drift | **Wiki freshness signal** — surface `drift_detector` + `wiki_service` staleness (last wiki gen vs last push) as a 7th health component (weight 5%, rebalancing others to 95%); stays folded into P1 unless interviews promote it | Both services exist but never surfaced in health; low weight keeps P4 from becoming standalone. |
+| DORA | **DORA × ramp join** — overlay `dora_metrics_service` (deployment frequency, lead time) on the cohort retention/headcount charts on Executive Console; no new DORA math | `dora_metrics_service` already built; just a `CohortTrendPanel` companion overlay. |
+| Autopilot | **Autopilot at org scale** — `POST /autopilot/run` accepts `team_id` + `repo_urls[]` and fans out with shared rate-limit + deduped issue→task creation (existing idempotence on title+repo) | `autopilot_service` + `issue_orchestrator` already handle single-repo; batch is a loop with existing dedupe. |
+
+**Exit criteria:** Team with 3 repos shows rollup freshness; org health = weighted mean (manual calc matches); Executive Console shows DORA + ramp on same timeline.
+
+---
+
+## 🛠️ v2.0 — Platform Hardening & Scale (pay down GAPS.md + STATUS.md debt)
+
+**Theme:** No new wedge until the platform is honest about failures.  
+**Est. effort:** 3–4 weeks parallelizable · **Depends on:** nothing — can run alongside v1.7/1.8  
+**Problem trace:** Not wedge — reliability that makes wedge trustworthy
+
+| Gap | Fix | File |
+| --- | --- | --- |
+| GAPS #3 | Document/fix `billing_service.py` None returns — typed `Optional` + callers handle `None` with 404 semantics, OpenAPI 404 declared | `billing_service.py:75,80,95` |
+| GAPS #6 | Architecture explorer returns typed error, not `None` — `explore.py:28` raises `HTTPException(422)` with `detail` so callers don't swallow | `explore.py:28` |
+| GAPS #9 | Null-check `task.get("assigned_to")` in `ws_manager` broadcast | `task_service.py:27-28` + `ws_manager.py` |
+| GAPS #10 | Redis failures log at WARNING with `team_id`/`index_id` context, not silent | `repo_context.py:46-53` |
+| GAPS #11 | LLM route header errors log at WARNING | `llm_route.py:48-50` |
+| GAPS #12 | Declare 404 in OpenAPI for all `get_by_id` paths (tasks, teams, playbooks, etc.) | Multiple routers |
+| Robustness | **LLM timeouts** — per-provider `timeout=30s` + `retry=2` in `llm.py` fallback chain; streaming excluded | `llm.py` |
+| Robustness | **Cache persistence docs + Redis fallback** — `cache.py` documents in-memory loss on restart; `cache_service` already Redis-backed, no code change | `cache.py:11-62` |
+| Reliability | **Email digest time validation** — `cron` string validated at write, not at Celery beat | `api.ts:2376` + `digest_service.py` |
+| Infra | **Connection pool sizing** — validate `DB_POOL_SIZE`/`WORKERS=4` vs Neon/Render limits; document in `docs/ARCHITECTURE.md` | `database/config.py` |
+| Infra | **Backup + restore drill** — Neon PITR retention verified + `scripts/restore_drill.sh` + runbook | `features_mvp.md §6` |
+| Infra | **Receive-then-validate** — move `{success,data}` envelope from `ResponseWrapperMiddleware` body-buffer to router layer; first-class SSE exclusion for `/ask/query/stream` | `middleware/response_wrapper.py` + `ask.py` |
+| CI | `ruff` + `eslint` + `pip-audit`/`npm audit` in GitHub Actions; Playwright E2E gated in CI (not just local) | `.github/workflows/*` |
+| Perf | p95 budgets + bundle/Lighthouse gate (`Lighthouse ≥90` on `/`, vendor chunk <350kB gz) | `features_mvp.md §7` |
+
+**Exit criteria:** `GAPS.md` 0 × `NEEDS FIX`; `features_mvp.md` §§3–7 checked; CI includes lint+sec+ E2E; one successful backup restore drill.
+
+---
+
+## 🌱 v2.1 — Growth & Monetization (only after v2.0 green)
+
+**Theme:** Make the wedge monetizable and discoverable.  
+**Est. effort:** 4 weeks · **Depends on:** v2.0 hardening + Razorpay E2E green
+
+| Area | Feature | Notes |
+| --- | --- | --- |
+| Billing | **Metered LLM spend per team** — surface `usage_tracker` + `credit_service` burn vs `credit_wallet` on Billing page; per-team `GET /billing/usage?team_id=` | `usage_tracker.py` + `llm_costs.py` already capture per-call provider/cost; just aggregate. |
+| Gateway | **Public API docs portal** — publish OpenAPI at `/docs` (already gated by `ENABLE_API_DOCS`) + generated SDK examples for `GET /ramp/*` wedge endpoints | `main.py:_show_api_docs` + `sdk/` (6 tests). |
+| Playbooks | **Playbook marketplace graduation** — ratings, install count, fork-to-team; `marketplace_service` already has CRUD + tags | Small schema add (`rating`, `install_count`), no new service. |
+| SDK | **SDK wedge examples** — `@onramp/sdk` typed `ramp.*` client (summary, stuck, health) with retries | Follows existing `ai_gateway` SDK pattern. |
+| Admin | **Waitlist + feature flags self-serve** — `AdminDashboardPage` waitlist triage + per-team flag overrides | `feature_flag_service` + `admin.py` table migration. |
+| Privacy | **GDPR self-serve deletion** — `DELETE /accounts/me` purges PII (Fernet fields) + audit tombstone | Required once EU users exist (`features_mvp.md §6`). |
+
+---
+
+## 🏢 v2.2 — Enterprise (demand-driven, never speculative)
+
+Gated on a real deal. Do not build speculatively — each line below is expensive and **conflicts with the wedge if built early** (see `versions.md`).
+
+| Item | Trigger to build |
+| --- | --- |
+| **SSO/SAML (Okta + Entra ID)** | Enterprise deal requires it — `sso_service.py` scaffold exists, wire SAML assertion → RBAC |
+| **Audit-log export + retention** | Deal requires 90d export — `audit_log_service` + `audit.py` already structured, add S3/CVS export |
+| **Self-hosted / VPC** | Deal requires data residency — productize `docker-compose.prod.yml` (removed `kubernetes/` — it described a different Firestore-based project and was not deployable) |
+| **VS Code extension** | ≥100 WAU on Silent Pair Programming — ship in-editor walkthrough via `silent_pair_programming` agent |
+| **Multi-org analytics** | Org owns ≥5 teams — roll `ramp_health` org-wide with org-level RBAC |
+| **SLA + status page** | Paid tier needs it — uptime robot + `/health` → public status |
+
+---
+
+## ⏸️ Shelved / De-prioritized (explicitly not in v1.7–v2.2)
 
 | Item | Why shelved | Revisit when |
 | --- | --- | --- |
@@ -194,24 +308,26 @@ Reporting layer on top of P1 + P2 data.
 
 ---
 
-## 🧪 Testing & Reliability
+## 🧪 Testing & Reliability (current) + what v2.0 adds
 
-- **Backend:** 737+ passing pytest (async fixtures, dual memory+postgres storage), incl. observability (25), API contract (31), load/performance (12).
+- **Backend:** 700+ passing pytest (`backend/tests/` — 63 test files, async fixtures, dual memory+postgres storage), incl. observability, API contract (31), load/performance (12), ramp/review-ops/benchmark (32).
 - **Frontend:** 58+ Vitest + RTL tests; strict-mode TypeScript, zero errors.
-- **SDK:** 6 tests. **E2E:** 65+ Playwright (auth, dashboard, review-queue, explore, team, billing, a11y).
-- **CI:** GitHub Actions — backend (compileall + alembic + pytest) and frontend (tsc + vitest + build).
-- **Observability:** Prometheus (10 metric families), Grafana dashboard, JSON logging, request correlation IDs.
+- **SDK:** 6 tests. **E2E:** 65+ Playwright (auth, dashboard, review-queue, explore, team, billing, a11y, perf + Lighthouse) — *still local-only; v2.0 gates it in CI*.
+- **CI (today):** GitHub Actions — backend (compileall + alembic + pytest w/ PG service) and frontend (tsc + vitest + build).
+- **CI (v2.0):** + `ruff` + `eslint` + `pip-audit`/`npm audit` + Playwright E2E required gate + p95/bundle/Lighthouse budget.
+- **Observability:** `/metrics` (10 families, Prometheus text format) + JSON logging (`LOG_FORMAT=json`), request correlation IDs, `/health` `/ready`; v1.7 adds `ramp_update` WebSocket + `GET /ramp/intercept-stats`, v1.8 adds `review_events` table + turnaround in cost-model measured block.
 
 ## 📊 Key Metrics
 
 | Metric | Current |
 | --- | --- |
-| Backend API endpoints | 115+ |
-| Frontend pages / AI agents / DB tables | 44 / 10 / 39+ |
-| Tests (backend + frontend + sdk) | 800+ |
-| Auth providers | 4 (email, Google, GitHub, SSO) |
+| Backend API routers / endpoints | 42+ routers · 115+ endpoints |
+| Frontend pages / AI agents / DB tables | 58+ components (44+ routes) / 16 agents / 34 tables (28 migrations) |
+| Tests (backend + frontend + sdk + E2E) | 800+ |
+| Auth providers | 4 (email/password JWT, Google OAuth, GitHub OAuth, optional Neon JWKS) |
 | Integrations | 7 (Slack, GitHub, Webhooks, Jira, Linear, GitLab, Bitbucket) |
-| Notification event types | 15 |
+| Notification event types | 14–15 |
+| Services | 60+ |
 
 ---
 

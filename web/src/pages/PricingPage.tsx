@@ -140,15 +140,18 @@ export default function PricingPage() {
         path: '/pricing',
       }}
     >
-      {/* Hero — one line, one anchor */}
-      <div className="relative pt-16 pb-10 px-6 text-center max-w-3xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-          <span className="designator text-ink-secondary">FLIGHT · PRICING</span>
-          <h1 className="font-display text-4xl md:text-5xl mt-3 mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            One flat price. Your whole team.
+      {/* Hero — one line, one anchor · same pill language */}
+      <div className="relative pt-10 pb-10 px-6 text-center max-w-3xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Pricing</span>
+          </span>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+            One flat price. <span className="text-gradient">Your whole team.</span>
           </h1>
-          <p className="text-[hsl(var(--muted-foreground))] text-base mb-8 max-w-xl mx-auto font-body">
-            No per-seat math. Every engineer can ask, explore, and onboard. You pay one price per workspace.
+          <p className="text-[16px] leading-[1.6] text-ink-secondary mb-8 max-w-xl mx-auto">
+            No per-seat math. Every engineer can ask, explore, and onboard. One price per workspace.
           </p>
 
           {/* Toggles */}

@@ -807,6 +807,8 @@ export interface RepoItem {
   owner: string
   status: 'analyzing' | 'ready' | 'error'
   last_analyzed: string
+  url?: string
+  description?: string
 }
 
 export interface ReposResponse {
@@ -930,6 +932,32 @@ export interface RepoSectionsResponse {
 
 export async function fetchRepos(): Promise<ReposResponse> {
   return get<ReposResponse>(`${API_BASE}/repos`)
+}
+
+export async function fetchReposByTeam(teamId: string): Promise<ReposResponse> {
+  return get<ReposResponse>(`${API_BASE}/repos?team_id=${encodeURIComponent(teamId)}`)
+}
+
+export async function registerRepo(data: {
+  name: string
+  owner: string
+  url?: string
+  team_id?: string
+  description?: string
+}): Promise<RepoItem> {
+  const params = new URLSearchParams({ name: data.name, owner: data.owner })
+  if (data.url) params.set('url', data.url)
+  if (data.team_id) params.set('team_id', data.team_id)
+  if (data.description) params.set('description', data.description)
+  const res = await fetch(`${API_BASE}/repos?${params}`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to register repo (${res.status})`)
+  }
+  return res.json()
 }
 
 export interface TraineeDashboardProgress {
@@ -1347,21 +1375,29 @@ export async function removeTeamMember(
   teamId: string,
   user: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to remove member (${res.status})`)
+  }
 }
 
 export async function changeTeamTier(
   teamId: string,
   tier: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/teams/${teamId}/tier`, {
+  const res = await fetch(`${API_BASE}/teams/${teamId}/tier`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ tier }),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to change tier (${res.status})`)
+  }
 }
 
 // ─── Playbooks ────────────────────────────────────────────────────────────
@@ -1420,10 +1456,14 @@ export async function updatePlaybook(
 export async function archivePlaybook(
   playbookId: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/playbooks/${playbookId}`, {
+  const res = await fetch(`${API_BASE}/playbooks/${playbookId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to archive playbook (${res.status})`)
+  }
 }
 
 // ─── Billing ──────────────────────────────────────────────────────────────
@@ -1472,10 +1512,14 @@ export async function updateSubscription(
 }
 
 export async function cancelSubscription(teamId: string): Promise<void> {
-  await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
+  const res = await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to cancel subscription (${res.status})`)
+  }
 }
 
 export async function attachRazorpay(
@@ -1591,10 +1635,14 @@ export async function listApiKeys(
 }
 
 export async function revokeApiKey(keyId: string): Promise<void> {
-  await fetch(`${API_BASE}/ai/keys/${keyId}`, {
+  const res = await fetch(`${API_BASE}/ai/keys/${keyId}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to revoke API key (${res.status})`)
+  }
 }
 
 export async function validateApiKey(
@@ -1647,10 +1695,14 @@ export async function deleteProviderKey(
   orgName: string,
   provider: string
 ): Promise<void> {
-  await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
+  const res = await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
     method: 'DELETE',
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to delete provider key (${res.status})`)
+  }
 }
 
 /**
@@ -1677,10 +1729,14 @@ export async function removeProviderKey(
   provider: string,
   keyId: string
 ): Promise<void> {
-  await fetch(
+  const res = await fetch(
     `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys/${keyId}`,
     { method: 'DELETE', headers: authHeaders() }
   )
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Failed to remove provider key (${res.status})`)
+  }
 }
 
 // ─── Model Catalog (dynamic OpenRouter fetch) ─────────────────────────────
@@ -3040,6 +3096,30 @@ export async function completeTask(taskId: string): Promise<WorkflowTask> {
 
 export async function cancelTask(taskId: string): Promise<WorkflowTask> {
   return request<WorkflowTask>(`${API_BASE}/tasks/${taskId}/cancel`, {})
+}
+
+export async function raisePR(taskId: string, data: {
+  head: string
+  base?: string
+  title: string
+  body?: string
+}): Promise<WorkflowTask & { pr_url: string; pr_number: number }> {
+  return request(`${API_BASE}/tasks/${taskId}/raise-pr`, {
+    head: data.head,
+    base: data.base ?? 'main',
+    title: data.title,
+    body: data.body ?? '',
+  })
+}
+
+export async function mergePR(taskId: string, data?: {
+  merge_method?: 'merge' | 'squash' | 'rebase'
+  commit_title?: string
+}): Promise<WorkflowTask & { merged: boolean; merge_sha: string }> {
+  return request(`${API_BASE}/tasks/${taskId}/merge`, {
+    merge_method: data?.merge_method ?? 'squash',
+    commit_title: data?.commit_title ?? '',
+  })
 }
 
 export async function deleteTask(taskId: string): Promise<void> {

@@ -70,8 +70,8 @@ async def websocket_endpoint(
                 msg = json.loads(data)
                 if msg.get("type") == "ping":
                     await websocket.send_text(json.dumps({"type": "pong"}))
-            except (json.JSONDecodeError, Exception):
-                pass  # Ignore malformed messages
+            except json.JSONDecodeError:
+                pass  # Ignore malformed messages; other exceptions propagate
 
     except WebSocketDisconnect:
         pass

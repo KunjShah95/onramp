@@ -362,7 +362,7 @@ class TestProviderKeyEndpoints:
 
     def test_unsupported_provider_400(self, client):
         r = client.put(
-            f"{API_PREFIX}/ai/keys/acme/providers/azure", json={"api_key": "k"}
+            f"{API_PREFIX}/ai/keys/acme/providers/notaprovider", json={"api_key": "k"}
         )
         assert r.status_code == 400
 
@@ -435,7 +435,7 @@ class TestProviderKeyEndpoints:
 
     def test_add_extra_key_validates(self, client):
         r = client.post(
-            f"{API_PREFIX}/ai/keys/acme/providers/azure/keys",
+            f"{API_PREFIX}/ai/keys/acme/providers/notaprovider/keys",
             json={"api_key": "k"},
         )
         assert r.status_code == 400

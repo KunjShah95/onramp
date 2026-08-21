@@ -50,11 +50,25 @@ yarn-debug.log*
 # Playwright test output
 web/test-results/
 
-# Documentation
+# Documentation — root docs are project docs, not build output
 *.md
 !Readme.md
 !README.md
 !ROADMAP.md
+!CLAUDE.md
+!PROJECT.md
+!PRODUCT.md
+!PLAN.md
+!STATUS.md
+!SECURITY.md
+!DESIGN.md
+!GAPS.md
+!PROBLEM.md
+!versions.md
+!features.md
+!features_mvp.md
+!RENDER_DEPLOYMENT.md
+!DESIGN.md
 !docs/*.md
 *.mjs
 *.png

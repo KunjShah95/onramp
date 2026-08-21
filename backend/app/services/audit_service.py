@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
+from app.services.field_encryption import decrypt_field
 
 COLLECTION = "onramp_audit_log"
 
@@ -65,7 +66,9 @@ async def _resolve_names(events: List[dict]) -> List[dict]:
                 "users", [("id", "in", sorted(user_ids))]
             )
             for r in rows:
-                users[r.get("id")] = r.get("name") or r.get("email") or r.get("id")
+                raw = r.get("name") or r.get("email") or r.get("id")
+                rid = r.get("id")
+                users[rid] = decrypt_field(raw) if raw != rid else rid
         except Exception:
             pass
 

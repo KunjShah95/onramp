@@ -33,15 +33,15 @@ export default function ClosingCta() {
             </div>
 
           <div className="relative">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-accent-primary">
+            <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">
               Get started
             </p>
             <h2 className="mx-auto mt-4 max-w-2xl font-body text-[clamp(1.9rem,5vw,3.2rem)] font-bold leading-[1.06] tracking-[-0.02em] text-ink">
-              Your codebase is already a map. Make it visible in minutes.
+              Onboarding in days, not months.
             </h2>
             <p className="mx-auto mt-4 max-w-md text-[16px] leading-[1.65] text-ink-secondary">
-              Install the GitHub App, pick a repository, and watch your architecture draw
-              itself · fresh on every push.
+              Install the GitHub App, pick a repository, and watch your ramp turn into a
+              live workflow · fresh on every push.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">

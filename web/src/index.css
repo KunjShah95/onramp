@@ -828,7 +828,7 @@
     --ink-disabled: #CBD5E1;
     /* Premium light system — indigo primary, cyan + violet accents (see DESIGN brief).
        RGB triplets feed rgb(var(--token)) consumers; hex feeds raw CSS consumers. */
-    --go: #059669;
+--go: #0B7A55;
     --go-lit: #10B981;
     --mission: #4F46E5;
     --mission-lit: #6366F1;
@@ -841,7 +841,7 @@
     --bg-void: 248 250 252;
     --bg-primary: 255 255 255;
     --bg-secondary: 241 245 249;
-    --bg-tertiary: 226 232 240;
+    --bg-tertiary: 241 245 249;
     --bg-elevated: 255 255 255;
     --text-primary: 15 23 42;
     --text-secondary: 71 85 105;
@@ -856,8 +856,8 @@
     --accent-glow: 79 70 229;
     --accent-primary: 79 70 229;
     --accent-primary-hover: 67 56 202;
-    --success: 16 185 129;
-    --success-lit: 52 211 153;
+    --success: 11 122 85;
+    --success-lit: 16 185 129;
     --warning: 245 158 11;
     --warning-lit: 251 191 36;
     --error: 239 68 68;
@@ -871,7 +871,7 @@
     --secondary: 210 20% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 44%;
     --accent: 243 75% 59%;
     --accent-foreground: 0 0% 100%;
     --border: 214 32% 91%;
@@ -956,6 +956,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Non-static so framer-motion's useScroll({ target }) can measure offsets
+       against the default scroll container without a dev warning. */
+    position: relative;
   }
 
   body {
@@ -1108,7 +1111,7 @@
     font-size: 11px;
     letter-spacing: 0.04em;
     text-transform: lowercase;
-    color: var(--ink-muted);
+    color: var(--ink-tertiary);
     font-variant-numeric: tabular-nums;
   }
 

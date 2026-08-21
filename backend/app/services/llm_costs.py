@@ -40,6 +40,11 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "glm-4-plus":                   {"input": 0.60, "output": 0.60},
     "glm-4-flash":                  {"input": 0.0,  "output": 0.0},  # free tier
     "moonshot-v1-8k":               {"input": 0.20, "output": 0.20},
+    # Generic OpenAI-compatible vendors
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {"input": 0.59, "output": 0.79},
+    "accounts/fireworks/models/llama-v3p1-70b-instruct": {"input": 0.59, "output": 0.79},
+    "sonar-pro":                    {"input": 1.00, "output": 1.00},
+    "gpt-3.5-turbo":                {"input": 0.50, "output": 1.50},  # generic custom default
     # Embedding models — USD and INR per 1M input tokens (embeddings have no
     # output tokens). Free/local models are $0 in both currencies.
     "text-embedding-3-small":  {"input": 0.02, "output": 0.0, "inr_input": 1.70,  "inr_output": 0.0},

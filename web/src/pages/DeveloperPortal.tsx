@@ -1019,7 +1019,9 @@ function APIPlaygroundSection() {
       if (d.agents?.length) {
         setSelectedAgent(d.agents[0].name)
       }
-    }).catch(() => {/* silent */})
+    }).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Failed to load agents')
+    })
   }, [])
 
   const agent = agents.find((a) => a.name === selectedAgent)

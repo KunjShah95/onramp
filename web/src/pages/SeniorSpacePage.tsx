@@ -1,15 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Eye, Heartbeat, Users, CheckCircle,
+  Eye, Heartbeat, Users, CheckCircle, GitBranch, ArrowRight, Warning,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { cn } from '../lib/utils'
-import { fetchCTODashboard } from '../lib/api'
+import {
+  fetchCTODashboard, fetchReposByTeam, getTeamMembers,
+  createTask, listTasks, approveTask, mergePR,
+} from '../lib/api'
+import type { RepoItem, WorkflowTask } from '../lib/api'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -48,10 +54,406 @@ const defaultModules = [
   { module: 'Task Workflows', permission: 'Full Access' },
 ]
 
+// ── PR Review & Merge Panel ──────────────────────────────────────────────────
+
+function PRReviewPanel({ teamId }: { teamId: string }) {
+  const toast = useToast()
+  const [prs, setPRs] = useState<WorkflowTask[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState<string | null>(null)
+
+  function loadPRs() {
+    setLoading(true)
+    listTasks({ team_id: teamId, state: 'submitted' })
+      .then((r) => {
+        const submitted = (r.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        // also load under_review
+        return listTasks({ team_id: teamId, state: 'under_review' }).then((r2) => {
+          const underReview = (r2.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+          const seen = new Set<string>()
+          const merged: WorkflowTask[] = []
+          for (const t of [...submitted, ...underReview]) {
+            if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
+          }
+          setPRs(merged)
+        })
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { loadPRs() }, [teamId])
+
+  async function handleApprove(task: WorkflowTask) {
+    setActionId(task.task_id)
+    try {
+      await approveTask(task.task_id)
+      toast.success('PR approved', `"${task.title}" approved — ready to merge.`)
+      loadPRs()
+    } catch (err: unknown) {
+      toast.error('Approve failed', err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  async function handleMerge(task: WorkflowTask) {
+    setActionId(task.task_id + ':merge')
+    try {
+      await mergePR(task.task_id, { merge_method: 'squash' })
+      toast.success('PR merged!', `"${task.title}" merged and task completed.`)
+      loadPRs()
+    } catch (err: unknown) {
+      toast.error('Merge failed', err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  return (
+    <ConsolePanel
+      rail="PR Review Queue"
+      designator="senior · merge"
+      status={prs.length > 0 ? 'caution' : 'go'}
+      live={prs.length > 0}
+    >
+      {loading ? (
+        <p className="text-caption text-ink-tertiary/50 animate-pulse">Loading PRs…</p>
+      ) : prs.length === 0 ? (
+        <p className="text-caption text-ink-tertiary/50">No PRs awaiting review.</p>
+      ) : (
+        <div className="space-y-3">
+          {prs.map((task) => {
+            const busy = actionId === task.task_id || actionId === task.task_id + ':merge'
+            const isApproved = task.state === 'approved'
+            return (
+              <div key={task.task_id} className="p-3 rounded-[3px] bg-well/30 border border-seam space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
+                    {task.pr_url && (
+                      <a
+                        href={task.pr_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-caption text-go/80 hover:text-go font-code truncate block"
+                      >
+                        {task.pr_url.replace('https://github.com/', '')}
+                      </a>
+                    )}
+                  </div>
+                  <span className={cn(
+                    'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
+                    task.state === 'submitted' ? 'bg-caution/10 text-caution' : 'bg-mission/10 text-mission',
+                  )}>
+                    {task.state?.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isApproved && (
+                    <button
+                      disabled={busy}
+                      onClick={() => handleApprove(task)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go/10 border border-go/30 text-go hover:bg-go/20 disabled:opacity-50 transition-colors"
+                    >
+                      <CheckCircle size={11} weight="fill" />
+                      {actionId === task.task_id ? 'Approving…' : 'Approve'}
+                    </button>
+                  )}
+                  <button
+                    disabled={busy}
+                    onClick={() => handleMerge(task)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go text-white hover:bg-go-lit disabled:opacity-50 transition-colors"
+                  >
+                    <GitBranch size={11} weight="bold" />
+                    {actionId === task.task_id + ':merge' ? 'Merging…' : 'Merge PR'}
+                  </button>
+                  <button
+                    onClick={loadPRs}
+                    className="ml-auto text-caption text-ink-tertiary/50 hover:text-ink-secondary transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </ConsolePanel>
+  )
+}
+
+// ── Assign Repository Panel ─────────────────────────────────────────────────
+
+interface TeamMemberRaw { user_id: string; name: string; role: string }
+
+function AssignRepoPanel({ teamId }: { teamId: string }) {
+  const toast = useToast()
+  const [members, setMembers] = useState<TeamMemberRaw[]>([])
+  const [repos, setRepos] = useState<RepoItem[]>([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedRepoId, setSelectedRepoId] = useState('')
+  const [manualUrl, setManualUrl] = useState('')
+  const [useManual, setUseManual] = useState(false)
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDesc, setTaskDesc] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [successMsg, setSuccessMsg] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [recentAssignments, setRecentAssignments] = useState<WorkflowTask[]>([])
+
+  useEffect(() => {
+    getTeamMembers(teamId)
+      .then((list) => setMembers(list))
+      .catch(() => {})
+    fetchReposByTeam(teamId)
+      .then((r) => setRepos(r.repos ?? []))
+      .catch(() => {})
+    listTasks({ team_id: teamId })
+      .then((r) => setRecentAssignments(
+        (r.tasks ?? []).filter((t: WorkflowTask) => t.repo_url).slice(0, 5)
+      ))
+      .catch(() => {})
+  }, [teamId])
+
+  // Auto-fill title when selection changes
+  useEffect(() => {
+    if (!useManual && selectedRepoId) {
+      const repo = repos.find((r) => r.id === selectedRepoId)
+      if (repo) setTaskTitle(`Work on ${repo.owner}/${repo.name}`)
+    } else if (useManual && manualUrl) {
+      const m = manualUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
+      if (m) setTaskTitle(`Work on ${m[1]}/${m[2].replace('.git', '')}`)
+    }
+  }, [selectedRepoId, manualUrl, useManual, repos])
+
+  // Juniors/devs only — seniors assign, not self-assign
+  const assignableMembers = members.filter((m) =>
+    ['junior_dev', 'developer', 'member', 'tester'].includes(m.role)
+  )
+
+  function resolveRepoUrl(): string {
+    if (useManual) return manualUrl.trim()
+    const repo = repos.find((r) => r.id === selectedRepoId)
+    if (!repo) return ''
+    return repo.url ||
+      `https://github.com/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}`
+  }
+
+  async function handleAssign() {
+    if (!selectedUserId) { toast.error('Select a developer', 'Choose who to assign the repo to.'); return }
+    const repoUrl = resolveRepoUrl()
+    if (!repoUrl) { toast.error('Repo required', 'Pick a registered repo or enter a URL.'); return }
+    if (!taskTitle.trim()) { toast.error('Title required', 'Add a task title.'); return }
+
+    setAssigning(true); setErrorMsg(''); setSuccessMsg('')
+    try {
+      await createTask({
+        team_id: teamId,
+        title: taskTitle.trim(),
+        description: taskDesc.trim() || undefined,
+        repo_url: repoUrl,
+        assigned_to: selectedUserId,
+        priority: 'medium',
+        module: 'Repository Assignment',
+      })
+      const assignee = members.find((m) => m.user_id === selectedUserId)
+      setSuccessMsg(`Assigned to ${assignee?.name ?? 'developer'}`)
+      toast.success('Repository assigned', `${taskTitle} → ${assignee?.name ?? 'developer'}`)
+      setSelectedUserId(''); setSelectedRepoId(''); setManualUrl('')
+      setTaskTitle(''); setTaskDesc('')
+      // Refresh list
+      listTasks({ team_id: teamId })
+        .then((r) => setRecentAssignments(
+          (r.tasks ?? []).filter((t: WorkflowTask) => t.repo_url).slice(0, 5)
+        ))
+        .catch(() => {})
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Assignment failed'
+      setErrorMsg(msg)
+      toast.error('Assignment failed', msg)
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  return (
+    <ConsolePanel rail="Assign Repository" designator="senior · assign" status="go">
+      <div className="space-y-4">
+        {/* Developer picker */}
+        <div className="space-y-1.5">
+          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Developer</label>
+          <select
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors"
+          >
+            <option value="">Select developer…</option>
+            {assignableMembers.length === 0 && members.length > 0 && (
+              <option disabled>No junior/developer members found</option>
+            )}
+            {assignableMembers.map((m) => (
+              <option key={m.user_id} value={m.user_id}>
+                {m.name} ({m.role.replace('_', ' ')})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Repo source toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUseManual(false)}
+            className={cn(
+              'px-3 py-1 text-caption rounded-[3px] border transition-colors',
+              !useManual
+                ? 'bg-go/10 border-go/40 text-go font-medium'
+                : 'bg-base border-seam text-ink-secondary hover:border-go/30',
+            )}
+          >
+            Registered repos
+          </button>
+          <button
+            onClick={() => setUseManual(true)}
+            className={cn(
+              'px-3 py-1 text-caption rounded-[3px] border transition-colors',
+              useManual
+                ? 'bg-go/10 border-go/40 text-go font-medium'
+                : 'bg-base border-seam text-ink-secondary hover:border-go/30',
+            )}
+          >
+            Any GitHub URL
+          </button>
+        </div>
+
+        {/* Repo selector or URL input */}
+        {!useManual ? (
+          <div className="space-y-1.5">
+            <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Repository</label>
+            <select
+              value={selectedRepoId}
+              onChange={(e) => setSelectedRepoId(e.target.value)}
+              className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors"
+            >
+              <option value="">Select repository…</option>
+              {repos.length === 0 && (
+                <option disabled>No repos registered for this team</option>
+              )}
+              {repos.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.owner}/{r.name}
+                </option>
+              ))}
+            </select>
+            {repos.length === 0 && (
+              <p className="text-caption text-ink-tertiary/50">
+                No registered repos found. Switch to "Any GitHub URL" to assign directly.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">GitHub URL</label>
+            <input
+              type="url"
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              placeholder="https://github.com/owner/repo"
+              className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40"
+            />
+          </div>
+        )}
+
+        {/* Task title */}
+        <div className="space-y-1.5">
+          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Task title</label>
+          <input
+            type="text"
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            placeholder="e.g. Work on facebook/react repository"
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40"
+          />
+        </div>
+
+        {/* Description (optional) */}
+        <div className="space-y-1.5">
+          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Notes <span className="text-ink-tertiary/40 normal-case">(optional)</span></label>
+          <textarea
+            value={taskDesc}
+            onChange={(e) => setTaskDesc(e.target.value)}
+            rows={2}
+            placeholder="What should they focus on? Any specific files or issues?"
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40 resize-none"
+          />
+        </div>
+
+        {/* Feedback */}
+        {successMsg && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-[3px] bg-go/10 border border-go/20 text-go text-body-sm">
+            <CheckCircle size={14} weight="fill" />
+            {successMsg}
+          </div>
+        )}
+        {errorMsg && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-[3px] bg-abort/10 border border-abort/20 text-abort text-body-sm">
+            <Warning size={14} weight="fill" />
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Assign button */}
+        <button
+          onClick={handleAssign}
+          disabled={assigning}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-go text-white text-body-sm font-semibold rounded-[3px] hover:bg-go-lit disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {assigning ? (
+            <>Assigning…</>
+          ) : (
+            <>
+              <GitBranch size={14} weight="bold" />
+              Assign Repository
+              <ArrowRight size={14} weight="bold" />
+            </>
+          )}
+        </button>
+
+        {/* Recent assignments */}
+        {recentAssignments.length > 0 && (
+          <div className="pt-2 border-t border-seam space-y-2">
+            <p className="text-caption text-ink-tertiary/60 font-medium uppercase tracking-widest">Recent assignments</p>
+            {recentAssignments.map((t) => (
+              <div key={t.task_id} className="flex items-center justify-between p-2.5 rounded-[3px] bg-well/20 border border-seam">
+                <div className="min-w-0 flex-1">
+                  <p className="text-body-xs text-ink font-medium truncate">{t.title}</p>
+                  <p className="text-caption text-ink-tertiary/50 truncate">{t.repo_url}</p>
+                </div>
+                <span className={cn(
+                  'ml-3 shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
+                  t.state === 'completed' ? 'bg-go/10 text-go' :
+                  t.state === 'in_progress' ? 'bg-mission/10 text-mission' :
+                  'bg-caution/10 text-caution'
+                )}>
+                  {t.state?.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </ConsolePanel>
+  )
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
+
 export default function SeniorSpacePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dashboard, setDashboard] = useState<any>(null)
+  const { activeTeamId } = useAuth()
 
   useEffect(() => {
     let cancelled = false
@@ -282,6 +684,27 @@ export default function SeniorSpacePage() {
               <ApiCostTracking />
             </ConsolePanel>
           </motion.div>
+
+          {/* PR Review & Merge */}
+          {activeTeamId && (
+            <motion.div variants={itemVariants}>
+              <PRReviewPanel teamId={activeTeamId} />
+            </motion.div>
+          )}
+
+          {/* Assign Repository */}
+          {activeTeamId && (
+            <motion.div variants={itemVariants}>
+              <AssignRepoPanel teamId={activeTeamId} />
+            </motion.div>
+          )}
+          {!activeTeamId && (
+            <motion.div variants={itemVariants}>
+              <ConsolePanel rail="Assign Repository" designator="senior · assign" status="standby">
+                <p className="text-body-sm text-ink-tertiary/60">No active team — join a team to assign repos.</p>
+              </ConsolePanel>
+            </motion.div>
+          )}
         </>
       )}
     </motion.div>

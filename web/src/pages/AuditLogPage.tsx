@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   ShieldCheck,
@@ -57,7 +57,12 @@ export default function AuditLogPage() {
   const [filterActor, setFilterActor] = useState('')
   const [filterVisible, setFilterVisible] = useState(false)
 
-  async function fetchEvents() {
+  const abortRef = useRef<AbortController | null>(null)
+
+  const fetchEvents = useCallback(async () => {
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
     setLoading(true); setError('')
     try {
       const result = await adminListAuditEvents({
@@ -65,19 +70,23 @@ export default function AuditLogPage() {
         actor_id: filterActor || undefined,
         limit: PAGE_SIZE * (page + 1),
       })
-      setEvents(result.events)
-      setTotalCount(result.count)
+      if (!ctrl.signal.aborted) {
+        setEvents(result.events)
+        setTotalCount(result.count)
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load audit events.')
+      if (!ctrl.signal.aborted) setError(err.message || 'Failed to load audit events.')
     } finally {
-      setLoading(false)
+      if (!ctrl.signal.aborted) setLoading(false)
     }
-  }
+  }, [page, filterType, filterActor])
 
   // Immediate fetch for page/filter type changes
-  useEffect(() => { fetchEvents() }, [page, filterType])
+  useEffect(() => { fetchEvents() }, [fetchEvents])
 
   // Debounced fetch for text input (actor search)
+  // Note: fetchEvents already debounces stale requests via AbortController.
+  // The debounce below only throttles the trigger for text input.
   useEffect(() => {
     const timer = setTimeout(() => { fetchEvents() }, 300)
     return () => clearTimeout(timer)

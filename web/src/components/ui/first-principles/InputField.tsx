@@ -25,7 +25,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         </label>
         <div className="relative group">
           {icon && (
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-tertiary">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-tertiary">
               {icon}
             </span>
           )}
@@ -33,11 +33,11 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled',
-              'px-3.5 py-2.5 text-[14px] font-body',
-              'transition-[border-color,box-shadow] duration-150',
-              'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]',
-              sharp ? 'rounded-[3px]' : 'rounded-md',
+              'w-full bg-white border border-black/10 text-ink placeholder:text-ink-muted',
+              'px-3.5 py-2.5 text-[14px] font-body shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
+              'transition-[border-color,box-shadow,background-color] duration-150',
+              'hover:border-black/15 focus:outline-none focus:border-accent-primary/40 focus:shadow-[0_0_0_3px_rgba(79,70,229,0.14)] focus:bg-white',
+              sharp ? 'rounded-[5px]' : 'rounded-xl',
               icon && 'pl-10',
               trailing && 'pr-16',
               className,

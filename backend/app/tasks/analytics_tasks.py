@@ -1,4 +1,4 @@
-"""
+﻿"""
 Analytics Tasks — Data aggregation and computation for dashboards.
 
 Routed to the 'analytics-tasks' queue. These tasks aggregate raw data into
@@ -78,6 +78,7 @@ def aggregate_daily_usage(self) -> dict:
             "total_records": len(records),
         }
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -86,7 +87,8 @@ def aggregate_daily_usage(self) -> dict:
         logger.exception("Daily usage aggregation failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Leaderboard Refresh ──────────────────────────────────────────────────────
@@ -109,6 +111,7 @@ def refresh_leaderboard(
         result = await get_leaderboard(team_id, period=period)
         return result
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -117,7 +120,8 @@ def refresh_leaderboard(
         logger.exception("Leaderboard refresh failed for team %s", team_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 @shared_task(
@@ -148,6 +152,7 @@ def refresh_all_leaderboards(self) -> dict:
 
         return {"teams_refreshed": refreshed, "total_teams": len(teams)}
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -156,7 +161,8 @@ def refresh_all_leaderboards(self) -> dict:
         logger.exception("Bulk leaderboard refresh failed")
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()
 
 
 # ── Team Dashboard Cache ─────────────────────────────────────────────────────
@@ -201,6 +207,7 @@ def refresh_team_dashboard_cache(self, team_id: str) -> dict:
         await storage.create_document("dashboard_cache", f"team_{team_id}", cache)
         return cache
 
+    loop = None
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -209,4 +216,5 @@ def refresh_team_dashboard_cache(self, team_id: str) -> dict:
         logger.exception("Dashboard cache refresh failed for team %s", team_id)
         raise self.retry(exc=exc)
     finally:
-        loop.close()
+        if loop is not None and not loop.is_closed():
+            loop.close()

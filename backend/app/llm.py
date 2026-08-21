@@ -74,6 +74,11 @@ class ModelProvider(Enum):
     OPENAI = "openai"          # Paid fallback
     ANTHROPIC = "anthropic"    # Paid fallback
     HUGGINGFACE = "huggingface"  # Paid fallback (OpenAI-compatible router)
+    TOGETHER = "together"      # Paid, OpenAI-compatible (Together AI)
+    FIREWORKS = "fireworks"    # Paid, OpenAI-compatible (Fireworks AI)
+    PERPLEXITY = "perplexity"  # Paid, OpenAI-compatible (Perplexity)
+    AZURE = "azure"            # Paid, OpenAI-compatible (Azure OpenAI)
+    CUSTOM_OPENAI = "custom_openai"  # Generic OpenAI-compatible endpoint (any provider)
     OLLAMA = "ollama"          # Local / self-hosted (no API key required)
 
 
@@ -448,7 +453,8 @@ class LLMRouter:
             # Free tier first, then the cheapest paid OpenAI-compatible
             # providers (DeepSeek/Qwen/Zhipu/Moonshot/Mistral/HuggingFace
             # are all far cheaper per-token than OpenAI/Anthropic), then
-            # the strongest paid SDKs, then local.
+            # the rest of OpenAI-compatible vendors, then the strongest
+            # paid SDKs, then generic custom, then local.
             ModelProvider.OPENROUTER,
             ModelProvider.GEMINI,
             ModelProvider.GROQ,
@@ -458,9 +464,14 @@ class LLMRouter:
             ModelProvider.ZHIPU,
             ModelProvider.MOONSHOT,
             ModelProvider.MISTRAL,
+            ModelProvider.TOGETHER,
+            ModelProvider.FIREWORKS,
+            ModelProvider.PERPLEXITY,
             ModelProvider.HUGGINGFACE,
             ModelProvider.OPENAI,
+            ModelProvider.AZURE,
             ModelProvider.ANTHROPIC,
+            ModelProvider.CUSTOM_OPENAI,
             ModelProvider.OLLAMA,
         ]
 
@@ -556,6 +567,41 @@ class LLMRouter:
                 "api_key": os.getenv("HUGGINGFACE_API_KEY"),
                 "model": "Qwen/Qwen2.5-72B-Instruct",
                 "base_url": "https://router.huggingface.co/v1",
+                "type": "openai_sdk",
+                "free": False,
+            },
+            ModelProvider.TOGETHER: {
+                "api_key": os.getenv("TOGETHER_API_KEY"),
+                "model": os.getenv("TOGETHER_MODEL", "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"),
+                "base_url": os.getenv("TOGETHER_BASE_URL", "https://api.together.xyz/v1"),
+                "type": "openai_sdk",
+                "free": False,
+            },
+            ModelProvider.FIREWORKS: {
+                "api_key": os.getenv("FIREWORKS_API_KEY"),
+                "model": os.getenv("FIREWORKS_MODEL", "accounts/fireworks/models/llama-v3p1-70b-instruct"),
+                "base_url": os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1"),
+                "type": "openai_sdk",
+                "free": False,
+            },
+            ModelProvider.PERPLEXITY: {
+                "api_key": os.getenv("PERPLEXITY_API_KEY"),
+                "model": os.getenv("PERPLEXITY_MODEL", "sonar-pro"),
+                "base_url": os.getenv("PERPLEXITY_BASE_URL", "https://api.perplexity.ai"),
+                "type": "openai_sdk",
+                "free": False,
+            },
+            ModelProvider.AZURE: {
+                "api_key": os.getenv("AZURE_OPENAI_API_KEY"),
+                "model": os.getenv("AZURE_OPENAI_MODEL", "gpt-4o-mini"),
+                "base_url": os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+                "type": "openai_sdk",
+                "free": False,
+            },
+            ModelProvider.CUSTOM_OPENAI: {
+                "api_key": os.getenv("CUSTOM_OPENAI_API_KEY"),
+                "model": os.getenv("CUSTOM_OPENAI_MODEL", "gpt-3.5-turbo"),
+                "base_url": os.getenv("CUSTOM_OPENAI_BASE_URL", ""),
                 "type": "openai_sdk",
                 "free": False,
             },
@@ -703,7 +749,18 @@ class LLMRouter:
         self, provider: ModelProvider, provider_keys: Optional[Dict[str, str]] = None
     ) -> bool:
         """Provider availability with per-request team overrides applied."""
-        return bool(self._effective_api_key(provider, provider_keys))
+        if not self._effective_api_key(provider, provider_keys):
+            return False
+        # Azure and generic custom endpoints require a base URL / endpoint.
+        # A team BYOK key alone is enough — the team may be using a private
+        # endpoint not reflected in the platform env var.
+        if provider in (ModelProvider.AZURE, ModelProvider.CUSTOM_OPENAI):
+            if provider_keys and provider_keys.get(provider.value):
+                return True
+            if self.platform_keys.get(provider.value):
+                return True
+            return bool((self.providers[provider].get("base_url") or "").strip())
+        return True
 
     def classify(self, prompt: str) -> QueryType:
         """Classify a prompt into a query type (heuristic, no extra LLM call)."""

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+from app.services.field_encryption import decrypt_field
 from app.services.task_service import (
     create_task,
     get_task,
@@ -447,7 +448,7 @@ async def assign_task_endpoint(
     try:
         task = await assign_task(task_id, request.assignee_id, uid)
         try:
-            created_by_name = user.get("name") or user.get("email", "A senior")
+            created_by_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_assigned_all_channels(task, request.assignee_id, created_by_name)
         except Exception:
@@ -559,7 +560,7 @@ async def submit_task_endpoint(
 
     # 5. Notify the task creator (senior) that work was submitted (fire-and-forget)
     try:
-        submitter_name = user.get("name") or user.get("email", "A trainee")
+        submitter_name = decrypt_field(user.get("name") or user.get("email", "A trainee"))
         if full_task:
             await notify_task_submitted_all_channels(full_task, user.get("uid", ""), submitter_name)
     except Exception:
@@ -588,7 +589,7 @@ async def review_task_endpoint(
             needs_product=request.needs_product,
         )
         try:
-            reviewer_name = user.get("name") or user.get("email", "A senior")
+            reviewer_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
         except Exception:
@@ -610,7 +611,7 @@ async def approve_task_endpoint(
     try:
         task = await approve_task(task_id, uid, feedback=request.feedback)
         try:
-            approver_name = user.get("name") or user.get("email", "A senior")
+            approver_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
                 await notify_task_approved_all_channels(task, approver_name)
         except Exception:
@@ -653,6 +654,153 @@ async def complete_task_endpoint(
         return task
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class RaisePRRequest(BaseModel):
+    head: str  # branch name, e.g. "feat/my-fix" or "fork_owner:branch"
+    base: str = "main"
+    title: str
+    body: str = ""
+
+
+@router.post("/{task_id}/raise-pr")
+async def raise_pr_endpoint(
+    task_id: str,
+    request: RaisePRRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Create a GitHub PR from a task's repo_url, then auto-submit the task.
+
+    The task must have a ``repo_url`` set and must be in state ``in_progress``
+    (or ``assigned``). On success the task moves to ``submitted`` and the
+    returned object includes the new ``pr_url``.
+    """
+    uid = user.get("uid", "")
+    await _verify_task_access(task_id, uid)
+
+    task = await get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    repo_url = task.get("repo_url") or ""
+    if not repo_url:
+        raise HTTPException(status_code=400, detail="Task has no repo_url — assign a repository first")
+
+    # Parse owner/repo from the URL
+    import re as _re
+    m = _re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", repo_url.strip())
+    if not m:
+        raise HTTPException(status_code=400, detail=f"Cannot parse owner/repo from repo_url: {repo_url}")
+    owner, repo = m.group(1), m.group(2)
+
+    github_token = os.getenv("GITHUB_TOKEN") or ""
+    gh = GitHubService(github_token=github_token)
+
+    pr_data = await gh.create_pr(
+        owner=owner,
+        repo=repo,
+        head=request.head,
+        base=request.base,
+        title=request.title,
+        body=request.body,
+    )
+    if not pr_data:
+        raise HTTPException(status_code=502, detail="GitHub PR creation failed — check GITHUB_TOKEN and branch names")
+
+    pr_url: str = pr_data["html_url"]
+
+    # Auto-submit the task with the new PR URL
+    try:
+        updated = await submit_task(task_id, uid, pr_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        await log_event(
+            "task_pr_raised", uid, task_id,
+            team_id=task.get("team_id"),
+            metadata={"pr_url": pr_url, "head": request.head, "base": request.base},
+        )
+    except Exception:
+        logger.exception("Failed to log raise-pr audit event")
+
+    try:
+        await notify_task_submitted_all_channels(updated, decrypt_field(user.get("name") or user.get("email", "Dev")))
+    except Exception:
+        logger.exception("Failed to send raise-pr notification")
+
+    return {**updated, "pr_url": pr_url, "pr_number": pr_data.get("pr_number")}
+
+
+class MergePRRequest(BaseModel):
+    merge_method: str = "squash"
+    commit_title: str = ""
+
+
+@router.post("/{task_id}/merge")
+async def merge_pr_endpoint(
+    task_id: str,
+    request: MergePRRequest = MergePRRequest(),
+    user: dict = Depends(get_current_user),
+):
+    """Merge the GitHub PR attached to a task and mark the task approved+completed.
+
+    Caller must be a senior dev / admin on the team. The task must have a
+    ``pr_url`` pointing to an open GitHub PR.
+    """
+    uid = user.get("uid", "")
+    await _verify_task_access(task_id, uid)
+
+    task = await get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    pr_url: str = task.get("pr_url") or ""
+    if not pr_url:
+        raise HTTPException(status_code=400, detail="Task has no pr_url — submit a PR first")
+
+    pr_number = _parse_pr_number(pr_url)
+    repo_url_from_pr = _infer_repo_url(pr_url)
+    if not pr_number or not repo_url_from_pr:
+        raise HTTPException(status_code=400, detail="Cannot parse PR number/repo from pr_url")
+
+    import re as _re
+    m = _re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", repo_url_from_pr.strip())
+    if not m:
+        raise HTTPException(status_code=400, detail=f"Cannot parse owner/repo from pr_url: {pr_url}")
+    owner, repo = m.group(1), m.group(2)
+
+    github_token = os.getenv("GITHUB_TOKEN") or ""
+    gh = GitHubService(github_token=github_token)
+
+    merge_result = await gh.merge_pr(
+        owner=owner,
+        repo=repo,
+        pr_number=pr_number,
+        commit_title=request.commit_title or f"Merge: {task.get('title', '')} (#{pr_number})",
+        merge_method=request.merge_method,
+    )
+    if not merge_result or not merge_result.get("merged"):
+        raise HTTPException(status_code=502, detail="GitHub PR merge failed — check GITHUB_TOKEN and PR state")
+
+    # Approve then complete the task
+    try:
+        await approve_task(task_id, uid)
+        updated = await complete_task(task_id, uid)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        await log_event(
+            "task_pr_merged", uid, task_id,
+            team_id=task.get("team_id"),
+            metadata={"pr_url": pr_url, "sha": merge_result.get("sha"), "method": request.merge_method},
+        )
+    except Exception:
+        logger.exception("Failed to log merge audit event")
+
+    return {**updated, "merge_sha": merge_result.get("sha"), "merged": True}
 
 
 @router.post("/{task_id}/cancel")
@@ -831,7 +979,7 @@ async def peer_review_endpoint(
                 needs_product=request.needs_product,
             )
             try:
-                reviewer_name = user.get("name") or user.get("email", "A peer")
+                reviewer_name = decrypt_field(user.get("name") or user.get("email", "A peer"))
                 if task:
                     await notify_task_reviewed_all_channels(task, reviewer_name, approved=request.approve)
             except Exception:

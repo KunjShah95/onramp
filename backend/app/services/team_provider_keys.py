@@ -26,7 +26,9 @@ from app.services.field_encryption import encrypt_field, decrypt_field
 logger = logging.getLogger("onramp.team_provider_keys")
 
 # Providers that may be overridden per team, and the platform env var each
-# replaces. Ollama is local (base URL, not an API key) so it is not BYOK-able.
+# replaces. Ollama is local (base URL, not an API key) — BYOK-able via
+# OLLAMA_BASE_URL override. Custom/generic providers use OpenAI-compatible
+# base_url + api_key.
 SUPPORTED_PROVIDERS = {
     "openrouter": "OPENROUTER_API_KEY",
     "gemini": "GEMINI_API_KEY",
@@ -43,6 +45,12 @@ SUPPORTED_PROVIDERS = {
     "cohere": "COHERE_API_KEY",
     "voyage": "VOYAGE_API_KEY",
     "huggingface_inference": "HUGGINGFACE_API_KEY",
+    "ollama": "OLLAMA_BASE_URL",
+    "together": "TOGETHER_API_KEY",
+    "fireworks": "FIREWORKS_API_KEY",
+    "perplexity": "PERPLEXITY_API_KEY",
+    "azure": "AZURE_OPENAI_API_KEY",
+    "custom_openai": "CUSTOM_OPENAI_API_KEY",
 }
 
 COLLECTION = "team_provider_keys"

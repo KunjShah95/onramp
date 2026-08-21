@@ -13,12 +13,21 @@ import logging
 from fastapi import APIRouter, Depends, Request
 
 from app.api.v1.auth import get_current_user
+from app.middleware.access_guard import require_team_role
 from app.services import hr_metrics_service
 from app.services.cache_service import cached
 
 logger = logging.getLogger("onramp.hr")
 
-router = APIRouter(prefix="/hr", tags=["hr"])
+# Router-level dependency: every HR route requires at least 'hr' role in the
+# team extracted from the request.  ROLE_HIERARCHY: ceo/cto/admin=6,
+# senior_dev=5, hr=4, developer=4, junior_dev=2, tester=3 — so junior_dev and
+# tester are blocked while hr, senior_dev, cto, ceo and admin all pass.
+router = APIRouter(
+    prefix="/hr",
+    tags=["hr"],
+    dependencies=[require_team_role("hr")],
+)
 
 
 @router.get("/cohort/{team_id}")
@@ -97,10 +106,12 @@ async def get_timeline(request: Request, team_id: str, user: dict = Depends(get_
 @router.get("/mentor-match/{team_id}/{user_id}")
 @cached("hr", ttl=600)
 async def get_mentor_match(
-    request: Request, team_id: str, user_id: str, user: dict = Depends(get_current_user),
+    request: Request, team_id: str, user_id: str,
+    user: dict = Depends(get_current_user),
 ):
     """Match a new dev to senior devs by shared tech stack (simple scoring)."""
     return await hr_metrics_service.mentor_matching(team_id, user_id)
+
 
 @router.get("/review-analytics/{team_id}")
 @cached("hr", ttl=300)

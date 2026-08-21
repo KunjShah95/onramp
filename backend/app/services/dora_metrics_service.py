@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.services.postgres_db import get_storage
+from app.services.field_encryption import decrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -98,11 +99,20 @@ def _format_value(value: float, unit: str = "") -> str:
 
 
 def _days_between(d1, d2) -> float:
-    """Calculate days between two datetime/ISO strings."""
+    """Calculate days between two datetime/ISO strings.
+
+    Normalises naive datetimes to UTC so mixed aware/naive comparisons
+    (common when DB timestamps lack timezone info) never raise TypeError.
+    """
     if isinstance(d1, str):
         d1 = datetime.fromisoformat(d1)
     if isinstance(d2, str):
         d2 = datetime.fromisoformat(d2)
+    # Normalise naive → UTC so mixed comparisons don't raise TypeError.
+    if isinstance(d1, datetime) and d1.tzinfo is None:
+        d1 = d1.replace(tzinfo=timezone.utc)
+    if isinstance(d2, datetime) and d2.tzinfo is None:
+        d2 = d2.replace(tzinfo=timezone.utc)
     delta = d2 - d1
     return abs(delta.total_seconds()) / 86400
 
@@ -112,6 +122,8 @@ def _days_between(d1, d2) -> float:
 
 async def deployment_frequency(team_id: str, days: int = 90) -> dict:
     """Compute deployment frequency: completed tasks per day over the period."""
+    if days <= 0:
+        raise ValueError("days must be a positive integer")
     storage = get_storage()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -139,6 +151,8 @@ async def deployment_frequency(team_id: str, days: int = 90) -> dict:
 
 async def lead_time_for_changes(team_id: str, days: int = 90) -> dict:
     """Compute lead time: average days from assignment to completion."""
+    if days <= 0:
+        raise ValueError("days must be a positive integer")
     storage = get_storage()
     now = datetime.now(timezone.utc)
 
@@ -152,7 +166,7 @@ async def lead_time_for_changes(team_id: str, days: int = 90) -> dict:
 
     lead_times = []
     for t in tasks:
-        assigned = t.get("created_at") or t.get("assigned_to")
+        assigned = t.get("created_at") or t.get("started_at")
         completed = t.get("completed_at")
         if assigned and completed:
             try:
@@ -173,6 +187,8 @@ async def lead_time_for_changes(team_id: str, days: int = 90) -> dict:
 
 async def change_failure_rate(team_id: str, days: int = 90) -> dict:
     """Compute change failure rate: % of completed tasks that needed changes."""
+    if days <= 0:
+        raise ValueError("days must be a positive integer")
     storage = get_storage()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -191,7 +207,13 @@ async def change_failure_rate(team_id: str, days: int = 90) -> dict:
         return {"value": "N/A", "classification": "none"}
 
     # Count tasks that have been in needs_changes state as a proxy for failures
-    failures = sum(1 for t in window_tasks if "needs_changes" in str(t.get("state", "")))
+    # Count tasks that had review cycles (went through needs_changes at some point).
+    # review_cycles > 0 is more accurate than checking current state only.
+    failures = sum(
+        1 for t in window_tasks
+        if int(t.get("review_cycles") or 0) > 0
+        or "needs_changes" in str(t.get("state", ""))
+    )
     rate = (failures / len(window_tasks)) * 100
     classification = _classify("change_failure_rate", rate)
     return {"value": _format_value(rate, "percent"), "classification": classification}
@@ -199,6 +221,8 @@ async def change_failure_rate(team_id: str, days: int = 90) -> dict:
 
 async def mttr(team_id: str, days: int = 90) -> dict:
     """Compute Mean Time to Recover: avg hours from needs_changes to completed."""
+    if days <= 0:
+        raise ValueError("days must be a positive integer")
     storage = get_storage()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -278,6 +302,8 @@ async def velocity_trends(team_id: str, weeks: int = 12) -> dict:
             if ca:
                 try:
                     ca_dt = datetime.fromisoformat(ca) if isinstance(ca, str) else ca
+                    if isinstance(ca_dt, datetime) and ca_dt.tzinfo is None:
+                        ca_dt = ca_dt.replace(tzinfo=timezone.utc)
                     if week_start <= ca_dt < week_end:
                         count += 1
                 except (ValueError, TypeError):
@@ -319,6 +345,8 @@ async def team_throughput(team_id: str, days: int = 30) -> dict:
         if ca:
             try:
                 ca_dt = datetime.fromisoformat(ca) if isinstance(ca, str) else ca
+                if isinstance(ca_dt, datetime) and ca_dt.tzinfo is None:
+                    ca_dt = ca_dt.replace(tzinfo=timezone.utc)
                 if ca_dt < cutoff:
                     continue
             except (ValueError, TypeError):
@@ -351,7 +379,8 @@ async def team_throughput(team_id: str, days: int = 30) -> dict:
                 if uid in name_map:
                     continue
                 user = await get_user_by_uid(uid)
-                name_map[uid] = (user or {}).get("name") or uid
+                raw = (user or {}).get("name") or uid
+                name_map[uid] = decrypt_field(raw) if raw != uid else uid
             for m in result:
                 m["name"] = name_map.get(m["name"], m["name"])
         except Exception:

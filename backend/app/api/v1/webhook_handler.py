@@ -33,8 +33,12 @@ def _verify_signature(payload_body: bytes, signature_header: str, secret: str) -
 
 
 def _get_webhook_secret() -> str:
-    """Get the webhook secret from environment."""
-    return os.environ.get("GITHUB_WEBHOOK_SECRET", "dev-secret")
+    """Get the webhook secret from environment.
+
+    Returns None when not configured; callers must treat None as verification
+    failure (fail-closed) rather than falling back to a known-default string.
+    """
+    return os.environ.get("GITHUB_WEBHOOK_SECRET") or ""
 
 
 def _extract_issue_refs(payload: dict) -> set:
@@ -472,6 +476,9 @@ async def github_webhook(
 
     # Verify signature
     secret = _get_webhook_secret()
+    if not secret:
+        logger.error("GITHUB_WEBHOOK_SECRET is not configured — rejecting all webhook requests")
+        raise HTTPException(status_code=401, detail="Webhook secret not configured")
     if not _verify_signature(body, x_hub_signature_256, secret):
         raise HTTPException(status_code=401, detail="Invalid signature")
 

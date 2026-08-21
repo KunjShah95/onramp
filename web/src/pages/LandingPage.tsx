@@ -11,7 +11,7 @@ import ClosingCta from '../components/landing/ClosingCta'
 import Footer from '../components/landing/Footer'
 
 /* ─────────────────────────────────────────────────────────────────────────
- * Landing — "your codebase is a map", the premium light build.
+ * Landing — "onboarding in days, not months" wedge build.
  *
  * A clean light surface (`.landing-light`, overrides `.landing-premium`)
  * pins its own identity so it never follows the app's theme. Stripe-grade
@@ -28,8 +28,8 @@ export default function LandingPage() {
       className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
     >
       <Seo
-        title="Onramp · AI-Powered Developer Onboarding"
-        description="Go from codebase to contribution in minutes. Onramp analyzes your repositories to create custom onboarding paths and guide developers through their first PR."
+        title="Onramp · Onboarding in days, not months"
+        description="Onramp turns your repo into a live ramp — learning paths, graded tasks, and a review queue. New devs land their first merged PR faster, seniors stop re-answering the same questions."
         path="/"
       />
       <a href="#main-content" className="skip-link">Skip to content</a>

@@ -24,7 +24,7 @@ test.describe('Dashboard', () => {
 
   test('renders dashboard header with crew metrics', async ({ page }) => {
     await expect(page.getByText('Mission Control').first()).toBeVisible()
-    await expect(page.getByText(/8 crew/i).first()).toBeVisible()
+    await expect(page.getByText(/8 engineers/i).first()).toBeVisible()
     await expect(page.getByText(/5 trainees?/i).first()).toBeVisible()
 
     const totalTasks = page.locator('text=42').first()
@@ -67,6 +67,6 @@ test.describe('Dashboard', () => {
 
     // Click "Overview" tab
     await page.locator('button').filter({ hasText: /^Overview/ }).first().click()
-    await expect(page.getByText('Mission Control')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible()
   })
 })
