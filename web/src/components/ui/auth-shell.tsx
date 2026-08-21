@@ -144,11 +144,11 @@ export default function AuthShell({
               {children}
             </div>
             {footer && (
-              <div className="mt-6 text-center font-code text-[13px] text-ink-tertiary">
+              <div className="mt-6 text-center font-code text-[13px] text-ink-secondary">
                 {footer}
               </div>
             )}
-            <p className="mt-4 text-center font-code text-[11px] text-ink-tertiary/70">
+            <p className="mt-4 text-center font-code text-[11px] text-ink-secondary">
               Protected by Onramp · <Link to="/privacy" className="underline decoration-black/15 underline-offset-4 hover:text-ink">Privacy</Link> · <Link to="/terms" className="underline decoration-black/15 underline-offset-4 hover:text-ink">Terms</Link>
             </p>
           </div>
