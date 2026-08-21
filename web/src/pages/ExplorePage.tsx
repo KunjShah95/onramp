@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { analyzeArchitecture } from '../lib/api'
 import ForceGraph, { type GraphNode, type GraphEdge } from '../components/ForceGraph'
 import type { ArchitectureResult } from '../lib/types'
-import { StatCard } from '../components/ui/stat-card'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -173,22 +172,26 @@ export default function ExplorePage() {
 
         {loading && !result && <ExploreResultSkeleton />}
 
-        {/* ── Metric cards ────────────────────────────────── */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          {([
-            { label: 'Total Files', value: result?.entities.files.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
-            { label: 'Classes', value: result?.entities.classes.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
-            { label: 'Functions', value: result?.entities.functions.length ?? 'N/A', color: result ? 'text-ink' : 'text-ink-disabled/40' },
-            {
-              label: 'Circular Deps',
-              value: result?.circular_dependencies.length ?? 'N/A',
-              color: result
-                ? (result.circular_dependencies.length > 0 ? 'text-abort' : 'text-go')
-                : 'text-ink-disabled/40',
-            },
-          ] as const).map((stat, i) => (
-            <StatCard key={i} label={stat.label} value={stat.value} color={stat.color} />
-          ))}
+        {/* ── Metric strip — single ruled panel, four readouts (matches Dashboard Folio 01) ── */}
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mb-6">
+          <div className="metric-strip grid-cols-2 md:grid-cols-4">
+            {([
+              { label: 'Total files', value: result?.entities.files.length ?? '—', sub: result ? 'scanned' : 'awaiting index' },
+              { label: 'Classes', value: result?.entities.classes.length ?? '—', sub: result ? 'entities' : '—' },
+              { label: 'Functions', value: result?.entities.functions.length ?? '—', sub: result ? 'entities' : '—' },
+              {
+                label: 'Circular deps',
+                value: result?.circular_dependencies.length ?? '—',
+                sub: result ? (result.circular_dependencies.length > 0 ? 'needs attention' : 'clean') : '—',
+              },
+            ] as const).map((stat) => (
+              <div key={stat.label} className="metric-cell">
+                <div className="overline mb-1">{stat.label}</div>
+                <div className="readout text-[15px]">{stat.value}</div>
+                <div className="font-code text-[11px] text-ink-tertiary mt-1">{stat.sub}</div>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
         {/* ── Graph controls ──────────────────────────────── */}

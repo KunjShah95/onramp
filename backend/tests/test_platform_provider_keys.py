@@ -270,7 +270,7 @@ class TestAdminProviderKeyEndpoints:
 
     def test_unsupported_provider_400(self, client):
         r = client.put(
-            f"{API_PREFIX}/admin/ai/provider-keys/azure", json={"api_key": "k"}
+            f"{API_PREFIX}/admin/ai/provider-keys/notaprovider", json={"api_key": "k"}
         )
         assert r.status_code == 400
 

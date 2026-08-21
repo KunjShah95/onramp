@@ -81,8 +81,9 @@ export default function Register() {
           }
         >
           {displayError && (
-            <div className="bg-abort/10 text-abort rounded-card px-4 py-3 mb-6 text-body-sm border border-abort/20 font-medium" role="alert">
-              {displayError}
+            <div className="flex gap-2.5 rounded-xl border border-abort/15 bg-abort/5 px-4 py-3 mb-6 text-[13px] font-medium text-abort" role="alert">
+              <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
+              <span className="leading-[1.5]">{displayError}</span>
             </div>
           )}
 
@@ -91,30 +92,26 @@ export default function Register() {
             <a
               href={getGoogleLoginUrl()}
               aria-label="Sign up with Google"
-              className="btn-glass"
+              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-black/10 bg-white px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-black/15 hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] active:translate-y-px"
             >
-              <span className="w-5 h-5 rounded-[3px] bg-base border border-seam flex items-center justify-center font-code font-bold text-[11px] text-ink-tertiary">
-                G
-              </span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-black/10 bg-[#F8FAFC] font-code text-[10px] font-bold text-ink-tertiary">G</span>
               Google
             </a>
             <a
               href={getGithubLoginUrl()}
               aria-label="Sign up with GitHub"
-              className="btn-glass"
+              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-black/10 bg-white px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-black/15 hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] active:translate-y-px"
             >
-              <span className="w-5 h-5 rounded-[3px] bg-base border border-seam flex items-center justify-center font-code font-bold text-[11px] text-ink-tertiary">
-                GH
-              </span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-black/10 bg-[#0F172A] font-code text-[10px] font-bold text-white">GH</span>
               GitHub
             </a>
           </div>
 
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-seam" />
-            <span className="text-caption text-ink-tertiary uppercase tracking-wider font-semibold">or email</span>
-            <div className="flex-1 h-px bg-seam" />
+            <div className="flex-1 h-px bg-black/5" />
+            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-tertiary">or email</span>
+            <div className="flex-1 h-px bg-black/5" />
           </div>
 
           {/* Form */}

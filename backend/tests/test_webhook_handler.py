@@ -485,11 +485,11 @@ class TestHandleIssueCommentEvent:
 
 class TestGetWebhookSecret:
     def test_default_secret(self):
-        """When GITHUB_WEBHOOK_SECRET is not set, returns a dev default."""
+        """When GITHUB_WEBHOOK_SECRET is not set, returns empty (fail-closed)."""
         if "GITHUB_WEBHOOK_SECRET" in os.environ:
             del os.environ["GITHUB_WEBHOOK_SECRET"]
         secret = _get_webhook_secret()
-        assert secret == "dev-secret"
+        assert secret == ""
 
     def test_env_secret(self):
         """When GITHUB_WEBHOOK_SECRET is set, returns that value."""

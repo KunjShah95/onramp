@@ -763,9 +763,12 @@ onramp/
 | `NVIDIA_API_KEY` | ⬜ | NVIDIA NIM key |
 | `ANTHROPIC_API_KEY` | ⬜ | Claude key (code agents) |
 | `OPENAI_API_KEY` | ⬜ | OpenAI key |
-| `DEEPSEEK_API_KEY` / `QWEN_API_KEY` / `ZHIPU_API_KEY` / `MOONSHOT_API_KEY` | ⬜ | Cheap OpenAI-compatible providers |
+| `DEEPSEEK_API_KEY` / `QWEN_API_KEY` / `ZHIPU_API_KEY` / `MOONSHOT_API_KEY` | ⬜ | Cheap OpenAI-compatible providers (DeepSeek, Alibaba, Zhipu, Moonshot) |
 | `MISTRAL_API_KEY` / `HUGGINGFACE_API_KEY` | ⬜ | Additional OpenAI-compatible fallbacks |
-| `OLLAMA_BASE_URL` | ⬜ | Local Ollama endpoint (no API key) |
+| `TOGETHER_API_KEY` / `FIREWORKS_API_KEY` / `PERPLEXITY_API_KEY` | ⬜ | More OpenAI-compatible vendors (Together, Fireworks, Perplexity) |
+| `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` | ⬜ | Azure OpenAI (requires endpoint) |
+| `CUSTOM_OPENAI_API_KEY` + `CUSTOM_OPENAI_BASE_URL` (+ `CUSTOM_OPENAI_MODEL`) | ⬜ | Generic OpenAI-compatible endpoint — any provider (Anyscale, self-hosted, etc.) |
+| `OLLAMA_BASE_URL` (+ `OLLAMA_MODEL`, `OLLAMA_API_KEY`) | ⬜ | Local Ollama endpoint (no API key) |
 | `GITHUB_TOKEN` | ⬜ | GitHub PAT — PR solving, labels, auto-close issues |
 | `GITHUB_TOKEN_ENCRYPTION_KEY` | ⬜ | Fernet key for stored GitHub tokens |
 | `GITHUB_WEBHOOK_SECRET` | ⬜ | HMAC secret for GitHub webhooks |

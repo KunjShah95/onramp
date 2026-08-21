@@ -33,15 +33,18 @@ export default function WhyOnrampPage() {
         path: '/why-onramp',
       }}
     >
-      {/* Hero */}
-      <div className="relative pt-20 pb-12 px-6 text-center max-w-4xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-          <span className="font-code text-[10px] uppercase tracking-[0.16em] text-ink-secondary">ENGINEERING · PHILOSOPHY</span>
-          <h1 className="font-display text-5xl md:text-6xl mt-4 mb-6 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            Why Onramp, Not Coding Agents
+      {/* Hero — same language as landing Hero */}
+      <div className="relative pt-10 pb-12 px-6 text-center max-w-4xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Engineering · Philosophy</span>
+          </span>
+          <h1 className="font-body text-[clamp(2.4rem,5.2vw,3.75rem)] mt-6 mb-5 font-bold leading-[1.02] tracking-[-0.03em] text-ink">
+            Why Onramp, <span className="text-gradient">not coding agents.</span>
           </h1>
-          <p className="text-[hsl(var(--muted-foreground))] text-lg mb-8 max-w-2xl mx-auto font-body">
-            Agents burn tokens re-reading your codebase on every change. Onramp indexes it once, updates the graph when it changes, and answers from real context, a fraction of the cost, at any team size.
+          <p className="text-ink-secondary text-[clamp(1.05rem,1.6vw,1.2rem)] leading-[1.5] mb-8 max-w-2xl mx-auto font-medium">
+            Agents re-read the whole codebase on every change. Onramp indexes it once, updates the graph on the diff, and answers from real context — flat-priced, at any team size.
           </p>
         </motion.div>
       </div>
@@ -49,123 +52,135 @@ export default function WhyOnrampPage() {
       {/* Philosophy Hero — split panel visual */}
       <PhilosophyHero />
 
-      {/* Core Philosophy */}
+      {/* Core Philosophy — bento: burn vs graph, editorial asymmetry */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative max-w-5xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-8 mb-20"
+        className="relative max-w-[1280px] mx-auto px-6 lg:px-10 grid grid-cols-1 md:grid-cols-12 gap-5 mb-10"
       >
-        {/* Why Not Coding Agents */}
-        <motion.div variants={itemVariants} className="rounded-card border border-seam bg-panel p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-[3px] bg-abort/10 flex items-center justify-center">
-              <Code size={20} weight="bold" className="text-abort" />
+        {/* Why NOT Coding Agents — muted, ruled */}
+        <motion.div variants={itemVariants} className="md:col-span-5 rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-slate-50 text-ink-tertiary">
+              <Code size={18} weight="bold" />
+            </span>
+            <div>
+              <h2 className="font-body text-[15px] font-semibold tracking-tight text-ink">Why NOT coding agents</h2>
+              <p className="font-code text-[10px] uppercase tracking-[0.12em] text-ink-tertiary">The token-burn loop</p>
             </div>
-            <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why NOT Coding Agents</h2>
           </div>
-          <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
+          <ul className="space-y-3.5 text-[13.5px] leading-[1.6] text-ink-secondary">
             <li className="flex gap-3">
-              <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context whenever it changes, multiplied by every developer and every product.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
+              <span><strong className="font-semibold text-ink">Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context — multiplied by every dev and every product.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn. The bill grows with every hire.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
+              <span><strong className="font-semibold text-ink">Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>No lasting context.</strong> Every session starts from scratch. Onramp's graph is built once and updated, not re-read.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
+              <span><strong className="font-semibold text-ink">No lasting context.</strong> Every session starts from scratch. No graph persists.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-abort font-bold mt-0.5">✗</span>
-              <span><strong>Paid keys for everything.</strong> Agents hit paid APIs constantly; Onramp routes most requests through free tiers first.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
+              <span><strong className="font-semibold text-ink">Paid keys for everything.</strong> Agents hit paid APIs constantly.</span>
             </li>
           </ul>
         </motion.div>
 
-        {/* Why Onramp */}
-        <motion.div variants={itemVariants} className="rounded-card border border-go/30 bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-secondary/80 p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-[3px] bg-go/10 flex items-center justify-center">
-              <Brain size={20} weight="bold" className="text-go" />
+        {/* Why Onramp — featured, indigo accent, 7 cols */}
+        <motion.div variants={itemVariants} className="md:col-span-7 rounded-2xl border border-accent-primary/15 bg-white p-7 shadow-[0_8px_32px_rgba(79,70,229,0.08)]">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)]">
+              <Brain size={18} weight="bold" />
+            </span>
+            <div>
+              <h2 className="font-body text-[15px] font-semibold tracking-tight text-ink">Why Onramp</h2>
+              <p className="font-code text-[10px] uppercase tracking-[0.12em] text-accent-primary">Parse once · answer from source</p>
             </div>
-            <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))]">Why Onramp</h2>
           </div>
-          <ul className="space-y-3 text-sm text-[hsl(var(--muted-foreground))] font-body">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-[13.5px] leading-[1.6] text-ink-secondary">
             <li className="flex gap-3">
-              <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Reads your actual code.</strong> We parse it, index it, understand architecture, then explain it.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" />
+              <span><strong className="font-semibold text-ink">Reads your actual code.</strong> Parse → graph → answer.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Accessible to all levels.</strong> Senior engineer or first-time contributor. Everyone gets context.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" />
+              <span><strong className="font-semibold text-ink">Grounded answers.</strong> Every response cites files + lines.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Grounded answers.</strong> Every response cites files and line numbers. Trust what you read.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" />
+              <span><strong className="font-semibold text-ink">Accessible to all levels.</strong> Senior or first PR.</span>
             </li>
             <li className="flex gap-3">
-              <span className="text-go font-bold mt-0.5">✓</span>
-              <span><strong>Fast ramp-up.</strong> From zero to first PR in days, not weeks.</span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" />
+              <span><strong className="font-semibold text-ink">Fast ramp.</strong> Zero to first PR in days.</span>
             </li>
           </ul>
+          <div className="mt-6 rounded-xl border border-black/5 bg-[#F8FAFC] px-4 py-3">
+            <p className="font-code text-[11px] leading-[1.5] text-ink-tertiary">Free-first LLM router + Redis semantic cache + incremental graph refresh — so most questions hit free tiers and only the diff is re-indexed on push.</p>
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* The Three Pillars */}
+      {/* The Three Pillars — editorial, not 3 equal cards */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
-        animate="visible"
-        className="relative max-w-6xl mx-auto px-6 py-20"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        className="relative max-w-[1280px] mx-auto px-6 lg:px-10 py-16"
       >
-        <motion.div variants={itemVariants} className="text-center mb-12">
-          <h2 className="font-display text-4xl font-bold text-[hsl(var(--foreground))] mb-4">Three Core Principles</h2>
-          <p className="text-[hsl(var(--muted-foreground))] font-body max-w-2xl mx-auto">
-            Our approach rests on three beliefs about how developers actually learn.
-          </p>
+        <motion.div variants={itemVariants} className="max-w-2xl mb-10">
+          <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">Principles</p>
+          <h2 className="mt-2 font-body text-[clamp(1.8rem,3.4vw,2.4rem)] font-bold leading-[1.1] tracking-[-0.02em] text-ink">Three beliefs about how devs actually learn.</h2>
+          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary">The philosophy is the product. Every wedge feature traces to one of these.</p>
         </motion.div>
 
         <motion.div
           variants={containerVariants}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-12 gap-5"
         >
           {[
             {
               icon: Brain,
-              title: 'Context Over Commands',
-              desc: 'Understanding WHY a file exists matters more than running a setup script. We show you the intent behind code.',
-              color: 'text-go',
-              bg: 'bg-go/10',
+              kicker: '01 · Context',
+              title: 'Context over commands',
+              desc: 'Understanding WHY a file exists matters more than running a setup script. We show intent behind code, not just steps.',
+              span: 'md:col-span-7',
             },
             {
               icon: Code,
-              title: 'Code is Truth',
-              desc: 'Docs rot. Comments lie. Code never does. We read your actual codebase to answer real questions.',
-              color: 'text-go-lit',
-              bg: 'bg-go-lit/10',
+              kicker: '02 · Truth',
+              title: 'Code is truth',
+              desc: 'Docs rot. Comments lie. Code never does. We read source and cite files + lines.',
+              span: 'md:col-span-5',
             },
             {
               icon: Lightning,
-              title: 'Speed Builds Confidence',
-              desc: 'Fast onboarding lets devs contribute quickly. First PR on day two beats "understanding" on day thirty.',
-              color: 'text-go',
-              bg: 'bg-go/10',
+              kicker: '03 · Speed',
+              title: 'Speed builds confidence',
+              desc: 'Fast onboarding lets devs contribute. First PR on day two beats “understanding” on day thirty.',
+              span: 'md:col-span-5',
             },
           ].map((pillar, idx) => (
             <motion.div
               key={idx}
               variants={itemVariants}
-              className="rounded-card border border-seam bg-panel p-7 hover:border-go/20 transition-all"
+              className={`${pillar.span} rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]`}
             >
-              <div className={`w-12 h-12 rounded-[3px] ${pillar.bg} flex items-center justify-center mb-4`}>
-                <pillar.icon size={24} weight="bold" className={pillar.color} />
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-accent-primary">
+                  <pillar.icon size={20} weight="bold" />
+                </span>
+                <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">{pillar.kicker}</span>
               </div>
-              <h3 className="font-display text-lg font-bold text-[hsl(var(--foreground))] mb-2">
+              <h3 className="mt-5 font-body text-[16px] font-semibold text-ink">
                 {pillar.title}
               </h3>
-              <p className="text-[13.5px] text-[hsl(var(--muted-foreground))] leading-relaxed">
+              <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-tertiary">
                 {pillar.desc}
               </p>
             </motion.div>
@@ -173,28 +188,29 @@ export default function WhyOnrampPage() {
         </motion.div>
       </motion.div>
 
-      {/* Comparison Table */}
+      {/* Comparison Table — ruled panel, tabular */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className="relative max-w-5xl mx-auto px-6 py-20"
+        className="relative max-w-[1280px] mx-auto px-6 lg:px-10 py-16"
       >
-        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-center text-[hsl(var(--foreground))] mb-10">
-          The Approach Breakdown
-        </motion.h2>
-        <motion.div variants={itemVariants} className="rounded-card border border-seam bg-panel overflow-hidden">
+        <motion.div variants={itemVariants} className="max-w-2xl mb-8">
+          <h2 className="font-body text-2xl font-bold tracking-tight text-ink">The breakdown.</h2>
+          <p className="mt-2 text-[15px] leading-[1.6] text-ink-secondary">Side-by-side, same team size, same codebase churn.</p>
+        </motion.div>
+        <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-[13.5px]">
               <thead>
-                <tr className="border-b border-seam bg-panel-raised">
-                  <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Aspect</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Coding Agents</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[hsl(var(--foreground))]">Onramp</th>
+                <tr className="border-b border-black/10 bg-[#F8FAFC]">
+                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Aspect</th>
+                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Coding agents</th>
+                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-primary">Onramp</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-seam">
+              <tbody className="divide-y divide-black/5">
                 {[
                   ['Context', 'Re-reads the whole codebase per change', 'Indexed once · graph updates on change'],
                   ['Cost model', 'Per-seat subs + per-dev token burn', 'Flat per-workspace price'],
@@ -202,10 +218,10 @@ export default function WhyOnrampPage() {
                   ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
                   ['Understand WHY', 'No, just HOW', 'Yes, full context'],
                 ].map((row, idx) => (
-                  <tr key={idx} className="hover:bg-panel-raised/50 transition-colors">
-                    <td className="px-6 py-3 font-semibold text-[hsl(var(--foreground))]">{row[0]}</td>
-                    <td className="px-6 py-3 text-[hsl(var(--muted-foreground))]">{row[1]}</td>
-                    <td className="px-6 py-3 text-go font-semibold">{row[2]}</td>
+                  <tr key={idx} className="hover:bg-[#F8FAFC] transition-colors">
+                    <td className="px-6 py-3.5 font-semibold text-ink">{row[0]}</td>
+                    <td className="px-6 py-3.5 text-ink-tertiary">{row[1]}</td>
+                    <td className="px-6 py-3.5 font-medium text-accent-primary">{row[2]}</td>
                   </tr>
                 ))}
               </tbody>
@@ -220,46 +236,53 @@ export default function WhyOnrampPage() {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className="relative max-w-5xl mx-auto px-6 py-20"
+        className="relative max-w-[1280px] mx-auto px-6 lg:px-10 py-16"
       >
-        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-center text-[hsl(var(--foreground))] mb-4">
-          The Cost at Scale
-        </motion.h2>
-        <motion.p variants={itemVariants} className="text-[hsl(var(--muted-foreground))] font-body text-center max-w-2xl mx-auto mb-10">
-          Coding agents charge per seat AND re-read every codebase into every developer's context on
-          every change, so the bill multiplies with every hire and every product. Onramp's flat
-          price stays put. Move the sliders.
-        </motion.p>
-        <motion.div variants={itemVariants}>
+        <motion.div variants={itemVariants} className="text-center max-w-2xl mx-auto mb-10">
+          <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">Calculator</p>
+          <h2 className="mt-2 font-body text-3xl font-bold tracking-tight text-ink">
+            The cost at scale.
+          </h2>
+          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary">
+            Agents multiply devs × products × changes. Onramp stays flat. Move the sliders.
+          </p>
+        </motion.div>
+        <motion.div variants={itemVariants} className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
           <CostAtScaleCalculator />
         </motion.div>
-        <motion.p variants={itemVariants} className="text-center text-xs text-[hsl(var(--muted-foreground))] mt-6 font-code">
-          Modeled on public agent pricing (Aug 2026) + Onramp's $99/mo workspace plan · interactive team-dashboard benchmark available on the Ramp page
+        <motion.p variants={itemVariants} className="text-center font-code text-[11px] text-ink-tertiary mt-6">
+          Modeled on public agent pricing (Aug 2026) + Onramp $99/mo workspace · benchmark on <Link to="/ramp" className="text-accent-primary hover:underline">Ramp →</Link>
         </motion.p>
       </motion.div>
 
-      {/* CTA */}
+      {/* CTA — ruled, premium, same language as ClosingCta */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        className="relative max-w-3xl mx-auto px-6 py-20 text-center"
+        className="relative max-w-[880px] mx-auto px-6 lg:px-10 py-16 text-center"
       >
-        <motion.h2 variants={itemVariants} className="font-display text-3xl font-bold text-[hsl(var(--foreground))] mb-4">
-          Ready to onboard your way.
-        </motion.h2>
-        <motion.p variants={itemVariants} className="text-[hsl(var(--muted-foreground))] font-body mb-8">
-          Join teams shipping faster because developers understand code from day one.
-        </motion.p>
-        <motion.div variants={itemVariants}>
-          <Link
-            to="/pricing"
-            className="inline-flex items-center justify-center gap-2 bg-go px-8 py-3 rounded-btn text-[15px] font-medium text-[hsl(var(--primary-foreground))] hover:bg-go-lit transition-colors"
-          >
-            Start 14-day trial
-            <ArrowRight size={16} weight="bold" />
-          </Link>
+        <motion.div variants={itemVariants} className="rounded-2xl border border-black/10 bg-white px-8 py-12 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">Get started</p>
+          <h2 className="mt-3 font-body text-3xl font-bold tracking-tight text-ink">
+            Ready to onboard your way.
+          </h2>
+          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary max-w-xl mx-auto">
+            Join teams shipping faster because developers understand code from day one.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/pricing"
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(79,70,229,0.28)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+            >
+              Start 14-day trial
+              <ArrowRight size={16} weight="bold" />
+            </Link>
+            <Link to="/docs" className="inline-flex h-11 items-center rounded-md border border-black/10 bg-white px-6 text-[15px] font-semibold text-ink transition-colors hover:border-black/15">
+              Read the docs
+            </Link>
+          </div>
         </motion.div>
       </motion.div>
     </MarketingLayout>

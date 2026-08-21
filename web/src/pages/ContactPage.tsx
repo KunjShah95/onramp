@@ -63,18 +63,18 @@ export default function ContactPage() {
       navLinks={navLinks}
       seo={{ title: 'Contact · Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
     >
-      <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
+      <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">
-          <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
-            <Envelope className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Contact</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            Get in <span className="italic text-[hsl(var(--accent))]">touch.</span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Contact</span>
+          </span>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold tracking-[-0.02em] text-ink">
+            Get in <span className="text-gradient">touch.</span>
           </h1>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-xl">
-            Have a question, want a demo, or just want to say hi? We'd love to hear from you.
+          <p className="text-[17px] leading-[1.6] text-ink-secondary max-w-xl">
+            Have a question, want a demo, or just want to say hi? We get back within one business day.
           </p>
         </motion.div>
 

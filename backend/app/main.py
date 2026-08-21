@@ -66,8 +66,12 @@ configure_logging()
 
 _LLM_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
-    "NVIDIA_API_KEY", "MISTRAL_API_KEY", "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY", "OLLAMA_BASE_URL",
+    "NVIDIA_API_KEY", "DEEPSEEK_API_KEY", "QWEN_API_KEY",
+    "ZHIPU_API_KEY", "MOONSHOT_API_KEY", "MISTRAL_API_KEY",
+    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
+    "TOGETHER_API_KEY", "FIREWORKS_API_KEY", "PERPLEXITY_API_KEY",
+    "AZURE_OPENAI_API_KEY", "CUSTOM_OPENAI_API_KEY",
+    "OLLAMA_BASE_URL",
 )
 
 # Fernet keys are 32-byte urlsafe-base64 — the cryptography lib base64-decodes
@@ -275,11 +279,13 @@ async def lifespan(app: FastAPI):
 
 _is_production = os.getenv("ENV") == "production"
 
-# Dev-only surfaces (Swagger docs, the demo/seed router) are OFF in production
-# by default but can be opted back in explicitly (staging, ops debugging) via
-# ENABLE_API_DOCS=true / ENABLE_SEED_ROUTER=true.
+# Dev-only surface (Swagger docs) is OFF in production by default but can be
+# opted back in explicitly (staging, ops debugging) via ENABLE_API_DOCS=true.
+# The /api/v1/seed/* router is NOT gated: it serves the role-based dashboard
+# data (Dev Space, Executive Console, Onboarding Hub) consumed by the deployed
+# frontend and returns live, authenticated data — it is no longer a demo-only
+# surface.
 _show_api_docs = (not _is_production) or os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
-_show_seed_router = (not _is_production) or os.getenv("ENABLE_SEED_ROUTER", "").lower() in ("1", "true", "yes")
 
 app = FastAPI(
     title="Onramp 2.0 API",
@@ -441,8 +447,7 @@ app.include_router(accounts_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")
-if _show_seed_router:
-    app.include_router(seed_router.router, prefix="/api/v1")
+app.include_router(seed_router.router, prefix="/api/v1")
 app.include_router(feature_flags_router.router, prefix="/api/v1")
 app.include_router(gamification.router, prefix="/api/v1")
 app.include_router(hr_dashboard.router, prefix="/api/v1")

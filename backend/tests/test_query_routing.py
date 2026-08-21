@@ -7,7 +7,9 @@ _PROVIDER_KEY_VARS = (
     "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
     "NVIDIA_API_KEY", "DEEPSEEK_API_KEY", "QWEN_API_KEY",
     "ZHIPU_API_KEY", "MOONSHOT_API_KEY", "MISTRAL_API_KEY",
+    "TOGETHER_API_KEY", "FIREWORKS_API_KEY", "PERPLEXITY_API_KEY",
     "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "HUGGINGFACE_API_KEY",
+    "AZURE_OPENAI_API_KEY", "CUSTOM_OPENAI_API_KEY",
 )
 
 
@@ -15,12 +17,17 @@ def _set_all_keys(monkeypatch):
     """Configure every cloud provider so routing preferences are observable."""
     for var in _PROVIDER_KEY_VARS:
         monkeypatch.setenv(var, f"sk-{var.lower()}-test")
+    # Azure and generic custom require a base URL to be considered available
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com/")
+    monkeypatch.setenv("CUSTOM_OPENAI_BASE_URL", "https://api.test-custom.com/v1")
 
 
 def _clear_all_keys(monkeypatch):
     """Remove every cloud provider key so tests are immune to the dev env."""
     for var in _PROVIDER_KEY_VARS:
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
+    monkeypatch.delenv("CUSTOM_OPENAI_BASE_URL", raising=False)
 
 
 class TestClassification:
@@ -60,7 +67,10 @@ class TestRouteResolution:
     def test_chat_route_matches_fallback_chain(self, monkeypatch):
         _set_all_keys(monkeypatch)
         router = LLMRouter()
-        assert router.resolve_route(QueryType.CHAT) == router.fallback_chain
+        # CHAT uses the free-first fallback chain, re-scored by price/health —
+        # so it contains exactly the available providers, free-first.
+        assert set(router.resolve_route(QueryType.CHAT)) == set(router.fallback_chain)
+        assert router.resolve_route(QueryType.CHAT)[0] == ModelProvider.OPENROUTER
 
     def test_code_route_prefers_anthropic_first(self, monkeypatch):
         _set_all_keys(monkeypatch)

@@ -32,10 +32,15 @@ export default function MarketingLayout({
       <div data-theme="landing" className="landing-premium landing-light min-h-screen bg-room text-ink antialiased font-body flex flex-col">
         {seo && <Seo {...seo} />}
         <a href="#main-content" className="skip-link">Skip to content</a>
+        {/* subtle ambient — same aurora language as Hero, but quieter for inner pages */}
+        <div aria-hidden className="pointer-events-none fixed inset-0">
+          <div className="absolute -top-32 left-1/4 h-[420px] w-[560px] -translate-x-1/2 rounded-full bg-accent-primary/[0.04] blur-[110px]" />
+          <div className="absolute right-0 top-[18%] h-[320px] w-[380px] rounded-full bg-accent-via/[0.035] blur-[100px]" />
+        </div>
         <header>
           <MarketingNav links={navLinks} fixed={navFixed} />
         </header>
-        <main id="main-content" className={`flex-1 ${topPadding}`}>
+        <main id="main-content" className={`relative flex-1 ${topPadding}`}>
           {children}
         </main>
         <MarketingFooter />

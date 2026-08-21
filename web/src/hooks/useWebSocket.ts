@@ -44,8 +44,186 @@ interface UseWebSocketReturn {
   lastEvent: WsEvent | null
 }
 
+const RECONNECT_DELAY = 5000
+const TOKEN_POLL_MS = 2000
+
+/**
+ * Module-level singleton state — ONE WebSocket shared across every caller.
+ *
+ * The previous implementation created a fresh `WebSocket` per hook instance and
+ * closed it on every unmount. Rapid mount/unmount churn (route changes, HMR,
+ * providers remounting) meant sockets were being closed while still CONNECTING,
+ * which browsers log as "WebSocket is closed before the connection is
+ * established." — the console error this rewrite eliminates.
+ *
+ * A subscriber count gates the connection: the socket is created when the
+ * first subscriber appears and torn down when the last one leaves. A light
+ * token poll keeps the connection in sync with login/logout (the token can
+ * change without any hook re-running).
+ */
+
+let socket: WebSocket | null = null
+let socketToken: string | null = null
+let subscribers = 0
+let connectedFlag = false
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let tokenPollTimer: ReturnType<typeof setInterval> | null = null
 let globalListeners = new Set<WsHandler>()
 let lastGlobalEvent: WsEvent | null = null
+
+// Hook instances subscribe here so module-level state changes re-render them.
+const stateListeners = new Set<() => void>()
+
+function emitState(): void {
+  for (const listener of stateListeners) {
+    try {
+      listener()
+    } catch {
+      // Ignore subscriber render errors
+    }
+  }
+}
+
+function buildWsUrl(token: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  // When the API base is relative (Vite proxy / same-origin reverse proxy),
+  // connect to the page's own host. Otherwise use the API's host directly.
+  const host = !API_BASE || API_BASE.startsWith('/')
+    ? window.location.host
+    : API_BASE.replace(/^https?:\/\//, '')
+  return `${protocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`
+}
+
+function notifyListeners(event: WsEvent): void {
+  lastGlobalEvent = event
+  for (const handler of globalListeners) {
+    try {
+      handler(event)
+    } catch {
+      // Silently handle subscriber errors
+    }
+  }
+}
+
+function clearTimers(): void {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  if (tokenPollTimer) {
+    clearInterval(tokenPollTimer)
+    tokenPollTimer = null
+  }
+}
+
+function teardownSocket(): void {
+  clearTimers()
+  const ws = socket
+  socket = null
+  socketToken = null
+  if (!ws) return
+
+  // Detach handlers first so the onclose handler can't schedule a reconnect
+  // for a socket we're deliberately discarding.
+  ws.onopen = null
+  ws.onmessage = null
+  ws.onerror = null
+  ws.onclose = null
+
+  // Only close() an established socket. Closing a CONNECTING socket makes the
+  // browser log "WebSocket is closed before the connection is established."
+  if (ws.readyState === WebSocket.OPEN) {
+    try {
+      ws.close()
+    } catch {
+      // Already closing — nothing to do
+    }
+  }
+  connectedFlag = false
+  emitState()
+}
+
+function connect(): void {
+  if (subscribers <= 0) return
+
+  const token = getToken()
+  if (socket) {
+    // Token changed (login/logout) — recycle the connection with the new token.
+    if (socketToken !== token) teardownSocket()
+    else return
+  }
+  if (!token) {
+    startTokenPolling()
+    return
+  }
+
+  const url = buildWsUrl(token)
+  const ws = new WebSocket(url)
+  socket = ws
+  socketToken = token
+
+  ws.onopen = () => {
+    if (socket !== ws) return
+    connectedFlag = true
+    emitState()
+  }
+
+  ws.onmessage = (event) => {
+    if (socket !== ws) return
+    try {
+      notifyListeners(JSON.parse(event.data) as WsEvent)
+    } catch {
+      // Ignore malformed messages
+    }
+  }
+
+  ws.onclose = () => {
+    if (socket !== ws) return
+    socket = null
+    socketToken = null
+    connectedFlag = false
+    emitState()
+    if (subscribers > 0) {
+      reconnectTimer = setTimeout(() => connect(), RECONNECT_DELAY)
+    }
+  }
+
+  ws.onerror = () => {
+    // onclose fires after this, which schedules reconnection
+  }
+}
+
+function startTokenPolling(): void {
+  if (tokenPollTimer) return
+  tokenPollTimer = setInterval(() => {
+    if (subscribers <= 0) {
+      clearTimers()
+      return
+    }
+    const token = getToken()
+    if (!token) {
+      if (socket) teardownSocket()
+      return
+    }
+    if (!socket || socketToken !== token) connect()
+  }, TOKEN_POLL_MS)
+}
+
+function ensureConnected(): void {
+  if (socket || subscribers <= 0) return
+  if (!getToken()) {
+    startTokenPolling()
+    return
+  }
+  connect()
+}
+
+function release(): void {
+  subscribers = Math.max(0, subscribers - 1)
+  if (subscribers === 0) {
+    teardownSocket()
+  }
+}
 
 /**
  * Singleton WebSocket hook — shares one connection across the entire app.
@@ -62,89 +240,31 @@ let lastGlobalEvent: WsEvent | null = null
  * ```
  */
 export function useWebSocket(): UseWebSocketReturn {
-  const wsRef = useRef<WebSocket | null>(null)
-  const [connected, setConnected] = useState(false)
-  const [lastEvent, setLastEvent] = useState<WsEvent | null>(null)
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const mountedRef = useRef(true)
+  const [connected, setConnected] = useState(connectedFlag)
+  const [lastEvent, setLastEvent] = useState<WsEvent | null>(lastGlobalEvent)
+  const stateRef = useRef({ connected, lastEvent })
 
-  const connect = useCallback(() => {
-    const token = getToken()
-    if (!token) return
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = API_BASE.replace(/^https?:\/\//, '')
-    const url = `${protocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`
-
-    try {
-      const ws = new WebSocket(url)
-
-      ws.onopen = () => {
-        if (mountedRef.current) {
-          setConnected(true)
-        }
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as WsEvent
-          lastGlobalEvent = data
-          if (mountedRef.current) {
-            setLastEvent(data)
-          }
-          // Notify all subscribers
-          globalListeners.forEach((handler) => {
-            try {
-              handler(data)
-            } catch {
-              // Silently handle subscriber errors
-            }
-          })
-        } catch {
-          // Ignore malformed messages
-        }
-      }
-
-      ws.onclose = () => {
-        if (mountedRef.current) {
-          setConnected(false)
-          // Auto-reconnect after 5 seconds
-          if (reconnectRef.current) clearTimeout(reconnectRef.current)
-          reconnectRef.current = setTimeout(() => {
-            if (mountedRef.current) connect()
-          }, 5000)
-        }
-      }
-
-      ws.onerror = () => {
-        // onclose will fire after this, handling reconnection
-      }
-
-      wsRef.current = ws
-    } catch {
-      // Connection failed, retry later
-      if (reconnectRef.current) clearTimeout(reconnectRef.current)
-      reconnectRef.current = setTimeout(() => {
-        if (mountedRef.current) connect()
-      }, 5000)
-    }
-  }, [])
-
-  // Connect on mount, reconnect on token change
   useEffect(() => {
-    mountedRef.current = true
-    connect()
+    const onState = () => {
+      // Only re-render when something actually changed — avoids wasted renders
+      // from unrelated state transitions.
+      const nextConnected = connectedFlag
+      const nextLastEvent = lastGlobalEvent
+      if (stateRef.current.connected !== nextConnected || stateRef.current.lastEvent !== nextLastEvent) {
+        stateRef.current = { connected: nextConnected, lastEvent: nextLastEvent }
+        setConnected(nextConnected)
+        setLastEvent(nextLastEvent)
+      }
+    }
+    stateListeners.add(onState)
+    subscribers += 1
+    ensureConnected()
 
     return () => {
-      mountedRef.current = false
-      if (reconnectRef.current) clearTimeout(reconnectRef.current)
-      if (wsRef.current) {
-        wsRef.current.onclose = null
-        wsRef.current.close()
-        wsRef.current = null
-      }
+      stateListeners.delete(onState)
+      release()
     }
-  }, [connect])
+  }, [])
 
   const subscribe = useCallback((handler: WsHandler): (() => void) => {
     globalListeners.add(handler)
@@ -170,6 +290,8 @@ export function useWebSocket(): UseWebSocketReturn {
 // references from old component closures don't accumulate across reloads.
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    teardownSocket()
+    subscribers = 0
     globalListeners.clear()
     lastGlobalEvent = null
   })

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Article, Calendar, ArrowRight, Tag } from '@phosphor-icons/react'
+import { Calendar, ArrowRight, Tag } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 import { posts } from '../data/blog'
@@ -24,18 +24,18 @@ export default function BlogPage() {
       navLinks={navLinks}
       seo={{ title: 'Blog · Onramp', description: 'Engineering insights, product updates, and best practices on developer onboarding and team velocity.', path: '/blog' }}
     >
-      <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
+      <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}
         <motion.div {...fadeUp(0)} className="mb-12">
-          <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
-            <Article className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Blog</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl mb-3 font-bold tracking-tight text-[hsl(var(--foreground))]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Blog</span>
+          </span>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,2.9rem)] mt-5 mb-3 font-bold tracking-[-0.02em] text-ink">
             Onramp Blog
           </h1>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-xl">
-            Thoughts on developer onboarding, codebase analysis, engineering productivity, and building the future of developer tools.
+          <p className="text-[16px] leading-[1.6] text-ink-secondary max-w-xl">
+            Engineering insights on developer onboarding, codebase analysis, and the AI that actually reads your code.
           </p>
         </motion.div>
 

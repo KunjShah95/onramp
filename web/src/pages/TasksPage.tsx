@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
 import {
   createTask, listTasks, assignTask, startTask, submitTask, reviewTask,
@@ -26,7 +26,7 @@ import {
   Plus, X, Trash, MagnifyingGlass, Check, ArrowRight,
   ListBullets, SquaresFour, Star,
   Lock, ListChecks, UserCircle, Clock, GithubLogo, UsersThree, GraduationCap,
-  Copy, Lightning, DownloadSimple
+  Copy, Lightning, DownloadSimple, DotsThree
 } from '@phosphor-icons/react'
 
 const PRIORITY_DOTS: Record<string, string> = {
@@ -111,6 +111,8 @@ export default function TasksPage() {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [progress, setProgress] = useState<TeamProgress | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
 
@@ -229,6 +231,16 @@ export default function TasksPage() {
 
   useEffect(() => { fetchTemplates() }, [selectedTeam, fetchTemplates])
   useEffect(() => { fetchMembers() }, [selectedTeam, fetchMembers])
+  useEffect(() => {
+    if (!showMore) return
+    const onDown = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowMore(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [showMore])
 
   async function handleCreateTask() {
     if (!formTitle.trim() || !selectedTeam) return
@@ -463,26 +475,66 @@ export default function TasksPage() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setShowImportIssue(!showImportIssue)} className="btn-secondary">
-                <GithubLogo className="w-4 h-4" />
-                Import Issue
-              </button>
-              <button onClick={() => setShowTimeStats(!showTimeStats)} className="btn-secondary">
-                <Clock className="w-4 h-4" />
-                Time Stats
-              </button>
-              <button onClick={() => setShowTemplates(!showTemplates)} className="btn-secondary">
-                <Copy className="w-4 h-4" />
-                Templates
-              </button>
-              <button onClick={handleExportTasks} className="btn-secondary"
-                title="Download all tasks as CSV">
-                <DownloadSimple className="w-4 h-4" />
-                CSV
-              </button>
+              {/* Desktop: all actions inline; Mobile: collapsed into More */}
+              <div className="hidden sm:contents">
+                <button onClick={() => setShowImportIssue(!showImportIssue)} className="btn-secondary">
+                  <GithubLogo className="w-4 h-4" />
+                  Import Issue
+                </button>
+                <button onClick={() => setShowTimeStats(!showTimeStats)} className="btn-secondary">
+                  <Clock className="w-4 h-4" />
+                  Time Stats
+                </button>
+                <button onClick={() => setShowTemplates(!showTemplates)} className="btn-secondary">
+                  <Copy className="w-4 h-4" />
+                  Templates
+                </button>
+                <button onClick={handleExportTasks} className="btn-secondary"
+                  title="Download all tasks as CSV">
+                  <DownloadSimple className="w-4 h-4" />
+                  CSV
+                </button>
+              </div>
+              <div ref={moreRef} className="relative sm:hidden">
+                <button
+                  onClick={() => setShowMore(v => !v)}
+                  aria-label="More actions"
+                  aria-expanded={showMore}
+                  aria-haspopup="menu"
+                  className="btn-secondary px-2.5"
+                >
+                  <DotsThree size={18} weight="bold" />
+                </button>
+                <AnimatePresence>
+                  {showMore && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-full mt-2 w-48 rounded-[5px] border border-seam bg-panel-raised shadow-overhead overflow-hidden z-30"
+                      role="menu"
+                    >
+                      <button onClick={() => { setShowMore(false); setShowImportIssue(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
+                        <GithubLogo size={16} /> Import Issue
+                      </button>
+                      <button onClick={() => { setShowMore(false); setShowTimeStats(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
+                        <Clock size={16} /> Time Stats
+                      </button>
+                      <button onClick={() => { setShowMore(false); setShowTemplates(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
+                        <Copy size={16} /> Templates
+                      </button>
+                      <button onClick={() => { setShowMore(false); handleExportTasks() }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors border-t border-seam" role="menuitem">
+                        <DownloadSimple size={16} /> Export CSV
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <button onClick={() => setShowCreate(!showCreate)} className="btn">
                 <Plus className="w-4 h-4" weight="bold" />
-                New Task
+                <span className="hidden sm:inline">New Task</span>
+                <span className="sm:hidden">New</span>
               </button>
             </>
           }

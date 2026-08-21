@@ -7,7 +7,8 @@ import ArchitectureMapStatic from './ArchitectureMapStatic'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-const HEADLINE = ['Your', 'codebase', 'is', 'a', 'map.']
+const HEADLINE_A = ['Onboarding', 'in', 'days,']
+const HEADLINE_B = ['not', 'months.']
 
 function Word({ children, i }: { children: string; i: number }) {
   return (
@@ -79,20 +80,23 @@ export default function Hero() {
             >
               <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
               <span className="text-[12px] font-medium text-ink-secondary">
-                Architecture maps for engineering teams
+                Onboarding that actually tracks
               </span>
             </motion.div>
 
             <h1 className="mt-7 font-body text-[clamp(2.5rem,6.5vw,4.9rem)] font-bold leading-[1.02] tracking-[-0.03em] text-ink">
-              {HEADLINE.map((w, i) => (
+              {HEADLINE_A.map((w, i) => (
                 <Word key={`${w}-${i}`} i={i}>
                   {w}
                 </Word>
               ))}
               <br />
-              <Word i={HEADLINE.length}>Make</Word>{' '}
               <span className="text-gradient">
-                <Word i={HEADLINE.length + 1}>it</Word> <Word i={HEADLINE.length + 2}>visible.</Word>
+                {HEADLINE_B.map((w, i) => (
+                  <Word key={`${w}-${i}`} i={HEADLINE_A.length + i}>
+                    {w}
+                  </Word>
+                ))}
               </span>
             </h1>
 
@@ -102,8 +106,9 @@ export default function Hero() {
               transition={{ duration: 0.8, delay: 0.8, ease: EASE }}
               className="mt-6 max-w-lg text-[clamp(1.1rem,1.6vw,1.35rem)] font-medium leading-[1.4] text-ink-secondary"
             >
-              Onramp reads your repositories and draws the architecture your team actually
-              has: services, dependencies, ownership · fresh on every push.
+              Onramp turns your repo into a live ramp — learning paths, graded tasks, and
+              a review queue. New devs land their first merged PR faster, seniors stop
+              re-answering the same questions.
             </motion.p>
 
             <motion.div

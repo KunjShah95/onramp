@@ -84,31 +84,31 @@ export default function CustomersPage() {
       navLinks={navLinks}
       seo={{ title: 'Customers · Onramp', description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.', path: '/customers' }}
     >
-      <div className="max-w-5xl mx-auto px-6 pt-16 pb-24">
+      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-10 pb-24">
         {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-20 text-center">
-          <div className="flex items-center justify-center gap-2 text-[hsl(var(--accent))] mb-4">
-            <Users className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Customers</span>
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            Trusted by <span className="italic text-[hsl(var(--accent))]">engineering teams</span> worldwide.
+        <motion.div {...fadeUp(0)} className="mb-16 text-center max-w-4xl mx-auto">
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Customers</span>
+          </span>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+            Trusted by <span className="text-gradient">engineering teams</span> worldwide.
           </h1>
-          <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl mx-auto">
-            From fast-growing startups to established engineering organizations. Onramp helps teams ship faster, onboard smoother, and stay in flow.
+          <p className="text-[17px] leading-[1.6] text-ink-secondary max-w-2xl mx-auto">
+            From fast-growing startups to established engineering orgs. Onramp helps teams ship faster, onboard smoother, and stay in flow.
           </p>
         </motion.div>
 
-        {/* Logo cloud */}
-        <motion.div {...fadeUp(0.08)} className="mb-20">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[hsl(var(--muted-foreground))] text-center mb-8">
+        {/* Logo cloud — ruled strip */}
+        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-black/10 bg-white px-8 py-10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary text-center mb-8">
             Trusted by leading engineering teams
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-12">
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
             {logos.map((name) => (
               <span
                 key={name}
-                className="text-xl font-display font-semibold tracking-tight text-[hsl(var(--muted-foreground))]/40 hover:text-[hsl(var(--muted-foreground))]/60 transition-colors"
+                className="font-code text-[13px] font-semibold tracking-tight text-ink-tertiary/40"
               >
                 {name}
               </span>

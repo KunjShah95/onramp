@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Rss, GitPullRequest, ChartBar, ArrowCounterClockwise, Star } from '@phosphor-icons/react'
+import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
@@ -117,19 +117,18 @@ export default function ChangelogPage() {
       navLinks={navLinks}
       seo={{ title: 'Changelog · Onramp', description: 'Product updates and release notes for Onramp · the AI-powered developer onboarding platform.', path: '/changelog' }}
     >
-      <div className="max-w-2xl mx-auto px-6 pt-16 pb-24">
+      <div className="max-w-2xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}
         <div className="mb-12">
-          <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
-            <Rss className="w-4 h-4" weight="fill" />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Changelog</span>
-          </div>
-          <h1 className="font-display text-3xl md:text-4xl mb-3 font-bold tracking-tight text-[hsl(var(--foreground))]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
+            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Changelog</span>
+          </span>
+          <h1 className="font-body text-3xl md:text-4xl mt-5 mb-3 font-bold tracking-[-0.02em] text-ink">
             What's new in Onramp
           </h1>
-          <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed font-body">
-            Every release, every fix, every improvement, in one place. Subscribe to{' '}
-            <a href="#" className="text-[hsl(var(--foreground))] hover:underline font-medium">release notes</a> to stay current.
+          <p className="text-[15px] leading-[1.6] text-ink-secondary">
+            Every release, every fix, every improvement, in one place.
           </p>
         </div>
 

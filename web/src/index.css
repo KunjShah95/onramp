@@ -956,6 +956,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Non-static so framer-motion's useScroll({ target }) can measure offsets
+       against the default scroll container without a dev warning. */
+    position: relative;
   }
 
   body {
