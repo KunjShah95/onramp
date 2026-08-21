@@ -318,7 +318,7 @@ vercel --prod
 # Full stack (Docker) — single-command dev
 docker compose up -d                   # Frontend :8080 (Nginx) + Backend :8001 + PG :5433 + Redis :6379
 
-# Production (with Prometheus/Grafana)
+# Production
 docker compose -f docker-compose.prod.yml up -d
 
 # Render/Railway (blueprint: API + Celery worker + beat + Redis) — see render.yaml
@@ -436,10 +436,9 @@ docker compose -f docker-compose.prod.yml up -d
 | File | Purpose |
 |------|---------|
 | `docker-compose.yml` | Dev stack: backend + Redis + PostgreSQL (8080/8001/5433/6379) |
-| `docker-compose.prod.yml` | Production: + Nginx + Prometheus/Grafana |
+| `docker-compose.prod.yml` | Production: + Nginx (no grafana/prometheus — `/metrics` via backend) |
 | `Dockerfile` | Backend Docker build (hardened, non-root) |
 | `render.yaml` | Render blueprint (API + worker + beat + Redis) |
-| `kubernetes/` | K8s manifests |
 | `.github/workflows/backend.yml` + `frontend.yml` | CI (compile + alembic + pytest; tsc + vitest + build) |
 
 ---

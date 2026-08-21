@@ -37,7 +37,7 @@
 - ✅ Redis-required distributed rate limiting; per-route limits on LLM routes — done (`main.py:100`)
 - ✅ DB SSL `verify-full` (prod default) + nginx security headers (HSTS, CSP, X-Frame-Options) — done
 - ✅ `except: pass` sweep → logged + Sentry — done; tz-aware datetimes — done (migration 005 `timestamptz`)
-- ✅ Structured JSON logging (`LOG_FORMAT=json`) + Prometheus `/metrics` + `/health` `/ready` — done
+- ✅ Structured JSON logging (`LOG_FORMAT=json`) + `/metrics` (Prometheus text format) + `/health` `/ready` — done
 - ⏳ Uptime monitoring + alerting on `/health` (UptimeRobot/Better Stack)
 - ⏳ Postgres backup with verified restore (Neon PITR: verify retention, document restore)
 - ⏳ Razorpay end-to-end with test-mode webhooks (checkout → active → cancel → downgrade)
@@ -56,7 +56,7 @@
 - Finish Firestore→Postgres: typed tables for all remaining `DynamicDocument` collections; retire the JSONB catch-all
 - Response envelope moved from body-buffering middleware to router layer; first-class SSE support for `/ask/query/stream`
 - Background worker/queue (arq or celery) for digests, batch notifications, report generation
-- Prometheus/Grafana profile enabled; LLM cost/latency dashboard per provider from usage_records
+- LLM cost/latency dashboard per provider from usage_records (via `/metrics` + `/ready`)
 - Playwright E2E suite in CI (auth flow, core-4 happy paths, billing checkout)
 - Dependency scanning (pip-audit, npm audit) gating CI
 - Load-test baseline documented; p95 budgets enforced
@@ -82,7 +82,7 @@
 
 - SSO/SAML (Enterprise tier)
 - Audit-log export + retention policies
-- Self-hosted / VPC deployment story (the docker-compose.prod + k8s manifests exist — productize)
+- Self-hosted / VPC deployment story (productize `docker-compose.prod.yml` — `kubernetes/` removed)
 - VS Code extension (Silent Pair Programming in-editor)
 - Multi-repo / org-wide onboarding analytics, DORA metrics
 - SLA + status page

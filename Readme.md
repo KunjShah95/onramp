@@ -293,7 +293,7 @@ Beyond free-first routing, three more layers keep LLM cost low:
 | **Migrations** | Alembic |
 | **Cache / Broker** | Redis (rate limiting, LLM cache, Celery broker) |
 | **Async tasks** | Celery (worker + beat: digests, sweeps, repo indexes) |
-| **Observability** | Prometheus + Grafana (dependency-free `/metrics`) |
+| **Observability** | Dependency-free `/metrics` (Prometheus text format) + Sentry |
 | **AI** | OpenRouter, Gemini, Groq, NVIDIA (free) + DeepSeek, Qwen, Zhipu, Moonshot, Mistral, OpenAI, Anthropic, HuggingFace, Ollama (paid/local) |
 | **Auth** | Neon Auth (Better Auth) + custom JWT (bcrypt + Fernet encryption) |
 | **Billing** | Razorpay (INR) |
@@ -324,8 +324,6 @@ Beyond free-first routing, three more layers keep LLM cost low:
 | **Frontend Hosting** | Vercel |
 | **Containerization** | Docker Compose (hardened: non-root, healthchecks) |
 | **Reverse Proxy** | Nginx (non-root, port 8080) |
-| **Orchestration** | Kubernetes manifests (`kubernetes/`) |
-| **Monitoring** | Prometheus + Grafana (docker-compose.prod.yml) |
 | **CI/CD** | GitHub Actions |
 
 ---
@@ -428,8 +426,6 @@ docker compose down
 | --------- | ----- | ------------- |
 | **Frontend** | <http://localhost:8080> | React app (Nginx, proxies `/api` → backend) |
 | **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
-| **Prometheus** | <http://localhost:9090> | Metrics (prod compose only) |
-| **Grafana** | <http://localhost:3000> | Dashboards (admin/admin by default, prod compose only) |
 | **Backend API** | <http://localhost:8001> | FastAPI backend |
 | **API Docs** | <http://localhost:8001/docs> | Swagger UI (interactive) |
 | **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
@@ -738,9 +734,8 @@ onramp/
 ├── sdk/                     # TypeScript SDK (@onramp/sdk)
 ├── scripts/                 # Repo-level scripts (repo_autopilot.py, seed_dev_user.py, …)
 ├── docs/                    # API, architecture, routing, deployment guides
-├── kubernetes/              # K8s manifests (optional)
 ├── docker-compose.yml       # Local dev environment
-├── docker-compose.prod.yml  # Production (Prometheus + Grafana)
+├── docker-compose.prod.yml  # Production (API + workers + Redis)
 ├── render.yaml              # Render blueprint (API + workers + Redis)
 └── nginx.conf               # Reverse proxy config
 ```

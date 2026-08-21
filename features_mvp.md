@@ -116,7 +116,7 @@ Remaining security hardening (⚠️ pre-GA):
 - [x] ✅ Request logging middleware
 - [ ] ⚠️ Uptime monitoring + alerting on `/health` (UptimeRobot / Better Stack — 5 min setup)
 - [x] Structured JSON logs in production (`LOG_FORMAT=json` → `app/logging_config.py`) ✅
-- [x] Prometheus/Grafana profile scaffolded in `docker-compose.prod.yml` + `/metrics` (10 families) ✅
+- [x] `/metrics` endpoint scaffolded (10 families, Prometheus text format) ✅ — `docker-compose.prod.yml` grafana/prometheus removed, metrics still exposed via backend
 - [ ] 📋 LLM cost/latency dashboard per provider (usage_records already captured — surface them)
 
 ---

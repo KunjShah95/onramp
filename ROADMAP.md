@@ -60,7 +60,7 @@ Production readiness (Railway/Render + Vercel + managed PG + Redis + CI/CD + SSL
 
 ### v1.3 — Enterprise + AI Acceleration — Complete
 
-SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · Prometheus/Grafana observability · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
+SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · `/metrics` observability (Prometheus text format) · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
 
 ---
 
@@ -289,7 +289,7 @@ Gated on a real deal. Do not build speculatively — each line below is expensiv
 | --- | --- |
 | **SSO/SAML (Okta + Entra ID)** | Enterprise deal requires it — `sso_service.py` scaffold exists, wire SAML assertion → RBAC |
 | **Audit-log export + retention** | Deal requires 90d export — `audit_log_service` + `audit.py` already structured, add S3/CVS export |
-| **Self-hosted / VPC** | Deal requires data residency — productize `docker-compose.prod.yml` + `kubernetes/` manifests (today they describe a different Firestore-based project and are not deployable) |
+| **Self-hosted / VPC** | Deal requires data residency — productize `docker-compose.prod.yml` (removed `kubernetes/` — it described a different Firestore-based project and was not deployable) |
 | **VS Code extension** | ≥100 WAU on Silent Pair Programming — ship in-editor walkthrough via `silent_pair_programming` agent |
 | **Multi-org analytics** | Org owns ≥5 teams — roll `ramp_health` org-wide with org-level RBAC |
 | **SLA + status page** | Paid tier needs it — uptime robot + `/health` → public status |
@@ -315,7 +315,7 @@ Gated on a real deal. Do not build speculatively — each line below is expensiv
 - **SDK:** 6 tests. **E2E:** 65+ Playwright (auth, dashboard, review-queue, explore, team, billing, a11y, perf + Lighthouse) — *still local-only; v2.0 gates it in CI*.
 - **CI (today):** GitHub Actions — backend (compileall + alembic + pytest w/ PG service) and frontend (tsc + vitest + build).
 - **CI (v2.0):** + `ruff` + `eslint` + `pip-audit`/`npm audit` + Playwright E2E required gate + p95/bundle/Lighthouse budget.
-- **Observability:** Prometheus (10 metric families), Grafana dashboard, JSON logging (`LOG_FORMAT=json`), request correlation IDs, `/health` `/ready` `/metrics`; v1.7 adds `ramp_update` WebSocket + `GET /ramp/intercept-stats`, v1.8 adds `review_events` table + turnaround in cost-model measured block.
+- **Observability:** `/metrics` (10 families, Prometheus text format) + JSON logging (`LOG_FORMAT=json`), request correlation IDs, `/health` `/ready`; v1.7 adds `ramp_update` WebSocket + `GET /ramp/intercept-stats`, v1.8 adds `review_events` table + turnaround in cost-model measured block.
 
 ## 📊 Key Metrics
 

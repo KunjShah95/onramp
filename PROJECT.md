@@ -45,7 +45,7 @@ Karpathy's LLM Wiki pattern — compile once, maintain persistently, query effic
 ├──────────────────────────────────────────────────────────────────────┤
 │                        DATA & INFRA                                   │
 │  PostgreSQL 16 (asyncpg/SQLAlchemy 2.0/pgvector, 34 tables, 28 migs) │
-│  Redis (cache/broker/rate-limit) · Nginx :8080 · Docker · K8s · Sentry│
+│  Redis (cache/broker/rate-limit) · Nginx :8080 · Docker · Sentry│
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,7 +155,7 @@ Full list: `backend/app/api/v1/` (42 modules) and `Readme.md`.
 - **Database**: PostgreSQL 16 · Redis (cache/broker/rate-limit) · pgvector (embeddings)
 - **AI**: LLMRouter + EmbeddingRouter — OpenRouter/Gemini/Groq/NVIDIA free-first, DeepSeek/Qwen/Zhipu/Moonshot/Mistral/OpenAI/Anthropic/HuggingFace/Ollama fallback
 - **Auth**: JWT HS256 + Fernet PII encryption + HMAC-SHA256 `cf_` keys + Google/GitHub OAuth + optional Neon Auth JWKS
-- **Infra**: Docker Compose (hardened, non-root), Nginx, Prometheus/Grafana, Sentry, Render/Railway
+- **Infra**: Docker Compose (hardened, non-root), Nginx, Sentry, Render/Railway (`/metrics` via backend)
 
 ## Target Users
 

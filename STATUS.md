@@ -196,7 +196,7 @@
 1. Brotli/GZip (compression, `COMPRESSION_MIN_SIZE`)
 2. CORS (allowlist + regex `CORS_ALLOWED_ORIGIN_REGEX`)
 3. SecurityHeaders (HSTS prod, nosniff, DENY frame, etc.)
-4. Metrics (Prometheus)
+4. Metrics (`/metrics` — Prometheus text format)
 5. Logging (structured JSON when `LOG_FORMAT=json`)
 6. ResponseWrapper (`{success, data}` envelope; SSE excluded)
 7. RateLimit (200 req/min, tighter on LLM routes, Redis in prod)
@@ -217,7 +217,7 @@ See `features_mvp.md` (release gate) and `versions.md` (roadmap). Highest-priori
 | Razorpay test-mode E2E verification | Medium | checkout → active → cancel → downgrade against real test webhooks |
 | render.yaml off free tiers | Medium | Free tiers sleep; staging-only until upgraded |
 | E2E / Playwright suite in CI | Low | Auth flow + core-4 happy paths; `web/e2e/` specs exist but are not wired into CI |
-| K8s / Terraform / Cloud Run manifests | Low | Present and valid YAML, but they describe a different "onramp" project (Firestore, Celery, cert-manager) and are **not deployable for Onramp as-is** |
+| K8s / Terraform / Cloud Run manifests | Removed | `kubernetes/` removed — it described a different "onramp" project (Firestore, Celery, cert-manager) and was **not deployable**; self-host is via `docker-compose.yml` / `docker-compose.prod.yml` |
 
 ---
 
