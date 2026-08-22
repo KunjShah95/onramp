@@ -94,7 +94,7 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select memberâ€
 
 /** Resolve a user UUID to a human-readable name for display in task lists/modals. */
 function memberName(members: TeamMember[], uid: string | null | undefined): string {
-  if (!uid) return 'N/A'
+  if (!uid || !Array.isArray(members)) return 'N/A'
   const member = members.find((m) => m.user_id === uid)
   if (member?.name) return member.name
   return 'N/A'
@@ -221,7 +221,7 @@ export default function TasksPage() {
 
   const fetchMembers = useCallback(async () => {
     if (!selectedTeam) { setMembers([]); return }
-    try { setMembers(await getTeamMembers(selectedTeam)) } catch { setMembers([]) }
+    try { const r = await getTeamMembers(selectedTeam); setMembers(Array.isArray(r) ? r : []) } catch { setMembers([]) }
   }, [selectedTeam])
 
   useEffect(() => { fetchTeams() }, [])

@@ -126,10 +126,14 @@ export default function ForceGraph({
 
     // ── Clone data ────────────────────────────────────────
     const nodes: GraphNode[] = rawNodes.map((n) => ({ ...n }))
-    const edges: GraphEdge[] = rawEdges.map((e) => ({
-      source: typeof e.source === 'string' ? e.source : (e.source as GraphNode).id,
-      target: typeof e.target === 'string' ? e.target : (e.target as GraphNode).id,
-    }))
+    const nodeIds = new Set(nodes.map((n) => n.id))
+    const edges: GraphEdge[] = rawEdges
+      .map((e) => ({
+        source: typeof e.source === 'string' ? e.source : (e.source as GraphNode).id,
+        target: typeof e.target === 'string' ? e.target : (e.target as GraphNode).id,
+      }))
+      // Drop edges where either endpoint has no corresponding node — D3 throws otherwise
+      .filter((e) => nodeIds.has(e.source as string) && nodeIds.has(e.target as string))
 
     // ── Edges ─────────────────────────────────────────────
     const link = g
@@ -284,11 +288,20 @@ export default function ForceGraph({
     })
 
     // ── Simulation ─────────────────────────────────────────
+    // For dense graphs (many nodes, few edges) use strong centering to keep nodes compact
+    const edgeRatio = edges.length / Math.max(1, nodes.length)
+    const chargeStrength = edgeRatio > 0.5 ? -300 : Math.max(-30, -30 * edgeRatio - 10)
+    const linkDist = Math.max(30, Math.min(120, 400 / Math.max(1, nodes.length)))
+    // Strong centering pull keeps sparse graphs from exploding
+    const centerStrength = edgeRatio < 0.1 ? 0.3 : 0.05
+
     const sim = d3Force.forceSimulation<GraphNode>(nodes)
-      .force('link', d3Force.forceLink<GraphNode, GraphEdge>(edges).id((d) => d.id).distance(140))
-      .force('charge', d3Force.forceManyBody<GraphNode>().strength(-400))
+      .force('link', d3Force.forceLink<GraphNode, GraphEdge>(edges).id((d) => d.id).distance(linkDist))
+      .force('charge', d3Force.forceManyBody<GraphNode>().strength(chargeStrength))
       .force('center', d3Force.forceCenter<GraphNode>(0, 0))
-      .force('collision', d3Force.forceCollide<GraphNode>().radius(40))
+      .force('collision', d3Force.forceCollide<GraphNode>().radius(12))
+      .force('bound-x', d3Force.forceX(0).strength(centerStrength))
+      .force('bound-y', d3Force.forceY(0).strength(centerStrength))
 
     sim.on('tick', () => {
       link
@@ -297,6 +310,25 @@ export default function ForceGraph({
         .attr('x2', (d) => (d.target as GraphNode).x ?? 0)
         .attr('y2', (d) => (d.target as GraphNode).y ?? 0)
       node.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`)
+    })
+
+    // Auto zoom-to-fit after simulation cools — ensures nodes always visible
+    sim.on('end', () => {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+      for (const n of nodes) {
+        minX = Math.min(minX, n.x ?? 0); maxX = Math.max(maxX, n.x ?? 0)
+        minY = Math.min(minY, n.y ?? 0); maxY = Math.max(maxY, n.y ?? 0)
+      }
+      const pad = 40
+      const rangeX = maxX - minX || 1, rangeY = maxY - minY || 1
+      // Minimum scale: ensure nodes are at least 4px radius on screen
+      const minNodeR = Math.max(6, Math.min(14, nodes.length > 0 ? (nodes[0].files?.length ?? 1) * 1.2 : 6))
+      const scaleToFit = Math.min((w - pad * 2) / rangeX, (h - pad * 2) / rangeY)
+      const finalScale = Math.max(scaleToFit, 4 / minNodeR) // never smaller than 4px node
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+      const tx = w / 2 - finalScale * cx
+      const ty = h / 2 - finalScale * cy
+      g.attr('transform', `translate(${tx},${ty}) scale(${finalScale})`)
     })
 
     simRef.current = sim

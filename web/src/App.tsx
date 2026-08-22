@@ -401,12 +401,7 @@ export default function App() {
                       </Suspense>
                     } />
 
-                    {/* Autonomous Coding Agent */}
-                    <Route path="/autonomous" element={
-                      <Suspense fallback={<PageLoadingFallback />}>
-                        <ErrorBoundary><AutonomousCodingPage /></ErrorBoundary>
-                      </Suspense>
-                    } />
+                    {/* Autonomous Coding Agent — moved to shared section below */}
 
                     {/* Ramp Visibility — v1.4 wedge */}
                     <Route path="/ramp" element={
@@ -443,6 +438,15 @@ export default function App() {
                     <Route path="/hr-dashboard" element={
                       <Suspense fallback={<DashboardSkeleton />}>
                         <ErrorBoundary><HrDashboardPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Autonomous Coding Agent — all authenticated team members incl. junior_dev */}
+                  <Route element={<RoleGuard allowedRoles={['junior_dev', 'member', 'developer', 'tester', 'senior_dev', 'senior', 'admin', 'hr', 'ceo', 'cto']} />}>
+                    <Route path="/autonomous" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><AutonomousCodingPage /></ErrorBoundary>
                       </Suspense>
                     } />
                   </Route>

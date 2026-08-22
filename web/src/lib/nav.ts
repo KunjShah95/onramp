@@ -42,7 +42,7 @@ export const buildItems: NavItem[] = [
   { to: '/my-progress',   label: 'My Progress',   Icon: Star,         roles: ['junior_dev', 'member'] },
   { to: '/first-issue',   label: 'First Issue',   Icon: BugBeetle,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/pr-describe',   label: 'PR Describe',   Icon: GitPullRequest, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
-  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['senior_dev', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/autonomous',    label: 'Auto Coding',   Icon: Robot,        roles: ['junior_dev', 'member', 'developer', 'tester', 'senior_dev', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/onboarding-plan', label: 'Onboarding Plan', Icon: Rocket,   roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/wiki',          label: 'Wiki',          Icon: FileCode,     roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/marketplace',   label: 'Marketplace',   Icon: Storefront,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },

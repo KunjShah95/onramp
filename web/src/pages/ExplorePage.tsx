@@ -69,9 +69,24 @@ export default function ExplorePage() {
 
   const allEdges: GraphEdge[] = useMemo(() => {
     if (!result) return []
-    return Object.entries(result.dependencies ?? {}).flatMap(([source, targets]) =>
-      targets.map((target) => ({ source, target }))
-    )
+    // Build file → service lookup so we can map file-level deps to service-level edges
+    const fileToService = new Map<string, string>()
+    for (const svc of (result.services ?? [])) {
+      for (const f of (svc.files ?? [])) fileToService.set(f, svc.name)
+    }
+    const seen = new Set<string>()
+    const edges: GraphEdge[] = []
+    for (const [srcFile, tgtFiles] of Object.entries(result.dependencies ?? {})) {
+      const srcSvc = fileToService.get(srcFile)
+      if (!srcSvc) continue
+      for (const tgtFile of tgtFiles) {
+        const tgtSvc = fileToService.get(tgtFile)
+        if (!tgtSvc || tgtSvc === srcSvc) continue
+        const key = `${srcSvc}→${tgtSvc}`
+        if (!seen.has(key)) { seen.add(key); edges.push({ source: srcSvc, target: tgtSvc }) }
+      }
+    }
+    return edges
   }, [result])
 
   // ── Active groups for filtering ─────────────────────────────────

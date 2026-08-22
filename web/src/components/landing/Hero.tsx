@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { Fragment, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { ArrowRight, CaretDown, Check, Play } from '@phosphor-icons/react'
@@ -72,7 +72,7 @@ export default function Hero() {
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
           {/* copy */}
           <motion.div style={{ opacity: copyOpacity, y: copyY }} className="lg:col-span-6">
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.05, ease: EASE }}
@@ -82,20 +82,21 @@ export default function Hero() {
               <span className="text-[12px] font-medium text-ink-secondary">
                 Onboarding that actually tracks
               </span>
-            </motion.div>
+            </motion.div> */}
 
             <h1 className="mt-7 font-body text-[clamp(2.5rem,6.5vw,4.9rem)] font-bold leading-[1.02] tracking-[-0.03em] text-ink">
               {HEADLINE_A.map((w, i) => (
-                <Word key={`${w}-${i}`} i={i}>
-                  {w}
-                </Word>
+                <Fragment key={`${w}-${i}`}>
+                  <Word i={i}>{w}</Word>{' '}
+                </Fragment>
               ))}
               <br />
               <span className="text-gradient">
                 {HEADLINE_B.map((w, i) => (
-                  <Word key={`${w}-${i}`} i={HEADLINE_A.length + i}>
-                    {w}
-                  </Word>
+                  <Fragment key={`${w}-${i}`}>
+                    <Word i={HEADLINE_A.length + i}>{w}</Word>
+                    {i < HEADLINE_B.length - 1 && ' '}
+                  </Fragment>
                 ))}
               </span>
             </h1>

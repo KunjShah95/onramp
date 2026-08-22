@@ -501,7 +501,7 @@ class LLMRouter:
             },
             ModelProvider.GROQ: {
                 "api_key": os.getenv("GROQ_API_KEY"),
-                "model": "llama-3.3-70b-versatile",
+                "model": "openai/gpt-oss-20b",
                 "base_url": "https://api.groq.com/openai/v1",
                 "type": "openai_sdk",
                 "free": True,
@@ -1461,6 +1461,9 @@ class LLMRouter:
         """
         qtype = self._coerce_query_type(query_type) or QueryType.STRUCTURED
         response = await self.chat(prompt, system, query_type=qtype)
+        # Strip <think>...</think> blocks emitted by reasoning models (e.g. Qwen)
+        import re as _re
+        response = _re.sub(r"<think>.*?</think>", "", response, flags=_re.DOTALL).strip()
         try:
             return json.loads(response)
         except json.JSONDecodeError:

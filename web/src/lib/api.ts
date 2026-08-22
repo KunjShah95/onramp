@@ -1368,7 +1368,9 @@ export async function getTeamMembers(teamId: string): Promise<{ user_id: string;
     }
     throw new Error(message)
   }
-  return res.json()
+  const json = await res.json()
+  // Unwrap ResponseWrapper: {success, data: [...]} → data
+  return Array.isArray(json) ? json : (json?.data ?? json)
 }
 
 export async function removeTeamMember(
