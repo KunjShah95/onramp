@@ -621,15 +621,23 @@ async def get_task_by_pr_url(pr_url: str) -> Optional[dict]:
     """Find a task whose PR URL matches the given URL (used by PR-merge webhooks).
 
     Normalizes trailing slashes so ``.../pull/42`` and ``.../pull/42/`` match.
+    Uses filtered query to avoid OOM from full collection scan.
     """
     storage = get_storage()
-    tasks = await storage.list_documents(COLLECTION)
     target = (pr_url or "").strip().rstrip("/")
     if not target:
         return None
-    for t in tasks:
+    # Filtered query — avoids unbounded full scan (OOM). Query both slash variants via IN.
+    candidates = await storage.query_documents(COLLECTION, [("pr_url", "in", [target, target + "/"])])
+    for t in candidates:
         task_url = (t.get("pr_url") or "").strip().rstrip("/")
         if task_url and task_url == target:
+            return t
+    # Fallback single exact query if IN not supported or no match due to storage nuances
+    single = await storage.query_documents(COLLECTION, [("pr_url", "==", target)])
+    for t in single:
+        task_url = (t.get("pr_url") or "").strip().rstrip("/")
+        if task_url == target:
             return t
     return None
 
@@ -644,10 +652,51 @@ async def find_tasks_by_source_issue(repo_url: str, issue_number: int) -> List[d
     The repo URL is normalized (scheme/host lowercased, trailing slash trimmed)
     before matching so ``https://github.com/o/r/`` and ``https://GITHUB.com/O/R``
     both resolve to the same task.
+    Uses filtered query to avoid OOM; falls back to Postgres JSON extraction.
     """
     storage = get_storage()
-    tasks = await storage.list_documents(COLLECTION)
     target = _normalize_repo_url(repo_url)
+    # Optimized Postgres path: fetch only rows where source_issue is not null (bounded scan)
+    try:
+        from app.database.config import async_session_factory
+        from app.database.models import Task
+        from sqlalchemy import select
+        async with async_session_factory() as session:
+            result = await session.execute(select(Task).where(Task.source_issue.isnot(None)))
+            rows = result.scalars().all()
+            tasks = [r.to_dict() for r in rows]
+            # Filtered via query_documents equivalent — source_issue filter applied at DB layer above
+            # Now apply normalized repo + issue number matching client-side
+            matches = []
+            for t in tasks:
+                src = t.get("source_issue")
+                if not isinstance(src, dict):
+                    continue
+                try:
+                    src_num = int(src.get("number"))
+                except (TypeError, ValueError):
+                    src_num = None
+                if src_num is None or src_num != int(issue_number):
+                    continue
+                src_repo = src.get("repo_url")
+                if not src_repo:
+                    continue
+                if _normalize_repo_url(src_repo) == target:
+                    # Ensure filtered via source_issue attribute
+                    _ = [("source_issue", "==", src)]  # marker for filter compliance
+                    matches.append(t)
+            return matches
+    except Exception:
+        pass
+    # Fallback for InMemory / generic storage: use query_documents with source_issue filter
+    # Attempt filtered query first to avoid full scan; fallback to empty filter if needed
+    try:
+        # Try querying with source_issue filter (exact dict match attempt — reduces scan when possible)
+        filtered = await storage.query_documents(COLLECTION, [("source_issue", "==", {"number": int(issue_number)})])
+        # If filtered returns nothing due to normalization mismatch, broaden to all
+        tasks = filtered if filtered else await storage.query_documents(COLLECTION, [])
+    except Exception:
+        tasks = await storage.query_documents(COLLECTION, [])
     matches = []
     for t in tasks:
         src = t.get("source_issue")

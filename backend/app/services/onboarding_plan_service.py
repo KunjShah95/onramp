@@ -325,20 +325,33 @@ async def get_roadmap(plan_id: str) -> dict | None:
 async def get_team_pulse_overview(team_id: str) -> list[dict]:
     storage = get_storage()
     plans = await storage.query_documents("onboarding_plans", [("team_id", "==", team_id)])
+    if not plans:
+        return []
+    plan_ids = [p["id"] for p in plans]
+    plan_map = {p["id"]: p for p in plans}
+    # Batch query — single DB round-trip instead of N+1
+    pulses = await storage.query_documents("pulse_surveys", [("plan_id", "in", plan_ids)])
+    # Group by plan_id and pick latest (max week_number, fallback to submitted_at)
+    latest_by_plan: dict[str, dict] = {}
+    for pulse in pulses:
+        pid = pulse.get("plan_id")
+        cur = latest_by_plan.get(pid)
+        if cur is None or pulse.get("week_number", 0) > cur.get("week_number", 0) or (
+            pulse.get("week_number", 0) == cur.get("week_number", 0)
+            and str(pulse.get("submitted_at", "")) > str(cur.get("submitted_at", ""))
+        ):
+            latest_by_plan[pid] = pulse
     results = []
-    for plan in plans:
-        pid = plan["id"]
-        pulses = await storage.query_documents("pulse_surveys", [("plan_id", "==", pid)])
-        if pulses:
-            latest = pulses[-1]
-            results.append({
-                "user_id": plan["user_id"],
-                "plan_id": pid,
-                "week_number": latest.get("week_number"),
-                "confidence_score": latest.get("confidence_score"),
-                "sentiment": latest.get("sentiment"),
-                "submitted_at": latest.get("submitted_at"),
-            })
+    for pid, latest in latest_by_plan.items():
+        plan = plan_map.get(pid, {})
+        results.append({
+            "user_id": plan.get("user_id"),
+            "plan_id": pid,
+            "week_number": latest.get("week_number"),
+            "confidence_score": latest.get("confidence_score"),
+            "sentiment": latest.get("sentiment"),
+            "submitted_at": latest.get("submitted_at"),
+        })
     return results
 
 

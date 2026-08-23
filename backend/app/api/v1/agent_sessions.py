@@ -40,16 +40,16 @@ class CreateSessionRequest(BaseModel):
 
 class AppendMessageRequest(BaseModel):
     role: str = Field(..., description="system|user|assistant|tool|handoff|event")
-    content: str
-    agent_type: Optional[str] = None
+    content: str = Field(..., max_length=10000)
+    agent_type: Optional[str] = Field(default=None, max_length=100)
     tool_calls: Optional[Any] = None
-    handoff_to: Optional[str] = None
+    handoff_to: Optional[str] = Field(default=None, max_length=100)
     handoff_payload: Optional[Dict[str, Any]] = None
 
 
 class HandoffRequest(BaseModel):
-    target_agent: str = Field(..., description="Agent type to hand off to")
-    content: str = Field("", description="Handoff message")
+    target_agent: str = Field(..., description="Agent type to hand off to", max_length=100)
+    content: str = Field("", description="Handoff message", max_length=10000)
     payload: Optional[Dict[str, Any]] = None
 
 
@@ -60,6 +60,30 @@ class PublishEventRequest(BaseModel):
     source_agent: Optional[str] = None
     target_agent: Optional[str] = None
 
+
+async def _assert_session_access(sess: dict, user: dict):
+    """IDOR guard: only owner or team member may access session."""
+    uid = user.get("uid", "")
+    # Owner check (session stores user_id)
+    if sess.get("user_id") == uid or sess.get("created_by") == uid:
+        return
+    team_id = sess.get("team_id")
+    if team_id:
+        try:
+            from app.services.team_service import get_user_teams
+            teams = await get_user_teams(uid)
+            if any(t.get("id") == team_id or t.get("team_id") == team_id for t in (teams or [])):
+                return
+        except Exception:
+            pass
+        try:
+            from app.services.team_service import get_team_members
+            members = await get_team_members(team_id)
+            if any(m.get("id") == uid or m.get("user_id") == uid for m in (members or [])):
+                return
+        except Exception:
+            pass
+    raise HTTPException(status_code=403, detail="Forbidden: not owner or team member")
 
 # ── Session endpoints ────────────────────────────────────────────────
 
@@ -104,6 +128,7 @@ async def get_session(session_id: str, include_history: bool = Query(True), hist
     sess = await agent_context.get_session(session_id)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")
+    await _assert_session_access(sess, user)
     out: Dict[str, Any] = {"session": sess}
     if include_history:
         out["history"] = await agent_context.get_history(session_id, limit=history_limit)
@@ -115,6 +140,7 @@ async def append_message(session_id: str, body: AppendMessageRequest, user: dict
     sess = await agent_context.get_session(session_id)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")
+    await _assert_session_access(sess, user)
     if body.role not in ("system", "user", "assistant", "tool", "handoff", "event"):
         raise HTTPException(status_code=400, detail="Invalid role")
     msg = await agent_context.append_message(
@@ -130,6 +156,7 @@ async def handoff(session_id: str, body: HandoffRequest, user: dict = Depends(ge
     sess = await agent_context.get_session(session_id)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")
+    await _assert_session_access(sess, user)
     if not is_known_agent(body.target_agent):
         raise HTTPException(status_code=400, detail=f"Unknown target_agent '{body.target_agent}'")
     child = await agent_bus.handoff(
@@ -147,6 +174,10 @@ async def get_thread(session_id: str, user: dict = Depends(get_current_user)):
     chain = await agent_context.get_thread(session_id)
     if not chain:
         raise HTTPException(status_code=404, detail="Session not found")
+    # IDOR: ensure leaf session is accessible (covers parent chain via ownership)
+    leaf = chain[-1] if chain else None
+    if leaf:
+        await _assert_session_access(leaf, user)
     # Also include history for leaf
     history = await agent_context.get_history(session_id, limit=50)
     return {"thread": chain, "leaf_history": history}
@@ -156,6 +187,10 @@ async def get_thread(session_id: str, user: dict = Depends(get_current_user)):
 async def set_state(session_id: str, state: str = Query(..., description="active|completed|failed|archived"), user: dict = Depends(get_current_user)):
     if state not in ("active", "completed", "failed", "archived"):
         raise HTTPException(status_code=400, detail="Invalid state")
+    existing = await agent_context.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await _assert_session_access(existing, user)
     sess = await agent_context.set_state(session_id, state)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -165,6 +200,10 @@ async def set_state(session_id: str, state: str = Query(..., description="active
 
 @router.patch("/{session_id}/scratchpad")
 async def patch_scratchpad(session_id: str, patch: Dict[str, Any], user: dict = Depends(get_current_user)):
+    existing = await agent_context.get_session(session_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await _assert_session_access(existing, user)
     sess = await agent_context.update_scratchpad(session_id, patch)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")

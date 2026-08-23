@@ -55,6 +55,9 @@ ROUTE_GROUP_PREFIXES: list[tuple[str, str]] = [
     ("llm",        "/api/v1/ask/"),
     ("llm",        "/api/v1/ai/"),
     ("llm",        "/api/v1/explore/"),
+    ("llm",        "/api/v1/agent-sessions"),
+    ("llm",        "/api/v1/repo"),
+    ("llm",        "/api/v1/learn"),
     ("llm",        "/v1/"),  # OpenAI-compatible gateway gets the strict LLM bucket
     ("auth_reset", "/api/v1/auth/forgot-password"),
     ("auth_reset", "/api/v1/auth/reset-password"),

@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.agents import RepoQA
 from app.services.quota import enforce_quota
 from app.services.conversation_service import ConversationService
@@ -29,18 +29,18 @@ _ASK_SESSIONS: Dict[str, str] = {}
 
 
 class IndexRequest(BaseModel):
-    repo_path: str
+    repo_path: str = Field(..., max_length=500)
 
 
 class QueryRequest(BaseModel):
-    index_id: str
-    question: str
+    index_id: str = Field(..., max_length=100)
+    question: str = Field(..., max_length=5000, min_length=1)
     use_memory: bool = True
-    mode: str = "normal"
+    mode: str = Field(default="normal", max_length=20)
     # Optional explicit model id / query-type / provider name that wins over
     # the agent's default routing (e.g. "anthropic", "gpt-4o-mini", or any
     # OpenRouter-catalog "vendor/model" id). See LLMRouter.chat/provider_chain.
-    model: Optional[str] = None
+    model: Optional[str] = Field(default=None, max_length=100)
     # Optional per-request cost/quality dial ("cost"/"balanced"/"intelligence"
     # or int 0-10). Wins over the team's stored preference; falls back to the
     # team default, then RoutingMode.BALANCED. See app/llm.py RoutingMode.
@@ -48,7 +48,7 @@ class QueryRequest(BaseModel):
     # Optional explicit team scope for routing settings (BYOK keys + routing
     # dial). When omitted, the user's primary team (most recently joined) is
     # used. Membership is verified server-side — a non-member gets 403.
-    team_id: Optional[str] = None
+    team_id: Optional[str] = Field(default=None, max_length=100)
 
 
 # ── Team routing settings (BYOK keys + routing dial) ──────────────────────

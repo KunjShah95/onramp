@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 from app.agents import ArchitectureExplorer
 from app.services.quota import enforce_quota
 from app.api.v1.llm_route import attach_served_route_header
@@ -10,10 +10,10 @@ router = APIRouter(prefix="/explore", tags=["architecture"])
 
 
 class ExploreRequest(BaseModel):
-    repo_url: str
-    branch: str = "main"
-    github_token: Optional[str] = None
-    index_id: Optional[str] = None  # reuse a cached repo-context index (parse-once)
+    repo_url: HttpUrl = Field(..., description="GitHub repo URL https")
+    branch: str = Field(default="main", max_length=100)
+    github_token: Optional[str] = Field(default=None, max_length=500)
+    index_id: Optional[str] = Field(default=None, max_length=100)
 
 
 def _extract_github_token(request: ExploreRequest, req: Request) -> Optional[str]:

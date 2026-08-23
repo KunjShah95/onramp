@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision: str = "028_agent_sessions"
-down_revision: Union[str, None] = "d82af5364a0c"
+down_revision: Union[str, None] = "027_add_senior_role"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

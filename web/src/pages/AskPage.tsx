@@ -58,11 +58,39 @@ const MAX_MESSAGES = 100
 const MAX_CONTENT_CHARS = 50 * 1024 // 50KB per message
 
 function sanitizeMarkdown(text: string): string {
-  // Strip dangerous HTML/script that could execute if rendered as innerHTML elsewhere
-  let out = text.replace(/<script[\s\S]*?<\/script>/gi, '')
+  // Prefer DOMPurify when available (stronger, actively maintained)
+  try {
+    const maybe = (window as unknown as { DOMPurify?: { sanitize: (d: string) => string } }).DOMPurify
+    if (maybe && typeof maybe.sanitize === 'function') {
+      return maybe.sanitize(text)
+    }
+  } catch {
+    // fall through to regex sanitization
+  }
+  let out = text
+  // Remove script/style/iframe/object/embed/link/meta/base/form and svg/math with event handlers
+  out = out.replace(/<script[\s\S]*?<\/script>/gi, '')
+  out = out.replace(/<style[\s\S]*?<\/style>/gi, '')
   out = out.replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+  out = out.replace(/<object[\s\S]*?<\/object>/gi, '')
+  out = out.replace(/<embed[^>]*>/gi, '')
+  out = out.replace(/<link[^>]*>/gi, '')
+  out = out.replace(/<meta[^>]*>/gi, '')
+  out = out.replace(/<base[^>]*>/gi, '')
+  out = out.replace(/<form[\s\S]*?<\/form>/gi, '')
+  // SVG with onload, img with onerror, body with onload, etc. — strip whole tag if it contains event handler
+  out = out.replace(/<(svg|img|body|div|span|a|image|g|path|rect|circle|use|details|video|audio|source|table|td|th|tr|marquee)[^>]*\bon\w+\s*=[^>]*>/gi, (m) => m.replace(/\bon\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, ' '))
+  // Strip remaining dangerous tags that could carry handlers
+  out = out.replace(/<\/?(svg|math|body|frame|frameset|applet)[^>]*>/gi, '')
+  // Strip javascript:, data:text/html, vbscript: URIs
   out = out.replace(/javascript\s*:/gi, '')
-  out = out.replace(/\son\w+\s*=/gi, ' ')
+  out = out.replace(/data\s*:\s*text\/html[^,]*,/gi, '')
+  out = out.replace(/vbscript\s*:/gi, '')
+  // Strip all event handler attributes (onerror, onload, onclick, etc.)
+  out = out.replace(/\bon\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, ' ')
+  // Strip expression() and -moz-binding CSS injections
+  out = out.replace(/expression\s*\(/gi, '')
+  out = out.replace(/-moz-binding\s*:/gi, '')
   return out
 }
 

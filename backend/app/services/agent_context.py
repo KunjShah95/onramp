@@ -125,6 +125,19 @@ async def _history_cache_get(session_id: str, limit: int = 50) -> Optional[List[
     return None
 
 
+async def _history_cache_invalidate(session_id: str) -> None:
+    """Invalidate history cache so next get_history reads fresh DB state."""
+    client = await _redis()
+    key = f"{REDIS_HISTORY_PREFIX}:{session_id}"
+    if client:
+        try:
+            await client.delete(key)
+        except Exception:
+            pass
+    async with _LOCAL_LOCK:
+        _LOCAL_HISTORY.pop(key, None)
+
+
 # ── Public API ───────────────────────────────────────────────────────────
 
 class AgentContextService:
@@ -284,6 +297,8 @@ class AgentContextService:
             await db.commit()
 
         msg = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row_data.items()}
+        # Invalidate stale history cache then append fresh message
+        await _history_cache_invalidate(session_id)
         await _history_cache_append(session_id, msg)
         return msg
 
@@ -299,13 +314,7 @@ class AgentContextService:
         from app.database.config import async_session_factory
         from app.database.models import AgentMessage
         async with async_session_factory() as db:
-            res = await db.execute(
-                select(AgentMessage)
-                .where(AgentMessage.session_id == session_id)
-                .order_by(AgentMessage.created_at.asc())
-                .limit(limit)
-            )
-            # For last N, we need desc then reverse
+            # Single query: get last N by desc then reverse (removed unused asc query)
             res2 = await db.execute(
                 select(AgentMessage)
                 .where(AgentMessage.session_id == session_id)
