@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class FirstPRAccelerator(BaseAgent):
+    agent_type = "first_pr_accelerator"
     query_type = QueryType.CODE
     """Finds beginner-friendly issues and generates guides for first-time contributors."""
 

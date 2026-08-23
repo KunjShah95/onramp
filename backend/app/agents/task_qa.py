@@ -7,6 +7,7 @@ from app.services.embeddings_service import EmbeddingsService
 logger = logging.getLogger(__name__)
 
 class TaskQA(BaseAgent):
+    agent_type = "task_qa"
     query_type = QueryType.CODE
     """Specialized QA agent for reviewing agent 1's task completion."""
 

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import hmac
 import logging
 import os
@@ -65,13 +66,51 @@ REFRESH_TOKEN_COLLECTION = "onramp_refresh_tokens"
 # two requests present the same refresh token simultaneously.
 _refresh_locks: dict[str, asyncio.Lock] = {}
 _refresh_locks_lock = asyncio.Lock()  # protects the dict itself
+_refresh_locks_last_used: dict[str, float] = {}
+_refresh_locks_max_size = 1000
+_refresh_locks_ttl = 3600.0  # 1 hour idle eviction
+
+import time as _time
 
 
 async def _get_refresh_lock(user_id: str) -> asyncio.Lock:
     async with _refresh_locks_lock:
+        now = _time.monotonic()
         if user_id not in _refresh_locks:
+            # FIFO eviction when at capacity: remove oldest idle entry
+            if len(_refresh_locks) >= _refresh_locks_max_size:
+                # Find oldest entry by last_used
+                oldest = min(_refresh_locks_last_used, key=lambda k: _refresh_locks_last_used.get(k, 0), default=None)
+                if oldest is not None:
+                    _refresh_locks.pop(oldest, None)
+                    _refresh_locks_last_used.pop(oldest, None)
+                else:
+                    # Fallback: pop arbitrary
+                    _refresh_locks.pop(next(iter(_refresh_locks)), None)
+            # Opportunistic TTL cleanup (scan at most once per 100 inserts to amortize)
+            if len(_refresh_locks_last_used) % 100 == 0:
+                expired = [k for k, t in _refresh_locks_last_used.items() if now - t > _refresh_locks_ttl]
+                for k in expired:
+                    # Only evict if lock is not currently held
+                    lk = _refresh_locks.get(k)
+                    if lk is not None and not lk.locked():
+                        _refresh_locks.pop(k, None)
+                        _refresh_locks_last_used.pop(k, None)
             _refresh_locks[user_id] = asyncio.Lock()
+        _refresh_locks_last_used[user_id] = now
         return _refresh_locks[user_id]
+
+
+async def _cleanup_refresh_locks() -> None:
+    """Remove idle refresh locks older than TTL (callable as background task)."""
+    async with _refresh_locks_lock:
+        now = _time.monotonic()
+        expired = [k for k, t in _refresh_locks_last_used.items() if now - t > _refresh_locks_ttl]
+        for k in expired:
+            lk = _refresh_locks.get(k)
+            if lk is not None and not lk.locked():
+                _refresh_locks.pop(k, None)
+                _refresh_locks_last_used.pop(k, None)
 
 
 class LoginRequest(BaseModel):
@@ -310,7 +349,11 @@ async def _issue_tokens(
 
 def _decode_jwt(token: str) -> dict | None:
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            issuer=os.getenv("JWT_ISSUER", "onramp"),
+            audience=os.getenv("JWT_AUDIENCE", "onramp-api"),
+        )
         return payload
     except jwt.ExpiredSignatureError:
         return None
@@ -387,23 +430,38 @@ from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode
 
 
-def _oauth_redirect(token: str | None = None, error: str | None = None) -> RedirectResponse:
-    """Redirect back to the frontend OAuth callback with a token or an error.
+def _oauth_redirect(token: str | None = None, refresh_token: str | None = None, error: str | None = None) -> RedirectResponse:
+    """Redirect back to the frontend OAuth callback.
 
-    Errors (invalid/expired state, provider mismatch, denied consent, …) are
-    delivered to ``/auth/callback?error=...`` so the frontend can render its
-    friendly error screen instead of the browser showing a raw API 400 page.
+    On success the JWT is set as an HttpOnly cookie and the frontend is
+    redirected to ``/auth/callback`` *without* a token in the query string
+    (avoids token leakage via Referer, history, logs).  Errors are still
+    delivered via ``?error=...``.  ``refresh_token`` is also set as a cookie
+    when present.
+
+    Backward-compat: older frontends that expect ``?token=`` still work if
+    the caller passes the token via fragment — this function no longer emits
+    ``?token=``.
     """
     frontend_url = os.getenv(
         "FRONTEND_URL",
         os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
     )
     params: dict[str, str] = {}
-    if token:
-        params["token"] = token
     if error:
         params["error"] = error
-    return RedirectResponse(url=f"{frontend_url}/auth/callback?{urlencode(params)}")
+    url = f"{frontend_url}/auth/callback"
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    response = RedirectResponse(url=url, status_code=302)
+    if token:
+        # Set HttpOnly cookies on the redirect response so the browser is
+        # authenticated without ever seeing the token in the URL.
+        _set_auth_cookies(response, token, refresh_token, remember_me=True)
+        # Also keep an in-memory WS token path: the frontend will fetch
+        # /auth/me with credentials:include to confirm the session; no need
+        # to expose the token in the URL.
+    return response
 
 
 @router.get("/oauth/google/login")
@@ -418,7 +476,7 @@ async def google_callback(code: str, state: str):
     """Handle Google OAuth callback."""
     try:
         result = await handle_google_callback(code, state)
-        return _oauth_redirect(token=result["token"])
+        return _oauth_redirect(token=result["token"], refresh_token=result.get("refresh_token"))
     except ValueError as e:
         logger.warning("Google OAuth callback failed: %s", e)
         return _oauth_redirect(error=str(e))
@@ -457,7 +515,7 @@ async def github_callback(code: str, state: str):
     """Handle GitHub OAuth callback."""
     try:
         result = await handle_github_callback(code, state)
-        return _oauth_redirect(token=result["token"])
+        return _oauth_redirect(token=result["token"], refresh_token=result.get("refresh_token"))
     except ValueError as e:
         logger.warning("GitHub OAuth callback failed: %s", e)
         return _oauth_redirect(error=str(e))
@@ -857,9 +915,6 @@ _CSRF_EXEMPT_PREFIXES = (
     "/api/v1/auth/logout",
     "/api/v1/webhooks/",
     "/api/v1/billing/webhook",
-    "/v1/chat/completions",
-    "/v1/embeddings",
-    "/v1/models",
     "/health",
     "/ready",
     "/metrics",
@@ -1161,15 +1216,41 @@ async def resend_forgot_password(body: ForgotPasswordRequest):
     except Exception:
         logger.debug("Rate limit check skipped (storage unavailable)")
 
-    # Record this attempt
+    # Record this attempt — atomic check after insert to handle concurrent race:
+    # two requests that both passed the pre-check could otherwise both insert
+    # and exceed the limit. Re-query inside window after insert and roll back
+    # the just-inserted entry if the limit is now exceeded.
+    new_id = None
     try:
         from app.services.postgres_db import generate_id
-        await storage.create_document("rate_limits", generate_id(), {
+        new_id = generate_id()
+        await storage.create_document("rate_limits", new_id, {
             "key": f"forgot_resend:{email_key}",
             "created_at": now.isoformat(),
         })
     except Exception:
         logger.debug("Failed to record rate limit entry")
+
+    # Post-insert atomic verification: re-count within window
+    try:
+        verify_records = await storage.query_documents(
+            "rate_limits", [("key", "==", f"forgot_resend:{email_key}")]
+        )
+        verify_recent = [r for r in verify_records
+                         if (now - datetime.fromisoformat(r.get("created_at", now.isoformat())).replace(tzinfo=timezone.utc)).total_seconds() < RATE_LIMIT_WINDOW]
+        if len(verify_recent) > RATE_LIMIT_MAX:
+            # Roll back the just-inserted entry and enforce limit
+            if new_id:
+                try:
+                    await storage.delete_document("rate_limits", new_id)
+                except Exception:
+                    pass
+            retry_after = RATE_LIMIT_WINDOW - int((now - datetime.fromisoformat(verify_recent[0]["created_at"]).replace(tzinfo=timezone.utc)).total_seconds())
+            raise HTTPException(status_code=429, detail=f"Too many resend requests. Try again in {max(retry_after, 1)} seconds.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.debug("Post-insert rate limit verification skipped")
 
     # Reuse the main forgot-password logic
     return await forgot_password(body)
@@ -1209,18 +1290,31 @@ async def reset_password(body: ResetPasswordRequest):
     jti = payload.get("jti") or payload.get("nonce")
     if not uid:
         raise HTTPException(status_code=400, detail="Invalid reset token")
-    # Single-use check: nonce/jti must not have been used
+    # Single-use check: nonce/jti must not have been used (atomic optimistic lock)
     if jti:
         try:
             storage_j = get_storage()
             rec = await storage_j.get_document("onramp_reset_tokens", jti)
             if rec is None or rec.get("used"):
                 raise HTTPException(status_code=400, detail="Reset token has already been used")
-            # Mark used immediately to prevent race replay
-            await storage_j.update_document("onramp_reset_tokens", jti, {"used": True, "used_at": datetime.now(timezone.utc).isoformat()})
+            # Optimistic lock: re-fetch to catch concurrent use before update
+            rec_check = await storage_j.get_document("onramp_reset_tokens", jti)
+            if rec_check is None or rec_check.get("used"):
+                raise HTTPException(status_code=400, detail="Reset token has already been used")
+            # Conditional update — only succeed if still unused (database-level check)
+            candidates = await storage_j.query_documents("onramp_reset_tokens", [("id", "==", jti), ("used", "==", False)])
+            if not candidates:
+                raise HTTPException(status_code=400, detail="Reset token has already been used")
+            updated = await storage_j.update_document("onramp_reset_tokens", jti, {"used": True, "used_at": datetime.now(timezone.utc).isoformat()})
+            if updated is None or not updated.get("used"):
+                # Concurrent winner already flipped the flag — treat as used
+                raise HTTPException(status_code=400, detail="Reset token has already been used")
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
+            # If it's already an HTTPException wrapped in RuntimeError, re-raise
+            if isinstance(exc, HTTPException):
+                raise
             logger.exception("Failed to check reset nonce denylist")
     # Update password in database
     password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()

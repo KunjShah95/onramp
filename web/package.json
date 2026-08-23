@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "_supplyChainNote": "Reproducible installs use package-lock.json via `npm ci`. Ranges (^/~) are intentional for dev flexibility; security-critical deps (react, vite, typescript) should be pinned exact in lockfile and reviewed via Dependabot.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

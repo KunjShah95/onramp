@@ -53,18 +53,22 @@ export function setRefreshToken(_token: string | null): void {
   // No-op: refresh token is managed by the backend via Set-Cookie.
 }
 
-export function clearTokens(): void {
+export async function clearTokens(): Promise<void> {
   _wsToken = null
   // Also clear the server-side cookies by calling the logout endpoint.
   const API_BASE = (() => {
     const url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
     return url.replace(/\/+$/, '').replace(/\/api\/v1$/, '/api/v1')
   })()
-  fetch(`${API_BASE}/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-    keepalive: true,
-  }).catch(() => {})
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      keepalive: true,
+    })
+  } catch {
+    // Network failure on logout is non-fatal — cookies will expire
+  }
 }
 
 export function isRememberMe(): boolean {

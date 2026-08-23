@@ -6,6 +6,7 @@ from app.llm import QueryType
 logger = logging.getLogger(__name__)
 
 class SilentPairProgramming(BaseAgent):
+    agent_type = "silent_pair_programming"
     query_type = QueryType.CODE
     async def execute(self, issue_title: str, issue_body: str, repo_structure: Dict) -> Dict[str, Any]:
         return await self.generate_walkthrough(issue_title, issue_body, repo_structure)

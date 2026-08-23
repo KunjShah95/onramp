@@ -21,6 +21,14 @@ const queryClient = new QueryClient({
   },
 })
 
+// Global async error surface — logs unhandled rejections that ErrorBoundary
+// would otherwise miss outside React tree. ErrorBoundary also listens.
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[global] unhandledrejection', event.reason)
+  // Do not preventDefault here at top-level so ErrorBoundary can also handle;
+  // just ensure visibility in console / Sentry if present.
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

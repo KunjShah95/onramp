@@ -166,7 +166,7 @@ class RedisTokenBucket:
             return bool(await redis.eval(script, 1, key, rule.limit, rule.effective_refill, time.time()))
         except Exception as e:
             logger.warning("Redis token-bucket error: %s", e)
-            return True  # fail open
+            return False  # fail closed — deny on Redis error (secure default)
 
 
 # ── Redis sliding window log (sorted set) ─────────────────────────────────
@@ -211,7 +211,7 @@ class RedisSlidingWindowLog:
             return bool(allowed)
         except Exception as e:
             logger.warning("Redis sliding-window error: %s", e)
-            return True  # fail open
+            return False  # fail closed — deny on Redis error (secure default)
 
 
 # ── Middleware ──────────────────────────────────────────────────────────────
@@ -261,7 +261,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._tb_buckets: dict[str, InMemoryTokenBucket] = {}      # ip -> bucket
         self._sw_clients: dict[str, InMemoryWindowState] = {}      # ip -> window state
         self._sw_window: int = 60
-        self._last_sweep = 0
+        self._last_tb_sweep: float = 0
+        self._last_sw_sweep: int = 0
 
         if os.getenv("ENV") == "production" and not self.redis_url:
             raise RuntimeError(
@@ -302,12 +303,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _inmem_tb_allows(self, client_ip: str, rule: RateLimitRule, group: str) -> bool:
         # Evict stale buckets every ~60s to prevent unbounded growth
         now = time.time()
-        if now - self._last_sweep > 60:
-            # Reuse _last_sweep for bucket eviction too
+        if now - self._last_tb_sweep > 60:
             ttl = rule.window * 2
             stale_keys = [k for k, b in self._tb_buckets.items() if now - b.last_refill > ttl]
             for k in stale_keys:
                 del self._tb_buckets[k]
+            self._last_tb_sweep = now
         bkey = f"{group}:{client_ip}"
         bucket = self._tb_buckets.get(bkey)
         if not bucket:
@@ -323,11 +324,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         skey = f"{group}:{client_ip}"
 
         # Sweep stale entries every window
-        if current_window != self._last_sweep:
+        if current_window != self._last_sw_sweep:
             stale = [k for k, s in self._sw_clients.items() if s.current_window < current_window - 2]
             for k in stale:
                 del self._sw_clients[k]
-            self._last_sweep = current_window
+            self._last_sw_sweep = current_window
 
         state = self._sw_clients.get(skey)
         if not state:

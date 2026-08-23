@@ -52,6 +52,7 @@ def _is_valid_github_url(repo_url: str) -> bool:
 
 class ArchitectureExplorer(BaseAgent):
     query_type = QueryType.REASONING
+    agent_type = "architecture_explorer"
     """Maps repo structure, dependencies, and services to identify architecture patterns.
 
     This agent orchestrates the full analysis pipeline:

@@ -65,14 +65,25 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function isSafeAvatarUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 function mapUser(raw: Record<string, unknown>): User {
+  const rawAvatar = (raw.avatar_url as string) || ''
+  const safeAvatar = rawAvatar && isSafeAvatarUrl(rawAvatar) ? rawAvatar : undefined
   return {
     id: (raw.uid as string) || '',
     email: (raw.email as string) || '',
     name: (raw.name as string) || '',
     displayName: (raw.name as string) || '',
     position: (raw.position as string) || undefined,
-    photoURL: (raw.avatar_url as string) || undefined,
+    photoURL: safeAvatar,
     githubUsername: (raw.github_username as string) || undefined,
     emailVerified: true,
     createdAt: (raw.createdAt as string) || new Date().toISOString(),
@@ -183,17 +194,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = state.user?.id ?? null
   useEffect(() => {
     if (!userId) return
-    const interval = setInterval(async () => {
-      if (document.visibilityState === 'hidden') return
+    let pendingRefresh = false
+    const doRefresh = async () => {
       try {
         const resp = await refreshToken()
-        // Backend sets new HttpOnly cookies.  Store token in memory for WebSocket.
         setWsToken(resp.token)
+        pendingRefresh = false
       } catch {
         // Silent — next 401 will redirect to login
       }
+    }
+    const interval = setInterval(async () => {
+      if (document.visibilityState === 'hidden') {
+        pendingRefresh = true
+        return
+      }
+      await doRefresh()
     }, 4 * 60 * 60 * 1000) // 4 hours
-    return () => clearInterval(interval)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && pendingRefresh) {
+        pendingRefresh = false
+        void doRefresh()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [userId])
 
   const register = useCallback(
@@ -223,7 +251,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(async () => {
-    clearTokens()
+    try {
+      await clearTokens()
+    } catch {
+      // Even if cookie-clear fails, proceed to clear local state
+    }
     setState({
       user: null,
       loading: false,

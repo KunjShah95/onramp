@@ -34,7 +34,15 @@ export interface WsTaskEvent {
   }
 }
 
-export type WsEvent = WsNotificationEvent | WsTaskEvent
+export interface WsAgentEvent {
+  type: 'agent_event'
+  event_type: string
+  source_agent?: string
+  target_agent?: string
+  payload?: Record<string, unknown>
+}
+
+export type WsEvent = WsNotificationEvent | WsTaskEvent | WsAgentEvent
 
 type WsHandler = (event: WsEvent) => void
 
@@ -85,7 +93,9 @@ function emitState(): void {
 }
 
 function buildWsUrl(_token: string): string {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  // In production always use wss:// even if page is http (behind TLS-terminating proxy)
+  const isProd = (import.meta as any).env?.PROD === true
+  const protocol = isProd ? 'wss:' : window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   // When the API base is relative (Vite proxy / same-origin reverse proxy),
   // connect to the page's own host. Otherwise use the API's host directly.
   const host = !API_BASE || API_BASE.startsWith('/')
@@ -158,7 +168,9 @@ function connect(): void {
   }
 
   const url = buildWsUrl(token)
-  const ws = new WebSocket(url, [`bearer ${token}`, token])
+  // Auth via JSON message only — never send token in sub-protocol to avoid
+  // leaking it in logs/CDN; wss:// in prod is enforced by buildWsUrl.
+  const ws = new WebSocket(url)
   socket = ws
   socketToken = token
 

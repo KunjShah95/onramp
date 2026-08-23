@@ -12,6 +12,7 @@ from app.services.github_service import GitHubService
 logger = logging.getLogger(__name__)
 
 class PRReviewAgent(BaseAgent):
+    agent_type = "pr_review"
     query_type = QueryType.CODE
     """Agent that reviews GitHub pull requests and provides feedback."""
 

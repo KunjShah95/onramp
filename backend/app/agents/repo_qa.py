@@ -9,6 +9,7 @@ from app.services.embeddings_service import EmbeddingsService
 logger = logging.getLogger(__name__)
 
 class RepoQA(BaseAgent):
+    agent_type = "repo_qa"
     query_type = QueryType.REASONING
     def __init__(self, llm_client):
         super().__init__(llm_client)

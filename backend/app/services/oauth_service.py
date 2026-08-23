@@ -39,6 +39,25 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
 
+
+def _validate_oauth_config(provider: str) -> None:
+    """Raise a clear error if OAuth credentials are missing for *provider*.
+
+    Called at request time (not import time) so the app can still boot
+    without OAuth keys, but callers get an actionable message instead of a
+    generic provider exchange failure.
+    """
+    if provider == "google":
+        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+            raise ValueError(
+                "Google OAuth is not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"
+            )
+    elif provider == "github":
+        if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+            raise ValueError(
+                "GitHub OAuth is not configured — set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET"
+            )
+
 # Frontend URL for redirect after successful OAuth
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
@@ -200,6 +219,7 @@ GOOGLE_SCOPES = "openid email profile"
 
 async def get_google_login_url() -> str:
     """Build the Google OAuth consent screen URL."""
+    _validate_oauth_config("google")
     state = await _save_state()
     redirect_uri = f"{BACKEND_URL}/api/v1/auth/oauth/google/callback"
     params = {
@@ -220,6 +240,7 @@ async def handle_google_callback(code: str, state: str) -> dict:
     Returns a dict with 'uid', 'email', 'name', 'provider', 'token' on success,
     or raises an exception on failure.
     """
+    _validate_oauth_config("google")
     if await _consume_state(state) is None:
         raise ValueError("Invalid state parameter. Possible CSRF attack.")
 
@@ -283,6 +304,7 @@ async def get_github_login_url(mode: str = "login", uid: Optional[str] = None) -
     of erroring on a provider mismatch. ``mode="login"`` is the default
     sign-in / sign-up flow.
     """
+    _validate_oauth_config("github")
     extra: dict[str, str] = {"mode": mode}
     if mode == "link" and uid:
         extra["uid"] = uid
@@ -305,6 +327,7 @@ async def handle_github_callback(code: str, state: str) -> dict:
       - ``link``: attach the GitHub identity to the authenticated account
         whose uid was baked into the state by :func:`get_github_login_url`.
     """
+    _validate_oauth_config("github")
     state_record = await _consume_state(state)
     if state_record is None:
         raise ValueError("Invalid state parameter. Possible CSRF attack.")

@@ -38,6 +38,7 @@ PATTERN_TEMPLATES = {
 
 
 class PatternRecognition(BaseAgent):
+    agent_type = "pattern_recognition"
     query_type = QueryType.REASONING
     async def execute(
         self,

@@ -859,16 +859,44 @@ async def execute_agent(
     if "repo_url" in body:
         github_token = body.get("github_token", os.getenv("GITHUB_TOKEN"))
 
-    # Import and instantiate the agent
+    # Import and instantiate the agent — session-aware
     try:
         import importlib
         mod = importlib.import_module(agent_info["module"])
         agent_cls = getattr(mod, agent_info["class"])
-        agent = agent_cls(llm, github_token=github_token) if github_token else agent_cls(llm)
+        # Create a session for this execution so it participates in the stateful fabric
+        sid = None
+        try:
+            from app.services.agent_session_helper import get_session
+            sid = await get_session(agent_name, user_id=auth.get("uid"), index_id=body.get("index_id"), scratchpad={"via": "ai_gateway", "params": list(body.keys())[:5]})
+        except Exception:
+            pass
+        if github_token and sid:
+            agent = agent_cls(llm, github_token=github_token, session_id=sid)
+        elif sid:
+            # agents with BaseAgent signature (llm, session_id)
+            try:
+                agent = agent_cls(llm, session_id=sid)
+            except TypeError:
+                agent = agent_cls(llm)
+                agent.bind_session(sid) if hasattr(agent, "bind_session") else None
+        elif github_token:
+            agent = agent_cls(llm, github_token=github_token)
+        else:
+            agent = agent_cls(llm)
 
         # Build kwargs from body (strip out auth-related keys)
         kwargs = {k: v for k, v in body.items() if k not in ("github_token",)}
         result = await agent.execute(**kwargs)
+        # Close session + publish bus event
+        if sid:
+            try:
+                from app.services.agent_session_helper import complete_session
+                await complete_session(sid, agent_name, success=True, payload={"agent": agent_name})
+                if isinstance(result, dict):
+                    result["session_id"] = sid
+            except Exception:
+                pass
 
         # Track usage (with provider attribution from the router, if any).
         try:

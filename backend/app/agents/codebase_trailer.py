@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class CodebaseTrailer(BaseAgent):
+    agent_type = "codebase_trailer"
     query_type = QueryType.CREATIVE
     async def execute(
         self, repo_url: str, analysis: Optional[Dict[str, Any]] = None

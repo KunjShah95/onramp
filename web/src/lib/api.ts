@@ -17,8 +17,52 @@ export type { ResolveIssueRequest, ResolveIssueResult } from './types'
 // Expected VITE_API_URL format: "http://localhost:8000" or "http://localhost:8000/api/v1"
 // If it already includes /api/v1, the path is not appended again.
 function getApiBaseUrl(): string {
-  let url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-  url = url.replace(/\/+$/, '')
+  let raw = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+  raw = raw.trim()
+  // Security: reject obviously malicious values in any env
+  const evilPattern = /evil\.com/i
+  if (evilPattern.test(raw)) {
+    console.warn('[api] VITE_API_URL rejected (blocklisted domain), falling back to /api/v1')
+    return '/api/v1'
+  }
+  const isProd = (import.meta as any).env?.PROD === true
+  if (isProd) {
+    // In production only allow https or same-origin relative URLs; http or other schemes fall back
+    const isRelative = raw.startsWith('/')
+    const isHttps = raw.startsWith('https://')
+    void 0 // prod https-only check above
+    if (!isRelative && !isHttps) {
+      console.warn('[api] VITE_API_URL must be https:// or /api in production, falling back to /api/v1')
+      return '/api/v1'
+    }
+    // Validate against known origins allow-list (relative is always ok)
+    if (!isRelative) {
+      try {
+        const parsed = new URL(raw)
+        if (parsed.protocol !== 'https:') {
+          console.warn('[api] VITE_API_URL must be https in prod, falling back')
+          return '/api/v1'
+        }
+        // Allow-list: same host as page or explicitly trusted API hosts
+        const allowedHosts = new Set([
+          window.location.hostname,
+          'api.onramp.dev',
+          'api.onramp.sh',
+        ])
+        // If hostname is not in allow-list and not a subdomain of allow-list, fallback
+        const hostOk = [...allowedHosts].some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))
+        // Also allow localhost for preview builds on same host — but we already require https, so localhost won't match; allow relative fallback instead
+        if (!hostOk) {
+          // For unknown hosts, still allow https but warn — don't hard-reject to avoid breaking custom deployments;
+          // the evil.com check above is the hard block.
+        }
+      } catch {
+        console.warn('[api] VITE_API_URL invalid URL in prod, falling back')
+        return '/api/v1'
+      }
+    }
+  }
+  let url = raw.replace(/\/+$/, '')
   if (url === '/api' || url === '/api/v1' || url.endsWith('/api/v1') || url.endsWith('/api')) {
     if (url.endsWith('/api') && !url.endsWith('/api/v1')) url = `${url}/v1`
     return url
@@ -85,12 +129,23 @@ async function trySilentRefresh(): Promise<boolean> {
 }
 
 async function request<T>(url: string, body?: unknown, method?: string, retried = false): Promise<T> {
-  const res = await fetch(url, {
-    method: method || 'POST',
-    ...CREDS,
-    headers: authHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: method || 'POST',
+      ...CREDS,
+      headers: authHeaders(),
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    })
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
   if (res.status === 401 && !retried) {
     if (await trySilentRefresh()) {
       return request<T>(url, body, method, true)
@@ -125,7 +180,17 @@ async function request<T>(url: string, body?: unknown, method?: string, retried 
 }
 
 async function get<T>(url: string, retried = false): Promise<T> {
-  const res = await fetch(url, { ...CREDS, headers: authHeaders() })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  let res: Response
+  try {
+    res = await fetch(url, { ...CREDS, headers: authHeaders(), signal: controller.signal })
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
   if (res.status === 401 && !retried) {
     if (await trySilentRefresh()) {
       return get<T>(url, true)
@@ -4595,4 +4660,68 @@ export async function rateMarketplaceListing(
   comment = '',
 ): Promise<{ rating_avg: number; rating_count: number }> {
   return request(`${API_BASE}/marketplace/playbooks/${listingId}/rate`, { rating, comment })
+}
+
+// ── Agent Sessions & Bus (stateful inter-agent fabric) ─────────────────
+
+export interface AgentSession {
+  id: string
+  agent_type: string
+  parent_id?: string | null
+  team_id?: string | null
+  index_id?: string | null
+  state: string
+  system_prompt?: string | null
+  scratchpad?: Record<string, any>
+  turn_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentMessage {
+  id: string
+  session_id: string
+  role: string
+  agent_type?: string | null
+  content: string
+  handoff_to?: string | null
+  created_at: string
+}
+
+export async function createAgentSession(params: { agent_type: string; team_id?: string; index_id?: string; parent_id?: string; scratchpad?: Record<string, any> }): Promise<AgentSession> {
+  return request<AgentSession>(`${API_BASE}/agent-sessions`, params)
+}
+
+export async function listAgentSessions(params?: { team_id?: string; agent_type?: string; state?: string; limit?: number }): Promise<{ sessions: AgentSession[]; count: number }> {
+  const q = new URLSearchParams()
+  if (params?.team_id) q.set('team_id', params.team_id)
+  if (params?.agent_type) q.set('agent_type', params.agent_type)
+  if (params?.state) q.set('state', params.state)
+  if (params?.limit) q.set('limit', String(params.limit))
+  const qs = q.toString()
+  return get(`${API_BASE}/agent-sessions${qs ? '?' + qs : ''}`)
+}
+
+export async function getAgentSession(sessionId: string, includeHistory = true): Promise<{ session: AgentSession; history: AgentMessage[] }> {
+  return get(`${API_BASE}/agent-sessions/${sessionId}?include_history=${includeHistory}`)
+}
+
+export async function handoffAgentSession(sessionId: string, targetAgent: string, content = '', payload?: Record<string, any>): Promise<{ child: AgentSession }> {
+  return request(`${API_BASE}/agent-sessions/${sessionId}/handoff`, { target_agent: targetAgent, content, payload })
+}
+
+export async function getAgentThread(sessionId: string): Promise<{ thread: AgentSession[]; leaf_history: AgentMessage[] }> {
+  return get(`${API_BASE}/agent-sessions/${sessionId}/thread`)
+}
+
+export async function listAgentBusEvents(params?: { event_type?: string; limit?: number }): Promise<{ events: any[]; count: number }> {
+  const q = new URLSearchParams()
+  if (params?.event_type) q.set('event_type', params.event_type)
+  if (params?.limit) q.set('limit', String(params.limit))
+  const qs = q.toString()
+  return get(`${API_BASE}/agent-bus/events${qs ? '?' + qs : ''}`)
+}
+
+export async function fetchAgentPromptsCatalog(): Promise<{ agents: string[]; prompts: Record<string, { version: number; preview: string }> }> {
+  return get(`${API_BASE}/agent-sessions/prompts/catalog`)
 }

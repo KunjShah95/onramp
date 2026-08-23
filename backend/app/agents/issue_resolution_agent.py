@@ -16,6 +16,8 @@ class AnalysisResult(BaseModel):
     confidence: float = Field(..., description="Confidence score from 0.0 to 1.0")
 
 class IssueResolutionAgent(BaseAgent):
+    agent_type = "issue_resolution"
+    query_type = QueryType.CODE
     """Specialized agent for analyzing codebase issues and proposing precise fixes.
 
     Uses REASONING for root cause analysis and CODE for generating fixes.

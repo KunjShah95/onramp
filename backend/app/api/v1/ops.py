@@ -104,14 +104,34 @@ async def readiness():
 
 
 @router.get("/metrics", tags=["ops"])
-async def metrics():
+async def metrics(request: Request):
     """Prometheus metrics in the text exposition format.
 
     Disabled by setting ENABLE_METRICS=false (returns 404 so scrapers
     fail loudly rather than scrape an empty registry).
+
+    Requires authentication: either an authenticated user (JWT/api-key via
+    AuthMiddleware -> request.state.user) or a valid X-Metrics-Token header
+    matching the METRICS_TOKEN env var.
     """
     if not metrics_module.metrics_enabled():
         raise HTTPException(status_code=404, detail="metrics disabled")
+    # --- auth guard ---
+    metrics_token = os.getenv("METRICS_TOKEN")
+    header_token = request.headers.get("X-Metrics-Token")
+    # allow if metrics token matches (when configured)
+    if metrics_token and header_token and header_token == metrics_token:
+        pass
+    # allow if request was authenticated (JWT or cf_ api key)
+    elif getattr(request.state, "user", None) is not None:
+        pass
+    # also allow Authorization header presence as fallback (api key / JWT)
+    elif request.headers.get("Authorization"):
+        # AuthMiddleware would have set request.state.user for valid tokens;
+        # if header exists but user is None it was invalid -> reject
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    else:
+        raise HTTPException(status_code=401, detail="Authentication required for /metrics")
     return PlainTextResponse(
         metrics_module.generate_metrics(),
         media_type="text/plain; version=0.0.4; charset=utf-8",

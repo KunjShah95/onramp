@@ -5,6 +5,7 @@ from app.agents import PRReviewAgent
 from app.services.quota import enforce_quota
 from app.services.github_service import GitHubService
 from app.api.v1.auth import get_current_user
+from app.services.agent_session_helper import get_session, complete_session, fail_session
 import os
 
 router = APIRouter(prefix="/pr-review", tags=["pr-review"])
@@ -50,7 +51,8 @@ async def review_pr(
     """Review a GitHub PR and return structured feedback."""
     llm = getattr(req.app.state, "llm", None)
     github_token = os.getenv("GITHUB_TOKEN")
-    agent = PRReviewAgent(llm, github_token)
+    sid = await get_session("pr_review", user_id=user.get("uid"), scratchpad={"repo_url": request.repo_url, "pr_number": request.pr_number})
+    agent = PRReviewAgent(llm, github_token, session_id=sid) if sid else PRReviewAgent(llm, github_token)
 
     try:
         result = await agent.review_pr(
@@ -60,6 +62,7 @@ async def review_pr(
             mode=request.mode,
         )
         if "error" in result:
+            await fail_session(sid, "pr_review")
             raise HTTPException(status_code=404, detail=result["error"])
 
         # Award XP for completing a PR review (fire-and-forget)
@@ -69,10 +72,14 @@ async def review_pr(
         except Exception:
             pass  # XP award is non-critical
 
+        if isinstance(result, dict) and sid:
+            result["session_id"] = sid
+        await complete_session(sid, "pr_review", success=True, payload={"repo_url": request.repo_url, "pr_number": request.pr_number})
         return result
     except HTTPException:
         raise
     except Exception as e:
+        await fail_session(sid, "pr_review")
         raise HTTPException(status_code=500, detail=str(e))
 
 

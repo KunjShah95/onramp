@@ -6,6 +6,7 @@ from app.llm import QueryType
 logger = logging.getLogger(__name__)
 
 class RegressionTestGenerator(BaseAgent):
+    agent_type = "regression_test_generator"
     query_type = QueryType.CODE
     async def execute(self, pr_diff: str, repo_structure: Dict) -> Dict[str, Any]:
         return await self.generate(pr_diff, repo_structure)

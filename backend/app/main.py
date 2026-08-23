@@ -27,7 +27,7 @@ from app.llm import LLMClient
 from app.embeddings import EmbeddingRouter
 from app.api.v1 import (
     repo_index as repo_index,
-    accounts as accounts_router, admin as admin_router, ai_gateway, modelling, ask, audit as audit_router,
+    accounts as accounts_router, admin as admin_router, agent_sessions as agent_sessions_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router,
@@ -59,9 +59,11 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next) -> Response:
         max_size = _get_max_body_size()
         content_length = request.headers.get("content-length")
+        declared_length: int | None = None
         if content_length:
             try:
-                if int(content_length) > max_size:
+                declared_length = int(content_length)
+                if declared_length > max_size:
                     return Response(
                         content='{"detail":"Request body too large"}',
                         status_code=413,
@@ -69,8 +71,9 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
                     )
             except ValueError:
                 pass
-        # Also enforce for chunked / streaming bodies lacking Content-Length
-        # by wrapping the receive channel and counting bytes
+        # Always enforce by wrapping the receive channel and counting bytes,
+        # even when Content-Length is present (prevents bypass via lying
+        # Content-Length or chunked smuggling).
         received = 0
         original_receive = request.scope.get("receive")
 
@@ -81,11 +84,19 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
             if body:
                 received += len(body)
                 if received > max_size:
-                    # Return 413 by raising; outer will convert
                     raise ValueError("body too large")
+                # Validate total bytes received vs declared Content-Length:
+                # if declared length was valid but actual bytes exceed it,
+                # still enforce max_size (already checked) and let the app
+                # handle mismatch; the key is we counted actual bytes.
+                if declared_length is not None and received > declared_length:
+                    # Client sent more than declared — treat as oversize if
+                    # it also exceeds max_size, otherwise just count; we do
+                    # not trust declared_length alone.
+                    pass
             return message
 
-        if original_receive is not None and not content_length:
+        if original_receive is not None:
             request.scope["receive"] = _counting_receive
             try:
                 return await call_next(request)
@@ -409,7 +420,7 @@ _cors_origins = [
 _doc_paths = ["/docs", "/redoc", "/openapi.json"] if _show_api_docs else []
 
 app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/health", "/ready", "/metrics", *_doc_paths,
+    "/", "/health", "/ready", *_doc_paths,
     "/api/v1/auth/register",        # email/password registration
     "/api/v1/auth/login",           # email/password login
     "/api/v1/auth/check-provider",  # public provider lookup by email
@@ -441,12 +452,11 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSPNonceMiddleware)
-# CORS origin regex — configurable via env var for custom domains.
-# Default matches Vercel preview deployments; override for custom domains.
-_cors_regex = os.getenv(
-    "CORS_ALLOWED_ORIGIN_REGEX",
-    r"^https://[a-z0-9][a-z0-9-]*\.vercel\.app$",
-)
+# CORS origin regex — no default wildcard. Set CORS_ALLOWED_ORIGIN_REGEX explicitly
+# to allow preview deployments (e.g. r"^https://[a-z0-9][a-z0-9-]*\.vercel\.app$").
+# Empty by default so only CORS_ALLOWED_ORIGINS is used unless explicitly configured.
+_cors_regex_raw = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", "")
+_cors_regex = _cors_regex_raw if _cors_regex_raw else None
 
 app.add_middleware(
     CORSMiddleware,
@@ -519,6 +529,8 @@ app.include_router(onboarding_plans_router.router, prefix="/api/v1")
 app.include_router(dora_router.router, prefix="/api/v1")
 app.include_router(ramp.router, prefix="/api/v1")
 app.include_router(review_ops.router, prefix="/api/v1")
+app.include_router(agent_sessions_router.router, prefix="/api/v1")
+app.include_router(agent_sessions_router.bus_router, prefix="/api/v1")
 # GitHub webhook receiver — HMAC-verified, registered as a public path above.
 app.include_router(webhook_handler.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")

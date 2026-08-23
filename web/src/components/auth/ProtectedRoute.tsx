@@ -9,6 +9,11 @@ import {
   SkeletonHeading,
 } from '../ui/Skeleton'
 
+function isSafeInternalPath(path: string): boolean {
+  // Must be internal absolute path starting with single slash, not // or external scheme
+  return typeof path === 'string' && path.startsWith('/') && !path.startsWith('//') && !path.includes(':')
+}
+
 export default function ProtectedRoute() {
   const { user, loading } = useAuth()
   const location = useLocation()
@@ -39,7 +44,12 @@ export default function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    // Avoid redirect loop — if already on /login, don't push another redirect
+    if (location.pathname === '/login') return <Outlet />
+    // Sanitize state.from to prevent open redirect via //evil.com or https://evil.com
+    const pathname = location.pathname || '/'
+    const safeFrom = isSafeInternalPath(pathname) ? location : { pathname: '/', search: '', hash: '' }
+    return <Navigate to="/login" state={{ from: safeFrom }} replace />
   }
 
   return <Outlet />

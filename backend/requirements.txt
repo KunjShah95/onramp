@@ -1,3 +1,10 @@
+# ── Supply chain / reproducibility ─────────────────────────────────────────
+# This file uses >= ranges for flexibility in dev. For reproducible / prod
+# builds, pin exact versions via `pip freeze > requirements.lock.txt` or
+# `pip-compile` and install with `pip install -r requirements.lock.txt`.
+# Security-critical deps (cryptography, PyJWT, sqlalchemy, fastapi, celery,
+# redis, asyncpg) should be pinned exactly in the lockfile; review Dependabot
+# alerts before bumping ranges here.
 fastapi>=0.100.0
 uvicorn[standard]>=0.24.0
 python-dotenv>=1.0.0
@@ -9,7 +16,7 @@ pgvector>=0.3.0
 sqlalchemy>=2.0.0
 alembic>=1.13.0
 bcrypt>=4.1.0
-PyJWT>=2.8.0          # JWT session tokens (app.middleware.auth, app.api.v1.auth)
+PyJWT>=2.8.0          # JWT session tokens (app.middleware.auth, app.api.v1.auth) — pin in lockfile
 tenacity>=8.2.0
 cachetools>=5.3.0
 # AI provider SDKs (free providers first, paid fallback)
@@ -18,10 +25,10 @@ anthropic>=0.34.0
 google-genai>=0.3.0
 groq>=0.11.0
 # Optional infra
-redis>=5.0.0          # distributed rate limiting (REDIS_URL)
+redis>=5.0.0          # distributed rate limiting (REDIS_URL) — pin in lockfile
 sendgrid>=6.11.0    # transactional email delivery
 razorpay>=1.4.0       # billing (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)
-cryptography>=42.0.0  # token encryption at rest
+cryptography>=42.0.0  # token encryption at rest — pin exact in lockfile (security-critical)
 sentry-sdk>=2.0.0     # error monitoring
 brotli-asgi>=1.4.0    # optional Brotli response compression (falls back to gzip if absent)
 # AST parsing (tree-sitter ecosystem) — pinned to lock versions for reproducibility (see requirements.lock.txt)
@@ -48,7 +55,7 @@ tree-sitter-sql==0.3.11                 # SQL parser
 gspread>=6.1.0
 email-validator>=2.0.0
 # Background task processing
-celery>=5.4.0
+celery>=5.4.0         # background tasks — pin in lockfile
 # Test tooling
 pytest>=8.0.0
 pytest-asyncio>=0.24.0

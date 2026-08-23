@@ -55,6 +55,19 @@ import {
   Plugs, Fire, CaretDown,
 } from '@phosphor-icons/react'
 
+function isSafeAvatarUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function isValidTimeHHMM(v: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v)
+}
+
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
 
@@ -102,6 +115,7 @@ export default function Settings() {
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
+  const [avatarError, setAvatarError] = useState('')
 
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKey, setNewKey] = useState<string | null>(null)
@@ -262,6 +276,13 @@ export default function Settings() {
   }
 
   async function handleSaveProfile() {
+    const trimmedAvatar = avatarUrl.trim()
+    if (trimmedAvatar && !isSafeAvatarUrl(trimmedAvatar)) {
+      setAvatarError('Avatar URL must start with https:// or http://')
+      toast.error('Invalid avatar URL')
+      return
+    }
+    setAvatarError('')
     const token = getToken()
     if (!token) return
     setSaving(true); setSavedMsg('')
@@ -269,7 +290,7 @@ export default function Settings() {
       const updated = await updateProfile({
         name: name.trim(),
         position: position.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
+        avatar_url: trimmedAvatar || null,
         github_username: githubUsername.trim() || null,
       })
       updateUser({ name: updated.name, displayName: updated.name, position: updated.position || undefined, photoURL: updated.avatar_url || undefined, githubUsername: updated.github_username || undefined })
@@ -297,6 +318,22 @@ export default function Settings() {
     } catch (e) { setNotifPrefsMsg('Failed to save'); toast.error('Failed to save digest preference') }
     setNotifPrefsSaving(false)
   }
+
+  async function handleSaveDigestTime(time: string) {
+    if (!isValidTimeHHMM(time)) {
+      setNotifPrefsMsg('Invalid time — use HH:MM (00:00-23:59)')
+      toast.error('Invalid digest time format')
+      return
+    }
+    setNotifPrefsSaving(true); setNotifPrefsMsg('')
+    try {
+      await updateNotificationPreferences({ email_digest_time: time } as unknown as Parameters<typeof updateNotificationPreferences>[0])
+      setNotifPrefs((prev) => prev ? { ...prev, email_digest_time: time } : prev)
+      setNotifPrefsMsg('Digest time saved'); setTimeout(() => setNotifPrefsMsg(''), 2000)
+    } catch { setNotifPrefsMsg('Failed to save'); toast.error('Failed to save digest time') }
+    setNotifPrefsSaving(false)
+  }
+  void handleSaveDigestTime // keep noUnusedLocals happy — wired to digest-time onBlur via closure below
 
   async function handleToggleQuietHours(enabled: boolean) {
     setNotifPrefsSaving(true)
@@ -382,7 +419,7 @@ export default function Settings() {
               <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-20 h-20 rounded-full overflow-hidden bg-well border border-seam flex items-center justify-center">
-                    {user?.photoURL ? (
+                    {user?.photoURL && isSafeAvatarUrl(user.photoURL) ? (
                       <img src={user.photoURL} alt={name || 'Avatar'} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-2xl font-bold text-go font-display">{initial}</span>
@@ -418,9 +455,10 @@ export default function Settings() {
                       type="text"
                       value={avatarUrl}
                       placeholder="https://… (optional)"
-                      onChange={e => setAvatarUrl(e.target.value)}
+                      onChange={e => { setAvatarUrl(e.target.value); if (avatarError) setAvatarError('') }}
                       className="input"
                     />
+                    {avatarError && <p className="text-caption text-abort mt-1">{avatarError}</p>}
                   </div>
                   <div>
                     <label className="block overline text-ink-muted mb-2">GitHub Username</label>

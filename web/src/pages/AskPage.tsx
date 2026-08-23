@@ -54,6 +54,23 @@ function writeStoredRoutingMode(value: RoutingModeValue): void {
   }
 }
 
+const MAX_MESSAGES = 100
+const MAX_CONTENT_CHARS = 50 * 1024 // 50KB per message
+
+function sanitizeMarkdown(text: string): string {
+  // Strip dangerous HTML/script that could execute if rendered as innerHTML elsewhere
+  let out = text.replace(/<script[\s\S]*?<\/script>/gi, '')
+  out = out.replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+  out = out.replace(/javascript\s*:/gi, '')
+  out = out.replace(/\son\w+\s*=/gi, ' ')
+  return out
+}
+
+function truncateContent(text: string): string {
+  if (text.length <= MAX_CONTENT_CHARS) return text
+  return text.slice(0, MAX_CONTENT_CHARS) + '\n\n[truncated — 50KB limit]'
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -115,12 +132,13 @@ export default function AskPage() {
   }, [routingMode])
 
   const handleSend = async (explicitQuestion?: string) => {
-    const question = (explicitQuestion ?? input).trim()
+    let question = (explicitQuestion ?? input).trim()
     if (!question || loading || indexing) return
     if (!repoUrl.trim()) {
       toast.error('Repository required', 'Enter a GitHub repo URL to index first.')
       return
     }
+    question = sanitizeMarkdown(truncateContent(question))
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -128,11 +146,15 @@ export default function AskPage() {
       timestamp: new Date(),
     }
     const assistantId = `ai-${Date.now()}`
-    setMessages((prev) => [
-      ...prev,
-      userMsg,
-      { id: assistantId, role: 'assistant', content: '', timestamp: new Date() },
-    ])
+    setMessages((prev: Message[]) => {
+      const next: Message[] = [
+        ...prev,
+        userMsg,
+        { id: assistantId, role: 'assistant', content: '', timestamp: new Date() } as Message,
+      ]
+      // Cap unbounded growth — keep last MAX_MESSAGES
+      return next.length > MAX_MESSAGES ? next.slice(next.length - MAX_MESSAGES) : next
+    })
     setInput('')
     setLoading(true)
 
@@ -147,14 +169,18 @@ export default function AskPage() {
       }
       const controller = new AbortController()
       abortRef.current = controller
-      await askQuestionStream(
+       await askQuestionStream(
         idx,
         question,
         (token) => {
+          const safeToken = sanitizeMarkdown(token)
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + token } : m
-            )
+            prev.map((m) => {
+              if (m.id !== assistantId) return m
+              let next = m.content + safeToken
+              if (next.length > MAX_CONTENT_CHARS) next = next.slice(0, MAX_CONTENT_CHARS) + '\n\n[truncated]'
+              return { ...m, content: next }
+            })
           )
         },
         controller.signal,

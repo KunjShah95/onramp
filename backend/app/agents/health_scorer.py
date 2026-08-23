@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class HealthScorer(BaseAgent):
+    agent_type = "health_scorer"
     query_type = QueryType.STRUCTURED
     async def execute(self, **kwargs) -> Dict[str, Any]:
         mode = kwargs.get("mode", "normal")

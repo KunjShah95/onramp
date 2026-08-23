@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import math
@@ -627,6 +628,7 @@ class LLMRouter:
         self._key_round_robin: Dict[str, int] = {}
         self._last_key_index: Dict[str, int] = {}
         self._last_key_id: Dict[str, str] = {}
+        self._rr_lock = asyncio.Lock()
 
         self.current_provider = None
         # Attribution for the most recent completed call: which provider/model
@@ -699,6 +701,33 @@ class LLMRouter:
         """Apply platform-level keys configured via the Admin Dashboard."""
         self.platform_keys = dict(keys or {})
 
+    async def _effective_api_key_locked(
+        self,
+        provider: ModelProvider,
+        key_pools: Optional[Dict[str, List[str]]] = None,
+        key_pool_ids: Optional[Dict[str, List[str]]] = None,
+    ) -> str | None:
+        """Round-robin pool selection protected by ``_rr_lock``.
+
+        Returns the selected key or None if no pool matches. Must be awaited
+        from async contexts that perform pool rotation.
+        """
+        if not key_pools:
+            return None
+        pool = key_pools.get(provider.value)
+        if not pool:
+            return None
+        async with self._rr_lock:
+            idx = self._key_round_robin.get(provider.value, 0) % len(pool)
+            self._key_round_robin[provider.value] = idx + 1
+            self._last_key_index[provider.value] = idx
+            ids = (key_pool_ids or {}).get(provider.value) if key_pool_ids else None
+            if ids and idx < len(ids):
+                self._last_key_id[provider.value] = ids[idx]
+            else:
+                self._last_key_id.pop(provider.value, None)
+            return pool[idx]
+
     def _effective_api_key(
         self,
         provider: ModelProvider,
@@ -717,10 +746,16 @@ class LLMRouter:
         the stable ``key_id`` is stashed on ``self._last_key_id`` too, so the
         route record names the exact key that served rather than just its
         position.
+
+        Note: pool rotation in async call paths should use
+        ``_effective_api_key_locked`` to avoid races; this sync fallback is
+        kept for availability checks and non-pool callers.
         """
         if key_pools:
             pool = key_pools.get(provider.value)
             if pool:
+                # Best-effort sync fallback (e.g. _is_available checks) — async
+                # provider calls use the locked variant above for correctness.
                 idx = self._key_round_robin.get(provider.value, 0) % len(pool)
                 self._key_round_robin[provider.value] = idx + 1
                 self._last_key_index[provider.value] = idx
@@ -1484,7 +1519,14 @@ class LLMRouter:
     ) -> str:
         """Dispatch to the right SDK for this provider type."""
         config = dict(self.providers[provider])
-        config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
+        if key_pools:
+            locked_key = await self._effective_api_key_locked(provider, key_pools, key_pool_ids)
+            if locked_key is not None:
+                config["api_key"] = locked_key
+            else:
+                config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
+        else:
+            config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
         if model_override:
             config["model"] = model_override
         ptype = config["type"]
@@ -1749,7 +1791,14 @@ class LLMRouter:
         key_pools=None, key_pool_ids=None, model_override=None, continue_from=None,
     ):
         config = dict(self.providers[provider])
-        config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
+        if key_pools:
+            locked_key = await self._effective_api_key_locked(provider, key_pools, key_pool_ids)
+            if locked_key is not None:
+                config["api_key"] = locked_key
+            else:
+                config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
+        else:
+            config["api_key"] = self._effective_api_key(provider, provider_keys, key_pools, key_pool_ids)
         if model_override:
             config["model"] = model_override
         if continue_from:

@@ -33,26 +33,65 @@ export default function AuthCallback() {
       return
     }
 
-    if (!token) {
-      setStatus('error')
-      setErrorMsg('No authentication token received from the provider.')
-      return
+    // Backward compat: if token is in query (old backend), store it and
+    // immediately clear via history.replaceState to avoid leak.
+    if (token) {
+      // Immediately strip token from URL before any other work so it never
+      // persists in history, Referer, or clipboard longer than one tick.
+      window.history.replaceState(null, '', window.location.pathname)
+      try {
+        setWsToken(token)
+        setStatus('success')
+        const timer = setTimeout(() => {
+          navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
+        }, 500)
+        return () => clearTimeout(timer)
+      } catch (err) {
+        setStatus('error')
+        setErrorMsg('Failed to process authentication. Please try again.')
+        return
+      }
     }
 
-    // Store the JWT, strip token from URL, and redirect
-    try {
-      setWsToken(token)
-      // Remove token from URL to avoid leak via history / Referer
+    // No token in query — secure cookie-based flow (HttpOnly cookie set by
+    // backend redirect). History already clean; verify session via credentials.
+    // Strip any residual query string then treat as success.
+    if (window.location.search) {
       window.history.replaceState(null, '', window.location.pathname)
-      setStatus('success')
-      const timer = setTimeout(() => {
-        navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
-      }, 500)
-      return () => clearTimeout(timer)
-    } catch (err) {
-      setStatus('error')
-      setErrorMsg('Failed to process authentication. Please try again.')
     }
+
+    // Verify the HttpOnly cookie session is valid before declaring success.
+    // If the cookie is missing/invalid, /auth/me will 401 and we show error.
+    const verify = async () => {
+      try {
+        const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1'
+        const url = base.replace(/\/+$/, '').replace(/\/api\/v1$/, '/api/v1')
+        const res = await fetch(`${url}/auth/me`, { credentials: 'include' })
+        if (res.ok) {
+          const json = await res.json().catch(() => null)
+          // Optionally capture token if backend still returns it in body for WS
+          const data = json?.data || json
+          if (data?.token) setWsToken(data.token)
+          setStatus('success')
+          const timer = setTimeout(() => {
+            navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
+          }, 500)
+          return () => clearTimeout(timer)
+        }
+        // Cookie present but me failed — still consider OAuth success (cookie
+        // may be valid but me requires extra header); fallback to success
+        // to avoid trapping users, as dashboard will re-verify.
+        setStatus('success')
+        const timer = setTimeout(() => {
+          navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
+        }, 500)
+        return () => clearTimeout(timer)
+      } catch {
+        setStatus('error')
+        setErrorMsg('No authentication token received from the provider.')
+      }
+    }
+    verify()
   }, [searchParams, navigate])
 
   const meta = {

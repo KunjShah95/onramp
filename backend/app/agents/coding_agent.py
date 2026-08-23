@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class AutonomousCodingAgent(BaseAgent):
+    agent_type = "coding_agent"
     query_type = QueryType.CODE
     """Agent that autonomously implements code changes from an issue description."""
 

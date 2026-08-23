@@ -26,7 +26,11 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, user_id: str) -> None:
         """Accept a WebSocket connection and register it for the user."""
-        await websocket.accept()
+        try:
+            await websocket.accept()
+        except RuntimeError:
+            # Already accepted (first-message auth path) — register without re-accepting
+            pass
         if user_id not in self._connections:
             self._connections[user_id] = set()
         self._connections[user_id].add(websocket)

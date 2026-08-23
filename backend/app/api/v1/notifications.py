@@ -4,10 +4,14 @@ Notifications API — in-app notification endpoints for Onramp.
 Supports: list, unread count, mark read, mark all read, delete, clear read.
 """
 
+import re
+
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from app.api.v1.auth import get_current_user
+
+_TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 from app.services.cache_service import cached, invalidate_prefix
 from app.services.notification_service import (
     list_notifications,
@@ -114,7 +118,14 @@ async def update_notification_preferences(
     if request.quiet_hours_end is not None:
         updates["quiet_hours_end"] = request.quiet_hours_end
     if request.email_digest_time is not None:
+        if not _TIME_RE.match(request.email_digest_time):
+            raise HTTPException(status_code=400, detail="email_digest_time must be HH:MM (00:00-23:59)")
         updates["email_digest_time"] = request.email_digest_time
+    # Also validate quiet_hours times if provided
+    if request.quiet_hours_start is not None and not _TIME_RE.match(request.quiet_hours_start):
+        raise HTTPException(status_code=400, detail="quiet_hours_start must be HH:MM (00:00-23:59)")
+    if request.quiet_hours_end is not None and not _TIME_RE.match(request.quiet_hours_end):
+        raise HTTPException(status_code=400, detail="quiet_hours_end must be HH:MM (00:00-23:59)")
     if request.roast_mode_enabled is not None:
         updates["roast_mode_enabled"] = request.roast_mode_enabled
 

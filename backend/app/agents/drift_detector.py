@@ -50,6 +50,7 @@ _STOPWORDS = {
 
 
 class DriftDetector(BaseAgent):
+    agent_type = "drift_detector"
     query_type = QueryType.REASONING
     async def execute(self, **kwargs) -> Dict[str, Any]:
         from app.services.repo_context import resolve_for_agent

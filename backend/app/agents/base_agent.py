@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from app.llm import QueryType
 
@@ -68,13 +68,21 @@ class BaseAgent(ABC):
     drives OpenRouter-style model routing (code -> Claude, reasoning ->
     Gemini, structured -> Groq, creative -> Claude, ...). ``None`` falls
     back to automatic classification of each prompt.
+
+    ``system_prompt`` — per-agent persona. Seeded from
+    ``app.agents.prompts.get_system_prompt(agent_type)`` when a session is
+    created; kept here for session-less callers too.
     """
 
     query_type: Optional[QueryType] = None
+    # Subclasses may override e.g. "architecture_explorer" to pull the right prompt
+    agent_type: str = "base"
+    system_prompt: Optional[str] = None
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, session_id: Optional[str] = None):
         self.llm = self._wrap_llm(llm_client)
         self.cache = {}
+        self.session_id: Optional[str] = session_id
 
     def _wrap_llm(self, llm_client):
         """Wrap a raw router so its calls carry this agent's query_type."""
@@ -87,16 +95,80 @@ class BaseAgent(ABC):
         """Execute agent logic. Implement in subclass."""
         pass
 
+    # ── Session-aware helpers ──────────────────────────────────────────
+
+    def bind_session(self, session_id: str):
+        """Bind this agent instance to an AgentSession."""
+        self.session_id = session_id
+        return self
+
+    async def _resolve_system_prompt(self) -> Optional[str]:
+        """Effective system prompt: explicit > session row > registry."""
+        if self.system_prompt:
+            return self.system_prompt
+        if self.session_id:
+            try:
+                from app.services.agent_context import agent_context
+                sess = await agent_context.get_session(self.session_id)
+                if sess and sess.get("system_prompt"):
+                    return sess["system_prompt"]
+            except Exception:
+                pass
+        # Fallback to registry
+        try:
+            from app.agents.prompts import get_system_prompt as _get
+            prompt, _ = _get(self.agent_type or self.__class__.__name__.lower())
+            return prompt
+        except Exception:
+            return None
+
+    async def _history_messages(self, limit: int = 12) -> List[Dict[str, str]]:
+        if not self.session_id:
+            return []
+        try:
+            from app.services.agent_context import agent_context
+            return await agent_context.get_history_as_llm_messages(self.session_id, limit=limit)
+        except Exception:
+            return []
+
     async def _call_claude(
         self, prompt: str, context: str = "", model: Optional[str] = None, **kwargs
     ) -> str:
-        """Call Claude API with prompt and context.
+        """Call LLM with session system prompt + bounded history + context."""
+        system = kwargs.pop("system", None)
+        if system is None:
+            system = await self._resolve_system_prompt()
 
-        ``model`` (optional) names an explicit model id / query type / provider
-        that wins over this agent's declared query_type — see LLMRouter.chat.
-        Extra ``kwargs`` (routing_mode, provider_keys, key_pools, ...) are
-        forwarded to the router so callers can bias routing per request.
-        """
-        full_prompt = f"{context}\n\n{prompt}"
-        response = await self.llm.chat(full_prompt, model=model, **kwargs)
+        # Prepend history as an extra system block when we have a session
+        history = await self._history_messages()
+        if history:
+            # Render last turns as context so the model sees the thread
+            hist_text = "\n".join(f"{m['role']}: {m['content'][:800]}" for m in history[-6:])
+            if context:
+                context = f"[Conversation history]\n{hist_text}\n\n[Repo context]\n{context}"
+            else:
+                context = f"[Conversation history]\n{hist_text}"
+
+        full_prompt = f"{context}\n\n{prompt}" if context else prompt
+        response = await self.llm.chat(full_prompt, system=system, model=model, **kwargs)
+
+        # Append to session log (fire-and-forget)
+        if self.session_id:
+            try:
+                from app.services.agent_context import agent_context
+                await agent_context.append_message(self.session_id, role="user", content=full_prompt[:4000])
+                await agent_context.append_message(self.session_id, role="assistant", content=response[:4000], agent_type=self.agent_type)
+            except Exception:
+                pass
         return response
+
+    async def handoff_to(self, target_agent: str, payload: Optional[Dict[str, Any]] = None, content: str = "") -> Dict[str, Any]:
+        """Hand off this session to another agent. Returns the child session."""
+        if not self.session_id:
+            raise ValueError("handoff_to requires a bound session_id — call bind_session() first")
+        from app.services.agent_bus import agent_bus
+        return await agent_bus.handoff(self.session_id, self.agent_type, target_agent, payload=payload, content=content)
+
+    async def emit(self, event_type: str, payload: Optional[Dict[str, Any]] = None):
+        from app.services.agent_bus import agent_bus
+        return await agent_bus.publish(event_type, payload=payload, source_session_id=self.session_id, source_agent=self.agent_type)

@@ -4,6 +4,7 @@ from app.llm import LLMRouter, QueryType
 
 
 class LearningPathGenerator(BaseAgent):
+    agent_type = "learning_path_generator"
     query_type = QueryType.REASONING
     """Generates personalized learning paths based on repository structure and user expertise level."""
 

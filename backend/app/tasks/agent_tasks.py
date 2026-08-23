@@ -49,10 +49,26 @@ def score_repo_health(
 
     async def _run() -> dict:
         llm = LLMClient()
-        scorer = HealthScorer(llm)
+        # Session-aware: create ephemeral health_scorer session if DB available
+        sess_id = None
+        try:
+            from app.services.agent_context import agent_context
+            sess = await agent_context.create_session(agent_type="health_scorer", scratchpad={"owner": owner, "repo": repo})
+            sess_id = sess["id"]
+        except Exception:
+            pass
+        scorer = HealthScorer(llm, session_id=sess_id) if sess_id else HealthScorer(llm)
         result = await scorer.score(repo_structure)
         result["owner"] = owner
         result["repo"] = repo
+        if sess_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                from app.services.agent_bus import agent_bus as _bus
+                await _ac.set_state(sess_id, "completed")
+                await _bus.publish("agent.health_scored", payload={"owner": owner, "repo": repo, "score": result.get("score"), "session_id": sess_id}, source_session_id=sess_id, source_agent="health_scorer")
+            except Exception:
+                pass
         return result
 
     loop = None
@@ -88,7 +104,25 @@ def analyze_pr_diffs(
 
     async def _run() -> dict:
         llm = LLMClient()
-        return await generate_pr_review(llm, diff_content)
+        sess_id = None
+        try:
+            from app.services.agent_context import agent_context
+            sess = await agent_context.create_session(agent_type="pr_review", scratchpad={"owner": owner, "repo": repo, "pr_number": pr_number})
+            sess_id = sess["id"]
+        except Exception:
+            pass
+        # generate_pr_review is a function, not BaseAgent; log to session manually
+        result = await generate_pr_review(llm, diff_content)
+        if sess_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                from app.services.agent_bus import agent_bus as _bus
+                await _ac.append_message(sess_id, role="assistant", content=str(result)[:4000], agent_type="pr_review")
+                await _ac.set_state(sess_id, "completed")
+                await _bus.publish("agent.pr_reviewed", payload={"owner": owner, "repo": repo, "pr_number": pr_number, "session_id": sess_id}, source_session_id=sess_id, source_agent="pr_review")
+            except Exception:
+                pass
+        return result
 
     loop = None
     try:
@@ -121,9 +155,24 @@ def generate_learning_path(
 
     async def _run() -> dict:
         llm = LLMClient()
-        gen = LearningPathGenerator(llm)
+        sess_id = None
+        try:
+            from app.services.agent_context import agent_context
+            sess = await agent_context.create_session(agent_type="learning_path_generator", user_id=user_id, scratchpad={"role": role})
+            sess_id = sess["id"]
+        except Exception:
+            pass
+        gen = LearningPathGenerator(llm, session_id=sess_id) if sess_id else LearningPathGenerator(llm)
         path = await gen.generate(repo_structure, role=role)
-        return {"user_id": user_id, "learning_path": path}
+        if sess_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                from app.services.agent_bus import agent_bus as _bus
+                await _ac.set_state(sess_id, "completed")
+                await _bus.publish("agent.learning_path.generated", payload={"user_id": user_id, "role": role, "session_id": sess_id}, source_session_id=sess_id, source_agent="learning_path_generator")
+            except Exception:
+                pass
+        return {"user_id": user_id, "learning_path": path, "session_id": sess_id}
 
     loop = None
     try:
@@ -201,13 +250,32 @@ def autonomous_code_change(
     async def _run() -> dict:
         llm = LLMClient()
         github_token = os.getenv("GITHUB_TOKEN")
-        agent = AutonomousCodingAgent(llm, github_token=github_token)
-        return await agent.execute(
+        sess_id = None
+        try:
+            from app.services.agent_context import agent_context
+            from app.services.repo_context import index_id_for
+            idx = index_id_for(repo_url, base_branch)
+            sess = await agent_context.create_session(agent_type="coding_agent", index_id=idx, scratchpad={"repo_url": repo_url, "issue": issue_description[:500]})
+            sess_id = sess["id"]
+        except Exception:
+            pass
+        agent = AutonomousCodingAgent(llm, github_token=github_token, session_id=sess_id) if sess_id else AutonomousCodingAgent(llm, github_token=github_token)
+        result = await agent.execute(
             repo_url=repo_url,
             issue_description=issue_description,
             branch_name=branch_name or f"ai/{asyncio.get_event_loop().time():.0f}",
             base_branch=base_branch,
         )
+        if sess_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                from app.services.agent_bus import agent_bus as _bus
+                await _ac.set_state(sess_id, "completed" if result.get("success") else "failed")
+                await _bus.publish("agent.coding.completed", payload={"repo_url": repo_url, "success": result.get("success"), "pr_url": result.get("pr_url"), "session_id": sess_id}, source_session_id=sess_id, source_agent="coding_agent")
+            except Exception:
+                pass
+        result["session_id"] = sess_id
+        return result
 
     loop = None
     try:

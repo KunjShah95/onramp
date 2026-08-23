@@ -23,7 +23,9 @@ export default function Login() {
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname
+  const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname
+  const isSafe = typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes(':')
+  const from = isSafe ? rawFrom : undefined
 
   useEffect(() => {
     if (user && !loading) navigate(from || homeForRole(role), { replace: true })

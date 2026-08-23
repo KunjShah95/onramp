@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import HealthScorer
+from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 router = APIRouter(prefix="/repos", tags=["health"])
 
@@ -32,7 +33,8 @@ async def get_health(owner: str, repo: str, request: HealthRequest, req: Request
     if not repo_structure and not index_id:
         raise HTTPException(status_code=400, detail="Provide either repo_structure or index_id")
     llm = getattr(req.app.state, "llm", None)
-    scorer = HealthScorer(llm)
+    sid = await get_session("health_scorer", index_id=index_id, scratchpad={"owner": owner, "repo": repo, "mode": request.mode})
+    scorer = HealthScorer(llm, session_id=sid) if sid else HealthScorer(llm)
     try:
         result = await scorer.execute(
             repo_structure=repo_structure,
@@ -41,6 +43,10 @@ async def get_health(owner: str, repo: str, request: HealthRequest, req: Request
         )
         result["owner"] = owner
         result["repo"] = repo
+        if sid:
+            result["session_id"] = sid
+        await complete_session(sid, "health_scorer", success=True, payload={"owner": owner, "repo": repo, "score": result.get("score")})
         return result
     except Exception as e:
+        await fail_session(sid, "health_scorer")
         raise HTTPException(status_code=500, detail=str(e))

@@ -24,12 +24,24 @@ class IssueOrchestrator:
         self,
         repo_url: str,
         issue_description: str,
-        branch: str = "main"
+        branch: str = "main",
+        team_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """The main entry point for resolving a specific issue.
 
         Returns a detailed result containing the analysis, fixes, and validation status.
         """
+        # Create a stateful session for this resolution (non-blocking if DB unavailable)
+        session_id: Optional[str] = None
+        try:
+            from app.services.agent_context import agent_context
+            sess = await agent_context.create_session(agent_type="issue_resolution", team_id=team_id, user_id=user_id, index_id=index_id_for(repo_url, branch), scratchpad={"repo_url": repo_url, "issue": issue_description[:500]})
+            session_id = sess["id"]
+            self.agent.bind_session(session_id)
+            await agent_context.append_message(session_id, role="user", content=issue_description[:4000], agent_type="issue_resolution")
+        except Exception:
+            pass
         try:
             # 1. Ensure we have a fresh index for the repository
             index_id = index_id_for(repo_url, branch)
@@ -100,18 +112,35 @@ class IssueOrchestrator:
             # 7. Generate Summary (Placeholder for SummaryGenerator)
             summary = self._generate_basic_summary(issue_description, analysis, fixes)
 
-            return {
+            result = {
                 "status": "proposed_and_applied",
                 "analysis": analysis.dict(),
                 "fixes": [f.dict() for f in fixes],
                 "application": applied_results,
                 "validation": validation_status,
-                "summary": summary
+                "summary": summary,
+                "session_id": session_id,
             }
+            if session_id:
+                try:
+                    from app.services.agent_context import agent_context as _ac
+                    from app.services.agent_bus import agent_bus as _bus
+                    await _ac.append_message(session_id, role="assistant", content=summary[:4000], agent_type="issue_resolution")
+                    await _ac.set_state(session_id, "completed")
+                    await _bus.publish("issue.resolved", payload={"repo_url": repo_url, "branch": fix_branch, "fixes": len(fixes), "session_id": session_id}, source_session_id=session_id, source_agent="issue_resolution")
+                except Exception:
+                    pass
+            return result
 
         except Exception as e:
             logger.exception("Issue resolution failed")
-            return {"error": str(e)}
+            if session_id:
+                try:
+                    from app.services.agent_context import agent_context as _ac2
+                    await _ac2.set_state(session_id, "failed")
+                except Exception:
+                    pass
+            return {"error": str(e), "session_id": session_id}
 
     def _extract_owner_repo(self, repo_url: str) -> tuple[str, str]:
         cleaned = repo_url.strip().rstrip("/").replace(".git", "")

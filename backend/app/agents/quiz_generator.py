@@ -15,6 +15,7 @@ from app.llm import LLMRouter, QueryType
 
 
 class QuizGenerator(BaseAgent):
+    agent_type = "quiz_generator"
     query_type = QueryType.STRUCTURED
     """Generates and evaluates knowledge-check quizzes for codebase modules."""
 

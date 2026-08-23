@@ -4,6 +4,15 @@ import { User, Gear, SignOut, CaretDown } from '@phosphor-icons/react'
 import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/utils'
 
+function isSafeAvatarUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 /**
  * Account dropdown anchored on the avatar — shows the user's name + email,
  * links to Profile / Settings, and a Sign Out action.
@@ -97,7 +106,7 @@ export default function UserMenu() {
         )}
       >
         <span className="flex items-center gap-2">
-          {user?.photoURL ? (
+          {user?.photoURL && isSafeAvatarUrl(user.photoURL) ? (
             <img src={user.photoURL} alt="" className="w-7 h-7 rounded-lg object-cover" />
           ) : (
             <span className="w-7 h-7 rounded-lg bg-go/10 flex items-center justify-center">

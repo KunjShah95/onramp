@@ -3,6 +3,7 @@ API Key Service - PostgreSQL backend
 Manages API key creation, validation, and rotation
 """
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -272,11 +273,25 @@ async def validate_api_key(plain_key: str) -> Optional[dict]:
     if expires_at and expires_at < datetime.now(timezone.utc):
         return None
 
-    await storage.update_document(
-        "api_keys",
-        key_record["id"],
-        {"last_used_at": datetime.now(timezone.utc)}
-    )
+    # Non-blocking background update: don't block auth return on DB write
+    async def _bg_update_last_used():
+        try:
+            await storage.update_document(
+                "api_keys",
+                key_record["id"],
+                {"last_used_at": datetime.now(timezone.utc)}
+            )
+        except Exception:
+            logger.debug("Failed to update last_used_at for key %s", key_record.get("id"), exc_info=True)
+
+    try:
+        asyncio.create_task(_bg_update_last_used())
+    except RuntimeError:
+        # No running loop (e.g. sync test harness) — fall back to best-effort await
+        try:
+            await _bg_update_last_used()
+        except Exception:
+            pass
 
     return key_record
 

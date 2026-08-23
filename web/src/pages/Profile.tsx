@@ -8,6 +8,15 @@ import ConsolePanel from '../components/ui/console-panel'
 import { ArrowRight, ArrowUpRight, GithubLogo, SignOut, LinkBreak } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 
+function isSafeAvatarUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
@@ -101,7 +110,7 @@ export default function Profile() {
           {/* Identity card — one surface, one rail */}
           <ConsolePanel rail="Identity" designator="ID CARD" status="go">
             <div className="flex items-start gap-5">
-              {user?.photoURL ? (
+              {user?.photoURL && isSafeAvatarUrl(user.photoURL) ? (
                 <img src={user.photoURL} alt={displayName}
                   className="w-16 h-16 rounded-[3px] object-cover shrink-0 border border-seam" />
               ) : (

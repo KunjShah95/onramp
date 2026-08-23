@@ -614,33 +614,61 @@ class PostgresStorage:
         self, index_id: str, query_vector: List[float], top_k: int = 5
     ) -> List[dict]:
         """ANN cosine search over an index's chunks. Returns dicts with a
-        ``similarity`` (0..1) field; empty list when the index has no vectors."""
+        ``similarity`` (0..1) field; empty list when the index has no vectors.
+
+        Gracefully handles dimension mismatches (e.g. embedding model changed
+        between indexing and querying) by logging a warning and returning
+        empty results instead of raising a 500.
+        """
         from app.database.models import EmbeddingChunk
 
         async def _search(session: AsyncSession) -> List[dict]:
-            stmt = (
-                select(EmbeddingChunk)
-                .where(EmbeddingChunk.index_id == index_id)
-                .where(EmbeddingChunk.vector.isnot(None))
-                .order_by(EmbeddingChunk.vector.cosine_distance(query_vector))
-                .limit(top_k)
-            )
-            result = await session.execute(stmt)
+            try:
+                stmt = (
+                    select(EmbeddingChunk)
+                    .where(EmbeddingChunk.index_id == index_id)
+                    .where(EmbeddingChunk.vector.isnot(None))
+                    .order_by(EmbeddingChunk.vector.cosine_distance(query_vector))
+                    .limit(top_k)
+                )
+                result = await session.execute(stmt)
+            except Exception as exc:
+                msg = str(exc).lower()
+                if "dimension" in msg or "vector" in msg or "mismatch" in msg:
+                    logger.warning(
+                        "vector_search dimension mismatch for index %s (query dims=%d): %s — returning empty results",
+                        index_id, len(query_vector) if query_vector else 0, exc,
+                    )
+                    return []
+                raise
             rows = []
             for chunk in result.scalars().all():
                 d = chunk.to_dict()
                 # SQL already ordered by cosine_distance; derive similarity without recomputing full dot product
                 # but keep exact cosine for correctness (1536-dim, top 50 — negligible cost, so recompute for accuracy)
                 if d.get("vector"):
-                    d["similarity"] = round(
-                        cosine_similarity(query_vector, d["vector"]), 4
-                    )
+                    try:
+                        d["similarity"] = round(
+                            cosine_similarity(query_vector, d["vector"]), 4
+                        )
+                    except Exception:
+                        d["similarity"] = 0.0
                 else:
                     d["similarity"] = 0.0
                 rows.append(d)
             return rows
 
-        return await self._run(_search)
+        try:
+            return await self._run(_search)
+        except RuntimeError as exc:
+            msg = str(exc).lower()
+            if "dimension" in msg or "vector" in msg or "mismatch" in msg:
+                logger.warning(
+                    "vector_search dimension mismatch for index %s (query dims=%d): %s — returning empty results",
+                    index_id, len(query_vector) if query_vector else 0, exc,
+                )
+                return []
+            raise
 
     async def list_embedding_chunks(self, index_id: str) -> List[dict]:
         """Return every chunk row for an index (without ordering)."""
@@ -818,8 +846,18 @@ class InMemoryStorage:
             vec = chunk.get("vector")
             if not vec:
                 continue
+            # Gracefully skip dimension mismatches (model changed between indexing/querying)
+            if len(vec) != len(query_vector):
+                logger.warning(
+                    "vector_search dimension mismatch for index %s (query=%d vs stored=%d) — skipping chunk %s",
+                    index_id, len(query_vector), len(vec), chunk.get("chunk_id", "?"),
+                )
+                continue
             row = dict(chunk)
-            row["similarity"] = round(cosine_similarity(query_vector, vec), 4)
+            try:
+                row["similarity"] = round(cosine_similarity(query_vector, vec), 4)
+            except Exception:
+                row["similarity"] = 0.0
             rows.append(row)
         rows.sort(key=lambda r: r["similarity"], reverse=True)
         return rows[:top_k]

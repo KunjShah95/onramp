@@ -14,6 +14,8 @@ interface State {
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
+  private unhandledRejectionHandler?: (e: PromiseRejectionEvent) => void
+
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -21,6 +23,23 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidMount() {
+    this.unhandledRejectionHandler = (e: PromiseRejectionEvent) => {
+      console.error('[ErrorBoundary] unhandledrejection', e.reason)
+      // Prevent default browser error overlay; surface via boundary
+      e.preventDefault()
+      this.setState({ hasError: true, error: e.reason instanceof Error ? e.reason : new Error(String(e.reason)) })
+      this.props.onError?.(e.reason instanceof Error ? e.reason : new Error(String(e.reason)), { componentStack: '' } as ErrorInfo)
+    }
+    window.addEventListener('unhandledrejection', this.unhandledRejectionHandler)
+  }
+
+  componentWillUnmount() {
+    if (this.unhandledRejectionHandler) {
+      window.removeEventListener('unhandledrejection', this.unhandledRejectionHandler)
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {

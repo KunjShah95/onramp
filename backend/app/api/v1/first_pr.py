@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.agents import FirstPRAccelerator
 from app.services.quota import enforce_quota
+from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/first-pr", tags=["onboarding"])
@@ -46,14 +47,19 @@ def extract_github_token(request_body: BaseModel, req: Request) -> Optional[str]
 async def find_issues(request: IssuesRequest, req: Request, _q=enforce_quota("generate")):
     llm = getattr(req.app.state, "llm", None)
     github_token = extract_github_token(request, req)
-    agent = FirstPRAccelerator(llm, github_token=github_token)
+    sid = await get_session("first_pr_accelerator", scratchpad={"repo_url": request.repo_url, "user_level": request.user_level})
+    agent = FirstPRAccelerator(llm, github_token=github_token, session_id=sid) if sid else FirstPRAccelerator(llm, github_token=github_token)
     try:
         result = await agent.find_issues(
             repo_url=request.repo_url,
             user_level=request.user_level,
         )
+        if isinstance(result, dict) and sid:
+            result["session_id"] = sid
+        await complete_session(sid, "first_pr_accelerator", success=True, payload={"repo_url": request.repo_url})
         return result
     except Exception as e:
+        await fail_session(sid, "first_pr_accelerator")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -121,6 +121,23 @@ class AutopilotService:
 
     # ── Public API ──────────────────────────────────────────────────────
 
+    async def _get_or_create_pipeline_session(self, repo_url: str, team_id: Optional[str], created_by: Optional[str]) -> Optional[str]:
+        try:
+            from app.services.agent_context import agent_context
+            from app.services.repo_context import index_id_for
+            idx = index_id_for(repo_url, "main")
+            sess = await agent_context.create_session(
+                agent_type="architecture_explorer",
+                team_id=team_id,
+                user_id=created_by,
+                index_id=idx,
+                scratchpad={"pipeline": "autopilot", "repo_url": repo_url},
+            )
+            return sess["id"]
+        except Exception:
+            logger.debug("Pipeline session creation failed — continuing stateless", exc_info=True)
+            return None
+
     async def analyze(
         self,
         repo_url: str,
@@ -140,6 +157,7 @@ class AutopilotService:
         solving). Writes entities/graph/relationships JSON when ``out_dir`` is
         given.
         """
+        pipeline_session_id = await self._get_or_create_pipeline_session(repo_url, team_id, created_by)
         repo_path, actual_branch = await self._clone(repo_url, branch)
         entities, graph, stats = await self._parse_and_graph(repo_path)
         rels = self._extract_relationships(repo_path, entities)
@@ -155,7 +173,7 @@ class AutopilotService:
         doc = self._build_doc(repo_url, actual_branch, entities, graph, stats)
         try:
             issues, llm_routes = await self._analyze_issues(
-                doc, _ANALYSIS_REQUIREMENT, routing_mode, max_issues
+                doc, _ANALYSIS_REQUIREMENT, routing_mode, max_issues, pipeline_session_id=pipeline_session_id
             )
         except Exception:
             logger.exception("Autopilot analysis failed — returning empty issue list")
@@ -164,8 +182,18 @@ class AutopilotService:
         if create_tasks and team_id and created_by:
             tasks = await self.create_tasks(issues, repo_url, actual_branch, team_id, created_by)
 
-        return self._report(repo_url, actual_branch, repo_path, entities, graph, stats,
+        report = self._report(repo_url, actual_branch, repo_path, entities, graph, stats,
                             rels, issues, llm_routes, [], tasks)
+        if pipeline_session_id:
+            report["pipeline_session_id"] = pipeline_session_id
+            try:
+                from app.services.agent_context import agent_context
+                from app.services.agent_bus import agent_bus
+                await agent_context.append_message(pipeline_session_id, role="assistant", content=f"Autopilot analyze complete: {len(issues)} issues", agent_type="architecture_explorer")
+                await agent_bus.publish("autopilot.analyze.completed", payload={"repo_url": repo_url, "issue_count": len(issues), "session_id": pipeline_session_id}, source_session_id=pipeline_session_id, source_agent="architecture_explorer")
+            except Exception:
+                pass
+        return report
 
     async def run(
         self,
@@ -466,7 +494,7 @@ class AutopilotService:
         }
 
     async def _analyze_issues(self, doc: Dict[str, Any], requirement: str,
-                              routing_mode: Any, max_issues: int
+                              routing_mode: Any, max_issues: int, pipeline_session_id: Optional[str] = None
                               ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         from app.services.repo_context import select_context
 
@@ -484,11 +512,24 @@ class AutopilotService:
             "missing tests, and refactoring opportunities. Be specific — name files and "
             "functions. End with a short paragraph on overall architecture health."
         )
+        # Session-aware: log reasoning step to pipeline session
+        if pipeline_session_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                await _ac.append_message(pipeline_session_id, role="user", content=analysis_prompt[:4000], agent_type="architecture_explorer")
+            except Exception:
+                pass
         logger.info("Autopilot LLM #1 — REASONING (analyze codebase)")
         analysis_text = await self.llm.chat(
             analysis_prompt, max_tokens=1500,
             query_type=QueryType.REASONING, routing_mode=routing_mode,
         )
+        if pipeline_session_id:
+            try:
+                from app.services.agent_context import agent_context as _ac2
+                await _ac2.append_message(pipeline_session_id, role="assistant", content=analysis_text[:4000], agent_type="architecture_explorer")
+            except Exception:
+                pass
         routes.append({"step": "analysis", "query_type": "reasoning",
                        **dict(getattr(self.llm, "last_route", None) or {})})
 

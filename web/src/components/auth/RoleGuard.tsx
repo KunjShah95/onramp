@@ -59,14 +59,19 @@ export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGu
   }
 
   if (!resolveGuardAccess({ role, allowedRoles, minRole, allowNoTeam })) {
+    // Avoid redirect loop — if already at the target, render outlet instead of bouncing
+    const at = (p: string) => window.location.pathname === p
     if (role === 'junior_dev' || role === 'member') {
+      if (at('/my-progress')) return <Outlet />
       return <Navigate to="/my-progress" replace />
     }
     if (role === 'hr') {
+      if (at('/hr/people')) return <Outlet />
       return <Navigate to="/hr/people" replace />
     }
     // No team / unknown role — /dashboard is allowNoTeam and renders the
     // first-run welcome, so send them there instead of an ungated page.
+    if (at('/dashboard')) return <Outlet />
     return <Navigate to="/dashboard" replace />
   }
 

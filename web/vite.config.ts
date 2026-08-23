@@ -6,13 +6,16 @@ import { visualizer } from 'rollup-plugin-visualizer'
 export default defineConfig({
   plugins: [
     react(),
-    visualizer({
-      filename: 'dist/stats.html',
-      open: false,              // set to true to auto-open the report
-      gzipSize: true,
-      brotliSize: true,
-      emitFile: true,
-    }),
+    ...(process.env.ANALYZE === 'true'
+      ? [
+          visualizer({
+            filename: 'dist/stats.html',
+            open: false,              // set to true to auto-open the report
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
   build: {
     rollupOptions: {

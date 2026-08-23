@@ -24,6 +24,9 @@ router = APIRouter(prefix="/ask", tags=["qa"])
 
 _conversation = ConversationService()
 
+# In-memory cache for active repo_qa sessions per (user_id, index_id) -> session_id
+_ASK_SESSIONS: Dict[str, str] = {}
+
 
 class IndexRequest(BaseModel):
     repo_path: str
@@ -156,6 +159,27 @@ async def _get_memory(user_id: str, index_id: str, question: str, use_memory: bo
     return ConversationService.format_memory(relevant)
 
 
+async def _get_or_create_ask_session(user_id: str, index_id: str, team_id: Optional[str] = None) -> Optional[str]:
+    key = f"{user_id}:{index_id}"
+    sid = _ASK_SESSIONS.get(key)
+    if sid:
+        try:
+            from app.services.agent_context import agent_context
+            sess = await agent_context.get_session(sid)
+            if sess and sess.get("state") == "active":
+                return sid
+        except Exception:
+            pass
+    try:
+        from app.services.agent_context import agent_context
+        sess = await agent_context.create_session(agent_type="repo_qa", team_id=team_id, user_id=user_id, index_id=index_id, scratchpad={"source": "ask"})
+        _ASK_SESSIONS[key] = sess["id"]
+        return sess["id"]
+    except Exception:
+        logger.debug("ask session creation failed — stateless fallback", exc_info=True)
+        return None
+
+
 @router.post("/query")
 async def query_repo(
     request: QueryRequest,
@@ -165,17 +189,14 @@ async def query_repo(
     _q=enforce_quota("chat"),
 ):
     llm = getattr(req.app.state, "llm", None)
-    qa = RepoQA(llm)
+    # Session-aware: bind RepoQA to a persistent per-(user,index_id) session
+    team = await _resolve_team_routing(user, request.team_id)
+    routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
+    ask_session_id = await _get_or_create_ask_session(user.get("uid", ""), request.index_id, team_id=team["org"])
+    qa = RepoQA(llm, session_id=ask_session_id) if ask_session_id else RepoQA(llm)
     user_id = user.get("uid")
 
     memory = await _get_memory(user_id, request.index_id, request.question, request.use_memory)
-
-    # Team routing context: an explicit team_id (verified inside
-    # _resolve_team_routing) wins, else the user's primary team. BYOK keys
-    # (incl. multi-key pools) + the team's cost/quality dial — a per-request
-    # routing_mode wins over the stored one.
-    team = await _resolve_team_routing(user, request.team_id)
-    routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
 
     before_route = getattr(llm, "last_route", None)
     try:
@@ -186,10 +207,18 @@ async def query_repo(
             key_pools=team["key_pools"], key_pool_ids=team["key_pool_ids"],
         )
         await _conversation.add_turn(user_id, request.index_id, request.question, answer)
-        # Debug header showing exactly which provider/model served the answer
-        # (only if this request actually hit the LLM — not the fallback path).
+        # Mirror to agent session history + bus
+        if ask_session_id:
+            try:
+                from app.services.agent_context import agent_context as _ac
+                from app.services.agent_bus import agent_bus as _bus
+                await _ac.append_message(ask_session_id, role="user", content=request.question[:4000], agent_type="repo_qa")
+                await _ac.append_message(ask_session_id, role="assistant", content=answer[:4000], agent_type="repo_qa")
+                await _bus.publish("ask.answered", payload={"index_id": request.index_id, "question": request.question[:200], "session_id": ask_session_id, "team_id": team["org"]}, source_session_id=ask_session_id, source_agent="repo_qa")
+            except Exception:
+                pass
         attach_served_route_header(llm, before_route, response)
-        return {"answer": answer}
+        return {"answer": answer, "session_id": ask_session_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -203,16 +232,13 @@ async def query_repo_stream(
 ):
     """Stream the answer as Server-Sent Events (text/event-stream)."""
     llm = getattr(req.app.state, "llm", None)
-    qa = RepoQA(llm)
+    team = await _resolve_team_routing(user, request.team_id)
+    routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
+    ask_session_id = await _get_or_create_ask_session(user.get("uid", ""), request.index_id, team_id=team["org"])
+    qa = RepoQA(llm, session_id=ask_session_id) if ask_session_id else RepoQA(llm)
     user_id = user.get("uid")
 
     memory = await _get_memory(user_id, request.index_id, request.question, request.use_memory)
-
-    # Team routing context — same resolution as /query so the in-app chat
-    # honors the team's BYOK keys and routing dial (membership verified inside
-    # _resolve_team_routing).
-    team = await _resolve_team_routing(user, request.team_id)
-    routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
 
     # Headers must be fixed before the stream starts, so report the expected
     # primary provider (RepoQA routes via REASONING); the authoritative
@@ -245,6 +271,15 @@ async def query_repo_stream(
         finally:
             if full_answer:
                 await _conversation.add_turn(user_id, request.index_id, request.question, full_answer)
+                if ask_session_id:
+                    try:
+                        from app.services.agent_context import agent_context as _ac2
+                        from app.services.agent_bus import agent_bus as _bus2
+                        await _ac2.append_message(ask_session_id, role="user", content=request.question[:4000], agent_type="repo_qa")
+                        await _ac2.append_message(ask_session_id, role="assistant", content=full_answer[:4000], agent_type="repo_qa")
+                        await _bus2.publish("ask.stream_completed", payload={"index_id": request.index_id, "session_id": ask_session_id, "team_id": team["org"]}, source_session_id=ask_session_id, source_agent="repo_qa")
+                    except Exception:
+                        pass
 
     return StreamingResponse(
         event_gen(),

@@ -76,7 +76,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
 
       - name: Run API contract tests (35 tests — response schemas & error shapes)
         run: |
@@ -85,7 +85,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
 
       - name: Run load/performance tests (13 tests — latency & concurrent throughput)
         run: |
@@ -94,7 +94,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
 
       - name: Run tests (PostgreSQL backend)
         run: |
@@ -103,7 +103,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: postgres
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: Yk9yLVlpN1RaMkVTSnRiV3hBZ01GdWpGS2U0dUdnMkU=
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

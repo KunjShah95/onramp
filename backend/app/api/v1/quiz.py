@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from app.agents import QuizGenerator
 from app.api.v1.auth import get_current_user
 from app.services.postgres_db import get_storage, generate_id
+from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -38,7 +39,8 @@ async def generate_quiz(
 ):
     """Generate a knowledge-check quiz for a module or the full codebase."""
     llm = getattr(req.app.state, "llm", None)
-    generator = QuizGenerator(llm)
+    sid = await get_session("quiz_generator", user_id=user.get("uid"), index_id=request.index_id, scratchpad={"mode": request.mode, "module": request.module_name})
+    generator = QuizGenerator(llm, session_id=sid) if sid else QuizGenerator(llm)
 
     try:
         result = await generator.execute(
@@ -49,7 +51,11 @@ async def generate_quiz(
             num_questions=request.num_questions,
             difficulty=request.difficulty,
         )
+        if sid and isinstance(result, dict):
+            result["session_id"] = sid
+        await complete_session(sid, "quiz_generator", success=True, payload={"mode": request.mode, "module": request.module_name, "index_id": request.index_id})
     except Exception as e:
+        await fail_session(sid, "quiz_generator")
         raise HTTPException(status_code=500, detail=str(e))
 
     uid = user.get("uid", "anonymous")

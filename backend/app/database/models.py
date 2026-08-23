@@ -50,7 +50,7 @@ class User(Base):
         default=generate_uuid
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    email_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     position: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
@@ -88,6 +88,7 @@ class User(Base):
     
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("email_hash", name="uq_users_email_hash"),
         CheckConstraint(
             "provider IN ('google.com', 'password', 'github.com', 'neon')",
             name="ck_users_provider"
@@ -1576,6 +1577,129 @@ class DynamicDocument(Base):
             **self.data,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Agent Sessions & Messages — stateful inter-agent communication
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class AgentSession(Base):
+    """Stateful conversation/session for an agent thread.
+
+    Each agent invocation gets its own session with its own system prompt.
+    Sessions can be parent→child (handoff) so a Trace of who called who is
+    preserved.  Backed by Postgres for durability + Redis for hot cache.
+    """
+
+    __tablename__ = "onramp_agent_sessions"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    agent_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    parent_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("onramp_agent_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    root_task_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("onramp_tasks.task_id", ondelete="SET NULL"), nullable=True, index=True)
+    team_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    index_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    state: Mapped[str] = mapped_column(String(30), default="active", index=True)
+    system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    system_prompt_version: Mapped[int] = mapped_column(Integer, default=1)
+    scratchpad: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    turn_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("state IN ('active','completed','failed','archived')", name="ck_agent_session_state"),
+        Index("ix_agent_sessions_agent_state", "agent_type", "state"),
+        Index("ix_agent_sessions_parent", "parent_id"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "agent_type": self.agent_type,
+            "parent_id": self.parent_id,
+            "root_task_id": self.root_task_id,
+            "team_id": self.team_id,
+            "user_id": self.user_id,
+            "index_id": self.index_id,
+            "state": self.state,
+            "system_prompt": self.system_prompt,
+            "system_prompt_version": self.system_prompt_version,
+            "scratchpad": self.scratchpad or {},
+            "turn_count": self.turn_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class AgentMessage(Base):
+    """Append-only message log for an agent session (system/user/assistant/tool/handoff)."""
+
+    __tablename__ = "onramp_agent_messages"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    session_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("onramp_agent_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    agent_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tool_calls: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    handoff_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    handoff_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("role IN ('system','user','assistant','tool','handoff','event')", name="ck_agent_message_role"),
+        Index("ix_agent_messages_session_created", "session_id", "created_at"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "role": self.role,
+            "agent_type": self.agent_type,
+            "content": self.content,
+            "tool_calls": self.tool_calls,
+            "token_count": self.token_count,
+            "handoff_to": self.handoff_to,
+            "handoff_payload": self.handoff_payload,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class AgentEvent(Base):
+    """Durable event log for the AgentBus (Redis Streams fallback)."""
+
+    __tablename__ = "onramp_agent_events"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=generate_uuid)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    source_session_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("onramp_agent_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    source_agent: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    target_agent: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    __table_args__ = (
+        Index("ix_agent_events_type_created", "event_type", "created_at"),
+        {"extend_existing": True}
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "event_type": self.event_type,
+            "source_session_id": self.source_session_id,
+            "source_agent": self.source_agent,
+            "target_agent": self.target_agent,
+            "payload": self.payload or {},
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
