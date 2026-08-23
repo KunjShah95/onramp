@@ -33,8 +33,8 @@ from app.api.v1 import (
     hr_dashboard, integrations as integrations_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
-    dora as dora_router, onboarding_plans as onboarding_plans_router, openai_gateway, ops as ops_router,
-    playbooks, pr_review, review_ops,
+    dora as dora_router,     onboarding_plans as onboarding_plans_router, openai_gateway, ops as ops_router,
+    playbooks, pr_review, review_ops, integrations_telegram as telegram_router,
     quiz as quiz_router, ramp, reports, repositories, seed as seed_router, slack, tasks as tasks_router,
     teams, unique, webhook_handler, wiki, ws as ws_router
 )
@@ -531,6 +531,7 @@ app.include_router(ramp.router, prefix="/api/v1")
 app.include_router(review_ops.router, prefix="/api/v1")
 app.include_router(agent_sessions_router.router, prefix="/api/v1")
 app.include_router(agent_sessions_router.bus_router, prefix="/api/v1")
+app.include_router(telegram_router.router, prefix="/api/v1")
 # GitHub webhook receiver — HMAC-verified, registered as a public path above.
 app.include_router(webhook_handler.router, prefix="/api/v1")
 app.include_router(wiki.router, prefix="/api/v1")

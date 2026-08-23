@@ -1,0 +1,58 @@
+{
+  "name": "Onramp → Telegram (Onboarding sessions)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onramp-onboarding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-onramp",
+      "name": "Webhook (Onramp)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "webhookId": "onramp-onboarding"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json;\nconst e = body.event || 'onboarding.unknown';\nconst d = body.data || {};\nconst plan = d.plan || {};\nconst ms = d.milestone || {};\nconst pulse = d.pulse || {};\nconst task = d.task || {};\n\nfunction line(event) {\n  if (event === 'onboarding.plan_created') return `🟢 New onboarding plan \\`${plan.id || ''}\\` — team \\`${plan.team_id || ''}\\` user \\`${plan.user_id || ''}\\` — starts ${plan.start_date || ''}`;\n  if (event === 'onboarding.plan_generated') return `🤖 AI plan generated for ${plan.repo_url || plan.notes || ''} — plan \\`${plan.id || ''}\\``;\n  if (event === 'onboarding.plan_updated') return `✏️ Plan updated \\`${plan.id || ''}\\` — status \\`${plan.status || ''}\\``;\n  if (event === 'onboarding.milestone_completed') return `✅ Milestone completed: *${ms.title || ''}* (Day ${ms.day_target || ''}) — plan \\`${plan.id || ''}\\``;\n  if (event === 'onboarding.preboarding_completed') return `📋 Pre-boarding done: *${task.title || ''}* — plan \\`${plan.id || ''}\\``;\n  if (event === 'onboarding.pulse_submitted') return `💬 Pulse week ${pulse.week_number || ''}: confidence ${pulse.confidence_score ?? '?'} /10, sentiment ${pulse.sentiment || ''} — plan \\`${plan.id || ''}\\``;\n  if (event === 'onboarding.test') return `🧪 ${d.test_message || 'Onramp ↔ n8n ↔ Telegram test — onboarding is wired.'}`;\n  return `ℹ️ ${event}`;\n}\n\nconst text = line(e) + `\\n\\n_${e} • ${new Date().toISOString()}_`;\nconst chatId = $input.first().json.data?.chat_id || $input.first().json.data?.plan?.telegram_chat_id || '{{$json[\"telegram_chat_id\"]}}';\nreturn [{ json: { text, chatId, event: e, raw: body } }];"
+      },
+      "id": "format-message",
+      "name": "Format Telegram message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId || '-100123456789' }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-send",
+      "name": "Telegram → Send message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [940, 300],
+      "credentials": { "telegramApi": { "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID", "name": "Telegram bot" } }
+    },
+    {
+      "parameters": { "respondWith": "json", "responseData": "{\"ok\": true, \"event\": \"={{ $json.event }}\"}", "options": {} },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [940, 500]
+    }
+  ],
+  "connections": {
+    "Webhook (Onramp)": { "main": [[{ "node": "Format Telegram message", "type": "main", "index": 0 }]] },
+    "Format Telegram message": { "main": [[{ "node": "Telegram → Send message", "type": "main", "index": 0 }]] },
+    "Telegram → Send message": { "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "onramp-onboarding-v1"
+}

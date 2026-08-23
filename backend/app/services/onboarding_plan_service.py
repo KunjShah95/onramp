@@ -97,7 +97,15 @@ async def create_plan(team_id: str, user_id: str, created_by: str,
         }
         await storage.create_document("pre_boarding_tasks", tid, task)
 
-    return await get_plan(plan_id)
+    full = await get_plan(plan_id)
+    # → Telegram via n8n (fire-and-forget)
+    try:
+        from app.services.n8n_service import notify_plan_created
+        import asyncio as _aio
+        _aio.create_task(notify_plan_created(full or {"id": plan_id, "team_id": team_id}))
+    except Exception:
+        pass
+    return full
 
 
 async def get_plan(plan_id: str) -> dict | None:
@@ -143,7 +151,15 @@ async def update_plan(plan_id: str, updates: dict) -> dict | None:
     storage = get_storage()
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     await storage.update_document("onboarding_plans", plan_id, updates)
-    return await get_plan(plan_id)
+    full = await get_plan(plan_id)
+    try:
+        from app.services.n8n_service import notify_plan_updated
+        import asyncio as _aio
+        if full:
+            _aio.create_task(notify_plan_updated(full))
+    except Exception:
+        pass
+    return full
 
 
 async def upsert_pulse(plan_id: str, week_number: int, data: dict) -> dict:
@@ -191,7 +207,15 @@ async def get_pulse_trends(plan_id: str) -> dict:
 
 async def submit_pulse(plan_id: str, data: dict) -> dict:
     week = data.get("week_number", 1)
-    return await upsert_pulse(plan_id, week, data)
+    pulse = await upsert_pulse(plan_id, week, data)
+    try:
+        from app.services.n8n_service import notify_pulse_submitted
+        import asyncio as _aio
+        plan = await get_plan(plan_id)
+        _aio.create_task(notify_pulse_submitted(pulse, plan))
+    except Exception:
+        pass
+    return pulse
 
 
 async def complete_milestone(milestone_id: str) -> dict | None:
@@ -199,7 +223,16 @@ async def complete_milestone(milestone_id: str) -> dict | None:
     updates = {"is_completed": True, "completed_at": datetime.now(timezone.utc).isoformat()}
     try:
         await storage.update_document("onboarding_milestones", milestone_id, updates)
-        return await storage.get_document("onboarding_milestones", milestone_id)
+        milestone = await storage.get_document("onboarding_milestones", milestone_id)
+        if milestone:
+            try:
+                from app.services.n8n_service import notify_milestone_completed
+                import asyncio as _aio
+                plan = await get_plan(milestone.get("plan_id")) if milestone.get("plan_id") else None
+                _aio.create_task(notify_milestone_completed(milestone, plan))
+            except Exception:
+                pass
+        return milestone
     except Exception:
         logger.exception("Failed to complete milestone %s", milestone_id)
         return None
@@ -210,7 +243,16 @@ async def complete_preboarding(task_id: str) -> dict | None:
     updates = {"is_completed": True, "completed_at": datetime.now(timezone.utc).isoformat()}
     try:
         await storage.update_document("pre_boarding_tasks", task_id, updates)
-        return await storage.get_document("pre_boarding_tasks", task_id)
+        task = await storage.get_document("pre_boarding_tasks", task_id)
+        if task:
+            try:
+                from app.services.n8n_service import notify_preboarding_completed
+                import asyncio as _aio
+                plan = await get_plan(task.get("plan_id")) if task.get("plan_id") else None
+                _aio.create_task(notify_preboarding_completed(task, plan))
+            except Exception:
+                pass
+        return task
     except Exception:
         logger.exception("Failed to complete preboarding task %s", task_id)
         return None
@@ -359,7 +401,15 @@ async def generate_plan_from_learning_path(
     if not modules:
         # Keep the default 30-60-90 milestones already created by create_plan
         logger.info("No AI modules generated for plan %s — default milestones retained", plan_id)
-        return await get_plan(plan_id)
+        full = await get_plan(plan_id)
+        try:
+            from app.services.n8n_service import notify_plan_generated
+            import asyncio as _aio
+            if full:
+                _aio.create_task(notify_plan_generated(full))
+        except Exception:
+            pass
+        return full
 
     # Replace default milestones with the AI-generated curriculum.
     # Clear existing milestones, then build new ones bucketed into 30/60/90.
@@ -384,4 +434,12 @@ async def generate_plan_from_learning_path(
             "metadata": {"files": mod.get("files", []), "time_hours": mod.get("time_hours")},
         })
 
-    return await get_plan(plan_id)
+    full = await get_plan(plan_id)
+    try:
+        from app.services.n8n_service import notify_plan_generated
+        import asyncio as _aio
+        if full:
+            _aio.create_task(notify_plan_generated(full))
+    except Exception:
+        pass
+    return full
