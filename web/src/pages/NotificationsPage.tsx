@@ -73,7 +73,21 @@ export default function NotificationsPage() {
     }
   }
 
-  useEffect(() => { fetchNotifications() }, [filter])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true); setError('')
+      try {
+        const data = await listNotifications(filter === 'unread' ? { unread_only: true } : {})
+        if (!cancelled) setNotifications(data.notifications ?? [])
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load notifications.')
+      }
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [filter])
   useEffect(() => { setPage(0) }, [filter])
 
   // Clamp page when the list shrinks (dismiss/clear) so we never strand on an empty page.
@@ -125,7 +139,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      <div className="max-w-3xl mx-auto px-4 sm:px-0 py-8 sm:py-10 space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <PageHeader
           eyebrow="Event Bus"
           title="Notifications"

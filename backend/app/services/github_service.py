@@ -114,7 +114,7 @@ def _compute_health_score(data: Dict[str, Any]) -> tuple:
                 score -= 5
                 factors.append("stale_over_3mo")
         except Exception:
-            pass
+            logger.debug("Failed to parse pushed_at for score: %s", pushed_at, exc_info=True)
 
     # Open-issue pressure relative to popularity.
     stars = data.get("stargazers_count", 0)

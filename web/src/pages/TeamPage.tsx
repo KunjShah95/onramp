@@ -181,14 +181,14 @@ export default function TeamPage() {
 
   if (teamsLoading) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-[calc(100vh-4rem)]">
         <TeamSettingsSkeleton />
       </motion.div>
     )
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}

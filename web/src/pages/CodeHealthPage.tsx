@@ -75,7 +75,7 @@ export default function CodeHealthPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="max-w-5xl mx-auto">
 
         {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">

@@ -1,3 +1,5 @@
+import asyncio
+import hmac
 import logging
 import os
 import secrets as _secrets
@@ -7,6 +9,9 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy import select
 
@@ -30,8 +35,19 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-jwt-secret-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
+
+if not JWT_SECRET:
+    _env = os.getenv("ENV", "development").lower()
+    if _env == "production":
+        raise RuntimeError(
+            "JWT_SECRET must be set in production — refusing to start with an insecure default."
+        )
+    JWT_SECRET = "dev-jwt-secret-change-in-production"
+    logger.warning(
+        "JWT_SECRET not set — using insecure dev default (DO NOT use in production)"
+    )
 # Access token lifetime — short-lived per the session-refresh design (FEATURES_PLAN §6).
 JWT_ACCESS_EXPIRY_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRY_MINUTES", "15"))
 JWT_REFRESH_EXPIRY_DAYS = int(os.getenv("JWT_REFRESH_EXPIRY_DAYS", "30"))
@@ -45,9 +61,21 @@ FRONTEND_URL = os.getenv(
 # they survive server restarts and can be revoked/rotated server-side.
 REFRESH_TOKEN_COLLECTION = "onramp_refresh_tokens"
 
+# Per-user locks for refresh token rotation to prevent race conditions when
+# two requests present the same refresh token simultaneously.
+_refresh_locks: dict[str, asyncio.Lock] = {}
+_refresh_locks_lock = asyncio.Lock()  # protects the dict itself
+
+
+async def _get_refresh_lock(user_id: str) -> asyncio.Lock:
+    async with _refresh_locks_lock:
+        if user_id not in _refresh_locks:
+            _refresh_locks[user_id] = asyncio.Lock()
+        return _refresh_locks[user_id]
+
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     remember_me: bool = False
 
@@ -146,17 +174,27 @@ async def get_user_or_api_key(request: Request) -> dict:
     }
 
 
+JWT_ISSUER = os.getenv("JWT_ISSUER", "onramp")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "onramp-api")
+
+
 def _generate_jwt(uid: str, email: str, name: str, provider: str, remember_me: bool = False) -> str:
     """Issue a short-lived access token.
 
     Access tokens are intentionally short-lived (default 15 min). Long-lived
     sessions are maintained by rotating refresh tokens stored server-side.
+
+    Includes issuer (iss) and audience (aud) claims to prevent token
+    confusion attacks where a token issued for one service is replayed
+    against another.
     """
     payload = {
         "uid": uid,
         "email": email,
         "name": name,
         "provider": provider,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_EXPIRY_MINUTES),
         "iat": datetime.now(timezone.utc),
         "remember_me": remember_me,
@@ -167,10 +205,12 @@ def _generate_jwt(uid: str, email: str, name: str, provider: str, remember_me: b
 # ── Refresh token store (server-side rotation) ───────────────────────────
 
 
+def _get_refresh_pepper() -> str:
+    return os.getenv("JWT_SECRET", "") or "dev-refresh-pepper"
+
 def _hash_refresh_token(token: str) -> str:
-    """Hash a refresh token so the raw value is never stored at rest."""
-    import hashlib
-    return hashlib.sha256(token.encode()).hexdigest()
+    """HMAC-SHA256 hash of refresh token so leaked hashes are not brute-forceable without pepper."""
+    return hmac.new(_get_refresh_pepper().encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
 def _generate_refresh_token() -> str:
@@ -276,6 +316,66 @@ def _decode_jwt(token: str) -> dict | None:
         return None
     except jwt.InvalidTokenError:
         return None
+
+
+# ── HttpOnly Cookie Helpers ─────────────────────────────────────────────────
+#
+# Tokens are stored in HttpOnly, Secure, SameSite cookies so they are never
+# accessible to JavaScript (mitigating XSS token theft). The backend still
+# returns tokens in the JSON response for backward compatibility with API
+# clients and the WebSocket hook (which needs the token in a query param).
+
+_COOKIE_ACCESS = "onramp_access_token"
+_COOKIE_REFRESH = "onramp_refresh_token"
+_COOKIE_SAMESITE = "Lax"  # Lax allows top-level navigations (OAuth redirects)
+
+
+def _is_production() -> bool:
+    return os.getenv("ENV", "development").lower() == "production"
+
+
+def _set_auth_cookies(response, token: str, refresh_token: str | None = None, remember_me: bool = False) -> None:
+    """Set HttpOnly auth cookies on a response object.
+
+    The access token cookie has no explicit Max-Age so it is cleared when
+    the browser closes (session cookie). The refresh token cookie gets a
+    long Max-Age only when remember_me is True.
+    """
+    secure = _is_production()
+    domain = os.getenv("COOKIE_DOMAIN", "") or None  # None = host-only cookie
+    response.set_cookie(
+        key=_COOKIE_ACCESS,
+        value=token,
+        httponly=True,
+        secure=secure,
+        samesite=_COOKIE_SAMESITE,
+        path="/api",
+        domain=domain,
+        # No max_age → session cookie (cleared on browser close)
+    )
+    if refresh_token:
+        # Consistent path: refresh cookie must be sent with /api/auth/refresh
+        # and other /api/* if frontend moves it; use /api to cover both
+        max_age = JWT_REFRESH_EXPIRY_DAYS * 24 * 3600 if remember_me else None
+        response.set_cookie(
+            key=_COOKIE_REFRESH,
+            value=refresh_token,
+            httponly=True,
+            secure=secure,
+            samesite=_COOKIE_SAMESITE,
+            path="/api",
+            domain=domain,
+            max_age=max_age,  # None = session cookie
+        )
+
+
+def _clear_auth_cookies(response) -> None:
+    """Clear auth cookies (used on logout)."""
+    domain = os.getenv("COOKIE_DOMAIN", "") or None
+    response.delete_cookie(_COOKIE_ACCESS, path="/api", domain=domain)
+    response.delete_cookie(_COOKIE_REFRESH, path="/api", domain=domain)
+    # Also clear legacy path for backwards compat
+    response.delete_cookie(_COOKIE_REFRESH, path="/api/auth", domain=domain)
 
 
 
@@ -393,7 +493,9 @@ async def register(body: RegisterRequest):
 
     existing = await get_user_by_email(body.email)
     if existing:
-        raise HTTPException(status_code=409, detail="An account with this email already exists")
+        # Use a generic message to prevent email enumeration — the login
+        # endpoint already returns a unified "Invalid email or password".
+        raise HTTPException(status_code=409, detail="Registration failed. Please try again or contact support.")
 
     uid = str(uuid.uuid4())
     password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
@@ -419,21 +521,36 @@ async def register(body: RegisterRequest):
     storage = get_storage()
     await storage.create_document("users", uid, record)
 
-    # Also set via ORM so the model's relationship tracking is consistent
-    await db_config.ensure_engine()
-    factory = db_config.get_session_factory()
-    async with factory() as session:
-        result = await session.execute(
-            select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+    # Also set via ORM so the model's relationship tracking is consistent.
+    # This is a dual-write: both the generic storage layer AND the ORM must
+    # agree. If the ORM write fails, the user exists in storage but without
+    # verification tokens — they can still log in but won't get verification
+    # emails. Log loudly so ops can investigate.
+    try:
+        await db_config.ensure_engine()
+        factory = db_config.get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+            )
+            user_row = result.scalar_one_or_none()
+            if user_row:
+                verification_token_expires = datetime.now(timezone.utc) + timedelta(hours=48)
+                user_row.email_verification_token = verification_token
+                user_row.email_verification_token_expires_at = verification_token_expires
+                user_row.email_verified = False
+                session.add(user_row)
+                await session.commit()
+            else:
+                logger.warning(
+                    "User %s created in storage but not found via ORM — "
+                    "dual-write inconsistency", uid
+                )
+    except Exception:
+        logger.exception(
+            "ORM sync failed for user %s — user created in storage but "
+            "verification tokens may not be set", uid
         )
-        user_row = result.scalar_one_or_none()
-        if user_row:
-            verification_token_expires = datetime.now(timezone.utc) + timedelta(hours=48)
-            user_row.email_verification_token = verification_token
-            user_row.email_verification_token_expires_at = verification_token_expires
-            user_row.email_verified = False
-            session.add(user_row)
-            await session.commit()
 
     # Send verification email (non-blocking best-effort)
     verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
@@ -463,7 +580,7 @@ async def register(body: RegisterRequest):
 
     tokens = await _issue_tokens(uid, body.email, body.name, "password", remember_me=False)
 
-    return AuthResponse(
+    resp_body = AuthResponse(
         uid=uid,
         email=body.email,
         name=body.name,
@@ -471,6 +588,10 @@ async def register(body: RegisterRequest):
         token=tokens["token"],
         refresh_token=tokens.get("refresh_token"),
     )
+    response = JSONResponse(content=resp_body.model_dump())
+    _set_auth_cookies(response, tokens["token"], tokens.get("refresh_token"), remember_me=False)
+    return response
+
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -479,24 +600,67 @@ async def login(body: LoginRequest):
     if not body.email or not body.password:
         raise HTTPException(status_code=400, detail="email and password are required")
 
+    from app.services.audit_service import log_event
+    from app.services.lockout_service import check_lockout, record_failed_attempt, reset_lockout
+
+    email_h = email_hash(body.email)
+
+    # ── Check account lockout BEFORE hitting the database ────────────────
+    # This is O(1) and prevents brute-force from overwhelming DB queries.
+    lockout = await check_lockout(email_h)
+    if lockout.locked:
+        await log_event("login_failed", "anonymous", "unknown",
+                        metadata={"reason": "account_locked", "email_hash": email_h[:12]})
+        response = JSONResponse(
+            status_code=429,
+            content={"detail": f"Too many failed attempts. Try again in {lockout.retry_after} seconds."},
+        )
+        if lockout.retry_after:
+            response.headers["Retry-After"] = str(lockout.retry_after)
+        return response
+
     await db_config.ensure_engine()
     factory = db_config.get_session_factory()
     async with factory() as session:
         result = await session.execute(
-            select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+            select(UserModel).where(UserModel.email_hash == email_h)
         )
         user_row = result.scalar_one_or_none()
 
     if not user_row:
+        # Record failed attempt and log
+        status = await record_failed_attempt(email_h)
+        await log_event("login_failed", "anonymous", "unknown",
+                        metadata={"reason": "user_not_found", "email_hash": email_h[:12],
+                                   "attempts_remaining": status.attempts_remaining})
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user_row.password_hash:
+        status = await record_failed_attempt(email_h)
+        await log_event("login_failed", user_row.id, user_row.id,
+                        metadata={"reason": "no_password_hash",
+                                   "attempts_remaining": status.attempts_remaining})
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not bcrypt.checkpw(body.password.encode(), user_row.password_hash.encode()):
+        status = await record_failed_attempt(email_h)
+        await log_event("login_failed", user_row.id, user_row.id,
+                        metadata={"reason": "wrong_password",
+                                   "attempts_remaining": status.attempts_remaining})
+        # If this attempt triggered a lockout, return 429 instead of 401
+        if status.locked:
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": f"Account locked after too many failed attempts. Try again in {status.retry_after} seconds."},
+            )
+            if status.retry_after:
+                response.headers["Retry-After"] = str(status.retry_after)
+            return response
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user_row.is_active:
+        await log_event("login_failed", user_row.id, user_row.id,
+                        metadata={"reason": "account_deactivated"})
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
     uid = user_row.id
@@ -507,9 +671,18 @@ async def login(body: LoginRequest):
         raw_email = decrypt_field(raw_email)
         raw_name = decrypt_field(raw_name)
 
+    # Reset lockout counter on successful login
+    await reset_lockout(email_h)
+
     tokens = await _issue_tokens(uid, raw_email, raw_name, "password", remember_me=body.remember_me)
 
-    return AuthResponse(
+    # Audit: successful login
+    await log_event("login_success", uid, uid,
+                    metadata={"provider": "password", "remember_me": body.remember_me})
+
+    # Build response with tokens in JSON body (backward compat for API clients)
+    # AND set HttpOnly cookies (for browser-based SPA security).
+    resp_body = AuthResponse(
         uid=uid,
         email=raw_email,
         name=raw_name,
@@ -517,10 +690,13 @@ async def login(body: LoginRequest):
         token=tokens["token"],
         refresh_token=tokens.get("refresh_token"),
     )
+    response = JSONResponse(content=resp_body.model_dump())
+    _set_auth_cookies(response, tokens["token"], tokens.get("refresh_token"), remember_me=body.remember_me)
+    return response
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class RefreshResponse(BaseModel):
@@ -529,34 +705,62 @@ class RefreshResponse(BaseModel):
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-async def refresh_token(body: RefreshRequest):
+async def refresh_token(body: RefreshRequest, request: Request):
     """Exchange a refresh token for a new access token (with rotation).
+
+    The refresh token can come from:
+      1. The request body (``refresh_token`` field) — used by API clients
+      2. The ``onramp_refresh_token`` HttpOnly cookie — used by the browser SPA
 
     The presented refresh token is validated, then rotated: the old token is
     revoked and a new refresh token is issued. This endpoint is public — it is
     authenticated by the refresh token itself, so the client can call it after
     its access token expires (silent 401 retry on the frontend).
+
+    A per-user lock prevents race conditions when two requests present the
+    same refresh token simultaneously (e.g. browser tabs, retry loops).
     """
-    record = await _validate_refresh_token(body.refresh_token)
+    # Accept refresh token from body or cookie
+    refresh_token_value = body.refresh_token or request.cookies.get(_COOKIE_REFRESH)
+    if not refresh_token_value:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
+
+    record = await _validate_refresh_token(refresh_token_value)
     if not record:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     uid = record["user_id"]
-    user = await get_user_by_uid(uid)
-    if not user or not user.get("is_active", True):
-        raise HTTPException(status_code=401, detail="Account is not active")
 
-    email = user.get("email", "")
-    if email.startswith("gAAAAA"):
-        email = decrypt_field(email)
-    name = user.get("name", "")
-    if name.startswith("gAAAAA"):
-        name = decrypt_field(name)
+    # Serialize rotation per user so concurrent requests with the same
+    # refresh token don't both succeed (only the first one wins).
+    lock = await _get_refresh_lock(uid)
+    async with lock:
+        # Re-validate inside the lock — a previous concurrent request may
+        # have already rotated (revoked) this token.
+        record = await _validate_refresh_token(refresh_token_value)
+        if not record:
+            raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-    # Rotate: revoke the old refresh token, issue a fresh pair.
-    await _revoke_refresh_token(body.refresh_token)
-    tokens = await _issue_tokens(uid, email, name, user.get("provider", "password"), remember_me=True)
-    return RefreshResponse(token=tokens["token"], refresh_token=tokens.get("refresh_token"))
+        user = await get_user_by_uid(uid)
+        if not user or not user.get("is_active", True):
+            raise HTTPException(status_code=401, detail="Account is not active")
+
+        email = user.get("email", "")
+        if email.startswith("gAAAAA"):
+            email = decrypt_field(email)
+        name = user.get("name", "")
+        if name.startswith("gAAAAA"):
+            name = decrypt_field(name)
+
+        # Rotate: revoke the old refresh token, issue a fresh pair.
+        await _revoke_refresh_token(refresh_token_value)
+        tokens = await _issue_tokens(uid, email, name, user.get("provider", "password"), remember_me=True)
+
+    # Return tokens in JSON body AND set HttpOnly cookies
+    resp_body = RefreshResponse(token=tokens["token"], refresh_token=tokens.get("refresh_token"))
+    response = JSONResponse(content=resp_body.model_dump())
+    _set_auth_cookies(response, tokens["token"], tokens.get("refresh_token"), remember_me=True)
+    return response
 
 
 @router.get("/me", response_model=MeResponse)
@@ -577,6 +781,129 @@ async def me(user: dict = Depends(get_current_user)):
         github_username=record.get("github_username"),
         github_id=record.get("github_id"),
     )
+
+
+@router.post("/logout")
+async def logout():
+    """Clear auth cookies (browser session logout)."""
+    response = JSONResponse(content={"ok": True, "message": "Logged out"})
+    _clear_auth_cookies(response)
+    return response
+
+
+# ── CSRF Protection ─────────────────────────────────────────────────────────
+#
+# Double-submit cookie pattern: the backend sets a non-HttpOnly CSRF cookie
+# (readable by JS) and the frontend reads it + sends it as a custom header.
+# The backend compares the cookie value to the header value.  Since a
+# cross-origin attacker cannot read cookies OR set custom headers, this
+# blocks CSRF attacks.
+#
+# SameSite=Lax already blocks most CSRF, but this adds defense-in-depth.
+
+_CSRF_COOKIE = "onramp_csrf"
+_CSRF_HEADER = "x-csrf-token"
+_CSRF_TOKEN_BYTES = 32
+
+
+def _generate_csrf_token() -> str:
+    return _secrets.token_hex(_CSRF_TOKEN_BYTES)
+
+
+@router.get("/csrf-token")
+async def get_csrf_token(request: Request):
+    """Issue a CSRF token as a non-HttpOnly cookie + response body.
+
+    The frontend reads the cookie (or response) and sends the value in the
+    X-CSRF-Token header on state-changing requests.
+    """
+    token = _generate_csrf_token()
+    secure = _is_production()
+    domain = os.getenv("COOKIE_DOMAIN", "") or None
+    response = JSONResponse(content={"csrf_token": token})
+    response.set_cookie(
+        key=_CSRF_COOKIE,
+        value=token,
+        httponly=False,  # JS must read this
+        secure=secure,
+        samesite="Lax",
+        path="/",
+        domain=domain,
+        max_age=3600,  # 1 hour
+    )
+    return response
+
+
+def _verify_csrf(request: Request) -> bool:
+    """Verify the CSRF double-submit: compare cookie value to header value."""
+    cookie_val = request.cookies.get(_CSRF_COOKIE, "")
+    header_val = request.headers.get(_CSRF_HEADER, "")
+    if not cookie_val or not header_val:
+        return False
+    return hmac.compare_digest(cookie_val, header_val)
+
+
+# Skip CSRF for these paths (GET is safe, OAuth callbacks are redirects)
+_CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+_CSRF_EXEMPT_PREFIXES = (
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password",
+    "/api/v1/auth/verify-email",
+    "/api/v1/auth/oauth/",
+    "/api/v1/auth/csrf-token",
+    "/api/v1/auth/logout",
+    "/api/v1/webhooks/",
+    "/api/v1/billing/webhook",
+    "/v1/chat/completions",
+    "/v1/embeddings",
+    "/v1/models",
+    "/health",
+    "/ready",
+    "/metrics",
+)
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Enforce CSRF double-submit on state-changing browser requests."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method in _CSRF_SAFE_METHODS:
+            return await call_next(request)
+
+        path = request.url.path
+        if any(path.startswith(p) for p in _CSRF_EXEMPT_PREFIXES):
+            return await call_next(request)
+
+        # API key requests (X-API-Key header) are not browser-based, skip CSRF
+        if request.headers.get("X-API-Key"):
+            return await call_next(request)
+
+        # Bearer token requests without cookies are API clients, skip CSRF
+        auth_header = request.headers.get("Authorization", "")
+        has_cookie = _CSRF_COOKIE in request.cookies
+        if auth_header.startswith("Bearer ") and not has_cookie:
+            return await call_next(request)
+
+        # Browser requests with cookies must pass CSRF check
+        # Login CSRF: if no CSRF cookie exists yet, issue one via response header and allow
+        if has_cookie and not _verify_csrf(request):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token missing or invalid. Include X-CSRF-Token header."},
+            )
+        # No CSRF cookie on first state-changing request (e.g. login without prior GET)
+        # -> require that request not carry auth cookies (otherwise it's CSRF of authenticated session)
+        if not has_cookie and request.cookies.get(_COOKIE_ACCESS):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF cookie missing. Fetch /api/v1/auth/csrf-token first."},
+            )
+
+        return await call_next(request)
+
 
 
 class UpdateProfileRequest(BaseModel):
@@ -621,6 +948,12 @@ async def update_me(
             raise HTTPException(status_code=400, detail="Avatar URL must be 2048 characters or fewer")
         data["avatar_url"] = body.avatar_url
     if body.github_username is not None:
+        if len(body.github_username) > 39:
+            raise HTTPException(status_code=400, detail="GitHub username must be 39 characters or fewer")
+        # Basic username sanity: alphanum + hyphen, not starting/ending with hyphen
+        import re
+        if body.github_username and not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$", body.github_username):
+            raise HTTPException(status_code=400, detail="Invalid GitHub username format")
         data["github_username"] = body.github_username
 
     try:
@@ -667,6 +1000,9 @@ async def _do_verify_email(token: str) -> VerifyEmailResponse:
 
         if not user_row:
             raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+        if not user_row.is_active:
+            raise HTTPException(status_code=400, detail="Account is deactivated")
 
         if user_row.email_verification_token_expires_at and user_row.email_verification_token_expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=400, detail="Verification token has expired")
@@ -749,10 +1085,22 @@ async def forgot_password(body: ForgotPasswordRequest):
 
     # Generate a short-lived reset JWT
     nonce = _secrets.token_urlsafe(16)
+    # Store nonce as jti-like denylist: single-use token
+    try:
+        storage_n = get_storage()
+        await storage_n.create_document("onramp_reset_tokens", nonce, {
+            "uid": user_row.id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES)).isoformat(),
+            "used": False,
+        })
+    except Exception:
+        logger.exception("Failed to store reset nonce")
     reset_payload = {
         "purpose": "password_reset",
         "uid": user_row.id,
         "nonce": nonce,
+        "jti": nonce,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES),
         "iat": datetime.now(timezone.utc),
     }
@@ -786,6 +1134,58 @@ async def forgot_password(body: ForgotPasswordRequest):
     return {"ok": True, "message": "If an account exists, a reset link has been sent."}
 
 
+@router.post("/forgot-password/resend")
+async def resend_forgot_password(body: ForgotPasswordRequest):
+    """Resend a password reset email. Rate-limited to 3 requests per 10 minutes per email."""
+    if not body.email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    # Rate limit: store last resend timestamps per email hash
+    email_key = email_hash(body.email)
+    storage = get_storage()
+    now = datetime.now(timezone.utc)
+    RATE_LIMIT_WINDOW = 600  # 10 minutes
+    RATE_LIMIT_MAX = 3
+
+    try:
+        recent_records = await storage.query_documents(
+            "rate_limits", [("key", "==", f"forgot_resend:{email_key}")]
+        )
+        recent_records = [r for r in recent_records
+                          if (now - datetime.fromisoformat(r.get("created_at", now.isoformat())).replace(tzinfo=timezone.utc)).total_seconds() < RATE_LIMIT_WINDOW]
+        if len(recent_records) >= RATE_LIMIT_MAX:
+            retry_after = RATE_LIMIT_WINDOW - int((now - datetime.fromisoformat(recent_records[0]["created_at"]).replace(tzinfo=timezone.utc)).total_seconds())
+            raise HTTPException(status_code=429, detail=f"Too many resend requests. Try again in {max(retry_after, 1)} seconds.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.debug("Rate limit check skipped (storage unavailable)")
+
+    # Record this attempt
+    try:
+        from app.services.postgres_db import generate_id
+        await storage.create_document("rate_limits", generate_id(), {
+            "key": f"forgot_resend:{email_key}",
+            "created_at": now.isoformat(),
+        })
+    except Exception:
+        logger.debug("Failed to record rate limit entry")
+
+    # Reuse the main forgot-password logic
+    return await forgot_password(body)
+
+
+@router.get("/forgot-password/status")
+async def forgot_password_status(email: str):
+    """Check the status of a password reset request (does not reveal if email exists)."""
+    # Always return 200 with generic info to prevent enumeration
+    return {
+        "ok": True,
+        "token_expiry_minutes": RESET_TOKEN_EXPIRY_MINUTES,
+        "message": f"Reset tokens expire after {RESET_TOKEN_EXPIRY_MINUTES} minutes.",
+    }
+
+
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest):
     """Reset a user's password using a valid reset token."""
@@ -806,9 +1206,22 @@ async def reset_password(body: ResetPasswordRequest):
         raise HTTPException(status_code=400, detail="Invalid reset token")
 
     uid = payload.get("uid")
+    jti = payload.get("jti") or payload.get("nonce")
     if not uid:
         raise HTTPException(status_code=400, detail="Invalid reset token")
-
+    # Single-use check: nonce/jti must not have been used
+    if jti:
+        try:
+            storage_j = get_storage()
+            rec = await storage_j.get_document("onramp_reset_tokens", jti)
+            if rec is None or rec.get("used"):
+                raise HTTPException(status_code=400, detail="Reset token has already been used")
+            # Mark used immediately to prevent race replay
+            await storage_j.update_document("onramp_reset_tokens", jti, {"used": True, "used_at": datetime.now(timezone.utc).isoformat()})
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("Failed to check reset nonce denylist")
     # Update password in database
     password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
     now = datetime.now(timezone.utc)
@@ -831,6 +1244,22 @@ async def reset_password(body: ResetPasswordRequest):
         user_row.updated_at = now
         session.add(user_row)
         await session.commit()
+
+    # Security: invalidate ALL refresh tokens for this user after password
+    # reset so any stolen/leaked tokens are immediately useless.
+    try:
+        storage = get_storage()
+        existing = await storage.query_documents(
+            REFRESH_TOKEN_COLLECTION, [("user_id", "==", uid)]
+        )
+        for e in existing:
+            await storage.update_document(
+                REFRESH_TOKEN_COLLECTION, e["id"],
+                {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat(),
+                 "revoked_reason": "password_reset"}
+            )
+    except Exception:
+        logger.exception("Failed to revoke refresh tokens after password reset for %s", uid)
 
     logger.info("Password reset successful for user: %s", uid[:12])
     return {"ok": True, "message": "Password has been reset successfully."}

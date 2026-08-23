@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   BookOpenText,
@@ -48,7 +48,7 @@ export default function PlaybooksPage() {
   const toast = useToast()
   const { activeTeamId, user } = useAuth()
 
-  async function fetchPlaybooks() {
+  const fetchPlaybooks = useCallback(async (cancelled?: { current: boolean }) => {
     if (!activeTeamId) {
       setLoading(false)
       setError('Join or create a team to manage playbooks.')
@@ -57,18 +57,18 @@ export default function PlaybooksPage() {
     setLoading(true); setError('')
     try {
       const data = await listPlaybooks(activeTeamId)
-      setPlaybooks(data.playbooks ?? [])
+      if (!cancelled?.current) setPlaybooks(data.playbooks ?? [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load playbooks.')
-    } finally {
-      setLoading(false)
+      if (!cancelled?.current) setError(err.message || 'Failed to load playbooks.')
     }
-  }
+    if (!cancelled?.current) setLoading(false)
+  }, [activeTeamId])
 
   useEffect(() => {
-    fetchPlaybooks()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTeamId])
+    const ref = { current: false }
+    fetchPlaybooks(ref)
+    return () => { ref.current = true }
+  }, [fetchPlaybooks])
 
   const categories = ['All', ...Array.from(new Set(playbooks.flatMap((p) => p.tags.length ? p.tags : ['General'])))]
   const filtered = playbooks.filter((p) => {
@@ -145,7 +145,7 @@ export default function PlaybooksPage() {
       {error && (
         <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchPlaybooks} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
+          <button onClick={() => fetchPlaybooks()} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </motion.div>
       )}
 

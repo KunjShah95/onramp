@@ -68,17 +68,16 @@ async def rehash_all_api_keys(
 @router.get("/keys")
 async def list_all_api_keys(
     include_revoked: bool = Query(False),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     uid: str = Depends(_require_owner),
 ):
-    """List all API keys across all teams and users.
-
-    Warning: expensive if there are many keys. Consider pagination.
-    Only accessible to team owners (admin).
-    """
+    """List all API keys across all teams and users (paginated)."""
     from app.services.postgres_db import get_storage
 
     storage = get_storage()
     raw_keys = await storage.list_documents("api_keys")
+    total = len(raw_keys)
 
     result = []
     for k in raw_keys:
@@ -99,7 +98,8 @@ async def list_all_api_keys(
         })
 
     result.sort(key=lambda k: k.get("created_at", ""), reverse=True)
-    return {"keys": result, "count": len(result)}
+    paginated = result[offset:offset+limit]
+    return {"keys": paginated, "count": len(paginated), "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/usage")
@@ -291,10 +291,14 @@ async def list_all_webhooks(
     if active_only:
         webhooks = [w for w in webhooks if w.get("active", True)]
 
-    # Mask secrets for list view
+    # Mask secrets for list view — copy before mutating to avoid polluting storage/cache
+    masked = []
     for w in webhooks:
-        if w.get("secret"):
-            w["secret"] = w["secret"][:12] + "…"
+        w2 = dict(w)
+        if w2.get("secret"):
+            w2["secret"] = w2["secret"][:12] + "…"
+        masked.append(w2)
+    webhooks = masked
 
     webhooks.sort(key=lambda w: w.get("created_at", ""), reverse=True)
     return {"webhooks": webhooks, "count": len(webhooks)}
@@ -539,3 +543,33 @@ async def delete_platform_provider_key(
         details={"provider": provider},
     )
     return {"deleted": True, "provider": provider}
+
+
+@router.post("/unlock-account")
+async def unlock_account(
+    email: str,
+    uid: str = Depends(_require_owner),
+):
+    """Manually unlock a locked account by email.
+
+    Admin-only endpoint for when a legitimate user is locked out and needs
+    immediate access.  Logs the action for audit trail.
+    """
+    from app.services.field_encryption import email_hash as _email_hash
+    from app.services.lockout_service import manual_unlock
+    from app.services.audit_service import log_event
+
+    email_h = _email_hash(email)
+    was_locked = await manual_unlock(email_h)
+
+    await log_event(
+        "account_unlocked", uid, uid,
+        metadata={"target_email_hash": email_h[:12], "was_locked": was_locked},
+    )
+
+    return {
+        "unlocked": True,
+        "email": email,
+        "was_locked": was_locked,
+        "message": "Account unlocked" if was_locked else "Account was not locked",
+    }

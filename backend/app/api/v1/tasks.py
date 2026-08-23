@@ -111,6 +111,25 @@ class CreateTaskRequest(BaseModel):
     assigned_to: Optional[str] = None
     quiz_required: bool = False
 
+    # Input validation to prevent abuse
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if len(self.title) > 500:
+            raise ValueError("Title must be 500 characters or fewer")
+        if self.description and len(self.description) > 10000:
+            raise ValueError("Description must be 10000 characters or fewer")
+        if self.repo_url and len(self.repo_url) > 2048:
+            raise ValueError("repo_url must be 2048 characters or fewer")
+        if self.branch and len(self.branch) > 255:
+            raise ValueError("branch must be 255 characters or fewer")
+        if self.estimated_hours is not None and (self.estimated_hours < 0 or self.estimated_hours > 10000):
+            raise ValueError("estimated_hours must be between 0 and 10000")
+        if self.unlock_modules and len(self.unlock_modules) > 50:
+            raise ValueError("Cannot unlock more than 50 modules at once")
+        if self.priority not in ("low", "medium", "high", "critical"):
+            raise ValueError("priority must be low, medium, high, or critical")
+
 
 class UpdateTaskRequest(BaseModel):
     title: Optional[str] = None
@@ -124,6 +143,20 @@ class UpdateTaskRequest(BaseModel):
     actual_hours: Optional[float] = None
     quiz_required: Optional[bool] = None
 
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if self.title is not None and len(self.title) > 500:
+            raise ValueError("Title must be 500 characters or fewer")
+        if self.description is not None and len(self.description) > 10000:
+            raise ValueError("Description must be 10000 characters or fewer")
+        if self.repo_url is not None and len(self.repo_url) > 2048:
+            raise ValueError("repo_url must be 2048 characters or fewer")
+        if self.branch is not None and len(self.branch) > 255:
+            raise ValueError("branch must be 255 characters or fewer")
+        if self.priority is not None and self.priority not in ("low", "medium", "high", "critical"):
+            raise ValueError("priority must be low, medium, high, or critical")
+
 
 class ImportIssueRequest(BaseModel):
     team_id: str
@@ -133,21 +166,47 @@ class ImportIssueRequest(BaseModel):
     module: Optional[str] = None
     quiz_required: bool = False
 
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if len(self.repo_url) > 2048:
+            raise ValueError("repo_url must be 2048 characters or fewer")
+        if self.issue_number < 1 or self.issue_number > 100000:
+            raise ValueError("issue_number must be between 1 and 100000")
+
 
 class SearchIssuesRequest(BaseModel):
     repo_url: str
     query: str
     limit: int = 20
 
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if len(self.repo_url) > 2048:
+            raise ValueError("repo_url must be 2048 characters or fewer")
+        if len(self.query) > 1000:
+            raise ValueError("query must be 1000 characters or fewer")
+        if self.limit < 1 or self.limit > 100:
+            raise ValueError("limit must be between 1 and 100")
+
 
 class ActualHoursRequest(BaseModel):
     hours: float
+
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if self.hours < 0 or self.hours > 10000:
+            raise ValueError("hours must be between 0 and 10000")
 
 
 class PeerReviewRequest(BaseModel):
     feedback: Optional[Dict[str, Any]] = None
     approve: bool = False
     needs_product: bool = False
+
+    model_config = {"extra": "forbid"}
 
 
 class CreateTemplateRequest(BaseModel):
@@ -157,6 +216,14 @@ class CreateTemplateRequest(BaseModel):
     module: Optional[str] = None
     priority: str = "medium"
     repo_url: Optional[str] = None
+
+    model_config = {"extra": "forbid"}
+
+    def model_post_init(self, __context) -> None:
+        if len(self.name) > 200:
+            raise ValueError("Template name must be 200 characters or fewer")
+        if self.description and len(self.description) > 5000:
+            raise ValueError("Description must be 5000 characters or fewer")
     unlock_modules: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
 

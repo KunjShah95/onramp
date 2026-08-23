@@ -27,10 +27,12 @@ logger = logging.getLogger("onramp.celery")
 
 # ── Broker URL ───────────────────────────────────────────────────────────────
 # Use REDIS_URL if set (production), otherwise compose a default for dev Docker.
+import urllib.parse
+
 _redis_host = os.getenv("REDIS_HOST", "localhost")
 _redis_port = os.getenv("REDIS_PORT", "6379")
 _redis_password = os.getenv("REDIS_PASSWORD", "")
-_pw_part = f":{_redis_password}@" if _redis_password else ""
+_pw_part = f":{urllib.parse.quote_plus(_redis_password)}@" if _redis_password else ""
 _broker_url = os.getenv(
     "CELERY_BROKER_URL",
     os.getenv("REDIS_URL", f"redis://{_pw_part}{_redis_host}:{_redis_port}/0"),

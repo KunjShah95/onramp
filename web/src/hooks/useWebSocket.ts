@@ -84,14 +84,14 @@ function emitState(): void {
   }
 }
 
-function buildWsUrl(token: string): string {
+function buildWsUrl(_token: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   // When the API base is relative (Vite proxy / same-origin reverse proxy),
   // connect to the page's own host. Otherwise use the API's host directly.
   const host = !API_BASE || API_BASE.startsWith('/')
     ? window.location.host
     : API_BASE.replace(/^https?:\/\//, '')
-  return `${protocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`
+  return `${protocol}//${host}/api/v1/ws`
 }
 
 function notifyListeners(event: WsEvent): void {
@@ -158,12 +158,14 @@ function connect(): void {
   }
 
   const url = buildWsUrl(token)
-  const ws = new WebSocket(url)
+  const ws = new WebSocket(url, [`bearer ${token}`, token])
   socket = ws
   socketToken = token
 
   ws.onopen = () => {
     if (socket !== ws) return
+    // Send auth as first message (preferred, avoids URL logging)
+    try { ws.send(JSON.stringify({ type: 'auth', token })) } catch {}
     connectedFlag = true
     emitState()
   }
@@ -268,15 +270,6 @@ export function useWebSocket(): UseWebSocketReturn {
 
   const subscribe = useCallback((handler: WsHandler): (() => void) => {
     globalListeners.add(handler)
-
-    // If there's a last event, replay it to the new subscriber
-    if (lastGlobalEvent) {
-      try {
-        handler(lastGlobalEvent)
-      } catch {
-        // Ignore
-      }
-    }
 
     return () => {
       globalListeners.delete(handler)

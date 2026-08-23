@@ -96,7 +96,7 @@ export default function PRDescriptionPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="w-full min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <PageHeader
           eyebrow="Folio 09 · PR describe"

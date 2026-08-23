@@ -13,7 +13,7 @@ from app.services.access_control_service import (
     get_team_modules,
 )
 from app.api.v1.auth import get_current_user
-from app.middleware.access_guard import require_minimum_role
+from app.middleware.access_guard import require_minimum_role, require_team_membership
 from app.services.cache_service import cached, invalidate_prefix
 
 router = APIRouter(prefix="/teams", tags=["saas"])
@@ -72,6 +72,7 @@ class ModulePermissionResponse(BaseModel):
 async def get_team_module_permissions(
     team_id: str,
     user: dict = Depends(get_current_user),
+    _: None = require_team_membership(),
 ):
     """List all module permissions across all members of a team."""
     permissions = await list_team_module_permissions(team_id)
@@ -84,6 +85,7 @@ async def get_user_module_permissions(
     team_id: str,
     user_id: str,
     user: dict = Depends(get_current_user),
+    _: None = require_team_membership(),
 ):
     """Get all module permissions for a specific user in a team."""
     records = await get_user_modules(team_id, user_id)

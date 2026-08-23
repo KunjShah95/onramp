@@ -152,11 +152,15 @@ class EmbeddingRouter:
 
     # ── Availability ──────────────────────────────────────────────────────
 
-    @staticmethod
-    def _hf_installed() -> bool:
-        import importlib.util
+    _hf_spec_cache: bool | None = None
 
-        return importlib.util.find_spec("sentence_transformers") is not None
+    @classmethod
+    def _hf_installed(cls) -> bool:
+        if cls._hf_spec_cache is None:
+            import importlib.util
+
+            cls._hf_spec_cache = importlib.util.find_spec("sentence_transformers") is not None
+        return cls._hf_spec_cache
 
     def set_platform_keys(self, keys: Optional[Dict[str, str]] = None) -> None:
         """Apply platform-level keys configured via the Admin Dashboard."""
@@ -291,6 +295,8 @@ class EmbeddingRouter:
 
     async def embed(self, text: str) -> Tuple[List[float], EmbeddingProvider, Dict[str, Any]]:
         """Embed a single text. Returns ``(vector, provider, route)``."""
+        if not text or not text.strip():
+            raise ValueError("text must not be empty")
         vectors, provider, route = await self.embed_batch([text])
         return vectors[0], provider, route
 
@@ -408,13 +414,17 @@ class EmbeddingRouter:
     async def _call_local_sdk(
         self, config: Dict[str, Any], texts: List[str]
     ) -> List[List[float]]:
-        """Local sentence-transformers (no API key)."""
+        """Local sentence-transformers (no API key) — offloaded to thread so event loop is not blocked."""
+        import asyncio
         from sentence_transformers import SentenceTransformer
 
-        if self._hf_model is None:
-            self._hf_model = SentenceTransformer(config["model"])
-        embeddings = self._hf_model.encode(texts, normalize_embeddings=True)
-        return [e.tolist() for e in embeddings]
+        def _encode() -> List[List[float]]:
+            if self._hf_model is None:
+                self._hf_model = SentenceTransformer(config["model"])
+            embeddings = self._hf_model.encode(texts, normalize_embeddings=True)
+            return [e.tolist() for e in embeddings]
+
+        return await asyncio.to_thread(_encode)
 
 
 # Backward-compatible alias

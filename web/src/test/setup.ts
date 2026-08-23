@@ -20,7 +20,11 @@ globalThis.IntersectionObserver = vi.fn(function () {
 
 vi.mock('../lib/neon-auth', () => ({
   getToken: vi.fn(() => null),
-  setToken: vi.fn(),
+  setWsToken: vi.fn(),
+  clearTokens: vi.fn(),
+  getRefreshToken: vi.fn(() => null),
+  getWsToken: vi.fn(() => null),
+  setRefreshToken: vi.fn(),
 }))
 
 // Guard against stray/unawaited network calls. Components may fire a fetch on

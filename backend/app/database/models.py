@@ -96,8 +96,8 @@ class User(Base):
         {"extend_existing": True}
     )
     
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self, *, include_sensitive: bool = False) -> dict:
+        data = {
             "id": self.id,
             "email": self.email,
             "name": self.name,
@@ -105,8 +105,6 @@ class User(Base):
             "avatar_url": self.avatar_url,
             "provider": self.provider,
             "email_verified": self.email_verified,
-            "email_hash": self.email_hash,
-            "password_hash": self.password_hash,
             "is_active": self.is_active,
             "is_admin": self.is_admin,
             "created_at": self.created_at.isoformat(),
@@ -116,6 +114,10 @@ class User(Base):
             "github_id": self.github_id,
             "deactivated_at": self.deactivated_at.isoformat() if self.deactivated_at else None,
         }
+        if include_sensitive:
+            data["email_hash"] = self.email_hash
+            data["password_hash"] = self.password_hash
+        return data
 
 
 class Team(Base):

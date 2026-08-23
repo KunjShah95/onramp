@@ -101,8 +101,13 @@ export default function AskPage() {
   const toast = useToast()
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > 1 && messages[messages.length - 1]?.content?.length < 5) return
+    bottomRef.current?.scrollIntoView({ behavior: messages.length > 1 ? 'auto' : 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   // Keep the persisted routing dial in sync with the live picker.
   useEffect(() => {
@@ -111,7 +116,7 @@ export default function AskPage() {
 
   const handleSend = async (explicitQuestion?: string) => {
     const question = (explicitQuestion ?? input).trim()
-    if (!question || loading) return
+    if (!question || loading || indexing) return
     if (!repoUrl.trim()) {
       toast.error('Repository required', 'Enter a GitHub repo URL to index first.')
       return
@@ -191,7 +196,7 @@ export default function AskPage() {
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] bg-base">
-      <div className="max-w-4xl mx-auto h-[calc(100vh-4rem)] flex flex-col px-4 sm:px-6 py-6">
+      <div className="max-w-4xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
 
         {/* Header */}
         <PageHeader
@@ -225,7 +230,10 @@ export default function AskPage() {
           >
             <div className="relative flex items-center gap-2">
               <GitBranch size={14} className="text-ink-tertiary shrink-0" weight="bold" />
+              <label htmlFor="repo-url" className="sr-only">Repository URL</label>
               <input
+                id="repo-url"
+                aria-label="Repository URL"
                 value={repoUrl}
                 onChange={(e) => { setRepoUrl(e.target.value); setIndexId(null) }}
                 placeholder="github.com/owner/repo"
@@ -371,7 +379,10 @@ export default function AskPage() {
         {/* Input */}
         <div className="mt-3 shrink-0">
           <div className="flex items-center gap-2 bg-panel border border-seam rounded-[3px] px-3 py-2">
+            <label htmlFor="ask-input" className="sr-only">Ask a question about the codebase</label>
             <input
+              id="ask-input"
+              aria-label="Ask a question about the codebase"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}

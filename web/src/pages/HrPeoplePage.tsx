@@ -326,7 +326,7 @@ export default function HrPeoplePage() {
 
   if (devLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] p-6 space-y-5 max-w-6xl mx-auto px-4 sm:px-6 animate-in">
+      <div className="min-h-[calc(100vh-4rem)] space-y-5 max-w-6xl mx-auto animate-in">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <div className="h-7 w-48 bg-panel rounded-lg animate-pulse" />
@@ -352,7 +352,7 @@ export default function HrPeoplePage() {
       transition={{ duration: 0.3 }}
       className="min-h-[calc(100vh-4rem)]"
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

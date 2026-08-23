@@ -202,6 +202,47 @@ def require_team_role(
     return Depends(_guard)
 
 
+def require_team_membership(
+    team_id_param: str = "team_id",
+) -> Depends:
+    """FastAPI dependency: require the current user to be a member of the team.
+
+    This is the lightest access check — any role (including 'member') passes.
+    Use this for read endpoints where any team member should have access.
+    """
+
+    async def _guard(request: Request) -> None:
+        from app.services.team_service import get_user_teams
+
+        user = _get_user_or_401(request)
+        team_id = await _extract_team_id(request, team_id_param)
+
+        if not team_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not determine team context. Provide '{team_id_param}' as a path or query parameter.",
+            )
+
+        uid = user.get("uid", "")
+        teams = await get_user_teams(uid)
+        is_member = any(
+            (t.get("team_id") or t.get("id", "")) == team_id
+            for t in teams
+        )
+
+        if not is_member:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "Not a member of this team",
+                    "code": "NOT_A_MEMBER",
+                    "team_id": team_id,
+                },
+            )
+
+    return Depends(_guard)
+
+
 def require_minimum_role(
     min_role: str = "member",
     team_id_param: str = "team_id",

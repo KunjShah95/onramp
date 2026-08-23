@@ -154,24 +154,57 @@ class BillingService:
         """Return True if this idempotency key has been processed before."""
         if not idempotency_key:
             return False
+        # Prefer PK lookup (atomic) if key was used as doc id
+        try:
+            rec = await self.storage.get_document(IDEMPOTENCY_COLLECTION, idempotency_key)
+            if rec is not None:
+                return True
+        except Exception:
+            pass
         result = await self.storage.query_documents(
             IDEMPOTENCY_COLLECTION,
             [("idempotency_key", "==", idempotency_key)],
         )
         return len(result) > 0
 
+    async def _claim_idempotency(self, idempotency_key: str, event_id: str, event_type: str) -> bool:
+        """Atomically claim idempotency key. Returns True if we are the first, False if duplicate."""
+        # Try to create with key as doc id to leverage PK uniqueness
+        try:
+            existing = await self.storage.get_document(IDEMPOTENCY_COLLECTION, idempotency_key)
+            if existing is not None:
+                return False
+            await self.storage.create_document(
+                IDEMPOTENCY_COLLECTION,
+                idempotency_key,
+                {
+                    "idempotency_key": idempotency_key,
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "processed_at": _utcnow(),
+                    "status": "processing",
+                },
+            )
+            return True
+        except Exception:
+            # Duplicate PK or other race -> treat as duplicate
+            return False
+
     async def _record_idempotency(self, idempotency_key: str, event_id: str, event_type: str) -> None:
-        """Record a processed idempotency key to prevent duplicates."""
-        await self.storage.create_document(
-            IDEMPOTENCY_COLLECTION,
-            generate_id(),
-            {
-                "idempotency_key": idempotency_key,
-                "event_id": event_id,
-                "event_type": event_type,
-                "processed_at": _utcnow(),
-            },
-        )
+        """Record a processed idempotency key to prevent duplicates (fallback, non-atomic)."""
+        try:
+            await self.storage.create_document(
+                IDEMPOTENCY_COLLECTION,
+                generate_id(),
+                {
+                    "idempotency_key": idempotency_key,
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "processed_at": _utcnow(),
+                },
+            )
+        except Exception:
+            pass
 
     async def _log_event(self, event_id: str, event_type: str, status: str, details: Optional[dict] = None) -> None:
         """Persist a webhook event record for audit trail.
@@ -284,9 +317,10 @@ class BillingService:
         #    (Razorpay retries failed deliveries, so event-id keying dedupes
         #    retries in production).
         dedupe_key = idempotency_key or (event_id if event_id != "evt_unknown" else None)
+        claimed = False
         if dedupe_key:
-            already_processed = await self._check_idempotency(dedupe_key)
-            if already_processed:
+            claimed = await self._claim_idempotency(dedupe_key, event_id, event_type)
+            if not claimed:
                 logger.info(f"Duplicate webhook event {event_id} ({event_type}) — skipping (idempotency key {dedupe_key[:12]}...)")
                 return {"received": True, "type": event_type, "duplicate": True}
 
@@ -297,10 +331,16 @@ class BillingService:
             logger.error(f"Failed to process webhook event {event_id} ({event_type}): {exc}")
             _sentry_report(exc, {"event_id": event_id, "event_type": event_type})
             await self._log_event(event_id, event_type, "failed", {"error": str(exc)})
+            # Release claim so retry can succeed after transient failure? keep as duplicate to avoid double-charge; log only
             return {"error": f"Failed to process event: {exc}"}
 
-        # 4. Record idempotency key
-        if dedupe_key:
+        # 4. Finalize idempotency (update status to done if we claimed via PK)
+        if dedupe_key and claimed:
+            try:
+                await self.storage.update_document(IDEMPOTENCY_COLLECTION, dedupe_key, {"status": "done", "processed_at": _utcnow()})
+            except Exception:
+                pass
+        elif dedupe_key:
             await self._record_idempotency(dedupe_key, event_id, event_type)
 
         # 5. Log event for audit trail

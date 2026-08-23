@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { setToken } from '../lib/neon-auth'
+import { setWsToken } from '../lib/neon-auth'
 import { ArrowRight, CircleNotch, CheckCircle, XCircle } from '@phosphor-icons/react'
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
@@ -39,13 +39,16 @@ export default function AuthCallback() {
       return
     }
 
-    // Store the JWT and redirect to the right landing page
+    // Store the JWT, strip token from URL, and redirect
     try {
-      setToken(token)
+      setWsToken(token)
+      // Remove token from URL to avoid leak via history / Referer
+      window.history.replaceState(null, '', window.location.pathname)
       setStatus('success')
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
       }, 500)
+      return () => clearTimeout(timer)
     } catch (err) {
       setStatus('error')
       setErrorMsg('Failed to process authentication. Please try again.')

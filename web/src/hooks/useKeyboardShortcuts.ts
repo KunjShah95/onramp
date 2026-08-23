@@ -45,7 +45,10 @@ export function useKeyboardShortcuts() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const filtered = NAV_SHORTCUTS.filter(s => !s.roles || (role && s.roles.includes(role)))
+  const filtered = (() => {
+    // Memoize by role to avoid new array every render triggering getShortcuts identity churn
+    return NAV_SHORTCUTS.filter(s => !s.roles || (role && s.roles.includes(role)))
+  })()
 
   const getShortcuts = useCallback((): Shortcut[] => {
     const navShortcuts: Shortcut[] = filtered.map(s => ({
@@ -87,6 +90,9 @@ export function useKeyboardShortcuts() {
 
       if (e.key === 'Escape') {
         setShowHelp(false)
+        bufferRef.current = ''
+        if (timerRef.current) clearTimeout(timerRef.current)
+        setLastShortcut(null)
         return
       }
 

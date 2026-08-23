@@ -100,7 +100,7 @@ export default function TraineeDashboard() {
 
   if (error || !data) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto flex items-start gap-6">
+      <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto flex items-start gap-6">
         <div className="flex-1 space-y-6">
           {header}
           {error ? (
@@ -153,7 +153,7 @@ export default function TraineeDashboard() {
   ]
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto flex items-start gap-6">
+    <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto flex items-start gap-6">
       <div className="flex-1 min-w-0 space-y-6">
         {header}
 
@@ -209,6 +209,9 @@ export default function TraineeDashboard() {
                 .map((task: TraineeTask) => {
                   const repoUrl: string = (task as any).repo_url ?? ''
                   const prUrl: string = (task as any).pr_url ?? ''
+                  const isSafeHttpUrl = (u: string) => {
+                    try { const p = new URL(u); return p.protocol === 'https:' || p.protocol === 'http:' } catch { return false }
+                  }
                   const canRaisePR = ['in_progress', 'assigned'].includes(task.state) && !prUrl
                   const alreadySubmitted = ['submitted', 'under_review', 'approved', 'completed'].includes(task.state)
                   return (
@@ -217,9 +220,13 @@ export default function TraineeDashboard() {
                         <GitBranch size={14} className="text-go shrink-0 mt-0.5" weight="bold" />
                         <div className="flex-1 min-w-0">
                           <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
-                          <a href={repoUrl} target="_blank" rel="noreferrer" className="text-caption text-go/80 hover:text-go font-code truncate block">
-                            {repoUrl.replace('https://github.com/', '')}
-                          </a>
+                          {isSafeHttpUrl(repoUrl) ? (
+                            <a href={repoUrl} target="_blank" rel="noreferrer" className="text-caption text-go/80 hover:text-go font-code truncate block">
+                              {repoUrl.replace('https://github.com/', '')}
+                            </a>
+                          ) : (
+                            <span className="text-caption text-ink-muted font-code truncate block">{repoUrl.replace('https://github.com/', '')}</span>
+                          )}
                         </div>
                         <StatusBadge state={task.state} />
                       </div>
@@ -246,7 +253,7 @@ export default function TraineeDashboard() {
                             Raise PR
                           </button>
                         )}
-                        {prUrl && (
+                        {prUrl && isSafeHttpUrl(prUrl) && (
                           <a
                             href={prUrl}
                             target="_blank"

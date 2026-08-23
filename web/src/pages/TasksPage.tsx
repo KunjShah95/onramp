@@ -167,10 +167,6 @@ export default function TasksPage() {
   const [busy, setBusy] = useState(false)
   const [tplCreating, setTplCreating] = useState(false)
 
-  const fetchTeams = useCallback(async () => {
-    try { const data = await listTeams('current-user'); setTeams(data.teams || []); if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id) } catch { /* ignore */ }
-  }, [])
-
   const fetchTasks = useCallback(async () => {
     if (!selectedTeam) return
     setLoading(true); setError('')
@@ -184,31 +180,9 @@ export default function TasksPage() {
     try { setProgress(await getTeamProgress(selectedTeam)) } catch { /* ignore */ }
   }, [selectedTeam])
 
-  const fetchModulePermissions = useCallback(async () => {
-    if (!selectedTeam) return
-    try {
-      const { permissions = [] } = await getTeamModulePermissions(selectedTeam)
-      const map: Record<string, Set<string>> = {}
-      for (const perm of permissions) { if (!map[perm.user_id]) map[perm.user_id] = new Set(); map[perm.user_id].add(perm.module) }
-      setModuleAccessMap(map)
-    } catch { /* ignore */ }
-  }, [selectedTeam])
-
   const fetchTimeStats = useCallback(async () => {
     if (!selectedTeam) return
     try { setTimeStats(await getTeamTimeStats(selectedTeam)) } catch { /* ignore */ }
-  }, [selectedTeam])
-
-  const fetchQuizGates = useCallback(async () => {
-    if (!selectedTeam) return
-    try {
-      const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
-      const gates: Record<string, QuizGateStatus> = {}
-      await Promise.all(tasks.filter((t) => t.quiz_required && t.state === 'assigned').map(async (t) => {
-        try { gates[t.task_id] = await getQuizGateStatus(t.task_id) } catch { /* ignore */ }
-      }))
-      setQuizGateMap(gates)
-    } catch { /* ignore */ }
   }, [selectedTeam])
 
   const fetchTemplates = useCallback(async () => {
@@ -219,18 +193,98 @@ export default function TasksPage() {
     } catch { /* ignore */ }
   }, [selectedTeam])
 
-  const fetchMembers = useCallback(async () => {
-    if (!selectedTeam) { setMembers([]); return }
-    try { const r = await getTeamMembers(selectedTeam); setMembers(Array.isArray(r) ? r : []) } catch { setMembers([]) }
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const data = await listTeams('current-user')
+        if (!cancelled) {
+          setTeams(data.teams || [])
+          if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id)
+        }
+      } catch { /* ignore */ }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!selectedTeam) return
+      setLoading(true); setError('')
+      try {
+        const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
+        if (!cancelled) setTasks(tasks)
+      } catch (e: any) { if (!cancelled) setError(e.message || 'Failed to load tasks') }
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
   }, [selectedTeam])
 
-  useEffect(() => { fetchTeams() }, [])
   useEffect(() => {
-    fetchTasks(); fetchProgress(); fetchModulePermissions(); fetchTimeStats(); fetchQuizGates()
-  }, [selectedTeam, fetchTasks, fetchProgress, fetchModulePermissions, fetchTimeStats, fetchQuizGates])
+    let cancelled = false
+    async function load() {
+      if (!selectedTeam) return
+      try {
+        const [prog, perms, stats] = await Promise.allSettled([
+          getTeamProgress(selectedTeam),
+          getTeamModulePermissions(selectedTeam),
+          getTeamTimeStats(selectedTeam),
+        ])
+        if (cancelled) return
+        if (prog.status === 'fulfilled') setProgress(prog.value)
+        if (perms.status === 'fulfilled') {
+          const map: Record<string, Set<string>> = {}
+          for (const perm of (perms.value.permissions ?? [])) {
+            if (!map[perm.user_id]) map[perm.user_id] = new Set()
+            map[perm.user_id].add(perm.module)
+          }
+          setModuleAccessMap(map)
+        }
+        if (stats.status === 'fulfilled') setTimeStats(stats.value)
 
-  useEffect(() => { fetchTemplates() }, [selectedTeam, fetchTemplates])
-  useEffect(() => { fetchMembers() }, [selectedTeam, fetchMembers])
+        // Load quiz gate statuses for assigned tasks
+        try {
+          const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
+          const gates: Record<string, QuizGateStatus> = {}
+          await Promise.all(tasks.filter((t) => t.quiz_required && t.state === 'assigned').map(async (t) => {
+            try { gates[t.task_id] = await getQuizGateStatus(t.task_id) } catch { /* ignore */ }
+          }))
+          if (!cancelled) setQuizGateMap(gates)
+        } catch { /* ignore */ }
+      } catch { /* ignore */ }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [selectedTeam])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!selectedTeam) return
+      try {
+        const { templates = [] } = await listTaskTemplates(selectedTeam)
+        if (!cancelled) setTemplates(templates)
+      } catch { /* ignore */ }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [selectedTeam])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!selectedTeam) { setMembers([]); return }
+      try {
+        const r = await getTeamMembers(selectedTeam)
+        if (!cancelled) setMembers(Array.isArray(r) ? r : [])
+      } catch { if (!cancelled) setMembers([]) }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [selectedTeam])
   useEffect(() => {
     if (!showMore) return
     const onDown = (e: MouseEvent) => {
@@ -454,7 +508,7 @@ export default function TasksPage() {
   useEffect(() => { setPage(0) }, [filter])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-3 sm:p-6 font-body text-ink relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
         <PageHeader
           title="Tasks"
           eyebrow="Folio 02 · Tasks"

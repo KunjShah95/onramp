@@ -81,16 +81,15 @@ export default function AuditLogPage() {
     }
   }, [page, filterType, filterActor])
 
-  // Immediate fetch for page/filter type changes
-  useEffect(() => { fetchEvents() }, [fetchEvents])
-
-  // Debounced fetch for text input (actor search)
-  // Note: fetchEvents already debounces stale requests via AbortController.
-  // The debounce below only throttles the trigger for text input.
+  // Fetch on page / event-type change immediately; actor search is debounced below
+  const fetchEventsStable = useRef(fetchEvents)
+  fetchEventsStable.current = fetchEvents
+  useEffect(() => { fetchEventsStable.current() }, [page, filterType])
   useEffect(() => {
-    const timer = setTimeout(() => { fetchEvents() }, 300)
+    const timer = setTimeout(() => fetchEventsStable.current(), 300)
     return () => clearTimeout(timer)
   }, [filterActor])
+  useEffect(() => { return () => abortRef.current?.abort() }, [])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
   const pageEvents = events.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -107,8 +106,10 @@ export default function AuditLogPage() {
       const a = document.createElement('a')
       a.href = url
       a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.${format}`
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (err: any) {
       setError(err.message || 'Export failed.')
     }
@@ -120,7 +121,7 @@ export default function AuditLogPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto space-y-6 relative">
 
       {/* Header */}
       <PageHeader
@@ -269,7 +270,7 @@ export default function AuditLogPage() {
                   const Icon = style.icon
                   return (
                     <motion.tr
-                      key={entry.event_id || i}
+                      key={entry.event_id || `${page}-${i}`}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.025 }}

@@ -151,7 +151,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink max-w-full overflow-x-hidden relative">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="w-full min-h-[calc(100vh-4rem)] font-body text-ink max-w-full overflow-x-hidden relative">
         {/* Header */}
         <PageHeader
           eyebrow="Folio 08 · Explore"
@@ -493,11 +493,6 @@ export default function ExplorePage() {
           </motion.div>
         )}
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgb(var(--border-rgb) / 0.18); border-radius: 2px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgb(var(--border-rgb) / 0.30); }
-      `}</style>
     </motion.div>
   )
 }

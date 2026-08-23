@@ -8,8 +8,11 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger("onramp.neon_auth")
 
-JWKS_URL = os.getenv("NEON_AUTH_JWKS_URL", "")
-ISSUER = os.getenv("NEON_AUTH_ISSUER", "")
+def _get_jwks_url() -> str:
+    return os.getenv("NEON_AUTH_JWKS_URL", "")
+
+def _get_issuer() -> str:
+    return os.getenv("NEON_AUTH_ISSUER", "")
 
 _cached_jwks: dict | None = None
 _cached_jwks_at: datetime | None = None
@@ -29,11 +32,12 @@ async def _fetch_jwks() -> dict:
         if _cached_jwks and _cached_jwks_at and (now - _cached_jwks_at).total_seconds() < JWKS_CACHE_TTL:
             return _cached_jwks
 
-        if not JWKS_URL:
+        jwks_url = _get_jwks_url()
+        if not jwks_url:
             raise ValueError("NEON_AUTH_JWKS_URL is not configured")
 
         async with httpx.AsyncClient() as client:
-            resp = await client.get(JWKS_URL)
+            resp = await client.get(jwks_url)
             resp.raise_for_status()
             _cached_jwks = resp.json()
             _cached_jwks_at = datetime.now(timezone.utc)
@@ -57,13 +61,29 @@ async def validate_neon_token(token: str) -> dict | None:
 
         public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
 
-        payload = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            issuer=ISSUER,
-            options={"verify_exp": True},
-        )
+        # Validate issuer lazily — empty at import no longer disables verification
+        issuer = _get_issuer()
+        if not issuer:
+            logger.warning("NEON_AUTH_ISSUER not configured — skipping issuer check")
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                options={"verify_exp": True, "verify_aud": False},
+            )
+        else:
+            # Only enforce RS256 and kty RSA
+            if key_data.get("kty") != "RSA" or key_data.get("alg", "RS256") not in ("RS256",):
+                logger.warning("JWK key type/alg mismatch for kid %s", header.get("kid"))
+                return None
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                issuer=issuer,
+                audience=os.getenv("NEON_AUTH_AUDIENCE", None),
+                options={"verify_exp": True, "verify_aud": bool(os.getenv("NEON_AUTH_AUDIENCE"))},
+            )
         return payload
     except jwt.ExpiredSignatureError:
         logger.debug("Token expired")
@@ -78,8 +98,8 @@ async def validate_neon_token(token: str) -> dict | None:
 
 async def verify_neon_session(token: str) -> dict | None:
     """Verify a Neon Auth session token. Returns user info or None."""
-    if not JWKS_URL or not ISSUER:
-        logger.warning("Neon Auth not configured — set NEON_AUTH_JWKS_URL and NEON_AUTH_ISSUER")
+    if not _get_jwks_url() or not _get_issuer():
+        logger.debug("Neon Auth not configured — skipping RS256 fallback")
         return None
 
     payload = await validate_neon_token(token)

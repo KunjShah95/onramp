@@ -13,7 +13,7 @@
 |------------|----------|
 | Commit & tag | Land the entire working tree: 5 security-critical fixes, RBAC fix, JSONB `in` filter, webhook encryption gate, Firebase/Firestore scrub, microservices archive, CI workflows, migration 003 |
 | Tests | Restore backend test suite (target the documented 222-test surface); regression tests for each fixed critical; keep web 16/16 green |
-| Dependencies | `requirements.lock.txt` via pip-compile; Docker + CI install from lock |
+| Dependencies | `requirements.lock.txt` via pip-compile; Docker + CI install from lock (28 migrations, gap at 013 documented as deleted/squashed) |
 | CI | Backend + frontend workflows green on main; add ruff + eslint jobs |
 | Secrets | Rotate DB password; production env via secret manager; boot-time fail-fast validation (`ENV=production` requires DATABASE_URL, `RAZORPAY_WEBHOOK_SECRET` when Razorpay enabled, `GITHUB_TOKEN_ENCRYPTION_KEY`, `REDIS_URL`, ≥1 LLM key; see `backend/app/main.py:100`) |
 

@@ -82,7 +82,28 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadPRs() }, [teamId])
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    listTasks({ team_id: teamId, state: 'submitted' })
+      .then((r) => {
+        if (cancelled) return
+        const submitted = (r.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        return listTasks({ team_id: teamId, state: 'under_review' }).then((r2) => {
+          if (cancelled) return
+          const underReview = (r2.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+          const seen = new Set<string>()
+          const merged: WorkflowTask[] = []
+          for (const t of [...submitted, ...underReview]) {
+            if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
+          }
+          setPRs(merged)
+        })
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [teamId])
 
   async function handleApprove(task: WorkflowTask) {
     setActionId(task.task_id)
@@ -206,15 +227,15 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
   useEffect(() => {
     getTeamMembers(teamId)
       .then((list) => setMembers(list))
-      .catch(() => {})
+      .catch(() => { /* members load is best-effort */ })
     fetchReposByTeam(teamId)
       .then((r) => setRepos(r.repos ?? []))
-      .catch(() => {})
+      .catch(() => { /* repos load is best-effort */ })
     listTasks({ team_id: teamId })
       .then((r) => setRecentAssignments(
         (r.tasks ?? []).filter((t: WorkflowTask) => t.repo_url).slice(0, 5)
       ))
-      .catch(() => {})
+      .catch(() => { /* recent tasks load is best-effort */ })
   }, [teamId])
 
   // Auto-fill title when selection changes
@@ -502,7 +523,7 @@ export default function SeniorSpacePage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8 relative"
+      className="max-w-6xl mx-auto space-y-8 relative"
     >
       {/* Header */}
       <motion.div variants={itemVariants}>

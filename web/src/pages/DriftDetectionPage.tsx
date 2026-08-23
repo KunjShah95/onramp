@@ -104,7 +104,7 @@ export default function DriftDetectionPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade}>

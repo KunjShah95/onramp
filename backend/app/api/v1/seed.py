@@ -238,14 +238,15 @@ async def get_seed_role_data(user=Depends(get_current_user)):
     team_ids = [t.get("team_id") or t.get("id") for t in teams if (t.get("team_id") or t.get("id"))]
     primary_team = team_ids[0] if team_ids else None
 
-    # Resolve role from the user's first membership.
+    # Resolve role as highest-privilege membership (admin/ceo > senior > member)
     role = "member"
     try:
+        from app.middleware.access_guard import ROLE_HIERARCHY
         memberships = await storage.query_documents(
             "team_members", [("user_id", "==", uid)]
         )
         if memberships:
-            role = memberships[0].get("role", "member")
+            role = max(memberships, key=lambda m: ROLE_HIERARCHY.get(m.get("role", "member"), 0)).get("role", "member")
     except Exception:
         logger.exception("Failed to resolve role for user %s", uid)
 

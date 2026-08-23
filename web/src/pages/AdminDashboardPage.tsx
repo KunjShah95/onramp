@@ -138,7 +138,32 @@ export default function AdminDashboardPage() {
     }
   }
 
-  useEffect(() => { fetchAdminData() }, [])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true); setError('')
+      try {
+        await Promise.all([
+          adminGetUsage(undefined, 14).then((u) => { if (!cancelled) { setUsage(u.total_requests); setUsageDetail(u) } }).catch(() => {}),
+          adminListApiKeys().then((k) => { if (!cancelled) setKeys(k.count) }).catch(() => {}),
+          adminGetTeamUsage().then((t) => {
+            if (!cancelled) {
+              setTeams(t.count)
+              setMembers(t.teams.reduce((acc, x) => acc + (x.member_count || 0), 0))
+            }
+          }).catch(() => {}),
+          adminListAuditEvents({ limit: 8 }).then((a) => { if (!cancelled) setAudit(a.events) }).catch(() => {}),
+          fetchProviderKeys().catch(() => {}),
+        ])
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load admin data.')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   const fmt = (n: number | null) => (n == null ? 'N/A' : n.toLocaleString())
   const fmtUsd = (n: number) => (n >= 100 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(2)}`)
@@ -152,7 +177,7 @@ export default function AdminDashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <motion.div variants={item}>
         <PageHeader

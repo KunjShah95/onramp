@@ -38,11 +38,26 @@ export default function MemberDetailPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchMembers() }, [activeTeamId])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!activeTeamId) { setLoading(false); setError('Join a team to view member progress.'); return }
+      setLoading(true); setError('')
+      try {
+        const res = await fetchTeamAnalytics()
+        if (!cancelled) setMembers(res.members ?? [])
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load members.')
+      }
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [activeTeamId])
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto">
         {/* Back */}
         <motion.div variants={item} className="mb-6">
           <button className="flex items-center gap-1.5 text-caption text-ink-muted/40 hover:text-ink transition-colors group">

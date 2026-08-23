@@ -643,6 +643,137 @@ def send_team_digest_to_slack(self, team_id: str, team_name: str) -> dict:
             loop.close()
 
 
+# ── API Key Expiry Sweep ─────────────────────────────────────────────────────
+
+@shared_task(
+    queue="notification-tasks",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=30,
+    acks_late=True,
+)
+def sweep_api_key_expiry(self):
+    """Sweep all active API keys for expiry status.
+
+    - Keys that have expired: auto-revoke + notify owner.
+    - Keys approaching expiry (within API_KEY_EXPIRY_WARNING_DAYS): send a
+      warning notification so the team can rotate before disruption.
+    - Deduplicates: each key only gets one approaching-expiry notification
+      per window (tracked via permissions.expiry_notified_at).
+    """
+    import os
+    from datetime import timedelta
+    from app.services.api_key_service import APIKeyService, _coerce_aware_datetime
+    from app.services.postgres_db import get_storage
+    from app.services.notification_service import create_notification
+
+    key_service = APIKeyService()
+    storage = get_storage()
+    now = datetime.now(timezone.utc)
+    warning_days = int(os.getenv("API_KEY_EXPIRY_WARNING_DAYS", "30"))
+    warning_cutoff = now + timedelta(days=warning_days)
+    auto_revoke = os.getenv("API_KEY_AUTO_REVOKE_EXPIRED", "true").lower() in ("1", "true", "yes")
+
+    logger.info("API key expiry sweep started")
+
+    try:
+        all_keys = storage.list_documents("api_keys")
+    except Exception as exc:
+        logger.error("Failed to list API keys for expiry sweep: %s", exc)
+        raise self.retry(exc=exc)
+
+    expired_count = 0
+    warned_count = 0
+
+    for key in all_keys:
+        if not key.get("is_active"):
+            continue
+
+        expires_at = _coerce_aware_datetime(key.get("expires_at"))
+        if not expires_at:
+            continue
+
+        key_id = key["id"]
+        perms = key.get("permissions") or {}
+        owner_id = key.get("user_id") or key.get("created_by") or perms.get("created_by")
+        org_name = key.get("team_id") or perms.get("org_name") or key.get("name", "")
+        key_name = key.get("name", key_id[:8])
+
+        if expires_at < now:
+            # ── Expired: auto-revoke ──
+            if auto_revoke:
+                try:
+                    await_or_sync = getattr(key_service, 'revoke_key', None)
+                    # revoke_key is async — call via sync wrapper
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    try:
+                        loop.run_until_complete(key_service.revoke_key(key_id))
+                    finally:
+                        loop.close()
+                    expired_count += 1
+                    logger.info("Auto-revoked expired API key %s (%s)", key_id, key_name)
+
+                    if owner_id:
+                        try:
+                            import asyncio
+                            loop = asyncio.new_event_loop()
+                            try:
+                                loop.run_until_complete(create_notification(
+                                    user_id=owner_id,
+                                    type="security",
+                                    title="API Key Expired & Revoked",
+                                    message=f"The API key '{key_name}' for {org_name} has expired and was automatically revoked. Create a new key if you need continued access.",
+                                    metadata={"key_id": key_id, "org_name": org_name, "event": "key_expired"},
+                                    team_id=org_name,
+                                ))
+                            finally:
+                                loop.close()
+                        except Exception as notif_exc:
+                            logger.warning("Could not notify about expired key %s: %s", key_id, notif_exc)
+                except Exception as revoke_exc:
+                    logger.error("Failed to auto-revoke expired key %s: %s", key_id, revoke_exc)
+
+        elif expires_at < warning_cutoff:
+            # ── Approaching expiry: send warning (once per window) ──
+            notified_at = perms.get("expiry_notified_at")
+            if notified_at:
+                notified_dt = _coerce_aware_datetime(notified_at)
+                if notified_dt and (now - notified_dt) < timedelta(days=max(1, warning_days // 2)):
+                    continue  # already warned recently
+
+            days_left = (expires_at - now).days
+            if owner_id:
+                try:
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    try:
+                        loop.run_until_complete(create_notification(
+                            user_id=owner_id,
+                            type="security",
+                            title="API Key Expiring Soon",
+                            message=f"The API key '{key_name}' for {org_name} expires in {days_left} day{'s' if days_left != 1 else ''}. Rotate it to avoid service disruption.",
+                            metadata={"key_id": key_id, "org_name": org_name, "days_until_expiry": days_left, "event": "key_expiring"},
+                            team_id=org_name,
+                        ))
+                    finally:
+                        loop.close()
+                    warned_count += 1
+
+                    # Mark as notified to avoid duplicate alerts
+                    perms["expiry_notified_at"] = now.isoformat()
+                    storage.update_document("api_keys", key_id, {"permissions": perms})
+                    logger.info("Sent expiry warning for key %s (%s, %d days left)", key_id, key_name, days_left)
+                except Exception as notif_exc:
+                    logger.warning("Could not send expiry warning for key %s: %s", key_id, notif_exc)
+
+    logger.info(
+        "API key expiry sweep complete: %d expired (auto-revoked), %d warned",
+        expired_count, warned_count,
+    )
+    return {"expired": expired_count, "warned": warned_count}
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 # Reuse the synchronous email lookup from notification_helpers to avoid duplication.

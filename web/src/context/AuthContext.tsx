@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import { setToken, setRefreshToken, clearTokens, getToken } from '../lib/neon-auth'
+import { setWsToken, clearTokens, getWsToken } from '../lib/neon-auth'
 import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken } from '../lib/api'
 import { prefetchRoutes } from '../lib/prefetch'
 
@@ -104,19 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, role: null, activeTeamId: null }))
       }
     } catch {
-      setState((prev) => ({ ...prev, role: 'junior_dev' }))
+      // On failure, keep the current role rather than silently downgrading.
+      // The user will retain whatever role was previously set; the next
+      // navigation or retry will attempt to sync again.
+      console.warn('[Auth] Failed to sync role from teams — keeping current role')
     }
   }, [])
 
   useEffect(() => {
     let active = true
     const initAuth = async () => {
-      const storedToken = getToken()
-      if (!storedToken) {
-        if (active) setState((prev) => ({ ...prev, loading: false }))
-        return
-      }
-
+      // With cookie-based auth, we don't check for a stored token.
+      // Instead, call /auth/me — the browser sends the HttpOnly cookie
+      // automatically.  If the cookie is missing/expired, /me returns 401
+      // and we fall through to the logged-out state.
       try {
         const me = await authMe()
         if (!active) return
@@ -134,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState((prev) => ({ ...prev, loading: false }))
         }
       } catch {
+        // No valid session cookie — user is logged out.
         clearTokens()
         if (active) {
           setState({
@@ -156,8 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, error: null, loading: true }))
     try {
       const resp = await authLogin(email, password, rememberMe)
-      setToken(resp.token, rememberMe)
-      if (resp.refresh_token) setRefreshToken(resp.refresh_token)
+      // Backend sets HttpOnly cookies.  Store token in memory for WebSocket.
+      setWsToken(resp.token)
       setState((prev) => ({
         ...prev,
         user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
@@ -182,10 +184,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return
     const interval = setInterval(async () => {
+      if (document.visibilityState === 'hidden') return
       try {
         const resp = await refreshToken()
-        setToken(resp.token)
-        if (resp.refresh_token) setRefreshToken(resp.refresh_token)
+        // Backend sets new HttpOnly cookies.  Store token in memory for WebSocket.
+        setWsToken(resp.token)
       } catch {
         // Silent — next 401 will redirect to login
       }
@@ -198,8 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({ ...prev, error: null, loading: true }))
       try {
         const resp = await authRegister(email, password, name)
-        setToken(resp.token)
-        if (resp.refresh_token) setRefreshToken(resp.refresh_token)
+        // Backend sets HttpOnly cookies.  Store token in memory for WebSocket.
+        setWsToken(resp.token)
         setState((prev) => ({
           ...prev,
           user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
@@ -290,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const getIdToken = useCallback((): string | null => {
-    return getToken()
+    return getWsToken()
   }, [])
 
   const resetPassword = useCallback(async (email: string) => {

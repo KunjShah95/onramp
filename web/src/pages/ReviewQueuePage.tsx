@@ -131,7 +131,7 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Header */}
         <motion.div initial="hidden" animate="show" variants={fade}>

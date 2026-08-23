@@ -1229,10 +1229,26 @@
   .btn-primary:hover { background: var(--go-lit); }
 
   .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 4px;
+    padding: 9px 16px;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease, color 0.15s ease, border-color 0.15s ease;
+    border: none;
+    cursor: pointer;
     background: var(--panel-raised);
     color: var(--ink);
     box-shadow: 0 0 0 1px var(--seam);
   }
+  .btn-secondary:active { transform: translateY(1px); }
+  .btn-secondary:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-secondary:hover { background: var(--well); box-shadow: 0 0 0 1px var(--seam-strong); }
 
   .btn-ghost { background: transparent; color: var(--ink-secondary); }
@@ -1625,4 +1641,14 @@
     to { opacity: 0; transform: translateX(100px) scale(0.95); }
   }
 }
+
+/* ── Custom scrollbar styles (moved from inline <style> tags for CSP) ── */
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.05; }
+}
+.node-glow { animation: pulse-ring 3s ease-in-out infinite; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 

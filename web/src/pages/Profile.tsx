@@ -96,7 +96,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+      <div className="max-w-2xl mx-auto">
         <motion.div initial="hidden" animate="show" variants={fadeUp} className="space-y-5">
           {/* Identity card — one surface, one rail */}
           <ConsolePanel rail="Identity" designator="ID CARD" status="go">

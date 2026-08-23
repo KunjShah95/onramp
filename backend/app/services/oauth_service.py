@@ -369,12 +369,15 @@ async def handle_github_callback(code: str, state: str) -> dict:
             )
             if emails_resp.status_code == 200:
                 emails = emails_resp.json()
-                for e in emails:
-                    if e.get("primary") and e.get("verified"):
-                        email = e["email"]
-                        break
-                if not email and emails:
-                    email = emails[0].get("email", "")
+                if isinstance(emails, list):
+                    for e in emails:
+                        if isinstance(e, dict) and e.get("primary") and e.get("verified"):
+                            email = e["email"]
+                            break
+                    if not email and emails:
+                        first = emails[0]
+                        if isinstance(first, dict):
+                            email = first.get("email", "")
 
     if not email:
         raise ValueError("GitHub did not provide an email address. Make sure your GitHub email is public or grant email permission.")

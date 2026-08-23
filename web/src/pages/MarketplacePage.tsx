@@ -162,7 +162,7 @@ export default function MarketplacePage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-5xl mx-auto space-y-6 px-4 sm:px-0"
+      className="max-w-5xl mx-auto space-y-6"
     >
       {/* ── Mission header ── */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">

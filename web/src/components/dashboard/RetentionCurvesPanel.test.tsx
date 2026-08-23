@@ -23,10 +23,10 @@ vi.mock(import('../../lib/api'), async (importOriginal) => {
 // and the role resolves from the mocked team.
 vi.mock(import('../../lib/neon-auth'), () => ({
   getToken: () => 'test-token',
-  setToken: vi.fn(),
-  setRefreshToken: vi.fn(),
+  setWsToken: vi.fn(),
   clearTokens: vi.fn(),
   getRefreshToken: () => null,
+  getWsToken: () => 'test-token',
 }))
 
 /** Two cohorts: Jan retains 67% at 180d, the newer Feb cohort 80% → improving. */

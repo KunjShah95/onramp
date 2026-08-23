@@ -41,20 +41,25 @@ class RateLimitRule:
 
 # Default rule sets — env overrides supported per group
 DEFAULT_RULES: dict[str, RateLimitRule] = {
-    "llm":    RateLimitRule("token_bucket", limit=20, window=60),
-    "auth":   RateLimitRule("token_bucket", limit=10, window=60),
-    "admin":  RateLimitRule("token_bucket", limit=60, window=60),
-    "api":    RateLimitRule("token_bucket", limit=200, window=60),
+    "llm":        RateLimitRule("token_bucket", limit=20, window=60),
+    "auth":       RateLimitRule("token_bucket", limit=10, window=60),
+    "auth_reset": RateLimitRule("token_bucket", limit=3, window=900),   # 3 per 15 min
+    "admin":      RateLimitRule("token_bucket", limit=60, window=60),
+    "api":        RateLimitRule("token_bucket", limit=200, window=60),
 }
 
 
+# Order matters: more-specific prefixes must come BEFORE the general "auth" prefix
+# so they match first.  The forgot-password endpoints get the stricter auth_reset bucket.
 ROUTE_GROUP_PREFIXES: list[tuple[str, str]] = [
-    ("llm",    "/api/v1/ask/"),
-    ("llm",    "/api/v1/ai/"),
-    ("llm",    "/api/v1/explore/"),
-    ("llm",    "/v1/"),  # OpenAI-compatible gateway gets the strict LLM bucket
-    ("auth",   "/api/v1/auth/"),
-    ("admin",  "/api/v1/admin/"),
+    ("llm",        "/api/v1/ask/"),
+    ("llm",        "/api/v1/ai/"),
+    ("llm",        "/api/v1/explore/"),
+    ("llm",        "/v1/"),  # OpenAI-compatible gateway gets the strict LLM bucket
+    ("auth_reset", "/api/v1/auth/forgot-password"),
+    ("auth_reset", "/api/v1/auth/reset-password"),
+    ("auth",       "/api/v1/auth/"),
+    ("admin",      "/api/v1/admin/"),
 ]
 
 
@@ -151,7 +156,7 @@ class RedisTokenBucket:
 
         if tokens >= cost then
             tokens = tokens - cost
-            redis.call("HMSET", key, "tokens", tokens, "last_refill", now)
+            redis.call("HSET", key, "tokens", tokens, "last_refill", now)
             redis.call("EXPIRE", key, math.ceil(capacity / refill_rate) * 2)
             return 1
         end
@@ -224,10 +229,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Multi-algorithm rate limiter.
 
     Groups (all token_bucket — burst-tolerant, O(1) memory per client):
-      llm   | 20/min   env: RATE_LIMIT_LLM=20,60
-      auth  | 10/min   env: RATE_LIMIT_AUTH=10,60
-      admin | 60/min   env: RATE_LIMIT_ADMIN=60,60
-      api   | 200/min  env: RATE_LIMIT_API=200,60
+      llm        | 20/min   env: RATE_LIMIT_LLM=20,60
+      auth       | 10/min   env: RATE_LIMIT_AUTH=10,60
+      auth_reset | 3/15min  env: RATE_LIMIT_AUTH_RESET=3,900  (forgot/reset password)
+      admin      | 60/min   env: RATE_LIMIT_ADMIN=60,60
+      api        | 200/min  env: RATE_LIMIT_API=200,60
 
     sliding_window (Redis sorted-set log) remains available for any group
     configured with algorithm="sliding_window".
@@ -291,9 +297,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return forwarded.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 
-    # ── In-memory token bucket ─────────────────────────────────────────────
+    # ── In-memory token bucket with TTL eviction ───────────────────────────
 
     def _inmem_tb_allows(self, client_ip: str, rule: RateLimitRule, group: str) -> bool:
+        # Evict stale buckets every ~60s to prevent unbounded growth
+        now = time.time()
+        if now - self._last_sweep > 60:
+            # Reuse _last_sweep for bucket eviction too
+            ttl = rule.window * 2
+            stale_keys = [k for k, b in self._tb_buckets.items() if now - b.last_refill > ttl]
+            for k in stale_keys:
+                del self._tb_buckets[k]
         bkey = f"{group}:{client_ip}"
         bucket = self._tb_buckets.get(bkey)
         if not bucket:
@@ -367,21 +381,33 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             allowed = self._inmem_allows(client_ip, rule, group)
 
         if not allowed:
+            reset_at = int(time.time()) + rule.window
+            headers = _rate_limit_headers(
+                count=0, limit=rule.limit,
+                remaining=0,
+                reset=reset_at,
+            )
+            # Add Retry-After so clients know exactly when to retry
+            headers["Retry-After"] = str(rule.window)
+
+            # Stricter message for password-reset endpoints
+            if group == "auth_reset":
+                error_msg = f"Too many password reset requests. Try again in {rule.window // 60} minutes."
+            else:
+                error_msg = "Rate limit exceeded. Try again later."
+
             return JSONResponse(
                 status_code=429,
                 content={
                     "success": False,
-                    "error": "Rate limit exceeded. Try again later.",
+                    "error": error_msg,
                     "code": "RATE_LIMIT_EXCEEDED",
                     "group": group,
                     "limit": rule.limit,
                     "window": rule.window,
+                    "retry_after": rule.window,
                 },
-                headers=_rate_limit_headers(
-                    count=0, limit=rule.limit,
-                    remaining=0,
-                    reset=int(time.time()) + rule.window,
-                ),
+                headers=headers,
             )
 
         response = await call_next(request)

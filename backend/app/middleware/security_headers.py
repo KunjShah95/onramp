@@ -43,6 +43,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "max-age=63072000; includeSubDomains; preload",
             )
 
+        # CSP is handled by CSPNonceMiddleware (nonce-based, per-request).
+        # If a legacy CSP_HEADER env var is set, apply it as a fallback
+        # (e.g. for deployments not yet using the nonce middleware).
         csp = os.getenv("CSP_HEADER")
         if csp:
             response.headers.setdefault("Content-Security-Policy", csp)

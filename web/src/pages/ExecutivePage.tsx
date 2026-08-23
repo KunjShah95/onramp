@@ -87,7 +87,7 @@ export default function ExecutivePage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <motion.div variants={item}>
         <PageHeader

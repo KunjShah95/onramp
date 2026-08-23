@@ -505,6 +505,49 @@ class PostgresStorage:
             lambda s: self._get_in_session(s, collection, doc_id)
         )
 
+    async def increment_json_field(
+        self, collection: str, doc_id: str, json_col: str, field: str, delta: int
+    ) -> Optional[dict]:
+        """Atomically increment a numeric field inside a JSON column."""
+        from sqlalchemy import func
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        async def _incr(session: AsyncSession) -> Optional[dict]:
+            entry = _get_model(collection)
+            if entry is None:
+                return None
+            model_cls, pk_field, _, has_members = entry
+            pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
+            col = getattr(model_cls, json_col)
+            # Use jsonb_set with coalesce for atomic increment
+            stmt = (
+                update(model_cls)
+                .where(getattr(model_cls, self._pk_attr(pk_field)) == pk_val)
+                .values(
+                    **{
+                        json_col: func.jsonb_set(
+                            func.coalesce(col, func.cast("{}", JSONB)),
+                            f"{{{field}}}",
+                            func.cast(
+                                func.coalesce(func.cast(col[field].astext, func.Integer), 0) + delta,
+                                func.Text,
+                            ).cast(JSONB),
+                        )
+                    }
+                )
+                .returning(model_cls)
+            )
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
+            if obj:
+                await session.flush()
+                return obj.to_dict()
+            # Fallback if returning not supported — fetch after update
+            obj2 = await self._get_model_instance(session, model_cls, pk_field, doc_id)
+            return obj2.to_dict() if obj2 else None
+
+        return await self._run(_incr)
+
     async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
         """Update a document."""
         return await self._run(
@@ -586,10 +629,14 @@ class PostgresStorage:
             rows = []
             for chunk in result.scalars().all():
                 d = chunk.to_dict()
+                # SQL already ordered by cosine_distance; derive similarity without recomputing full dot product
+                # but keep exact cosine for correctness (1536-dim, top 50 — negligible cost, so recompute for accuracy)
                 if d.get("vector"):
                     d["similarity"] = round(
                         cosine_similarity(query_vector, d["vector"]), 4
                     )
+                else:
+                    d["similarity"] = 0.0
                 rows.append(d)
             return rows
 
@@ -717,6 +764,19 @@ class InMemoryStorage:
     async def list_documents(self, collection: str) -> List[dict]:
         return [self._serialize(dict(r)) for r in self._coll(collection).values()]
 
+    async def increment_json_field(
+        self, collection: str, doc_id: str, json_col: str, field: str, delta: int
+    ) -> Optional[dict]:
+        """In-memory atomic increment for parity with PostgresStorage."""
+        rec = self._coll(collection).get(doc_id)
+        if rec is None:
+            return None
+        perms = dict(rec.get(json_col) or {})
+        perms[field] = int(perms.get(field, 0)) + int(delta)
+        rec[json_col] = perms
+        rec["updated_at"] = datetime.now(timezone.utc).isoformat()
+        return dict(rec)
+
     @staticmethod
     def _matches(record: dict, key: str, op: str, value: Any) -> bool:
         actual = record.get(key)
@@ -728,6 +788,10 @@ class InMemoryStorage:
             return actual is not None and actual >= value
         if op == "<=":
             return actual is not None and actual <= value
+        if op == ">":
+            return actual is not None and actual > value
+        if op == "<":
+            return actual is not None and actual < value
         return False
 
     async def query_documents(

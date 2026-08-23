@@ -38,7 +38,8 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
     try {
       const data = await listFeatureFlags(activeTeamId)
       setFlags(data.flags ?? [])
-    } catch {
+    } catch (e) {
+      console.warn('[FeatureFlags] fetch failed', e)
       setFlags([])
     }
     setLoading(false)

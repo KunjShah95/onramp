@@ -1,26 +1,54 @@
 import { Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
-import { ArrowRight, EnvelopeSimple, Mailbox } from '@phosphor-icons/react'
+import { ArrowRight, EnvelopeSimple, Mailbox, ArrowClockwise } from '@phosphor-icons/react'
+import { resendForgotPassword } from '../lib/api'
 import InputField from '../components/ui/first-principles/InputField'
 
 type PageState = 'idle' | 'sending' | 'sent' | 'error'
+
+const RESEND_COOLDOWN_SECONDS = 60
+const TOKEN_EXPIRY_MINUTES = 60
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [pageState, setPageState] = useState<PageState>('idle')
   const [error, setError] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+  const [resending, setResending] = useState(false)
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { resetPassword, clearError } = useAuth()
   const toast = useToast()
 
+  // Cleanup cooldown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+    }
+  }, [])
+
   useEffect(() => {
     return () => clearError()
   }, [clearError])
+
+  const startCooldown = useCallback(() => {
+    setCooldown(RESEND_COOLDOWN_SECONDS)
+    if (cooldownRef.current) clearInterval(cooldownRef.current)
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,12 +60,39 @@ export default function ForgotPassword() {
       await resetPassword(email.trim())
       toast.success('Reset link sent', `Check your inbox for ${email.trim()}`)
       setPageState('sent')
+      startCooldown()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to send reset email'
       setError(msg)
       setPageState('error')
       toast.error('Failed to send reset email', msg)
     }
+  }
+
+  const handleResend = async () => {
+    if (resending || cooldown > 0 || !email.trim()) return
+    setResending(true)
+    try {
+      await resendForgotPassword(email.trim())
+      toast.success('Reset link resent', `Check your inbox for ${email.trim()}`)
+      startCooldown()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to resend'
+      if (err instanceof Error && msg.includes('429')) {
+        toast.error('Too many requests', 'Please wait before trying again.')
+        startCooldown()
+      } else {
+        toast.error('Could not resend', msg)
+      }
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const formatCooldown = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
   }
 
   return (
@@ -69,15 +124,37 @@ export default function ForgotPassword() {
                 If an account exists for <strong className="text-ink font-code">{email}</strong>,
                 we've sent a password reset link.
               </p>
-              <p className="text-caption text-ink-tertiary mb-6">
-                Didn't receive it? Check your spam folder or{' '}
+              <p className="text-caption text-ink-tertiary mb-4">
+                The link expires in <strong className="text-ink font-code">{TOKEN_EXPIRY_MINUTES} minutes</strong>.
+              </p>
+
+              {/* Resend button with cooldown */}
+              <div className="mb-6">
                 <button
-                  onClick={() => { setPageState('idle'); setError('') }}
+                  onClick={handleResend}
+                  disabled={resending || cooldown > 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-tile text-caption font-medium transition-all border border-seam bg-well text-ink-secondary hover:text-ink hover:border-seam-strong disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ArrowClockwise size={14} weight="bold" className={resending ? 'animate-spin' : ''} />
+                  {resending
+                    ? 'Sending...'
+                    : cooldown > 0
+                      ? `Resend in ${formatCooldown(cooldown)}`
+                      : 'Resend email'
+                  }
+                </button>
+              </div>
+
+              <p className="text-caption text-ink-tertiary mb-6">
+                Didn't receive it? Check your spam folder, or{' '}
+                <button
+                  onClick={() => { setPageState('idle'); setError(''); setCooldown(0) }}
                   className="text-go hover:underline font-medium"
                 >
-                  try again
+                  try a different email
                 </button>
               </p>
+
               <Link to="/login" className="btn btn-primary">
                 Back to Sign In <ArrowRight size={16} weight="bold" />
               </Link>

@@ -35,7 +35,25 @@ export default function ModuleHealthPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchModules() }, [activeTeamId])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!activeTeamId) { setLoading(false); setError('Join a team to view module access.'); return }
+      setLoading(true); setError('')
+      try {
+        const res = await getTeamModulePermissions(activeTeamId)
+        if (!cancelled) {
+          setPermissions(res.permissions ?? [])
+          setModules(res.modules ?? [])
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load module access.')
+      }
+      if (!cancelled) setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [activeTeamId])
 
   const grantedModules = new Set(permissions.map((p) => p.module))
   const granted = permissions.length
@@ -44,7 +62,7 @@ export default function ModuleHealthPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="max-w-5xl mx-auto">
 
         {/* Header */}
         <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">

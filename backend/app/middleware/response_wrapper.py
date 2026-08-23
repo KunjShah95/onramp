@@ -18,8 +18,14 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Do not wrap error responses or non-JSON responses
-        if response.status_code >= 400 or response.headers.get("content-type") != "application/json":
+        ctype = response.headers.get("content-type", "")
+        if response.status_code >= 400 or "application/json" not in ctype:
             return response
+        # Don't buffer streaming responses
+        if hasattr(response, "body_iterator"):
+            # If it's a streaming response without fixed content-length, skip wrapping
+            if response.headers.get("transfer-encoding") == "chunked":
+                return response
 
         body_iterator = response.body_iterator
         body_chunks = []

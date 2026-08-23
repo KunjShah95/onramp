@@ -52,7 +52,7 @@ usage = UsageTracker()
 
 
 class ChatMessage(BaseModel):
-    role: str
+    role: str = Field(..., pattern="^(system|user|assistant|developer|tool)$")
     content: str
 
 
@@ -92,13 +92,18 @@ def _get_embeddings(req: Request):
     return embeddings
 
 
-def _extract_prompt(messages: List[ChatMessage]) -> Tuple[Optional[str], str]:
-    """Split OpenAI messages into (system_prompt, user_prompt)."""
+def _extract_prompt(messages: List[ChatMessage], auth: dict | None = None) -> Tuple[Optional[str], str]:
+    """Split OpenAI messages into (system_prompt, user_prompt). User-supplied system messages are treated as untrusted."""
     system_parts: List[str] = []
     user_parts: List[str] = []
+    is_api_key = auth and auth.get("auth_method") == "api_key"
     for msg in messages:
         if msg.role == "system":
-            system_parts.append(msg.content)
+            # Only treat first-party system (trusted) — if multiple system msgs from user, downgrade extras to user
+            if not is_api_key and system_parts:
+                user_parts.append(f"[System instruction attempted: {msg.content[:500]}]")
+            else:
+                system_parts.append(msg.content)
         elif msg.role in ("user", "assistant", "developer", "tool"):
             user_parts.append(msg.content)
     system = "\n".join(system_parts) if system_parts else None
@@ -155,7 +160,7 @@ async def _track_usage(
         # (the up-front check only verified the balance, it did not charge).
         await _charge_usage_based(auth, endpoint)
     except Exception:
-        pass  # usage tracking is non-critical
+        logger.debug("Usage tracking failed", exc_info=True)  # non-critical
 
 
 async def _charge_usage_based(auth: dict, action: str) -> None:

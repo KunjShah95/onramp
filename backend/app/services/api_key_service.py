@@ -306,8 +306,20 @@ async def list_api_keys(owner_id: str, owner_type: str = "user") -> list[dict]:
             [("team_id", "==", owner_id)]
         )
 
-    return [
-        {
+    now = datetime.now(timezone.utc)
+    EXPIRY_WARNING_DAYS = int(os.getenv("API_KEY_EXPIRY_WARNING_DAYS", "30"))
+
+    enriched = []
+    for k in results:
+        expires_at = _coerce_aware_datetime(k.get("expires_at"))
+        is_expired = bool(expires_at and expires_at < now) if k.get("is_active") else False
+        days_until_expiry: Optional[int] = None
+        approaching_expiry = False
+        if expires_at and not is_expired:
+            days_until_expiry = max(0, (expires_at - now).days)
+            approaching_expiry = days_until_expiry <= EXPIRY_WARNING_DAYS
+
+        enriched.append({
             "id": k["id"],
             "key_id": k["id"],
             "name": k["name"],
@@ -315,15 +327,17 @@ async def list_api_keys(owner_id: str, owner_type: str = "user") -> list[dict]:
             "created_at": k["created_at"],
             "last_used_at": k.get("last_used_at"),
             "expires_at": k.get("expires_at"),
+            "is_expired": is_expired,
+            "days_until_expiry": days_until_expiry,
+            "approaching_expiry": approaching_expiry,
             "permissions": k.get("permissions") or {},
             "org_name": (k.get("permissions") or {}).get("org_name") or k["name"],
             "tier": (k.get("permissions") or {}).get("tier", "free"),
             "credit_limit": (k.get("permissions") or {}).get("credit_limit"),
             "credits_used": int((k.get("permissions") or {}).get("credits_used", 0)),
             "usage_count": int((k.get("permissions") or {}).get("credits_used", 0)),
-        }
-        for k in results
-    ]
+        })
+    return enriched
 
 
 class APIKeyService:
@@ -420,21 +434,36 @@ class APIKeyService:
         }
 
     async def increment_credits_used(self, key_id: str, credits: int) -> Optional[dict]:
-        """Add ``credits`` to a key's cumulative usage counter.
+        """Atomically add ``credits`` to a key's cumulative usage counter.
 
-        Returns the updated key record, or None when the key does not exist.
-        The counter lives inside the ``permissions`` JSONB dict, so the update
-        is a read-modify-write against the storage layer.
+        Uses an atomic increment where storage supports it; falls back to
+        read-modify-write with retry on conflict.
         """
         if not key_id:
             return None
         storage = get_storage()
-        record = await storage.get_document("api_keys", key_id)
-        if record is None:
-            return None
-        perms = dict(record.get("permissions") or {})
-        perms["credits_used"] = int(perms.get("credits_used", 0)) + int(credits)
-        return await storage.update_document("api_keys", key_id, {"permissions": perms})
+        # Try atomic path if storage exposes it (Postgres uses jsonb_set + FOR UPDATE)
+        if hasattr(storage, "increment_json_field"):
+            try:
+                return await storage.increment_json_field(
+                    "api_keys", key_id, "permissions", "credits_used", int(credits)
+                )
+            except Exception:
+                pass
+        # Fallback: optimistic retry loop
+        for _ in range(3):
+            record = await storage.get_document("api_keys", key_id)
+            if record is None:
+                return None
+            perms = dict(record.get("permissions") or {})
+            perms["credits_used"] = int(perms.get("credits_used", 0)) + int(credits)
+            try:
+                result = await storage.update_document("api_keys", key_id, {"permissions": perms})
+                if result:
+                    return result
+            except Exception:
+                continue
+        return None
 
     @staticmethod
     def cost_limit_reached(credit_limit: Optional[int], credits_used: int, cost: int) -> bool:

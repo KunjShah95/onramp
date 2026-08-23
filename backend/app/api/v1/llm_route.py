@@ -124,7 +124,7 @@ def primary_route_header(
         if chain and hasattr(llm, "route_info"):
             return llm.route_info(chain[0])["served"]
     except Exception:
-        pass
+        logger.debug("Failed to resolve primary route header", exc_info=True)
     return FALLBACK_ROUTE
 
 
@@ -153,5 +153,5 @@ def attach_served_route_header(
             response.headers["X-LLM-Route"] = after["served"]
             return True
     except Exception:
-        pass
+        logger.debug("Failed to attach served route header", exc_info=True)
     return False

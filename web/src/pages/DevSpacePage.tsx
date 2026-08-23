@@ -108,7 +108,7 @@ export default function DevSpacePage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-6xl mx-auto space-y-6"
+        className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6"
       >
       {/* Header */}
       <motion.div variants={item}>

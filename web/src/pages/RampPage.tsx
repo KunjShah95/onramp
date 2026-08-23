@@ -205,7 +205,7 @@ export default function RampPage() {
   const ramped = data?.ramped_count ?? 0
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         eyebrow="Ramp Visibility"
         title="Ramp Visibility"

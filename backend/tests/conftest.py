@@ -174,13 +174,20 @@ async def clean_postgres_tables(storage_backend):
     if storage_backend != "postgres":
         return
 
+    import re
     from app.database.config import db_config
     from sqlalchemy import text
+
+    # Validate table names against a safe identifier pattern to prevent
+    # SQL injection, even though the list is currently hardcoded.
+    _TABLE_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 
     await db_config.ensure_engine()
     factory = db_config.get_session_factory()
     async with factory() as session:
         for table in _POSTGRES_CLEAN_TABLES:
+            if not _TABLE_RE.match(table):
+                raise ValueError(f"Refusing to truncate table with invalid name: {table!r}")
             await session.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
         await session.commit()
 

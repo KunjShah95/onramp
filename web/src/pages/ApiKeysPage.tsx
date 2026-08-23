@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Key,
@@ -11,6 +11,8 @@ import {
   Spinner,
   Terminal,
   ShieldCheck,
+  ArrowsClockwise,
+  Warning,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import { PageHeader } from '../components/ui/page-header'
@@ -18,7 +20,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import { ApiKeysSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { listApiKeys, createApiKey, revokeApiKey } from '../lib/api'
+import { listApiKeys, createApiKey, revokeApiKey, rotateApiKey } from '../lib/api'
 import type { ApiKey } from '../lib/api'
 import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
 
@@ -45,6 +47,8 @@ export default function ApiKeysPage() {
   const [creating, setCreating] = useState(false)
   const [revealedRaw, setRevealedRaw] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [rotating, setRotating] = useState<string | null>(null)
+  const [revealedRotatedRaw, setRevealedRotatedRaw] = useState<string | null>(null)
 
   // Earliest selectable expiry date (today) — past dates mean "no expiry".
   const today = new Date().toISOString().split('T')[0]
@@ -53,7 +57,7 @@ export default function ApiKeysPage() {
   const { activeTeamId } = useAuth()
   const orgName = activeTeamId || 'default'
 
-  async function fetchKeys() {
+  const fetchKeys = useCallback(async () => {
     setLoading(true); setError('')
     try {
       const data = await listApiKeys(orgName)
@@ -63,12 +67,11 @@ export default function ApiKeysPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orgName])
 
   useEffect(() => {
     fetchKeys()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgName])
+  }, [fetchKeys])
 
   const handleCreate = async () => {
     setCreating(true)
@@ -83,6 +86,20 @@ export default function ApiKeysPage() {
       toast.error('Could not create key', err.message)
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleRotate = async (keyId: string) => {
+    setRotating(keyId)
+    try {
+      const res = await rotateApiKey(keyId)
+      setRevealedRotatedRaw(res.raw_key)
+      await fetchKeys()
+      toast.success('API key rotated', 'Copy the new key · the old key has been revoked.')
+    } catch (err: any) {
+      toast.error('Could not rotate key', err.message)
+    } finally {
+      setRotating(null)
     }
   }
 
@@ -191,8 +208,39 @@ export default function ApiKeysPage() {
                       <span>· expires {formatKeyDate(apiKey.expires_at)}</span>
                     )}
                   </div>
+                  {/* Expiry warning banner */}
+                  {apiKey.is_active && apiKey.approaching_expiry && apiKey.days_until_expiry != null && (
+                    <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-tile bg-warning-muted border border-warning/25 text-warning">
+                      <Warning className="w-3.5 h-3.5 shrink-0" weight="fill" />
+                      <span className="text-caption font-medium">
+                        Expires in {apiKey.days_until_expiry} day{apiKey.days_until_expiry !== 1 ? 's' : ''} — rotate to avoid disruption
+                      </span>
+                    </div>
+                  )}
+                  {apiKey.is_active && apiKey.is_expired && (
+                    <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-tile bg-abort/10 border border-abort/25 text-abort">
+                      <Warning className="w-3.5 h-3.5 shrink-0" weight="fill" />
+                      <span className="text-caption font-medium">
+                        This key has expired and will no longer authenticate
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleRotate(apiKey.key_id)}
+                    disabled={!apiKey.is_active || rotating === apiKey.key_id}
+                    className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-go transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
+                    title="Rotate (revoke + create new)"
+                  >
+                    {rotating === apiKey.key_id ? (
+                      <Spinner className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ArrowsClockwise className="w-4 h-4" />
+                    )}
+                  </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -322,6 +370,56 @@ export default function ApiKeysPage() {
                     </motion.button>
                   </div>
                 )}
+              </ConsolePanel>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Rotated Key Modal */}
+      <AnimatePresence>
+        {revealedRotatedRaw && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-ink/50 z-40"
+              onClick={() => setRevealedRotatedRaw(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <ConsolePanel rail="Credentials" designator="ROTATED KEY" status="go" className="w-full max-w-md p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-display-xs font-display font-medium text-ink">
+                    New key (old key revoked)
+                  </h2>
+                  <button
+                    onClick={() => setRevealedRotatedRaw(null)}
+                    className="w-8 h-8 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-caption text-ink-muted">
+                    Copy this key now. The old key has been revoked and the new key will not be shown again.
+                  </p>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-tile bg-well border border-seam font-code text-xs text-ink-secondary break-all">
+                    <Terminal className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                    <code className="flex-1">{revealedRotatedRaw}</code>
+                    <button onClick={() => handleCopy(revealedRotatedRaw)} className="shrink-0 text-ink-muted hover:text-ink">
+                      {copied ? <Check className="w-4 h-4 text-go" weight="bold" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <button onClick={() => setRevealedRotatedRaw(null)} className="btn btn-primary w-full">
+                    Done
+                  </button>
+                </div>
               </ConsolePanel>
             </motion.div>
           </>

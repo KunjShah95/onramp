@@ -1,4 +1,4 @@
-// @ts-nocheck — Pre-existing auth type narrowing issues (inherited from AuthContext.tsx)
+
 /*
  * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
  * THESIS: Settings is the station engineer's seat — identity, signal routing
@@ -59,12 +59,13 @@ const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { st
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
 
 /** Signal switch — the one toggle control used across every settings seat. */
-function Toggle({ on, onChange, disabled, danger, label }: {
+function Toggle({ on, onChange, disabled, danger, label, describedBy }: {
   on: boolean
   onChange: () => void
   disabled?: boolean
   danger?: boolean
   label?: string
+  describedBy?: string
 }) {
   return (
     <button
@@ -72,6 +73,7 @@ function Toggle({ on, onChange, disabled, danger, label }: {
       role="switch"
       aria-checked={on}
       aria-label={label ? `${label} ${on ? 'on' : 'off'}` : on ? 'On' : 'Off'}
+      aria-describedby={describedBy}
       onClick={onChange}
       disabled={disabled}
       className={cn(
@@ -80,7 +82,7 @@ function Toggle({ on, onChange, disabled, danger, label }: {
         disabled && 'opacity-50 cursor-not-allowed'
       )}
     >
-      <span className={cn(
+      <span aria-hidden="true" className={cn(
         'absolute top-0.5 w-5 h-5 rounded-full bg-panel-raised shadow-sm transition-all duration-200',
         on ? 'left-[22px]' : 'left-[2px]'
       )} />
@@ -340,7 +342,7 @@ export default function Settings() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="w-full max-w-5xl pt-4 sm:pt-8 pb-12 px-4 sm:px-6">
+    <motion.div variants={container} initial="hidden" animate="show"      className="w-full max-w-5xl pt-4 sm:pt-8 pb-12">
       {/* ── Header ── */}
       <motion.div variants={item} className="mb-6">
         <PageHeader
@@ -1229,10 +1231,10 @@ function SsoConfigSection() {
 
   useEffect(() => {
     async function load() {
-      if (!user?.uid) return
+      if (!user?.id) return
       setLoading(true)
       try {
-        const teamsData = await listTeams(user.uid)
+        const teamsData = await listTeams(user.id)
         if (teamsData.teams?.length > 0) {
           const tid = teamsData.teams[0].team_id
           setTeamId(tid)
@@ -1249,7 +1251,7 @@ function SsoConfigSection() {
       setLoading(false)
     }
     load()
-  }, [user?.uid])
+  }, [user?.id])
 
   async function handleSave() {
     if (!teamId) { setMessage('No team selected'); return }

@@ -14,6 +14,8 @@ Available schedules (all times UTC):
     - Leaderboard refresh: every hour
     - Repo index refresh: every night at 03:00 (pre-builds / auto-refreshes
       repository context indexes so first requests hit the cache)
+    - API key expiry sweep: daily at 06:00 (auto-revoke expired keys,
+      warn on approaching expiry)
 """
 
 from celery.schedules import crontab
@@ -87,6 +89,17 @@ BEAT_SCHEDULE = {
         "task": "app.tasks.repo_index_tasks.refresh_repo_indexes",
         "schedule": crontab(hour=3, minute=0),
         "options": {"queue": "agent-tasks"},
+    },
+
+    # ── API Key Expiry Sweep ────────────────────────────────────────────────────
+    # Auto-revoke expired keys, send approaching-expiry warnings.
+    # Runs daily at 06:00 UTC. Configurable via:
+    #   API_KEY_EXPIRY_WARNING_DAYS (default 30)
+    #   API_KEY_AUTO_REVOKE_EXPIRED (default true)
+    "sweep-api-key-expiry": {
+        "task": "app.tasks.notification_tasks.sweep_api_key_expiry",
+        "schedule": crontab(hour=6, minute=0),
+        "options": {"queue": "notification-tasks"},
     },
 
 }

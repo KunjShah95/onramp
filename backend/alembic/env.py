@@ -2,7 +2,6 @@
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
@@ -15,6 +14,8 @@ from app.database.config import Base
 from app.database.models import User, Team, TeamMember, ApiKey, UsageRecord, Repository
 
 from dotenv import load_dotenv
+import logging
+
 load_dotenv()
 
 config = context.config
@@ -24,6 +25,8 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+_migrate_logger = logging.getLogger("alembic.env")
+
 
 def get_url():
     """Get database URL from environment or config"""
@@ -31,8 +34,12 @@ def get_url():
     db_config = DatabaseConfig()
     
     url = db_config.database_url
-    # Secure logging of env configuration to help debug deployment issues
-    print(f"DEBUG: env={db_config.env}, is_production={db_config.is_production}, DATABASE_URL is {'set' if url else 'NOT set'}", flush=True)
+    _migrate_logger.info(
+        "env=%s is_production=%s DATABASE_URL is %s",
+        db_config.env,
+        db_config.is_production,
+        "set" if url else "NOT set",
+    )
     if url:
         from urllib.parse import urlparse
         try:
@@ -47,9 +54,9 @@ def get_url():
                 else:
                     netloc = f"{credentials}:***@{host}"
             masked = f"{parsed.scheme}://{netloc}{parsed.path}"
-            print(f"DEBUG: resolved DATABASE_URL={masked}", flush=True)
+            _migrate_logger.info("resolved DATABASE_URL=%s", masked)
         except Exception as e:
-            print(f"DEBUG: resolved DATABASE_URL could not be parsed safely: {e}", flush=True)
+            _migrate_logger.warning("resolved DATABASE_URL could not be parsed safely: %s", e)
 
     return url
 
@@ -88,8 +95,11 @@ async def run_async_migrations() -> None:
     from app.database.config import DatabaseConfig
 
     db_config = DatabaseConfig()
-    configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = get_url()
+    configuration = config.get_section(config.config_ini_section) or {}
+    url = get_url()
+    if not url:
+        raise RuntimeError("DATABASE_URL is required for migrations — set it in backend/.env or env")
+    configuration["sqlalchemy.url"] = url
 
     connect_args = db_config._build_connect_args()
 

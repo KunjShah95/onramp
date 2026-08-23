@@ -295,7 +295,7 @@ export default function DocsPage() {
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Changelog
               </Link>
-              <a href="https://github.com" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-mono text-xs flex items-center gap-1.5">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors font-mono text-xs flex items-center gap-1.5">
                 Edit on GitHub
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>

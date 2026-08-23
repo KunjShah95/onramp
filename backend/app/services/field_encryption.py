@@ -51,8 +51,11 @@ def decrypt_field(ciphertext: str) -> str:
     try:
         return f.decrypt(ciphertext.encode()).decode()
     except Exception:
+        # Don't silently return ciphertext as plaintext — that causes double-encrypt
+        # on next write when caller treats ciphertext as plaintext. Raise so caller
+        # can handle rotation explicitly.
         logger.exception("Failed to decrypt PII field — key may have changed")
-        return ciphertext
+        raise ValueError("Failed to decrypt PII field — encryption key mismatch or corrupted data")
 
 
 def email_hash(email: str) -> str:

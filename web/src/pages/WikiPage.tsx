@@ -24,7 +24,7 @@ function MarkdownContent({ content }: { content: string }) {
               <h1 className="font-display text-display-sm font-bold text-ink mb-3 leading-tight">{title}</h1>
               {body && (
                 <div className="text-body-sm text-ink-muted/60 leading-[1.8] space-y-3 max-w-none">
-                  {body.split('\n\n').map((p, j) => <p key={j}>{p}</p>)}
+                  {body.split('\n\n').map((p, j) => <p key={`p-${j}-${p.slice(0,12)}`}>{p}</p>)}
                 </div>
               )}
             </div>

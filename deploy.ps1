@@ -45,7 +45,7 @@ Write-Host "Optional: set VITE_NEON_AUTH_URL in Vercel if using a custom auth en
 # Step 6: Deploy
 Write-Host "Step 6: Deploy Frontend" -ForegroundColor Blue
 Write-Host "Changing to frontend directory..." -ForegroundColor Gray
-Set-Location "ai-onboarding-engineer"
+Set-Location "web"
 
 Write-Host "Building and deploying to Vercel..." -ForegroundColor Green
 npm run build

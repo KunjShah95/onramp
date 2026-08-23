@@ -44,7 +44,10 @@ export default function NotificationBell() {
 
   // Poll for unread count (default 2 min, configurable via VITE_NOTIFICATION_POLL_INTERVAL)
   useEffect(() => {
-    const intervalMs = Number(import.meta.env.VITE_NOTIFICATION_POLL_INTERVAL) || 120_000
+    const raw = import.meta.env.VITE_NOTIFICATION_POLL_INTERVAL
+    const parsed = raw != null && raw !== '' ? Number(raw) : 120_000
+    const intervalMs = Number.isFinite(parsed) ? parsed : 120_000
+    if (intervalMs <= 0) { fetchUnreadCount(); return }
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, intervalMs)
     return () => clearInterval(interval)
@@ -254,6 +257,7 @@ export default function NotificationBell() {
             {notifications.map((n) => (
               <button
                 key={n.notification_id}
+                role="menuitem"
                 onClick={() => handleOpen(n)}
                 className={cn(
                   'w-full text-left px-4 py-3 border-b border-seam transition-colors hover:bg-well/60',

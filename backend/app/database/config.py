@@ -55,10 +55,16 @@ class DatabaseConfig:
                 "postgresql://", "postgresql+asyncpg://", 1
             )
 
-        self.pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
-        self.max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "20"))
-        self.pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
-        self.pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+        def _int_env(key: str, default: int) -> int:
+            try:
+                return int(os.getenv(key, str(default)))
+            except (ValueError, TypeError):
+                logger.warning("Invalid %s value %r — using default %s", key, os.getenv(key), default)
+                return default
+        self.pool_size = _int_env("DB_POOL_SIZE", 10)
+        self.max_overflow = _int_env("DB_MAX_OVERFLOW", 20)
+        self.pool_timeout = _int_env("DB_POOL_TIMEOUT", 30)
+        self.pool_recycle = _int_env("DB_POOL_RECYCLE", 1800)
         # Default to `require` in production, `prefer` otherwise.
         self.ssl_mode = os.getenv(
             "DB_SSL_MODE", "require" if self.is_production else "prefer"

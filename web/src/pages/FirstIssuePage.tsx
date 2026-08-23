@@ -117,7 +117,7 @@ export default function FirstIssuePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <PageHeader
           eyebrow="FIRST ISSUES · CONTRIBUTION GATE"

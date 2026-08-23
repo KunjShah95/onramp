@@ -39,25 +39,64 @@ from app.api.v1 import (
     teams, unique, webhook_handler, wiki, ws as ws_router
 )
 from app.middleware import AuthMiddleware, RateLimitMiddleware, LoggingMiddleware, ResponseWrapperMiddleware
+from app.api.v1.auth import CSRFMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.csp_nonce import CSPNonceMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
 
 
-_MAX_BODY_SIZE = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(4 * 1024 * 1024)))  # 4 MB default
+def _get_max_body_size() -> int:
+    try:
+        return int(os.getenv("MAX_REQUEST_BODY_BYTES", str(4 * 1024 * 1024)))
+    except ValueError:
+        return 4 * 1024 * 1024
 
 
 class BodySizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next) -> Response:
+        max_size = _get_max_body_size()
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > _MAX_BODY_SIZE:
-            return Response(
-                content='{"detail":"Request body too large"}',
-                status_code=413,
-                media_type="application/json",
-            )
+        if content_length:
+            try:
+                if int(content_length) > max_size:
+                    return Response(
+                        content='{"detail":"Request body too large"}',
+                        status_code=413,
+                        media_type="application/json",
+                    )
+            except ValueError:
+                pass
+        # Also enforce for chunked / streaming bodies lacking Content-Length
+        # by wrapping the receive channel and counting bytes
+        received = 0
+        original_receive = request.scope.get("receive")
+
+        async def _counting_receive():
+            nonlocal received
+            message = await original_receive()
+            body = message.get("body", b"")
+            if body:
+                received += len(body)
+                if received > max_size:
+                    # Return 413 by raising; outer will convert
+                    raise ValueError("body too large")
+            return message
+
+        if original_receive is not None and not content_length:
+            request.scope["receive"] = _counting_receive
+            try:
+                return await call_next(request)
+            except ValueError as e:
+                if str(e) == "body too large":
+                    return Response(
+                        content='{"detail":"Request body too large"}',
+                        status_code=413,
+                        media_type="application/json",
+                    )
+                raise
         return await call_next(request)
 
 # Structured logging — JSON in production (LOG_FORMAT=json), text locally.
@@ -129,12 +168,30 @@ def _validate_production_env() -> None:
     if razorpay_enabled:
         required_vars.append("RAZORPAY_WEBHOOK_SECRET")
     
+    _weak_jwt_secrets = {
+        "dev-jwt-secret-change-in-production",
+        "test-secret-key-min-32-chars",
+        "change-me-to-a-random-secret-min-32-chars",
+        "change_me_to_a_random_secret_min_32_chars",
+    }
     for var in required_vars:
         value = os.getenv(var)
         if not value:
             errors.append(f"{var} is required in production")
-        elif var == "JWT_SECRET" and value == "dev-jwt-secret-change-in-production":
-            errors.append("JWT_SECRET is using the insecure default value - must be changed in production")
+        elif var == "JWT_SECRET":
+            if value in _weak_jwt_secrets or len(value) < 32:
+                errors.append("JWT_SECRET is using an insecure/default value - must be a strong random secret (≥32 chars) in production")
+
+    # Dev-bypass must never be enabled in production
+    if os.getenv("AUTH_DEV_BYPASS", "").lower() in ("1", "true", "yes"):
+        errors.append("AUTH_DEV_BYPASS must not be enabled in production")
+    if os.getenv("API_KEY_ALLOW_LEGACY_PEPPER", "").lower() in ("1", "true", "yes"):
+        warnings.append("API_KEY_ALLOW_LEGACY_PEPPER is enabled in production — disable after rotation")
+
+    # DB SSL must be secure in production
+    db_ssl = os.getenv("DB_SSL_MODE", "")
+    if db_ssl and db_ssl.lower() in ("disable", "allow", "prefer"):
+        errors.append(f"DB_SSL_MODE='{db_ssl}' is insecure in production - use 'require' or 'verify-full'")
     
     # LLM provider keys may come from the environment OR the Admin Dashboard
     # (platform provider keys stored encrypted in the DB, managed via the
@@ -377,11 +434,13 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/slack/standup",      # Slack slash commands (verified by signing secret)
 ])
 app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=200)
 app.add_middleware(ResponseWrapperMiddleware)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSPNonceMiddleware)
 # CORS origin regex — configurable via env var for custom domains.
 # Default matches Vercel preview deployments; override for custom domains.
 _cors_regex = os.getenv(
@@ -394,15 +453,20 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_origin_regex=_cors_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Only allow the HTTP methods the API actually uses — never "*" in
+    # production, which would let attackers probe DELETE/PATCH on any origin.
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-CSRF-Token", "Accept", "Origin"],
 )
 
 # Response compression (outermost — compresses the fully-built response).
 # Prefer Brotli when `brotli-asgi` is installed; always fall back to gzip so
 # clients that only advertise gzip still get compressed bodies. minimum_size
 # skips tiny payloads where compression overhead outweighs the savings.
-_COMPRESS_MIN_SIZE = int(os.getenv("COMPRESSION_MIN_SIZE", "500"))
+try:
+    _COMPRESS_MIN_SIZE = int(os.getenv("COMPRESSION_MIN_SIZE", "500"))
+except ValueError:
+    _COMPRESS_MIN_SIZE = 500
 try:
     from brotli_asgi import BrotliMiddleware
 

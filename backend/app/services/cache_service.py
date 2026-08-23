@@ -74,6 +74,7 @@ async def get_cached(prefix: str, request: Request) -> Optional[str]:
         key = _cache_key(prefix, request)
         return await client.get(key)
     except Exception:
+        logger.debug("Cache GET failed for key %s", _cache_key(prefix, request), exc_info=True)
         return None
 
 
@@ -87,6 +88,7 @@ async def set_cached(prefix: str, request: Request, value: str, ttl: int = DEFAU
         await client.setex(key, ttl, value)
         return True
     except Exception:
+        logger.debug("Cache SET failed for key %s", _cache_key(prefix, request), exc_info=True)
         return False
 
 
@@ -102,6 +104,7 @@ async def invalidate_pattern(pattern: str) -> int:
             return len(keys)
         return 0
     except Exception:
+        logger.debug("Cache invalidation failed for pattern %s", pattern, exc_info=True)
         return 0
 
 

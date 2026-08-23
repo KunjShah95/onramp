@@ -328,7 +328,7 @@ export default function OnboardingPlanPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 px-4 sm:px-6 py-6">
+      <div className="max-w-6xl mx-auto">
         {/* Hero */}
         <motion.div variants={item} className="mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">

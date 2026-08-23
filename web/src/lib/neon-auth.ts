@@ -1,88 +1,85 @@
 /**
- * Auth token management — stores the JWT in memory + localStorage/sessionStorage.
- * "Remember me" stores in localStorage (persists across browser closes);
- * without it, stores in sessionStorage (cleared when browser closes).
- * Replaces the former Neon Auth client.
+ * Auth token management — HttpOnly cookie-based.
+ *
+ * The backend sets HttpOnly, Secure, SameSite=Lax cookies on login/register/
+ * refresh.  Browsers send these cookies automatically on same-origin requests
+ * (via `credentials: 'include'`), so the frontend no longer stores tokens in
+ * localStorage or sessionStorage.
+ *
+ * The one exception is WebSocket: browser WS connections cannot read HttpOnly
+ * cookies, so we keep a transient in-memory copy of the access token that the
+ * backend still returns in the JSON response body.  This copy is never
+ * persisted to disk and is cleared on page reload.
  */
 
-const STORAGE_KEY = 'onramp_token'
-const REFRESH_KEY = 'onramp_refresh_token'
-const REMEMBER_KEY = 'onramp_remember_me'
-let _token: string | null = null
-let _refreshToken: string | null = null
+let _wsToken: string | null = null
 
-function _getStorage(): Storage {
-  const remembered = localStorage.getItem(REMEMBER_KEY)
-  return remembered === 'true' ? localStorage : sessionStorage
+/** Store the access token in memory for WebSocket use only. */
+export function setWsToken(token: string | null): void {
+  _wsToken = token
 }
+
+/** Get the in-memory token (WebSocket use only). */
+export function getWsToken(): string | null {
+  return _wsToken
+}
+
+// ── Legacy compatibility shims ──────────────────────────────────────────────
+// These are kept so existing call-sites (api.ts, AuthContext, Settings, etc.)
+// don't break during the migration.  They are thin wrappers around the new
+// cookie-based model.
 
 export function getToken(): string | null {
-  if (_token) return _token
-  const stored = _getStorage().getItem(STORAGE_KEY)
-  if (stored) {
-    _token = stored
-    return stored
-  }
-  return null
+  // No longer stored in JS — the browser sends the HttpOnly cookie
+  // automatically.  Return the in-memory WS token as a fallback for code
+  // paths that still need an explicit token value (WebSocket URL, etc.).
+  return _wsToken
 }
 
-export function setToken(token: string | null, rememberMe?: boolean): void {
-  _token = token
-  if (token) {
-    if (rememberMe !== undefined) {
-      localStorage.setItem(REMEMBER_KEY, rememberMe ? 'true' : 'false')
-    }
-    _getStorage().setItem(STORAGE_KEY, token)
-  } else {
-    localStorage.removeItem(STORAGE_KEY)
-    sessionStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem(REMEMBER_KEY)
-  }
+export function setToken(token: string | null, _rememberMe?: boolean): void {
+  // Tokens are now set by the backend via Set-Cookie headers.
+  // Keep an in-memory copy for WebSocket connections.
+  _wsToken = token
 }
 
-/**
- * Rotating refresh token — stored alongside the access token so a silent
- * 401 retry can exchange it for a fresh pair without re-prompting login.
- * Only issued for remember-me sessions.
- */
 export function getRefreshToken(): string | null {
-  if (_refreshToken) return _refreshToken
-  const stored = _getStorage().getItem(REFRESH_KEY)
-  if (stored) {
-    _refreshToken = stored
-    return stored
-  }
+  // Refresh token is in an HttpOnly cookie — JS cannot read it.
+  // The silent-refresh flow in api.ts now hits /auth/refresh with
+  // credentials:include so the browser sends the cookie automatically.
   return null
 }
 
-export function setRefreshToken(token: string | null): void {
-  _refreshToken = token
-  if (token) {
-    _getStorage().setItem(REFRESH_KEY, token)
-  } else {
-    localStorage.removeItem(REFRESH_KEY)
-    sessionStorage.removeItem(REFRESH_KEY)
-  }
+export function setRefreshToken(_token: string | null): void {
+  // No-op: refresh token is managed by the backend via Set-Cookie.
 }
 
 export function clearTokens(): void {
-  _token = null
-  _refreshToken = null
-  localStorage.removeItem(STORAGE_KEY)
-  sessionStorage.removeItem(STORAGE_KEY)
-  localStorage.removeItem(REFRESH_KEY)
-  sessionStorage.removeItem(REFRESH_KEY)
-  localStorage.removeItem(REMEMBER_KEY)
+  _wsToken = null
+  // Also clear the server-side cookies by calling the logout endpoint.
+  const API_BASE = (() => {
+    const url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+    return url.replace(/\/+$/, '').replace(/\/api\/v1$/, '/api/v1')
+  })()
+  fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+  }).catch(() => {})
 }
 
 export function isRememberMe(): boolean {
-  return localStorage.getItem(REMEMBER_KEY) === 'true'
+  // No longer tracked in JS — the backend decides based on the login request.
+  return false
 }
 
 export function getAuthHeaders(): Record<string, string> {
-  const token = getToken()
+  // With cookie-based auth, the browser sends cookies automatically.
+  // Only add an Authorization header if we have an in-memory token (WS fallback).
+  const token = _wsToken
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
+
+// ── Neon Auth (legacy, kept for OAuth redirect compatibility) ────────────────
 
 const NEON_AUTH_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEON_AUTH_URL) || ''
 

@@ -391,15 +391,6 @@ export default function ForceGraph({
         </div>
       )}
 
-      <style>{`
-        @keyframes pulse-ring {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.05; }
-        }
-        .node-glow { animation: pulse-ring 3s ease-in-out infinite; }
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-      `}</style>
     </div>
   )
 }

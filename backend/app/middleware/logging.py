@@ -1,9 +1,11 @@
+import os
 import time
 import logging
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("onramp")
+_ENV = os.getenv("ENV", "development")
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Logs every request with structured fields and a correlation ID.
@@ -44,7 +46,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 extra={"request_id": request_id, "user_id": user_id},
             )
 
-            response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+            # Only expose timing in non-production to avoid leaking
+            # internal performance characteristics to attackers.
+            if _ENV != "production":
+                response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
             response.headers.setdefault("X-Request-ID", request_id)
             return response
 

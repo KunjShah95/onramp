@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ToggleLeft, ToggleRight, Plus, Trash, Spinner } from '@phosphor-icons/react'
 import { useAuth } from '../context/AuthContext'
@@ -40,19 +40,22 @@ export default function FeatureFlagsPage() {
   const [toggling, setToggling] = useState<string | null>(null)
   const [customName, setCustomName] = useState('')
 
-  const fetch = useCallback(async () => {
-    if (!activeTeamId) { setLoading(false); return }
-    setLoading(true)
-    try {
-      const data = await listFeatureFlags(activeTeamId)
-      setFlags(data.flags ?? [])
-    } catch {
-      setFlags([])
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!activeTeamId) { setLoading(false); return }
+      setLoading(true)
+      try {
+        const data = await listFeatureFlags(activeTeamId)
+        if (!cancelled) setFlags(data.flags ?? [])
+      } catch {
+        if (!cancelled) setFlags([])
+      }
+      if (!cancelled) setLoading(false)
     }
-    setLoading(false)
+    load()
+    return () => { cancelled = true }
   }, [activeTeamId])
-
-  useEffect(() => { fetch() }, [fetch])
 
   const isEnabled = (name: string) => flags.find((f) => f.flag_name === name)?.enabled ?? false
 
@@ -102,7 +105,7 @@ export default function FeatureFlagsPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-3xl mx-auto px-4 sm:px-6">
+    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="max-w-3xl mx-auto">
       <div className="mb-6">
         <PageHeader
           eyebrow="Folio · Feature flags"

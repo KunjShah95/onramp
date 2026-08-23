@@ -6,11 +6,19 @@ from app.services.field_encryption import decrypt_field
 COLLECTION = "onramp_audit_log"
 
 EVENT_CODES = {
+    # Core workflow
     "code_access", "pr_viewed", "module_granted", "module_revoked",
     "task_created", "task_assigned", "task_submitted", "task_reviewed",
     "task_approved", "task_completed", "task_cancelled",
     "user_joined_team", "user_left_team", "role_changed",
     "api_key_created", "api_key_revoked", "repo_cloned",
+    # Security events
+    "login_success", "login_failed", "logout",
+    "password_reset_requested", "password_reset_completed",
+    "password_changed", "account_deactivated",
+    "token_refreshed", "session_expired",
+    "csrf_violation", "rate_limit_exceeded",
+    "unauthorized_access_attempt",
 }
 
 

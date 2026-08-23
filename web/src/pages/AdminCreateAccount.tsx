@@ -103,7 +103,7 @@ export default function AdminCreateAccount() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-2xl mx-auto space-y-6"
+      className="min-h-[calc(100vh-4rem)] max-w-2xl mx-auto space-y-6"
     >
       {/* Back link */}
       <motion.div variants={item}>

@@ -110,7 +110,8 @@ services:
     ports:
       - "8080:8080"   # host:8080 → container:8080 (non-root nginx)
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
       interval: 30s
@@ -149,6 +150,15 @@ services:
       - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
       - GITHUB_TOKEN_ENCRYPTION_KEY=${GITHUB_TOKEN_ENCRYPTION_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - TRUST_PROXY=true
       # Construct REDIS_URL for Docker self-hosted (Railway auto-injects it)
       - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
     depends_on:
@@ -160,6 +170,36 @@ services:
       resources:
         limits:
           memory: 1G
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: celery-worker
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app beat -l info
+    environment:
+      - ENVIRONMENT=production
+      - ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://onramp:${DB_PASSWORD}@postgres:5432/onramp}
+      - DB_SSL_MODE=prefer
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
+      - JWT_SECRET=${JWT_SECRET}
+      - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET}
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY}
+      - GITHUB_TOKEN_ENCRYPTION_KEY=${GITHUB_TOKEN_ENCRYPTION_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
 volumes:
   redis_data:

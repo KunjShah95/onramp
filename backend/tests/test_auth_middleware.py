@@ -52,7 +52,9 @@ def test_public_path_prefix_is_not_bypassed(client):
 def test_protected_path_without_header_rejected(client):
     resp = client.get("/protected")
     assert resp.status_code == 401
-    assert "Authorization" in resp.json()["detail"]
+    # Error mentions both cookie and Bearer token as valid auth methods
+    detail = resp.json()["detail"].lower()
+    assert "bearer" in detail or "cookie" in detail
 
 
 def test_protected_path_with_malformed_header_rejected(client):

@@ -24,27 +24,27 @@ razorpay>=1.4.0       # billing (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)
 cryptography>=42.0.0  # token encryption at rest
 sentry-sdk>=2.0.0     # error monitoring
 brotli-asgi>=1.4.0    # optional Brotli response compression (falls back to gzip if absent)
-# AST parsing (tree-sitter ecosystem)
-tree-sitter>=0.23.0              # core parsing library (v0.23+)
-tree-sitter-javascript          # JS/JSX parser
-tree-sitter-typescript          # TS/TSX parser
-tree-sitter-go                  # Go parser
-tree-sitter-rust                # Rust parser
-tree-sitter-java                # Java parser
-tree-sitter-c                   # C parser
-tree-sitter-cpp                 # C++ parser
-tree-sitter-c-sharp             # C# parser
-tree-sitter-php                 # PHP parser
-tree-sitter-ruby                # Ruby parser
-tree-sitter-swift               # Swift parser
-tree-sitter-kotlin              # Kotlin parser
-tree-sitter-bash                # Shell/Bash parser
-tree-sitter-markdown            # Markdown parser
-tree-sitter-yaml                # YAML parser
-tree-sitter-json                # JSON parser
-tree-sitter-html                # HTML parser
-tree-sitter-css                 # CSS parser
-tree-sitter-sql                 # SQL parser
+# AST parsing (tree-sitter ecosystem) — pinned to lock versions for reproducibility (see requirements.lock.txt)
+tree-sitter==0.25.2              # core parsing library
+tree-sitter-javascript==0.25.0  # JS/JSX parser
+tree-sitter-typescript==0.23.2  # TS/TSX parser
+tree-sitter-go==0.25.0                  # Go parser
+tree-sitter-rust==0.24.2                # Rust parser
+tree-sitter-java==0.23.5                # Java parser
+tree-sitter-c==0.24.2                   # C parser
+tree-sitter-cpp==0.23.4                 # C++ parser
+tree-sitter-c-sharp==0.23.5             # C# parser
+tree-sitter-php==0.24.1                # PHP parser
+tree-sitter-ruby==0.23.1                # Ruby parser
+tree-sitter-swift==0.7.3               # Swift parser
+tree-sitter-kotlin==1.1.0              # Kotlin parser
+tree-sitter-bash==0.25.1                # Shell/Bash parser
+tree-sitter-markdown==0.5.1            # Markdown parser
+tree-sitter-yaml==0.7.2                # YAML parser
+tree-sitter-json==0.24.8                # JSON parser
+tree-sitter-html==0.23.2                # HTML parser
+tree-sitter-css==0.25.0                 # CSS parser
+tree-sitter-sql==0.3.11                 # SQL parser
 gspread>=6.1.0
 email-validator>=2.0.0
 # Background task processing

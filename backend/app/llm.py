@@ -228,16 +228,11 @@ _CODE_MARKERS = (
     ".py", ".js", ".ts", "print(", "if __name__",
 )
 
-_WORD_RE = re.compile(r"\b")
-
-
 def _kw_in(text: str, keyword: str) -> bool:
     """Substring match for phrases, word-boundary match for short tokens."""
     if len(keyword) >= 6 or " " in keyword:
         return keyword in text
-    return _WORD_RE.search(keyword) is not None and (
-        re.search(rf"\b{re.escape(keyword)}\b", text) is not None
-    )
+    return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
 
 
 def classify_query(prompt: str) -> QueryType:

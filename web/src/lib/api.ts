@@ -19,58 +19,75 @@ export type { ResolveIssueRequest, ResolveIssueResult } from './types'
 function getApiBaseUrl(): string {
   let url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
   url = url.replace(/\/+$/, '')
-  if (!url.endsWith('/api/v1')) {
-    url = `${url}/api/v1`
+  if (url === '/api' || url === '/api/v1' || url.endsWith('/api/v1') || url.endsWith('/api')) {
+    if (url.endsWith('/api') && !url.endsWith('/api/v1')) url = `${url}/v1`
+    return url
   }
-  return url
+  // Handle cases like https://api.example.com/api or https://api.example.com/api/v1
+  try {
+    const parsed = new URL(url, window.location.origin)
+    if (/\/api(\/v1)?\/?$/.test(parsed.pathname)) return url
+  } catch {}
+  // Avoid double-append if already contains /api
+  if (url.includes('/api')) return url
+  return `${url}/api/v1`
 }
 export const API_BASE = getApiBaseUrl()
 
 
-// Token is stored/retrieved through neon-auth.ts to keep a single source of truth
-import { getToken, getRefreshToken, setToken, setRefreshToken } from './neon-auth'
+// Tokens are in HttpOnly cookies (set by backend).  We only need the
+// in-memory WS token for WebSocket connections.
+import { setWsToken } from './neon-auth'
+
+/** Common fetch options for all API calls — sends cookies automatically. */
+const CREDS: RequestInit = { credentials: 'include' }
 
 export function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const token = getToken()
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
+  // With cookie auth, the browser sends the token automatically.
+  // Only set an Authorization header if explicitly needed (e.g. WS fallback).
+  return { 'Content-Type': 'application/json' }
 }
 
 /**
- * Silent session refresh — exchange the stored refresh token for a fresh
- * access token pair, then retry the original request once. Fails gracefully
- * (returns null) when there is no refresh token or the exchange is rejected,
- * so the caller surfaces its normal 401 handling.
+ * Silent session refresh — hit /auth/refresh with credentials:include so the
+ * browser sends the HttpOnly refresh-token cookie.  The backend rotates the
+ * token and sets new cookies.  The response body also contains the new tokens
+ * so we can stash the access token in memory for WebSocket use.
  */
+let _refreshPromise: Promise<boolean> | null = null
+
 async function trySilentRefresh(): Promise<boolean> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return false
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    })
-    if (!res.ok) return false
-    const json = await res.json()
-    const data = unwrap<any>(json)
-    if (data?.token) {
-      setToken(data.token)
-      if (data.refresh_token) setRefreshToken(data.refresh_token)
-      return true
+  if (_refreshPromise) return _refreshPromise
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        ...CREDS,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),  // refresh token comes from cookie
+      })
+      if (!res.ok) return false
+      const json = await res.json()
+      const data = unwrap<any>(json)
+      if (data?.token) {
+        // Store in memory for WebSocket connections
+        setWsToken(data.token)
+        return true
+      }
+      return false
+    } catch {
+      return false
+    } finally {
+      _refreshPromise = null
     }
-    return false
-  } catch {
-    return false
-  }
+  })()
+  return _refreshPromise
 }
 
 async function request<T>(url: string, body?: unknown, method?: string, retried = false): Promise<T> {
   const res = await fetch(url, {
     method: method || 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   })
@@ -108,7 +125,7 @@ async function request<T>(url: string, body?: unknown, method?: string, retried 
 }
 
 async function get<T>(url: string, retried = false): Promise<T> {
-  const res = await fetch(url, { headers: authHeaders() })
+  const res = await fetch(url, { ...CREDS, headers: authHeaders() })
   if (res.status === 401 && !retried) {
     if (await trySilentRefresh()) {
       return get<T>(url, true)
@@ -144,8 +161,9 @@ async function get<T>(url: string, retried = false): Promise<T> {
 
 /** Unwrap the backend's `{success, data}` response envelope. */
 function unwrap<T>(json: any): T {
-  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-    return json.data as T
+  if (json && typeof json === 'object' && 'success' in json) {
+    if (json.success === false) throw new Error(json.error || json.detail || 'Request failed')
+    if ('data' in json) return json.data as T
   }
   return json as T
 }
@@ -251,8 +269,9 @@ export async function askQuestionStream(
    * primary team is used. */
   teamId?: string | null
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/ask/query/stream`, {
+  let res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: JSON.stringify({
       index_id: indexId,
@@ -264,7 +283,25 @@ export async function askQuestionStream(
     }),
     signal,
   })
-  if (res.status === 401) throw new Error('Authentication required. Please sign in again.')
+  if (res.status === 401) {
+    if (await trySilentRefresh()) {
+      res = await fetch(`${API_BASE}/ask/query/stream`, {
+        method: 'POST',
+        ...CREDS,
+        headers: authHeaders(),
+        body: JSON.stringify({
+          index_id: indexId,
+          question,
+          mode,
+          ...(model ? { model } : {}),
+          ...(routingMode != null ? { routing_mode: routingMode } : {}),
+          ...(teamId ? { team_id: teamId } : {}),
+        }),
+        signal,
+      })
+    }
+    if (res.status === 401) throw new Error('Authentication required. Please sign in again.')
+  }
   if (res.status === 429) throw new Error('Quota exceeded. Upgrade your plan or try again next cycle.')
   if (!res.ok || !res.body) throw new Error(`API error ${res.status}`)
 
@@ -951,6 +988,7 @@ export async function registerRepo(data: {
   if (data.description) params.set('description', data.description)
   const res = await fetch(`${API_BASE}/repos?${params}`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1037,6 +1075,7 @@ export interface SeedRoleData {
 
 export async function fetchSeedRoleData(): Promise<SeedRoleData> {
   const res = await fetch(`${API_BASE}/seed/role-data`, {
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error(`API error ${res.status}: Failed to fetch seed data`)
@@ -1330,6 +1369,7 @@ export async function addTeamMember(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: JSON.stringify({ user, role }),
   })
@@ -1352,6 +1392,7 @@ export async function addTeamMember(
 export async function getTeamMembers(teamId: string): Promise<{ user_id: string; name: string; role: string }[]> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
     method: 'GET',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1379,6 +1420,7 @@ export async function removeTeamMember(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1393,6 +1435,7 @@ export async function changeTeamTier(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/tier`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: JSON.stringify({ tier }),
   })
@@ -1460,6 +1503,7 @@ export async function archivePlaybook(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/playbooks/${playbookId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1516,6 +1560,7 @@ export async function updateSubscription(
 export async function cancelSubscription(teamId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1597,6 +1642,12 @@ export interface ApiKey {
   last_used_at?: string | null
   /** When the key auto-expires (ISO) or null if it never expires. */
   expires_at?: string | null
+  /** Whether the key has expired (server-computed). */
+  is_expired?: boolean
+  /** Days until expiry (server-computed, null if no expiry). */
+  days_until_expiry?: number | null
+  /** Whether the key expires within the warning window (default 30 days). */
+  approaching_expiry?: boolean
 }
 
 export interface ApiKeysResponse {
@@ -1639,12 +1690,23 @@ export async function listApiKeys(
 export async function revokeApiKey(keyId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/ai/keys/${keyId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail || `Failed to revoke API key (${res.status})`)
   }
+}
+
+export async function rotateApiKey(
+  keyId: string,
+  webhookUrl?: string
+): Promise<CreateApiKeyResult> {
+  return request<CreateApiKeyResult>(
+    `${API_BASE}/ai/keys/${keyId}/rotate`,
+    { key_id: keyId, ...(webhookUrl ? { webhook_url: webhookUrl } : {}) }
+  )
 }
 
 export async function validateApiKey(
@@ -1699,6 +1761,7 @@ export async function deleteProviderKey(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -1733,7 +1796,7 @@ export async function removeProviderKey(
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys/${keyId}`,
-    { method: 'DELETE', headers: authHeaders() }
+    { method: 'DELETE', ...CREDS, headers: authHeaders() }
   )
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -2378,7 +2441,7 @@ export async function fetchReviewAnalytics(teamId: string): Promise<ReviewAnalyt
 // ─── Task CSV Export ─────────────────────────────────────────
 
 async function downloadCsv(url: string, filename: string): Promise<void> {
-  const res = await fetch(url, { headers: authHeaders() })
+  const res = await fetch(url, { ...CREDS, headers: authHeaders() })
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Export error ${res.status}: ${text}`)
@@ -2598,6 +2661,7 @@ export async function exportAuditEvents(params?: {
   if (params?.actor_id) query.set('actor_id', params.actor_id)
   if (params?.limit) query.set('limit', String(params.limit))
   const res = await fetch(`${API_BASE}/admin/audit/export?${query.toString()}`, {
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -2669,6 +2733,7 @@ export async function adminTestWebhook(webhookId: string): Promise<AdminWebhookT
 export async function adminDeleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/admin/webhooks/${webhookId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -2727,6 +2792,7 @@ export async function adminSetProviderKey(
 export async function adminDeleteProviderKey(provider: string): Promise<void> {
   await fetch(`${API_BASE}/admin/ai/provider-keys/${provider}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
 }
@@ -2776,7 +2842,7 @@ export async function clearAskHistory(
 ): Promise<{ cleared: number }> {
   const res = await fetch(
     `${API_BASE}/ask/history/${encodeURIComponent(indexId)}`,
-    { method: 'DELETE', headers: authHeaders() }
+    { method: 'DELETE', ...CREDS, headers: authHeaders() }
   )
   if (!res.ok) {
     const text = await res.text()
@@ -2847,6 +2913,7 @@ export async function grantModuleAccess(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/grant`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: JSON.stringify({ user_id: userId, module }),
   })
@@ -2873,6 +2940,7 @@ export async function revokeModuleAccess(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/revoke`, {
     method: 'POST',
+    ...CREDS,
     headers: authHeaders(),
     body: JSON.stringify({ user_id: userId, module }),
   })
@@ -2900,7 +2968,8 @@ export async function revokeAllModuleAccess(
     `${API_BASE}/teams/${teamId}/module-permissions/revoke-all`,
     {
       method: 'POST',
-      headers: authHeaders(),
+      ...CREDS,
+    headers: authHeaders(),
       body: JSON.stringify({ user_id: userId }),
     }
   )
@@ -3125,10 +3194,17 @@ export async function mergePR(taskId: string, data?: {
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
-  await fetch(`${API_BASE}/tasks/${taskId}`, {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
+  if (!res.ok) {
+    const text = await res.text()
+    let message = `API error ${res.status}`
+    try { const j = JSON.parse(text); if (j.detail) message = j.detail } catch {}
+    throw new Error(message)
+  }
 }
 
 export async function getTeamProgress(teamId: string): Promise<TeamProgress> {
@@ -3279,6 +3355,7 @@ export async function updateTaskTemplate(templateId: string, data: Partial<{
 export async function deleteTaskTemplate(templateId: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/tasks/templates/${templateId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -3401,6 +3478,7 @@ export async function markAllNotificationsRead(): Promise<{ marked_count: number
 export async function deleteNotification(notificationId: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/notifications/${notificationId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -3530,6 +3608,7 @@ export async function updateWebhook(webhookId: string, data: {
 export async function deleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/integrations/webhooks/${webhookId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -3570,6 +3649,7 @@ export async function saveIntegration(integrationType: string, config: Record<st
 export async function deleteIntegration(integrationType: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/integrations/${integrationType}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) {
@@ -3827,12 +3907,13 @@ export async function authLogin(
  * credential. Returns the new token pair so callers can persist both.
  */
 export async function refreshToken(): Promise<{ token: string; refresh_token?: string | null }> {
-  const stored = getRefreshToken()
-  if (!stored) throw new Error('No refresh token available')
+  // The refresh token is in an HttpOnly cookie — the browser sends it
+  // automatically with credentials:include.  No need to read from JS.
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: 'POST',
+    ...CREDS,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: stored }),
+    body: JSON.stringify({}),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -3850,8 +3931,8 @@ export async function refreshToken(): Promise<{ token: string; refresh_token?: s
   const json = await res.json()
   const data = unwrap<any>(json)
   if (!data?.token) throw new Error('Refresh failed')
-  setToken(data.token)
-  if (data.refresh_token) setRefreshToken(data.refresh_token)
+  // Store in memory for WebSocket connections
+  setWsToken(data.token)
   return { token: data.token, refresh_token: data.refresh_token }
 }
 
@@ -4029,6 +4110,7 @@ export async function getSsoConfig(teamId: string): Promise<SsoConfig> {
 export async function deleteSsoConfig(teamId: string): Promise<{ deleted: boolean }> {
   const res = await fetch(`${API_BASE}/auth/sso/config/${teamId}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error(`API error ${res.status}`)
@@ -4067,6 +4149,22 @@ export async function resetPassword(
     token,
     password,
   })
+}
+
+export async function resendForgotPassword(
+  email: string
+): Promise<ForgotPasswordResponse> {
+  return request<ForgotPasswordResponse>(`${API_BASE}/auth/forgot-password/resend`, {
+    email,
+  })
+}
+
+export async function getForgotPasswordStatus(
+  email: string
+): Promise<{ ok: boolean; token_expiry_minutes: number; message: string }> {
+  return get<{ ok: boolean; token_expiry_minutes: number; message: string }>(
+    `${API_BASE}/auth/forgot-password/status?email=${encodeURIComponent(email)}`
+  )
 }
 
 // ── Invites ────────────────────────────────────────────────────
@@ -4416,6 +4514,7 @@ export async function setFeatureFlag(teamId: string, flagName: string, enabled: 
 export async function deleteFeatureFlag(teamId: string, flagName: string): Promise<void> {
   return (await fetch(`${API_BASE}/feature-flags/${teamId}/${flagName}`, {
     method: 'DELETE',
+    ...CREDS,
     headers: authHeaders(),
   })).json()
 }

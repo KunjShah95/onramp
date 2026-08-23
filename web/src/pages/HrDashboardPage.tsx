@@ -393,7 +393,7 @@ export default function HrDashboardPage() {
 
   if (cohortLoading) {
     return (
-      <div className="animate-in w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 space-y-6">
+      <div className="animate-in w-full min-h-[calc(100vh-4rem)] space-y-6">
         <div className="h-24 rounded-card bg-panel border border-seam animate-skeleton" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-card bg-panel border border-seam animate-skeleton" />)}
@@ -424,7 +424,7 @@ export default function HrDashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden space-y-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden space-y-6">
       {/* Header */}
       <motion.div variants={item}>
         <PageHeader

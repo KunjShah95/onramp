@@ -2,6 +2,12 @@ node_modules
 .venv
 venv
 .env
+.env.*
+*.env
+backend/.env
+backend/.env.*
+web/.env
+web/.env.*
 .git
 __pycache__
 *.pyc

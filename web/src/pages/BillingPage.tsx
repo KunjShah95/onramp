@@ -36,19 +36,41 @@ export default function BillingPage() {
   ]
 
   useEffect(() => {
+    let cancelled = false
     async function loadTeams() {
-      try { const data = await listTeams('current-user'); setTeams(data.teams || []) } catch (err: any) { setError(err.message || 'Failed to load teams') }
+      try {
+        const data = await listTeams('current-user')
+        if (!cancelled) setTeams(data.teams || [])
+      } catch (err: any) {
+        if (!cancelled) setError(err.message || 'Failed to load teams')
+      }
     }
     loadTeams()
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => { if (activeTeamId) setTeamId(activeTeamId) }, [activeTeamId])
   useEffect(() => {
-    if (teamId) {
-      fetchSubscription(teamId)
-    } else {
-      setSubscription(null); setSelectedTier(null); setWallet(null)
+    let cancelled = false
+    async function load() {
+      if (teamId) {
+        setLoading(true); setError('')
+        try {
+          const data = await getSubscription(teamId.trim())
+          if (cancelled) return
+          setSubscription(data)
+          setSelectedTier(data.tier)
+          if (data.tier === 'usage_based') fetchWallet()
+        } catch {
+          if (!cancelled) { setSubscription(null); setSelectedTier(null) }
+        }
+        if (!cancelled) setLoading(false)
+      } else {
+        setSubscription(null); setSelectedTier(null); setWallet(null)
+      }
     }
+    load()
+    return () => { cancelled = true }
   }, [teamId])
 
   useEffect(() => {
@@ -164,9 +186,7 @@ export default function BillingPage() {
     <motion.div
       variants={containerVariants}
       initial="hidden"
-      animate="visible"
-      className="relative w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 font-body text-ink"
-    >
+      animate="visible"      className="relative w-full min-h-[calc(100vh-4rem)] font-body text-ink">
       {/* ── Header ── */}
       <motion.div variants={itemVariants} className="mb-6">
         <PageHeader
@@ -361,11 +381,6 @@ export default function BillingPage() {
         })}
       </motion.div>
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
-      `}</style>
     </motion.div>
   )
 }
