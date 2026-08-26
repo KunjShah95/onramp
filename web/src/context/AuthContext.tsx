@@ -74,7 +74,8 @@ function isSafeAvatarUrl(url: string): boolean {
   }
 }
 
-function mapUser(raw: Record<string, unknown>): User {
+function mapUser(raw: Record<string, unknown> | null | undefined): User | null {
+  if (!raw || typeof raw !== 'object') return null
   const rawAvatar = (raw.avatar_url as string) || ''
   const safeAvatar = rawAvatar && isSafeAvatarUrl(rawAvatar) ? rawAvatar : undefined
   return {
@@ -135,12 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setState((prev) => ({
           ...prev,
-          user: mapUser(me as unknown as Record<string, unknown>),
-          authMethod: 'password',
+          user: me ? mapUser(me as unknown as Record<string, unknown>) : null,
+          authMethod: me ? 'password' : null,
           loading: true,
         }))
 
-        await syncRoleFromTeams(me?.uid)
+        if (me) await syncRoleFromTeams((me as { uid?: string })?.uid)
 
         if (active) {
           setState((prev) => ({ ...prev, loading: false }))
