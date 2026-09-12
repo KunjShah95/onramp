@@ -25,7 +25,7 @@ import httpx
 
 from app.services.user_service import create_user, get_user_by_email
 from app.services.team_service import create_personal_team
-from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
+from app.services.field_encryption import email_hash, email_hash_candidates, encrypt_field, decrypt_field
 from app.database.config import db_config
 from app.database.models import User as UserModel
 from sqlalchemy import select
@@ -33,11 +33,30 @@ from sqlalchemy import select
 logger = logging.getLogger(__name__)
 
 # ── Config ──────────────────────────────────────────────────────────────────
+# NOTE: read at import for backwards-compat (other modules import these names),
+# but all runtime paths use the live _*_live() helpers below so tests that
+# monkeypatch env vars (and deploys that inject secrets after import) work.
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+
+
+def _google_client_id() -> str:
+    return os.getenv("GOOGLE_CLIENT_ID", "") or GOOGLE_CLIENT_ID
+
+
+def _google_client_secret() -> str:
+    return os.getenv("GOOGLE_CLIENT_SECRET", "") or GOOGLE_CLIENT_SECRET
+
+
+def _github_client_id() -> str:
+    return os.getenv("GITHUB_CLIENT_ID", "") or GITHUB_CLIENT_ID
+
+
+def _github_client_secret() -> str:
+    return os.getenv("GITHUB_CLIENT_SECRET", "") or GITHUB_CLIENT_SECRET
 
 
 def _validate_oauth_config(provider: str) -> None:
@@ -48,12 +67,12 @@ def _validate_oauth_config(provider: str) -> None:
     generic provider exchange failure.
     """
     if provider == "google":
-        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        if not _google_client_id() or not _google_client_secret():
             raise ValueError(
                 "Google OAuth is not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"
             )
     elif provider == "github":
-        if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        if not _github_client_id() or not _github_client_secret():
             raise ValueError(
                 "GitHub OAuth is not configured — set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET"
             )
@@ -223,7 +242,7 @@ async def get_google_login_url() -> str:
     state = await _save_state()
     redirect_uri = f"{BACKEND_URL}/api/v1/auth/oauth/google/callback"
     params = {
-        "client_id": GOOGLE_CLIENT_ID,
+        "client_id": _google_client_id(),
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": GOOGLE_SCOPES,
@@ -253,8 +272,8 @@ async def handle_google_callback(code: str, state: str) -> dict:
             GOOGLE_TOKEN_URL,
             data={
                 "code": code,
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
+                "client_id": _google_client_id(),
+                "client_secret": _google_client_secret(),
                 "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             },
@@ -311,7 +330,7 @@ async def get_github_login_url(mode: str = "login", uid: Optional[str] = None) -
     state = await _save_state(extra)
     redirect_uri = f"{BACKEND_URL}/api/v1/auth/oauth/github/callback"
     params = {
-        "client_id": GITHUB_CLIENT_ID,
+        "client_id": _github_client_id(),
         "redirect_uri": redirect_uri,
         "scope": GITHUB_SCOPES,
         "state": state,
@@ -340,8 +359,8 @@ async def handle_github_callback(code: str, state: str) -> dict:
         token_resp = await client.post(
             GITHUB_TOKEN_URL,
             data={
-                "client_id": GITHUB_CLIENT_ID,
-                "client_secret": GITHUB_CLIENT_SECRET,
+                "client_id": _github_client_id(),
+                "client_secret": _github_client_secret(),
                 "code": code,
                 "redirect_uri": redirect_uri,
             },
@@ -527,7 +546,7 @@ async def _find_or_create_oauth_user(
 
     async with factory() as session:
         result = await session.execute(
-            select(UserModel).where(UserModel.email_hash == email_hash(email))
+            select(UserModel).where(UserModel.email_hash.in_(email_hash_candidates(email)))
         )
         user_row = result.scalar_one_or_none()
 

@@ -23,16 +23,16 @@ function NavItem({ to, label, Icon, collapsed }: NavItem & { collapsed: boolean 
             ? 'justify-center h-8 w-8 mx-auto rounded-btn'
             : 'gap-2.5 px-3 py-[7px] w-full rounded-btn',
           isActive
-            ? 'text-ink font-medium'
-            : 'text-ink-muted hover:text-ink-secondary'
+            ? 'text-ink font-medium bg-go/[0.09]'
+            : 'text-ink-muted hover:text-ink-secondary hover:bg-well/50'
         )
       }
     >
       {({ isActive }) => (
         <>
-          {/* 2px signal spine — the workbench index mark */}
+          {/* 2px signal spine — the workbench index mark, with a soft glow */}
           {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-[2px] rounded-full bg-go" aria-hidden />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-[2px] rounded-full bg-go shadow-[0_0_8px_rgb(var(--accent-primary)/0.55)]" aria-hidden />
           )}
           <Icon
             size={15}
@@ -145,8 +145,10 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
         aria-label="Primary navigation"
         className={cn(
           // Desktop: sticky rail. Mobile: fixed off-canvas drawer.
-          'app-sidebar bg-base border-r border-seam flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
-          'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-overhead max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
+          // Glass rail: translucent panel over the ambient canvas, hairline seam,
+          // blur — depth from light passing through, not from heavy shadow.
+          'app-sidebar bg-panel/80 border-r border-seam backdrop-blur-xl flex flex-col shrink-0 transition-[width] duration-200 ease-out overflow-hidden',
+          'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:bg-panel max-lg:shadow-overhead max-lg:transition-transform max-lg:duration-200 max-lg:ease-out',
           open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
           'lg:sticky lg:top-0 lg:self-start lg:h-full',
           collapsed ? 'w-[60px]' : 'w-[212px]'
@@ -172,7 +174,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
             title={collapsed ? 'Onramp' : undefined}
             aria-label="Onramp home"
           >
-            <div className="w-7 h-7 rounded-tile bg-ink text-panel-raised flex items-center justify-center transition-colors duration-200 group-hover:bg-go">
+            <div className="w-7 h-7 rounded-tile bg-gradient-to-br from-accent-primary to-accent-via text-[rgb(var(--accent-foreground))] flex items-center justify-center shadow-[0_0_14px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-hover:scale-105">
               <span className="text-[11px] font-bold font-display tracking-tight">OR</span>
             </div>
             {!collapsed && (

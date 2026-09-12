@@ -25,11 +25,11 @@ const CATEGORY_CONFIG: Record<string, { label: string; hue: string; icon: any }>
 }
 
 const SENTIMENT = [
-  { value: 'very_happy', label: 'Stoked', icon: Fire },
+  { value: 'very_happy', label: 'Energized', icon: Fire },
   { value: 'happy', label: 'Good', icon: TrendUp },
   { value: 'neutral', label: 'Okay', icon: Circle },
-  { value: 'frustrated', label: 'Meh', icon: X },
-  { value: 'very_frustrated', label: 'Tough', icon: X },
+  { value: 'frustrated', label: 'Low', icon: X },
+  { value: 'very_frustrated', label: 'Blocked', icon: X },
 ]
 
 const ASSIGNEE: Record<string, string> = {
@@ -283,13 +283,13 @@ export default function OnboardingPlanPage() {
   const [planId, setPlanId] = useState<string | null>(null)
   const [showPulse, setShowPulse] = useState(false)
 
-  const { data: plans } = useQuery({
+  const { data: plans, isLoading: plansLoading, isError: plansError, refetch: refetchPlans } = useQuery({
     queryKey: ['onboardingPlans', activeTeamId],
     queryFn: () => listOnboardingPlans({ team_id: activeTeamId || undefined }),
     enabled: !!activeTeamId, staleTime: 30_000,
   })
 
-  const { data: plan } = useQuery({
+  const { data: plan, isLoading: planLoading } = useQuery({
     queryKey: ['plan', planId],
     queryFn: () => getOnboardingPlan(planId!),
     enabled: !!planId, staleTime: 15_000,
@@ -307,6 +307,7 @@ export default function OnboardingPlanPage() {
     onSuccess: (data) => { setPlanId(data.id); qc.invalidateQueries({ queryKey: ['onboardingPlans'] }) },
   })
 
+  const plansLoadingAny = plansLoading || ( !!planId && planLoading )
   const planToShow = plan || (plans && plans[0])
 
   const { data: roadmap } = useQuery({
@@ -326,9 +327,44 @@ export default function OnboardingPlanPage() {
   const progressPct = allTotal > 0 ? Math.round((allDone / allTotal) * 100) : 0
   const preDone = preBoard.filter((t: any) => t.is_completed).length
 
+  if (plansLoadingAny) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto" aria-busy="true" aria-label="Loading onboarding plan">
+        <div className="animate-pulse space-y-6">
+          <div className="flex items-center gap-6">
+            <div className="w-[88px] h-[88px] rounded-full bg-well border border-seam" />
+            <div className="space-y-2 flex-1">
+              <div className="h-4 w-48 rounded bg-well" />
+              <div className="h-6 w-72 rounded bg-well" />
+            </div>
+          </div>
+          <div className="h-64 rounded-card bg-well border border-seam" />
+        </div>
+      </div>
+    )
+  }
+
+  if (plansError) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto">
+        <PageHeader eyebrow="Folio · Onboarding plan" title="Onboarding Plan" subtitle="Your 30-60-90 day path." flush />
+        <div className="mt-6 rounded-card border border-abort/20 bg-abort/5 p-5">
+          <p className="text-sm text-abort font-medium" role="alert">Onboarding plan unavailable.</p>
+          <p className="text-caption text-ink-muted mt-1">Check your connection and retry.</p>
+          <button onClick={() => refetchPlans()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
       <div className="max-w-6xl mx-auto">
+        {createMutation.isError && (
+          <div role="alert" className="mb-6 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">
+            Failed to create plan — check your connection and retry.
+          </div>
+        )}
         {/* Hero */}
         <motion.div variants={item} className="mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -347,7 +383,11 @@ export default function OnboardingPlanPage() {
                 title={planToShow ? 'Plan Active' : 'Onboarding Plan'}
                 subtitle={
                   planToShow
-                    ? `${allDone}/${allTotal} milestones · Pre-boarding ${preDone}/${preBoard.length}`
+                    ? allTotal > 0
+                      ? `${allDone}/${allTotal} milestones · Pre-boarding ${preDone}/${preBoard.length}`
+                      : preBoard.length > 0
+                        ? `Pre-boarding ${preDone}/${preBoard.length} · milestones pending`
+                        : 'Plan created — milestones loading'
                     : 'Create a 30-60-90 day plan to track your onboarding'
                 }
                 flush

@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Robot, GithubLogo, GitBranch, GitPullRequest, FileCode, Play,
   Check, X, Warning, Spinner, TreeStructure, ClockCounterClockwise,
-  ArrowSquareOut, CaretDown, DotsThreeVertical,
+  ArrowSquareOut, CaretDown, DotsThreeVertical, Hexagon,
 } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
@@ -174,7 +174,17 @@ export default function AutonomousCodingPage() {
                     ? 'bg-go/10 border-go/20 text-go'
                     : 'bg-mission/10 border-mission/20 text-mission',
                 )}>
-                  {taskSubmitted ? '✓ Task submitted for review' : '⬡ Linked task — PR auto-submits on success'}
+                  {taskSubmitted ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Check size={14} weight="bold" aria-hidden className="shrink-0" />
+                      Task submitted for review
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Hexagon size={14} aria-hidden className="shrink-0" />
+                      Linked task — PR auto-submits on success
+                    </span>
+                  )}
                 </div>
               )}
               {/* Workspace config */}
@@ -293,16 +303,22 @@ export default function AutonomousCodingPage() {
 
           {/* ── Terminal / agent panel ── */}
           <div className={cn('border-t border-seam bg-panel shrink-0 flex flex-col', termOpen ? 'h-56' : 'h-9')}>
-            <div className="flex items-center justify-between gap-3 border-b border-seam px-4 py-2.5 cursor-pointer" onClick={() => setTermOpen((o) => !o)}>
-              <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTermOpen((o) => !o)}
+              aria-expanded={termOpen}
+              aria-controls="agent-output-panel"
+              className="flex w-full items-center justify-between gap-3 border-b border-seam px-4 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-go/50"
+            >
+              <span className="flex items-center gap-3">
                 <span className="font-display text-[13px] font-semibold text-ink">Agent Output</span>
                 <span className="designator">Terminal</span>
-              </div>
-              <CaretDown size={14} className={cn('text-ink-muted transition-transform', termOpen ? '' : 'rotate-180')} />
-            </div>
+              </span>
+              <CaretDown size={14} className={cn('text-ink-muted transition-transform', termOpen ? '' : 'rotate-180')} aria-hidden />
+            </button>
 
             {termOpen && (
-              <div className="flex-1 overflow-y-auto p-3 font-code text-body-xs">
+              <div id="agent-output-panel" className="flex-1 overflow-y-auto p-3 font-code text-body-xs">
                 {/* Stage stepper */}
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
                   {STAGES.map((label, i) => {
@@ -331,12 +347,12 @@ export default function AutonomousCodingPage() {
                 {/* Log lines */}
                 <div className="space-y-1">
                   <LogLine prompt>agent run --repo {repoUrl ? shortRepo(repoUrl) : '<repo>'} --base {baseBranch}</LogLine>
-                  {error && <LogLine tone="abort"><Warning size={12} weight="fill" className="inline mb-0.5 mr-1" />{error}</LogLine>}
+                  {error && <LogLine tone="abort"><Warning size={12} weight="fill" aria-hidden className="shrink-0" />{error}</LogLine>}
                   {running && <LogLine tone="mission">agent working… {STAGES[Math.min(stage, 3)] ?? ''}</LogLine>}
 
                   {result && (result.success ? (
                     <>
-                      <LogLine tone="go"><Check size={12} weight="bold" className="inline mb-0.5 mr-1" />Pull request #{result.pr_number} opened{result.branch ? ` on ${result.branch}` : ''}.</LogLine>
+                      <LogLine tone="go"><Check size={12} weight="bold" aria-hidden className="shrink-0" />Pull request #{result.pr_number} opened{result.branch ? ` on ${result.branch}` : ''}.</LogLine>
                       <LogLine>{result.summary || 'Changes applied.'}</LogLine>
                       <LogLine>{result.files_changed ?? 0} files changed · {result.patches_applied ?? 0} patches applied{result.patches_failed ? ` · ${result.patches_failed} failed` : ''}.</LogLine>
                       {result.pr_url && (
@@ -346,7 +362,7 @@ export default function AutonomousCodingPage() {
                       )}
                     </>
                   ) : (
-                    <LogLine tone="abort"><X size={12} weight="bold" className="inline mb-0.5 mr-1" />{result.error || 'Agent could not generate changes.'}</LogLine>
+                    <LogLine tone="abort"><X size={12} weight="bold" aria-hidden className="shrink-0" />{result.error || 'Agent could not generate changes.'}</LogLine>
                   ))}
 
                   {!running && !result && !error && (

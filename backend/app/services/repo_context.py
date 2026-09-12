@@ -44,12 +44,20 @@ def _iso_now() -> str:
 
 
 async def _redis():
-    """Redis client or None (graceful fallback)."""
+    """Redis client or None (graceful fallback to in-process TTL cache).
+
+    Returns None when REDIS_URL is unset (dev/tests — expected, debug log)
+    or when the client can't be created (warning via cache_service).
+    """
     try:
         from app.services.cache_service import get_client
 
-        return await get_client()
+        client = await get_client()
+        if client is None:
+            logger.debug("repo_context: Redis unavailable, using in-process fallback")
+        return client
     except Exception:
+        logger.warning("repo_context: Redis client init failed, using in-process fallback", exc_info=True)
         return None
 
 
@@ -272,7 +280,7 @@ class RepoContextService:
                 if raw:
                     return json.loads(raw)
             except Exception:
-                logger.debug("Redis get failed for %s", index_id)
+                logger.warning("Redis get failed for %s — falling back to local cache", index_id)
         # Fallback
         async with _LOCAL_CACHE_LOCK:
             entry = _LOCAL_CACHE.get(self._key(index_id))
@@ -290,7 +298,7 @@ class RepoContextService:
                 await client.setex(self._key(index_id), self.ttl, payload)
                 return
             except Exception:
-                logger.debug("Redis set failed for %s", index_id)
+                logger.warning("Redis set failed for %s — using local cache only", index_id)
         async with _LOCAL_CACHE_LOCK:
             _LOCAL_CACHE[self._key(index_id)] = {
                 "doc": doc,

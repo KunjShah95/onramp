@@ -170,8 +170,8 @@ export default function BlogPostPage() {
               to={`/blog/${prevPost.slug}`}
               className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md"
             >
-              <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 block">
-                <ArrowLeft size={11} weight="bold" className="inline mr-1" />
+              <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1">
+                <ArrowLeft size={12} weight="bold" aria-hidden className="shrink-0" />
                 Previous
               </span>
               <span className="text-sm font-semibold text-[hsl(var(--foreground))] group-hover:text-[hsl(var(--accent))] transition-colors line-clamp-2">
@@ -184,9 +184,9 @@ export default function BlogPostPage() {
               to={`/blog/${nextPost.slug}`}
               className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md sm:text-right"
             >
-              <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 block">
+              <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1">
                 Next
-                <ArrowRight size={11} weight="bold" className="inline ml-1" />
+                <ArrowRight size={12} weight="bold" aria-hidden className="shrink-0" />
               </span>
               <span className="text-sm font-semibold text-[hsl(var(--foreground))] group-hover:text-[hsl(var(--accent))] transition-colors line-clamp-2">
                 {nextPost.title}

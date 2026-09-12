@@ -20,6 +20,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedTier, setSelectedTier] = useState<string | null>(null)
+  const [subscribingTier, setSubscribingTier] = useState<string | null>(null)
 
   // Wallet state
   const [wallet, setWallet] = useState<CreditWallet | null>(null)
@@ -31,7 +32,7 @@ export default function BillingPage() {
     { id: 'free', price: 0, label: 'Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
     ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, label: 'Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
     { id: 'startup', price: 999, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
-    { id: 'professional', price: 2999, label: 'Professional', popular: true, features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
+    { id: 'professional', price: 2999, label: 'Professional', popular: true, blurb: 'Team plan · 14-day trial on first subscribe', features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
     { id: 'enterprise', price: 0, label: 'Enterprise', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
   ]
 
@@ -75,7 +76,22 @@ export default function BillingPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('checkout') === 'success') { const tid = params.get('team_id'); if (tid) { setTeamId(tid); window.history.replaceState({}, '', window.location.pathname) } }
+    if (params.get('checkout') === 'success') {
+      const tid = params.get('team_id')
+      if (tid) {
+        setTeamId(tid)
+        toast.success('Payment successful', 'Your plan is activating — refresh in a moment if it still shows the old tier.')
+        window.history.replaceState({}, '', window.location.pathname)
+        fetchSubscription(tid)
+      } else {
+        toast.success('Payment successful', 'Your plan is activating.')
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+    if (params.get('checkout') === 'cancelled') {
+      toast.info('Checkout cancelled', 'No charge was made — pick a plan when ready.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   async function fetchSubscription(id: string = teamId) {
@@ -105,27 +121,33 @@ export default function BillingPage() {
   }
 
   async function handleCreateSubscription(tier: string) {
-    if (!teamId.trim()) return
+    if (!teamId.trim() || subscribingTier) return
+    if (tier === 'enterprise') {
+      window.location.href = '/contact?plan=enterprise'
+      return
+    }
+    setSubscribingTier(tier)
     try {
       if (tier === 'free') {
         await createSubscription({ team_id: teamId.trim(), tier, billing_cycle: 'monthly' })
         setSelectedTier(tier); await fetchSubscription(); toast.success('Subscribed', `${tier} plan activated`)
       } else {
         const successUrl = `${window.location.origin}/billing?checkout=success&team_id=${teamId.trim()}`
-        const cancelUrl = `${window.location.origin}/billing`
+        const cancelUrl = `${window.location.origin}/billing?checkout=cancelled`
         const result = await createCheckoutSession({ team_id: teamId.trim(), tier, success_url: successUrl, cancel_url: cancelUrl })
-        if (result.url) { window.location.href = result.url } else { setError('Payment system is not configured.') }
+        if (result.url) { window.location.href = result.url } else { setError('Payment system is not configured. Contact support or try again later.') }
       }
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create subscription') }
+    finally { setSubscribingTier(null) }
   }
 
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
-  const itemVariants = { hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } } }
+  const itemVariants = { hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }
 
   async function handleCancel() {
     if (!teamId.trim() || !subscription) return
-    if (!confirm('Cancel your current subscription?')) return
-    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null); setWallet(null); toast.info('Plan cancelled') }
+    if (!confirm(`Cancel ${subscription.tier} plan? Your team keeps access until the end of the billing period.`)) return
+    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null); setWallet(null); toast.info('Plan cancelled', 'Access continues until period ends.') }
     catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
   }
 
@@ -141,9 +163,11 @@ export default function BillingPage() {
   }
 
   async function handleTopUp() {
+    const amount = Math.min(100000, Math.max(10, Math.floor(topUpAmount) || 10))
+    setTopUpAmount(amount)
     try {
       const ok = await loadRazorpayScript()
-      if (!ok) { toast.error('Could not load payment gateway'); return }
+      if (!ok) { toast.error('Could not load payment gateway', 'Check your connection and retry from the wallet section.'); return }
       const order = await createCreditOrder({ amount_inr: topUpAmount })
       const rzp = new (window as any).Razorpay({
         key: order.key_id,
@@ -196,7 +220,7 @@ export default function BillingPage() {
         />
       </motion.div>
 
-      {error && (<motion.div variants={itemVariants} className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}
+      {error && (<motion.div variants={itemVariants} role="alert" className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}
 
       {/* Team Selection */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-well p-4 rounded-card border border-seam">
@@ -205,7 +229,7 @@ export default function BillingPage() {
           <div className="flex items-center gap-2">
             {teams.length > 0 ? (
               <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
-                className="bg-panel border border-seam rounded-input px-4 py-2.5 text-sm text-ink focus:border-go/40 outline-none min-w-[200px]">
+                className="bg-panel border border-seam rounded-input px-4 py-2.5 text-sm text-ink focus:border-go/40 outline-none w-full sm:w-auto sm:min-w-[200px]">
                 {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || 'Untitled team'}</option>))}
               </select>
             ) : (<div className="text-sm text-ink-muted">No teams found. <a href="/team" className="underline text-go hover:text-go/80">Create one</a>.</div>)}
@@ -270,20 +294,27 @@ export default function BillingPage() {
                     {/* Top-up */}
                     <div className="flex items-center gap-3 p-3 bg-well rounded-card border border-seam mb-4">
                       <CurrencyInr className="w-4 h-4 text-go" weight="fill" />
+                      <label className="sr-only" htmlFor="topup-amount">Top-up amount in INR (min 10)</label>
                       <input
+                        id="topup-amount"
                         type="number"
                         min={10}
                         max={100000}
                         value={topUpAmount}
-                        onChange={(e) => setTopUpAmount(Math.max(10, parseInt(e.target.value) || 10))}
-                        className="input w-24 font-mono"
+                        onChange={(e) => setTopUpAmount(parseInt(e.target.value) || 0)}
+                        onBlur={(e) => {
+                          const v = parseInt(e.target.value) || 10
+                          setTopUpAmount(Math.min(100000, Math.max(10, v)))
+                        }}
+                        aria-label="Top-up amount in INR"
+                        className="input w-24 font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
                       />
                       <span className="text-xs text-ink-muted">INR</span>
                       <button
                         onClick={handleTopUp}
                         className="ml-auto btn btn-primary px-4 py-1.5 text-xs font-semibold"
                       >
-                        <ArrowDown size={14} className="inline mr-1" weight="bold" />
+                        <ArrowDown size={14} aria-hidden className="shrink-0" weight="bold" />
                         Add Credits
                       </button>
                     </div>
@@ -339,15 +370,16 @@ export default function BillingPage() {
           <span className="designator opacity-50">TIER MATRIX</span>
         </div>
       </motion.div>
-      <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {tiers.map((tier) => {
           const isCurrent = selectedTier === tier.id
           return (
             <motion.div key={tier.id} variants={itemVariants}>
               <div className={cn('relative rounded-card border bg-panel p-5 flex flex-col h-full group transition-colors',
                 isCurrent ? 'border-go/30 ring-1 ring-go/15' : tier.popular ? 'hover:border-go/30' : 'border-seam hover:border-seam-strong')}>
-                {tier.popular && <span className="overline text-go font-bold mb-3">Most Popular</span>}
+                {tier.popular && <span className="overline text-go font-bold mb-3">Recommended</span>}
                 <h3 className="font-heading text-base font-bold text-ink capitalize mb-1">{tier.label}</h3>
+                {(tier as any).blurb && <p className="text-caption text-ink-muted mb-2">{(tier as any).blurb}</p>}
                 <div className="mb-4">
                   {tier.price > 0 ? (
                     <span className="font-display text-2xl font-bold text-ink">
@@ -367,13 +399,14 @@ export default function BillingPage() {
                 <ul className="space-y-2 text-xs text-ink-secondary flex-1 mb-5">
                   {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-go mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
                 </ul>
-                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'admin'}
-                  title={role !== 'admin' ? 'Only the team admin can change plans' : ''}
-                  className={cn('w-full py-2 rounded-btn text-xs font-bold transition-all',
+                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'admin' || subscribingTier !== null}
+                  title={!teamId.trim() ? 'Select a team first' : role !== 'admin' ? 'Only the team admin can change plans — ask your admin' : ''}
+                  aria-busy={subscribingTier === tier.id}
+                  className={cn('w-full py-2 rounded-btn text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
                     isCurrent ? 'bg-go/10 text-go border border-go/20 cursor-default' :
                     tier.popular ? 'bg-go hover:bg-go-lit text-white disabled:opacity-40' :
                     'bg-well hover:bg-well/80 text-ink-secondary hover:text-ink border border-seam disabled:opacity-40')}>
-                  {isCurrent ? 'Current Plan' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
+                  {isCurrent ? 'Current Plan' : subscribingTier === tier.id ? 'Redirecting…' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
                 </button>
               </div>
             </motion.div>

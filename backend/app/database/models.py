@@ -1757,3 +1757,63 @@ class EmbeddingChunk(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Refresh tokens — dedicated table (replaces generic dynamic_documents usage)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class RefreshToken(Base):
+    """Server-side rotating refresh token (one row per issued token).
+
+    Replaces the legacy ``dynamic_documents`` collection
+    ``onramp_refresh_tokens``: a typed table gives us a UNIQUE index on
+    ``token_hash`` (O(1) lookup instead of JSONB scan), a FK to ``users``,
+    and explicit revocation/replacement columns for rotation audits.
+
+    Migration: ``029_add_refresh_tokens_table``. The service layer
+    (``app.services.refresh_token_service``) dual-reads the legacy
+    collection so pre-migration rows keep validating until they expire.
+    """
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=generate_uuid,
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    replaced_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    remember_me: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_refresh_tokens_user_id", "user_id"),
+        Index("ix_refresh_tokens_token_hash", "token_hash"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "token_hash": self.token_hash,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "revoked": self.revoked_at is not None,
+            "revoked_at": self.revoked_at.isoformat() if self.revoked_at else None,
+            "replaced_by": self.replaced_by,
+            "remember_me": self.remember_me,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

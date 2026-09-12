@@ -51,7 +51,7 @@ import { useToast } from '../context/ToastContext'
 import {
   User, At, Key, Bell, Palette, ShareNetwork,
   ChatCircle, GithubLogo, Check, X, Spinner, Info, Lock,
-  EnvelopeSimple, Eye, Code, Trash,
+  EnvelopeSimple, Eye, Code, Trash, CheckCircle, XCircle,
   Plugs, Fire, CaretDown,
 } from '@phosphor-icons/react'
 
@@ -242,7 +242,7 @@ export default function Settings() {
   }
 
   async function handleTestWebhook(id: string) {
-    try { const result = await testWebhook(id); setWebhookTestResult(result.success ? '✓ Success' : `✗ ${result.error || 'Failed'}`); setTimeout(() => setWebhookTestResult(null), 3000) }
+    try { const result = await testWebhook(id); setWebhookTestResult(result.success ? 'SUCCESS' : `FAILED: ${result.error || 'Failed'}`); setTimeout(() => setWebhookTestResult(null), 3000) }
     catch { /* ignore */ }
   }
 
@@ -1076,10 +1076,13 @@ export default function Settings() {
               )}
 
               {webhookTestResult && (
-                <div className={cn('mt-4 text-caption px-4 py-2 rounded-btn',
-                  webhookTestResult.startsWith('✓')
+                <div className={cn('mt-4 text-caption px-4 py-2 rounded-btn inline-flex items-center gap-1.5',
+                  webhookTestResult.startsWith('SUCCESS')
                     ? 'bg-go/10 text-go border border-go/20'
                     : 'bg-abort/10 text-abort border border-abort/20')}>
+                  {webhookTestResult.startsWith('SUCCESS')
+                    ? <CheckCircle size={14} weight="fill" aria-hidden className="shrink-0" />
+                    : <XCircle size={14} weight="fill" aria-hidden className="shrink-0" />}
                   {webhookTestResult}
                 </div>
               )}
@@ -1346,7 +1349,7 @@ function SsoConfigSection() {
 
           {existingConfig && (
             <div className="mb-5 px-4 py-3 rounded-btn bg-go/5 border border-go/20 text-caption text-ink-secondary">
-              <p className="font-semibold text-go mb-1">✓ Currently configured</p>
+              <p className="font-semibold text-go mb-1 inline-flex items-center gap-1.5"><CheckCircle size={14} weight="fill" aria-hidden className="shrink-0" /> Currently configured</p>
               <p className="text-caption text-ink-muted">IdP: {existingConfig.idp_type} · Domain: {existingConfig.domain}</p>
             </div>
           )}

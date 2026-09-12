@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -45,10 +45,10 @@ export function useKeyboardShortcuts() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const filtered = (() => {
-    // Memoize by role to avoid new array every render triggering getShortcuts identity churn
-    return NAV_SHORTCUTS.filter(s => !s.roles || (role && s.roles.includes(role)))
-  })()
+  const filtered = useMemo(
+    () => NAV_SHORTCUTS.filter(s => !s.roles || (role && s.roles.includes(role))),
+    [role],
+  )
 
   const getShortcuts = useCallback((): Shortcut[] => {
     const navShortcuts: Shortcut[] = filtered.map(s => ({

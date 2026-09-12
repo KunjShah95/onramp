@@ -4,7 +4,7 @@ import secrets
 import bcrypt
 from datetime import datetime, timezone
 from app.services.postgres_db import get_storage
-from app.services.field_encryption import encrypt_field, email_hash
+from app.services.field_encryption import encrypt_field, email_hash, email_hash_candidates
 
 
 async def create_provisioned_user(
@@ -66,7 +66,10 @@ async def create_provisioned_user(
 async def check_email_exists(email: str) -> bool:
     """Check if an email is already registered."""
     storage = get_storage()
-    results = await storage.query_documents(
-        "users", [("email_hash", "==", email_hash(email))]
-    )
-    return len(results) > 0
+    for candidate in email_hash_candidates(email):
+        results = await storage.query_documents(
+            "users", [("email_hash", "==", candidate)]
+        )
+        if results:
+            return True
+    return False

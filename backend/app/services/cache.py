@@ -1,6 +1,11 @@
 """
 In-memory TTL cache for GitHub API responses.
 Thread-safe, expires entries after a configurable time-to-live.
+
+Persistence: none — entries live only in this process and are lost on
+restart/redeploy. Callers must treat a miss as normal (graceful degradation):
+``get`` returns None for missing/expired keys and ``get_or_set`` recomputes
+via the factory. Do not store anything that can't be recomputed.
 """
 
 import time
@@ -51,6 +56,14 @@ class TTLCache:
         """Remove a key from cache."""
         with self._lock:
             self._cache.pop(key, None)
+
+    def invalidate_prefix(self, prefix: str) -> int:
+        """Remove all keys starting with prefix. Returns count removed."""
+        with self._lock:
+            matched = [k for k in self._cache.keys() if k.startswith(prefix)]
+            for k in matched:
+                self._cache.pop(k, None)
+            return len(matched)
 
     def clear(self) -> None:
         """Clear all cached entries."""

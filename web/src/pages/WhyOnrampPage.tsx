@@ -36,7 +36,7 @@ export default function WhyOnrampPage() {
       {/* Hero — same language as landing Hero */}
       <div className="relative pt-10 pb-12 px-6 text-center max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}>
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Engineering · Philosophy</span>
           </span>
@@ -60,9 +60,9 @@ export default function WhyOnrampPage() {
         className="relative max-w-[1280px] mx-auto px-6 lg:px-10 grid grid-cols-1 md:grid-cols-12 gap-5 mb-10"
       >
         {/* Why NOT Coding Agents — muted, ruled */}
-        <motion.div variants={itemVariants} className="md:col-span-5 rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <motion.div variants={itemVariants} className="md:col-span-5 rounded-2xl border border-seam bg-panel p-7 shadow-seam">
           <div className="flex items-center gap-3 mb-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-slate-50 text-ink-tertiary">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-seam bg-well text-ink-tertiary">
               <Code size={18} weight="bold" />
             </span>
             <div>
@@ -91,9 +91,9 @@ export default function WhyOnrampPage() {
         </motion.div>
 
         {/* Why Onramp — featured, indigo accent, 7 cols */}
-        <motion.div variants={itemVariants} className="md:col-span-7 rounded-2xl border border-accent-primary/15 bg-white p-7 shadow-[0_8px_32px_rgba(79,70,229,0.08)]">
+        <motion.div variants={itemVariants} className="md:col-span-7 rounded-2xl border border-accent-primary/15 bg-panel p-7 shadow-[0_8px_32px_rgb(var(--accent-primary)/0.10)]">
           <div className="flex items-center gap-3 mb-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-[rgb(var(--accent-foreground))] shadow-[0_0_18px_rgb(var(--accent-primary)/0.4)]">
               <Brain size={18} weight="bold" />
             </span>
             <div>
@@ -119,7 +119,7 @@ export default function WhyOnrampPage() {
               <span><strong className="font-semibold text-ink">Fast ramp.</strong> Zero to first PR in days.</span>
             </li>
           </ul>
-          <div className="mt-6 rounded-xl border border-black/5 bg-[#F8FAFC] px-4 py-3">
+          <div className="mt-6 rounded-xl border border-seam bg-well px-4 py-3">
             <p className="font-code text-[11px] leading-[1.5] text-ink-tertiary">Free-first LLM router + Redis semantic cache + incremental graph refresh — so most questions hit free tiers and only the diff is re-indexed on push.</p>
           </div>
         </motion.div>
@@ -169,10 +169,10 @@ export default function WhyOnrampPage() {
             <motion.div
               key={idx}
               variants={itemVariants}
-              className={`${pillar.span} rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]`}
+              className={`${pillar.span} rounded-2xl border border-seam bg-panel p-7 shadow-seam transition-all duration-300 hover:-translate-y-0.5 hover:shadow-overhead`}
             >
               <div className="flex items-start justify-between gap-4">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-accent-primary">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-seam bg-well text-accent-primary">
                   <pillar.icon size={20} weight="bold" />
                 </span>
                 <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">{pillar.kicker}</span>
@@ -200,11 +200,11 @@ export default function WhyOnrampPage() {
           <h2 className="font-body text-2xl font-bold tracking-tight text-ink">The breakdown.</h2>
           <p className="mt-2 text-[15px] leading-[1.6] text-ink-secondary">Side-by-side, same team size, same codebase churn.</p>
         </motion.div>
-        <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-seam bg-panel shadow-seam">
           <div className="overflow-x-auto">
             <table className="w-full text-[13.5px]">
               <thead>
-                <tr className="border-b border-black/10 bg-[#F8FAFC]">
+                <tr className="border-b border-seam bg-well">
                   <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Aspect</th>
                   <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Coding agents</th>
                   <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-primary">Onramp</th>
@@ -218,7 +218,7 @@ export default function WhyOnrampPage() {
                   ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
                   ['Understand WHY', 'No, just HOW', 'Yes, full context'],
                 ].map((row, idx) => (
-                  <tr key={idx} className="hover:bg-[#F8FAFC] transition-colors">
+                  <tr key={idx} className="hover:bg-well transition-colors">
                     <td className="px-6 py-3.5 font-semibold text-ink">{row[0]}</td>
                     <td className="px-6 py-3.5 text-ink-tertiary">{row[1]}</td>
                     <td className="px-6 py-3.5 font-medium text-accent-primary">{row[2]}</td>
@@ -247,7 +247,7 @@ export default function WhyOnrampPage() {
             Agents multiply devs × products × changes. Onramp stays flat. Move the sliders.
           </p>
         </motion.div>
-        <motion.div variants={itemVariants} className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-8">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-seam bg-panel p-6 shadow-seam sm:p-8">
           <CostAtScaleCalculator />
         </motion.div>
         <motion.p variants={itemVariants} className="text-center font-code text-[11px] text-ink-tertiary mt-6">
@@ -263,7 +263,7 @@ export default function WhyOnrampPage() {
         viewport={{ once: true }}
         className="relative max-w-[880px] mx-auto px-6 lg:px-10 py-16 text-center"
       >
-        <motion.div variants={itemVariants} className="rounded-2xl border border-black/10 bg-white px-8 py-12 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-seam bg-panel px-8 py-12 shadow-seam">
           <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">Get started</p>
           <h2 className="mt-3 font-body text-3xl font-bold tracking-tight text-ink">
             Ready to onboard your way.
@@ -274,12 +274,12 @@ export default function WhyOnrampPage() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/pricing"
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(79,70,229,0.28)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_24px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
             >
               Start 14-day trial
               <ArrowRight size={16} weight="bold" />
             </Link>
-            <Link to="/docs" className="inline-flex h-11 items-center rounded-md border border-black/10 bg-white px-6 text-[15px] font-semibold text-ink transition-colors hover:border-black/15">
+            <Link to="/docs" className="inline-flex h-11 items-center rounded-md border border-seam bg-panel px-6 text-[15px] font-semibold text-ink transition-colors hover:border-seam-strong">
               Read the docs
             </Link>
           </div>

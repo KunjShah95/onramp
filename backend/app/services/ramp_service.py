@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 from app.services.postgres_db import get_storage, generate_id
 from app.services.hr_metrics_service import attrition_risk, review_analytics
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 
 logger = logging.getLogger("onramp.ramp")
 

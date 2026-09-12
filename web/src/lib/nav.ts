@@ -3,7 +3,7 @@ import {
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
   Star, Key, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
-  Users, TrendUp,
+  Users, TrendUp, CreditCard, ClipboardText, Scroll,
   type Icon,
 } from '@phosphor-icons/react'
 
@@ -56,13 +56,19 @@ export const hrItems: NavItem[] = [
 
 /** Manage — reviews, quality and administration. */
 export const manageItems: NavItem[] = [
+  { to: '/team',            label: 'Team',            Icon: Users,        roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr'] },
   { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/playbooks',        label: 'Playbooks',       Icon: ClipboardText, roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/reports',          label: 'Reports',         Icon: Scroll,      roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/billing',          label: 'Billing',         Icon: CreditCard,  roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/developer-portal', label: 'Developer Portal', Icon: Code,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/api-keys',         label: 'API Keys',        Icon: Key,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/admin',            label: 'Admin',           Icon: ShieldCheck, roles: ['admin', 'ceo', 'cto'] },
+  { to: '/admin/audit',      label: 'Audit Log',       Icon: FileCode,    roles: ['admin', 'ceo', 'cto'] },
+  { to: '/admin/create-account', label: 'Create Account', Icon: Users,    roles: ['admin', 'ceo', 'cto'] },
   { to: '/admin/feature-flags', label: 'Feature Flags', Icon: Flag,       roles: ['admin', 'ceo', 'cto'] },
 ]
 

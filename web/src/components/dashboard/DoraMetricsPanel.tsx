@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
-const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
+const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }
 
 function Panel({ callsign, designator, className, children }: { callsign: string; designator?: string; className?: string; children: React.ReactNode }) {
   return (
@@ -58,7 +58,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
     (Array.isArray(membership) && (membership[0]?.team_id || membership[0]?.id)) ||
     ''
 
-  const { data: dora, isLoading } = useQuery<DoraSummary>({
+  const { data: dora, isLoading, isError, refetch } = useQuery<DoraSummary>({
     queryKey: ['doraSummary', resolvedId],
     queryFn: () => fetchDoraSummary(resolvedId, 90),
     staleTime: 60_000,
@@ -80,7 +80,17 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
   })
 
   if (isLoading) {
-    return <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-well/40 animate-pulse" />)}</div>
+    return <div aria-busy="true" aria-label="Loading DORA metrics" className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-tile bg-well animate-pulse border border-seam" />)}</div>
+  }
+
+  if (isError) {
+    return (
+      <Panel callsign="DORA" designator="Unavailable">
+        <p className="text-sm text-abort font-medium" role="alert">DORA telemetry unavailable.</p>
+        <p className="text-caption text-ink-muted mt-1">Check your connection and retry.</p>
+        <button onClick={() => refetch()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+      </Panel>
+    )
   }
 
   const m = dora?.metrics
@@ -93,8 +103,12 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
       <motion.div variants={item} className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-3">
-          <span className="text-display-sm font-bold font-code" style={{ color: (dora?.overall_score || 0) >= 75 ? '#17A34A' : (dora?.overall_score || 0) >= 50 ? '#2472C4' : '#D6870F' }}>
-            {dora?.overall_score ?? 'N/A'}
+          <span className={
+            (dora?.overall_score || 0) >= 75 ? 'text-display-sm font-bold font-code text-go'
+            : (dora?.overall_score || 0) >= 50 ? 'text-display-sm font-bold font-code text-mission'
+            : 'text-display-sm font-bold font-code text-caution'
+          }>
+            {dora?.overall_score ?? '—'}
           </span>
           <span className="text-body-sm text-ink-muted font-code">DORA<br />Score</span>
         </div>
@@ -112,13 +126,13 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={velocityData}>
-                <defs><linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#17A34A" stopOpacity={0.2} /><stop offset="100%" stopColor="#17A34A" stopOpacity={0} /></linearGradient></defs>
+                <defs><linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--go)" stopOpacity={0.2} /><stop offset="100%" stopColor="var(--go)" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-rgb) / 0.10)" />
                 <XAxis dataKey="week" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
                 <YAxis tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP} />
-                <Area type="monotone" dataKey="completed" stroke="#17A34A" fill="url(#completedGrad)" strokeWidth={2} />
-                <Line type="monotone" dataKey="completed_ma4" stroke="#2472C4" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+                <Area type="monotone" dataKey="completed" stroke="var(--go)" fill="url(#completedGrad)" strokeWidth={2} />
+                <Line type="monotone" dataKey="completed_ma4" stroke="var(--mission)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -134,8 +148,8 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
                 <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />
                 <YAxis tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP} />
-                <Bar dataKey="completed" fill="#17A34A" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="inProgress" fill="#2472C4" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="completed" fill="var(--go)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="inProgress" fill="var(--mission)" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

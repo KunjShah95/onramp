@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.api.v1.auth import get_current_user
 from app.middleware.access_guard import require_minimum_role
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 from app.services.invite_service import (
     create_invite,
     get_team_invites,

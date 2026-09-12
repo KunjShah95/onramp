@@ -115,6 +115,8 @@ def test_production_with_any_single_llm_key_passes(monkeypatch):
             monkeypatch.setenv(var, "redis://localhost:6379/1")
         elif var in ("PII_ENCRYPTION_KEY", "GITHUB_TOKEN_ENCRYPTION_KEY"):
             monkeypatch.setenv(var, _valid_fernet_key())
+        elif var == "JWT_SECRET":
+            monkeypatch.setenv(var, "secure-prod-jwt-secret-not-the-default")
         else:
             monkeypatch.setenv(var, "x")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_x")

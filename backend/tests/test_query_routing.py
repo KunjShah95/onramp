@@ -301,7 +301,7 @@ class TestOpenAIModelRouting:
         monkeypatch.setattr(LLMRouter, "_call_provider", fake_call)
         _content, served, route = await router.openai_chat("Hello", model="groq")
         assert seen[0] == ModelProvider.GROQ
-        assert served == "groq/llama-3.3-70b-versatile"
+        assert served == "groq/openai/gpt-oss-20b"
         assert route["free"] is True  # Groq is a free provider
 
     async def test_openai_chat_stream_yields_tokens_and_served_model(self, monkeypatch):
@@ -317,7 +317,7 @@ class TestOpenAIModelRouting:
         async for token, served, route in router.openai_chat_stream("Hello", model="groq"):
             chunks.append((token, served, route))
         assert [t for t, _, _ in chunks] == ["Hel", "lo"]
-        assert all(s == "groq/llama-3.3-70b-versatile" for _, s, _ in chunks)
+        assert all(s == "groq/openai/gpt-oss-20b" for _, s, _ in chunks)
         assert all(r["provider"] == "groq" and r["free"] is True for _, _, r in chunks)
 
     async def test_chat_sets_last_route(self, monkeypatch):

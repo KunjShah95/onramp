@@ -38,8 +38,13 @@ export default function TopBar({ lastShortcut, onMenuClick }: TopBarProps) {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-40 h-11 border-b border-seam bg-base/90 backdrop-blur-sm flex items-center justify-between px-4 sm:px-5"
+      className="sticky top-0 z-40 h-11 border-b border-seam bg-base/70 backdrop-blur-xl flex items-center justify-between px-4 sm:px-5"
     >
+      {/* gradient seam — faint accent glow along the bottom edge (glass treatment) */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent"
+      />
       {/* Left: hamburger (mobile) + section context + shortcut feedback */}
       <div className="flex items-center gap-2.5 min-w-0">
         {onMenuClick && (

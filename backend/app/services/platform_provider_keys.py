@@ -34,9 +34,17 @@ DOC_ID = "global"
 _CACHE_TTL_SECONDS = 30.0
 _KEYS_CACHE: Dict[str, Tuple[float, Dict[str, str]]] = {}
 
+try:
+    from app.services._shared.tenant_settings import TenantScopedSettingStore as _TenantStore
+    _store = _TenantStore(ttl_seconds=_CACHE_TTL_SECONDS)
+except Exception:  # pragma: no cover
+    _store = None  # type: ignore
+
 
 def _invalidate_cache() -> None:
     _KEYS_CACHE.pop(DOC_ID, None)
+    if _store is not None:
+        _store.invalidate(DOC_ID)
 
 
 def _masked(provider: str, record: Optional[dict]) -> dict:
@@ -61,9 +69,15 @@ async def get_platform_keys() -> Dict[str, str]:
     an undecryptable key (e.g. after a Fernet key rotation) is skipped with a
     log instead of failing the whole request.
     """
+    if _store is not None:
+        hit = _store.get_cached(DOC_ID)
+        if hit is not None:
+            return dict(hit)
     now = time.monotonic()
     cached = _KEYS_CACHE.get(DOC_ID)
     if cached is not None and cached[0] > now:
+        if _store is not None:
+            _store.put(DOC_ID, cached[1])
         return dict(cached[1])
 
     doc = await _read_global_doc()
@@ -76,6 +90,8 @@ async def get_platform_keys() -> Dict[str, str]:
         except Exception:
             logger.exception("Failed to decrypt platform provider key %s", provider)
     _KEYS_CACHE[DOC_ID] = (now + _CACHE_TTL_SECONDS, result)
+    if _store is not None:
+        _store.put(DOC_ID, result)
     return dict(result)
 
 

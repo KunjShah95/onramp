@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Atom } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 import {
   fetchCostModel,
@@ -49,7 +50,7 @@ export default function CostModelPanel() {
   const [cycleDraft, setCycleDraft] = useState('')
   const [priceDraft, setPriceDraft] = useState('')
 
-  const { data, isLoading } = useQuery<CostModelResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<CostModelResponse>({
     queryKey: ['costModel'],
     queryFn: () => fetchCostModel(),
     staleTime: 60_000,
@@ -86,7 +87,29 @@ export default function CostModelPanel() {
     },
   })
 
-  if (isLoading || !data) return null
+  if (isLoading) {
+    return (
+      <section aria-busy="true" aria-label="Loading cost model" className="rounded-tile bg-base border border-seam p-4 shadow-seam">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 w-40 rounded bg-well" />
+          <div className="h-8 w-full rounded bg-well" />
+          <div className="h-4 w-2/3 rounded bg-well" />
+        </div>
+      </section>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
+        <p className="text-sm text-abort font-medium" role="alert">Cost model unavailable.</p>
+        <p className="text-caption text-ink-muted mt-1">Check your connection and retry — your settings are unchanged.</p>
+        <button onClick={() => refetch()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">
+          Retry
+        </button>
+      </section>
+    )
+  }
 
   const { settings, source, measured, sensitivity } = data
   const band = sensitivity
@@ -118,7 +141,7 @@ export default function CostModelPanel() {
     <section className="rounded-tile bg-base border border-seam p-4 shadow-seam">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg text-go">science</span>
+          <Atom size={18} aria-hidden className="text-go shrink-0" />
           <h2 className="text-body-sm font-semibold text-ink">Cost model · Phase 0</h2>
           <span className={cn(
             'px-1.5 py-0.5 rounded-md text-caption font-medium',
@@ -289,8 +312,8 @@ export default function CostModelPanel() {
             <p className="text-caption text-abort">{String(updateMutation.error)}</p>
           )}
           <div className="flex gap-2">
-            <button onClick={save} disabled={updateMutation.isPending} className="btn">
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
+            <button onClick={save} disabled={updateMutation.isPending} className="btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50 disabled:opacity-40">
+              {updateMutation.isPending ? 'Saving…' : 'Save assumptions'}
             </button>
             <button onClick={() => setEditing(false)} className="text-caption text-ink-muted hover:text-ink">
               Cancel

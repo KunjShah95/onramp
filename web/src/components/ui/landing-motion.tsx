@@ -39,13 +39,13 @@ export function SpotlightCard({
   className,
   spotClassName,
   disabled = false,
-  glow = 'rgba(14,122,60,0.09)',
+  glow = 'rgb(var(--accent-primary) / 0.08)',
 }: {
   children: React.ReactNode
   className?: string
   spotClassName?: string
   disabled?: boolean
-  /** The cursor-following glow color (CSS color). Defaults to the emerald accent. */
+  /** The cursor-following glow color (CSS color). Defaults to the accent token (mode-aware). */
   glow?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -268,7 +268,7 @@ export function Beams({ className }: { className?: string }) {
             opacity: b.op,
             rotate: b.rotate,
             background:
-              'linear-gradient(90deg, transparent 0%, rgba(79,70,229,0.28) 30%, rgba(34,211,238,0.30) 55%, rgba(139,92,246,0.20) 70%, transparent 100%)',
+              'linear-gradient(90deg, transparent 0%, rgb(var(--accent-primary) / 0.28) 30%, rgb(var(--accent-to) / 0.30) 55%, rgb(var(--accent-via) / 0.20) 70%, transparent 100%)',
             filter: 'blur(0.5px)',
           }}
           animate={
@@ -340,7 +340,7 @@ export function HeroSpotlight({ className }: { className?: string }) {
   const my = useMotionValue(-800)
   const x = useSpring(mx, { stiffness: 55, damping: 18, mass: 1 })
   const y = useSpring(my, { stiffness: 55, damping: 18, mass: 1 })
-  const bg = useMotionTemplate`radial-gradient(640px circle at ${x}px ${y}px, rgba(79,70,229,0.075), rgba(34,211,238,0.05) 45%, transparent 72%)`
+  const bg = useMotionTemplate`radial-gradient(640px circle at ${x}px ${y}px, rgb(var(--accent-primary) / 0.08), rgb(var(--accent-to) / 0.05) 45%, transparent 72%)`
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (reduced) return
@@ -389,7 +389,7 @@ export function MovingBorder({
         className="absolute -inset-[120%]"
         style={{
           background:
-            'conic-gradient(from var(--angle), transparent 0deg, rgba(79,70,229,0.6) 70deg, rgba(34,211,238,0.55) 120deg, rgba(139,92,246,0.5) 160deg, rgba(255,255,255,0.08) 200deg, transparent 240deg, transparent 360deg)',
+            'conic-gradient(from var(--angle), transparent 0deg, rgb(var(--accent-primary) / 0.6) 70deg, rgb(var(--accent-to) / 0.55) 120deg, rgb(var(--accent-via) / 0.5) 160deg, rgba(255,255,255,0.08) 200deg, transparent 240deg, transparent 360deg)',
           ['--angle' as string]: '0deg',
         }}
         animate={

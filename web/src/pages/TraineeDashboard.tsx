@@ -41,6 +41,7 @@ interface RaisePRState {
 export default function TraineeDashboard() {
   const [data, setData] = useState<TraineeDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
   const [raisingPR, setRaisingPR] = useState<RaisePRState | null>(null)
@@ -60,25 +61,36 @@ export default function TraineeDashboard() {
     return () => { mountedRef.current = false }
   }, [])
 
-  async function fetchDashboard() {
+  async function fetchDashboard(background = false) {
     if (!activeTeamId) {
-      if (mountedRef.current) { setLoading(false); setError('Join a team to view your onboarding progress.') }
+      if (mountedRef.current) { setLoading(false); setRefreshing(false); setError('Join a team to view your onboarding progress.') }
       return
     }
-    if (mountedRef.current) { setLoading(true); setError('') }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (mountedRef.current) {
+        if (!background) setLoading(false)
+        setRefreshing(false)
+        setError('You appear to be offline. Check your connection and retry.')
+      }
+      return
+    }
+    if (mountedRef.current) {
+      if (background) setRefreshing(true)
+      else { setLoading(true); setError('') }
+    }
     try {
       const res = await fetchTraineeDashboard(activeTeamId)
-      if (mountedRef.current) setData(res)
+      if (mountedRef.current) { setData(res); setError('') }
     } catch (err: any) {
-      if (mountedRef.current) setError(err.message || 'Failed to load dashboard.')
+      if (mountedRef.current && !background) setError(err.message || 'Failed to load dashboard.')
     } finally {
-      if (mountedRef.current) setLoading(false)
+      if (mountedRef.current) { setLoading(false); setRefreshing(false) }
     }
   }
 
   useEffect(() => {
-    fetchDashboard()
-    const interval = setInterval(fetchDashboard, 15000)
+    fetchDashboard(false)
+    const interval = setInterval(() => fetchDashboard(true), 30000)
     return () => clearInterval(interval)
   }, [activeTeamId])
 
@@ -91,8 +103,8 @@ export default function TraineeDashboard() {
       title={data?.user_name ? `${data.user_name}'s Ascent` : 'Trainee Console'}
       subtitle="Your personal onboarding checklist and progress."
       actions={
-        <button onClick={fetchDashboard} disabled={loading} className="btn-secondary">
-          Refresh
+        <button onClick={() => fetchDashboard(false)} disabled={loading || refreshing} className="btn-secondary" aria-busy={refreshing}>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       }
     />
@@ -106,8 +118,15 @@ export default function TraineeDashboard() {
           {error ? (
             <ConsolePanel rail="Signal lost" designator="Crew" status="abort">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-abort text-body-sm font-code">{error}</p>
-                <button onClick={fetchDashboard} disabled={loading} className="btn-secondary !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
+                <div>
+                  <p className="text-abort text-body-sm font-code" role="alert">{error}</p>
+                  {error.startsWith('Join a team') && (
+                    <button onClick={() => navigate('/team')} className="mt-2 text-caption text-go hover:underline font-medium">
+                      Go to Team →
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => fetchDashboard(false)} disabled={loading} className="btn-secondary !px-3 !py-1.5 text-caption shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Reacquire</button>
               </div>
             </ConsolePanel>
           ) : (

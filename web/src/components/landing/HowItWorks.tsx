@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { GithubLogo, MagnifyingGlass } from '@phosphor-icons/react'
+import { GithubLogo, MagnifyingGlass, Check } from '@phosphor-icons/react'
 import SectionHeading from './SectionHeading'
 import { SpotlightCard } from '../ui/landing-motion'
 
@@ -14,7 +14,7 @@ function InstallVisual() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.5, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-xl border border-black/10 bg-slate-50 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
+          className="flex h-16 w-16 items-center justify-center rounded-xl border border-seam bg-well shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
         >
           <GithubLogo size={28} weight="fill" className="text-ink" />
         </motion.div>
@@ -23,7 +23,7 @@ function InstallVisual() {
           whileInView={{ width: 64 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-          className="h-px bg-gradient-to-r from-black/15 to-go"
+          className="h-px bg-gradient-to-r from-seam to-go"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.6 }}
@@ -32,7 +32,7 @@ function InstallVisual() {
           transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
           className="flex h-16 w-16 items-center justify-center rounded-xl border border-go/25 bg-go/[0.06]"
         >
-          <span className="text-[24px] font-bold text-go">✓</span>
+          <Check size={24} weight="bold" aria-hidden className="text-go shrink-0" />
         </motion.div>
       </div>
     </div>
@@ -50,11 +50,11 @@ function IndexVisual() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 0.45, delay: 0.2 + i * 0.15, ease: EASE }}
-            className="h-9 w-9 rounded-md border border-black/10 bg-gradient-to-br from-accent-primary/15 to-accent-primary/5"
+            className="h-9 w-9 rounded-md border border-seam bg-gradient-to-br from-accent-primary/15 to-accent-primary/5"
           />
         ))}
       </div>
-      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-black/10">
+      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-seam">
         <motion.div
           initial={{ width: '0%' }}
           whileInView={{ width: '100%' }}
@@ -76,7 +76,7 @@ function OnboardVisual() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
-        className="flex items-center gap-2 rounded-lg border border-black/10 bg-slate-50 px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
+        className="flex items-center gap-2 rounded-lg border border-seam bg-well px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
       >
         <MagnifyingGlass size={13} className="text-accent-primary" />
         <span className="font-code text-[11px] text-ink-secondary">how does billing work?</span>
@@ -88,7 +88,7 @@ function OnboardVisual() {
         transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
         className="rounded-lg border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2"
       >
-        <span className="font-code text-[11px] text-accent-primary-hover">
+        <span className="font-code text-[11px] text-accent-primary">
           Billing → payments/billing · owner @payments
         </span>
       </motion.div>
@@ -131,7 +131,7 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative scroll-mt-24 border-t border-black/5 bg-room">
+    <section id="how-it-works" className="relative scroll-mt-24 border-t border-seam bg-room">
       <div className="mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
           eyebrow="How it works"
@@ -149,8 +149,8 @@ export default function HowItWorks() {
               className="h-full"
             >
               <SpotlightCard
-                glow="rgba(79,70,229,0.07)"
-                className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-accent-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
+                className="flex h-full flex-col rounded-card border border-seam bg-panel p-7 shadow-seam"
+                spotClassName="rounded-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-body text-sm font-bold text-accent-primary">{s.n}</span>

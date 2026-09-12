@@ -7,6 +7,16 @@ import {
   Medal,
   Crown,
   Sparkle,
+  BookOpen,
+  Brain,
+  Star,
+  GitMerge,
+  CheckCircle,
+  Question,
+  BookBookmark,
+  MagnifyingGlass,
+  CalendarCheck,
+  Gift,
 } from '@phosphor-icons/react'
 import CardSpotlight from '../ui/card-spotlight'
 import { useAuth } from '../../context/AuthContext'
@@ -41,13 +51,13 @@ function getProgressColor(xp: number, needed: number): string {
   return 'bg-mission'
 }
 
-// ── Rank medal emojis ─────────────────────────────────────────
+// ── Rank medal icons ─────────────────────────────────────────
 
-function rankMedal(rank: number): string {
-  if (rank === 1) return ''
-  if (rank === 2) return ''
-  if (rank === 3) return ''
-  return `#${rank}`
+function RankMedal({ rank }: { rank: number }) {
+  if (rank === 1) return <Trophy size={16} weight="fill" aria-hidden className="text-amber-400 shrink-0" />
+  if (rank === 2) return <Medal size={16} weight="fill" aria-hidden className="text-ink-muted shrink-0" />
+  if (rank === 3) return <Medal size={16} aria-hidden className="text-amber-600 shrink-0" />
+  return <span className="text-body-sm font-mono font-bold text-ink" aria-hidden>#{rank}</span>
 }
 
 // ── Tab type ─────────────────────────────────────────────────
@@ -227,17 +237,17 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
     daily_login: 'Logins',
     badge_bonus: 'Badges',
   }
-  const sourceIcons: Record<string, string> = {
-    learning_module_completed: '',
-    quiz_passed: '',
-    quiz_perfect_score: '',
-    first_pr_merged: '',
-    task_completed: '',
-    question_asked: '',
-    playbook_created: '',
-    repo_analyzed: '',
-    daily_login: '',
-    badge_bonus: '',
+  const sourceIcons: Record<string, typeof Fire> = {
+    learning_module_completed: BookOpen,
+    quiz_passed: Brain,
+    quiz_perfect_score: Star,
+    first_pr_merged: GitMerge,
+    task_completed: CheckCircle,
+    question_asked: Question,
+    playbook_created: BookBookmark,
+    repo_analyzed: MagnifyingGlass,
+    daily_login: CalendarCheck,
+    badge_bonus: Gift,
   }
 
   const sortedSources = Object.entries(xp_breakdown).sort(([, a], [, b]) => b - a)
@@ -247,8 +257,8 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
       {/* Streak detail */}
       <div className="flex items-center justify-between">
         <span className="text-caption text-ink-tertiary/70">Longest streak</span>
-        <span className="text-body-sm font-medium text-ink">
-          <Fire className="w-3.5 h-3.5 inline mr-0.5 text-orange-400" weight="fill" />
+        <span className="text-body-sm font-medium text-ink inline-flex items-center gap-1">
+          <Fire size={14} weight="fill" aria-hidden className="text-orange-400 shrink-0" />
           {streak.longest_streak} days
         </span>
       </div>
@@ -257,15 +267,18 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
       <div>
         <p className="text-caption text-ink-tertiary/70 mb-1.5">XP Sources</p>
         <div className="space-y-1">
-          {sortedSources.map(([source, amount]) => (
+          {sortedSources.map(([source, amount]) => {
+            const SourceIcon = sourceIcons[source]
+            return (
             <div key={source} className="flex items-center justify-between text-caption">
-              <span className="text-ink-secondary">
-                <span className="mr-1">{sourceIcons[source] || '•'}</span>
+              <span className="text-ink-secondary inline-flex items-center gap-1.5">
+                {SourceIcon && <SourceIcon size={14} aria-hidden className="shrink-0 text-ink-tertiary/70" />}
                 {sourceLabels[source] || source.replace(/_/g, ' ')}
               </span>
               <span className="text-ink font-medium">{amount} XP</span>
             </div>
-          ))}
+            )
+          })}
           {sortedSources.length === 0 && (
             <p className="text-caption text-ink-tertiary/40 italic">No XP earned yet. Start exploring!</p>
           )}
@@ -289,7 +302,7 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
       {badges.map((badge, i) => (
         <motion.div
           key={badge.badge_key}
@@ -299,7 +312,7 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
           className="p-2.5 rounded-lg bg-well/10 border border-go/5 hover:border-go/20 transition-colors"
         >
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">{badge.icon}</span>
+            <Medal size={18} weight="duotone" aria-hidden className="shrink-0 text-amber-400" />
             <span className="text-body-sm font-medium text-ink truncate">
               {badge.badge_name}
             </span>
@@ -307,7 +320,7 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
           <p className="text-caption text-ink-tertiary/60 leading-tight">{badge.description}</p>
           {badge.xp_bonus > 0 && (
             <div className="mt-1 flex items-center gap-1">
-              <Lightning className="w-3 h-3 text-amber-400" weight="fill" />
+              <Lightning size={12} weight="fill" aria-hidden className="text-amber-400 shrink-0" />
               <span className="text-[10px] text-amber-400/80 font-medium">+{badge.xp_bonus} XP</span>
             </div>
           )}
@@ -345,14 +358,14 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
           }`}
         >
           {/* Rank */}
-          <span className="w-6 text-center text-body-sm font-mono font-bold text-ink">
-            {rankMedal(entry.rank)}
+          <span className="w-6 flex items-center justify-center shrink-0" aria-hidden>
+            <RankMedal rank={entry.rank} />
           </span>
 
           {/* Name */}
           <div className="flex-1 min-w-0">
             <p className="text-body-sm font-medium text-ink truncate">{entry.name}</p>
-            <p className="text-[10px] text-ink-tertiary/50">
+            <p className="text-[11px] text-ink-secondary">
               {entry.badges_count} badge{entry.badges_count !== 1 ? 's' : ''}
               {entry.current_streak > 0 && ` · ${entry.current_streak}d`}
             </p>

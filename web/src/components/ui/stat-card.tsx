@@ -24,15 +24,40 @@ export function StatCard({
   className,
   onClick,
 }: StatCardProps) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`${label}: ${value}`}
+        className={cn(
+          'rounded-card border border-seam bg-panel p-4 overflow-hidden text-left w-full',
+          'transition-[border-color,box-shadow] duration-200',
+          'cursor-pointer hover:border-seam-strong',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
+          className
+        )}
+      >
+        <span className="flex items-start justify-between gap-3">
+          <span className="min-w-0">
+            <span className="overline text-ink-muted/80 block">{label}</span>
+            <span className={cn('font-code tabular-nums text-2xl font-semibold tracking-tight leading-none mt-2 block', color)}>
+              {value}
+            </span>
+            {sub && <span className="text-caption text-ink-muted mt-1.5 block">{sub}</span>}
+          </span>
+          {icon && (
+            <span className="shrink-0 text-ink-muted/40 mt-0.5" aria-hidden>{icon}</span>
+          )}
+        </span>
+      </button>
+    )
+  }
   return (
     <div
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
       className={cn(
         'rounded-card border border-seam bg-panel p-4 overflow-hidden',
         'transition-[border-color,box-shadow] duration-200',
-        onClick && 'cursor-pointer hover:border-seam-strong',
         className
       )}
     >

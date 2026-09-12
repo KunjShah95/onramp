@@ -66,7 +66,7 @@ export default function ContactPage() {
       <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Contact</span>
           </span>

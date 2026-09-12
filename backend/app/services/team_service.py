@@ -5,7 +5,7 @@ Manages team creation, membership, and permissions
 
 from typing import Optional, List
 from app.services.postgres_db import get_storage, generate_id
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient
 
 
 async def create_team(name: str, description: Optional[str] = None) -> dict:
@@ -112,8 +112,8 @@ async def get_team_members(team_id: str) -> List[dict]:
         if user:
             decrypted_user = {
                 **user,
-                "name": decrypt_field(user["name"]) if user.get("name") else user.get("name"),
-                "email": decrypt_field(user["email"]) if user.get("email") else user.get("email"),
+                "name": decrypt_field_lenient(user.get("name")) if user.get("name") else user.get("name"),
+                "email": decrypt_field_lenient(user.get("email")) if user.get("email") else user.get("email"),
                 "role": member["role"],
                 "joined_at": member["joined_at"],
             }

@@ -1,9 +1,15 @@
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 
 COLLECTION = "onramp_audit_log"
+
+try:
+    from app.services._shared.audit_store import AuditStore
+    _store = AuditStore(COLLECTION)
+except Exception:  # pragma: no cover
+    _store = None  # type: ignore
 
 EVENT_CODES = {
     # Core workflow
@@ -16,7 +22,7 @@ EVENT_CODES = {
     "login_success", "login_failed", "logout",
     "password_reset_requested", "password_reset_completed",
     "password_changed", "account_deactivated",
-    "token_refreshed", "session_expired",
+    "token_refreshed", "token_reuse_detected", "session_expired",
     "csrf_violation", "rate_limit_exceeded",
     "unauthorized_access_attempt",
 }

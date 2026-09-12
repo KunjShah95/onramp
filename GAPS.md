@@ -150,6 +150,14 @@ with pytest.raises(Exception):
 
 **Cross-refs:** `SECURITY.md` (posture), `features_mvp.md:2` (hardening checklist), `ROADMAP.md` (wedge).
 
-**Last Updated:** 2026-08-21 — docs refresh; counts/surfaces re-aligned with codebase (42+ routers, 16 agents, 700+ tests). Gap counts unchanged (audit is point-in-time 2026-08-09); remaining **NEEDS FIX** items still tracked above.
+**Last Updated:** 2026-09-12 — backend modernization (Full, backward-compatible):
+`app/core/` (central Settings + single-source JWT/bcrypt in `core/security.py`),
+`BodySizeLimitMiddleware` extracted to `middleware/body_size.py`,
+dedicated `refresh_tokens` table (migration `029_add_refresh_tokens`) +
+`refresh_token_service` (Redis `SET NX PX` rotation lock, legacy dual-read),
+`SECURITY.md` token-lifetime truth (15-min/30-day).
+Evidence corrections: lockout IS wired into login (`auth.py` login flow);
+LLM timeouts + circuit-breaker snapshot already exist (`llm.py` timeout config +
+reliability snapshot) — prior GAPS #13 was stale.
 **Audit Tool:** Anthropic Claude Code — Explore Agent
 **Total Time to Review:** Ongoing (25 issues identified, 4 fixed 2026-08-09 session)

@@ -58,14 +58,14 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
   const [suggestion, setSuggestion] = useState<ReviewerSuggestionResponse | null>(null)
   const [consistency, setConsistency] = useState<ConsistencyResponse | null>(null)
   const [failed, setFailed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!resolvedId) return
     let cancelled = false
-    // Reset first so a team switch never flashes the previous team's board.
-    setLoad(null)
-    setSuggestion(null)
-    setConsistency(null)
+    // Keep previous board while refetching — no blank flash on team switch.
+    setLoading(true)
     setFailed(false)
     Promise.allSettled([
       fetchReviewerLoad(resolvedId),
@@ -77,11 +77,39 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
       setSuggestion(s.status === 'fulfilled' ? s.value : null)
       setConsistency(c.status === 'fulfilled' ? c.value : null)
       setFailed(l.status === 'rejected' && s.status === 'rejected' && c.status === 'rejected')
+      setLoading(false)
     })
     return () => { cancelled = true }
-  }, [resolvedId])
+  }, [resolvedId, attempt])
 
-  if (!resolvedId || failed) return null
+  if (!resolvedId) {
+    return (
+      <ConsolePanel rail="Review ops" designator="No team" status="standby">
+        <p className="text-sm text-ink-muted">Select a team to see reviewer load.</p>
+      </ConsolePanel>
+    )
+  }
+
+  if (loading && !load && !suggestion && !consistency) {
+    return (
+      <ConsolePanel rail="Review ops" designator="Loading" status="standby">
+        <div aria-busy="true" aria-label="Loading review ops" className="animate-pulse space-y-2">
+          <div className="h-8 rounded bg-well" />
+          <div className="h-12 rounded bg-well" />
+        </div>
+      </ConsolePanel>
+    )
+  }
+
+  if (failed) {
+    return (
+      <ConsolePanel rail="Review ops" designator="Unavailable" status="abort">
+        <p className="text-sm text-abort font-medium" role="alert">Review telemetry unavailable.</p>
+        <p className="text-caption text-ink-muted mt-1">Retry — the queue itself is unaffected.</p>
+        <button onClick={() => setAttempt((a) => a + 1)} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+      </ConsolePanel>
+    )
+  }
 
   const reviewers = load?.reviewers ?? []
   const maxLoad = reviewers.length ? Math.max(...reviewers.map((r) => r.load_score)) : 0
@@ -167,7 +195,7 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
                       {r.reviews} rev · {r.rework_rate_pct ?? 0}% rework
                       {r.avg_turnaround_hours != null && (
                         <span className="inline-flex items-center gap-0.5 ml-2">
-                          <Timer size={9} /> {Math.round(r.avg_turnaround_hours)}h
+                          <Timer size={12} aria-hidden className="shrink-0" /> {Math.round(r.avg_turnaround_hours)}h
                         </span>
                       )}
                     </span>
@@ -175,7 +203,7 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
                       'px-1.5 py-0.5 rounded-[2px] text-[10px] font-semibold tabular-nums border',
                       TONE_CLASS[tone]
                     )}>
-                      {r.score != null ? r.score : 'N/A'}
+                      {r.score != null ? r.score : '—'}
                     </span>
                   </div>
                 )
@@ -187,9 +215,9 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
 
       {/* Legend */}
       <div className="flex items-center gap-3 mt-3 pt-2 border-t border-seam text-[10px] text-ink-tertiary font-code">
-        <span className="inline-flex items-center gap-1"><Gauge size={10} /> load = pending×25 + active×12</span>
-        <span className="inline-flex items-center gap-1"><CheckCircle size={10} /> score ≥70</span>
-        <span className="inline-flex items-center gap-1"><WarningCircle size={10} /> &lt;40</span>
+        <span className="inline-flex items-center gap-1"><Gauge size={12} aria-hidden className="shrink-0" /> load = pending×25 + active×12</span>
+        <span className="inline-flex items-center gap-1"><CheckCircle size={12} aria-hidden className="shrink-0" /> score ≥70</span>
+        <span className="inline-flex items-center gap-1"><WarningCircle size={12} aria-hidden className="shrink-0" /> &lt;40</span>
       </div>
     </ConsolePanel>
   )

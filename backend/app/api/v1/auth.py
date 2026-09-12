@@ -7,7 +7,6 @@ import secrets as _secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +25,7 @@ from app.services.user_service import (
     update_user_profile,
 )
 from app.services.postgres_db import get_storage
-from app.services.field_encryption import email_hash, encrypt_field, decrypt_field
+from app.services.field_encryption import email_hash, email_hash_candidates, encrypt_field, decrypt_field
 from app.services.email_service import is_enabled as email_is_enabled
 from app.services.email_service import send_email
 from app.services.api_key_service import APIKeyService
@@ -36,19 +35,22 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-JWT_SECRET = os.getenv("JWT_SECRET", "")
-JWT_ALGORITHM = "HS256"
+from app.core import security as _core_security
+from app.core.config import get_settings as _get_settings
 
-if not JWT_SECRET:
-    _env = os.getenv("ENV", "development").lower()
-    if _env == "production":
-        raise RuntimeError(
-            "JWT_SECRET must be set in production — refusing to start with an insecure default."
-        )
-    JWT_SECRET = "dev-jwt-secret-change-in-production"
-    logger.warning(
-        "JWT_SECRET not set — using insecure dev default (DO NOT use in production)"
-    )
+# --- Single-source auth crypto (app.core.security) ---------------------------
+# Module-level names are kept as deprecated compat aliases (external code only
+# imports get_current_user/get_user_or_api_key/router, but keep these stable).
+# NOTE: ``JWT_SECRET`` is intentionally NOT frozen at import time anymore for
+# crypto paths — helpers below call ``_core_security.get_jwt_secret()`` fresh.
+# The alias below exists only for backward-compat introspection.
+JWT_ALGORITHM = _core_security.JWT_ALGORITHM
+try:
+    JWT_SECRET = _core_security.get_jwt_secret()
+except RuntimeError:
+    # Production without a secret: keep importable so the lifespan validator
+    # in main.py can raise the canonical error at startup instead of here.
+    JWT_SECRET = os.getenv("JWT_SECRET", "")
 # Access token lifetime — short-lived per the session-refresh design (FEATURES_PLAN §6).
 JWT_ACCESS_EXPIRY_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRY_MINUTES", "15"))
 JWT_REFRESH_EXPIRY_DAYS = int(os.getenv("JWT_REFRESH_EXPIRY_DAYS", "30"))
@@ -58,59 +60,27 @@ FRONTEND_URL = os.getenv(
     os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
 )
 
-# Refresh tokens are stored (hashed) in the generic dynamic_documents table so
-# they survive server restarts and can be revoked/rotated server-side.
+# Refresh-token persistence lives in app.services.refresh_token_service
+# (dedicated table + Redis-safe rotation lock, legacy dual-read). This module
+# keeps thin wrappers so existing imports keep working.
 REFRESH_TOKEN_COLLECTION = "onramp_refresh_tokens"
-
-# Per-user locks for refresh token rotation to prevent race conditions when
-# two requests present the same refresh token simultaneously.
-_refresh_locks: dict[str, asyncio.Lock] = {}
-_refresh_locks_lock = asyncio.Lock()  # protects the dict itself
-_refresh_locks_last_used: dict[str, float] = {}
-_refresh_locks_max_size = 1000
-_refresh_locks_ttl = 3600.0  # 1 hour idle eviction
-
-import time as _time
 
 
 async def _get_refresh_lock(user_id: str) -> asyncio.Lock:
-    async with _refresh_locks_lock:
-        now = _time.monotonic()
-        if user_id not in _refresh_locks:
-            # FIFO eviction when at capacity: remove oldest idle entry
-            if len(_refresh_locks) >= _refresh_locks_max_size:
-                # Find oldest entry by last_used
-                oldest = min(_refresh_locks_last_used, key=lambda k: _refresh_locks_last_used.get(k, 0), default=None)
-                if oldest is not None:
-                    _refresh_locks.pop(oldest, None)
-                    _refresh_locks_last_used.pop(oldest, None)
-                else:
-                    # Fallback: pop arbitrary
-                    _refresh_locks.pop(next(iter(_refresh_locks)), None)
-            # Opportunistic TTL cleanup (scan at most once per 100 inserts to amortize)
-            if len(_refresh_locks_last_used) % 100 == 0:
-                expired = [k for k, t in _refresh_locks_last_used.items() if now - t > _refresh_locks_ttl]
-                for k in expired:
-                    # Only evict if lock is not currently held
-                    lk = _refresh_locks.get(k)
-                    if lk is not None and not lk.locked():
-                        _refresh_locks.pop(k, None)
-                        _refresh_locks_last_used.pop(k, None)
-            _refresh_locks[user_id] = asyncio.Lock()
-        _refresh_locks_last_used[user_id] = now
-        return _refresh_locks[user_id]
+    """Compat wrapper: per-user in-memory lock (single-process fallback).
+
+    The ``POST /auth/refresh`` endpoint uses the distributed
+    ``acquire_refresh_lock`` from the service; this wrapper remains for
+    backward compatibility with any external callers.
+    """
+    from app.services.refresh_token_service import _memory_lock
+
+    return await _memory_lock(user_id)
 
 
 async def _cleanup_refresh_locks() -> None:
-    """Remove idle refresh locks older than TTL (callable as background task)."""
-    async with _refresh_locks_lock:
-        now = _time.monotonic()
-        expired = [k for k, t in _refresh_locks_last_used.items() if now - t > _refresh_locks_ttl]
-        for k in expired:
-            lk = _refresh_locks.get(k)
-            if lk is not None and not lk.locked():
-                _refresh_locks.pop(k, None)
-                _refresh_locks_last_used.pop(k, None)
+    """No-op kept for backward compatibility (locks are self-managing now)."""
+    return None
 
 
 class LoginRequest(BaseModel):
@@ -213,121 +183,62 @@ async def get_user_or_api_key(request: Request) -> dict:
     }
 
 
-JWT_ISSUER = os.getenv("JWT_ISSUER", "onramp")
-JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "onramp-api")
+# Compat aliases — new code must use app.core.config.get_settings() instead.
+# (Kept so any external introspection of JWT_ISSUER/JWT_AUDIENCE keeps working.)
+JWT_ISSUER = _get_settings().jwt_issuer
+JWT_AUDIENCE = _get_settings().jwt_audience
 
 
 def _generate_jwt(uid: str, email: str, name: str, provider: str, remember_me: bool = False) -> str:
     """Issue a short-lived access token.
 
-    Access tokens are intentionally short-lived (default 15 min). Long-lived
-    sessions are maintained by rotating refresh tokens stored server-side.
-
-    Includes issuer (iss) and audience (aud) claims to prevent token
-    confusion attacks where a token issued for one service is replayed
-    against another.
+    Delegates to :func:`app.core.security.create_access_token` (single source:
+    HS256, iss/aud claims, 15-min default expiry). Kept as a thin wrapper so
+    existing call sites and tests are untouched.
     """
-    payload = {
-        "uid": uid,
-        "email": email,
-        "name": name,
-        "provider": provider,
-        "iss": JWT_ISSUER,
-        "aud": JWT_AUDIENCE,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_EXPIRY_MINUTES),
-        "iat": datetime.now(timezone.utc),
-        "remember_me": remember_me,
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return _core_security.create_access_token(uid, email, name, provider, remember_me=remember_me)
 
 
 # ── Refresh token store (server-side rotation) ───────────────────────────
 
 
 def _get_refresh_pepper() -> str:
-    return os.getenv("JWT_SECRET", "") or "dev-refresh-pepper"
+    try:
+        return _core_security.get_jwt_secret()
+    except RuntimeError:
+        return "dev-refresh-pepper"
 
 def _hash_refresh_token(token: str) -> str:
-    """HMAC-SHA256 hash of refresh token so leaked hashes are not brute-forceable without pepper."""
-    return hmac.new(_get_refresh_pepper().encode(), token.encode(), hashlib.sha256).hexdigest()
+    """HMAC-SHA256 hash of refresh token (delegates to core.security)."""
+    return _core_security.hash_refresh_token(token)
 
 
 def _generate_refresh_token() -> str:
     """Generate a cryptographically random opaque refresh token."""
-    return _secrets.token_urlsafe(48)
+    from app.services.refresh_token_service import generate_refresh_token
+
+    return generate_refresh_token()
 
 
 async def _store_refresh_token(user_id: str, token: str, remember_me: bool) -> dict:
-    """Persist a refresh token (hashed) with expiry, revoking any prior tokens."""
-    storage = get_storage()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_EXPIRY_DAYS)
-    record = {
-        "user_id": user_id,
-        "token_hash": _hash_refresh_token(token),
-        "expires_at": expires_at.isoformat(),
-        "remember_me": remember_me,
-        "revoked": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    # Revoke existing tokens for this user (single active session per design).
-    try:
-        existing = await storage.query_documents(
-            REFRESH_TOKEN_COLLECTION, [("user_id", "==", user_id)]
-        )
-        for e in existing:
-            await storage.update_document(
-                REFRESH_TOKEN_COLLECTION, e["id"], {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}
-            )
-    except Exception:
-        logger.exception("Failed to revoke prior refresh tokens for %s", user_id)
-    token_id = _secrets.token_hex(16)
-    record["id"] = token_id
-    try:
-        await storage.create_document(REFRESH_TOKEN_COLLECTION, token_id, record)
-    except Exception:
-        logger.exception("Failed to persist refresh token")
-    return record
+    """Persist a refresh token (delegates to refresh_token_service)."""
+    from app.services.refresh_token_service import store_refresh_token
+
+    return await store_refresh_token(user_id, token, remember_me)
 
 
 async def _validate_refresh_token(token: str) -> dict | None:
-    """Validate a refresh token. Returns the stored record or None."""
-    storage = get_storage()
-    token_hash = _hash_refresh_token(token)
-    try:
-        rows = await storage.query_documents(
-            REFRESH_TOKEN_COLLECTION, [("token_hash", "==", token_hash)]
-        )
-    except Exception:
-        logger.exception("Refresh token lookup failed")
-        return None
-    if not rows:
-        return None
-    record = rows[0]
-    if record.get("revoked"):
-        return None
-    try:
-        expires = datetime.fromisoformat(record["expires_at"])
-        if expires < datetime.now(timezone.utc):
-            return None
-    except (KeyError, ValueError):
-        return None
-    return record
+    """Validate a refresh token (delegates to refresh_token_service)."""
+    from app.services.refresh_token_service import validate_refresh_token
+
+    return await validate_refresh_token(token)
 
 
 async def _revoke_refresh_token(token: str) -> None:
-    """Revoke a refresh token (rotation invalidates the previous one)."""
-    storage = get_storage()
-    token_hash = _hash_refresh_token(token)
-    try:
-        rows = await storage.query_documents(
-            REFRESH_TOKEN_COLLECTION, [("token_hash", "==", token_hash)]
-        )
-        for r in rows:
-            await storage.update_document(
-                REFRESH_TOKEN_COLLECTION, r["id"], {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}
-            )
-    except Exception:
-        logger.exception("Failed to revoke refresh token")
+    """Revoke a refresh token (delegates to refresh_token_service)."""
+    from app.services.refresh_token_service import revoke_refresh_token
+
+    await revoke_refresh_token(token)
 
 
 async def _issue_tokens(
@@ -348,17 +259,8 @@ async def _issue_tokens(
 
 
 def _decode_jwt(token: str) -> dict | None:
-    try:
-        payload = jwt.decode(
-            token, JWT_SECRET, algorithms=[JWT_ALGORITHM],
-            issuer=os.getenv("JWT_ISSUER", "onramp"),
-            audience=os.getenv("JWT_AUDIENCE", "onramp-api"),
-        )
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
+    """Verify a JWT via the single-source core helper (iss/aud/expiry)."""
+    return _core_security.decode_access_token(token)
 
 
 # ── HttpOnly Cookie Helpers ─────────────────────────────────────────────────
@@ -374,7 +276,7 @@ _COOKIE_SAMESITE = "Lax"  # Lax allows top-level navigations (OAuth redirects)
 
 
 def _is_production() -> bool:
-    return os.getenv("ENV", "development").lower() == "production"
+    return _get_settings().env.lower() == "production"
 
 
 def _set_auth_cookies(response, token: str, refresh_token: str | None = None, remember_me: bool = False) -> None:
@@ -399,7 +301,7 @@ def _set_auth_cookies(response, token: str, refresh_token: str | None = None, re
     if refresh_token:
         # Consistent path: refresh cookie must be sent with /api/auth/refresh
         # and other /api/* if frontend moves it; use /api to cover both
-        max_age = JWT_REFRESH_EXPIRY_DAYS * 24 * 3600 if remember_me else None
+        max_age = _get_settings().jwt_refresh_expiry_days * 24 * 3600 if remember_me else None
         response.set_cookie(
             key=_COOKIE_REFRESH,
             value=refresh_token,
@@ -544,8 +446,10 @@ async def register(body: RegisterRequest):
     """Register a new user with email/password."""
     if not body.email or not body.password or not body.name:
         raise HTTPException(status_code=400, detail="email, password, and name are required")
-    if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    try:
+        _core_security.validate_password(body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if len(body.name.strip()) > 120:
         raise HTTPException(status_code=400, detail="Name must be 120 characters or fewer")
 
@@ -556,7 +460,7 @@ async def register(body: RegisterRequest):
         raise HTTPException(status_code=409, detail="Registration failed. Please try again or contact support.")
 
     uid = str(uuid.uuid4())
-    password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+    password_hash = _core_security.hash_password(body.password)
 
     now = datetime.now(timezone.utc)
     record = {
@@ -589,7 +493,7 @@ async def register(body: RegisterRequest):
         factory = db_config.get_session_factory()
         async with factory() as session:
             result = await session.execute(
-                select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+                select(UserModel).where(UserModel.email_hash.in_(email_hash_candidates(body.email)))
             )
             user_row = result.scalar_one_or_none()
             if user_row:
@@ -681,7 +585,7 @@ async def login(body: LoginRequest):
     factory = db_config.get_session_factory()
     async with factory() as session:
         result = await session.execute(
-            select(UserModel).where(UserModel.email_hash == email_h)
+            select(UserModel).where(UserModel.email_hash.in_(email_hash_candidates(body.email)))
         )
         user_row = result.scalar_one_or_none()
 
@@ -700,7 +604,7 @@ async def login(body: LoginRequest):
                                    "attempts_remaining": status.attempts_remaining})
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    if not bcrypt.checkpw(body.password.encode(), user_row.password_hash.encode()):
+    if not _core_security.verify_password(body.password, user_row.password_hash):
         status = await record_failed_attempt(email_h)
         await log_event("login_failed", user_row.id, user_row.id,
                         metadata={"reason": "wrong_password",
@@ -775,8 +679,9 @@ async def refresh_token(body: RefreshRequest, request: Request):
     authenticated by the refresh token itself, so the client can call it after
     its access token expires (silent 401 retry on the frontend).
 
-    A per-user lock prevents race conditions when two requests present the
-    same refresh token simultaneously (e.g. browser tabs, retry loops).
+    A per-user distributed lock (Redis when available) prevents race
+    conditions when two requests present the same refresh token
+    simultaneously (e.g. browser tabs, retry loops, multi-worker deploys).
     """
     # Accept refresh token from body or cookie
     refresh_token_value = body.refresh_token or request.cookies.get(_COOKIE_REFRESH)
@@ -785,14 +690,39 @@ async def refresh_token(body: RefreshRequest, request: Request):
 
     record = await _validate_refresh_token(refresh_token_value)
     if not record:
+        # Reuse detection: a revoked-but-known token is a replay (possible
+        # theft) — burn the whole family so a stolen rotated token is useless.
+        # The client still gets the generic 401 (no oracle for attackers).
+        try:
+            from app.services.refresh_token_service import (
+                find_revoked_record as _find_revoked,
+                revoke_all_user_tokens as _wipe_family,
+            )
+            from app.services.audit_service import log_event as _audit
+
+            revoked = await _find_revoked(refresh_token_value)
+            if revoked and revoked.get("user_id"):
+                await _wipe_family(revoked["user_id"])
+                try:
+                    await _audit(
+                        "token_reuse_detected",
+                        revoked["user_id"],
+                        revoked["user_id"],
+                        metadata={"token_hash_prefix": revoked.get("token_hash", "")[:12]},
+                    )
+                except Exception:
+                    logger.debug("reuse audit failed", exc_info=True)
+        except Exception:
+            logger.debug("reuse detection failed", exc_info=True)
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     uid = record["user_id"]
 
     # Serialize rotation per user so concurrent requests with the same
     # refresh token don't both succeed (only the first one wins).
-    lock = await _get_refresh_lock(uid)
-    async with lock:
+    from app.services.refresh_token_service import acquire_refresh_lock
+
+    async with acquire_refresh_lock(uid):
         # Re-validate inside the lock — a previous concurrent request may
         # have already rotated (revoked) this token.
         record = await _validate_refresh_token(refresh_token_value)
@@ -842,8 +772,30 @@ async def me(user: dict = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout():
-    """Clear auth cookies (browser session logout)."""
+async def logout(request: Request, body: RefreshRequest | None = None):
+    """Clear auth cookies and revoke the presented refresh token.
+
+    Public (like /refresh): the refresh token in the cookie or body is the
+    credential, so users with an expired access token can still log out.
+    Revocation is best-effort — logout always succeeds at clearing cookies.
+    """
+    presented = (body.refresh_token if body and body.refresh_token else None) or request.cookies.get(
+        _COOKIE_REFRESH
+    )
+    if presented:
+        try:
+            record = await _validate_refresh_token(presented)
+            uid = (record or {}).get("user_id")
+            await _revoke_refresh_token(presented)
+            if uid:
+                try:
+                    from app.services.audit_service import log_event as _audit
+
+                    await _audit("logout", uid, uid)
+                except Exception:
+                    logger.debug("logout audit failed", exc_info=True)
+        except Exception:
+            logger.debug("logout revocation failed", exc_info=True)
     response = JSONResponse(content={"ok": True, "message": "Logged out"})
     _clear_auth_cookies(response)
     return response
@@ -1129,7 +1081,7 @@ async def forgot_password(body: ForgotPasswordRequest):
 
     async with factory() as session:
         result = await session.execute(
-            select(UserModel).where(UserModel.email_hash == email_hash(body.email))
+            select(UserModel).where(UserModel.email_hash.in_(email_hash_candidates(body.email)))
         )
         user_row = result.scalar_one_or_none()
 
@@ -1159,7 +1111,7 @@ async def forgot_password(body: ForgotPasswordRequest):
         "exp": datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRY_MINUTES),
         "iat": datetime.now(timezone.utc),
     }
-    reset_token = jwt.encode(reset_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    reset_token = jwt.encode(reset_payload, _core_security.get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
     # Decrypt the user's email for sending
     user_email = user_row.email
@@ -1272,12 +1224,14 @@ async def reset_password(body: ResetPasswordRequest):
     """Reset a user's password using a valid reset token."""
     if not body.token or not body.password:
         raise HTTPException(status_code=400, detail="Token and password are required")
-    if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    try:
+        _core_security.validate_password(body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     # Verify the reset token
     try:
-        payload = jwt.decode(body.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(body.token, _core_security.get_jwt_secret(), algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Reset token has expired. Please request a new one.")
     except jwt.InvalidTokenError:
@@ -1317,7 +1271,7 @@ async def reset_password(body: ResetPasswordRequest):
                 raise
             logger.exception("Failed to check reset nonce denylist")
     # Update password in database
-    password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+    password_hash = _core_security.hash_password(body.password)
     now = datetime.now(timezone.utc)
 
     await db_config.ensure_engine()
@@ -1367,10 +1321,12 @@ async def set_password(
     """Set a new password (required for provisioned users on first login)."""
     uid = user.get("uid", "")
 
-    if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    try:
+        _core_security.validate_password(body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
-    password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+    password_hash = _core_security.hash_password(body.password)
     now = datetime.now(timezone.utc)
 
     await db_config.ensure_engine()

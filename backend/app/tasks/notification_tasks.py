@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 from celery import shared_task
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 
 logger = logging.getLogger("onramp.tasks.notification")
 

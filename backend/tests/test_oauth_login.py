@@ -42,8 +42,16 @@ pytestmark = pytest.mark.usefixtures("clean_postgres_tables", "seed_test_base")
 
 @pytest.fixture(autouse=True)
 def _no_redis(monkeypatch):
-    """Keep OAuth state tests hermetic: no REDIS_URL → in-memory fallback."""
+    """Keep OAuth state tests hermetic: no REDIS_URL → in-memory fallback.
+
+    Dummy OAuth client id/secrets keep _validate_oauth_config passing
+    without real credentials (oauth_service reads env live at call time).
+    """
     monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "test-github-client-id")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "test-github-client-secret")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-google-client-secret")
     import app.services.cache_service as cache_service
 
     cache_service._client = None

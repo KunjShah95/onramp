@@ -4,6 +4,8 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
 import { Magnetic } from '../ui/landing-motion'
 import { prefetchProps } from '../../lib/prefetch'
+import ThemeToggle from './ThemeToggle'
+import { useLandingTheme } from '../../hooks/useLandingTheme'
 
 const NAV_LINKS = [
   { label: 'The gap', href: '#the-gap', isAnchor: true },
@@ -22,6 +24,7 @@ export default function LandingNav() {
   const [active, setActive] = useState<string | null>(null)
   const lastY = useRef(0)
   const reduced = useReducedMotion()
+  const { isLight } = useLandingTheme()
 
   // Hide on scroll down, reveal on scroll up (past a small dead zone).
   useEffect(() => {
@@ -59,14 +62,18 @@ export default function LandingNav() {
       animate={reduced ? undefined : { y: hidden ? '-100%' : '0%' }}
       transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-300 ${
-        scrolled
-          ? 'border-black/10 bg-white/85 shadow-[0_8px_32px_rgba(15,23,42,0.06)]'
-          : 'border-black/5 bg-white/70'
+        isLight
+          ? scrolled
+            ? 'border-black/10 bg-white/85 shadow-[0_8px_32px_rgba(15,23,42,0.06)]'
+            : 'border-black/5 bg-white/70'
+          : scrolled
+            ? 'border-seam-strong bg-room/80 shadow-[0_8px_32px_rgba(0,0,0,0.45)]'
+            : 'border-seam bg-room/60'
       }`}
     >
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
         <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_4px_14px_rgba(79,70,229,0.35)] transition-transform duration-200 group-hover:scale-105">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_0_20px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-hover:scale-105">
             <TreeStructure size={16} weight="bold" />
           </span>
           <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
@@ -107,11 +114,12 @@ export default function LandingNav() {
           >
             Log in
           </Link>
+          <ThemeToggle />
           <Magnetic strength={0.18}>
             <Link
               to="/register"
               {...prefetchProps('/register')}
-              className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13.5px] font-semibold text-white shadow-[0_4px_16px_rgba(79,70,229,0.28)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_6px_20px_rgba(79,70,229,0.36)] active:translate-y-px"
+              className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13.5px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_24px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_32px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
             >
               Try for free
             </Link>
@@ -134,14 +142,12 @@ export default function LandingNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-black/5 bg-white md:hidden"
-          >
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}            className={`overflow-hidden border-t md:hidden ${isLight ? 'border-black/5 bg-white' : 'border-seam bg-base'}`}>
             <div className="flex flex-col gap-1 px-6 py-4">
               {NAV_LINKS.map((l) => {
                 const isRoute = !l.isAnchor
                 const cls = `rounded-md px-2 py-2.5 text-[14px] font-medium transition-colors ${
-                  active === l.href ? 'bg-accent-primary/[0.06] text-accent-primary' : 'text-ink-secondary hover:bg-black/5 hover:text-ink'
+                  active === l.href ? 'bg-accent-primary/[0.08] text-accent-primary' : `text-ink-secondary hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`
                 }`
                 return isRoute ? (
                   <Link
@@ -163,11 +169,11 @@ export default function LandingNav() {
                   </a>
                 )
               })}
-              <div className="my-2 border-t border-black/5" />
+              <div className={`my-2 border-t ${isLight ? 'border-black/5' : 'border-seam'}`} />
               <Link
                 to="/login"
                 onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-black/5 hover:text-ink"
+                className={`rounded-md px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
               >
                 Log in
               </Link>

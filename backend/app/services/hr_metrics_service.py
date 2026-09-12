@@ -13,7 +13,7 @@ ISO strings or native datetimes are both handled.
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 from typing import Any, Optional
 
 from app.services.postgres_db import get_storage

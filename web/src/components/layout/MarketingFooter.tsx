@@ -39,7 +39,7 @@ const footerColumns = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="relative overflow-hidden border-t border-black/5 bg-room">
+    <footer className="relative overflow-hidden border-t border-seam bg-room">
       {/* ambient glows */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 right-[14%] h-[280px] w-[460px] rounded-full bg-go/[0.08] blur-[110px]" />
@@ -50,9 +50,8 @@ export default function MarketingFooter() {
       {/* dot grid faded toward the bottom */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-50"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(148,163,184,0.10) 1px, transparent 1px)',
+        className="pointer-events-none absolute inset-0 opacity-50"          style={{
+          backgroundImage: 'radial-gradient(rgb(var(--border-rgb) / 0.10) 1px, transparent 1px)',
           backgroundSize: '22px 22px',
           maskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
           WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
@@ -64,7 +63,7 @@ export default function MarketingFooter() {
           {/* brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-white shadow-[0_4px_16px_rgba(79,70,229,0.25)] ring-1 ring-black/10 transition-transform duration-200 group-hover:scale-105">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-[rgb(var(--accent-foreground))] shadow-[0_0_20px_rgb(var(--accent-primary)/0.3)] ring-1 ring-seam transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={17} weight="bold" />
               </span>
               <span className="font-display text-base font-bold tracking-tight text-ink">ONRAMP</span>
@@ -93,7 +92,7 @@ export default function MarketingFooter() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-black/5 pt-6 sm:flex-row sm:items-center">
+        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-seam pt-6 sm:flex-row sm:items-center">
           <span className="font-code text-[11px] text-ink-tertiary">© {new Date().getFullYear()} Onramp, Inc. All rights reserved.</span>
           <span className="font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs</span>
         </div>

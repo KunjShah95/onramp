@@ -19,18 +19,15 @@ import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
+import { useThemeSignals } from '../hooks/useThemeSignals'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import RampPanel from '../components/dashboard/RampPanel'
 import CohortTrendPanel from '../components/dashboard/CohortTrendPanel'
 import RetentionCurvesPanel from '../components/dashboard/RetentionCurvesPanel'
 import HeadcountFlowPanel from '../components/dashboard/HeadcountFlowPanel'
 
-const SIG = {
-  go: '#17A34A',
-  blue: '#2472C4',
-  grid: 'rgb(var(--border-rgb) / 0.10)',
-  axis: 'rgb(var(--text-tertiary) / 0.75)',
-}
+/* Chart signal colors resolve from theme tokens via useThemeSignals() —
+   hardcoded hex here rendered the same palette in every theme. */
 const TOOLTIP = {
   background: 'rgb(var(--bg-elevated))',
   border: '1px solid rgb(var(--border-rgb) / 0.18)',
@@ -52,6 +49,7 @@ const item = {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function ExecutivePage() {
+  const SIG = useThemeSignals()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [seedData, setSeedData] = useState<any>(null)
@@ -122,7 +120,7 @@ export default function ExecutivePage() {
           </motion.div>
 
           {/* Revenue trajectory + fleet */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
             <motion.div variants={item} className="lg:col-span-3">
               <ConsolePanel rail="Revenue Trajectory" designator="MRR · 6-MO" status="go" live>
                 <div className="flex items-baseline gap-3 mb-3">

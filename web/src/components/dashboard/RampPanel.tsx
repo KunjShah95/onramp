@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
 import {
@@ -103,7 +104,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
           to="/ramp"
           className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1"
         >
-          Ramp <span aria-hidden>→</span>
+          Ramp <ArrowRight size={12} aria-hidden className="shrink-0" />
         </Link>
       }
     >

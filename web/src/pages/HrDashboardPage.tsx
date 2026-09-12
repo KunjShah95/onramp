@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
+import { useThemeSignals } from '../hooks/useThemeSignals'
 import {
   fetchHrCohort, listTeams,
   fetchCohortComparison, fetchMentorMatch, fetchReviewAnalytics,
@@ -26,7 +27,8 @@ import { ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from 'recharts'
 import RampPanel from '../components/dashboard/RampPanel'
 import RetentionCurvesPanel from '../components/dashboard/RetentionCurvesPanel'
 
-const SIG = { go: '#17A34A', blue: '#2472C4', amber: '#D6870F' }
+/* Chart signal colors resolve from theme tokens via useThemeSignals() —
+   hardcoded hex here rendered the same palette in every theme. */
 const TOOLTIP = {
   background: 'rgb(var(--bg-elevated))',
   border: '1px solid rgb(var(--border-rgb) / 0.18)',
@@ -128,6 +130,8 @@ function CompletionRatesCard({ members }: { members: HrCompletionMember[] | unde
 }
 
 function CohortFunnelCard({ members }: { members: HrCompletionMember[] | undefined }) {
+  // Hooks before the early return (rules of hooks).
+  const SIG = useThemeSignals()
   if (!members || members.length === 0) return null
   const totalAssigned = members.reduce((s, m) => s + m.assigned, 0)
   const totalCompleted = members.reduce((s, m) => s + m.completed, 0)
@@ -194,7 +198,7 @@ function ReviewAnalyticsCard({ analytics }: { analytics: ReviewAnalytics | undef
   if (!analytics) return null
   return (
     <ConsolePanel rail="Review Analytics" designator="EECOM" status="standby">
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
         {[
           { label: 'Rework rate', value: `${analytics.rework_rate_pct}%`, color: analytics.rework_rate_pct > 30 ? 'text-abort' : analytics.rework_rate_pct > 15 ? 'text-caution' : 'text-go' },
           { label: 'Tasks reworked', value: String(analytics.reworked_task_count), color: 'text-ink' },

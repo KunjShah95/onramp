@@ -49,7 +49,7 @@ const containerVariants = {
   hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 }
 const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+  hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -94,10 +94,10 @@ function MemberSelect({ members, value, onChange, placeholder = 'Select member�
 
 /** Resolve a user UUID to a human-readable name for display in task lists/modals. */
 function memberName(members: TeamMember[], uid: string | null | undefined): string {
-  if (!uid || !Array.isArray(members)) return 'N/A'
+  if (!uid || !Array.isArray(members)) return 'Unassigned'
   const member = members.find((m) => m.user_id === uid)
   if (member?.name) return member.name
-  return 'N/A'
+  return 'Unassigned'
 }
 
 export default function TasksPage() {
@@ -134,6 +134,14 @@ export default function TasksPage() {
   const [prUrlInput, setPrUrlInput] = useState('')
   const [assignUserId, setAssignUserId] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
+
+  // Reset per-task inputs when selection changes — prevents feedback leaking across tasks.
+  useEffect(() => {
+    setReviewFeedback('')
+    setPrUrlInput('')
+    setActualHoursInput('')
+    setAssignUserId('')
+  }, [selectedTask?.task_id])
 
   // Time tracking
   const [timeStats, setTimeStats] = useState<TeamTimeStats | null>(null)
@@ -308,15 +316,55 @@ export default function TasksPage() {
         unlock_modules: formUnlockModules.trim() ? formUnlockModules.split(',').map((s) => s.trim()) : undefined,
         estimated_hours: formEstHours ? parseFloat(formEstHours) : undefined,
       })
-      setShowCreate(false); resetForm(); await fetchTasks(); await fetchProgress()
+      setShowCreate(false); resetForm()
+      try { localStorage.removeItem('tasks.createDraft.v1') } catch { /* private mode */ }
+      await fetchTasks(); await fetchProgress()
       toast.success('Task created', formTitle.trim())
-    } catch (e: any) { setError(e.message || 'Failed to create task'); toast.error('Failed to create task') }
+    } catch (e: any) { setError(e.message || 'Failed to create task'); toast.error('Failed to create task', 'Your draft is preserved.') }
     setCreating(false)
   }
 
   function resetForm() {
     setFormTitle(''); setFormDesc(''); setFormModule(''); setFormPriority('medium')
     setFormAssignee(''); setFormRepoUrl(''); setFormBranch(''); setFormUnlockModules(''); setFormEstHours('')
+  }
+
+  // Draft autosave — never lose a 7-field create on Cancel / refresh.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('tasks.createDraft.v1')
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (d.title) setFormTitle(d.title)
+      if (d.desc) setFormDesc(d.desc)
+      if (d.module) setFormModule(d.module)
+      if (d.priority) setFormPriority(d.priority)
+      if (d.assignee) setFormAssignee(d.assignee)
+      if (d.repoUrl) setFormRepoUrl(d.repoUrl)
+      if (d.unlockModules) setFormUnlockModules(d.unlockModules)
+      if (d.estHours) setFormEstHours(d.estHours)
+    } catch { /* corrupt draft — start fresh */ }
+  }, [])
+
+  useEffect(() => {
+    const dirty = formTitle || formDesc || formModule || formAssignee || formRepoUrl || formBranch || formUnlockModules || formEstHours
+    if (!dirty) return
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem('tasks.createDraft.v1', JSON.stringify({
+          title: formTitle, desc: formDesc, module: formModule, priority: formPriority,
+          assignee: formAssignee, repoUrl: formRepoUrl, unlockModules: formUnlockModules, estHours: formEstHours,
+        }))
+      } catch { /* quota / private mode */ }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [formTitle, formDesc, formModule, formPriority, formAssignee, formRepoUrl, formBranch, formUnlockModules, formEstHours])
+
+  function handleCancelCreate() {
+    const dirty = formTitle.trim() || formDesc.trim() || formModule.trim() || formAssignee.trim() || formRepoUrl.trim() || formUnlockModules.trim() || formEstHours.trim()
+    if (dirty && !confirm('Discard this task draft? You can also keep it — it autosaves.')) return
+    setShowCreate(false)
+    if (!dirty) resetForm()
   }
 
   async function handleAssign(taskId: string, id: string) {
@@ -477,9 +525,16 @@ export default function TasksPage() {
     catch (e: any) { setError(e.message); toast.error('Failed to cancel task') }
   }
   async function handleDelete(taskId: string) {
-    if (!confirm('Delete this task permanently?')) return
-    try { await deleteTask(taskId); setSelectedTask(null); await fetchTasks(); toast.info('Task deleted') }
-    catch { toast.error('Failed to delete task') }
+    const task = tasks.find((t) => t.task_id === taskId)
+    if (!confirm(`Delete "${task?.title?.slice(0, 60) ?? 'task'}" permanently? This cannot be undone.`)) return
+    const prev = tasks
+    setTasks((ts) => ts.filter((t) => t.task_id !== taskId))
+    setSelectedTask(null)
+    try { await deleteTask(taskId); await fetchTasks(); toast.info('Task deleted', 'It was removed permanently.') }
+    catch {
+      setTasks(prev)
+      toast.error('Failed to delete task', 'Nothing was deleted — retry.')
+    }
   }
 
   /** Kanban drag-and-drop persistence · transition the task to its new state. */
@@ -618,7 +673,7 @@ export default function TasksPage() {
                   <Input value={issueQuery} onChange={(e) => { setIssueQuery(e.target.value); setIssueResults([]) }} placeholder="e.g., login or auth…" onKeyDown={(e) => { if (e.key === 'Enter') handleSearchIssues() }} />
                   <button onClick={handleSearchIssues} disabled={issueSearching || !importRepoUrl.trim() || !issueQuery.trim()}
                     className="bg-mission hover:bg-mission-lit text-white px-5 py-2 rounded-card text-sm font-medium transition-colors disabled:opacity-45 whitespace-nowrap">
-                    {issueSearching ? 'Searching…' : <><MagnifyingGlass className="w-4 h-4 inline mr-1 -mt-0.5" /> Search</>}
+                    {issueSearching ? 'Searching…' : <><MagnifyingGlass size={16} aria-hidden className="shrink-0" /> Search</>}
                   </button>
                 </div>
               </div>
@@ -687,7 +742,7 @@ export default function TasksPage() {
                       <FieldLabel>Template Name *</FieldLabel>
                       <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="e.g., Write integration tests for auth" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                       <div>
                         <FieldLabel>Module</FieldLabel>
                         <Input value={tplModule} onChange={(e) => setTplModule(e.target.value)} placeholder="auth" />
@@ -864,7 +919,7 @@ export default function TasksPage() {
           </motion.div>
         )}
 
-        {error && <div className="mb-5 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">{error}</div>}
+        {error && <div role="alert" className="mb-5 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">{error}</div>}
 
         {showCreate && (
           <CardSpotlight className="mb-6">
@@ -910,9 +965,11 @@ export default function TasksPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => { setShowCreate(false); resetForm() }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
-                <button onClick={handleCreateTask} disabled={creating || !formTitle.trim()}
-                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                <button onClick={handleCancelCreate} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/30 rounded">Cancel</button>
+                <button onClick={handleCreateTask} disabled={creating || !formTitle.trim() || !selectedTeam}
+                  title={!selectedTeam ? 'Select a team first' : ''}
+                  aria-busy={creating}
+                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">
                   {creating ? 'Creating…' : 'Create Task'}
                 </button>
               </div>
@@ -930,6 +987,13 @@ export default function TasksPage() {
         {loading && <TasksPageSkeleton />}
 
         {!loading && view === 'board' && (
+          filteredTasks.length === 0 ? (
+            <EmptyState
+              title={filter ? 'No tasks match your filter' : 'No tasks yet'}
+              description={filter ? 'Try a different search.' : 'Create a task to get started'}
+              icon={<ListChecks className="w-8 h-8" weight="thin" />}
+            />
+          ) : (
           <motion.div variants={containerVariants} initial="hidden" animate="visible" className="overflow-x-auto pb-4">
             <KanbanBoard
               columns={BOARD_COLUMNS}
@@ -947,6 +1011,7 @@ export default function TasksPage() {
               }
             />
           </motion.div>
+          )
         )}
 
         {!loading && view === 'list' && (
@@ -1007,15 +1072,28 @@ export default function TasksPage() {
 
         {/* Task Detail Modal */}
         {selectedTask && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50" onClick={() => setSelectedTask(null)} role="presentation">
-            <div className="bg-base border border-seam rounded-card w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 shadow-overhead relative"
-              onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+            onClick={() => setSelectedTask(null)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setSelectedTask(null) }}
+          >
+            <div
+              className="bg-base border border-seam rounded-card w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-overhead relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Task: ${selectedTask.title}`}
+            >
               <div className="flex items-center justify-between px-5 py-3 border-b border-seam">
                 <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge state={selectedTask.state} />
-                  <span className="flex items-center gap-1"><span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[selectedTask.priority] ?? PRIORITY_DOTS.medium)} /><span className="text-[10px] font-medium capitalize text-ink-tertiary">{selectedTask.priority}</span></span>
+                  <span className="flex items-center gap-1"><span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[selectedTask.priority] ?? PRIORITY_DOTS.medium)} /><span className="text-[11px] font-medium capitalize text-ink-secondary">{selectedTask.priority}</span></span>
                 </div>
-                <button onClick={() => setSelectedTask(null)} className="text-ink-tertiary hover:text-ink transition-colors">
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  aria-label="Close task details"
+                  className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-btn text-ink-tertiary hover:text-ink hover:bg-well transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
+                >
                   <X className="w-5 h-5" weight="bold" />
                 </button>
               </div>
@@ -1248,25 +1326,25 @@ export default function TasksPage() {
                   )}
                   {(selectedTask.state === 'submitted' || selectedTask.state === 'under_review' || selectedTask.state === 'peer_review') && (
                     <div className="space-y-3">
-                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} />
-                      <div className="flex gap-2 flex-wrap">
+                      <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Add review feedback…" rows={3} aria-label="Review feedback" />
+                      <div className="flex gap-2 flex-wrap items-center">
                         {selectedTask.state === 'peer_review' ? (
                           <>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Route to Product</button>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} aria-label={`Approve ${selectedTask.title}`} className="bg-go hover:bg-go-lit text-white px-5 py-2 rounded-card text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Approve</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="px-4 py-2 rounded-card text-sm font-medium border border-abort/25 text-abort hover:bg-abort/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-abort/40">Request Changes</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/30">Route to Product</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
-                            <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Route to Product</button>
-                            <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve</button>
-                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-2 rounded-card text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <button onClick={() => handleApprove(selectedTask.task_id)} aria-label={`Approve ${selectedTask.title}`} className="bg-go hover:bg-go-lit text-white px-5 py-2 rounded-card text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Approve</button>
+                            <button onClick={() => handleReview(selectedTask.task_id, false)} className="px-4 py-2 rounded-card text-sm font-medium border border-abort/25 text-abort hover:bg-abort/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-abort/40">Request Changes</button>
+                            <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/30">Route to Product</button>
+                            <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-mission hover:border-mission/40 hover:bg-mission/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mission/40 inline-flex items-center gap-1.5">
                               <UsersThree className="w-3.5 h-3.5" /> Peer Review
                             </button>
                           </>
                         )}
-                        <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
+                        <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-abort/30 rounded">Cancel</button>
                       </div>
                     </div>
                   )}

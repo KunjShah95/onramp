@@ -13,7 +13,12 @@ exposed in the database.
 
 from datetime import datetime, timezone
 from app.services.postgres_db import get_storage
-from app.services.field_encryption import encrypt_field, decrypt_field, email_hash
+from app.services.field_encryption import (
+    encrypt_field,
+    decrypt_field_lenient,
+    email_hash,
+    email_hash_candidates,
+)
 
 STORAGE_COLLECTION = "users"
 
@@ -61,10 +66,10 @@ def _decrypt_pii(record: dict) -> dict:
     if record is None:
         return None
     record = dict(record)
-    if "email" in record:
-        record["email"] = decrypt_field(record["email"])
-    if "name" in record:
-        record["name"] = decrypt_field(record["name"])
+    if "email" in record and record["email"]:
+        record["email"] = decrypt_field_lenient(record["email"])
+    if "name" in record and record["name"]:
+        record["name"] = decrypt_field_lenient(record["name"])
     return record
 
 
@@ -104,10 +109,15 @@ async def get_user_by_uid(uid: str) -> dict | None:
 
 async def get_user_by_email(email: str) -> dict | None:
     storage = get_storage()
-    results = await storage.query_documents(
-        STORAGE_COLLECTION, [("email_hash", "==", email_hash(email))]
-    )
-    return _normalize(results[0]) if results else None
+    # Dual-read migration: rows written before the HMAC cutover carry the
+    # legacy unkeyed hash. Try the keyed hash first, then legacy.
+    for candidate in email_hash_candidates(email):
+        results = await storage.query_documents(
+            STORAGE_COLLECTION, [("email_hash", "==", candidate)]
+        )
+        if results:
+            return _normalize(results[0])
+    return None
 
 
 async def get_user_by_email_fast(email: str) -> dict | None:

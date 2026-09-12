@@ -14,7 +14,7 @@ import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { useTheme } from '../context/ThemeContext'
+import { useThemeSignals } from '../hooks/useThemeSignals'
 import StatusBadge from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
 import { ScrollProgress } from '../components/ui/landing-motion'
@@ -28,34 +28,10 @@ import RampPanel, { isLeaderRole } from '../components/dashboard/RampPanel'
 import AutopilotPanel from '../components/dashboard/AutopilotPanel'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import { ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts'
-import { WarningCircle, ArrowRight } from '@phosphor-icons/react'
-
-/** Resolve theme tokens to concrete rgb() strings for SVG chart attributes. */
-function useSignals() {
-  const { theme } = useTheme()
-  return useMemo(() => {
-    const root = document.documentElement
-    const read = (name: string) => getComputedStyle(root).getPropertyValue(name).trim()
-    const solid = (name: string) => {
-      const v = read(name)
-      return v ? `rgb(${v})` : '#888888'
-    }
-    const alpha = (name: string, a: number) => {
-      const v = read(name)
-      return v ? `rgb(${v} / ${a})` : '#888888'
-    }
-    return {
-      go: solid('--go'),
-      blue: solid('--mission'),
-      amber: solid('--caution'),
-      red: solid('--abort'),
-      grid: alpha('--border-rgb', 0.10),
-      axis: alpha('--text-tertiary', 0.75),
-      goSoft: alpha('--go', 0.28),
-      amberSoft: alpha('--caution', 0.22),
-    }
-  }, [theme])
-}
+import { WarningCircle, ArrowRight } from '@phosphor-icons/react'/** Resolve theme tokens to concrete rgb() strings for SVG chart attributes.
+ *  Shared implementation lives in hooks/useThemeSignals — kept as a local
+ *  alias so call sites stay unchanged. */
+const useSignals = useThemeSignals
 
 const TOOLTIP = {
   background: 'rgb(var(--bg-elevated))',

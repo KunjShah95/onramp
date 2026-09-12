@@ -14,7 +14,7 @@ export default function KeyboardShortcutHelp({ shortcuts, onClose }: Props) {
       role="presentation"
     >
       <div
-        className="bg-[#0D1225] border border-white/10 rounded-md p-6 max-w-lg w-full mx-4 shadow-2xl"
+        className="bg-[#0D1225] border border-white/10 rounded-md p-6 max-w-[calc(100vw-2rem)] sm:max-w-lg w-[calc(100%-2rem)] sm:w-full shadow-2xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-label="Keyboard shortcuts reference"

@@ -2,7 +2,7 @@
 
 import pytest
 from app.services.postgres_db import get_storage, generate_id
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 from app.services.user_service import create_user, get_user_by_uid, deactivate_user
 
 

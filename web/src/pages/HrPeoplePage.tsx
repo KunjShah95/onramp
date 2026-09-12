@@ -199,7 +199,7 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {[
           { label: 'Tasks', val: `${dev.completed}/${dev.assigned}`, sub: 'completed', color: 'text-emerald-400', icon: CheckCircle },
           { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : 'N/A', sub: 'to first PR', color: 'text-amber-400', icon: Clock },

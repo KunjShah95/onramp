@@ -15,6 +15,12 @@ from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
 from app.services.credit_service import CreditService, InsufficientCreditsError
 from app.services.team_service import get_user_teams
+from app.services._shared.errors import PaymentRequired, QuotaExceeded, to_http as _to_http
+
+
+def _quota_http(exc) -> HTTPException:
+    """Map domain errors to the exact legacy HTTP shapes (no client change)."""
+    return _to_http(exc)
 
 logger = logging.getLogger(__name__)
 
@@ -50,24 +56,15 @@ async def _enforce(scope: str, action: str) -> tuple[int, str, Optional[dict]]:
         try:
             wallet = await _credits.get_wallet(scope)
         except Exception as exc:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "error": "Unable to verify credit balance",
-                    "code": "CREDIT_CHECK_FAILED",
-                    "tier": tier,
-                },
-            )
+            err = PaymentRequired("Unable to verify credit balance", details={"tier": tier})
+            err.code = "CREDIT_CHECK_FAILED"
+            raise _quota_http(err) from exc
         if int(wallet.get("balance", 0)) < cost:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "error": "Insufficient credits — top up to continue",
-                    "code": "INSUFFICIENT_CREDITS",
-                    "balance": wallet.get("balance"),
-                    "required": cost,
-                    "tier": tier,
-                },
+            raise _quota_http(
+                PaymentRequired(
+                    "Insufficient credits — top up to continue",
+                    details={"balance": wallet.get("balance"), "required": cost, "tier": tier},
+                )
             )
         return cost, tier, wallet
 
@@ -75,15 +72,11 @@ async def _enforce(scope: str, action: str) -> tuple[int, str, Optional[dict]]:
 
     quota = await _usage.check_quota(scope, limits)
     if not quota.get("within_quota", True):
-        raise HTTPException(
-            status_code=429,
-            detail={
-                "error": "Monthly credit quota exceeded",
-                "code": "QUOTA_EXCEEDED",
-                "used": quota.get("used"),
-                "limit": quota.get("monthly_limit"),
-                "tier": tier,
-            },
+        raise _quota_http(
+            QuotaExceeded(
+                "Monthly credit quota exceeded",
+                details={"used": quota.get("used"), "limit": quota.get("monthly_limit"), "tier": tier},
+            )
         )
     return cost, tier, None
 
@@ -100,16 +93,12 @@ async def check_and_record(scope: str, action: str) -> dict:
         try:
             wallet = await _credits.deduct(scope, cost, action=action)
         except InsufficientCreditsError as exc:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "error": "Insufficient credits — top up to continue",
-                    "code": "INSUFFICIENT_CREDITS",
-                    "balance": exc.balance,
-                    "required": exc.required,
-                    "tier": tier,
-                },
-            )
+            raise _quota_http(
+                PaymentRequired(
+                    "Insufficient credits — top up to continue",
+                    details={"balance": exc.balance, "required": exc.required, "tier": tier},
+                )
+            ) from exc
         await _usage.track(scope, action, cost)
         return {"charged": cost, "tier": tier, "credit_balance": wallet.get("balance")}
 

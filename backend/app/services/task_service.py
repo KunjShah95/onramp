@@ -92,8 +92,10 @@ async def _sync_task_to_jira(task: dict) -> None:
                             task.get("task_id", ""),
                             {"jira_issue_key": result["key"]},
                         )
-                    except Exception:
-                        pass
+                    except Exception as store_exc:
+                        logging.getLogger(__name__).warning(
+                            f"Failed to persist jira_issue_key for task {task.get('task_id')}: {store_exc}"
+                        )
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.warning(f"Jira sync failed for task {task.get('task_id')} (team {task.get('team_id')}): {e}", exc_info=True)
@@ -138,11 +140,16 @@ async def _sync_task_to_linear(task: dict) -> None:
                             task.get("task_id", ""),
                             {"linear_issue_id": result["id"]},
                         )
-                    except Exception:
-                        pass
-    except Exception:
+                    except Exception as store_exc:
+                        logging.getLogger(__name__).warning(
+                            f"Failed to persist linear_issue_id for task {task.get('task_id')}: {store_exc}"
+                        )
+    except Exception as e:
         import logging
-        logging.getLogger(__name__).debug("Linear sync error", exc_info=True)
+        logging.getLogger(__name__).warning(
+            f"Linear sync failed for task {task.get('task_id')} (team {task.get('team_id')}): {e}",
+            exc_info=True,
+        )
 
 
 COLLECTION = "onramp_tasks"

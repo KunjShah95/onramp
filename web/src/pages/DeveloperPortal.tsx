@@ -732,7 +732,7 @@ export default function DeveloperPortal() {
                     {Object.entries(tierInfo.tiers).map(([tier, limits]) => (
                       <div key={tier} className="bg-panel border border-seam rounded-lg p-4">
                         <p className="font-bold text-ink mb-2 capitalize">{tier} Tier</p>
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-3">
+                        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-y-2 gap-x-3">
                           <div>
                             <span className="text-[10px] text-ink-tertiary block">Per Minute</span>
                             <span className="font-mono text-xs text-go">{limits.requests_per_minute}</span>

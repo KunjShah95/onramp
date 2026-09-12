@@ -22,15 +22,15 @@ import type {
   AdminAuditEvent, AdminUsageResponse, AdminProviderKeyInfo,
 } from '../lib/api'
 import { useToast } from '../context/ToastContext'
+import { useThemeSignals } from '../hooks/useThemeSignals'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { PROVIDER_OPTIONS } from '../lib/providers'
 
 // Signal palette + tooltip style — consistent with the DORA / CTO dashboards.
-const SIG = {
-  go: '#17A34A',
-  blue: '#2472C4',
+// go/blue resolve from theme tokens via useThemeSignals() (theme-aware).
+const SIG_STATIC = {
   axis: 'rgb(var(--text-tertiary) / 0.75)',
   grid: 'rgb(var(--border-rgb) / 0.10)',
 }
@@ -71,6 +71,7 @@ const item = {
 }
 
 export default function AdminDashboardPage() {
+  const SIG = { ...SIG_STATIC, ...useThemeSignals() }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [usage, setUsage] = useState<number | null>(null)

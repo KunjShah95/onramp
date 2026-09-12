@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { CheckCircle, XCircle, Info, WarningCircle, Spinner, X } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading'
@@ -145,42 +146,53 @@ export function useToast() {
 
 // ─── Toast Container ───────────────────────────────────────────────────
 
-const TYPE_STYLES: Record<ToastType, { bg: string; border: string; icon: string; iconBg: string; iconColor: string }> = {
+const TYPE_STYLES: Record<ToastType, { bg: string; border: string; iconBg: string; iconColor: string }> = {
   success: {
     bg: 'bg-[#0D1F11]',
     border: 'border-success-lit/30',
-    icon: 'check_circle',
     iconBg: 'bg-success-lit/15',
     iconColor: 'text-success-lit',
   },
   error: {
     bg: 'bg-[#1F0D0D]',
     border: 'border-error-lit/30',
-    icon: 'error',
     iconBg: 'bg-error-lit/15',
     iconColor: 'text-error-lit',
   },
   info: {
     bg: 'bg-[#0D1420]',
     border: 'border-info-lit/30',
-    icon: 'info',
     iconBg: 'bg-info-lit/15',
     iconColor: 'text-info-lit',
   },
   warning: {
     bg: 'bg-[#1F180D]',
     border: 'border-warning-lit/30',
-    icon: 'warning',
     iconBg: 'bg-warning-lit/15',
     iconColor: 'text-warning-lit',
   },
   loading: {
     bg: 'bg-[#14100C]',
     border: 'border-info-lit/30',
-    icon: 'loading',
     iconBg: 'bg-info-lit/15',
     iconColor: 'text-info-lit',
   },
+}
+
+function ToastIcon({ type, className }: { type: ToastType; className?: string }) {
+  const cls = cn('shrink-0', className)
+  switch (type) {
+    case 'success':
+      return <CheckCircle size={16} weight="fill" aria-hidden className={cls} />
+    case 'error':
+      return <XCircle size={16} weight="fill" aria-hidden className={cls} />
+    case 'info':
+      return <Info size={16} weight="fill" aria-hidden className={cls} />
+    case 'warning':
+      return <WarningCircle size={16} weight="fill" aria-hidden className={cls} />
+    case 'loading':
+      return <Spinner size={16} aria-hidden className={cn(cls, 'animate-spin')} />
+  }
 }
 
 function ToastContainer({
@@ -193,7 +205,11 @@ function ToastContainer({
   onDismiss: (id: string) => void
 }) {
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse gap-2 max-w-sm w-full pointer-events-none">
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed left-4 right-4 bottom-4 sm:left-auto sm:bottom-6 sm:right-6 z-[9999] flex flex-col-reverse gap-2 sm:max-w-sm sm:w-full pointer-events-none"
+    >
       {toasts.map((t) => {
         const style = TYPE_STYLES[t.type]
         const isExiting = exiting.has(t.id)
@@ -208,15 +224,8 @@ function ToastContainer({
             )}
           >
             <div className="flex items-start gap-3">
-              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', style.iconBg)}>
-                {t.type === 'loading' ? (
-                  <svg className="w-4 h-4 animate-spin text-info-lit" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                ) : (
-                  <span className={cn('material-symbols-outlined text-sm', style.iconColor)}>{style.icon}</span>
-                )}
+              <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', style.iconBg, style.iconColor)}>
+                <ToastIcon type={t.type} />
               </div>
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className="text-sm font-semibold text-[#FDFBF8]">{t.title}</p>
@@ -226,9 +235,10 @@ function ToastContainer({
               </div>
               <button
                 onClick={() => onDismiss(t.id)}
+                aria-label="Dismiss notification"
                 className="text-[#FDFBF8]/20 hover:text-[#FDFBF8]/60 transition-colors shrink-0"
               >
-                <span className="material-symbols-outlined text-sm">close</span>
+                <X size={14} weight="bold" aria-hidden />
               </button>
             </div>
           </div>

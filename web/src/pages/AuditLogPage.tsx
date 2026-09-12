@@ -224,7 +224,7 @@ export default function AuditLogPage() {
 
       {/* Error */}
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
+        <div className="px-3 sm:px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
           <button onClick={fetchEvents} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </div>
@@ -257,11 +257,11 @@ export default function AuditLogPage() {
             <table className="border-collapse text-left w-full table-auto">
               <thead>
                 <tr className="border-b border-seam sticky top-0 z-10 bg-panel">
-                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Event</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Actor</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Target</th>
-                  <th className="text-left px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Team</th>
-                  <th className="text-right px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Time</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Event</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Actor</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Target</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Team</th>
+                  <th className="text-right px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
@@ -276,7 +276,7 @@ export default function AuditLogPage() {
                       transition={{ delay: i * 0.025 }}
                       className="hover:bg-well/10 transition-colors group"
                     >
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 sm:px-4 py-3 align-middle">
                         <div className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${style.bg}`}>
                             <Icon className={`w-3.5 h-3.5 ${style.color}`} weight="fill" />
@@ -291,7 +291,7 @@ export default function AuditLogPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 sm:px-4 py-3 align-middle">
                         {entry.actor_name ? (
                           <span className="text-body-sm text-ink-secondary font-medium">{entry.actor_name}</span>
                         ) : entry.actor_id ? (
@@ -302,7 +302,7 @@ export default function AuditLogPage() {
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 sm:px-4 py-3 align-middle">
                         {entry.target_name ? (
                           <span className="text-body-xs text-ink-tertiary font-medium">{entry.target_name}</span>
                         ) : entry.target_id ? (
@@ -313,7 +313,7 @@ export default function AuditLogPage() {
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 align-middle">
+                      <td className="px-3 sm:px-4 py-3 align-middle">
                         {entry.team_name ? (
                           <span className="text-body-xs text-ink-tertiary font-medium">{entry.team_name}</span>
                         ) : entry.team_id ? (
@@ -324,7 +324,7 @@ export default function AuditLogPage() {
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right align-middle">
+                      <td className="px-3 sm:px-4 py-3 text-right align-middle">
                         <span className="text-body-xs text-ink-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
                           {relativeTime(entry.timestamp)}
                         </span>
@@ -339,7 +339,7 @@ export default function AuditLogPage() {
 
         {/* Pagination */}
         {totalCount > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-seam/50">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t border-seam/50">
             <span className="text-caption text-ink-tertiary">
               {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
             </span>

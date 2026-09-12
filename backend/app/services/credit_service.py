@@ -10,6 +10,7 @@ Wallets and ledger entries live in flexible ``DynamicDocument`` collections
 full document (partial updates replace the JSONB payload).
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -20,6 +21,22 @@ logger = logging.getLogger("onramp.credits")
 
 WALLETS = "credit_wallets"
 LEDGER = "credit_ledger"
+
+# Per-scope locks serializing wallet read-modify-write cycles in-process.
+# Without this, concurrent deducts both read the same balance and both
+# succeed (double-spend). Multi-worker atomicity still needs a DB-level
+# constraint — see the deduct() docstring.
+_scope_locks: Dict[str, asyncio.Lock] = {}
+_scope_locks_guard = asyncio.Lock()
+
+
+async def _scope_lock(scope: str) -> asyncio.Lock:
+    async with _scope_locks_guard:
+        lock = _scope_locks.get(scope)
+        if lock is None:
+            lock = asyncio.Lock()
+            _scope_locks[scope] = lock
+        return lock
 
 
 class InsufficientCreditsError(Exception):
@@ -56,27 +73,35 @@ class CreditService:
         """Top up a wallet. Returns the updated wallet."""
         if amount <= 0:
             raise ValueError("Top-up amount must be positive")
-        wallet = await self._get_wallet(scope)
-        wallet["balance"] = int(wallet.get("balance", 0)) + amount
-        wallet["lifetime_purchased"] = int(wallet.get("lifetime_purchased", 0)) + amount
-        await self._save_wallet(scope, wallet)
-        await self._ledger_entry(scope, amount, wallet["balance"], reason, action="topup")
-        return wallet
+        async with await _scope_lock(scope):
+            wallet = await self._get_wallet(scope)
+            wallet["balance"] = int(wallet.get("balance", 0)) + amount
+            wallet["lifetime_purchased"] = int(wallet.get("lifetime_purchased", 0)) + amount
+            await self._save_wallet(scope, wallet)
+            await self._ledger_entry(scope, amount, wallet["balance"], reason, action="topup")
+            return wallet
 
     async def deduct(self, scope: str, amount: int, action: str = "query") -> Dict[str, Any]:
         """Charge a wallet for a query. Raises InsufficientCreditsError if the
-        balance can't cover the charge (leaving the balance untouched)."""
+        balance can't cover the charge (leaving the balance untouched).
+
+        The read-check-write-ledger cycle holds a per-scope lock so
+        concurrent deducts in this process serialize. NOTE: this does not
+        guard across workers — a DB-level atomic decrement (or a UNIQUE
+        ledger constraint) is still needed for multi-worker deploys.
+        """
         if amount < 0:
             raise ValueError("Deduction amount cannot be negative")
-        wallet = await self._get_wallet(scope)
-        balance = int(wallet.get("balance", 0))
-        if balance < amount:
-            raise InsufficientCreditsError(scope, balance, amount)
-        wallet["balance"] = balance - amount
-        wallet["lifetime_spent"] = int(wallet.get("lifetime_spent", 0)) + amount
-        await self._save_wallet(scope, wallet)
-        await self._ledger_entry(scope, -amount, wallet["balance"], f"charge:{action}", action=action)
-        return wallet
+        async with await _scope_lock(scope):
+            wallet = await self._get_wallet(scope)
+            balance = int(wallet.get("balance", 0))
+            if balance < amount:
+                raise InsufficientCreditsError(scope, balance, amount)
+            wallet["balance"] = balance - amount
+            wallet["lifetime_spent"] = int(wallet.get("lifetime_spent", 0)) + amount
+            await self._save_wallet(scope, wallet)
+            await self._ledger_entry(scope, -amount, wallet["balance"], f"charge:{action}", action=action)
+            return wallet
 
     async def get_ledger(self, scope: str, limit: int = 50) -> List[Dict[str, Any]]:
         rows = await self.storage.query_documents(LEDGER, [("scope", "==", scope)])

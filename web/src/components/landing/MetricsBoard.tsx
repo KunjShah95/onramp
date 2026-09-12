@@ -25,15 +25,15 @@ function MiniBars() {
 }
 
 const CARD =
-  'relative overflow-hidden rounded-2xl border border-black/10 bg-white p-7 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]'
+  'relative overflow-hidden rounded-card border border-seam bg-panel p-7 shadow-seam'
 
 export default function MetricsBoard() {
   return (
-    <section id="metrics" className="relative scroll-mt-24 border-t border-black/5 bg-base">
+    <section id="metrics" className="relative scroll-mt-24 border-t border-seam bg-base">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 0%, rgba(79,70,229,0.05), transparent 65%)' }}
+        style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 0%, rgb(var(--accent-primary) / 0.06), transparent 65%)' }}
       />
       <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
@@ -66,7 +66,7 @@ export default function MetricsBoard() {
               <span className="text-[13px] font-medium text-ink-tertiary">hours</span>
             </div>
             <p className="mt-2 text-[13px] text-ink-tertiary">per new hire, first month</p>
-            <div className="mt-5 border-t border-black/5 pt-4">
+            <div className="mt-5 border-t border-seam pt-4">
               <p className="text-[13px] font-medium text-ink">72% reduction in ramp-up time</p>
             </div>
           </motion.div>
@@ -95,7 +95,7 @@ export default function MetricsBoard() {
             </div>
             <p className="mt-2 text-[13px] text-ink-tertiary">onboarded last month</p>
             <MiniBars />
-            <div className="mt-4 border-t border-black/5 pt-4">
+            <div className="mt-4 border-t border-seam pt-4">
               <p className="text-[13px] font-medium text-ink">
                 1st PR in <span className="text-accent-primary">2.3 days</span>{' '}
                 <span className="text-ink-tertiary">(was 8.1)</span>
@@ -129,7 +129,7 @@ export default function MetricsBoard() {
               <span className="text-[13px] font-medium text-ink-tertiary">%</span>
             </div>
             <p className="mt-2 text-[13px] text-ink-tertiary">onboarding success rate</p>
-            <div className="mt-5 flex items-center gap-3 border-t border-black/5 pt-4">
+            <div className="mt-5 flex items-center gap-3 border-t border-seam pt-4">
               <span className="relative flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-go/40" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-go" />

@@ -58,5 +58,73 @@ def decrypt_field(ciphertext: str) -> str:
         raise ValueError("Failed to decrypt PII field — encryption key mismatch or corrupted data")
 
 
+def decrypt_field_lenient(ciphertext: str | None, fallback: str | None = None) -> str | None:
+    """Best-effort decrypt for read/display paths.
+
+    Returns the decrypted value, or the original plaintext when the value was
+    never encrypted (legacy/dev rows seeded without encryption, e.g. tests that
+    write ``{\"name\": \"Alice\"}`` directly via storage). Never raises — falls
+    back to ``fallback if fallback is not None else ciphertext`` so a single
+    legacy row can't crash a whole list endpoint (get_team_members, ramp
+    summaries, review-ops boards).
+
+    Write paths must keep using strict :func:`decrypt_field` so key rotation
+    is surfaced explicitly instead of silently double-encrypting.
+    """
+    if not ciphertext:
+        return ciphertext if fallback is None else fallback
+    try:
+        return decrypt_field(ciphertext)
+    except Exception:
+        logger.warning(
+            "decrypt_field_lenient: returning plaintext fallback for undecryptable value"
+        )
+        return fallback if fallback is not None else ciphertext
+
+
+def _normalize_email(email: str) -> str:
+    return email.lower().strip()
+
+
+def _email_hash_secret() -> bytes:
+    """Pepper for the keyed email hash.
+
+    Prefers a dedicated secret, falls back to the PII key then the JWT
+    secret (both required in production already). Dev/test use an insecure
+    constant so local rows stay comparable — never in production.
+    """
+    secret = (
+        os.getenv("EMAIL_HASH_SECRET")
+        or os.getenv("PII_ENCRYPTION_KEY")
+        or os.getenv("JWT_SECRET")
+    )
+    if not secret:
+        if os.getenv("ENV", "development").lower() == "production":
+            raise RuntimeError("EMAIL_HASH_SECRET (or PII_ENCRYPTION_KEY) must be set in production")
+        secret = "dev-email-hash-pepper"
+    return secret.encode() if isinstance(secret, str) else secret
+
+
 def email_hash(email: str) -> str:
-    return hashlib.sha256(email.lower().strip().encode()).hexdigest()
+    """Keyed (HMAC-SHA256) deterministic hash for email lookups.
+
+    Replaces the legacy unkeyed SHA-256 (see :func:`email_hash_legacy`),
+    which allowed offline dictionary enumeration of the ``email_hash``
+    column. Normalization (lowercase + strip) is unchanged.
+    """
+    import hmac as _hmac
+
+    return _hmac.new(
+        _email_hash_secret(), _normalize_email(email).encode(), hashlib.sha256
+    ).hexdigest()
+
+
+def email_hash_legacy(email: str) -> str:
+    """Pre-HMAC email hash (unkeyed SHA-256). Lookup fallback only."""
+    return hashlib.sha256(_normalize_email(email).encode()).hexdigest()
+
+
+def email_hash_candidates(email: str) -> list[str]:
+    """All hashes a stored row may carry — new first, legacy second (deduped)."""
+    new, old = email_hash(email), email_hash_legacy(email)
+    return [new] if new == old else [new, old]

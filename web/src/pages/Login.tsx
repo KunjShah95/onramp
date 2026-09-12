@@ -49,13 +49,13 @@ export default function Login() {
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    if (!isEmailValid) return
     setStage('password')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isSubmitting || !password) return
+    if (isSubmitting || !isPasswordValid) return
     setIsSubmitting(true)
     try {
       await login(email, password, rememberMe)
@@ -77,12 +77,12 @@ export default function Login() {
         <Seo title="Sign in · Onramp" description="Sign in to access your team's codebase insights, onboarding plans, and AI-powered mentorship." path="/login" noindex />
         <AuthShell
           rail="Access"
-          designator={stage === 'email' ? 'STEP 1 OF 2' : 'STEP 2 OF 2'}
+          designator={stage === 'email' ? 'Step 1 of 2' : 'Step 2 of 2'}
           status={stage === 'email' ? 'standby' : 'go'}
           title={stage === 'email' ? 'Sign in' : 'Enter password'}
           subtitle={
             stage === 'email'
-              ? "We'll verify your email, then ask for your password."
+              ? "Enter your work email to continue."
               : (
                   <>
                     Signing in as <span className="font-code text-ink">{email}</span> ·{' '}
@@ -107,30 +107,30 @@ export default function Login() {
           )}
 
           {/* OAuth — premium white, hairline, indigo hover */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             <a
               href={getGoogleLoginUrl()}
               aria-label="Continue with Google"
-              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-black/10 bg-white px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-black/15 hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] active:translate-y-px"
+              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-black/10 bg-[#F8FAFC] font-code text-[10px] font-bold text-ink-tertiary">G</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-seam bg-well font-code text-[10px] font-bold text-ink-tertiary">G</span>
               Google
             </a>
             <a
               href={getGithubLoginUrl()}
               aria-label="Continue with GitHub"
-              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-black/10 bg-white px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-black/15 hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] active:translate-y-px"
+              className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-black/10 bg-[#0F172A] font-code text-[10px] font-bold text-white">GH</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-seam bg-inset font-code text-[10px] font-bold text-ink">GH</span>
               GitHub
             </a>
           </div>
 
           {/* Divider — hairline, mono */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-black/5" />
+            <div className="flex-1 h-px bg-seam" />
             <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-tertiary">or email</span>
-            <div className="flex-1 h-px bg-black/5" />
+            <div className="flex-1 h-px bg-seam" />
           </div>
 
           <form onSubmit={stage === 'email' ? handleEmailSubmit : handleSubmit} className="space-y-4">

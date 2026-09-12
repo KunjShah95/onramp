@@ -9,12 +9,12 @@ const CALLOUTS = [
   { icon: CheckCircle, color: 'text-go-lit', ring: 'border-go-lit/30', label: 'Every service indexed', note: 'from source, not docs' },
   { icon: GitBranch, color: 'text-accent-via', ring: 'border-accent-via/30', label: 'Dependencies mapped', note: 'drawn as a live graph' },
   { icon: Users, color: 'text-accent-via', ring: 'border-accent-via/30', label: 'Ownership visible', note: 'who owns what, always' },
-  { icon: Waveform, color: 'text-[#F59E0B]', ring: 'border-[#F59E0B]/30', label: 'Updated on every push', note: 'fresh from HEAD' },
+  { icon: Waveform, color: 'text-caution-lit', ring: 'border-caution/30', label: 'Updated on every push', note: 'fresh from HEAD' },
 ]
 
 export default function Solution() {
   return (
-    <section id="the-map" className="relative scroll-mt-24 border-t border-black/5 bg-room">
+    <section id="the-map" className="relative scroll-mt-24 border-t border-seam bg-room">
       <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
           eyebrow="The product"
@@ -32,10 +32,12 @@ export default function Solution() {
           <div
             aria-hidden
             className="pointer-events-none absolute -inset-x-8 top-4 bottom-0 rounded-[32px] opacity-80"
-            style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgba(79,70,229,0.08), transparent 65%)' }}
+            style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgb(var(--accent-primary) / 0.09), transparent 65%)' }}
           />
-          <div className="relative overflow-hidden rounded-2xl border border-black/10 bg-[#0B1016] shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+          <div className="relative overflow-hidden rounded-xl border border-seam bg-[#0B1016] shadow-seam">
+            {/* static glow — Beams removed per motion restraint: hero spotlight is the one signature */}
+            <div aria-hidden className="absolute inset-0 z-0 opacity-60" />
+            <div className="relative z-10 flex items-center justify-between border-b border-white/10 px-5 py-3">
               <div className="flex items-center gap-3">
                 <span className="h-1.5 w-1.5 rounded-full bg-go-lit" />
                 <span className="font-code text-[11px] text-slate-400">Architecture map</span>
@@ -43,7 +45,7 @@ export default function Solution() {
               <span className="font-code text-[11px] text-slate-400">drag to orbit · scroll to build</span>
             </div>
 
-                                    <div className="relative h-[480px] sm:h-[560px] lg:h-[600px]">
+                                    <div className="relative z-10 h-[480px] sm:h-[560px] lg:h-[600px]">
               <ArchitectureMapStatic className="h-full w-full" />
             </div>
 
@@ -81,7 +83,7 @@ function Callout({
 }) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-[12px] border bg-[#0F1419]/90 px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur transition-transform duration-300 hover:-translate-y-0.5 ${ring}`}
+      className={`flex items-center gap-3 rounded-card border bg-[#0F1419]/90 px-4 py-3 shadow-seam ${ring}`}
     >
       <Icon size={18} weight="bold" className={color} />
       <div>

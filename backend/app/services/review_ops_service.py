@@ -33,7 +33,7 @@ from statistics import pstdev
 from typing import Any, Optional
 
 from app.services.postgres_db import get_storage
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 
 logger = logging.getLogger("onramp.review_ops")
 

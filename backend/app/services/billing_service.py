@@ -73,10 +73,15 @@ class BillingService:
         return sub
 
     async def get_subscription(self, team_id: str) -> Optional[Dict[str, Any]]:
+        """Return the active subscription for a team, or None when none exists.
+
+        Callers (API layer) translate None → HTTP 404 "No active subscription".
+        """
         subs = await self.storage.query_documents(self.COLLECTION, [("team_id", "==", team_id), ("status", "==", "active")])
         return subs[0] if subs else None
 
     async def update_subscription(self, team_id: str, tier: str) -> Optional[Dict[str, Any]]:
+        """Update tier/price; returns None when no active subscription exists (→ 404)."""
         sub = await self.get_subscription(team_id)
         if not sub:
             return None

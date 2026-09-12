@@ -45,14 +45,29 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
   const isLeader = isLeaderRole(role)
   const resolvedId = (teamId || activeTeamId || '').trim()
 
-  const { data } = useQuery<CohortRetentionResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<CohortRetentionResponse>({
     queryKey: ['cohortRetention', resolvedId],
     queryFn: () => fetchCohortRetention(resolvedId),
     enabled: isLeader && !!resolvedId,
     staleTime: 120_000,
   })
 
-  if (!isLeader || !resolvedId) return null
+  if (!isLeader || !resolvedId) {
+    if (isLoading || isError) {
+      return isError ? (
+        <section aria-busy="true" aria-label="Loading retention curves" className="rounded-tile bg-base border border-seam p-4 shadow-seam animate-pulse">
+          <p className="text-sm text-abort font-medium" role="alert">Retention unavailable.</p>
+          <p className="text-caption text-ink-muted mt-1">Check your connection and retry.</p>
+          <button onClick={() => refetch()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+        </section>
+      ) : (
+        <ConsolePanel rail="Cohort Retention · Survival" designator="No team" status="standby">
+          <p className="text-sm text-ink-muted">Select a team to see retention curves.</p>
+        </ConsolePanel>
+      )
+    }
+    return null
+  }
 
   const cohorts = (data?.cohorts ?? []).slice(0, 6)
   const latest = cohorts[cohorts.length - 1]

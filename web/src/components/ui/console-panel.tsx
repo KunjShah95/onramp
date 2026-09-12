@@ -38,13 +38,20 @@ export default function ConsolePanel({
   raised, className, pad = 'default', hoverable, onClick,
 }: ConsolePanelProps) {
   const hasRail = rail || designator || status || action
+  const interactive = !!onClick
   return (
     <div
       onClick={onClick}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>) }
+      } : undefined}
       className={cn(
         'rounded-card border border-seam bg-panel overflow-hidden',
         raised && 'bg-panel-raised',
         hoverable && 'cursor-pointer transition-colors hover:border-seam-strong hover:bg-panel-raised',
+        interactive && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
         className,
       )}
     >

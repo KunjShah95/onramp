@@ -43,72 +43,7 @@ from app.api.v1.auth import CSRFMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.csp_nonce import CSPNonceMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request as StarletteRequest
-from starlette.responses import Response
-
-
-def _get_max_body_size() -> int:
-    try:
-        return int(os.getenv("MAX_REQUEST_BODY_BYTES", str(4 * 1024 * 1024)))
-    except ValueError:
-        return 4 * 1024 * 1024
-
-
-class BodySizeLimitMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: StarletteRequest, call_next) -> Response:
-        max_size = _get_max_body_size()
-        content_length = request.headers.get("content-length")
-        declared_length: int | None = None
-        if content_length:
-            try:
-                declared_length = int(content_length)
-                if declared_length > max_size:
-                    return Response(
-                        content='{"detail":"Request body too large"}',
-                        status_code=413,
-                        media_type="application/json",
-                    )
-            except ValueError:
-                pass
-        # Always enforce by wrapping the receive channel and counting bytes,
-        # even when Content-Length is present (prevents bypass via lying
-        # Content-Length or chunked smuggling).
-        received = 0
-        original_receive = request.scope.get("receive")
-
-        async def _counting_receive():
-            nonlocal received
-            message = await original_receive()
-            body = message.get("body", b"")
-            if body:
-                received += len(body)
-                if received > max_size:
-                    raise ValueError("body too large")
-                # Validate total bytes received vs declared Content-Length:
-                # if declared length was valid but actual bytes exceed it,
-                # still enforce max_size (already checked) and let the app
-                # handle mismatch; the key is we counted actual bytes.
-                if declared_length is not None and received > declared_length:
-                    # Client sent more than declared — treat as oversize if
-                    # it also exceeds max_size, otherwise just count; we do
-                    # not trust declared_length alone.
-                    pass
-            return message
-
-        if original_receive is not None:
-            request.scope["receive"] = _counting_receive
-            try:
-                return await call_next(request)
-            except ValueError as e:
-                if str(e) == "body too large":
-                    return Response(
-                        content='{"detail":"Request body too large"}',
-                        status_code=413,
-                        media_type="application/json",
-                    )
-                raise
-        return await call_next(request)
+from app.middleware.body_size import BodySizeLimitMiddleware
 
 # Structured logging — JSON in production (LOG_FORMAT=json), text locally.
 configure_logging()
@@ -179,12 +114,9 @@ def _validate_production_env() -> None:
     if razorpay_enabled:
         required_vars.append("RAZORPAY_WEBHOOK_SECRET")
     
-    _weak_jwt_secrets = {
-        "dev-jwt-secret-change-in-production",
-        "test-secret-key-min-32-chars",
-        "change-me-to-a-random-secret-min-32-chars",
-        "change_me_to_a_random_secret_min_32_chars",
-    }
+    # Weak-secret blocklist is single-sourced from app.core.security so the
+    # boot validator and the runtime verifier can never drift apart.
+    from app.core.security import WEAK_JWT_SECRETS as _weak_jwt_secrets
     for var in required_vars:
         value = os.getenv(var)
         if not value:
@@ -420,7 +352,7 @@ _cors_origins = [
 _doc_paths = ["/docs", "/redoc", "/openapi.json"] if _show_api_docs else []
 
 app.add_middleware(AuthMiddleware, public_paths=[
-    "/", "/health", "/ready", *_doc_paths,
+    "/", "/health", "/ready", "/metrics", *_doc_paths,
     "/api/v1/auth/register",        # email/password registration
     "/api/v1/auth/login",           # email/password login
     "/api/v1/auth/check-provider",  # public provider lookup by email
@@ -431,6 +363,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/forgot-password",       # password reset request
     "/api/v1/auth/reset-password",        # password reset submission
     "/api/v1/auth/refresh",               # refresh token exchange (auth via refresh token body)
+    "/api/v1/auth/logout",                # logout (auth via refresh token cookie/body; revokes it)
     "/api/v1/auth/verify-email",          # email verification
     "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
     "/api/v1/webhooks",                   # generic webhook deliveries

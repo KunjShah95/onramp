@@ -10,6 +10,12 @@ from app.services.postgres_db import get_storage, generate_id
 
 AUDIT_COLLECTION = "api_key_audit_logs"
 
+try:
+    from app.services._shared.audit_store import AuditStore
+    _store = AuditStore(AUDIT_COLLECTION)
+except Exception:  # pragma: no cover
+    _store = None  # type: ignore
+
 
 async def log_key_action(
     org_name: str,

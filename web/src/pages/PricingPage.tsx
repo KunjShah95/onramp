@@ -14,7 +14,7 @@ const containerVariants = {
 }
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 20 } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
 }
 
 type Currency = 'USD' | 'INR'
@@ -143,7 +143,7 @@ export default function PricingPage() {
       {/* Hero — one line, one anchor · same pill language */}
       <div className="relative pt-10 pb-10 px-6 text-center max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}>
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Pricing</span>
           </span>
@@ -258,7 +258,7 @@ export default function PricingPage() {
             <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 border-t border-seam pt-7 text-sm flex-1">
               {TEAM_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[14px] leading-[1.4] text-[hsl(var(--foreground))] font-body">
-                  <span className="mt-px flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-go text-white">
+                  <span className="mt-px flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-go text-[rgb(var(--accent-foreground))]">
                     <Check size={10} weight="bold" />
                   </span>
                   <span>{f}</span>

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Terminal } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 import {
   fetchAgentBenchmark,
@@ -38,7 +39,7 @@ export default function AgentBenchmarkPanel() {
   const canEdit = isLeaderRole(role)
   const queryClient = useQueryClient()
 
-  const { data } = useQuery<AgentBenchmarkResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<AgentBenchmarkResponse>({
     queryKey: ['agentBenchmark'],
     queryFn: () => fetchAgentBenchmark(),
     staleTime: 60_000,
@@ -51,7 +52,27 @@ export default function AgentBenchmarkPanel() {
     },
   })
 
-  if (!data) return null
+  if (isLoading) {
+    return (
+      <section aria-busy="true" aria-label="Loading agent benchmark" className="rounded-tile bg-base border border-seam p-4 shadow-seam">
+        <div className="animate-pulse space-y-2">
+          <div className="h-4 w-48 rounded bg-well" />
+          <div className="h-6 w-full rounded bg-well" />
+          <div className="h-6 w-5/6 rounded bg-well" />
+        </div>
+      </section>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
+        <p className="text-sm text-abort font-medium" role="alert">Agent benchmark unavailable.</p>
+        <p className="text-caption text-ink-muted mt-1">Retry — snapshots are unchanged.</p>
+        <button onClick={() => refetch()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+      </section>
+    )
+  }
 
   const { current, history } = data
   const rows = current.agents
@@ -62,7 +83,7 @@ export default function AgentBenchmarkPanel() {
     <section className="rounded-tile bg-base border border-seam p-4 shadow-seam">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg text-go">terminal</span>
+          <Terminal size={18} aria-hidden className="text-go shrink-0" />
           <h2 className="text-body-sm font-semibold text-ink">Agents vs Onramp · Terminal CLIs</h2>
           <span className={cn(
             'px-1.5 py-0.5 rounded-md text-caption font-medium',

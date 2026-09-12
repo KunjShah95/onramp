@@ -56,9 +56,15 @@ export function setRefreshToken(_token: string | null): void {
 export async function clearTokens(): Promise<void> {
   _wsToken = null
   // Also clear the server-side cookies by calling the logout endpoint.
+  // Normalization must match api.ts getApiBaseUrl(): a bare host like
+  // https://onramp-tlfo.onrender.com gets /api/v1 appended, otherwise
+  // logout hits /auth/logout (missing prefix) and fails with CORS/404.
   const API_BASE = (() => {
-    const url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-    return url.replace(/\/+$/, '').replace(/\/api\/v1$/, '/api/v1')
+    let url = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').trim().replace(/\/+$/, '')
+    if (url.endsWith('/api/v1') || url === '/api/v1') return url
+    if (url.endsWith('/api')) return `${url}/v1`
+    if (url.includes('/api')) return url
+    return `${url}/api/v1`
   })()
   try {
     await fetch(`${API_BASE}/auth/logout`, {

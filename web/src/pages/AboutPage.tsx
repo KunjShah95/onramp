@@ -48,7 +48,7 @@ export default function AboutPage() {
       <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Hero — same pill language as landing/Why */}
         <motion.div {...fadeUp(0)} className="mb-16">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">About</span>
           </span>
@@ -62,7 +62,7 @@ export default function AboutPage() {
         </motion.div>
 
         {/* Story — ruled panel, editorial */}
-        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-black/10 bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-seam bg-panel p-8 shadow-seam">
           <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-primary">Our story</p>
           <h2 className="mt-2 font-body text-2xl font-bold tracking-tight text-ink">From scattered READMEs to one live map.</h2>
           <div className="mt-4 space-y-4 text-[15px] leading-[1.7] text-ink-secondary">
@@ -85,9 +85,9 @@ export default function AboutPage() {
             {values.map((v) => (
               <div
                 key={v.title}
-                className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-accent-primary/20 hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                className="rounded-2xl border border-seam bg-panel p-6 shadow-seam transition-all duration-300 hover:-translate-y-0.5 hover:border-accent-primary/20 hover:shadow-overhead"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-accent-primary mb-4">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-seam bg-well text-accent-primary mb-4">
                   <v.icon size={20} weight="bold" />
                 </span>
                 <h3 className="font-body text-[16px] font-semibold text-ink mb-2">{v.title}</h3>

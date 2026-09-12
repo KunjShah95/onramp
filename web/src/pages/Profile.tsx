@@ -138,7 +138,7 @@ export default function Profile() {
           </ConsolePanel>
 
           {/* Two readouts — repos, member since */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ConsolePanel rail="Repositories" designator="REPOS">
               <div className="font-mono tabular-nums text-3xl md:text-4xl font-semibold text-ink leading-none">
                 {repoCount ?? 'N/A'}

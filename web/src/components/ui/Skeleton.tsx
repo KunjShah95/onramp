@@ -322,7 +322,7 @@ export function ProfileSkeleton() {
             <SkeletonText className="w-44" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <SkeletonText className="w-20 h-3" />
             <SkeletonBase className="h-8 w-12" />
@@ -346,7 +346,7 @@ export function TasksPageSkeleton() {
         <SkeletonHeading />
         <SkeletonButton />
       </div>
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[...Array(5)].map((_, i) => <SkeletonStatCard key={i} />)}
       </div>
       <SkeletonInput className="w-full" />
@@ -376,7 +376,7 @@ export function FirstIssueSkeleton() {
           <SkeletonCard />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <IssueListSkeleton count={2} />
         <IssueListSkeleton count={2} />
       </div>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { prefetchProps } from '../../lib/prefetch'
+import ThemeToggle from '../landing/ThemeToggle'
+import { useLandingTheme } from '../../hooks/useLandingTheme'
 
 export interface NavLinkItem {
   label: string
@@ -29,18 +31,23 @@ export default function MarketingNav({
   fixed = true,
 }: MarketingNavProps) {
   const [open, setOpen] = useState(false)
+  const { isLight } = useLandingTheme()
 
   return (
     <nav
       className={[
         'border-b backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-300',
-        fixed ? 'fixed inset-x-0 top-0 z-50 border-black/5 bg-white/80' : 'border-transparent bg-transparent',
+        fixed
+          ? isLight
+            ? 'fixed inset-x-0 top-0 z-50 border-black/5 bg-white/80'
+            : 'fixed inset-x-0 top-0 z-50 border-seam bg-room/70'
+          : 'border-transparent bg-transparent',
       ].join(' ')}
     >
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
         {/* Logo — same gradient mark as LandingNav for identity unity */}
         <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_4px_14px_rgba(79,70,229,0.28)] transition-transform duration-200 group-hover:scale-105">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_0_20px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-hover:scale-105">
             <TreeStructure size={16} weight="bold" />
           </span>
           <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
@@ -70,7 +77,8 @@ export default function MarketingNav({
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link
             to="/login"
             {...prefetchProps('/login')}
@@ -81,7 +89,7 @@ export default function MarketingNav({
           <Link
             to="/register"
             {...prefetchProps('/register')}
-            className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-white shadow-[0_4px_16px_rgba(79,70,229,0.28)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_6px_20px_rgba(79,70,229,0.32)] active:translate-y-px"
+            className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_24px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_32px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
           >
             Try for free
           </Link>
@@ -105,7 +113,7 @@ export default function MarketingNav({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-black/5 bg-white md:hidden"
+            className={`overflow-hidden border-t md:hidden ${isLight ? 'border-black/5 bg-white' : 'border-seam bg-base'}`}
           >
             <div className="flex flex-col gap-1 px-6 py-4">
               {links.map((link) =>
@@ -122,18 +130,18 @@ export default function MarketingNav({
                     to={link.href}
                     onClick={() => setOpen(false)}
                     {...prefetchProps(link.href)}
-                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-black/5 hover:text-ink"
+                    className={`rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
                   >
                     {link.label}
                   </Link>
                 )
               )}
-              <div className="border-t border-black/5 my-2" />
+              <div className={`my-2 border-t ${isLight ? 'border-black/5' : 'border-seam'}`} />
               <Link
                 to="/login"
                 onClick={() => setOpen(false)}
                 {...prefetchProps('/login')}
-                className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:bg-black/5 hover:text-ink"
+                className={`rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
               >
                 Log in
               </Link>

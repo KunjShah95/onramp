@@ -15,8 +15,11 @@ _ALL_KEYS = {
 
 class TestInit:
     async def test_no_keys_never_raises(self, monkeypatch):
-        for var in list(_ALL_KEYS) + ["OLLAMA_BASE_URL"]:
+        for var in list(_ALL_KEYS) + ["HUGGINGFACE_API_KEY", "OLLAMA_BASE_URL", "EMBEDDINGS_PROVIDER"]:
             monkeypatch.delenv(var, raising=False)
+        monkeypatch.setattr(
+            EmbeddingRouter, "_hf_installed", staticmethod(lambda: False)
+        )
         router = EmbeddingRouter()
         assert router.is_available is False
         assert router.primary is None

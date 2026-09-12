@@ -30,14 +30,14 @@ const ENTERPRISE_FEATURES = [
 ]
 
 const SIDE_CARD =
-  'h-full rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)]'
+  'h-full rounded-card border border-seam bg-panel shadow-seam'
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(true)
   const teamPrice = annual ? 82 : 99
 
   return (
-    <section id="pricing" className="relative scroll-mt-24 border-t border-black/5 bg-room">
+    <section id="pricing" className="relative scroll-mt-24 border-t border-seam bg-room">
       <div className="mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
         <SectionHeading
           eyebrow="Pricing"
@@ -50,7 +50,7 @@ export default function Pricing() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.55, delay: 0.1, ease: EASE }}
-          className="mt-10 inline-flex items-center gap-1 rounded-full border border-black/10 bg-white p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+          className="mt-10 inline-flex items-center gap-1 rounded-full border border-seam bg-panel p-1 shadow-seam"
         >
           {(['Monthly', 'Annual'] as const).map((label) => {
             const active = annual === (label === 'Annual')
@@ -60,12 +60,12 @@ export default function Pricing() {
                 type="button"
                 onClick={() => setAnnual(label === 'Annual')}
                 className={`relative rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                  active ? 'bg-accent-primary text-white' : 'text-ink-secondary hover:text-ink'
+                  active ? 'bg-accent-primary text-[rgb(var(--accent-foreground))]' : 'text-ink-secondary hover:text-ink'
                 }`}
               >
                 {label}
                 {label === 'Annual' && (
-                  <span className={`ml-1.5 text-[11px] font-semibold ${active ? 'text-white/90' : 'text-go'}`}>
+                  <span className={`ml-1.5 text-[11px] font-semibold ${active ? 'opacity-90' : 'text-go'}`}>
                     −17%
                   </span>
                 )}
@@ -83,7 +83,7 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.05, ease: EASE }}
             className="h-full"
           >
-            <SpotlightCard glow="rgba(79,70,229,0.07)" className={SIDE_CARD}>
+            <SpotlightCard className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
                   Free
@@ -95,7 +95,7 @@ export default function Pricing() {
                 <p className="mt-3 text-[13px] text-ink-tertiary">
                   For individuals exploring their own repo.
                 </p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-black/5 pt-5">
+                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
                   {STARTER_FEATURES.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
                       <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-accent-primary/10">
@@ -107,7 +107,7 @@ export default function Pricing() {
                 </ul>
                 <Link
                   to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-accent-primary/40 active:translate-y-px"
+                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-seam bg-panel px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-accent-primary/40 active:translate-y-px"
                 >
                   Get started
                   <ArrowRight size={14} weight="bold" />
@@ -124,8 +124,8 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
             className="relative"
           >
-            <MovingBorder speed={9} className="shadow-[0_24px_64px_rgba(79,70,229,0.16)]">
-              <div className="relative flex h-full flex-col overflow-hidden rounded-[23px] bg-white p-7">
+            <MovingBorder speed={9} className="shadow-overhead">
+              <div className="relative flex h-full flex-col overflow-hidden rounded-[23px] bg-panel p-7">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-primary">
                     Team
@@ -141,7 +141,7 @@ export default function Pricing() {
                   <span className="ml-1 text-[13px] text-ink-tertiary">/mo</span>
                 </div>
                 <p className="mt-3 text-[13px] text-ink-tertiary">per workspace · unlimited engineers</p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-black/5 pt-5">
+                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
                   {TEAM_FEATURES.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
                       <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-accent-primary/10">
@@ -153,7 +153,7 @@ export default function Pricing() {
                 </ul>
                 <Link
                   to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-white shadow-[0_8px_24px_rgba(79,70,229,0.30)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_28px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
                 >
                   Start 14-day trial
                   <ArrowRight size={14} weight="bold" />
@@ -170,7 +170,7 @@ export default function Pricing() {
             transition={{ duration: 0.65, delay: 0.19, ease: EASE }}
             className="h-full"
           >
-            <SpotlightCard glow="rgba(79,70,229,0.07)" className={SIDE_CARD}>
+            <SpotlightCard className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
                   Enterprise
@@ -183,7 +183,7 @@ export default function Pricing() {
                 <p className="mt-3 text-[13px] text-ink-tertiary">
                   For orgs that need control, security, and scale.
                 </p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-black/5 pt-5">
+                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
                   {ENTERPRISE_FEATURES.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
                       <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-go" />
@@ -193,7 +193,7 @@ export default function Pricing() {
                 </ul>
                 <Link
                   to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-go/40 active:translate-y-px"
+                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-seam bg-panel px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-go/40 active:translate-y-px"
                 >
                   Contact sales
                   <ArrowRight size={14} weight="bold" />

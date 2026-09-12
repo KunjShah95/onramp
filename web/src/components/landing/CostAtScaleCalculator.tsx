@@ -269,7 +269,7 @@ export default function CostAtScaleCalculator() {
 
         {/* Result — primary comparison */}
         <div className="p-6 sm:p-8 flex flex-col">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
             <div className="rounded-[10px] border border-[hsl(var(--abort))]/20 bg-[hsl(var(--abort))]/[0.06] p-4 sm:p-5">
               <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[hsl(var(--muted-foreground))] mb-1.5 truncate">{primary.agent.label} · /mo</div>
               <AnimatePresence mode="wait">

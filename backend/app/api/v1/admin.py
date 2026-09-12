@@ -555,12 +555,17 @@ async def unlock_account(
     Admin-only endpoint for when a legitimate user is locked out and needs
     immediate access.  Logs the action for audit trail.
     """
-    from app.services.field_encryption import email_hash as _email_hash
+    from app.services.field_encryption import email_hash_candidates as _candidates
     from app.services.lockout_service import manual_unlock
     from app.services.audit_service import log_event
 
-    email_h = _email_hash(email)
-    was_locked = await manual_unlock(email_h)
+    # Try keyed hash first, then legacy (lockouts predating the HMAC cutover).
+    email_h = _candidates(email)[0]
+    was_locked = False
+    for candidate in _candidates(email):
+        if await manual_unlock(candidate):
+            was_locked = True
+            email_h = candidate
 
     await log_event(
         "account_unlocked", uid, uid,

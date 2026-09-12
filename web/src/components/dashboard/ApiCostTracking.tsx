@@ -75,7 +75,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
       ) : (
         <>
           {/* Monthly summary */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-panel border border-seam rounded-lg p-3">
               <p className="text-[10px] text-ink-tertiary uppercase tracking-wider font-medium mb-1">Credits Used</p>
               <p className="text-xl font-bold text-go tabular-nums leading-none">{totalCredits.toLocaleString()}</p>
@@ -115,7 +115,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
               </div>
 
               {/* Spend vs savings */}
-              <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <div className="bg-panel border border-seam rounded-lg p-3">
                   <p className="text-[10px] text-ink-tertiary uppercase tracking-wider font-medium mb-1">Spend</p>
                   <p className="text-lg font-bold text-ink tabular-nums leading-none">{fmtUsd(providerUsage.total_cost_usd)}</p>

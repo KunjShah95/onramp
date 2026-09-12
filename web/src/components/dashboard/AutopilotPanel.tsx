@@ -8,7 +8,7 @@ import {
   type AutopilotAnalyzeResponse,
 } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import { Play, Spinner, GitBranch, ArrowSquareOut } from '@phosphor-icons/react'
+import { Play, Spinner, GitBranch, ArrowSquareOut, ArrowRight } from '@phosphor-icons/react'
 
 const ROLE_LABELS: Record<string, string> = {
   intern: 'Intern',
@@ -72,9 +72,9 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       action={
         <Link
           to="/tasks"
-          className="text-caption text-ink-muted/50 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1"
+          className="text-caption text-ink-secondary hover:text-ink transition-colors font-semibold flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50 rounded"
         >
-          Tasks <span aria-hidden>→</span>
+          Tasks <ArrowRight size={12} aria-hidden className="shrink-0" />
         </Link>
       }
     >

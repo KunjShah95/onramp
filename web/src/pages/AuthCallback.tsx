@@ -64,8 +64,13 @@ export default function AuthCallback() {
     // If the cookie is missing/invalid, /auth/me will 401 and we show error.
     const verify = async () => {
       try {
-        const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1'
-        const url = base.replace(/\/+$/, '').replace(/\/api\/v1$/, '/api/v1')
+        const rawBase = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1').trim()
+        let url = rawBase.replace(/\/+$/, '')
+        // Same normalization as api.ts: bare host gets /api/v1 appended.
+        if (!url.endsWith('/api/v1')) {
+          if (url.endsWith('/api')) url = `${url}/v1`
+          else if (!url.includes('/api')) url = `${url}/api/v1`
+        }
         const res = await fetch(`${url}/auth/me`, { credentials: 'include' })
         if (res.ok) {
           const json = await res.json().catch(() => null)

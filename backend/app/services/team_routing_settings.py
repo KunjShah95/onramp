@@ -22,9 +22,19 @@ COLLECTION = "team_routing_settings"
 _CACHE_TTL_SECONDS = 30.0
 _MODE_CACHE: Dict[str, Tuple[float, int]] = {}
 
+# Shared facade (backwards-compatible): new code may use _store directly;
+# existing _MODE_CACHE is kept as the source of truth for now and mirrored.
+try:
+    from app.services._shared.tenant_settings import TenantScopedSettingStore
+    _store = TenantScopedSettingStore(ttl_seconds=_CACHE_TTL_SECONDS)
+except Exception:  # pragma: no cover — import-time fallback
+    _store = None  # type: ignore
+
 
 def _invalidate_team_cache(team_id: str) -> None:
     _MODE_CACHE.pop(team_id, None)
+    if _store is not None:
+        _store.invalidate(team_id)
 
 
 async def get_team_routing_mode(team_id: Optional[str]) -> int:
@@ -34,9 +44,15 @@ async def get_team_routing_mode(team_id: Optional[str]) -> int:
     if not team_id:
         return RoutingMode.BALANCED
 
+    if _store is not None:
+        hit = _store.get_cached(team_id)
+        if hit is not None:
+            return hit
     now = time.monotonic()
     cached = _MODE_CACHE.get(team_id)
     if cached is not None and cached[0] > now:
+        if _store is not None:
+            _store.put(team_id, cached[1])
         return cached[1]
 
     records = await get_storage().query_documents(
@@ -44,6 +60,8 @@ async def get_team_routing_mode(team_id: Optional[str]) -> int:
     )
     mode = RoutingMode.coerce(records[0].get("routing_mode")) if records else RoutingMode.BALANCED
     _MODE_CACHE[team_id] = (now + _CACHE_TTL_SECONDS, mode)
+    if _store is not None:
+        _store.put(team_id, mode)
     return mode
 
 

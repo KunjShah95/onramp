@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Lightning, ArrowsClockwise, TreeStructure } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 import {
   fetchEfficiencyBenchmark,
@@ -37,7 +38,7 @@ export default function EfficiencyBenchmarkPanel() {
   const [products, setProducts] = useState<number | null>(null)
   const [perDev, setPerDev] = useState<boolean>(true)
 
-  const { data } = useQuery<EfficiencyBenchmark>({
+  const { data, isLoading, isError, refetch } = useQuery<EfficiencyBenchmark>({
     queryKey: ['efficiencyBenchmark', changes, headcount, products, perDev],
     queryFn: () => fetchEfficiencyBenchmark({
       ...(changes ? { changesPerMonth: changes } : {}),
@@ -60,7 +61,29 @@ export default function EfficiencyBenchmarkPanel() {
     },
   })
 
-  if (!data) return null
+  if (isLoading || !data) {
+    if (isError) {
+      return (
+        <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
+          <p className="text-sm text-abort font-medium" role="alert">Efficiency benchmark unavailable.</p>
+          <p className="text-caption text-ink-muted mt-1">Retry — your scenario inputs are kept.</p>
+          <button onClick={() => refetch()} className="mt-3 btn-secondary !px-3 !py-1.5 text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Retry</button>
+        </section>
+      )
+    }
+    if (isLoading) {
+      return (
+        <section aria-busy="true" aria-label="Loading efficiency benchmark" className="rounded-tile bg-base border border-seam p-4 shadow-seam">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 w-56 rounded bg-well" />
+            <div className="h-10 w-full rounded bg-well" />
+            <div className="h-4 w-2/3 rounded bg-well" />
+          </div>
+        </section>
+      )
+    }
+    return null
+  }
 
   const { agent, onramp, assumptions } = data
   const freePct = onramp.measured.free_pct
@@ -78,7 +101,7 @@ export default function EfficiencyBenchmarkPanel() {
       <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-go">bolt</span>
+            <Lightning size={18} weight="fill" aria-hidden className="text-go shrink-0" />
             <h2 className="text-body-sm font-semibold text-ink">
               Codebase changes fast? That's where we win.
             </h2>
@@ -103,24 +126,24 @@ export default function EfficiencyBenchmarkPanel() {
       <div className="grid md:grid-cols-2 gap-3 mb-3">
         <div className="rounded-tile border border-abort/30 bg-abort/[0.03] p-3">
           <div className="text-caption font-medium text-abort mb-2 flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-base">refresh</span>
+            <ArrowsClockwise size={16} aria-hidden className="shrink-0" />
             Coding agent · when the codebase changes
           </div>
           <ol className="space-y-1.5 text-caption text-ink-secondary list-none">
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">1</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>1</span>
               <span><span className="text-ink font-medium">Re-reads the whole repo</span> · every file back into context</span>
             </li>
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">2</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>2</span>
               <span>Burns <span className="text-abort readout tabular-nums">{fmtTokens(agent.tokens_per_dev_per_change)}</span> tokens per change <span className="text-ink-muted">· per developer</span></span>
             </li>
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">3</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>3</span>
               <span>× {data.simulated_dev_count} devs = <span className="text-abort tabular-nums">{fmtTokens(agent.tokens_per_change)}</span> per change · every dev's agent holds its own copy</span>
             </li>
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">4</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>4</span>
               <span>Re-does it on every session, every PR, every sync · all on paid keys</span>
             </li>
           </ol>
@@ -132,20 +155,20 @@ export default function EfficiencyBenchmarkPanel() {
 
         <div className="rounded-tile border border-go/30 bg-go/[0.03] p-3">
           <div className="text-caption font-medium text-go mb-2 flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-base">account_tree</span>
+            <TreeStructure size={16} aria-hidden className="shrink-0" />
             Onramp · when the codebase changes
           </div>
           <ol className="space-y-1.5 text-caption text-ink-secondary list-none">
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">1</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>1</span>
               <span>Detects the change, <span className="text-ink font-medium">re-embeds only the changed files</span> (~{Math.round(assumptions.change_file_ratio * 100)}% of the repo)</span>
             </li>
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">2</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>2</span>
               <span>Merges the delta into the <span className="text-ink font-medium">persisted graph</span> · the rest is untouched</span>
             </li>
             <li className="flex gap-2">
-              <span className="material-symbols-outlined text-sm text-ink-muted shrink-0 mt-px">3</span>
+              <span className="text-sm text-ink-muted shrink-0 mt-px font-mono w-4 text-center" aria-hidden>3</span>
               <span>Refresh rides <span className="text-go font-medium">free keys first</span> ({freePct}% of your requests are already free)</span>
             </li>
           </ol>
@@ -159,7 +182,7 @@ export default function EfficiencyBenchmarkPanel() {
       </div>
 
       {/* Headline numbers */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div className="rounded-tile bg-well/40 border border-seam p-2.5">
           <div className="overline text-ink-muted/60 text-[10px]">Per change · tokens saved</div>
           <div className="text-lg font-semibold text-ink font-display tabular-nums">

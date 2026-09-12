@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import { ToastProvider } from './context/ToastContext'
@@ -111,6 +112,7 @@ const RampPage = lazy(() => import('./pages/RampPage'))
 
 export default function App() {
   return (
+    <MotionConfig reducedMotion="user">
     <BrowserRouter>
       <AuthProvider>
         <RealTimeProvider>
@@ -498,5 +500,6 @@ export default function App() {
         </RealTimeProvider>
       </AuthProvider>
     </BrowserRouter>
+    </MotionConfig>
   )
 }

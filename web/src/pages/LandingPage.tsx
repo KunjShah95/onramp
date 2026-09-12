@@ -9,23 +9,28 @@ import SocialProof from '../components/landing/SocialProof'
 import Pricing from '../components/landing/Pricing'
 import ClosingCta from '../components/landing/ClosingCta'
 import Footer from '../components/landing/Footer'
+import { useLandingTheme } from '../hooks/useLandingTheme'
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Landing — "onboarding in days, not months" wedge build.
  *
- * A clean light surface (`.landing-light`, overrides `.landing-premium`)
- * pins its own identity so it never follows the app's theme. Stripe-grade
- * restraint: white & slate surfaces, Inter type, a single cyan accent, and
- * the 3D architecture map framed as a dark product window.
+ * Aceternity-style public identity with a light/dark toggle. Dark (default)
+ * is the signature: true near-black canvas, one electric-cyan accent doing
+ * all the color work, cursor spotlight, dot-grid floors, glow depth.
+ * Light is the quiet daylight variant of the same system. Both modes pin
+ * their own tokens (`.landing-premium` + optional `.landing-light`) so the
+ * page never follows the app's theme.
  *   Hero · Problem (#the-gap) · Product (#the-map) · Metrics (#metrics) ·
  *   How it works · Customers · Pricing (#pricing) · CTA · Footer
  * ───────────────────────────────────────────────────────────────────────── */
 
 export default function LandingPage() {
+  const { lightClass } = useLandingTheme()
+
   return (
     <div
       data-theme="landing"
-      className="landing-premium landing-light min-h-screen scroll-smooth bg-room text-ink antialiased"
+      className={`landing-premium${lightClass} min-h-screen scroll-smooth bg-room text-ink antialiased`}
     >
       <Seo
         title="Onramp · Onboarding in days, not months"

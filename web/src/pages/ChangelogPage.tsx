@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star } from '@phosphor-icons/react'
+import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star, Megaphone, Plus, CaretUp, Hexagon } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
@@ -89,12 +89,12 @@ const tagStyles: Record<string, string> = {
   fix:         'bg-go/10 text-go border-go/25',
 }
 
-const tagIcons: Record<string, string> = {
-  major: '●',
-  feature: '+',
-  improvement: '▲',
-  fix: '⬡',
-}
+const tagIcons = {
+  major: Megaphone,
+  feature: Plus,
+  improvement: CaretUp,
+  fix: Hexagon,
+} as const
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -120,7 +120,7 @@ export default function ChangelogPage() {
       <div className="max-w-2xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}
         <div className="mb-12">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Changelog</span>
           </span>
@@ -144,8 +144,11 @@ export default function ChangelogPage() {
                 <code className="font-mono text-xs text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] px-2 py-0.5 rounded border border-[hsl(var(--border))]">
                   v{entry.version}
                 </code>
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border font-mono flex items-center gap-1 ${tagStyles[entry.tag]}`}>
-                  <span>{tagIcons[entry.tag]}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border font-mono inline-flex items-center gap-1 ${tagStyles[entry.tag]}`}>
+                  {(() => {
+                    const TagIcon = tagIcons[entry.tag as keyof typeof tagIcons]
+                    return TagIcon ? <TagIcon size={12} weight="bold" aria-hidden className="shrink-0" /> : null
+                  })()}
                   {entry.tag}
                 </span>
               </div>

@@ -13,7 +13,7 @@ Open a private security advisory on GitHub or email `security@onramp.dev`. Expec
 
 ## Authentication & Authorization
 
-- **JWT (HS256)**: 7-day access token + rotating refresh tokens (`POST /api/v1/auth/refresh`). Passwords hashed with **bcrypt**; change via `POST /api/v1/auth/forgot-password` / `reset-password` with short-lived JWT.
+- **JWT (HS256)**: 15-min access token (`JWT_ACCESS_EXPIRY_MINUTES`) + rotating opaque refresh tokens (`POST /api/v1/auth/refresh`, 30-day `JWT_REFRESH_EXPIRY_DAYS`, `remember_me` only; single active session, per-user distributed rotation lock). Single-source crypto in `backend/app/core/security.py`; settings in `backend/app/core/config.py`. Passwords hashed with **bcrypt**; change via `POST /api/v1/auth/forgot-password` / `reset-password` with short-lived JWT. Brute-force protection via `lockout_service` (5 fails → 15-min lock, Redis-backed).
 - **OAuth**: Google + GitHub login with **CSRF state tokens** (Redis) + account linking. Optional **Neon Auth JWKS** (RS256) verification path.
 - **API keys**: `cf_` keys, **HMAC-SHA256** hashed with `API_KEY_HMAC_SECRET` (versioned pepper), scopes + expiry + credit limits.
 - **RBAC**: 9 roles (`junior_dev` → `ceo`/`admin`/`hr`), `require_team_role` hierarchy checks, organization + team scoping.

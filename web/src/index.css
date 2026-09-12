@@ -584,8 +584,8 @@
     --accent-glow: 61 171 163;
     --accent-primary: 61 171 163;
     --accent-primary-hover: 91 196 188;
-    --success: 16 185 129;
-    --success-lit: 52 211 153;
+    --success: 0 217 255;
+    --success-lit: 74 227 255;
     --warning: 251 191 36;
     --warning-lit: 252 211 77;
     --error: 248 113 113;
@@ -679,105 +679,107 @@
 
   /* ── Landing theme — pins the Shaders-inspired dark surface ── */
   [data-theme='landing'] {
-    --room: #070A0E;
-    --base: #0F1419;
-    --panel: #131A21;
-    --panel-raised: #1A222C;
-    --well: #10161D;
-    --inset: #0C1116;
+    --room: #050609;
+    --base: #08090D;
+    --panel: #0C0F14;
+    --panel-raised: #11141B;
+    --well: #0A0C11;
+    --inset: #070809;
     --ink: #FFFFFF;
     --ink-secondary: #A8B3BF;
     --ink-tertiary: #6B7280;
     --ink-muted: #4B5563;
     --ink-disabled: #374151;
-    --go: #10B981;
-    --go-lit: #34D399;
-    --mission: #06B6D4;
-    --mission-lit: #22D3EE;
+    --go: #00D9FF;
+    --go-lit: #4AE3FF;
+    --mission: #0EA5E9;
+    --mission-lit: #38BDF8;
     --caution: #F59E0B;
     --caution-lit: #FBBF24;
     --abort: #F87171;
     --abort-lit: #FCA5A5;
-    --seam: rgba(255, 255, 255, 0.10);
-    --seam-strong: rgba(255, 255, 255, 0.18);
-    --bg-void: 7 10 14;
-    --bg-primary: 15 20 25;
-    --bg-secondary: 19 26 33;
-    --bg-tertiary: 26 34 44;
-    --bg-elevated: 26 34 44;
+    --seam: rgba(255, 255, 255, 0.08);
+    --seam-strong: rgba(255, 255, 255, 0.14);
+    --bg-void: 5 6 9;
+    --bg-primary: 8 9 13;
+    --bg-secondary: 12 15 20;
+    --bg-tertiary: 17 20 27;
+    --bg-elevated: 17 20 27;
     --text-primary: 255 255 255;
     --text-secondary: 168 179 191;
     --text-tertiary: 107 114 128;
     --text-muted: 75 85 99;
     --text-disabled: 55 69 85;
     --border-rgb: 168 179 191;
-    --accent-from: 16 185 129;
-    --accent-via: 52 211 153;
-    --accent-to: 16 185 129;
-    --accent-muted: 16 185 129;
-    --accent-glow: 16 185 129;
-    --accent-primary: 16 185 129;
-    --accent-primary-hover: 52 211 153;
-    --success: 16 185 129;
-    --success-lit: 52 211 153;
+    --accent-from: 0 217 255;
+    --accent-via: 6 182 212;
+    --accent-to: 34 211 238;
+    --accent-muted: 0 217 255;
+    --accent-glow: 0 217 255;
+    --accent-primary: 0 217 255;
+    --accent-primary-hover: 74 227 255;
+    --success: 0 217 255;
+    --success-lit: 74 227 255;
     --warning: 245 158 11;
     --warning-lit: 251 191 36;
     --error: 248 113 113;
     --error-lit: 252 165 165;
-    --info: 6 182 212;
-    --info-lit: 34 211 238;
-    --background: 217 39% 11%;
+    --info: 34 211 238;
+    --info-lit: 103 232 249;
+    --background: 220 47% 3%;
     --foreground: 0 0% 100%;
     --primary: 0 0% 100%;
-    --primary-foreground: 217 39% 11%;
+    --primary-foreground: 220 47% 3%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 0 0% 100%;
     --muted: 217 33% 20%;
     --muted-foreground: 0 0% 68%;
-    --accent: 187 100% 50%;
-    --accent-foreground: 217 39% 11%;
+    --accent: 189 100% 50%;
+    --accent-foreground: 220 47% 3%;
     --border: 217 33% 24%;
-    --ring: 187 100% 50%;
-    --card: 217 33% 17%;
+    --ring: 189 100% 50%;
+    --card: 220 25% 7%;
     --card-foreground: 0 0% 100%;
-    --popover: 217 39% 11%;
+    --popover: 220 47% 3%;
     --popover-foreground: 0 0% 100%;
   }
 
 
-  /* ── Premium landing surface ──────────────────────────
+  /* ── Premium landing surface — Aceternity dark ───────
      The public landing page pins its own dark identity so it never
-     follows the app's theme. Spec palette: near-black #0F1419 base,
-     teal #06B6D4 primary, emerald #10B981 success, amber #F59E0B
-     caution, cyan #00D9FF CTA. Typography: Space Mono display,
+     follows the app's theme. Spec palette: true near-black canvas
+     (#050609 room, #08090D base), a single electric-cyan accent
+     (#00D9FF) doing all the color work, slate neutrals for copy.
+     Depth comes from radial glows and 1px white/8 borders — no
+     drop-shadow skeuomorphism. Typography: Space Mono display,
      Inter body, IBM Plex Mono data. */
   .landing-premium {
-    --room: #070A0E;
-    --base: #0F1419;
-    --panel: #131A21;
-    --panel-raised: #1A222C;
-    --well: #10161D;
-    --inset: #0C1116;
+    --room: #050609;
+    --base: #08090D;
+    --panel: #0C0F14;
+    --panel-raised: #11141B;
+    --well: #0A0C11;
+    --inset: #070809;
     --ink: #FFFFFF;
     --ink-secondary: #A8B3BF;
     --ink-tertiary: #6B7280;
     --ink-muted: #4B5563;
     --ink-disabled: #374151;
-    --go: #10B981;
-    --go-lit: #34D399;
-    --mission: #06B6D4;
-    --mission-lit: #22D3EE;
+    --go: #00D9FF;
+    --go-lit: #4AE3FF;
+    --mission: #0EA5E9;
+    --mission-lit: #38BDF8;
     --caution: #F59E0B;
     --caution-lit: #FBBF24;
     --abort: #F87171;
     --abort-lit: #FCA5A5;
-    --seam: rgba(255, 255, 255, 0.10);
-    --seam-strong: rgba(255, 255, 255, 0.18);
-    --bg-void: 7 10 14;
-    --bg-primary: 15 20 25;
-    --bg-secondary: 19 26 33;
-    --bg-tertiary: 26 34 44;
-    --bg-elevated: 26 34 44;
+    --seam: rgba(255, 255, 255, 0.08);
+    --seam-strong: rgba(255, 255, 255, 0.14);
+    --bg-void: 5 6 9;
+    --bg-primary: 8 9 13;
+    --bg-secondary: 12 15 20;
+    --bg-tertiary: 17 20 27;
+    --bg-elevated: 17 20 27;
     --text-primary: 255 255 255;
     --text-secondary: 168 179 191;
     --text-tertiary: 107 114 128;
@@ -786,19 +788,35 @@
     --border-rgb: 148 163 184;
     --accent-from: 0 217 255;
     --accent-via: 6 182 212;
-    --accent-to: 16 185 129;
-    --accent-muted: 6 182 212;
+    --accent-to: 34 211 238;
+    --accent-muted: 0 217 255;
     --accent-glow: 0 217 255;
     --accent-primary: 0 217 255;
-    --accent-primary-hover: 34 211 238;
-    --success: 16 185 129;
-    --success-lit: 52 211 153;
+    --accent-primary-hover: 74 227 255;
+    --success: 0 217 255;
+    --success-lit: 74 227 255;
     --warning: 245 158 11;
     --warning-lit: 251 191 36;
     --error: 248 113 113;
     --error-lit: 252 165 165;
-    --info: 6 182 212;
-    --info-lit: 34 211 238;
+    --info: 34 211 238;
+    --info-lit: 103 232 249;
+    --background: 220 47% 3%;
+    --foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 220 47% 3%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 33% 20%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 189 100% 50%;
+    --accent-foreground: 220 47% 3%;
+    --border: 217 33% 24%;
+    --ring: 189 100% 50%;
+    --card: 220 25% 7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 47% 3%;
+    --popover-foreground: 0 0% 100%;
 
     color: var(--ink);
     background-color: var(--room);
@@ -810,10 +828,12 @@
   }
 
   /* ── Light premium surface (landing) ─────────────────────────
-     The landing page pins a clean light identity — Stripe/Notion energy:
-     white & slate-50 surfaces, slate ink, cyan-600 accent, emerald success.
-     Declared after .landing-premium so it wins the cascade when both
-     classes are present (LandingPage renders `landing-premium landing-light`). */
+     Daylight variant of the landing identity — Stripe/Notion energy:
+     white & slate-50 surfaces, slate ink, cyan-700 accent (same hue
+     family as the dark mode's electric cyan, darkened for WCAG
+     contrast on white). Declared after .landing-premium so it wins
+     the cascade when both classes are present (public pages toggle
+     `landing-premium landing-light` via useLandingTheme). */
   .landing-light {
     --room: #FFFFFF;
     --base: #F8FAFC;
@@ -826,12 +846,13 @@
     --ink-tertiary: #64748B;
     --ink-muted: #94A3B8;
     --ink-disabled: #CBD5E1;
-    /* Premium light system — indigo primary, cyan + violet accents (see DESIGN brief).
+    /* Premium light system — cyan-700 primary (same family as dark mode's
+       electric cyan, darkened for contrast on white).
        RGB triplets feed rgb(var(--token)) consumers; hex feeds raw CSS consumers. */
---go: #0B7A55;
-    --go-lit: #10B981;
-    --mission: #4F46E5;
-    --mission-lit: #6366F1;
+    --go: #0E7490;
+    --go-lit: #0891B2;
+    --mission: #6366F1;
+    --mission-lit: #818CF8;
     --caution: #B45309;
     --caution-lit: #D97706;
     --abort: #DC2626;
@@ -849,15 +870,15 @@
     --text-muted: 148 163 184;
     --text-disabled: 203 213 225;
     --border-rgb: 148 163 184;
-    --accent-from: 79 70 229;
-    --accent-via: 34 211 238;
-    --accent-to: 139 92 246;
-    --accent-muted: 79 70 229;
-    --accent-glow: 79 70 229;
-    --accent-primary: 79 70 229;
-    --accent-primary-hover: 67 56 202;
-    --success: 11 122 85;
-    --success-lit: 16 185 129;
+    --accent-from: 14 116 144;
+    --accent-via: 8 145 178;
+    --accent-to: 6 182 212;
+    --accent-muted: 14 116 144;
+    --accent-glow: 14 116 144;
+    --accent-primary: 14 116 144;
+    --accent-primary-hover: 8 145 178;
+    --success: 14 116 144;
+    --success-lit: 8 145 178;
     --warning: 245 158 11;
     --warning-lit: 251 191 36;
     --error: 239 68 68;
@@ -866,16 +887,16 @@
     --info-lit: 99 102 241;
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
-    --primary: 243 75% 59%;
+    --primary: 189 100% 29%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 20% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 44%;
-    --accent: 243 75% 59%;
+    --accent: 189 100% 29%;
     --accent-foreground: 0 0% 100%;
     --border: 214 32% 91%;
-    --ring: 243 75% 59%;
+    --ring: 189 100% 29%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
@@ -883,14 +904,49 @@
   }
 
   .landing-light ::selection {
-    background: rgba(79, 70, 229, 0.18);
+    background: rgba(8, 145, 178, 0.18);
     color: #0F172A;
   }
 
-  /* ── Landing premium utilities ─────────────────────────── */
-  /* Indigo → cyan → violet headline gradient (background-clip: text). */
+  /* ── Pre-paint mode guard ───────────────────────────────
+     index.html adds `landing-mode-light` to <html> before first paint
+     when the visitor's saved landing mode is light, so the light variant
+     applies immediately and returning visitors never see a dark→light
+     flash while React hydrates. The :not(.landing-light) guard keeps
+     specificity below the real .landing-light block — once React mounts
+     and applies the actual class, these vars are overridden and the
+     in-app toggle keeps working. */
+  .landing-mode-light .landing-premium:not(.landing-light) {
+    --room: #FFFFFF;
+    --base: #F8FAFC;
+    --panel: #FFFFFF;
+    --panel-raised: #FFFFFF;
+    --well: #F1F5F9;
+    --inset: #EEF2F7;
+    --ink: #0F172A;
+    --ink-secondary: #475569;
+    --ink-tertiary: #64748B;
+    --ink-muted: #94A3B8;
+    --ink-disabled: #CBD5E1;
+    --go: #0E7490;
+    --go-lit: #0891B2;
+    --seam: rgba(15, 23, 42, 0.08);
+    --seam-strong: rgba(15, 23, 42, 0.14);
+  }
+
+  /* ── Landing premium utilities ───────────────────── */
+  /* Headline gradient — hue swaps with the landing mode:
+     dark = electric cyan → sky → bright cyan over near-black;
+     light = cyan-700 → indigo (quiet, AA on white). */
   .landing-premium .text-gradient {
-    background: linear-gradient(100deg, #4f46e5 0%, #22d3ee 50%, #8b5cf6 100%);
+    background: linear-gradient(100deg, #00D9FF 0%, #38BDF8 45%, #7DD3FC 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .landing-light .text-gradient {
+    background: linear-gradient(100deg, #0E7490 0%, #0891B2 45%, #4F46E5 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -985,6 +1041,22 @@
 
   a:hover {
     color: var(--mission-lit);
+  }
+
+  /* App-wide gradient-text fallback — token-driven so it works in every
+     app theme. Scoped landing overrides (.landing-premium/.landing-light)
+     win the cascade where present. Fixes .text-gradient rendering as
+     invisible (transparent, no background) on auth pages. */
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      rgb(var(--accent-primary)) 0%,
+      rgb(var(--accent-primary-hover)) 55%,
+      rgb(var(--info)) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   button {
@@ -1258,7 +1330,7 @@
   .btn-danger:hover { background: color-mix(in srgb, var(--abort) 18%, transparent); }
 
   :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid var(--go);
+    outline: 2px solid var(--go) !important;
     outline-offset: 2px;
     border-radius: 6px;
   }

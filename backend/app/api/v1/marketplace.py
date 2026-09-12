@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.api.v1.auth import get_current_user
-from app.services.field_encryption import decrypt_field
+from app.services.field_encryption import decrypt_field_lenient as decrypt_field
 from app.services.marketplace_service import MarketplaceService
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])

@@ -1,32 +1,22 @@
 import os
 import logging
-import json
 
-import jwt
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.services.user_service import get_user_by_uid
 from app.services.neon_auth import verify_neon_session
+from app.core import security as _core_security
 
 logger = logging.getLogger(__name__)
 
-JWT_ALGORITHM = "HS256"
+JWT_ALGORITHM = _core_security.JWT_ALGORITHM
+
 
 def _get_jwt_secret() -> str:
-    secret = os.getenv("JWT_SECRET", "")
-    if not secret:
-        _env = os.getenv("ENV", "development").lower()
-        if _env == "production":
-            raise RuntimeError(
-                "JWT_SECRET must be set in production — refusing to start with an insecure default."
-            )
-        logging.getLogger(__name__).warning(
-            "JWT_SECRET not set — using insecure dev default (DO NOT use in production)"
-        )
-        return "dev-jwt-secret-change-in-production"
-    return secret
+    """Single-source JWT secret (delegates to app.core.security)."""
+    return _core_security.get_jwt_secret()
 
 
 async def verify_session_token(token: str) -> dict | None:
@@ -38,14 +28,8 @@ async def verify_session_token(token: str) -> dict | None:
     try:
         # Gate expensive Neon JWKS path: only fall through if token looks like RS256 (kid header)
         # Caller handles fallback after HS256 failure; we keep fast-path here.
-        payload = jwt.decode(
-            token, _get_jwt_secret(), algorithms=[JWT_ALGORITHM],
-            issuer=os.getenv("JWT_ISSUER", "onramp"),
-            audience=os.getenv("JWT_AUDIENCE", "onramp-api"),
-        )
-    except jwt.ExpiredSignatureError:
-        logger.warning("JWT token has expired")
-    except jwt.InvalidTokenError as e:
+        payload = _core_security.decode_access_token(token)
+    except Exception as e:
         logger.warning("Invalid JWT token: %s", e)
 
     if payload:

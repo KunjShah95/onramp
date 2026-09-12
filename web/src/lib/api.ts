@@ -110,7 +110,16 @@ async function trySilentRefresh(): Promise<boolean> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),  // refresh token comes from cookie
       })
-      if (!res.ok) return false
+      if (!res.ok) {
+        // Distinguish expired/invalid refresh (401/403) from transient failures
+        // so callers can tell "signed out" apart from "offline".
+        if (res.status === 401 || res.status === 403) {
+          console.debug('[auth] silent refresh rejected — session expired')
+        } else {
+          console.debug(`[auth] silent refresh failed with HTTP ${res.status}`)
+        }
+        return false
+      }
       const json = await res.json()
       const data = unwrap<any>(json)
       if (data?.token) {
@@ -119,7 +128,8 @@ async function trySilentRefresh(): Promise<boolean> {
         return true
       }
       return false
-    } catch {
+    } catch (err) {
+      console.debug('[auth] silent refresh network error', err)
       return false
     } finally {
       _refreshPromise = null
@@ -231,6 +241,61 @@ function unwrap<T>(json: any): T {
     if ('data' in json) return json.data as T
   }
   return json as T
+}
+
+/**
+ * Central authenticated fetch — timeout + cookies + single 401 refresh retry.
+ * New code should use this instead of raw `fetch`; existing callers migrate
+ * incrementally. Return shape matches `request`/`get` (unwrapped JSON).
+ */
+export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retried = false): Promise<T> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      ...CREDS,
+      ...init,
+      headers: { ...authHeaders(), ...(init.headers as Record<string, string> | undefined) },
+      signal: init.signal ?? controller.signal,
+    })
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
+  if (res.status === 401 && !retried) {
+    if (await trySilentRefresh()) {
+      return fetchWithAuth<T>(url, init, true)
+    }
+    const text = await res.text()
+    let message = 'Authentication required. Please sign in again.'
+    if (text) {
+      try {
+        const err = JSON.parse(text)
+        if (err.detail) message = err.detail
+      } catch {
+        if (text.length < 200) message = text
+      }
+    }
+    throw new Error(message)
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    let message = `API error ${res.status}`
+    try {
+      const err = JSON.parse(text)
+      if (err.detail) message = err.detail
+      else if (err.message) message = err.message
+    } catch {
+      if (text && text.length < 500) {
+        message = `${message}: ${text}`
+      }
+    }
+    throw new Error(message)
+  }
+  return unwrap<T>(await res.json())
 }
 
 export async function analyzeArchitecture(
@@ -1051,16 +1116,9 @@ export async function registerRepo(data: {
   if (data.url) params.set('url', data.url)
   if (data.team_id) params.set('team_id', data.team_id)
   if (data.description) params.set('description', data.description)
-  const res = await fetch(`${API_BASE}/repos?${params}`, {
+  return fetchWithAuth<RepoItem>(`${API_BASE}/repos?${params}`, {
     method: 'POST',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to register repo (${res.status})`)
-  }
-  return res.json()
 }
 
 export interface TraineeDashboardProgress {
@@ -1139,12 +1197,7 @@ export interface SeedRoleData {
 }
 
 export async function fetchSeedRoleData(): Promise<SeedRoleData> {
-  const res = await fetch(`${API_BASE}/seed/role-data`, {
-    ...CREDS,
-    headers: authHeaders(),
-  })
-  if (!res.ok) throw new Error(`API error ${res.status}: Failed to fetch seed data`)
-  return res.json()
+  return get<SeedRoleData>(`${API_BASE}/seed/role-data`)
 }
 
 // ─── Health Score ─────────────────────────────────────────────────────────
@@ -1432,82 +1485,33 @@ export async function addTeamMember(
   user: string,
   role = 'member'
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
+  await fetchWithAuth<void>(`${API_BASE}/teams/${teamId}/members`, {
     method: 'POST',
-    ...CREDS,
-    headers: authHeaders(),
     body: JSON.stringify({ user, role }),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
 }
 
 export async function getTeamMembers(teamId: string): Promise<{ user_id: string; name: string; role: string }[]> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/members`, {
-    method: 'GET',
-    ...CREDS,
-    headers: authHeaders(),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  const json = await res.json()
-  // Unwrap ResponseWrapper: {success, data: [...]} → data
-  return Array.isArray(json) ? json : (json?.data ?? json)
+  return get<{ user_id: string; name: string; role: string }[]>(`${API_BASE}/teams/${teamId}/members`)
 }
 
 export async function removeTeamMember(
   teamId: string,
   user: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/members/${user}`, {
+  await fetchWithAuth<void>(`${API_BASE}/teams/${teamId}/members/${user}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to remove member (${res.status})`)
-  }
 }
 
 export async function changeTeamTier(
   teamId: string,
   tier: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/tier`, {
+  await fetchWithAuth<void>(`${API_BASE}/teams/${teamId}/tier`, {
     method: 'POST',
-    ...CREDS,
-    headers: authHeaders(),
     body: JSON.stringify({ tier }),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to change tier (${res.status})`)
-  }
 }
 
 // ─── Playbooks ────────────────────────────────────────────────────────────
@@ -1566,15 +1570,9 @@ export async function updatePlaybook(
 export async function archivePlaybook(
   playbookId: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/playbooks/${playbookId}`, {
+  await fetchWithAuth<void>(`${API_BASE}/playbooks/${playbookId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to archive playbook (${res.status})`)
-  }
 }
 
 // ─── Billing ──────────────────────────────────────────────────────────────
@@ -1623,15 +1621,9 @@ export async function updateSubscription(
 }
 
 export async function cancelSubscription(teamId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/billing/subscriptions/${teamId}`, {
+  await fetchWithAuth<void>(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to cancel subscription (${res.status})`)
-  }
 }
 
 export async function attachRazorpay(
@@ -1753,15 +1745,9 @@ export async function listApiKeys(
 }
 
 export async function revokeApiKey(keyId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/ai/keys/${keyId}`, {
+  await fetchWithAuth<void>(`${API_BASE}/ai/keys/${keyId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to revoke API key (${res.status})`)
-  }
 }
 
 export async function rotateApiKey(
@@ -1824,15 +1810,9 @@ export async function deleteProviderKey(
   orgName: string,
   provider: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
+  await fetchWithAuth<void>(`${API_BASE}/ai/keys/${orgName}/providers/${provider}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to delete provider key (${res.status})`)
-  }
 }
 
 /**
@@ -1859,14 +1839,10 @@ export async function removeProviderKey(
   provider: string,
   keyId: string
 ): Promise<void> {
-  const res = await fetch(
+  await fetchWithAuth<void>(
     `${API_BASE}/ai/keys/${orgName}/providers/${provider}/keys/${keyId}`,
-    { method: 'DELETE', ...CREDS, headers: authHeaders() }
+    { method: 'DELETE' }
   )
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail || `Failed to remove provider key (${res.status})`)
-  }
 }
 
 // ─── Model Catalog (dynamic OpenRouter fetch) ─────────────────────────────
@@ -2068,6 +2044,7 @@ export async function executeAgent(
   }
   const res = await fetch(`${API_BASE}/ai/agents/${agentName}`, {
     method: 'POST',
+    ...CREDS,
     headers,
     body: JSON.stringify(params),
   })
@@ -2796,26 +2773,9 @@ export async function adminTestWebhook(webhookId: string): Promise<AdminWebhookT
 }
 
 export async function adminDeleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/admin/webhooks/${webhookId}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/admin/webhooks/${webhookId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 export async function adminGetWebhookDeliveries(webhookId: string, limit = 50): Promise<AdminWebhookDeliveriesResponse> {
@@ -2855,10 +2815,8 @@ export async function adminSetProviderKey(
 }
 
 export async function adminDeleteProviderKey(provider: string): Promise<void> {
-  await fetch(`${API_BASE}/admin/ai/provider-keys/${provider}`, {
+  await fetchWithAuth<void>(`${API_BASE}/admin/ai/provider-keys/${provider}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
 }
 
@@ -2905,25 +2863,10 @@ export async function getAskHistory(
 export async function clearAskHistory(
   indexId: string
 ): Promise<{ cleared: number }> {
-  const res = await fetch(
+  return fetchWithAuth<{ cleared: number }>(
     `${API_BASE}/ask/history/${encodeURIComponent(indexId)}`,
-    { method: 'DELETE', ...CREDS, headers: authHeaders() }
+    { method: 'DELETE' }
   )
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 // ─── Module-Level Access Control ─────────────────────────────────────────
@@ -2976,26 +2919,10 @@ export async function grantModuleAccess(
   userId: string,
   module: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/grant`, {
+  await fetchWithAuth<void>(`${API_BASE}/teams/${teamId}/module-permissions/grant`, {
     method: 'POST',
-    ...CREDS,
-    headers: authHeaders(),
     body: JSON.stringify({ user_id: userId, module }),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
 }
 
 export async function revokeModuleAccess(
@@ -3003,56 +2930,23 @@ export async function revokeModuleAccess(
   userId: string,
   module: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/teams/${teamId}/module-permissions/revoke`, {
+  await fetchWithAuth<void>(`${API_BASE}/teams/${teamId}/module-permissions/revoke`, {
     method: 'POST',
-    ...CREDS,
-    headers: authHeaders(),
     body: JSON.stringify({ user_id: userId, module }),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
 }
 
 export async function revokeAllModuleAccess(
   teamId: string,
   userId: string
 ): Promise<{ revoked: number }> {
-  const res = await fetch(
+  return fetchWithAuth<{ revoked: number }>(
     `${API_BASE}/teams/${teamId}/module-permissions/revoke-all`,
     {
       method: 'POST',
-      ...CREDS,
-    headers: authHeaders(),
       body: JSON.stringify({ user_id: userId }),
     }
   )
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 export async function checkModuleAccess(
@@ -3259,17 +3153,9 @@ export async function mergePR(taskId: string, data?: {
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+  await fetchWithAuth<void>(`${API_BASE}/tasks/${taskId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try { const j = JSON.parse(text); if (j.detail) message = j.detail } catch {}
-    throw new Error(message)
-  }
 }
 
 export async function getTeamProgress(teamId: string): Promise<TeamProgress> {
@@ -3418,26 +3304,9 @@ export async function updateTaskTemplate(templateId: string, data: Partial<{
 }
 
 export async function deleteTaskTemplate(templateId: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/tasks/templates/${templateId}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/tasks/templates/${templateId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 // ─── Bulk Assignment ─────────────────────────────────────────
@@ -3541,26 +3410,9 @@ export async function markAllNotificationsRead(): Promise<{ marked_count: number
 }
 
 export async function deleteNotification(notificationId: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/notifications/${notificationId}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/notifications/${notificationId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 export async function clearReadNotifications(): Promise<{ deleted_count: number }> {
@@ -3671,26 +3523,9 @@ export async function updateWebhook(webhookId: string, data: {
 }
 
 export async function deleteWebhook(webhookId: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/integrations/webhooks/${webhookId}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/integrations/webhooks/${webhookId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 export async function testWebhook(webhookId: string): Promise<{ success: boolean; status_code?: number; error?: string }> {
@@ -3712,26 +3547,9 @@ export async function saveIntegration(integrationType: string, config: Record<st
 }
 
 export async function deleteIntegration(integrationType: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/integrations/${integrationType}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/integrations/${integrationType}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    let message = `API error ${res.status}`
-    try {
-      const err = JSON.parse(text)
-      if (err.detail) message = err.detail
-      else if (err.message) message = err.message
-    } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
-    }
-    throw new Error(message)
-  }
-  return res.json()
 }
 
 export interface GithubTestResult {
@@ -4173,13 +3991,9 @@ export async function getSsoConfig(teamId: string): Promise<SsoConfig> {
 }
 
 export async function deleteSsoConfig(teamId: string): Promise<{ deleted: boolean }> {
-  const res = await fetch(`${API_BASE}/auth/sso/config/${teamId}`, {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/auth/sso/config/${teamId}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
   })
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json()
 }
 
 export async function testSsoConnection(teamId: string): Promise<{ success: boolean; errors?: string[] }> {
@@ -4577,11 +4391,9 @@ export async function setFeatureFlag(teamId: string, flagName: string, enabled: 
 }
 
 export async function deleteFeatureFlag(teamId: string, flagName: string): Promise<void> {
-  return (await fetch(`${API_BASE}/feature-flags/${teamId}/${flagName}`, {
+  await fetchWithAuth<void>(`${API_BASE}/feature-flags/${teamId}/${flagName}`, {
     method: 'DELETE',
-    ...CREDS,
-    headers: authHeaders(),
-  })).json()
+  })
 }
 
 // ─── Playbook Marketplace ───────────────────────────────────────────────────

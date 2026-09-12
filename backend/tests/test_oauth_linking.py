@@ -50,9 +50,14 @@ def _no_redis(monkeypatch):
 
     Without this, backend/.env's REDIS_URL leaks into tests and
     cache_service.get_client() would attempt a real (failing, ~2s) Redis
-    connection on the first state operation.
+    connection on the first state operation. Dummy OAuth client id/secrets
+    keep _validate_oauth_config passing without real credentials.
     """
     monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "test-github-client-id")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "test-github-client-secret")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-google-client-secret")
     import app.services.cache_service as cache_service
 
     cache_service._client = None

@@ -87,7 +87,7 @@ export default function CustomersPage() {
       <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-10 pb-24">
         {/* Hero */}
         <motion.div {...fadeUp(0)} className="mb-16 text-center max-w-4xl mx-auto">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
             <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Customers</span>
           </span>
@@ -100,7 +100,7 @@ export default function CustomersPage() {
         </motion.div>
 
         {/* Logo cloud — ruled strip */}
-        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-black/10 bg-white px-8 py-10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-seam bg-panel px-8 py-10 shadow-seam">
           <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary text-center mb-8">
             Trusted by leading engineering teams
           </p>
