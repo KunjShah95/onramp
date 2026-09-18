@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import AuthShell from '../components/ui/auth-shell'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth, homeForRole } from '../context/AuthContext'
@@ -7,6 +7,7 @@ import PageTransition from '../components/ui/page-transition'
 import Seo from '../components/seo/Seo'
 import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
+import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import InputField from '../components/ui/first-principles/InputField'
 
 export default function Login() {
@@ -27,9 +28,15 @@ export default function Login() {
   const isSafe = typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes(':')
   const from = isSafe ? rawFrom : undefined
 
+  // Plan intent carried from /pricing via /register — after sign-in the user
+  // lands directly in the billing funnel (Razorpay checkout).
+  const [searchParams] = useSearchParams()
+  const planIntent = getPlanIntent(searchParams)
+  const postAuthDest = planIntent ? billingUrlWithPlan(planIntent) : null
+
   useEffect(() => {
-    if (user && !loading) navigate(from || homeForRole(role), { replace: true })
-  }, [user, loading, navigate, from, role])
+    if (user && !loading) navigate(postAuthDest || from || homeForRole(role), { replace: true })
+  }, [user, loading, navigate, postAuthDest, from, role])
 
   useEffect(() => {
     if (stage === 'email') {
@@ -93,14 +100,14 @@ export default function Login() {
           footer={
             <>
               <span>New to Onramp?</span>
-              <Link to="/register" className="text-go font-semibold hover:text-go-lit transition-colors inline-flex items-center gap-1.5 ml-2">
+              <Link to={planIntent ? `/register?plan=${planIntent}` : '/register'} className="text-go font-semibold hover:text-go-lit transition-colors inline-flex items-center gap-1.5 ml-2">
                 Create free account <ArrowUpRight size={14} weight="bold" />
               </Link>
             </>
           }
         >
           {error && (
-            <div className="flex gap-2.5 rounded-xl border border-abort/15 bg-abort/5 px-4 py-3 mb-6 text-[13px] font-medium text-abort" role="alert">
+            <div className="flex gap-2.5 rounded-card border border-abort/15 bg-abort/5 px-4 py-3 mb-6 text-[13px] font-medium text-abort" role="alert">
               <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
               <span className="leading-[1.5]">{error}</span>
             </div>

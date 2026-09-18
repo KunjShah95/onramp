@@ -42,11 +42,19 @@ async def analyze_repo(request: ExploreRequest, req: Request, response: Response
             branch=request.branch,
             index_id=request.index_id,
         )
+        if result is None:
+            await fail_session(sid, "architecture_explorer")
+            raise HTTPException(
+                status_code=502,
+                detail="Architecture analysis failed: explorer returned no result",
+            )
         attach_served_route_header(llm, before_route, response)
         if isinstance(result, dict) and sid:
             result["session_id"] = sid
         await complete_session(sid, "architecture_explorer", success=True, payload={"repo_url": request.repo_url, "index_id": request.index_id})
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         await fail_session(sid, "architecture_explorer")
         raise HTTPException(status_code=500, detail=str(e))

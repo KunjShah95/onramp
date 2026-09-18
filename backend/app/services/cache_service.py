@@ -20,6 +20,22 @@ def _get_redis_url() -> Optional[str]:
     return os.getenv(REDIS_URL_ENV)
 
 
+def _mask_redis_url(url: str) -> str:
+    """Mask credentials in a Redis URL for safe logging."""
+    try:
+        from urllib.parse import urlsplit, urlunsplit
+
+        parts = urlsplit(url)
+        if parts.password:
+            netloc = f"{parts.username or ''}:***@{parts.hostname or ''}"
+            if parts.port:
+                netloc += f":{parts.port}"
+            return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+    except Exception:
+        pass
+    return "redis://***"
+
+
 def is_redis_available() -> bool:
     """Check if Redis is configured."""
     return bool(_get_redis_url())
@@ -42,7 +58,7 @@ async def get_client():
             protocol=2,
         )
         await _client.ping()
-        logger.info("Connected to Redis at %s", url)
+        logger.info("Connected to Redis at %s", _mask_redis_url(url))
         return _client
     except Exception:
         logger.warning("Redis unavailable — caching disabled")

@@ -369,7 +369,7 @@ async def create_template_endpoint(
     return template
 
 
-@router.patch("/templates/{template_id}")
+@router.patch("/templates/{template_id}", responses={404: {"description": "Template not found"}})
 async def update_template_endpoint(
     template_id: str,
     request: UpdateTemplateRequest,
@@ -385,7 +385,7 @@ async def update_template_endpoint(
     return template
 
 
-@router.delete("/templates/{template_id}")
+@router.delete("/templates/{template_id}", responses={404: {"description": "Template not found"}})
 async def delete_template_endpoint(
     template_id: str,
     user: dict = Depends(get_current_user),
@@ -439,7 +439,7 @@ async def list_tasks_endpoint(
     return {"tasks": page, "count": len(page), "total": total, "offset": offset, "limit": limit}
 
 
-@router.get("/{task_id}")
+@router.get("/{task_id}", responses={404: {"description": "Task not found"}})
 async def get_task_endpoint(
     task_id: str,
     user: dict = Depends(get_current_user),
@@ -448,7 +448,7 @@ async def get_task_endpoint(
     return await _verify_task_access(task_id, user.get("uid", ""))
 
 
-@router.patch("/{task_id}")
+@router.patch("/{task_id}", responses={404: {"description": "Task not found"}})
 async def update_task_endpoint(
     task_id: str,
     request: UpdateTaskRequest,
@@ -465,7 +465,7 @@ async def update_task_endpoint(
     return result
 
 
-@router.delete("/{task_id}")
+@router.delete("/{task_id}", responses={404: {"description": "Task not found"}})
 async def delete_task_endpoint(
     task_id: str,
     user: dict = Depends(get_current_user),

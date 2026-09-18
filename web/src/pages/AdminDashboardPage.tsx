@@ -87,28 +87,33 @@ export default function AdminDashboardPage() {
   const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
   const toast = useToast()
 
-  async function fetchAdminData() {
+  // Single loader shared by the mount effect (cancel-guarded) and the manual
+  // Refresh buttons. Previously these were copy-paste twins that could drift.
+  async function fetchAdminData(isCancelled: () => boolean = () => false) {
     setLoading(true); setError('')
     try {
       await Promise.all([
-        adminGetUsage(undefined, 14).then((u) => { setUsage(u.total_requests); setUsageDetail(u) }).catch(() => {}),
-        adminListApiKeys().then((k) => setKeys(k.count)).catch(() => {}),
+        adminGetUsage(undefined, 14).then((u) => { if (!isCancelled()) { setUsage(u.total_requests); setUsageDetail(u) } }).catch(() => {}),
+        adminListApiKeys().then((k) => { if (!isCancelled()) setKeys(k.count) }).catch(() => {}),
         adminGetTeamUsage().then((t) => {
-          setTeams(t.count)
-          setMembers(t.teams.reduce((acc, x) => acc + (x.member_count || 0), 0))
+          if (!isCancelled()) {
+            setTeams(t.count)
+            setMembers(t.teams.reduce((acc, x) => acc + (x.member_count || 0), 0))
+          }
         }).catch(() => {}),
-        adminListAuditEvents({ limit: 8 }).then((a) => setAudit(a.events)).catch(() => {}),
-        fetchProviderKeys().catch(() => {}),
+        adminListAuditEvents({ limit: 8 }).then((a) => { if (!isCancelled()) setAudit(a.events) }).catch(() => {}),
+        fetchProviderKeys(isCancelled).catch(() => {}),
       ])
     } catch (err: any) {
-      setError(err.message || 'Failed to load admin data.')
+      if (!isCancelled()) setError(err.message || 'Failed to load admin data.')
     } finally {
-      setLoading(false)
+      if (!isCancelled()) setLoading(false)
     }
   }
 
-  async function fetchProviderKeys() {
+  async function fetchProviderKeys(isCancelled: () => boolean = () => false) {
     const data = await adminListProviderKeys()
+    if (isCancelled()) return
     const map: Record<string, AdminProviderKeyInfo> = {}
     ;(data.providers || []).forEach((p) => { map[p.provider] = p })
     setProviderKeys(map)
@@ -141,28 +146,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      setLoading(true); setError('')
-      try {
-        await Promise.all([
-          adminGetUsage(undefined, 14).then((u) => { if (!cancelled) { setUsage(u.total_requests); setUsageDetail(u) } }).catch(() => {}),
-          adminListApiKeys().then((k) => { if (!cancelled) setKeys(k.count) }).catch(() => {}),
-          adminGetTeamUsage().then((t) => {
-            if (!cancelled) {
-              setTeams(t.count)
-              setMembers(t.teams.reduce((acc, x) => acc + (x.member_count || 0), 0))
-            }
-          }).catch(() => {}),
-          adminListAuditEvents({ limit: 8 }).then((a) => { if (!cancelled) setAudit(a.events) }).catch(() => {}),
-          fetchProviderKeys().catch(() => {}),
-        ])
-      } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load admin data.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
+    fetchAdminData(() => cancelled)
     return () => { cancelled = true }
   }, [])
 
@@ -186,7 +170,7 @@ export default function AdminDashboardPage() {
           title="Admin Console"
           subtitle="System-wide monitoring and management."
           actions={
-            <button onClick={fetchAdminData} disabled={loading} className="btn-glass disabled:opacity-50">Refresh</button>
+            <button onClick={() => fetchAdminData()} disabled={loading} className="btn-glass disabled:opacity-50">Refresh</button>
           }
         />
       </motion.div>
@@ -196,7 +180,7 @@ export default function AdminDashboardPage() {
           <ConsolePanel rail="Signal Lost" designator="SYSTEMS" status="abort">
             <div className="flex items-center justify-between gap-4">
               <p className="text-abort text-body-sm font-code">{error}</p>
-              <button onClick={fetchAdminData} disabled={loading} className="btn-glass !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
+              <button onClick={() => fetchAdminData()} disabled={loading} className="btn-glass !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
             </div>
           </ConsolePanel>
         </motion.div>

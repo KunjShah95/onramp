@@ -58,13 +58,13 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <input className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] transition-[border-color,box-shadow]', className)} {...props} />
+    <input className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)] transition-[border-color,box-shadow]', className)} {...props} />
   )
 }
 
 function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] resize-none transition-[border-color,box-shadow]', className)} {...props} />
+    <textarea className={cn('w-full bg-base border border-seam-strong rounded-[3px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-disabled outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)] resize-none transition-[border-color,box-shadow]', className)} {...props} />
   )
 }
 

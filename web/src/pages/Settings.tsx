@@ -31,6 +31,9 @@ import {
   saveIntegration,
   deleteIntegration,
   testGithubToken,
+  testSlackConnection,
+  testGitLabConnection,
+  testBitbucketConnection,
   testJiraConnection,
   listJiraProjects,
   testLinearConnection,
@@ -44,13 +47,15 @@ import {
   type NotificationPreferences,
   type Webhook,
   type GithubTestResult,
+  type GitLabTestResult,
+  type BitbucketTestResult,
 } from '../lib/api'
 import ConsolePanel from '../components/ui/console-panel'
 
 import { useToast } from '../context/ToastContext'
 import {
   User, At, Key, Bell, Palette, ShareNetwork,
-  ChatCircle, GithubLogo, Check, X, Spinner, Info, Lock,
+  ChatCircle, GithubLogo, GitlabLogo, GitFork, Check, X, Spinner, Info, Lock,
   EnvelopeSimple, Eye, Code, Trash, CheckCircle, XCircle,
   Plugs, Fire, CaretDown,
 } from '@phosphor-icons/react'
@@ -156,11 +161,26 @@ export default function Settings() {
   const [slackConnected, setSlackConnected] = useState(false)
   const [slackWebhook, setSlackWebhook] = useState('')
   const [slackChannel, setSlackChannel] = useState('#general')
+  const [slackTesting, setSlackTesting] = useState(false)
+  const [slackTestResult, setSlackTestResult] = useState<{ valid: boolean; message?: string; error?: string } | null>(null)
+  const [slackSaving, setSlackSaving] = useState(false)
+  const [webhookFormError, setWebhookFormError] = useState('')
 
   const [githubConnected, setGithubConnected] = useState(false)
   const [githubToken, setGithubToken] = useState('')
   const [githubTestResult, setGithubTestResult] = useState<GithubTestResult | null>(null)
   const [githubTesting, setGithubTesting] = useState(false)
+
+  const [gitlabConnected, setGitlabConnected] = useState(false)
+  const [gitlabToken, setGitlabToken] = useState('')
+  const [gitlabTestResult, setGitlabTestResult] = useState<GitLabTestResult | null>(null)
+  const [gitlabTesting, setGitlabTesting] = useState(false)
+
+  const [bitbucketConnected, setBitbucketConnected] = useState(false)
+  const [bitbucketUsername, setBitbucketUsername] = useState('')
+  const [bitbucketAppPassword, setBitbucketAppPassword] = useState('')
+  const [bitbucketTestResult, setBitbucketTestResult] = useState<BitbucketTestResult | null>(null)
+  const [bitbucketTesting, setBitbucketTesting] = useState(false)
 
   const eventLabels: Record<string, string> = {
     'task.assigned': 'Assigned', 'task.started': 'Started', 'task.submitted': 'Submitted',
@@ -187,6 +207,18 @@ export default function Settings() {
     try {
       const github = await getIntegration('github')
       if (github.configured) { setGithubConnected(true); setGithubToken('••••••••') }
+    } catch { /* ignore */ }
+    try {
+      const gitlab = await getIntegration('gitlab')
+      if (gitlab.configured) { setGitlabConnected(true); setGitlabToken('••••••••') }
+    } catch { /* ignore */ }
+    try {
+      const bitbucket = await getIntegration('bitbucket')
+      if (bitbucket.configured) {
+        setBitbucketConnected(true)
+        setBitbucketUsername(bitbucket.config?.username || '')
+        setBitbucketAppPassword('••••••••')
+      }
     } catch { /* ignore */ }
   }, [])
 
@@ -228,11 +260,16 @@ export default function Settings() {
   }, [activeTab, fetchWebhooks, fetchIntegrations])
 
   async function handleCreateWebhook() {
-    if (!webhookUrl.trim()) return
+    const url = webhookUrl.trim()
+    if (!url) { setWebhookFormError('Payload URL is required.'); return }
+    if (!/^https:\/\//.test(url)) { setWebhookFormError('Payload URL must start with https://'); return }
+    if (!webhookEvents.length) { setWebhookFormError('Select at least one event.'); return }
+    setWebhookFormError('')
     try {
-      const wh = await createWebhook({ url: webhookUrl.trim(), events: webhookEvents, description: webhookDesc.trim() || undefined })
-      setWebhookCreated(wh); setWebhookUrl(''); setWebhookDesc(''); setShowAddWebhook(false); await fetchWebhooks()
-    } catch { /* ignore */ }
+      const wh = await createWebhook({ url, events: webhookEvents, description: webhookDesc.trim() || undefined })
+      setWebhookCreated(wh); setWebhookUrl(''); setWebhookDesc(''); setWebhookEvents(['*']); setShowAddWebhook(false); await fetchWebhooks()
+      toast.success('Webhook created', 'Save the signing secret now — it is shown once.')
+    } catch (e) { setWebhookFormError(e instanceof Error ? e.message : 'Failed to create webhook'); toast.error('Failed to create webhook') }
   }
 
   async function handleDeleteWebhook(id: string) {
@@ -243,17 +280,41 @@ export default function Settings() {
 
   async function handleTestWebhook(id: string) {
     try { const result = await testWebhook(id); setWebhookTestResult(result.success ? 'SUCCESS' : `FAILED: ${result.error || 'Failed'}`); setTimeout(() => setWebhookTestResult(null), 3000) }
-    catch { /* ignore */ }
+    catch (e) { setWebhookTestResult(`FAILED: ${e instanceof Error ? e.message : 'test failed'}`); setTimeout(() => setWebhookTestResult(null), 3000) }
+  }
+
+  function isValidSlackUrl(url: string) {
+    return /^https:\/\/hooks\.slack\.com\/services\/.+\/.+\/.+/.test(url.trim()) || /^https:\/\/.+/.test(url.trim())
+  }
+
+  async function handleTestSlack() {
+    const url = slackWebhook.trim()
+    if (!url) { setSlackTestResult({ valid: false, error: 'Paste your incoming-webhook URL first.' }); return }
+    setSlackTesting(true); setSlackTestResult(null)
+    try {
+      const result = await testSlackConnection(url, slackChannel.trim() || undefined)
+      setSlackTestResult(result)
+    } catch (e) { setSlackTestResult({ valid: false, error: e instanceof Error ? e.message : 'Failed to reach server' }) }
+    setSlackTesting(false)
   }
 
   async function handleSaveSlack() {
-    try { await saveIntegration('slack', { webhook_url: slackWebhook, channel: slackChannel }); setSlackConnected(true) }
-    catch { /* ignore */ }
+    const url = slackWebhook.trim()
+    if (!url) { setSlackTestResult({ valid: false, error: 'Webhook URL is required.' }); return }
+    if (!/^https:\/\//.test(url)) { setSlackTestResult({ valid: false, error: 'URL must start with https://' }); return }
+    if (url.includes('••')) { toast.info('Already connected', 'Disconnect to change the webhook URL.'); return }
+    setSlackSaving(true)
+    try {
+      await saveIntegration('slack', { webhook_url: url, channel: slackChannel.trim() || '#general' })
+      setSlackConnected(true); setSlackTestResult(null)
+      toast.success('Slack connected', `Relaying to ${slackChannel.trim() || '#general'}`)
+    } catch (e) { setSlackTestResult({ valid: false, error: e instanceof Error ? e.message : 'Save failed' }); toast.error('Failed to connect Slack') }
+    setSlackSaving(false)
   }
 
   async function handleDisconnectSlack() {
-    try { await deleteIntegration('slack'); setSlackConnected(false); setSlackWebhook('') }
-    catch { /* ignore */ }
+    try { await deleteIntegration('slack'); setSlackConnected(false); setSlackWebhook(''); setSlackTestResult(null); toast.success('Slack disconnected') }
+    catch (e) { toast.error('Failed to disconnect Slack', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleSaveGithub() {
@@ -273,6 +334,48 @@ export default function Settings() {
     try { const result = await testGithubToken(tokenToTest.trim()); setGithubTestResult(result) }
     catch { setGithubTestResult({ valid: false, error: 'Failed to connect to server' }) }
     setGithubTesting(false)
+  }
+
+  async function handleSaveGitlab() {
+    if (!gitlabToken.trim()) return
+    try { await saveIntegration('gitlab', { token: gitlabToken.trim() }); setGitlabConnected(true); setGitlabToken('••••••••'); setGitlabTestResult(null) }
+    catch { /* ignore */ }
+  }
+
+  async function handleDisconnectGitlab() {
+    try { await deleteIntegration('gitlab'); setGitlabConnected(false); setGitlabToken(''); setGitlabTestResult(null) }
+    catch { /* ignore */ }
+  }
+
+  async function handleTestGitlab() {
+    if (!gitlabToken.trim() || gitlabConnected) return
+    setGitlabTesting(true); setGitlabTestResult(null)
+    try { const result = await testGitLabConnection({ token: gitlabToken.trim() }); setGitlabTestResult(result) }
+    catch { setGitlabTestResult({ valid: false, error: 'Failed to connect to server' }) }
+    setGitlabTesting(false)
+  }
+
+  async function handleSaveBitbucket() {
+    if (!bitbucketUsername.trim() || !bitbucketAppPassword.trim()) return
+    try {
+      await saveIntegration('bitbucket', { username: bitbucketUsername.trim(), app_password: bitbucketAppPassword })
+      setBitbucketConnected(true); setBitbucketAppPassword('••••••••'); setBitbucketTestResult(null)
+    } catch { /* ignore */ }
+  }
+
+  async function handleDisconnectBitbucket() {
+    try { await deleteIntegration('bitbucket'); setBitbucketConnected(false); setBitbucketAppPassword(''); setBitbucketTestResult(null) }
+    catch { /* ignore */ }
+  }
+
+  async function handleTestBitbucket() {
+    if (!bitbucketUsername.trim() || !bitbucketAppPassword.trim() || bitbucketConnected) return
+    setBitbucketTesting(true); setBitbucketTestResult(null)
+    try {
+      const result = await testBitbucketConnection({ username: bitbucketUsername.trim(), app_password: bitbucketAppPassword })
+      setBitbucketTestResult(result)
+    } catch { setBitbucketTestResult({ valid: false, error: 'Failed to connect to server' }) }
+    setBitbucketTesting(false)
   }
 
   async function handleSaveProfile() {
@@ -935,6 +1038,113 @@ export default function Settings() {
                     <Check size={16} className="text-go" weight="bold" /> Token configured
                   </div>
                   <button onClick={handleDisconnectGithub} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
+                </div>
+              )}
+            </ConsolePanel>
+          </motion.div>
+
+          {/* GitLab */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="GitLab" designator="REPO ACCESS" status={gitlabConnected ? 'go' : 'idle'}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+                    <GitlabLogo size={20} className="text-ink-secondary" weight="fill" />
+                  </div>
+                  <div>
+                    <p className="font-heading font-semibold text-ink">GitLab</p>
+                    <p className="text-caption text-ink-muted">Authenticate to analyze private repositories</p>
+                  </div>
+                </div>
+                {gitlabConnected && <span className="tile tile-go">Connected</span>}
+              </div>
+
+              {!gitlabConnected ? (
+                <div className="space-y-4">
+                  <p className="text-caption text-ink-muted">Provide a GitLab personal access token (read_api scope) to enable private project analysis and merge-request operations.</p>
+                  <div className="flex flex-wrap gap-3">
+                    <input value={gitlabToken} onChange={(e) => setGitlabToken(e.target.value)}
+                      type="password" placeholder="glpat-..."
+                      className="input flex-1 min-w-[220px]" />
+                    <button onClick={handleTestGitlab} disabled={!gitlabToken.trim() || gitlabTesting}
+                      className="btn btn-secondary">
+                      {gitlabTesting ? 'Testing…' : 'Test'}
+                    </button>
+                    <button onClick={handleSaveGitlab} disabled={!gitlabToken.trim()} className="btn">
+                      Save
+                    </button>
+                  </div>
+                  {gitlabTestResult && (
+                    <div className={cn('text-caption flex items-center gap-2', gitlabTestResult.valid ? 'text-go' : 'text-abort')}>
+                      {gitlabTestResult.valid ? (
+                        <><Check size={16} weight="bold" /> Valid · {gitlabTestResult.username}</>
+                      ) : (
+                        <><X size={16} weight="bold" /> {gitlabTestResult.error}</>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-caption text-ink-muted flex items-center gap-2">
+                    <Check size={16} className="text-go" weight="bold" /> Token configured
+                  </div>
+                  <button onClick={handleDisconnectGitlab} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
+                </div>
+              )}
+            </ConsolePanel>
+          </motion.div>
+
+          {/* Bitbucket */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="Bitbucket" designator="REPO ACCESS" status={bitbucketConnected ? 'go' : 'idle'}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+                    <GitFork size={20} className="text-ink-secondary" />
+                  </div>
+                  <div>
+                    <p className="font-heading font-semibold text-ink">Bitbucket</p>
+                    <p className="text-caption text-ink-muted">Authenticate to analyze private repositories</p>
+                  </div>
+                </div>
+                {bitbucketConnected && <span className="tile tile-go">Connected</span>}
+              </div>
+
+              {!bitbucketConnected ? (
+                <div className="space-y-4">
+                  <p className="text-caption text-ink-muted">Provide your Bitbucket username and an app password (Repositories: Read) to enable private repo analysis and pull-request operations.</p>
+                  <div className="flex flex-wrap gap-3">
+                    <input value={bitbucketUsername} onChange={(e) => setBitbucketUsername(e.target.value)}
+                      type="text" placeholder="Bitbucket username" autoComplete="username"
+                      className="input flex-1 min-w-[180px]" />
+                    <input value={bitbucketAppPassword} onChange={(e) => setBitbucketAppPassword(e.target.value)}
+                      type="password" placeholder="App password"
+                      className="input flex-1 min-w-[220px]" />
+                    <button onClick={handleTestBitbucket} disabled={!bitbucketUsername.trim() || !bitbucketAppPassword.trim() || bitbucketTesting}
+                      className="btn btn-secondary">
+                      {bitbucketTesting ? 'Testing…' : 'Test'}
+                    </button>
+                    <button onClick={handleSaveBitbucket} disabled={!bitbucketUsername.trim() || !bitbucketAppPassword.trim()} className="btn">
+                      Save
+                    </button>
+                  </div>
+                  {bitbucketTestResult && (
+                    <div className={cn('text-caption flex items-center gap-2', bitbucketTestResult.valid ? 'text-go' : 'text-abort')}>
+                      {bitbucketTestResult.valid ? (
+                        <><Check size={16} weight="bold" /> Valid · {bitbucketTestResult.username}</>
+                      ) : (
+                        <><X size={16} weight="bold" /> {bitbucketTestResult.error}</>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-caption text-ink-muted flex items-center gap-2">
+                    <Check size={16} className="text-go" weight="bold" /> Credentials configured{bitbucketUsername ? ` · ${bitbucketUsername}` : ''}
+                  </div>
+                  <button onClick={handleDisconnectBitbucket} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
                 </div>
               )}
             </ConsolePanel>

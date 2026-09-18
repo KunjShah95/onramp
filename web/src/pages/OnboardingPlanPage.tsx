@@ -169,7 +169,7 @@ function PulseCheckModal({ planId, onClose }: { planId: string; onClose: () => v
         <div>
           <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)}
             placeholder="Anything on your mind? Blockers, wins, questions..."
-            className="w-full bg-base border border-seam-strong rounded-sm px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] transition-all"
+            className="w-full bg-base border border-seam-strong rounded-sm px-3 py-2.5 text-body-xs h-16 resize-none focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)] transition-all"
           />
         </div>
 

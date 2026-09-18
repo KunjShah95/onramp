@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
+import { useAuth } from '../context/AuthContext'
+import { billingUrlWithPlan } from '../lib/plan-intent'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
@@ -88,7 +90,7 @@ function PriceDisplay({ sym, value }: { sym: string; value: number | string }) {
   return (
     <div className="flex items-baseline gap-1">
       <span className="mt-1 self-start font-display text-[22px] text-[hsl(var(--foreground))]">{sym}</span>
-      <span className="font-display text-[52px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums">
+      <span className="font-display text-[44px] sm:text-[52px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums">
         {value}
       </span>
     </div>
@@ -107,7 +109,7 @@ function TeamPrice({ sym, value, fmt }: { sym: string; value: number; fmt: (n: n
             animate={{ y: '0%', opacity: 1 }}
             exit={{ y: '-60%', opacity: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="font-display text-[64px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums"
+            className="font-display text-[48px] sm:text-[64px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums"
           >
             {fmt(value)}
           </motion.span>
@@ -130,6 +132,13 @@ export default function PricingPage() {
   const c = PRICES[currency]
   const teamPrice = isAnnual ? c.annual : c.monthly
   const fmt = (n: number) => n.toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')
+
+  // Logged-in visitors already have an account — route them straight into the
+  // billing funnel (Razorpay checkout) instead of bouncing them to /register.
+  // Logged-out visitors keep the signup path with the plan carried as intent.
+  const { user } = useAuth()
+  const freeHref = user ? billingUrlWithPlan('free') : '/register'
+  const teamHref = user ? billingUrlWithPlan('professional') : '/register?plan=professional'
 
   return (
     <MarketingLayout
@@ -182,7 +191,7 @@ export default function PricingPage() {
       >
         {/* Free — left */}
         <motion.div variants={itemVariants} className="md:col-span-1">
-          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-lg backdrop-blur-sm">
+          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-seam backdrop-blur-sm">
             <div className="callsign opacity-60">FREE</div>
             <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
               For a solo dev getting the lay of the land.
@@ -191,7 +200,7 @@ export default function PricingPage() {
             <p className="mt-3 text-[13px] text-[hsl(var(--muted-foreground))]">forever</p>
 
             <Link
-              to="/register"
+              to={freeHref}
               className="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-btn border border-seam bg-panel-raised px-6 py-3 text-[15px] font-medium text-[hsl(var(--foreground))] hover:border-go/30 transition-colors"
             >
               Start free
@@ -214,8 +223,10 @@ export default function PricingPage() {
         {/* Team — center, featured with gem */}
         <motion.div variants={itemVariants} className="md:col-span-1">
           <div className="relative flex h-full flex-col rounded-card border border-go/30 bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-secondary/80 shadow-overhead p-8 md:p-10 transition-all hover:border-go/50 overflow-hidden">
-            {/* Heatmap gem — positioned top right, part of card design */}
-            <div className="absolute -top-24 -right-24 w-80 h-80 pointer-events-none opacity-50 md:opacity-60 blur-sm">
+            {/* Heatmap gem — positioned top right, part of card design.
+                Hidden on small screens: the 320px WebGL canvas is expensive
+                on mobile GPUs and the glow div below carries the accent. */}
+            <div aria-hidden className="absolute -top-24 -right-24 w-80 h-80 pointer-events-none opacity-50 md:opacity-60 blur-sm hidden sm:block">
               <Suspense fallback={<div className="w-full h-full" />}>
                 <HeatmapGem size={320} autoRotate={true} />
               </Suspense>
@@ -248,7 +259,7 @@ export default function PricingPage() {
             </div>
 
             <Link
-              to="/register"
+              to={teamHref}
               className="mt-7 inline-flex w-full md:w-auto md:self-start items-center justify-center gap-1.5 rounded-btn bg-go px-8 py-3 text-[15px] font-medium text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_rgba(24,27,24,0.18)] hover:bg-go-lit transition-colors active:scale-[0.98]"
             >
               Start 14-day trial
@@ -270,7 +281,7 @@ export default function PricingPage() {
 
         {/* Enterprise — right */}
         <motion.div variants={itemVariants} className="md:col-span-1">
-          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-lg backdrop-blur-sm">
+          <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-seam backdrop-blur-sm">
             <div className="callsign opacity-60">ENTERPRISE</div>
             <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
               For orgs that need control, security, and scale.

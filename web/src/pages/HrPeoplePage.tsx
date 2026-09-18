@@ -14,9 +14,9 @@ import {
 import type { HrDeveloperOverview, HrDayBucket } from '../lib/api'
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; glow: string; icon: any }> = {
-  onboarding: { label: 'Onboarding', color: 'text-blue-400', glow: 'shadow-blue-500/10', icon: UserSwitch },
-  ramping: { label: 'Ramping', color: 'text-amber-400', glow: 'shadow-amber-500/10', icon: Clock },
-  contributing: { label: 'Contributing', color: 'text-emerald-400', glow: 'shadow-emerald-500/10', icon: Code },
+  onboarding: { label: 'Onboarding', color: 'text-mission', glow: 'shadow-mission/10', icon: UserSwitch },
+  ramping: { label: 'Ramping', color: 'text-caution', glow: 'shadow-caution/10', icon: Clock },
+  contributing: { label: 'Contributing', color: 'text-go', glow: 'shadow-go/10', icon: Code },
   independent: { label: 'Independent', color: 'text-violet-400', glow: 'shadow-violet-500/10', icon: CheckCircle },
 }
 
@@ -26,10 +26,10 @@ function ProgressRing({ pct, size = 72, strokeWidth = 4 }: { pct: number; size?:
   const offset = circ - (pct / 100) * circ
   return (
     <svg width={size} height={size} className="ring-progress shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.04)" strokeWidth={strokeWidth} />
+      <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--seam-strong)" strokeWidth={strokeWidth} />
       <motion.circle
         cx={size / 2} cy={size / 2} r={r}
-        stroke={pct >= 80 ? '#0E7A3C' : pct >= 50 ? '#B5710A' : pct >= 25 ? '#D6870F' : '#BE3A2E'}
+        stroke={pct >= 80 ? 'var(--go)' : pct >= 50 ? 'var(--caution)' : pct >= 25 ? 'var(--caution-lit)' : 'var(--abort)'}
         strokeWidth={strokeWidth}
         strokeDasharray={circ}
         initial={{ strokeDashoffset: circ }}
@@ -48,10 +48,10 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
   const intensity = (val: number) => {
     if (val === 0) return 'bg-well/30'
     const ratio = val / maxVal
-    if (ratio <= 0.25) return 'bg-amber-500/15'
-    if (ratio <= 0.5) return 'bg-amber-500/35'
-    if (ratio <= 0.75) return 'bg-amber-500/60'
-    return 'bg-amber-400'
+    if (ratio <= 0.25) return 'bg-go/15'
+    if (ratio <= 0.5) return 'bg-go/35'
+    if (ratio <= 0.75) return 'bg-go/60'
+    return 'bg-go'
   }
 
   const monthLabels: { label: string; index: number }[] = []
@@ -95,7 +95,7 @@ function ActivityHeatmap({ days }: { days: HrDayBucket[] }) {
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className={cn(
             'w-[10px] h-[10px] rounded-[3px]',
-            i === 0 ? 'bg-well/30' : i <= 1 ? 'bg-amber-500/15' : i <= 2 ? 'bg-amber-500/35' : i <= 3 ? 'bg-amber-500/60' : 'bg-amber-400'
+            i === 0 ? 'bg-well/30' : i <= 1 ? 'bg-go/15' : i <= 2 ? 'bg-go/35' : i <= 3 ? 'bg-go/60' : 'bg-go'
           )} />
         ))}
         <span className="text-[8px] text-ink-muted/30">More</span>
@@ -233,10 +233,10 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
               'h-full rounded-full',
-              dev.completion_pct >= 80 ? 'bg-emerald-400' :
-              dev.completion_pct >= 50 ? 'bg-amber-400' :
-              dev.completion_pct >= 25 ? 'bg-orange-400' :
-              'bg-red-400'
+              dev.completion_pct >= 80 ? 'bg-go' :
+              dev.completion_pct >= 50 ? 'bg-caution' :
+              dev.completion_pct >= 25 ? 'bg-caution-lit' :
+              'bg-abort'
             )}
           />
         </div>

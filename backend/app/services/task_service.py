@@ -15,6 +15,8 @@ from app.services.postgres_db import get_storage, generate_id
 
 async def _broadcast_task_update(task: dict, event_type: str = "updated") -> None:
     """Broadcast a task update via WebSocket to relevant users."""
+    if not isinstance(task, dict) or not task:
+        return
     try:
         from app.services.ws_manager import manager
 

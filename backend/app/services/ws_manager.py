@@ -90,8 +90,13 @@ class ConnectionManager:
         Returns:
             Number of connections the event was sent to
         """
+        # Defensive: callers may pass None (e.g. task dicts with null fields).
+        team_id = team_id or ""
+        user_ids = user_ids or []
         total = 0
         for uid in user_ids:
+            if uid is None:
+                continue
             total += await self.send_to_user(uid, event)
         if total:
             logger.debug("Broadcast to team=%s: %d users reached", team_id[:8], total)

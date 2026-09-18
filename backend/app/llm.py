@@ -474,8 +474,10 @@ class LLMRouter:
         # Timeout configuration from environment variables
         self.openai_timeout = float(os.getenv("LLM_TIMEOUT_OPENROUTER", "30.0"))
         self.anthropic_timeout = float(os.getenv("LLM_TIMEOUT_ANTHROPIC", "30.0"))
+        self.gemini_timeout = float(os.getenv("LLM_TIMEOUT_GEMINI", "30.0"))
         self.openai_stream_timeout = float(os.getenv("LLM_TIMEOUT_OPENROUTER_STREAM", "60.0"))
         self.anthropic_stream_timeout = float(os.getenv("LLM_TIMEOUT_ANTHROPIC_STREAM", "60.0"))
+        self.gemini_stream_timeout = float(os.getenv("LLM_TIMEOUT_GEMINI_STREAM", "60.0"))
 
         # Provider config: api_key, model, base_url (for OpenAI-compatible), type, free flag
         # Ollama uses OLLAMA_BASE_URL (not an API key) as the availability signal.
@@ -1594,10 +1596,13 @@ class LLMRouter:
         if system:
             gen_config = types.GenerateContentConfig(system_instruction=system)
 
-        resp = await client.aio.models.generate_content(
-            model=config["model"],
-            contents=prompt,
-            config=gen_config,
+        resp = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=config["model"],
+                contents=prompt,
+                config=gen_config,
+            ),
+            timeout=self.gemini_timeout,
         )
         return resp.text
 
@@ -1849,10 +1854,18 @@ class LLMRouter:
 
         client = genai.Client(api_key=config["api_key"])
         gen_config = types.GenerateContentConfig(system_instruction=system) if system else None
-        stream = await client.aio.models.generate_content_stream(
-            model=config["model"], contents=prompt, config=gen_config
+        stream = await asyncio.wait_for(
+            client.aio.models.generate_content_stream(
+                model=config["model"], contents=prompt, config=gen_config
+            ),
+            timeout=self.gemini_stream_timeout,
         )
-        async for chunk in stream:
+        it = stream.__aiter__()
+        while True:
+            try:
+                chunk = await asyncio.wait_for(it.__anext__(), timeout=self.gemini_stream_timeout)
+            except StopAsyncIteration:
+                break
             if getattr(chunk, "text", None):
                 yield chunk.text
 

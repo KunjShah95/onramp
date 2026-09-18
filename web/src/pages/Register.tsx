@@ -1,7 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth, homeForRole } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import PageTransition from '../components/ui/page-transition'
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
@@ -21,10 +22,16 @@ export default function Register() {
   const { register, error, clearError, user, loading, role } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // Plan intent carried from /pricing — after signup the user lands directly
+  // in the billing funnel (Razorpay checkout) instead of the default home.
+  const planIntent = getPlanIntent(searchParams)
+  const postAuthDest = planIntent ? billingUrlWithPlan(planIntent) : null
 
   useEffect(() => {
-    if (user && !loading) navigate(homeForRole(role), { replace: true })
-  }, [user, loading, navigate, role])
+    if (user && !loading) navigate(postAuthDest || homeForRole(role), { replace: true })
+  }, [user, loading, navigate, postAuthDest, role])
 
   useEffect(() => {
     if (!loading) nameRef.current?.focus()
@@ -74,7 +81,7 @@ export default function Register() {
           footer={
             <>
               <span>Already have an account?</span>
-              <Link to="/login" className="text-go font-semibold hover:text-go-lit transition-colors ml-2">
+              <Link to={planIntent ? `/login?plan=${planIntent}` : '/login'} className="text-go font-semibold hover:text-go-lit transition-colors ml-2">
                 Sign in
               </Link>
             </>

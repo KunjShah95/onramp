@@ -36,7 +36,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
               'w-full bg-panel border border-seam text-ink placeholder:text-ink-muted',
               'px-3.5 py-2.5 text-[14px] font-body shadow-seam',
               'transition-[border-color,box-shadow,background-color] duration-150',
-              'hover:border-seam-strong focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)] focus:bg-panel',
+              'hover:border-seam-strong focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)] focus:bg-panel',
               sharp ? 'rounded-[5px]' : 'rounded-card',
               icon && 'pl-10',
               trailing && 'pr-16',

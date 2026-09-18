@@ -35,7 +35,7 @@ async def create_playbook(request: CreatePlaybookRequest):
     )
 
 
-@router.get("/{playbook_id}")
+@router.get("/{playbook_id}", responses={404: {"description": "Playbook not found"}})
 async def get_playbook(playbook_id: str):
     pb = await playbook_service.get_playbook(playbook_id)
     if not pb:
@@ -50,7 +50,7 @@ async def list_playbooks(team_id: str):
     return {"playbooks": pbs, "count": len(pbs)}
 
 
-@router.patch("/{playbook_id}")
+@router.patch("/{playbook_id}", responses={404: {"description": "Playbook not found"}})
 async def update_playbook(playbook_id: str, request: UpdatePlaybookRequest):
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     if not updates:
@@ -61,7 +61,7 @@ async def update_playbook(playbook_id: str, request: UpdatePlaybookRequest):
     return result
 
 
-@router.delete("/{playbook_id}")
+@router.delete("/{playbook_id}", responses={404: {"description": "Playbook not found"}})
 async def archive_playbook(playbook_id: str):
     success = await playbook_service.archive_playbook(playbook_id)
     if not success:

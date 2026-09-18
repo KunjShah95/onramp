@@ -1,5 +1,7 @@
 import os
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 from typing import Dict, Any, Optional, List
@@ -23,6 +25,22 @@ TIER_PRICING = {
     "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": ["20 members", "50 repos", "50000 credits/mo"]},
     "usage_based": {"price_monthly": 499, "price_yearly": 4999, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
+}
+
+
+# Razorpay subscription event → local subscription status mapping.
+# Razorpay uses "cancelled" (double-l); the local status enum uses the
+# Stripe-spelled "canceled" (single-l) — that asymmetry is intentional.
+SUBSCRIPTION_STATUS_MAP = {
+    "subscription.activated": "active",
+    "subscription.charged": "active",
+    "subscription.authenticated": "active",
+    "subscription.resumed": "active",
+    "subscription.cancelled": "canceled",
+    "subscription.completed": "completed",
+    "subscription.pending": "past_due",
+    "subscription.halted": "past_due",
+    "subscription.paused": "past_due",
 }
 
 
@@ -73,15 +91,29 @@ class BillingService:
         return sub
 
     async def get_subscription(self, team_id: str) -> Optional[Dict[str, Any]]:
-        """Return the active subscription for a team, or None when none exists.
+        """Return the active subscription dict for a team, or None when none exists.
 
-        Callers (API layer) translate None → HTTP 404 "No active subscription".
+        Returned dict shape (documented contract)::
+
+            {"subscription_id": str, "team_id": str, "tier": str,
+             "billing_cycle": str, "price": int (INR), "status": "active",
+             "current_period_start": datetime, "current_period_end": datetime|None,
+             "razorpay_customer_id": str|None, "razorpay_subscription_id": str|None,
+             "razorpay_payment_id": str|None, "created_at": datetime}
+
+        ``None`` is the normal "no subscription" signal — never an error.
+        Callers (API layer, ``backend/app/api/v1/billing.py``) translate
+        None → HTTP 404 "No active subscription", so they must always check
+        for None before dereferencing the result.
         """
         subs = await self.storage.query_documents(self.COLLECTION, [("team_id", "==", team_id), ("status", "==", "active")])
         return subs[0] if subs else None
 
     async def update_subscription(self, team_id: str, tier: str) -> Optional[Dict[str, Any]]:
-        """Update tier/price; returns None when no active subscription exists (→ 404)."""
+        """Update tier/price; returns the updated subscription dict (same shape
+        as :meth:`get_subscription`), or None when no active subscription
+        exists (callers translate None → HTTP 404). Never raises for a
+        missing subscription."""
         sub = await self.get_subscription(team_id)
         if not sub:
             return None
@@ -231,11 +263,26 @@ class BillingService:
             },
         )
 
+    @staticmethod
+    def verify_razorpay_webhook_signature(payload: bytes, sig_header: str, secret: str) -> bool:
+        """Verify a Razorpay webhook signature with HMAC-SHA256 (no SDK needed).
+
+        Razorpay scheme: ``HMAC_SHA256(payload_bytes, webhook_secret)``
+        hex-encoded, compared against the ``X-Razorpay-Signature`` header
+        with a constant-time comparison.
+        """
+        if not payload or not sig_header or not secret:
+            return False
+        expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, sig_header)
+
     async def _verify_and_parse_event(self, payload: bytes, sig_header: Optional[str]) -> Optional[dict]:
         """Verify Razorpay webhook signature and parse the event.
 
         Returns the parsed (normalized) event dict, or None if verification
-        fails. Runs the sync Razorpay SDK call in a thread to avoid blocking.
+        fails. A None return means "reject": the caller must return an error
+        (HTTP 400) and perform NO state change. All rejections are logged at
+        WARNING so signature attacks are visible.
         """
         secret = os.getenv("RAZORPAY_WEBHOOK_SECRET")
         payload_text = payload.decode("utf-8")
@@ -256,9 +303,20 @@ class BillingService:
             return self._normalize_event(json.loads(payload_text))
 
         if not sig_header:
-            logger.error("Missing X-Razorpay-Signature header.")
+            logger.warning("Razorpay webhook rejected: missing X-Razorpay-Signature header.")
             return None
 
+        # Primary path: pure-HMAC verification of the Razorpay signature
+        # scheme (no SDK dependency, deterministic in tests and production).
+        if self.verify_razorpay_webhook_signature(payload, sig_header, secret):
+            try:
+                return self._normalize_event(json.loads(payload_text))
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                logger.warning(f"Razorpay webhook had a valid signature but unparseable payload: {exc}")
+                return None
+
+        # Fallback: Razorpay SDK verification (same scheme; kept for
+        # byte-encoding edge cases). Runs in a thread to avoid blocking.
         try:
             client = self._razorpay()
             verified = await asyncio.to_thread(
@@ -268,7 +326,7 @@ class BillingService:
                 secret,
             )
             if not verified:
-                logger.warning("Razorpay webhook signature verification failed.")
+                logger.warning("Razorpay webhook signature verification failed (HMAC + SDK both reject).")
                 return None
             return self._normalize_event(json.loads(payload_text))
         except Exception as exc:
@@ -354,7 +412,15 @@ class BillingService:
         return {"received": True, "type": event_type}
 
     async def _process_event(self, event_type: str, data_obj: dict) -> dict:
-        """Route a verified Razorpay webhook event to its handler."""
+        """Route a verified Razorpay webhook event to its handler.
+
+        Simple subscription lifecycle events sync status via
+        :data:`SUBSCRIPTION_STATUS_MAP` (activated→active,
+        cancelled→canceled, completed→completed, pending/halted/paused→past_due,
+        resumed/charged→active). ``subscription.activated`` and
+        ``subscription.charged`` carry extra upsert/period logic below;
+        payment events are handled separately.
+        """
         subscription_id = data_obj.get("id")
         notes = data_obj.get("notes") or {}
 
@@ -394,22 +460,14 @@ class BillingService:
             await self._update_subscription_by_razorpay_id(subscription_id, updates)
             return {"subscription_id": subscription_id, "tier": tier}
 
-        elif event_type == "subscription.completed":
+        elif event_type in ("subscription.cancelled", "subscription.completed",
+                              "subscription.pending", "subscription.halted",
+                              "subscription.paused", "subscription.resumed"):
+            # Status-only sync events — see SUBSCRIPTION_STATUS_MAP.
             if subscription_id:
-                await self._update_subscription_by_razorpay_id(subscription_id, {"status": "completed"})
-                return {"subscription_id": subscription_id, "status": "completed"}
-            return {"warning": "missing subscription id"}
-
-        elif event_type == "subscription.cancelled":
-            if subscription_id:
-                await self._update_subscription_by_razorpay_id(subscription_id, {"status": "canceled"})
-                return {"subscription_id": subscription_id, "status": "canceled"}
-            return {"warning": "missing subscription id"}
-
-        elif event_type in ("subscription.pending", "subscription.halted"):
-            if subscription_id:
-                await self._update_subscription_by_razorpay_id(subscription_id, {"status": "past_due"})
-                return {"subscription_id": subscription_id, "status": "past_due"}
+                status = SUBSCRIPTION_STATUS_MAP[event_type]
+                await self._update_subscription_by_razorpay_id(subscription_id, {"status": status})
+                return {"subscription_id": subscription_id, "status": status}
             return {"warning": "missing subscription id"}
 
         elif event_type == "payment.captured":

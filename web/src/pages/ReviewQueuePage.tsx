@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   GitPullRequest,
@@ -64,6 +65,18 @@ const TABS = [
   { key: 'changes', label: 'Changes' },
 ] as const
 
+/**
+ * Deep-link a task row into the PR describe + auto-apply flow.
+ * Only GitHub PR URLs are supported (auto-apply uses GitHub's Git Data API);
+ * returns null for anything else so the caller can hide the action.
+ */
+function prDescribeLink(task: WorkflowTask): string | null {
+  const raw = (task.pr_url || '').trim()
+  const m = raw.match(/^https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/(\d+)\/?$/)
+  if (!m) return null
+  return `/pr-describe?repo=${encodeURIComponent(`https://github.com/${m[1]}`)}&pr=${m[2]}`
+}
+
 export default function ReviewQueuePage() {
   const [teamId, setTeamId] = useState('')
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
@@ -73,6 +86,7 @@ export default function ReviewQueuePage() {
   const [error, setError] = useState('')
 
   const { activeTeamId } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false
@@ -300,13 +314,16 @@ export default function ReviewQueuePage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {status === 'pending' && (
-                      <button className="inline-flex items-center gap-1 rounded-[3px] bg-go text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-go-lit transition-colors">
+                    {status === 'pending' && prDescribeLink(task) && (
+                      <button
+                        onClick={() => { const to = prDescribeLink(task); if (to) navigate(to) }}
+                        className="inline-flex items-center gap-1 rounded-[3px] bg-go text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-go-lit transition-colors"
+                      >
                         <Eye size={11} weight="bold" />
                         Review
                       </button>
                     )}
-                    <button className="w-7 h-7 rounded-[3px] border border-seam-strong bg-base text-ink-tertiary hover:text-ink hover:border-seam-strong transition-colors opacity-0 group-hover:opacity-100" aria-label="Open">
+                    <button className="w-7 h-7 rounded-[3px] border border-seam-strong bg-base text-ink-tertiary hover:text-ink hover:border-seam-strong transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100" aria-label="Open">
                       <ArrowRight size={11} weight="bold" className="mx-auto" />
                     </button>
                   </div>

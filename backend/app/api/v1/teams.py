@@ -214,7 +214,7 @@ async def list_teams(request: Request, user: Optional[str] = None):
     return {"teams": teams, "count": len(teams)}
 
 
-@router.get("/{team_id}")
+@router.get("/{team_id}", responses={404: {"description": "Team not found"}})
 @cached("teams", ttl=120)
 async def get_team(request: Request, team_id: str):
     team = await team_service.get_team(team_id)
@@ -271,7 +271,7 @@ async def change_tier(team_id: str, request: ChangeTierRequest):
     return {"team": team_result, "subscription": sub_result}
 
 
-@router.get("/{team_id}/subscription")
+@router.get("/{team_id}/subscription", responses={404: {"description": "No active subscription"}})
 async def get_subscription(team_id: str):
     sub = await billing.get_subscription(team_id)
     if not sub:

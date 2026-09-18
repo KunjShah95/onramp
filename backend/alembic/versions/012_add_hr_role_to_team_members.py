@@ -1,7 +1,7 @@
 """add 'hr' role to team_members check constraint
 
 Revision ID: 012_add_hr_role
-Revises: 011_feature_flags_roast_mode
+Revises: d63ba1e4a029_add_onboarding_tables
 Create Date: 2026-07-30 00:00:00.000000
 
 The model already allows 'hr' as a valid role, but migration 007

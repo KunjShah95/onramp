@@ -47,7 +47,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
             'px-3.5 py-2.5 text-[14px] font-body pr-9',
             "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20fill%3D%22%236C716A%22%20d%3D%22M5%206%200%200h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.9rem_center]",
             'rounded-[3px] transition-[border-color,box-shadow] duration-150',
-            'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]',
+            'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)]',
             error && 'border-abort',
             className,
           )}
@@ -81,7 +81,7 @@ export const TextareaField = forwardRef<HTMLTextAreaElement, TextareaFieldProps>
             'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled resize-y',
             'px-3.5 py-2.5 text-[14px] font-body leading-relaxed',
             'rounded-[3px] transition-[border-color,box-shadow] duration-150',
-            'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]',
+            'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)]',
             error && 'border-abort',
             className,
           )}

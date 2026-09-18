@@ -97,40 +97,99 @@ export function authHeaders(): Record<string, string> {
  * browser sends the HttpOnly refresh-token cookie.  The backend rotates the
  * token and sets new cookies.  The response body also contains the new tokens
  * so we can stash the access token in memory for WebSocket use.
+ *
+ * 1.12 — network vs auth failure distinction:
+ * - 401/403 from the refresh endpoint = refresh token expired/invalid →
+ *   return false so callers throw the 'Authentication required' error and the
+ *   app logs out / redirects to login.
+ * - Network-layer failures (offline, DNS, backend down, 502/503/504) are
+ *   transient → bounded retry with backoff, then throw NetworkError (never
+ *   false) so callers propagate a network error and the user STAYS logged in.
  */
 let _refreshPromise: Promise<boolean> | null = null
+
+/** Thrown when the refresh endpoint is unreachable — callers must NOT treat this as a logout. */
+export class NetworkError extends Error {
+  constructor(message = 'Network unavailable — please check your connection and retry.') {
+    super(message)
+    this.name = 'NetworkError'
+  }
+}
+
+/** True for offline/DNS/refused/timeout failures (fetch rejects with TypeError in browsers). */
+export function isNetworkError(err: unknown): boolean {
+  if (err instanceof NetworkError) return true
+  if (err instanceof TypeError) return true
+  const msg = err instanceof Error ? err.message : String(err ?? '')
+  return /network|offline|failed to fetch|load failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN/i.test(msg)
+}
+
+/** 1.12 — bounded retry budget for transient refresh failures (attempts, not counting the first try). */
+export const SILENT_REFRESH_MAX_RETRIES = 2
+const SILENT_REFRESH_BACKOFF_MS = [300, 800]
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+/** HTTP statuses that mean "server unreachable/overloaded" rather than "session invalid". */
+function isTransientHttpStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504
+}
 
 async function trySilentRefresh(): Promise<boolean> {
   if (_refreshPromise) return _refreshPromise
   _refreshPromise = (async () => {
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        ...CREDS,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),  // refresh token comes from cookie
-      })
-      if (!res.ok) {
-        // Distinguish expired/invalid refresh (401/403) from transient failures
-        // so callers can tell "signed out" apart from "offline".
-        if (res.status === 401 || res.status === 403) {
-          console.debug('[auth] silent refresh rejected — session expired')
-        } else {
+      for (let attempt = 0; ; attempt++) {
+        let res: Response
+        try {
+          res = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            ...CREDS,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),  // refresh token comes from cookie
+          })
+        } catch (err) {
+          // Network-layer failure: retry with backoff, then throw (stay logged in).
+          if (isNetworkError(err) && attempt < SILENT_REFRESH_MAX_RETRIES) {
+            console.debug(`[auth] silent refresh network error — retry ${attempt + 1}/${SILENT_REFRESH_MAX_RETRIES}`)
+            await sleep(SILENT_REFRESH_BACKOFF_MS[attempt] ?? 800)
+            continue
+          }
+          if (isNetworkError(err)) {
+            console.debug('[auth] silent refresh unreachable after retries — staying logged in', err)
+            throw new NetworkError()
+          }
+          console.debug('[auth] silent refresh network error', err)
+          return false
+        }
+        if (!res.ok) {
+          // Distinguish expired/invalid refresh (401/403) from transient failures
+          // so callers can tell "signed out" apart from "offline".
+          if (res.status === 401 || res.status === 403) {
+            console.debug('[auth] silent refresh rejected — session expired')
+            return false
+          }
+          if (isTransientHttpStatus(res.status) && attempt < SILENT_REFRESH_MAX_RETRIES) {
+            console.debug(`[auth] silent refresh transient HTTP ${res.status} — retry ${attempt + 1}/${SILENT_REFRESH_MAX_RETRIES}`)
+            await sleep(SILENT_REFRESH_BACKOFF_MS[attempt] ?? 800)
+            continue
+          }
+          if (isTransientHttpStatus(res.status)) {
+            console.debug(`[auth] silent refresh transient HTTP ${res.status} after retries — staying logged in`)
+            throw new NetworkError('Authentication service temporarily unavailable — please retry.')
+          }
           console.debug(`[auth] silent refresh failed with HTTP ${res.status}`)
+          return false
+        }
+        const json = await res.json()
+        const data = unwrap<any>(json)
+        if (data?.token) {
+          // Store in memory for WebSocket connections
+          setWsToken(data.token)
+          return true
         }
         return false
       }
-      const json = await res.json()
-      const data = unwrap<any>(json)
-      if (data?.token) {
-        // Store in memory for WebSocket connections
-        setWsToken(data.token)
-        return true
-      }
-      return false
-    } catch (err) {
-      console.debug('[auth] silent refresh network error', err)
-      return false
     } finally {
       _refreshPromise = null
     }
@@ -3421,6 +3480,25 @@ export async function clearReadNotifications(): Promise<{ deleted_count: number 
 
 // ─── Notification Preferences ─────────────────────────────────────────────
 
+/**
+ * 1.11 — email digest time validation.
+ * The scheduler parses this as HH:MM (24h). An arbitrary string from the API
+ * or user input could crash the scheduler, so validate strictly and fall back
+ * to a documented default with a console.warn on invalid values.
+ */
+export const DEFAULT_EMAIL_DIGEST_TIME = '08:00'
+
+export function isValidDigestTime(v: unknown): v is string {
+  return typeof v === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(v)
+}
+
+/** Return a scheduler-safe HH:MM string, falling back (with a warn) on invalid input. */
+export function normalizeEmailDigestTime(v: unknown, fallback = DEFAULT_EMAIL_DIGEST_TIME): string {
+  if (isValidDigestTime(v)) return v
+  console.warn(`[api] invalid email_digest_time ${JSON.stringify(v)} — falling back to ${fallback}`)
+  return fallback
+}
+
 export interface NotificationPreferences {
   user_id: string
   channels: Record<string, Record<string, boolean>>
@@ -3440,7 +3518,12 @@ export interface NotificationPreferencesDefaults {
 }
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
-  return get<NotificationPreferences>(`${API_BASE}/notifications/preferences`)
+  const prefs = await get<NotificationPreferences>(`${API_BASE}/notifications/preferences`)
+  // 1.11 — never hand an unparsable time to the scheduler/UI: fall back with a warn.
+  if (prefs && !isValidDigestTime(prefs.email_digest_time)) {
+    prefs.email_digest_time = normalizeEmailDigestTime(prefs.email_digest_time)
+  }
+  return prefs
 }
 
 export async function updateNotificationPreferences(data: Partial<{
@@ -3452,7 +3535,12 @@ export async function updateNotificationPreferences(data: Partial<{
   email_digest_time: string
   roast_mode_enabled: boolean
 }>): Promise<NotificationPreferences> {
-  return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, data, 'PUT')
+  // 1.11 — sanitize before send: never push an unparsable time to the scheduler.
+  const payload = { ...data }
+  if (payload.email_digest_time !== undefined && !isValidDigestTime(payload.email_digest_time)) {
+    payload.email_digest_time = normalizeEmailDigestTime(payload.email_digest_time)
+  }
+  return request<NotificationPreferences>(`${API_BASE}/notifications/preferences`, payload, 'PUT')
 }
 
 export async function getNotificationDefaults(): Promise<NotificationPreferencesDefaults> {
@@ -3561,6 +3649,17 @@ export interface GithubTestResult {
 
 export async function testGithubToken(token: string): Promise<GithubTestResult> {
   return request<GithubTestResult>(`${API_BASE}/integrations/github/test`, { token })
+}
+
+export interface SlackTestResult {
+  valid: boolean
+  message?: string
+  warning?: boolean
+  error?: string
+}
+
+export async function testSlackConnection(webhookUrl: string, channel?: string): Promise<SlackTestResult> {
+  return request<SlackTestResult>(`${API_BASE}/integrations/slack/test`, { config: { webhook_url: webhookUrl, channel } })
 }
 
 export async function listUserIntegrations(): Promise<{ integrations: IntegrationConfig[]; count: number }> {

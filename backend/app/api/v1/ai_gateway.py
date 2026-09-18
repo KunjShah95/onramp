@@ -210,7 +210,7 @@ async def list_api_keys(
     return {"keys": keys, "count": len(keys)}
 
 
-@router.delete("/keys/{key_id}")
+@router.delete("/keys/{key_id}", responses={404: {"description": "Key not found"}})
 async def revoke_api_key(
     key_id: str,
     user: dict = Depends(get_current_user),
@@ -248,7 +248,7 @@ async def revoke_api_key(
     return {"revoked": True, "key_id": key_id}
 
 
-@router.post("/keys/{key_id}/rotate", response_model=CreateKeyResponse)
+@router.post("/keys/{key_id}/rotate", response_model=CreateKeyResponse, responses={404: {"description": "Key not found"}})
 async def rotate_api_key(
     key_id: str,
     request: RotateKeyRequest,
@@ -426,7 +426,7 @@ async def set_provider_key(
     return result
 
 
-@router.delete("/keys/{org_name}/providers/{provider}")
+@router.delete("/keys/{org_name}/providers/{provider}", responses={404: {"description": "No key configured for provider"}})
 async def delete_provider_key(
     org_name: str,
     provider: str,
@@ -480,7 +480,7 @@ async def add_provider_key(
     return result
 
 
-@router.delete("/keys/{org_name}/providers/{provider}/keys/{key_id}")
+@router.delete("/keys/{org_name}/providers/{provider}/keys/{key_id}", responses={404: {"description": "No key matched"}})
 async def remove_provider_key(
     org_name: str,
     provider: str,

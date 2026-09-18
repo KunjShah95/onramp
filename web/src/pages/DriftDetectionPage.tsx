@@ -142,7 +142,7 @@ export default function DriftDetectionPage() {
                       'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled',
                       'pl-10 pr-3.5 py-2.5 text-[13px] font-code rounded-[3px] resize-y',
                       'transition-[border-color,box-shadow] duration-150',
-                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]'
+                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)]'
                     )}
                   />
                 </div>
@@ -166,7 +166,7 @@ export default function DriftDetectionPage() {
                       'w-full bg-base border border-seam-strong text-ink placeholder:text-ink-disabled',
                       'pl-10 pr-3.5 py-2.5 text-[13px] font-body rounded-[3px] resize-y',
                       'transition-[border-color,box-shadow] duration-150',
-                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(14_122_60_/_0.12)]'
+                      'focus:outline-none focus:border-go/60 focus:shadow-[0_0_0_3px_rgb(var(--go-rgb)_/_0.12)]'
                     )}
                   />
                 </div>

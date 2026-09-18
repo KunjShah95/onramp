@@ -124,7 +124,7 @@ export default function KanbanBoard({
               className={cn(
                 'flex w-60 shrink-0 flex-col rounded-md border transition-all duration-200',
                 isOver
-                  ? 'border-go/50 bg-go/[0.04] shadow-[0_0_0_1px_rgba(14,122,60,0.25),0_8px_24px_-12px_rgba(14,122,60,0.35)]'
+                  ? 'border-go/50 bg-go/[0.04] shadow-[0_0_0_1px_rgb(var(--go-rgb)_/_0.25),0_8px_24px_-12px_rgb(var(--go-rgb)_/_0.35)]'
                   : 'border-seam bg-well/40'
               )}
             >

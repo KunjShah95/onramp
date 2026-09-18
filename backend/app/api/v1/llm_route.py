@@ -123,8 +123,11 @@ def primary_route_header(
             chain = llm.resolve_route(QueryType.CHAT)
         if chain and hasattr(llm, "route_info"):
             return llm.route_info(chain[0])["served"]
-    except Exception:
-        logger.debug("Failed to resolve primary route header", exc_info=True)
+    except Exception as exc:
+        logger.warning(
+            "Failed to resolve primary route header (query_type=%s): %s",
+            query_type, exc,
+        )
     return FALLBACK_ROUTE
 
 
@@ -152,6 +155,6 @@ def attach_served_route_header(
         if after is not None and after is not before_route and after.get("served"):
             response.headers["X-LLM-Route"] = after["served"]
             return True
-    except Exception:
-        logger.debug("Failed to attach served route header", exc_info=True)
+    except Exception as exc:
+        logger.warning("Failed to attach served route header: %s", exc)
     return False

@@ -23,7 +23,7 @@ function MarkdownContent({ content }: { content: string }) {
             <div key={i} className="mb-6">
               <h1 className="font-display text-display-sm font-bold text-ink mb-3 leading-tight">{title}</h1>
               {body && (
-                <div className="text-body-sm text-ink-muted/60 leading-[1.8] space-y-3 max-w-none">
+                <div className="text-body-sm text-ink-secondary leading-[1.8] space-y-3 max-w-none">
                   {body.split('\n\n').map((p, j) => <p key={`p-${j}-${p.slice(0,12)}`}>{p}</p>)}
                 </div>
               )}
@@ -36,12 +36,12 @@ function MarkdownContent({ content }: { content: string }) {
           <div key={i} className="scroll-mt-24" id={`section-${i}`}>
             {title && (
               <div className="flex items-center gap-2.5 mb-3 group">
-                <span className="w-1 h-5 rounded-full bg-amber-500/50 group-hover:bg-amber-400 transition-colors" />
+                <span className="w-1 h-5 rounded-full bg-caution/60 group-hover:bg-caution transition-colors" />
                 <h2 className="font-display text-body font-bold text-ink m-0 tracking-tight">{title}</h2>
               </div>
             )}
             {body && (
-              <div className="pl-3.5 border-l border-seam/30 text-body-sm text-ink-muted/50 leading-[1.8] space-y-3 max-w-none">
+              <div className="pl-3.5 border-l border-seam/30 text-body-sm text-ink-secondary leading-[1.8] space-y-3 max-w-none">
                 {body.split('\n\n').map((p, j) => {
                   const isCode = p.startsWith('```')
                   if (isCode) {
@@ -58,7 +58,7 @@ function MarkdownContent({ content }: { content: string }) {
                       <ul key={j} className="space-y-1.5">
                         {items.map((item, k) => (
                           <li key={k} className="flex items-start gap-2.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400/30 mt-2 shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-caution/50 mt-2 shrink-0" />
                             <span>{item.replace(/^- /, '')}</span>
                           </li>
                         ))}
@@ -170,8 +170,8 @@ export default function WikiPage() {
             >
               <CardSpotlight className="p-6 flex items-center justify-center min-h-[180px]">
                 <div className="text-center">
-                  <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center mx-auto mb-3">
-                    <div className="w-5 h-5 border-2 border-seam rounded-full border-t-amber-400 animate-spin" />
+                  <div className="w-10 h-10 rounded-xl bg-caution/10 border border-caution/25 flex items-center justify-center mx-auto mb-3">
+                    <div className="w-5 h-5 border-2 border-seam rounded-full border-t-caution animate-spin" />
                   </div>
                   <p className="text-body-sm text-ink-muted/60">Cloning repository and generating wiki...</p>
                   <p className="text-caption text-ink-muted/20 mt-1">Reading code structure, extracting patterns, writing documentation</p>
@@ -239,7 +239,7 @@ export default function WikiPage() {
                   <div className="lg:sticky lg:top-20 space-y-4">
                     <CardSpotlight className="p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <Book size={12} className="text-amber-400" />
+                        <Book size={12} className="text-caution" />
                         <span className="text-caption font-medium text-ink">Sections</span>
                       </div>
                       <div className="space-y-0.5">
@@ -253,8 +253,8 @@ export default function WikiPage() {
                             className={cn(
                               'w-full flex items-center gap-2 text-body-xs px-2 py-1.5 rounded-lg transition-all text-left',
                               activeSection === i
-                                ? 'text-amber-400 bg-amber-400/8'
-                                : 'text-ink-muted/40 hover:text-ink-muted/70 hover:bg-well/30'
+                                ? 'text-caution bg-caution/10'
+                                : 'text-ink-muted hover:text-ink-secondary hover:bg-well/30'
                             )}
                           >
                             <CaretRight size={10} className={cn('shrink-0 transition-transform', activeSection === i && 'rotate-90')} />
@@ -265,7 +265,7 @@ export default function WikiPage() {
                     </CardSpotlight>
 
                     <button onClick={handleCopy}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-seam bg-well hover:bg-panel-raised text-body-xs text-ink-muted/60 hover:text-ink transition-all">
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-seam bg-well hover:bg-panel-raised text-body-xs text-ink-secondary hover:text-ink transition-all">
                       {copied ? <Check size={14} className="text-emerald-400" weight="bold" /> : <Copy size={14} />}
                       {copied ? 'Copied' : 'Copy Wiki'}
                     </button>
@@ -276,7 +276,7 @@ export default function WikiPage() {
                 <div className="lg:col-span-4 order-1 lg:order-2" ref={contentRef}>
                   <CardSpotlight className="p-6 sm:p-8">
                     <div className="flex items-center gap-2 mb-6 pb-4 border-b border-seam/40">
-                      <BookOpen size={15} className="text-amber-400" />
+                      <BookOpen size={15} className="text-caution" />
                       <span className="font-display text-body-sm font-bold text-ink">Onboarding Guide</span>
                     </div>
                     <MarkdownContent content={mutation.data.content} />

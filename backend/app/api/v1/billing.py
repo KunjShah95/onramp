@@ -136,7 +136,8 @@ async def razorpay_webhook(request: Request):
     """Razorpay webhook receiver. Public, but signature-verified.
 
     Must be in AuthMiddleware public_paths so Razorpay (unauthenticated) can
-    call it.
+    call it. Invalid signatures → HTTP 400 with NO state change (verification
+    runs before any processing; see BillingService.handle_webhook).
     """
     payload = await request.body()
     sig = request.headers.get("X-Razorpay-Signature")

@@ -169,7 +169,7 @@ class RepoContextService:
             if proc.returncode == 0:
                 return out.decode().strip()[:12]
         except Exception:
-            pass
+            logger.debug("repo_context: git rev-parse HEAD failed for %s", repo_path)
         return None
 
     @staticmethod
@@ -197,7 +197,7 @@ class RepoContextService:
                 if proc.returncode == 0:
                     return out.decode("utf-8", "replace")
             except Exception:
-                pass
+                logger.debug("repo_context: git %s failed for %s", args[0] if args else "?", repo_path)
             return ""
 
         from collections import Counter, defaultdict
@@ -313,7 +313,10 @@ class RepoContextService:
             try:
                 removed = bool(await client.delete(self._key(index_id)))
             except Exception:
-                pass
+                logger.warning(
+                    "Redis delete failed for %s — falling back to local cache",
+                    self._key(index_id),
+                )
         async with _LOCAL_CACHE_LOCK:
             if _LOCAL_CACHE.pop(self._key(index_id), None) is not None:
                 removed = True

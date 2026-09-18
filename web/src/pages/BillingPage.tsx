@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
+import { getPlanIntent } from '../lib/plan-intent'
 import { PageHeader } from '../components/ui/page-header'
 import ConsolePanel from '../components/ui/console-panel'
+import { EmptyState } from '../components/ui/empty-state'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { useFeatureFlag } from '../context/FeatureFlagContext'
-import { Check, CreditCard, Coins, ArrowDown, ArrowUp, CurrencyInr, Spinner } from '@phosphor-icons/react'
+import { Check, CreditCard, Coins, ArrowDown, ArrowUp, CurrencyInr, Spinner, Receipt, ShieldCheck, Lightning, Buildings } from '@phosphor-icons/react'
 
 export default function BillingPage() {
   const toast = useToast()
@@ -28,12 +31,28 @@ export default function BillingPage() {
   const [walletLoading, setWalletLoading] = useState(false)
   const [topUpAmount, setTopUpAmount] = useState(100)
 
+  // Plan intent carried from /pricing → /register|/login → here. The matching
+  // tier card is highlighted and scrolled into view so the Razorpay checkout
+  // funnel has a clear landing target.
+  const [searchParams] = useSearchParams()
+  const planIntent = getPlanIntent(searchParams)
+  const tierRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  useEffect(() => {
+    if (!planIntent || loading || !teamId) return
+    const el = tierRefs.current[planIntent]
+    if (el) {
+      const t = window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350)
+      return () => window.clearTimeout(t)
+    }
+  }, [planIntent, loading, teamId])
+
   const tiers = [
-    { id: 'free', price: 0, label: 'Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
-    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, label: 'Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
-    { id: 'startup', price: 999, label: 'Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
-    { id: 'professional', price: 2999, label: 'Professional', popular: true, blurb: 'Team plan · 14-day trial on first subscribe', features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
-    { id: 'enterprise', price: 0, label: 'Enterprise', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
+    { id: 'free', price: 0, label: 'Free', tagline: 'For side projects', cta: 'Downgrade to Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
+    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, label: 'Usage-Based', tagline: 'Pay for what you run', cta: 'Choose Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
+    { id: 'startup', price: 999, label: 'Startup', tagline: 'For small teams shipping', cta: 'Choose Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
+    { id: 'professional', price: 2999, label: 'Professional', tagline: 'For teams scaling onboarding', cta: 'Choose Professional', popular: true, blurb: '14-day trial on first subscribe', features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
+    { id: 'enterprise', price: 0, label: 'Enterprise', tagline: 'Security & scale', cta: 'Contact Sales', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
   ]
 
   useEffect(() => {
@@ -205,215 +224,360 @@ export default function BillingPage() {
 
   const isUsageBased = subscription?.tier === 'usage_based'
   const planStatus: 'go' | 'caution' | 'standby' = subscription?.status === 'active' ? 'go' : subscription ? 'caution' : 'standby'
+  const activeTeamName = teams.find((t) => t.team_id === teamId)?.name || 'Select a team'
+  const canManage = role === 'admin' || role === 'ceo' || role === 'cto'
+  const currentTier = tiers.find((t) => t.id === selectedTier)
+  const spentPct = wallet && wallet.lifetime_purchased > 0
+    ? Math.min(100, Math.round((wallet.lifetime_spent / wallet.lifetime_purchased) * 100))
+    : 0
 
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
-      animate="visible"      className="relative w-full min-h-[calc(100vh-4rem)] font-body text-ink">
-      {/* ── Header ── */}
-      <motion.div variants={itemVariants} className="mb-6">
+      animate="visible"
+      className="relative w-full max-w-6xl mx-auto min-h-[calc(100vh-4rem)] font-body text-ink"
+    >
+      {/* ── Header: title + workspace context in actions ── */}
+      <motion.div variants={itemVariants}>
         <PageHeader
           eyebrow="Folio · Billing"
-          title="Billing & Plans"
-          subtitle="Manage your subscription and team quota"
+          title="Billing & plans"
+          subtitle="One subscription per team workspace. Prices in INR, billed monthly. Cancel anytime — access continues to period end."
+          pills={subscription ? [
+            { label: 'plan', value: subscription.tier },
+            { label: 'per month', value: `₹${subscription.price}` },
+            { label: 'status', value: subscription.status },
+          ] : undefined}
+          actions={
+            <div className="flex items-center gap-2">
+              <Buildings className="w-4 h-4 text-ink-tertiary" aria-hidden />
+              {teams.length > 0 ? (
+                <>
+                  <label htmlFor="billing-team" className="sr-only">Billing team workspace</label>
+                  <select
+                    id="billing-team"
+                    value={teamId}
+                    disabled={loading}
+                    onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
+                    className="bg-panel border border-seam rounded-input pl-3 pr-8 py-2 text-body-sm text-ink focus:border-go/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/40 min-w-[190px] disabled:opacity-50"
+                  >
+                    {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || 'Untitled team'}</option>))}
+                  </select>
+                </>
+              ) : (
+                <a href="/team" className="text-body-sm text-go hover:text-go-lit underline underline-offset-2">Create a team</a>
+              )}
+            </div>
+          }
         />
       </motion.div>
 
-      {error && (<motion.div variants={itemVariants} role="alert" className="mb-5 px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-sm">{error}</motion.div>)}
+      {error && (
+        <motion.div variants={itemVariants} role="alert" className="mb-5 flex items-start gap-3 px-4 py-3 rounded-card bg-abort/10 border border-abort/25 text-abort text-body-sm">
+          <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-abort-lit shrink-0" aria-hidden />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => fetchSubscription()} className="underline underline-offset-2 text-caption shrink-0 hover:opacity-80">Retry</button>
+        </motion.div>
+      )}
 
-      {/* Team Selection */}
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-well p-4 rounded-card border border-seam">
-        <div className="flex flex-col gap-1">
-          <label className="overline text-ink-muted">Active Team Workspace</label>
-          <div className="flex items-center gap-2">
-            {teams.length > 0 ? (
-              <select value={teamId} disabled={loading} onChange={async (e) => { const newTeamId = e.target.value; setTeamId(newTeamId); await switchTeam(newTeamId) }}
-                className="bg-panel border border-seam rounded-input px-4 py-2.5 text-sm text-ink focus:border-go/40 outline-none w-full sm:w-auto sm:min-w-[200px]">
-                {teams.map((t) => (<option key={t.team_id} value={t.team_id}>{t.name || 'Untitled team'}</option>))}
-              </select>
-            ) : (<div className="text-sm text-ink-muted">No teams found. <a href="/team" className="underline text-go hover:text-go/80">Create one</a>.</div>)}
-          </div>
-        </div>
-        {subscription && (
-          <button onClick={handleCancel} disabled={role !== 'admin'}
-            className="btn btn-danger px-4 py-2.5 text-sm font-medium disabled:opacity-40"
-            title={role !== 'admin' ? 'Only the team admin can cancel' : ''}>
-            Cancel Subscription
-          </button>
-        )}
-      </motion.div>
+      {!teamId && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <EmptyState
+            icon={<Buildings className="w-10 h-10 text-ink-tertiary/40" weight="duotone" />}
+            title="No team workspace selected"
+            description="Billing lives on a team. Create one to compare plans and subscribe."
+            action={<a href="/team" className="btn btn-primary text-caption px-4 py-2">Go to Teams</a>}
+          />
+        </motion.div>
+      )}
 
-      {/* Current plan banner */}
-      {subscription && (
-        <motion.div variants={itemVariants}>
-          <ConsolePanel rail="Current Plan" designator="SUBSCRIPTION" status={planStatus} className="p-5 mb-8">
-            <div className="flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-go shrink-0 mt-0.5" weight="fill" />
-              <div className="flex-1">
-                <div className="overline text-ink-muted mb-2">Plan Status</div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-3 py-1 rounded-tile bg-go/15 text-go text-sm font-bold capitalize border border-go/25">{subscription.tier}</span>
-                  <span className="text-sm text-ink-secondary">₹{subscription.price}/mo</span>
-                  <span className="text-sm text-ink-muted capitalize">{subscription.billing_cycle}</span>
-                  <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-pill font-mono border',
-                    subscription.status === 'active' ? 'text-go bg-go/10 border-go/20' : 'text-ink-muted bg-well border-seam')}>
+      {/* ── Current subscription overview ── */}
+      {teamId && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <ConsolePanel
+            rail="Current subscription"
+            designator={activeTeamName.toUpperCase().slice(0, 24)}
+            status={planStatus}
+            live={loading}
+            action={subscription && canManage ? (
+              <button
+                onClick={handleCancel}
+                className="text-caption font-medium text-abort/80 hover:text-abort underline underline-offset-2 decoration-abort/30 hover:decoration-abort transition-colors"
+              >
+                Cancel plan
+              </button>
+            ) : undefined}
+          >
+            {loading ? (
+              <div className="flex items-center gap-2.5 text-body-sm text-ink-muted py-2" role="status" aria-live="polite">
+                <Spinner className="w-4 h-4 animate-spin" aria-hidden />
+                Loading subscription…
+              </div>
+            ) : subscription ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-seam/60 rounded-tile overflow-hidden border border-seam/60">
+                <div className="bg-panel p-4">
+                  <div className="overline text-ink-muted mb-1.5 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" aria-hidden /> Plan
+                  </div>
+                  <div className="font-display text-display-sm text-ink capitalize">{subscription.tier.replace('_', ' ')}</div>
+                  <div className="text-caption text-ink-tertiary mt-0.5 capitalize">{subscription.billing_cycle} billing</div>
+                </div>
+                <div className="bg-panel p-4">
+                  <div className="overline text-ink-muted mb-1.5">Monthly price</div>
+                  <div className="font-display text-display-sm text-ink tabular-nums">₹{Number(subscription.price).toLocaleString('en-IN')}</div>
+                  <div className="text-caption text-ink-tertiary mt-0.5">excl. taxes</div>
+                </div>
+                <div className="bg-panel p-4">
+                  <div className="overline text-ink-muted mb-1.5 flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5" aria-hidden /> Credit balance
+                  </div>
+                  <div className="font-display text-display-sm text-ink tabular-nums">
+                    {wallet ? wallet.balance.toLocaleString('en-IN') : '—'}
+                  </div>
+                  <div className="text-caption text-ink-tertiary mt-0.5">{isUsageBased ? 'prepaid wallet' : currentTier ? `${currentTier.features.find((f) => f.includes('credit')) ?? 'included credits'}` : 'included credits'}</div>
+                </div>
+                <div className="bg-panel p-4">
+                  <div className="overline text-ink-muted mb-1.5">Status</div>
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 text-caption font-semibold px-2.5 py-1 rounded-pill border font-mono capitalize',
+                    subscription.status === 'active' ? 'text-go bg-go/10 border-go/25' : 'text-caution bg-caution/10 border-caution/25'
+                  )}>
+                    <span className={cn('w-1.5 h-1.5 rounded-full', subscription.status === 'active' ? 'bg-go-lit' : 'bg-caution-lit')} aria-hidden />
                     {subscription.status}
                   </span>
+                  {!canManage && (
+                    <div className="text-caption text-ink-tertiary mt-1.5">Only admins can change plans.</div>
+                  )}
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-1">
+                <div className="flex items-start gap-3 flex-1">
+                  <Lightning className="w-5 h-5 text-go shrink-0 mt-0.5" weight="fill" aria-hidden />
+                  <div>
+                    <p className="text-body-sm font-semibold text-ink">No active subscription for {activeTeamName}</p>
+                    <p className="text-caption text-ink-tertiary mt-0.5">Pick a plan below — Free is instant, paid plans go through secure checkout.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </ConsolePanel>
         </motion.div>
       )}
 
-      {/* Usage-Based Wallet Section */}
+      {/* ── Usage wallet (usage-based plans) ── */}
       {isUsageBased && (
-        <motion.div variants={itemVariants} className="mb-8">
-          <ConsolePanel rail="Credit Wallet" designator="PREPAID" status="go" className="p-5">
-            <div className="flex items-start gap-3 mb-4">
-              <Coins className="w-5 h-5 text-go shrink-0 mt-0.5" weight="fill" />
-              <div className="flex-1">
-                <div className="overline text-ink-muted mb-2">Prepaid Credit Wallet</div>
-                {walletLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-ink-muted">
-                    <Spinner className="w-4 h-4 animate-spin" />
-                    Loading wallet…
+        <motion.div variants={itemVariants} className="mb-10">
+          <ConsolePanel rail="Credit wallet" designator="PREPAID" status="go">
+            {walletLoading ? (
+              <div className="flex items-center gap-2 text-body-sm text-ink-muted py-2" role="status" aria-live="polite">
+                <Spinner className="w-4 h-4 animate-spin" aria-hidden />
+                Loading wallet…
+              </div>
+            ) : wallet ? (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Balance + top-up */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div>
+                    <div className="overline text-ink-muted mb-1">Available balance</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-display-xl text-go tabular-nums">{wallet.balance.toLocaleString('en-IN')}</span>
+                      <span className="text-caption text-ink-tertiary">credits</span>
+                    </div>
+                    {/* spend meter */}
+                    <div className="mt-3">
+                      <div className="h-1.5 rounded-pill bg-well overflow-hidden" role="progressbar" aria-valuenow={spentPct} aria-valuemin={0} aria-valuemax={100} aria-label="Lifetime credits spent">
+                        <div className="h-full rounded-pill bg-go transition-all" style={{ width: `${spentPct}%` }} />
+                      </div>
+                      <div className="flex justify-between mt-1.5 text-caption text-ink-muted font-mono tabular-nums">
+                        <span>spent {wallet.lifetime_spent.toLocaleString('en-IN')}</span>
+                        <span>of {wallet.lifetime_purchased.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
                   </div>
-                ) : wallet ? (
-                  <>
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="font-display text-3xl font-bold text-go">{wallet.balance.toLocaleString()}</span>
-                      <span className="text-sm text-ink-muted">credits available</span>
-                    </div>
-                    <div className="flex gap-4 text-xs text-ink-muted mb-4">
-                      <span>Purchased: <span className="font-mono text-ink-secondary">{wallet.lifetime_purchased.toLocaleString()}</span></span>
-                      <span>Spent: <span className="font-mono text-ink-secondary">{wallet.lifetime_spent.toLocaleString()}</span></span>
-                    </div>
 
-                    {/* Top-up */}
-                    <div className="flex items-center gap-3 p-3 bg-well rounded-card border border-seam mb-4">
-                      <CurrencyInr className="w-4 h-4 text-go" weight="fill" />
-                      <label className="sr-only" htmlFor="topup-amount">Top-up amount in INR (min 10)</label>
-                      <input
-                        id="topup-amount"
-                        type="number"
-                        min={10}
-                        max={100000}
-                        value={topUpAmount}
-                        onChange={(e) => setTopUpAmount(parseInt(e.target.value) || 0)}
-                        onBlur={(e) => {
-                          const v = parseInt(e.target.value) || 10
-                          setTopUpAmount(Math.min(100000, Math.max(10, v)))
-                        }}
-                        aria-label="Top-up amount in INR"
-                        className="input w-24 font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
-                      />
-                      <span className="text-xs text-ink-muted">INR</span>
-                      <button
-                        onClick={handleTopUp}
-                        className="ml-auto btn btn-primary px-4 py-1.5 text-xs font-semibold"
-                      >
-                        <ArrowDown size={14} aria-hidden className="shrink-0" weight="bold" />
-                        Add Credits
+                  <div className="p-3.5 bg-well/60 rounded-card border border-seam">
+                    <label htmlFor="topup-amount" className="overline text-ink-muted block mb-2">Top up wallet</label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <CurrencyInr className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-tertiary" weight="bold" aria-hidden />
+                        <input
+                          id="topup-amount"
+                          type="number"
+                          min={10}
+                          max={100000}
+                          value={topUpAmount}
+                          onChange={(e) => setTopUpAmount(parseInt(e.target.value) || 0)}
+                          onBlur={(e) => {
+                            const v = parseInt(e.target.value) || 10
+                            setTopUpAmount(Math.min(100000, Math.max(10, v)))
+                          }}
+                          aria-label="Top-up amount in INR, minimum 10"
+                          className="input w-full pl-8 font-mono tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
+                        />
+                      </div>
+                      <button onClick={handleTopUp} className="btn btn-primary px-4 py-2 text-caption font-semibold inline-flex items-center gap-1.5 shrink-0">
+                        <ArrowDown size={14} aria-hidden weight="bold" />
+                        Add credits
                       </button>
                     </div>
+                    <p className="text-caption text-ink-tertiary mt-2">₹10 – ₹1,00,000 per top-up · via Razorpay</p>
+                  </div>
+                </div>
 
-                    {/* Cost breakdown */}
-                    <h4 className="overline text-ink-muted mb-2">Credit Costs per Action</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                {/* Costs + ledger */}
+                <div className="lg:col-span-3 space-y-5 min-w-0">
+                  <div>
+                    <h4 className="overline text-ink-muted mb-2">Cost per action</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {CREDIT_COSTS_LIST.map((item) => (
-                        <div key={item.action} className="bg-well border border-seam rounded-card p-2.5">
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[10px] font-mono text-ink-secondary uppercase">{item.action}</span>
-                            <span className="font-mono text-[11px] font-bold text-go">{item.cost}</span>
+                        <div key={item.action} className="bg-well/60 border border-seam rounded-card p-2.5">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-[10px] font-mono text-ink-secondary uppercase truncate">{item.action}</span>
+                            <span className="font-mono text-[11px] font-bold text-go tabular-nums shrink-0">{item.cost}</span>
                           </div>
-                          <p className="text-[9px] text-ink-muted leading-tight">{item.description}</p>
+                          <p className="text-[11px] text-ink-muted leading-snug">{item.description}</p>
                         </div>
                       ))}
                     </div>
+                  </div>
 
-                    {/* Ledger */}
-                    {ledger.length > 0 && (
-                      <>
-                        <h4 className="overline text-ink-muted mb-2">Recent Activity</h4>
-                        <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                          {ledger.map((entry) => (
-                            <div key={entry.entry_id} className="flex items-center gap-3 px-3 py-2 rounded-tile bg-well border border-seam text-xs">
-                              {entry.delta > 0 ? (
-                                <ArrowDown size={12} className="text-go shrink-0" weight="bold" />
-                              ) : (
-                                <ArrowUp size={12} className="text-abort shrink-0" weight="bold" />
-                              )}
-                              <span className="font-mono text-ink-secondary">{entry.delta > 0 ? '+' : ''}{entry.delta}</span>
-                              <span className="text-ink-muted flex-1 capitalize">{entry.reason.replace('charge:', '')}</span>
-                              <span className="text-[10px] text-ink-disabled/60">{new Date(entry.created_at).toLocaleDateString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-ink-muted">No wallet created yet. Usage will be tracked as you use the platform.</p>
-                )}
+                  {ledger.length > 0 && (
+                    <div>
+                      <h4 className="overline text-ink-muted mb-2">Recent activity</h4>
+                      <ol className="divide-y divide-seam/60 border border-seam/60 rounded-card overflow-hidden">
+                        {ledger.map((entry) => (
+                          <li key={entry.entry_id} className="flex items-center gap-3 px-3.5 py-2.5 bg-panel text-body-sm">
+                            <span className={cn('w-6 h-6 rounded-tile flex items-center justify-center shrink-0', entry.delta > 0 ? 'bg-go/10 text-go' : 'bg-abort/10 text-abort')}>
+                              {entry.delta > 0 ? <ArrowDown size={12} weight="bold" aria-hidden /> : <ArrowUp size={12} weight="bold" aria-hidden />}
+                            </span>
+                            <span className="font-mono tabular-nums text-ink-secondary text-caption min-w-[52px]">{entry.delta > 0 ? '+' : ''}{entry.delta}</span>
+                            <span className="text-caption text-ink-tertiary flex-1 capitalize truncate">{entry.reason.replace('charge:', '').replace(/_/g, ' ')}</span>
+                            <time className="text-caption text-ink-muted font-mono shrink-0" dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</time>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-body-sm text-ink-muted py-1">No wallet yet — it is created automatically with your first usage-based charge.</p>
+            )}
           </ConsolePanel>
         </motion.div>
       )}
 
-      {/* Tier cards */}
-      <motion.div variants={itemVariants} className="mb-4">
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <span className="tile tile-observe">Plans</span>
-          <span className="designator opacity-50">TIER MATRIX</span>
-        </div>
-      </motion.div>
-      <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {tiers.map((tier) => {
-          const isCurrent = selectedTier === tier.id
-          return (
-            <motion.div key={tier.id} variants={itemVariants}>
-              <div className={cn('relative rounded-card border bg-panel p-5 flex flex-col h-full group transition-colors',
-                isCurrent ? 'border-go/30 ring-1 ring-go/15' : tier.popular ? 'hover:border-go/30' : 'border-seam hover:border-seam-strong')}>
-                {tier.popular && <span className="overline text-go font-bold mb-3">Recommended</span>}
-                <h3 className="font-heading text-base font-bold text-ink capitalize mb-1">{tier.label}</h3>
-                {(tier as any).blurb && <p className="text-caption text-ink-muted mb-2">{(tier as any).blurb}</p>}
-                <div className="mb-4">
-                  {tier.price > 0 ? (
-                    <span className="font-display text-2xl font-bold text-ink">
-                      <motion.span
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 100, damping: 15 }}
-                      >
-                        ₹{tier.price}
-                      </motion.span>
-                      <span className="text-sm text-ink-muted font-normal">/mo</span>
-                    </span>
-                  ) : (
-                    <span className="font-display text-lg text-ink-muted">{tier.id === 'enterprise' ? 'Custom' : 'Free'}</span>
-                  )}
-                </div>
-                <ul className="space-y-2 text-xs text-ink-secondary flex-1 mb-5">
-                  {tier.features.map((f) => (<li key={f} className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-go mt-0.5 shrink-0" weight="bold" /><span>{f}</span></li>))}
-                </ul>
-                <button onClick={() => handleCreateSubscription(tier.id)} disabled={!teamId.trim() || isCurrent || role !== 'admin' || subscribingTier !== null}
-                  title={!teamId.trim() ? 'Select a team first' : role !== 'admin' ? 'Only the team admin can change plans — ask your admin' : ''}
-                  aria-busy={subscribingTier === tier.id}
-                  className={cn('w-full py-2 rounded-btn text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
-                    isCurrent ? 'bg-go/10 text-go border border-go/20 cursor-default' :
-                    tier.popular ? 'bg-go hover:bg-go-lit text-white disabled:opacity-40' :
-                    'bg-well hover:bg-well/80 text-ink-secondary hover:text-ink border border-seam disabled:opacity-40')}>
-                  {isCurrent ? 'Current Plan' : subscribingTier === tier.id ? 'Redirecting…' : tier.id === 'enterprise' ? 'Contact Sales' : `Choose ${tier.label}`}
-                </button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </motion.div>
+      {/* ── Plan matrix ── */}
+      {teamId && (
+        <>
+          <motion.div variants={itemVariants} className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <div className="index-kicker mb-1.5">Tier matrix</div>
+              <h2 className="font-display text-display-sm text-ink tracking-tight">Choose the plan that fits this team</h2>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-caption text-ink-tertiary shrink-0">
+              <Receipt className="w-3.5 h-3.5" aria-hidden /> Invoices over email
+            </span>
+          </motion.div>
 
+          <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+            {tiers.map((tier) => {
+              const isCurrent = selectedTier === tier.id
+              const isIntent = planIntent === tier.id && !isCurrent
+              const busy = subscribingTier === tier.id
+              const disabled = !teamId.trim() || isCurrent || !canManage || subscribingTier !== null
+              return (
+                <motion.div key={tier.id} variants={itemVariants} className="h-full">
+                  <article
+                    aria-label={`${tier.label} plan`}
+                    ref={(el) => { tierRefs.current[tier.id] = el }}
+                    className={cn(
+                      'relative rounded-card border bg-panel p-5 flex flex-col h-full transition-all duration-200',
+                      isCurrent
+                        ? 'border-go/40 ring-1 ring-go/20 shadow-lift'
+                        : isIntent
+                          ? 'border-go/50 ring-2 ring-go/25 shadow-lift'
+                          : tier.popular
+                          ? 'border-seam-strong shadow-card hover:border-go/40 hover:shadow-lift hover:-translate-y-0.5'
+                          : 'border-seam shadow-seam hover:border-seam-strong hover:shadow-card hover:-translate-y-0.5'
+                    )}
+                  >
+                    {/* top row: badge state */}
+                    <div className="flex items-center justify-between mb-3 min-h-[20px]">
+                      {isCurrent ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] text-go bg-go/10 border border-go/25 rounded-pill px-2 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-go-lit" aria-hidden /> Current
+                        </span>
+                      ) : isIntent ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[hsl(var(--primary-foreground))] bg-mission rounded-pill px-2 py-0.5">Picked for you</span>
+                      ) : tier.popular ? (
+                        <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[hsl(var(--primary-foreground))] bg-go rounded-pill px-2 py-0.5">Most popular</span>
+                      ) : <span />}
+                      {tier.id === 'enterprise' && (
+                        <ShieldCheck className="w-4 h-4 text-ink-tertiary" aria-label="Enterprise grade" />
+                      )}
+                    </div>
+
+                    <h3 className="font-display text-display-xs text-ink">{tier.label}</h3>
+                    <p className="text-caption text-ink-tertiary mt-0.5 mb-3">{tier.tagline}{(tier as any).blurb ? ` · ${(tier as any).blurb}` : ''}</p>
+
+                    <div className="mb-4 min-h-[44px]">
+                      {tier.price > 0 ? (
+                        <p className="flex items-baseline gap-1">
+                          <span className="font-display text-[30px] leading-none font-bold text-ink tabular-nums">₹{tier.price.toLocaleString('en-IN')}</span>
+                          <span className="text-caption text-ink-muted">/mo</span>
+                        </p>
+                      ) : (
+                        <p className="font-display text-[22px] leading-[44px] text-ink-secondary">{tier.id === 'enterprise' ? 'Custom' : '₹0'}</p>
+                      )}
+                    </div>
+
+                    <ul className="space-y-2 text-body-sm text-ink-secondary flex-1 mb-5">
+                      {tier.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2">
+                          <span className={cn('mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0', isCurrent || tier.popular ? 'bg-go/12 text-go' : 'bg-well text-ink-tertiary')}>
+                            <Check className="w-2.5 h-2.5" weight="bold" aria-hidden />
+                          </span>
+                          <span className="leading-snug">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      onClick={() => handleCreateSubscription(tier.id)}
+                      disabled={disabled}
+                      title={!teamId.trim() ? 'Select a team first' : !canManage ? 'Only a team admin can change plans' : ''}
+                      aria-busy={busy}
+                      className={cn(
+                        'w-full py-2.5 rounded-btn text-body-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2',
+                        isCurrent
+                          ? 'bg-go/10 text-go border border-go/25 cursor-default'
+                          : tier.popular
+                            ? 'bg-go hover:bg-go-lit text-white shadow-seam disabled:opacity-40'
+                            : 'bg-well hover:bg-inset text-ink border border-seam disabled:opacity-40'
+                      )}
+                    >
+                      {busy && <Spinner className="w-4 h-4 animate-spin" aria-hidden />}
+                      {isCurrent ? 'Current plan' : busy ? 'Redirecting…' : tier.cta}
+                    </button>
+                  </article>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+
+          {/* ── Assurance strip ── */}
+          <motion.div variants={itemVariants} className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-caption text-ink-tertiary">
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" aria-hidden /> Secure checkout via Razorpay</span>
+            <span className="hidden sm:inline text-seam-strong" aria-hidden>·</span>
+            <span className="inline-flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" aria-hidden /> GST invoices on every payment</span>
+            <span className="hidden sm:inline text-seam-strong" aria-hidden>·</span>
+            <span>Questions? <a href="/support" className="underline underline-offset-2 text-ink-secondary hover:text-ink">Talk to support</a></span>
+          </motion.div>
+        </>
+      )}
     </motion.div>
   )
 }

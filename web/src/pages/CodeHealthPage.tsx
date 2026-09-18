@@ -74,7 +74,7 @@ export default function CodeHealthPage() {
   const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Needs Work' : 'Critical'
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[hsl(var(--background))]">
+    <div className="min-h-[calc(100vh-4rem)] bg-base">
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}

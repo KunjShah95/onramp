@@ -108,6 +108,20 @@ EVENT_LABELS = {
 }
 
 
+def _validate_webhook_url(url: str) -> None:
+    """Validate a webhook URL. Raises ValueError on failure."""
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("Webhook URL is required")
+    if not url.strip().startswith(("http://", "https://")):
+        raise ValueError("Webhook URL must start with http:// or https://")
+
+
+def _validate_webhook_events(events) -> None:
+    """Validate a webhook events list. Raises ValueError on failure."""
+    if not isinstance(events, list) or len(events) == 0:
+        raise ValueError("Webhook must subscribe to at least one event")
+
+
 async def create_webhook(
     user_id: str,
     url: str,
@@ -116,6 +130,8 @@ async def create_webhook(
     team_id: Optional[str] = None,
 ) -> dict:
     """Register a new webhook endpoint."""
+    _validate_webhook_url(url)
+    _validate_webhook_events(events)
     storage = get_storage()
     now = _utcnow()
     webhook_id = generate_id()
@@ -172,6 +188,11 @@ async def update_webhook(
     clean_updates = {k: v for k, v in updates.items() if k in allowed_fields}
     if not clean_updates:
         return webhook
+
+    if "url" in clean_updates:
+        _validate_webhook_url(clean_updates["url"])
+    if "events" in clean_updates:
+        _validate_webhook_events(clean_updates["events"])
 
     clean_updates["updated_at"] = _utcnow()
     return await storage.update_document(COLLECTION, webhook_id, clean_updates)
@@ -259,12 +280,21 @@ async def get_integration_config(user_id: str, integration: str) -> Optional[dic
     if not results:
         return None
     result = results[0]
-    config = result.get("config", {})
+    config = dict(result.get("config", {}))
     if integration in ("github", "gitlab") and config.get("token"):
         config["token"] = decrypt_token(config["token"])
         result["config"] = config
     if integration == "bitbucket" and config.get("app_password"):
         config["app_password"] = decrypt_token(config["app_password"])
+        result["config"] = config
+    if integration == "jira" and config.get("api_token"):
+        config["api_token"] = decrypt_token(config["api_token"])
+        result["config"] = config
+    if integration == "linear" and config.get("api_key"):
+        config["api_key"] = decrypt_token(config["api_key"])
+        result["config"] = config
+    if integration == "slack" and config.get("webhook_url"):
+        config["webhook_url"] = decrypt_token(config["webhook_url"])
         result["config"] = config
     return result
 
@@ -286,6 +316,12 @@ async def save_integration_config(
         config["token"] = encrypt_token(config["token"])
     if integration == "bitbucket" and config.get("app_password"):
         config["app_password"] = encrypt_token(config["app_password"])
+    if integration == "jira" and config.get("api_token") and config["api_token"] != "••••••••":
+        config["api_token"] = encrypt_token(config["api_token"])
+    if integration == "linear" and config.get("api_key") and config["api_key"] != "••••••••":
+        config["api_key"] = encrypt_token(config["api_key"])
+    if integration == "slack" and config.get("webhook_url") and "••" not in config["webhook_url"]:
+        config["webhook_url"] = encrypt_token(config["webhook_url"])
 
     now = _utcnow()
     entry = {

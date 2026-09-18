@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Code, GithubLogo, Warning, Check, Fire,
@@ -20,8 +21,15 @@ const item = {
 }
 
 export default function PRDescriptionPage() {
-  const [repoUrl, setRepoUrl] = useState('')
-  const [prNumber, setPrNumber] = useState('')
+  // Deep-link support: /pr-describe?repo=https://github.com/o/r&pr=123
+  // (Review Queue "Review" buttons land here with the PR prefilled, so the
+  // reviewer is one step from the auto-apply flow below.)
+  const [searchParams] = useSearchParams()
+  const [repoUrl, setRepoUrl] = useState(() => {
+    const repo = (searchParams.get('repo') || '').trim()
+    return /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/.test(repo) ? repo : ''
+  })
+  const [prNumber, setPrNumber] = useState(() => (searchParams.get('pr') || '').replace(/[^0-9]/g, ''))
   const [generating, setGenerating] = useState(false)
   const [description, setDescription] = useState('')
   const [copied, setCopied] = useState(false)

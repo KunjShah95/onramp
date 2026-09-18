@@ -158,6 +158,17 @@ async def rehash_existing_keys() -> dict:
     }
 
 
+def _daily_used_today(perms: Dict[str, Any]) -> int:
+    """Credits charged today (UTC) for a key's permissions dict.
+
+    Returns 0 when the stored ``daily_usage_date`` is not today (the daily
+    cap has rolled over since the last charge).
+    """
+    if (perms or {}).get("daily_usage_date") != _today_utc_datestr():
+        return 0
+    return int((perms or {}).get("daily_credits_used", 0))
+
+
 def generate_api_key() -> str:
     """Generate a secure random API key"""
     return f"cf_{secrets.token_urlsafe(32)}"
@@ -195,6 +206,33 @@ CREDIT_COSTS = {
 }
 
 
+def _today_utc_datestr() -> str:
+    """Current UTC date as YYYY-MM-DD (rollover key for daily caps)."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def validate_credit_caps(
+    credit_limit: Optional[int] = None,
+    daily_credit_cap: Optional[int] = None,
+) -> None:
+    """Validate a key's monthly budget + daily cap combination.
+
+    Raises ValueError when either value is negative, or when both are set
+    and the daily cap exceeds the monthly budget (a daily cap larger than
+    the monthly budget can never bind, so it is almost certainly a mistake).
+    """
+    if credit_limit is not None and int(credit_limit) < 0:
+        raise ValueError("credit_limit cannot be negative")
+    if daily_credit_cap is not None and int(daily_credit_cap) < 0:
+        raise ValueError("daily_credit_cap cannot be negative")
+    if (
+        credit_limit is not None
+        and daily_credit_cap is not None
+        and int(daily_credit_cap) > int(credit_limit)
+    ):
+        raise ValueError("daily_credit_cap cannot exceed credit_limit (monthly budget)")
+
+
 async def create_api_key(
     name: str,
     user_id: Optional[str] = None,
@@ -202,6 +240,7 @@ async def create_api_key(
     expires_in_days: Optional[int] = None,
     permissions: Optional[Dict[str, Any]] = None,
     credit_limit: Optional[int] = None,
+    daily_credit_cap: Optional[int] = None,
 ) -> tuple[str, dict]:
     """
     Create a new API key.
@@ -211,6 +250,13 @@ async def create_api_key(
     the key stops working once its cumulative credits_used reach the limit.
     It is stored inside the ``permissions`` JSONB dict so no schema migration
     is required.
+
+    ``daily_credit_cap`` is an optional per-key DAILY credit cap (in credits
+    per UTC day). When set, the key stops working once its ``daily_credits_used``
+    for the current UTC day reaches the cap; the counter resets on date
+    rollover (see :meth:`APIKeyService.increment_credits_used`). When both
+    caps are set, the daily cap must be ≤ the monthly budget
+    (``validate_credit_caps`` raises ValueError otherwise).
     """
     storage = get_storage()
 
@@ -218,6 +264,7 @@ async def create_api_key(
         raise ValueError("Either user_id or team_id must be provided")
     if user_id and team_id:
         raise ValueError("Provide user_id or team_id, not both")
+    validate_credit_caps(credit_limit, daily_credit_cap)
 
     plain_key = generate_api_key()
     key_hash = hash_api_key(plain_key)
@@ -231,7 +278,13 @@ async def create_api_key(
     perms = dict(permissions or {})
     if credit_limit is not None:
         perms["credit_limit"] = int(credit_limit)
+    if daily_credit_cap is not None:
+        perms["daily_credit_cap"] = int(daily_credit_cap)
     perms.setdefault("credits_used", 0)
+    # Daily-cap rollover state: credits charged today (UTC) + the day they
+    # belong to. Stale dates read as zero (see _daily_used_today).
+    perms.setdefault("daily_credits_used", 0)
+    perms.setdefault("daily_usage_date", _today_utc_datestr())
     # Record which pepper hashed this key so future rotations can distinguish
     # current-pepper keys from legacy ones (see _find_key_record).
     perms["pepper_version"] = CURRENT_PEPPER_VERSION
@@ -334,6 +387,7 @@ async def list_api_keys(owner_id: str, owner_type: str = "user") -> list[dict]:
             days_until_expiry = max(0, (expires_at - now).days)
             approaching_expiry = days_until_expiry <= EXPIRY_WARNING_DAYS
 
+        key_perms = k.get("permissions") or {}
         enriched.append({
             "id": k["id"],
             "key_id": k["id"],
@@ -345,12 +399,15 @@ async def list_api_keys(owner_id: str, owner_type: str = "user") -> list[dict]:
             "is_expired": is_expired,
             "days_until_expiry": days_until_expiry,
             "approaching_expiry": approaching_expiry,
-            "permissions": k.get("permissions") or {},
-            "org_name": (k.get("permissions") or {}).get("org_name") or k["name"],
-            "tier": (k.get("permissions") or {}).get("tier", "free"),
-            "credit_limit": (k.get("permissions") or {}).get("credit_limit"),
-            "credits_used": int((k.get("permissions") or {}).get("credits_used", 0)),
-            "usage_count": int((k.get("permissions") or {}).get("credits_used", 0)),
+            "permissions": key_perms,
+            "org_name": key_perms.get("org_name") or k["name"],
+            "tier": key_perms.get("tier", "free"),
+            "credit_limit": key_perms.get("credit_limit"),
+            "credits_used": int(key_perms.get("credits_used", 0)),
+            "usage_count": int(key_perms.get("credits_used", 0)),
+            "daily_credit_cap": key_perms.get("daily_credit_cap"),
+            "daily_credits_used": _daily_used_today(key_perms),
+            "daily_usage_date": key_perms.get("daily_usage_date"),
         })
     return enriched
 

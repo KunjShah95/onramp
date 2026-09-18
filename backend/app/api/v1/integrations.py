@@ -204,6 +204,34 @@ async def test_github_token(
         return {"valid": False, "error": f"Connection error: {str(e)}"}
 
 
+# ── Slack Integration Endpoints ───────────────────────────────
+
+
+def _mask_secret(value: str, keep: int = 4) -> str:
+    if not value or len(value) <= keep + 3:
+        return "••••••••"
+    return value[:keep] + "…" + "•" * 4
+
+
+@router.post("/slack/test")
+async def test_slack_connection(
+    request: SaveIntegrationRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Validate a Slack incoming-webhook URL (format check, no message sent)."""
+    url = (request.config.get("webhook_url", "") or "").strip()
+    if not url:
+        return {"valid": False, "error": "Webhook URL is required"}
+    if not url.startswith(("https://hooks.slack.com/", "https://discord.com/")) and not url.startswith("https://"):
+        return {"valid": False, "error": "URL must start with https:// (use your Slack incoming-webhook URL)"}
+    if "hooks.slack.com/services/" in url:
+        parts = url.split("hooks.slack.com/services/")[-1].split("/")
+        if len(parts) < 3:
+            return {"valid": False, "error": "That Slack webhook URL looks truncated — paste the full https://hooks.slack.com/services/T…/B…/… value"}
+        return {"valid": True, "message": "URL format looks valid. Save, then use Ping on a webhook to verify delivery."}
+    return {"valid": True, "message": "URL format looks valid (non-Slack https endpoint).", "warning": True}
+
+
 # ── GitLab Integration Endpoints ───────────────────────────────
 
 
@@ -411,8 +439,18 @@ async def get_integration(
     config = await get_integration_config(user.get("uid", ""), integration_type)
     if not config:
         return {"configured": False, "integration": integration_type}
+    # Mask secrets before sending to the client; services read raw via helper.
+    cfg = dict(config.get("config", {}))
+    for key in ("token", "api_token", "api_key", "app_password"):
+        if cfg.get(key):
+            cfg[key] = "••••••••"
+    if cfg.get("webhook_url"):
+        cfg["webhook_url"] = _mask_secret(str(cfg["webhook_url"]), keep=28)
+    config["config"] = cfg
     return {"configured": True, **config}
 
+
+MASKED = {"••••••••"}
 
 @router.put("/{integration_type}")
 async def save_integration(
@@ -421,8 +459,24 @@ async def save_integration(
     user: dict = Depends(get_current_user),
 ):
     """Save or update integration configuration."""
+    cfg = dict(request.config or {})
+    # Preserve existing secret when the client sends back a masked placeholder.
+    if any(cfg.get(k) in MASKED or (isinstance(cfg.get(k), str) and "••" in cfg.get(k, "")) for k in ("token", "api_token", "api_key", "app_password", "webhook_url")):
+        existing = await get_integration_config(user.get("uid", ""), integration_type)
+        existing_cfg = (existing or {}).get("config", {})
+        for k in ("token", "api_token", "api_key", "app_password", "webhook_url"):
+            v = cfg.get(k)
+            if isinstance(v, str) and ("••" in v or v in MASKED):
+                if existing_cfg.get(k):
+                    cfg[k] = existing_cfg[k]
+    if integration_type == "slack":
+        url = (cfg.get("webhook_url", "") or "").strip()
+        if not url:
+            raise HTTPException(status_code=400, detail="webhook_url is required")
+        if not url.startswith("https://"):
+            raise HTTPException(status_code=400, detail="Slack webhook URL must start with https://")
     result = await save_integration_config(
-        user.get("uid", ""), integration_type, request.config
+        user.get("uid", ""), integration_type, cfg
     )
     return {"configured": True, **result}
 
