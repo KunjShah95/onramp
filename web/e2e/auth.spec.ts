@@ -70,53 +70,45 @@ test.describe('Login Page', () => {
 
 test.describe('Login Flow — End-to-End Auth', () => {
   test('successful email/password login redirects to dashboard', async ({ page }) => {
-    // Mock Neon Auth + backend + dashboard APIs
+    // Mock Neon Auth + backend + dashboard APIs. The backend mock starts
+    // unauthenticated (/auth/me is 401) so the staged login below genuinely
+    // establishes the session — a premature dashboard can only come from
+    // completing both form stages.
     await mockNeonAuth(page)
-    await mockBackendAPIs(page)
+    await mockBackendAPIs(page, { authenticated: false })
     await mockDashboardAPI(page)
 
     await page.goto('/login')
-    // Race-safe: the mock session may redirect to the dashboard before the
-    // staged form settles (the form unmounts mid-click otherwise). Handle
-    // both outcomes — dashboard directly, or the staged email→password flow.
-    const redirected = await page.waitForURL('**/dashboard', { timeout: 8_000 })
-      .then(() => true).catch(() => false)
-    if (!redirected) {
-      await page.waitForSelector('input#email', { timeout: 10_000 })
+    await page.waitForSelector('input#email', { timeout: 10_000 })
 
-      // Stage 1 — submit email to advance
-      await page.fill('input#email', 'admin@onramp.dev')
-      await page.click('button[type="submit"]')
-      await page.waitForSelector('input#password', { timeout: 10_000 })
+    // Stage 1 — submit email to advance
+    await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
 
-      // Stage 2 — password + final submit
-      await page.fill('input#password', 'password123')
-      await page.click('button[type="submit"]')
+    // Stage 2 — password + final submit
+    await page.fill('input#password', 'password123')
+    await page.click('button[type="submit"]')
 
-      // Should redirect to dashboard — page title is "Mission Control"
-      await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    }
+    // Should redirect to dashboard — page title is "Mission Control"
+    await page.waitForURL('**/dashboard', { timeout: 15_000 })
     await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
   })
 
   test('login page redirects to dashboard when already authenticated', async ({ page }) => {
-    // First log in
+    // First log in (strict staged flow proves the session was established)
     await mockNeonAuth(page)
-    await mockBackendAPIs(page)
+    await mockBackendAPIs(page, { authenticated: false })
     await mockDashboardAPI(page)
 
     await page.goto('/login')
-    const redirected = await page.waitForURL('**/dashboard', { timeout: 8_000 })
-      .then(() => true).catch(() => false)
-    if (!redirected) {
-      await page.waitForSelector('input#email', { timeout: 10_000 })
-      await page.fill('input#email', 'admin@onramp.dev')
-      await page.click('button[type="submit"]')
-      await page.waitForSelector('input#password', { timeout: 10_000 })
-      await page.fill('input#password', 'password123')
-      await page.click('button[type="submit"]')
-      await page.waitForURL('**/dashboard', { timeout: 15_000 })
-    }
+    await page.waitForSelector('input#email', { timeout: 10_000 })
+    await page.fill('input#email', 'admin@onramp.dev')
+    await page.click('button[type="submit"]')
+    await page.waitForSelector('input#password', { timeout: 10_000 })
+    await page.fill('input#password', 'password123')
+    await page.click('button[type="submit"]')
+    await page.waitForURL('**/dashboard', { timeout: 15_000 })
     await page.waitForTimeout(500)
 
     // Navigate back to login — should be redirected away

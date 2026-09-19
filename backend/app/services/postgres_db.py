@@ -578,6 +578,64 @@ class PostgresStorage:
             lambda s: self._update_in_session(s, collection, doc_id, data)
         )
 
+    async def adjust_api_key_credits(
+        self, key_id: str, delta: int, today: str, enforce_caps: bool = True
+    ) -> dict:
+        """Atomically check caps and adjust an API key's credit counters.
+
+        Runs ``SELECT ... FOR UPDATE`` inside a transaction so concurrent
+        adjustments serialize on the key row: every reader sees every prior
+        writer's counters (no TOCTOU overcharge, no lost updates). Handles
+        daily rollover (a stale ``daily_usage_date`` reads as zero).
+
+        Args:
+            key_id: API key record id.
+            delta: signed credit change (positive = charge, negative = refund).
+            today: current UTC date ``YYYY-MM-DD`` for rollover.
+            enforce_caps: when True, reject positive charges that would
+                exceed the daily cap or monthly budget.
+
+        Returns:
+            ``{"outcome": "ok" | "exhausted" | "not_found", "scope": ...}``
+            where scope is ``"daily"`` / ``"monthly"`` on exhaustion.
+        """
+        async def _op(session: AsyncSession) -> dict:
+            row = (
+                await session.execute(
+                    select(db_models.ApiKey)
+                    .where(db_models.ApiKey.id == key_id)
+                    .with_for_update()
+                )
+            ).scalar_one_or_none()
+            if row is None or not row.is_active:
+                return {"outcome": "not_found", "scope": None}
+            perms = dict(row.permissions or {})
+            if perms.get("daily_usage_date") != today:
+                perms["daily_credits_used"] = 0
+                perms["daily_usage_date"] = today
+            if enforce_caps and int(delta) > 0:
+                daily_cap = perms.get("daily_credit_cap")
+                if (
+                    daily_cap is not None
+                    and int(perms.get("daily_credits_used", 0)) + int(delta) > int(daily_cap)
+                ):
+                    return {"outcome": "exhausted", "scope": "daily"}
+                credit_limit = perms.get("credit_limit")
+                if (
+                    credit_limit
+                    and int(perms.get("credits_used", 0)) + int(delta) > int(credit_limit)
+                ):
+                    return {"outcome": "exhausted", "scope": "monthly"}
+            perms["credits_used"] = max(0, int(perms.get("credits_used", 0)) + int(delta))
+            perms["daily_credits_used"] = max(
+                0, int(perms.get("daily_credits_used", 0)) + int(delta)
+            )
+            row.permissions = perms
+            await session.flush()
+            return {"outcome": "ok", "scope": None}
+
+        return await self.run_in_transaction(_op)
+
     async def delete_document(self, collection: str, doc_id: str) -> None:
         """Delete a document."""
         return await self._run(
