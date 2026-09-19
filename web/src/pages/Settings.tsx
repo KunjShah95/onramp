@@ -1178,6 +1178,13 @@ export default function Settings() {
             </ConsolePanel>
           </motion.div>
 
+          {/* n8n automation */}
+          <motion.div variants={item}>
+            <ConsolePanel rail="n8n" designator="AUTOMATION BUS" status="standby">
+              <N8nIntegrationSection />
+            </ConsolePanel>
+          </motion.div>
+
           {/* Webhooks */}
           <motion.div variants={item}>
             <ConsolePanel
@@ -1981,6 +1988,227 @@ function LinearIntegrationSection() {
           <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
         </div>
       )}
+    </>
+  )
+}
+
+/*
+ * n8n Integration Section — two-way automation bus.
+ * Outbound: Onramp events -> n8n webhook. Inbound: n8n -> POST /api/v1/webhooks/n8n.
+ */
+function N8nIntegrationSection() {
+  const toast = useToast()
+  const [status, setStatus] = useState<any>(null)
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [baseUrl, setBaseUrl] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [events, setEvents] = useState<string[]>(['*'])
+  const [enabled, setEnabled] = useState(true)
+  const [testing, setTesting] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testResult, setTestResult] = useState<any>(null)
+  const [triggerEvent, setTriggerEvent] = useState('test.ping')
+  const [triggering, setTriggering] = useState(false)
+
+  async function load() {
+    try {
+      const { getN8nStatus, getN8nConfig } = await import('../lib/api')
+      const st = await getN8nStatus()
+      setStatus(st)
+      setTriggerEvent(st.supported_events?.[0] || 'test.ping')
+      const cfg = await getN8nConfig().catch(() => null)
+      if (cfg?.configured && cfg.config) {
+        setWebhookUrl(cfg.config.webhook_url?.includes('•') ? '' : cfg.config.webhook_url || '')
+        setBaseUrl(cfg.config.base_url || '')
+        setApiKey('••••••••')
+        setEvents(cfg.config.events?.length ? cfg.config.events : ['*'])
+        setEnabled(cfg.config.enabled !== false)
+      }
+    } catch { /* ignore — panel shows setup form */ }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const toggleEvent = (evt: string) => {
+    if (evt === '*') { setEvents(['*']); return }
+    setEvents((prev) => {
+      const base = prev.includes('*') ? [] : [...prev]
+      return base.includes(evt) ? base.filter((e) => e !== evt) : [...base, evt]
+    })
+  }
+
+  async function handleTest() {
+    const { testN8nConnection } = await import('../lib/api')
+    setTesting(true); setTestResult(null)
+    try {
+      const res = await testN8nConnection({
+        webhook_url: webhookUrl.trim() || undefined,
+        base_url: baseUrl.trim() || undefined,
+        api_key: apiKey.includes('••') ? undefined : apiKey.trim() || undefined,
+      })
+      setTestResult(res)
+    } catch (e: any) {
+      setTestResult({ ok: false, error: e.message })
+    }
+    setTesting(false)
+  }
+
+  async function handleSave() {
+    const { saveN8nConfig } = await import('../lib/api')
+    if (!webhookUrl.trim() && !baseUrl.trim()) { toast.error('Provide a webhook URL or base URL'); return }
+    if (webhookUrl.trim() && !/^https?:\/\//.test(webhookUrl.trim())) { toast.error('Webhook URL must start with http(s)://'); return }
+    setSaving(true)
+    try {
+      await saveN8nConfig({
+        webhook_url: webhookUrl.trim(),
+        base_url: baseUrl.trim(),
+        api_key: apiKey.includes('••') ? '••••••••' : apiKey.trim(),
+        events: events.length ? events : ['*'],
+        enabled,
+      })
+      toast.success('n8n connected', 'Outbound events will now fan out to n8n.')
+      setApiKey('••••••••')
+      await load()
+    } catch (e: any) {
+      toast.error('Failed to save n8n config', e.message)
+    }
+    setSaving(false)
+  }
+
+  async function handleDisconnect() {
+    const { deleteN8nConfig } = await import('../lib/api')
+    try {
+      await deleteN8nConfig()
+      setWebhookUrl(''); setBaseUrl(''); setApiKey(''); setEvents(['*']); setEnabled(true)
+      setTestResult(null); setStatus(null)
+      toast.success('n8n disconnected')
+      await load()
+    } catch (e: any) { toast.error('Failed to disconnect', e.message) }
+  }
+
+  async function handleTrigger() {
+    const { triggerN8nEvent } = await import('../lib/api')
+    setTriggering(true)
+    try {
+      await triggerN8nEvent(triggerEvent, { message: 'Manual trigger from Settings → Integrations → n8n', source: 'settings-ui' })
+      toast.success('Event sent to n8n', triggerEvent)
+    } catch (e: any) {
+      toast.error('Trigger failed', e.message)
+    }
+    setTriggering(false)
+  }
+
+  const connected = !!status?.user_configured
+
+  return (
+    <>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-tile bg-well border border-seam flex items-center justify-center">
+            <ShareNetwork size={20} className="text-ink-secondary" />
+          </div>
+          <div>
+            <p className="font-heading font-semibold text-ink">n8n</p>
+            <p className="text-caption text-ink-muted">Automate onboarding → Telegram / Slack / email via workflows</p>
+          </div>
+        </div>
+        {connected && <span className="tile tile-go">Connected</span>}
+      </div>
+
+      {status && (
+        <div className="mb-4 flex flex-wrap gap-2 text-caption">
+          <span className={cn('px-2 py-0.5 rounded-sm border font-code', status.env_configured ? 'bg-go/10 text-go border-go/25' : 'bg-panel-raised text-ink-muted border-seam')}>
+            env: {status.env_configured ? 'configured' : 'not set'}
+          </span>
+          <span className={cn('px-2 py-0.5 rounded-sm border font-code', status.inbound_configured ? 'bg-go/10 text-go border-go/25' : 'bg-panel-raised text-ink-muted border-seam')}>
+            inbound: {status.inbound_configured ? 'ready' : 'set N8N_INBOUND_SECRET'}
+          </span>
+          {status.hmac_outbound && (
+            <span className="px-2 py-0.5 rounded-sm border font-code bg-go/10 text-go border-go/25">signed</span>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <p className="text-caption text-ink-muted">
+          Paste your n8n <span className="font-code text-ink-secondary">Webhook</span> node URL (production URL, not{' '}
+          <span className="font-code">/webhook-test/</span>). Onramp task, onboarding and ramp events POST a signed JSON envelope.
+          n8n workflows can call back via <span className="font-code text-ink-secondary">POST /api/v1/webhooks/n8n</span> (see docs/N8N_INTEGRATION.md).
+        </p>
+        <div className="space-y-3">
+          <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
+            placeholder="https://n8n.example.com/webhook/<uuid>"
+            className="input" inputMode="url" autoComplete="off" spellCheck={false} />
+          <div className="flex gap-3 flex-wrap">
+            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="https://n8n.example.com (optional)"
+              className="input flex-1 min-w-[200px]" inputMode="url" autoComplete="off" spellCheck={false} />
+            <input value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              type="password" placeholder="n8n API key (optional)"
+              className="input flex-1 min-w-[180px]" />
+          </div>
+        </div>
+
+        <div>
+          <label className="overline text-ink-muted mb-1.5 block">Subscribed events</label>
+          <div className="flex flex-wrap gap-2">
+            {['*', ...(status?.supported_events || ['task.completed', 'onboarding.plan_created', 'ramp.stuck'])].map((evt: string) => (
+              <button key={evt} onClick={() => toggleEvent(evt)}
+                className={cn('px-2.5 py-1 rounded-sm text-caption font-code transition-colors border',
+                  events.includes(evt) ? 'bg-go/10 text-go border-go/25' : 'bg-panel-raised text-ink-muted border-seam hover:text-ink')}>
+                {evt === '*' ? 'All events' : evt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-caption text-ink-secondary">
+          <Toggle on={enabled} onChange={() => setEnabled(!enabled)} label="n8n forwarding" />
+          <span>Forwarding {enabled ? 'on' : 'paused'}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button onClick={handleTest} disabled={testing || (!webhookUrl.trim() && !baseUrl.trim())} className="btn btn-secondary">
+            {testing ? 'Testing…' : 'Test connection'}
+          </button>
+          <button onClick={handleSave} disabled={saving || (!webhookUrl.trim() && !baseUrl.trim())} className="btn">
+            {saving ? 'Saving…' : connected ? 'Save changes' : 'Connect n8n'}
+          </button>
+          {connected && (
+            <button onClick={handleDisconnect} className="btn btn-danger px-3 py-1.5 text-caption">Disconnect</button>
+          )}
+        </div>
+
+        {testResult && (
+          <div className={cn('text-caption flex items-center gap-2', testResult.ok ? 'text-go' : 'text-abort')} role="status">
+            {testResult.ok ? <><Check size={16} weight="bold" /> {testResult.message || 'Reachable.'}</>
+              : <><X size={16} weight="bold" /> {testResult.error || 'Connection failed'}</>}
+          </div>
+        )}
+
+        {connected && (
+          <div className="pt-2 border-t border-seam">
+            <label className="overline text-ink-muted mb-1.5 block">Manual trigger (faculty test)</label>
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <select value={triggerEvent} onChange={(e) => setTriggerEvent(e.target.value)} className="input appearance-none pr-8 font-code">
+                  {(status?.supported_events || []).map((evt: string) => (
+                    <option key={evt} value={evt}>{evt}</option>
+                  ))}
+                </select>
+                <CaretDown size={12} weight="bold" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              </div>
+              <button onClick={handleTrigger} disabled={triggering} className="btn btn-secondary">
+                {triggering ? 'Sending…' : 'Fire event'}
+              </button>
+            </div>
+            <p className="text-caption text-ink-muted mt-2">
+              Inbound URL: <code className="font-code bg-panel-raised px-1 rounded-sm border border-seam">POST /api/v1/webhooks/n8n</code>
+              {' '}· signed with <code className="font-code bg-panel-raised px-1 rounded-sm border border-seam">X-N8N-Signature</code>
+            </p>
+          </div>
+        )}
+      </div>
     </>
   )
 }

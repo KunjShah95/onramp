@@ -195,7 +195,7 @@ output size, and cost. Method: same prompt per task (root cause + patch with
 file refs + test, ≤400 words), `max_tokens=1000`, `temperature=0.2`.
 
 | Task | Model | Result | Latency | Chars | Cost |
-|------|-------|--------|---------|-------|------|
+| ------ | ------- | -------- | --------- | ------- | ------ |
 | T1 daily cap | `deepseek/deepseek-chat-v3.1` | OK | 7.48s | 1613 | $0.000783 |
 | T1 daily cap | `openai/gpt-4o-mini` | OK | 7.54s | 2602 | $0.000367 |
 | T1 daily cap | `openai/gpt-oss-20b` | OK | 13.86s | 3280 | $0.000094 |
