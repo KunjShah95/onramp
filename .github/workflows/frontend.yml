@@ -51,8 +51,12 @@ jobs:
         run: npx playwright test e2e/a11y.spec.ts --project=chromium
         working-directory: web
 
-      - name: Run E2E tests (auth, dashboard, review queue, explore, billing, team)
-        run: npx playwright test e2e/auth.spec.ts e2e/dashboard.spec.ts e2e/review-queue.spec.ts e2e/explore.spec.ts e2e/billing.spec.ts e2e/team.spec.ts --project=chromium --workers=1 --timeout=60000
+      - name: Run E2E tests (auth, dashboard, review queue, explore, billing, team, repo-access)
+        run: npx playwright test e2e/auth.spec.ts e2e/dashboard.spec.ts e2e/review-queue.spec.ts e2e/explore.spec.ts e2e/billing.spec.ts e2e/team.spec.ts e2e/new-dev-repo-access.spec.ts --project=chromium --workers=1 --timeout=60000
+        working-directory: web
+
+      - name: Run concurrent-load test (8 visitors, hang sentinel)
+        run: npx playwright test e2e/performance/load.spec.ts --project=chromium --workers=1 --timeout=90000
         working-directory: web
 
       - name: Run Lighthouse performance audit tests
