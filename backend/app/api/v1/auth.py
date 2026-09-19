@@ -177,7 +177,10 @@ async def get_user_or_api_key(request: Request) -> dict:
         "org_name": org_name,
         "raw_key_record": key,
         # Per-key cost budget surfaced so gateway handlers can enforce limits.
+        # team_id is the canonical usage scope (stored UUID); the
+        # permissions org_name is a display label.
         "key_id": key.get("key_id") or key.get("id"),
+        "team_id": key.get("team_id"),
         "credit_limit": key.get("credit_limit"),
         "credits_used": key.get("credits_used", 0),
         "daily_credit_cap": key.get("daily_credit_cap"),

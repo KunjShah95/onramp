@@ -440,9 +440,14 @@ class APIKeyService:
         """
         if tier not in TIER_LIMITS:
             return {"error": f"Invalid tier: {tier}"}
+        # Domain validation runs OUTSIDE the storage try below so safe,
+        # actionable messages (negative cap, daily > monthly) reach the
+        # caller instead of being replaced by the generic storage error.
         try:
-            # Validate credit caps combination before attempting storage.
             validate_credit_caps(credit_limit, daily_credit_cap)
+        except ValueError as e:
+            return {"error": str(e)}
+        try:
             # Org-centric: the org/team id IS the tenant scope for the key.
             team_scope = org_id or org_name
             plain_key, record = await create_api_key(
@@ -517,72 +522,104 @@ class APIKeyService:
             "daily_credits_used": _daily_used_today(perms),
         }
 
-    async def increment_credits_used(self, key_id: str, credits: int) -> Optional[dict]:
-        """Atomically add ``credits`` to a key's cumulative usage counter.
+    async def reserve_credits(self, key_id: str, credits: int) -> dict:
+        """Reserve ``credits`` against a key's caps BEFORE executing work.
 
-        Uses an atomic increment where storage supports it; falls back to
-        read-modify-write with retry on conflict.
+        On Postgres this is a row-locked read-check-write inside one
+        transaction, so concurrent reservations serialize (no TOCTOU
+        overcharge, no lost updates). Other backends use best-effort
+        read-modify-write with retry.
 
-        Enforces the per-key ``daily_credit_cap``: if the key has one and
-        charging ``credits`` would exceed it for the current UTC day, the
-        increment is rejected (returns None). Both the daily counter
-        (``daily_credits_used``) and its rollover date (``daily_usage_date``)
-        are persisted on every charge, so the cap actually binds and the
-        counter resets on date rollover (see :meth:`_daily_used_today`).
-        Capped keys use read-modify-write (the atomic helper only bumps the
-        monthly ``credits_used`` counter).
+        Returns ``{"outcome": "ok" | "exhausted" | "error" | "not_found",
+        "scope": "daily" | "monthly" | None}``. Callers must check the
+        outcome: ``exhausted`` → 402, ``error``/``not_found`` → fail closed.
         """
+        return await self._adjust_credits(key_id, int(credits), enforce_caps=True)
+
+    async def refund_credits(self, key_id: str, credits: int) -> dict:
+        """Return previously reserved ``credits`` (agent execution failed).
+
+        Best-effort compensating adjustment, floored at zero — a failed
+        refund is logged, never raised.
+        """
+        try:
+            return await self._adjust_credits(key_id, -abs(int(credits)), enforce_caps=False)
+        except Exception:
+            logger.exception("Credit refund failed for key %s", key_id)
+            return {"outcome": "error", "scope": None}
+
+    async def _adjust_credits(
+        self, key_id: str, delta: int, enforce_caps: bool
+    ) -> dict:
+        """Signed credit adjustment with explicit outcome reporting."""
         if not key_id:
-            return None
+            return {"outcome": "not_found", "scope": None}
         storage = get_storage()
-        record = await storage.get_document("api_keys", key_id)
-        if record is None:
-            return None
+        adjust = getattr(storage, "adjust_api_key_credits", None)
+        if adjust is not None:
+            try:
+                return await adjust(key_id, int(delta), _today_utc_datestr(), enforce_caps)
+            except Exception:
+                logger.exception("Atomic credit adjustment failed for key %s", key_id)
+                return {"outcome": "error", "scope": None}
+        # Non-Postgres backends: best-effort read-modify-write with retry.
         today = _today_utc_datestr()
-        if (record.get("permissions") or {}).get("daily_credit_cap") is not None:
-            # Capped keys: read-modify-write so the daily counter and the
-            # rollover date persist together with the monthly counter.
-            for _ in range(3):
+        try:
+            record = await storage.get_document("api_keys", key_id)
+        except Exception:
+            logger.exception("Credit adjustment read failed for key %s", key_id)
+            return {"outcome": "error", "scope": None}
+        if record is None:
+            return {"outcome": "not_found", "scope": None}
+        for _ in range(3):
+            try:
                 fresh = await storage.get_document("api_keys", key_id)
                 if fresh is None:
-                    return None
+                    return {"outcome": "not_found", "scope": None}
                 fperms = dict(fresh.get("permissions") or {})
                 if fperms.get("daily_usage_date") != today:
                     fperms["daily_credits_used"] = 0
                     fperms["daily_usage_date"] = today
-                if _daily_used_today(fperms) + int(credits) > int(fperms["daily_credit_cap"]):
-                    return None
-                fperms["credits_used"] = int(fperms.get("credits_used", 0)) + int(credits)
-                fperms["daily_credits_used"] = _daily_used_today(fperms) + int(credits)
-                try:
-                    result = await storage.update_document("api_keys", key_id, {"permissions": fperms})
-                    if result:
-                        return result
-                except Exception:
-                    continue
-            return None
-        # Uncapped keys keep the fast atomic path.
-        if hasattr(storage, "increment_json_field"):
-            try:
-                return await storage.increment_json_field(
-                    "api_keys", key_id, "permissions", "credits_used", int(credits)
+                if enforce_caps and int(delta) > 0:
+                    daily_cap = fperms.get("daily_credit_cap")
+                    if (
+                        daily_cap is not None
+                        and _daily_used_today(fperms) + int(delta) > int(daily_cap)
+                    ):
+                        return {"outcome": "exhausted", "scope": "daily"}
+                    credit_limit = fperms.get("credit_limit")
+                    if (
+                        credit_limit
+                        and int(fperms.get("credits_used", 0)) + int(delta) > int(credit_limit)
+                    ):
+                        return {"outcome": "exhausted", "scope": "monthly"}
+                fperms["credits_used"] = max(0, int(fperms.get("credits_used", 0)) + int(delta))
+                fperms["daily_credits_used"] = max(
+                    0, _daily_used_today(fperms) + int(delta)
                 )
-            except Exception:
-                pass
-        # Fallback: optimistic retry loop
-        for _ in range(3):
-            record = await storage.get_document("api_keys", key_id)
-            if record is None:
-                return None
-            perms = dict(record.get("permissions") or {})
-            perms["credits_used"] = int(perms.get("credits_used", 0)) + int(credits)
-            try:
-                result = await storage.update_document("api_keys", key_id, {"permissions": perms})
+                result = await storage.update_document(
+                    "api_keys", key_id, {"permissions": fperms}
+                )
                 if result:
-                    return result
+                    return {"outcome": "ok", "scope": None}
             except Exception:
                 continue
-        return None
+        logger.warning("Credit adjustment failed after retries for key %s", key_id)
+        return {"outcome": "error", "scope": None}
+
+    async def increment_credits_used(self, key_id: str, credits: int) -> Optional[dict]:
+        """Legacy charge helper — prefer :meth:`reserve_credits`.
+
+        Kept for backward compatibility; delegates to the outcome-reporting
+        adjustment path and returns the updated key record on success.
+        """
+        outcome = await self._adjust_credits(key_id, int(credits), enforce_caps=True)
+        if outcome.get("outcome") != "ok":
+            return None
+        try:
+            return await get_storage().get_document("api_keys", key_id)
+        except Exception:
+            return None
 
     @staticmethod
     def daily_cap_reached(daily_cap: Optional[int], daily_used: int, cost: int) -> bool:

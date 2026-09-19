@@ -89,9 +89,16 @@ export async function mockNeonAuth(page: Page) {
 
 const MOCK_TEAM_ID = 'team-42'
 
-export async function mockBackendAPIs(page: Page) {
+export async function mockBackendAPIs(page: Page, opts: { authenticated?: boolean } = {}) {
+  // Session state for the custom-JWT path: /auth/me is 401 until a login or
+  // registration call establishes the session (mirrors production, where no
+  // session exists before login). Defaults to authenticated so existing
+  // specs that never exercise login keep working.
+  let sessionEstablished = opts.authenticated ?? true;
+
   // ── Auth routes ──────────────────────────────────────────────────
   await page.route('**/api/v1/auth/login', async (route) => {
+    sessionEstablished = true;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -106,6 +113,7 @@ export async function mockBackendAPIs(page: Page) {
   })
 
   await page.route('**/api/v1/auth/register', async (route) => {
+    sessionEstablished = true;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -120,6 +128,13 @@ export async function mockBackendAPIs(page: Page) {
   })
 
   await page.route('**/api/v1/auth/me', async (route) => {
+    if (!sessionEstablished) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not authenticated' }),
+      })
+    }
     return route.fulfill({
       status: 200,
       contentType: 'application/json',

@@ -25,8 +25,10 @@ async def resolve_org_team_id(org_name: str, user: dict) -> str:
     """Resolve an org identifier to a team UUID for storage scoping.
 
     Accepts a team UUID directly, a team id from the caller's own memberships,
-    or a caller-scoped team display name (``"Foundation"``). Anything else is
-    a 404 — never a bare 500 from a UUID-typed column lookup.
+    or a caller-scoped team display name. Team names are not unique: zero
+    matches is a 404, and multiple matches is a 409 requiring the caller to
+    disambiguate with the team UUID. Anything else is a 404 — never a bare
+    500 from a UUID-typed column lookup.
     """
     teams = await get_user_teams(user["uid"])
     if org_name in {(t.get("team_id") or t.get("id")) for t in teams}:
@@ -36,14 +38,18 @@ async def resolve_org_team_id(org_name: str, user: dict) -> str:
         return org_name
     except (ValueError, AttributeError, TypeError):
         pass
-    match = next(
-        (t for t in teams
-         if (t.get("name") or "").lower() == str(org_name).lower()),
-        None,
-    )
-    if match is None:
+    matches = [
+        t for t in teams
+        if (t.get("name") or "").lower() == str(org_name).lower()
+    ]
+    if not matches:
         raise HTTPException(status_code=404, detail="Organization not found")
-    return match.get("team_id") or match.get("id")
+    if len(matches) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Multiple teams share this name — retry with the team UUID",
+        )
+    return matches[0].get("team_id") or matches[0].get("id")
 
 
 async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = False) -> None:
@@ -432,7 +438,9 @@ async def list_provider_keys(
     each entry reports ``configured`` plus audit metadata.
     """
     user_role = await _require_key_manager_role(org_name, user)
-    providers = await team_provider_keys.list_team_keys(org_name)
+    providers = await team_provider_keys.list_team_keys(
+        await resolve_org_team_id(org_name, user)
+    )
     await log_key_action(
         org_name=org_name,
         action="provider_keys_listed",
@@ -457,7 +465,7 @@ async def set_provider_key(
     """
     user_role = await _require_key_manager_role(org_name, user)
     result = await team_provider_keys.set_team_key(
-        org_name, provider, request.api_key, user["uid"]
+        await resolve_org_team_id(org_name, user), provider, request.api_key, user["uid"]
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -479,7 +487,9 @@ async def delete_provider_key(
 ):
     """Remove a team's BYOK key for a provider (falls back to platform key)."""
     user_role = await _require_key_manager_role(org_name, user)
-    ok = await team_provider_keys.delete_team_key(org_name, provider)
+    ok = await team_provider_keys.delete_team_key(
+        await resolve_org_team_id(org_name, user), provider
+    )
     if not ok:
         raise HTTPException(
             status_code=404,
@@ -511,7 +521,7 @@ async def add_provider_key(
     """
     user_role = await _require_key_manager_role(org_name, user)
     result = await team_provider_keys.add_team_key(
-        org_name, provider, request.api_key, user["uid"]
+        await resolve_org_team_id(org_name, user), provider, request.api_key, user["uid"]
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -538,7 +548,9 @@ async def remove_provider_key(
     no key matched ``key_id``.
     """
     user_role = await _require_key_manager_role(org_name, user)
-    ok = await team_provider_keys.remove_team_key(org_name, provider, key_id)
+    ok = await team_provider_keys.remove_team_key(
+        await resolve_org_team_id(org_name, user), provider, key_id
+    )
     if not ok:
         raise HTTPException(
             status_code=404,
@@ -570,7 +582,9 @@ async def get_routing_mode(
     team hasn't set a preference.
     """
     await _require_key_manager_role(org_name, user)
-    mode = await team_routing_settings.get_team_routing_mode(org_name)
+    mode = await team_routing_settings.get_team_routing_mode(
+        await resolve_org_team_id(org_name, user)
+    )
     return {
         "org_name": org_name,
         "routing_mode": mode,
@@ -599,7 +613,7 @@ async def set_routing_mode(
     """
     user_role = await _require_key_manager_role(org_name, user)
     result = await team_routing_settings.set_team_routing_mode(
-        org_name, request.routing_mode, user["uid"]
+        await resolve_org_team_id(org_name, user), request.routing_mode, user["uid"]
     )
     await log_key_action(
         org_name=org_name,
@@ -630,7 +644,7 @@ async def get_usage(
     user: dict = Depends(get_current_user),
 ) -> UsageResponse:
     await _ensure_org_access(org_name, user)
-    result = await usage.get_usage(org_name, period)
+    result = await usage.get_usage(await resolve_org_team_id(org_name, user), period)
     return UsageResponse(**result)
 
 
@@ -640,7 +654,7 @@ async def get_usage_summary(
     user: dict = Depends(get_current_user),
 ):
     await _ensure_org_access(org_name, user)
-    return await usage.get_org_summary(org_name)
+    return await usage.get_org_summary(await resolve_org_team_id(org_name, user))
 
 
 @router.get("/usage/{org_name}/providers")
@@ -655,7 +669,9 @@ async def get_provider_usage(
     the route metadata logged by the OpenAI-compatible gateway.
     """
     await _ensure_org_access(org_name, user)
-    return await usage.get_provider_breakdown(org_name, period)
+    return await usage.get_provider_breakdown(
+        await resolve_org_team_id(org_name, user), period
+    )
 
 
 @router.get("/usage/{org_name}/quota")
@@ -666,7 +682,7 @@ async def check_quota(
 ):
     await _ensure_org_access(org_name, user)
     limits = APIKeyService.get_tier_limits(tier)
-    result = await usage.check_quota(org_name, limits)
+    result = await usage.check_quota(await resolve_org_team_id(org_name, user), limits)
     return result
 
 
@@ -676,8 +692,11 @@ async def list_tiers():
 
 
 @router.get("/models")
-async def list_llm_models(req: Request):
+async def list_llm_models(req: Request, auth: dict = Depends(get_user_or_api_key)):
     """List the LLM router's model catalog (OpenRouter-style).
+
+    Authenticated (JWT session or API key): the catalog exposes provider
+    routing and pricing metadata, so anonymous callers are rejected.
 
     Returns the available providers (and whether each is configured) plus
     the per-query-type routing preferences (code -> Claude, chat -> free
@@ -814,8 +833,11 @@ def _query_type_model(llm: Any, query_type: Optional[str]) -> Optional[str]:
 
 
 @router.get("/agents")
-async def list_agents(req: Request):
+async def list_agents(req: Request, auth: dict = Depends(get_user_or_api_key)):
     """List all available AI agents and their metadata.
+
+    Authenticated (JWT session or API key): agent metadata includes credit
+    costs and serving models, so anonymous callers are rejected.
 
     Each agent reports the query type it routes through (code, reasoning,
     structured, ...) and the primary model that would serve it, e.g.
@@ -882,34 +904,43 @@ async def execute_agent(
         # usage_based tier — check wallet later
         pass
 
-    # Per-key cost budget: reject the call when charging this action's credits
-    # would push the key past its configured credit_limit. The counter is
-    # checked against the value captured at request start and charged after
-    # execution — best-effort enforcement, not a hard concurrency guarantee
-    # (two parallel calls near the limit can both pass this gate).
-    if auth.get("auth_method") == "api_key":
-        key_credit_limit = auth.get("credit_limit")
-        key_credits_used = int(auth.get("credits_used", 0) or 0)
-        if APIKeyService.cost_limit_reached(key_credit_limit, key_credits_used, cost):
+    # Per-key budgets are RESERVED before executing (fail closed): the
+    # reservation atomically checks caps and records the charge, so parallel
+    # calls cannot jointly exceed a cap and a storage failure can never
+    # produce unbilled successful execution. If the agent run later fails,
+    # the reservation is refunded below.
+    reserved = False
+    if auth.get("auth_method") == "api_key" and auth.get("key_id"):
+        reservation = await key_service.reserve_credits(auth["key_id"], cost)
+        outcome = reservation.get("outcome")
+        if outcome == "exhausted":
+            if reservation.get("scope") == "daily":
+                raise HTTPException(
+                    status_code=402,
+                    detail=(
+                        "API key daily credit cap reached. "
+                        "Raise the key's daily cap in Settings to continue."
+                    ),
+                )
             raise HTTPException(
                 status_code=402,
                 detail=(
-                    f"API key cost limit reached ({key_credits_used}/{key_credit_limit} "
-                    f"credits). Raise the key's cost limit in Settings to continue."
+                    "API key cost limit reached. "
+                    "Raise the key's cost limit in Settings to continue."
                 ),
             )
-        # Per-key DAILY cap: same 402 treatment using the rollover-aware
-        # counter surfaced by validate_key (stale dates read as zero).
-        key_daily_cap = auth.get("daily_credit_cap")
-        key_daily_used = int(auth.get("daily_credits_used", 0) or 0)
-        if APIKeyService.daily_cap_reached(key_daily_cap, key_daily_used, cost):
+        if outcome == "not_found":
+            raise HTTPException(status_code=401, detail="Invalid or expired API key")
+        if outcome != "ok":
+            logger.error(
+                "Credit reservation failed for key %s (outcome=%s)",
+                auth.get("key_id"), outcome,
+            )
             raise HTTPException(
-                status_code=402,
-                detail=(
-                    f"API key daily credit cap reached ({key_daily_used}/{key_daily_cap} "
-                    f"credits today). Raise the key's daily cap in Settings to continue."
-                ),
+                status_code=503,
+                detail="Billing is temporarily unavailable. Try again shortly.",
             )
+        reserved = True
 
     # Get GitHub token for agents that might need it
     github_token = None
@@ -956,9 +987,12 @@ async def execute_agent(
                 pass
 
         # Track usage (with provider attribution from the router, if any).
+        # Canonical scope is the stored team UUID for API keys (the
+        # permissions org_name is a display label and must never reach
+        # UUID-scoped usage storage).
         try:
             uid = auth.get("uid", "unknown")
-            org = auth.get("org_name", uid)
+            org = auth.get("team_id") or auth.get("org_name", uid)
             await usage.record_usage(
                 org_name=org,
                 endpoint=agent_name,
@@ -968,15 +1002,6 @@ async def execute_agent(
         except Exception:
             pass  # usage tracking is non-critical
 
-        # Charge the per-key cost budget when the call was made with an API key
-        # (JWT sessions are covered by the org-level quota). Kept in its own
-        # guard so a telemetry failure can never skip the budget accounting.
-        if auth.get("auth_method") == "api_key" and auth.get("key_id"):
-            try:
-                await key_service.increment_credits_used(auth["key_id"], cost)
-            except Exception:
-                pass  # best-effort counter; enforcement re-checks on next call
-
         return {
             "agent": agent_name,
             "result": result,
@@ -984,6 +1009,10 @@ async def execute_agent(
             "tier": tier,
         }
     except ImportError as e:
+        if reserved:
+            await key_service.refund_credits(auth["key_id"], cost)
         raise HTTPException(status_code=500, detail=f"Agent module not found: {e}")
     except Exception as e:
+        if reserved:
+            await key_service.refund_credits(auth["key_id"], cost)
         raise HTTPException(status_code=500, detail=str(e))

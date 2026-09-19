@@ -228,7 +228,7 @@ class TestDailyCapEnforcement:
         svc = aks.APIKeyService()
         validated = await svc.validate_key(plain)
         key_id = validated["key_id"]
-        assert await svc.increment_credits_used(key_id, 10) is not None
+        assert (await svc.reserve_credits(key_id, 10))["outcome"] == "ok"
 
         # Backdate the counter to yesterday (simulating spend on a prior day).
         rec = await storage.get_document("api_keys", key_id)
@@ -240,11 +240,68 @@ class TestDailyCapEnforcement:
         await storage.update_document("api_keys", key_id, {"permissions": perms})
 
         # Yesterday's 10 no longer counts: charging 10 today must succeed…
-        assert await svc.increment_credits_used(key_id, 10) is not None
+        assert (await svc.reserve_credits(key_id, 10))["outcome"] == "ok"
         validated = await svc.validate_key(plain)
         assert validated["daily_credits_used"] == 10
         # …but the day's budget is now spent: a further charge is rejected.
-        assert await svc.increment_credits_used(key_id, 10) is None
+        rejected = await svc.reserve_credits(key_id, 10)
+        assert rejected["outcome"] == "exhausted"
+        assert rejected["scope"] == "daily"
+
+    async def test_reserve_reports_monthly_scope(self, storage):
+        """Monthly exhaustion names its scope (drives the 402 message)."""
+        from app.services import api_key_service as aks
+
+        plain, _ = await aks.create_api_key(
+            name="monthly-scope", user_id=TEST_UID, credit_limit=15,
+        )
+        svc = aks.APIKeyService()
+        key_id = (await svc.validate_key(plain))["key_id"]
+        assert (await svc.reserve_credits(key_id, 10))["outcome"] == "ok"
+        rejected = await svc.reserve_credits(key_id, 10)
+        assert rejected == {"outcome": "exhausted", "scope": "monthly"}
+
+    async def test_refund_restores_budget(self, storage):
+        """Refunds compensate failed executions (floored at zero)."""
+        from app.services import api_key_service as aks
+
+        plain, _ = await aks.create_api_key(
+            name="refund", user_id=TEST_UID,
+            credit_limit=100, daily_credit_cap=50,
+        )
+        svc = aks.APIKeyService()
+        key_id = (await svc.validate_key(plain))["key_id"]
+        assert (await svc.reserve_credits(key_id, 10))["outcome"] == "ok"
+        assert (await svc.refund_credits(key_id, 10))["outcome"] == "ok"
+        validated = await svc.validate_key(plain)
+        assert validated["credits_used"] == 0
+        assert validated["daily_credits_used"] == 0
+        # Unknown keys report not_found (gateway maps to 401).
+        assert (await svc.reserve_credits("nope", 10))["outcome"] == "not_found"
+
+    def test_duplicate_team_names_require_uuid(self, client, monkeypatch):
+        """Ambiguous display names are rejected, not silently misrouted."""
+        from app.api.v1 import ai_gateway
+
+        async def _teams(user_id):
+            return [
+                {"id": "t1", "team_id": "t1", "name": "Acme", "role": "admin"},
+                {"id": "t2", "team_id": "t2", "name": "acme", "role": "admin"},
+            ]
+
+        async def _no_members(team_id):
+            return []
+
+        async def _add_member(team_id, user_id, role="junior_dev"):
+            raise AssertionError("must not create membership on ambiguity")
+
+        monkeypatch.setattr(ai_gateway, "get_user_teams", _teams)
+        monkeypatch.setattr(ai_gateway, "get_team_members", _no_members)
+        monkeypatch.setattr(ai_gateway, "add_member", _add_member)
+        resp = client.post(f"{API_PREFIX}/ai/keys", json={
+            "org_name": "ACME", "name": "ambiguous",
+        })
+        assert resp.status_code == 409
 
     def test_no_daily_cap_never_blocks(self):
         client = TestClient(_app(user=True))

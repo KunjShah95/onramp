@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - ".github/workflows/frontend.yml"
 
 permissions:
   contents: read

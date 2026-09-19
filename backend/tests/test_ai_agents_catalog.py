@@ -36,11 +36,21 @@ class _FakeLLM:
         return {"provider": provider, "served": self._MODEL.get(provider, "groq/llama-3.3-70b-versatile")}
 
 
-def _app(llm=None):
+def _app(llm=None, user=True):
     from app.api.v1 import ai_gateway
 
     application = FastAPI()
     application.state.llm = llm
+    if user:
+        @application.middleware("http")
+        async def _set_user(request, call_next):
+            request.state.user = {
+                "uid": "u-catalog-test",
+                "email": "catalog@test.com",
+                "name": "Catalog",
+            }
+            return await call_next(request)
+
     application.include_router(ai_gateway.router, prefix="/api/v1")
     return application
 
@@ -111,3 +121,14 @@ class TestAgentsEndpoint:
         by_name = {a["name"]: a for a in resp.json()["agents"]}
         assert by_name["explore"]["query_type"] == "reasoning"
         assert by_name["explore"]["model"] is None
+
+    def test_catalog_rejects_anonymous(self):
+        """No JWT and no API key → 401 (catalog exposes routing/pricing)."""
+        resp = TestClient(_app(_FakeLLM(), user=False)).get("/api/v1/ai/agents")
+        assert resp.status_code == 401
+
+    def test_catalog_rejects_invalid_api_key(self):
+        resp = TestClient(_app(_FakeLLM(), user=False)).get(
+            "/api/v1/ai/agents", headers={"X-API-Key": "cf_bogus"}
+        )
+        assert resp.status_code == 401
