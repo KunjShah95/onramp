@@ -466,8 +466,10 @@ class APIKeyService:
                 "expires_at": record.get("expires_at"),
                 "is_active": True,
             }
-        except Exception as e:
-            return {"error": str(e)}
+        except Exception:
+            # Never leak storage internals (table/SQL text) to API clients.
+            logger.exception("API key creation failed for org %s", org_name)
+            return {"error": "Failed to create API key"}
 
     async def list_keys(
         self,

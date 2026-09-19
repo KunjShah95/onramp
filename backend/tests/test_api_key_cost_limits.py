@@ -255,6 +255,23 @@ class TestDailyCapEnforcement:
         assert self._execute_health(created["raw_key"]).status_code == 200
         assert self._execute_health(created["raw_key"]).status_code == 200
 
+    def test_rotate_preserves_daily_cap(self):
+        client = TestClient(_app(user=True))
+        created = client.post(f"{API_PREFIX}/ai/keys", json={
+            "org_name": "acme",
+            "credit_limit": 1000,
+            "daily_credit_cap": 15,
+        }).json()
+        resp = client.post(
+            f"{API_PREFIX}/ai/keys/{created['key_id']}/rotate",
+            json={"key_id": created["key_id"]})
+        assert resp.status_code == 200
+        rotated = resp.json()
+        assert rotated["daily_credit_cap"] == 15
+        # Old key is dead, new key works within the preserved cap.
+        assert self._execute_health(created["raw_key"]).status_code == 401
+        assert self._execute_health(rotated["raw_key"]).status_code == 200
+
 
 class TestKeyExpiry:
     def test_create_key_with_expiry_returns_future_expires_at(self, client):

@@ -21,6 +21,31 @@ key_service = APIKeyService()
 usage = UsageTracker()
 
 
+async def resolve_org_team_id(org_name: str, user: dict) -> str:
+    """Resolve an org identifier to a team UUID for storage scoping.
+
+    Accepts a team UUID directly, a team id from the caller's own memberships,
+    or a caller-scoped team display name (``"Foundation"``). Anything else is
+    a 404 — never a bare 500 from a UUID-typed column lookup.
+    """
+    teams = await get_user_teams(user["uid"])
+    if org_name in {(t.get("team_id") or t.get("id")) for t in teams}:
+        return org_name
+    try:
+        uuid.UUID(str(org_name))
+        return org_name
+    except (ValueError, AttributeError, TypeError):
+        pass
+    match = next(
+        (t for t in teams
+         if (t.get("name") or "").lower() == str(org_name).lower()),
+        None,
+    )
+    if match is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return match.get("team_id") or match.get("id")
+
+
 async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = False) -> None:
     """Authorize access to an org's resources by team membership.
 
@@ -30,12 +55,13 @@ async def _ensure_org_access(org_name: str, user: dict, allow_create: bool = Fal
         its owner (first-touch ownership) and is allowed.
       - otherwise 403.
     """
-    members = await get_team_members(org_name)
+    team_id = await resolve_org_team_id(org_name, user)
+    members = await get_team_members(team_id)
     member_ids = {m.get("id") or m.get("user_id") for m in members}
     if user["uid"] in member_ids:
         return
     if allow_create and not members:
-        await add_member(org_name, user["uid"], role="admin")
+        await add_member(team_id, user["uid"], role="admin")
         return
     raise HTTPException(status_code=403, detail="Not a member of this organization")
 
@@ -49,27 +75,7 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
     KEY_MANAGER_ROLES = {"ceo", "cto", "admin", "senior_dev", "senior", "hr"}
 
     uid = user["uid"]
-    teams = await get_user_teams(uid)
-    team_ids = {(t.get("team_id") or t.get("id")) for t in teams}
-    if org_name in team_ids:
-        team_id = org_name
-    else:
-        try:
-            uuid.UUID(str(org_name))
-            team_id = org_name
-        except (ValueError, AttributeError, TypeError):
-            # org_name may be a display name ("Foundation"): resolve it
-            # within the caller's own teams (scoped — no cross-team leak).
-            # Unresolvable input is a 404, never a bare 500 from the UUID
-            # column lookup below.
-            match = next(
-                (t for t in teams
-                 if (t.get("name") or "").lower() == str(org_name).lower()),
-                None,
-            )
-            if match is None:
-                raise HTTPException(status_code=404, detail="Organization not found")
-            team_id = match.get("team_id") or match.get("id")
+    team_id = await resolve_org_team_id(org_name, user)
 
     members = await get_team_members(team_id)
     member_ids = {m.get("id") or m.get("user_id") for m in members}
@@ -80,6 +86,7 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
             return "admin"
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
+    teams = await get_user_teams(uid)
     user_role = None
     for team in teams:
         if (team.get("team_id") or team.get("id")) == team_id:
@@ -169,6 +176,7 @@ async def create_api_key(
         org_name=request.org_name,
         tier=request.tier,
         created_by=user["uid"],
+        org_id=await resolve_org_team_id(request.org_name, user),
         name=request.name,
         credit_limit=request.credit_limit,
         daily_credit_cap=request.daily_credit_cap,
@@ -209,6 +217,7 @@ async def create_api_key(
         tier=result["tier"],
         name=result.get("name"),
         credit_limit=result.get("credit_limit"),
+        daily_credit_cap=result.get("daily_credit_cap"),
         expires_at=result.get("expires_at"),
     )
 
@@ -222,7 +231,8 @@ async def list_api_keys(
     # verification and key manager role) or fall back to the caller's own user-scoped keys.
     if org_name:
         user_role = await _require_key_manager_role(org_name, user)
-        keys = await key_service.list_keys(org_name, owner_type="team")
+        team_scope = await resolve_org_team_id(org_name, user)
+        keys = await key_service.list_keys(team_scope, owner_type="team")
         await log_key_action(
             org_name=org_name,
             action="listed",
@@ -302,16 +312,25 @@ async def rotate_api_key(
     org_name = key.get("team_id") or key.get("org_name")
     tier = perms.get("tier", key.get("tier", "free"))
     credit_limit = perms.get("credit_limit")
+    daily_credit_cap = perms.get("daily_credit_cap")
     name = key.get("name")
 
     await key_service.revoke_key(key_id)
 
+    # Stored scope predates org resolution (may be a display name): prefer
+    # the resolved team UUID, fall back to the raw scope for legacy keys.
+    try:
+        team_scope = await resolve_org_team_id(org_name, user)
+    except HTTPException:
+        team_scope = org_name
     result = await key_service.create_key(
         org_name=org_name,
         tier=tier,
         created_by=uid,
+        org_id=team_scope,
         name=f"{name} (rotated)" if name else None,
         credit_limit=credit_limit,
+        daily_credit_cap=daily_credit_cap,
     )
 
     if "error" in result:
@@ -342,6 +361,7 @@ async def rotate_api_key(
         tier=result["tier"],
         name=result.get("name"),
         credit_limit=result.get("credit_limit"),
+        daily_credit_cap=result.get("daily_credit_cap"),
         expires_at=result.get("expires_at"),
     )
 
