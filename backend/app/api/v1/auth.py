@@ -573,7 +573,9 @@ async def login(body: LoginRequest):
     # This is O(1) and prevents brute-force from overwhelming DB queries.
     lockout = await check_lockout(email_h)
     if lockout.locked:
-        await log_event("login_failed", "anonymous", "unknown",
+        # actor_id=None: no authenticated user exists on this path, and the
+        # column is a nullable UUID (a "anonymous" placeholder 500s on Postgres).
+        await log_event("login_failed", None, "unknown",
                         metadata={"reason": "account_locked", "email_hash": email_h[:12]})
         response = JSONResponse(
             status_code=429,
@@ -594,7 +596,7 @@ async def login(body: LoginRequest):
     if not user_row:
         # Record failed attempt and log
         status = await record_failed_attempt(email_h)
-        await log_event("login_failed", "anonymous", "unknown",
+        await log_event("login_failed", None, "unknown",
                         metadata={"reason": "user_not_found", "email_hash": email_h[:12],
                                    "attempts_remaining": status.attempts_remaining})
         raise HTTPException(status_code=401, detail="Invalid email or password")

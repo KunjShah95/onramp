@@ -147,7 +147,6 @@ async def _sync_task_to_linear(task: dict) -> None:
                             f"Failed to persist linear_issue_id for task {task.get('task_id')}: {store_exc}"
                         )
     except Exception as e:
-        import logging
         logging.getLogger(__name__).warning(
             f"Linear sync failed for task {task.get('task_id')} (team {task.get('team_id')}): {e}",
             exc_info=True,
@@ -597,7 +596,6 @@ async def log_actual_hours(task_id: str, hours: float, user_id: str) -> dict:
             overrun_task = result or task
             await notify_task_time_overrun(overrun_task, float(hours), float(estimated))
         except Exception:
-            import logging
             logging.getLogger(__name__).debug("Time-overrun alert failed", exc_info=True)
 
     return result or task
@@ -806,7 +804,6 @@ async def has_passed_module_quiz(user_id: str, module: str) -> bool:
         )
         return bool(results)
     except Exception:
-        import logging
         logging.getLogger(__name__).debug("Quiz gate lookup failed", exc_info=True)
         # Fail open when quiz tracking is unavailable so we never brick a task.
         return True

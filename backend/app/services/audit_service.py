@@ -34,7 +34,7 @@ def _utcnow() -> datetime:
 
 async def log_event(
     event_type: str,
-    actor_id: str,
+    actor_id: Optional[str],
     target_id: str,
     team_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
