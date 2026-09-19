@@ -48,28 +48,41 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
     """
     KEY_MANAGER_ROLES = {"ceo", "cto", "admin", "senior_dev", "senior", "hr"}
 
-    # org_name is a team UUID on the wire (the frontend sends activeTeamId).
-    # Reject anything else with a 400 here — otherwise the team lookup below
-    # blows up with an asyncpg DataError and the client sees a bare 500.
-    try:
-        uuid.UUID(str(org_name))
-    except (ValueError, AttributeError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid organization identifier")
-
     uid = user["uid"]
-    members = await get_team_members(org_name)
+    teams = await get_user_teams(uid)
+    team_ids = {(t.get("team_id") or t.get("id")) for t in teams}
+    if org_name in team_ids:
+        team_id = org_name
+    else:
+        try:
+            uuid.UUID(str(org_name))
+            team_id = org_name
+        except (ValueError, AttributeError, TypeError):
+            # org_name may be a display name ("Foundation"): resolve it
+            # within the caller's own teams (scoped — no cross-team leak).
+            # Unresolvable input is a 404, never a bare 500 from the UUID
+            # column lookup below.
+            match = next(
+                (t for t in teams
+                 if (t.get("name") or "").lower() == str(org_name).lower()),
+                None,
+            )
+            if match is None:
+                raise HTTPException(status_code=404, detail="Organization not found")
+            team_id = match.get("team_id") or match.get("id")
+
+    members = await get_team_members(team_id)
     member_ids = {m.get("id") or m.get("user_id") for m in members}
 
     if uid not in member_ids:
         if not members:
-            await add_member(org_name, uid, role="admin")
+            await add_member(team_id, uid, role="admin")
             return "admin"
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
-    teams = await get_user_teams(uid)
     user_role = None
     for team in teams:
-        if (team.get("team_id") or team.get("id")) == org_name:
+        if (team.get("team_id") or team.get("id")) == team_id:
             user_role = team.get("role")
             break
 

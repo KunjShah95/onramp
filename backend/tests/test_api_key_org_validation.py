@@ -1,9 +1,10 @@
-"""Org identifier validation on the AI key-management endpoints.
+"""Org identifier handling on the AI key-management endpoints.
 
-``org_name`` is a team UUID on the wire (the frontend sends ``activeTeamId``).
-A display name such as ``"Foundation"`` must be rejected with a clean 400 —
-previously it fell through to the team lookup and surfaced as a bare 500
-(asyncpg ``invalid UUID`` DataError).
+``org_name`` accepts a team UUID, a caller-scoped team display name
+(``"Foundation"`` resolves to the caller's own team), or a test-style org
+slug. Unresolvable input must be a clean 404 — previously a display name
+fell through to the team lookup and surfaced as a bare 500 (asyncpg
+``invalid UUID`` DataError).
 """
 
 from fastapi import FastAPI
@@ -32,16 +33,15 @@ def _app():
 
 
 class TestOrgIdentifierValidation:
-    def test_create_key_with_team_name_returns_400_not_500(self):
+    def test_unknown_team_name_returns_404_not_500(self):
         resp = TestClient(_app()).post(f"{API_PREFIX}/ai/keys", json={
-            "org_name": "Foundation",
+            "org_name": "No-Such-Org",
             "name": "should-not-exist",
         })
-        assert resp.status_code == 400
-        assert "organization" in resp.json()["detail"].lower()
+        assert resp.status_code == 404
 
-    def test_list_keys_with_team_name_returns_400_not_500(self):
+    def test_garbage_org_returns_404_not_500(self):
         resp = TestClient(_app()).get(
-            f"{API_PREFIX}/ai/keys", params={"org_name": "not-a-uuid"}
+            f"{API_PREFIX}/ai/keys", params={"org_name": "not-a-uuid!!!"}
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 404

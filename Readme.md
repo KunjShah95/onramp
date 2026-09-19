@@ -186,6 +186,31 @@ Beyond free-first routing, three more layers keep LLM cost low:
    (~4 chars/token, `app/services/llm_costs.estimate_tokens`) before being
    embedded in a prompt — long files dropped first, then truncated.
 
+### OpenRouter Model Benchmark (Sept 2026)
+
+Real tasks from this repo (T1: per-key `daily_credit_cap` enforcement, T2:
+Playwright CI wiring, T3: audit/cache regression tests) were solved by
+`junior1@foundation.dev` via three OpenRouter models and scored on latency,
+output size, and cost. Method: same prompt per task (root cause + patch with
+file refs + test, ≤400 words), `max_tokens=1000`, `temperature=0.2`.
+
+| Task | Model | Result | Latency | Chars | Cost |
+|------|-------|--------|---------|-------|------|
+| T1 daily cap | `deepseek/deepseek-chat-v3.1` | OK | 7.48s | 1613 | $0.000783 |
+| T1 daily cap | `openai/gpt-4o-mini` | OK | 7.54s | 2602 | $0.000367 |
+| T1 daily cap | `openai/gpt-oss-20b` | OK | 13.86s | 3280 | $0.000094 |
+| T2 CI specs | `deepseek/deepseek-chat-v3.1` | OK | 5.82s | 1343 | $0.000668 |
+| T2 CI specs | `openai/gpt-4o-mini` | OK | 5.33s | 2485 | $0.000378 |
+| T2 CI specs | `openai/gpt-oss-20b` | OK | 8.04s | 1067 | $0.000145 |
+| T3 regression | `deepseek/deepseek-chat-v3.1` | OK | 15.16s | 1489 | $0.000417 |
+| T3 regression | `openai/gpt-4o-mini` | OK | 7.47s | 2479 | $0.000352 |
+| T3 regression | `openai/gpt-oss-20b` | OK | 8.62s | 2351 | $0.000094 |
+
+**Totals (3 tasks):** 9/9 OK. `gpt-oss-20b` cheapest ($0.00033 total, ~5.6×
+cheaper than DeepSeek $0.00187); `gpt-4o-mini` fastest (6.78s avg) and most
+verbose (~2522 chars avg). All three fixes shipped as PRs #15–#17 with
+51 passing tests across the touched suites.
+
 ### Onboarding & Learning
 
 - **Trainee Dashboard** — track progress, unlocked modules, streak, XP

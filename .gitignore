@@ -71,6 +71,7 @@ web/test-results/
 !DESIGN.md
 !docs/*.md
 *.mjs
+!web/scripts/*.mjs
 *.png
 *.jpg
 *.jpeg
@@ -89,6 +90,7 @@ web/test-results/
 .github/skills/impeccable/
 .github/hooks/impeccable.json
 scripts/
+!web/scripts/
 .superpowers/
 docs/
 
