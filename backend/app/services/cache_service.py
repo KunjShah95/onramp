@@ -77,8 +77,19 @@ async def close():
 def _cache_key(prefix: str, request: Request) -> str:
     """Generate a cache key from request path, query params, and user identity."""
     uid = getattr(getattr(request, "state", None), "user", {}).get("uid", "")
-    raw = f"{prefix}:{uid}:{request.url.path}:{sorted(request.query_params.items())}"
-    return hashlib.md5(raw.encode()).hexdigest()
+    # request.state.user is populated by auth middleware; fall back to JWT parsing
+    # so per-user keys stay isolated even if middleware ordering changes.
+    if not uid:
+        try:
+            auth = request.headers.get("authorization", "")
+            if auth.lower().startswith("bearer "):
+                import jwt as _jwt
+                payload = _jwt.decode(auth[7:], options={"verify_signature": False})
+                uid = payload.get("uid", "") or ""
+        except Exception:
+            uid = ""
+    raw = f"{uid}:{request.url.path}:{sorted(request.query_params.items())}"
+    return f"{prefix}:{hashlib.md5(raw.encode()).hexdigest()}"
 
 
 async def get_cached(prefix: str, request: Request) -> Optional[str]:
