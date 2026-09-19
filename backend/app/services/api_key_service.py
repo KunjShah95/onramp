@@ -523,8 +523,12 @@ class APIKeyService:
 
         Enforces the per-key ``daily_credit_cap``: if the key has one and
         charging ``credits`` would exceed it for the current UTC day, the
-        increment is rejected (returns None). The daily counter resets on
-        date rollover (see :meth:`_daily_used_today`).
+        increment is rejected (returns None). Both the daily counter
+        (``daily_credits_used``) and its rollover date (``daily_usage_date``)
+        are persisted on every charge, so the cap actually binds and the
+        counter resets on date rollover (see :meth:`_daily_used_today`).
+        Capped keys use read-modify-write (the atomic helper only bumps the
+        monthly ``credits_used`` counter).
         """
         if not key_id:
             return None
@@ -532,13 +536,30 @@ class APIKeyService:
         record = await storage.get_document("api_keys", key_id)
         if record is None:
             return None
-        perms = dict(record.get("permissions") or {})
-        daily_cap = perms.get("daily_credit_cap")
-        if daily_cap is not None:
-            daily_used = _daily_used_today(perms)
-            if daily_used + int(credits) > int(daily_cap):
-                return None
-        # Try atomic path if storage exposes it (Postgres uses jsonb_set + FOR UPDATE)
+        today = _today_utc_datestr()
+        if (record.get("permissions") or {}).get("daily_credit_cap") is not None:
+            # Capped keys: read-modify-write so the daily counter and the
+            # rollover date persist together with the monthly counter.
+            for _ in range(3):
+                fresh = await storage.get_document("api_keys", key_id)
+                if fresh is None:
+                    return None
+                fperms = dict(fresh.get("permissions") or {})
+                if fperms.get("daily_usage_date") != today:
+                    fperms["daily_credits_used"] = 0
+                    fperms["daily_usage_date"] = today
+                if _daily_used_today(fperms) + int(credits) > int(fperms["daily_credit_cap"]):
+                    return None
+                fperms["credits_used"] = int(fperms.get("credits_used", 0)) + int(credits)
+                fperms["daily_credits_used"] = _daily_used_today(fperms) + int(credits)
+                try:
+                    result = await storage.update_document("api_keys", key_id, {"permissions": fperms})
+                    if result:
+                        return result
+                except Exception:
+                    continue
+            return None
+        # Uncapped keys keep the fast atomic path.
         if hasattr(storage, "increment_json_field"):
             try:
                 return await storage.increment_json_field(
@@ -560,6 +581,13 @@ class APIKeyService:
             except Exception:
                 continue
         return None
+
+    @staticmethod
+    def daily_cap_reached(daily_cap: Optional[int], daily_used: int, cost: int) -> bool:
+        """Return True when charging ``cost`` credits would exceed the daily cap."""
+        if daily_cap is None:
+            return False
+        return int(daily_used) + int(cost) > int(daily_cap)
 
     @staticmethod
     def cost_limit_reached(credit_limit: Optional[int], credits_used: int, cost: int) -> bool:

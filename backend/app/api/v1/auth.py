@@ -180,6 +180,8 @@ async def get_user_or_api_key(request: Request) -> dict:
         "key_id": key.get("key_id") or key.get("id"),
         "credit_limit": key.get("credit_limit"),
         "credits_used": key.get("credits_used", 0),
+        "daily_credit_cap": key.get("daily_credit_cap"),
+        "daily_credits_used": key.get("daily_credits_used", 0),
     }
 
 
