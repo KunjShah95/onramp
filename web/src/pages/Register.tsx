@@ -9,6 +9,7 @@ import Seo from '../components/seo/Seo'
 import { ArrowRight, EnvelopeSimple, Lock, User } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import InputField from '../components/ui/first-principles/InputField'
+import PasswordField from '../components/ui/PasswordField'
 
 export default function Register() {
   const [name, setName] = useState('')
@@ -117,7 +118,7 @@ export default function Register() {
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px bg-seam" />
-            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-tertiary">or email</span>
+            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-secondary">or email</span>
             <div className="flex-1 h-px bg-seam" />
           </div>
 
@@ -146,10 +147,9 @@ export default function Register() {
               autoComplete="email"
               icon={<EnvelopeSimple size={15} weight="bold" />}
             />
-            <InputField
+            <PasswordField
               label="Password"
               name="password"
-              type="password"
               placeholder="Minimum 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -158,10 +158,9 @@ export default function Register() {
               minLength={6}
               icon={<Lock size={15} weight="bold" />}
             />
-            <InputField
+            <PasswordField
               label="Confirm Password"
               name="confirmPassword"
-              type="password"
               placeholder="Repeat password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

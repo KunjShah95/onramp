@@ -14,7 +14,7 @@ interface FieldShellProps {
 function FieldShell({ label, hint, error, htmlFor, children, className }: FieldShellProps) {
   return (
     <div className={cn('space-y-1.5', className)}>
-      <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+      <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
         {label}
       </label>
       {children}

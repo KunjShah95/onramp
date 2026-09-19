@@ -91,7 +91,7 @@ export default function Hero() {
             >
               <Link
                 to="/register"
-                className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-7 text-[15px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_28px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_36px_rgb(var(--accent-primary)/0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
+                className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-7 text-[15px] font-semibold text-accent-foreground shadow-[0_0_28px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_36px_rgb(var(--accent-primary)/0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
               >
                 Try for free
                 <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />
@@ -164,7 +164,7 @@ export default function Hero() {
                 className="absolute -bottom-5 -right-4 z-30 hidden md:block"
               >
                 <div className="flex items-center gap-2.5 rounded-card border border-seam bg-panel px-3.5 py-2.5 shadow-seam">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-go text-[rgb(var(--accent-foreground))]">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-go text-accent-foreground">
                     <Check size={12} weight="bold" />
                   </span>
                   <div className="leading-tight">

@@ -18,6 +18,16 @@ import logging
 logger = logging.getLogger("onramp.notification_helpers")
 
 
+async def _fanout_n8n(event: str, task: dict, actor_name: str = "") -> None:
+    """Fire-and-forget mirror of a task event to n8n (never raises)."""
+    try:
+        from app.services import n8n_service as _n8n
+
+        await _n8n.notify_task_event(event, task, actor_name=actor_name)
+    except Exception:
+        logger.exception("Failed to fan out %s to n8n", event)
+
+
 async def notify_task_assigned_all_channels(
     task: dict,
     assignee_id: str,
@@ -45,6 +55,8 @@ async def notify_task_assigned_all_channels(
             await send_task_assigned_email(assignee_email, task.get("title", ""), team_name, assigned_by_name)
     except Exception:
         logger.exception("Failed to send email notification for task_assigned")
+
+    await _fanout_n8n("task.assigned", task, actor_name=assigned_by_name)
 
 
 async def notify_task_submitted_all_channels(
@@ -83,6 +95,8 @@ async def notify_task_submitted_all_channels(
         await send_slack_task_notification(submitter_id, "task_submitted", task, actor_name=submitter_name)
     except Exception:
         logger.exception("Failed to send Slack notification for task_submitted")
+
+    await _fanout_n8n("task.submitted", task, actor_name=submitter_name)
 
 
 async def notify_task_reviewed_all_channels(
@@ -124,6 +138,8 @@ async def notify_task_reviewed_all_channels(
     except Exception:
         logger.exception("Failed to send email notification for task_reviewed")
 
+    await _fanout_n8n("task.reviewed", task, actor_name=reviewer_name)
+
 
 async def notify_task_approved_all_channels(
     task: dict,
@@ -160,6 +176,8 @@ async def notify_task_approved_all_channels(
     except Exception:
         logger.exception("Failed to send email notification for task_approved")
 
+    await _fanout_n8n("task.approved", task, actor_name=approver_name)
+
 
 async def notify_task_completed_all_channels(
     task: dict,
@@ -190,6 +208,8 @@ async def notify_task_completed_all_channels(
             await send_task_completed_email(assignee_email, task.get("title", ""), team_name)
     except Exception:
         logger.exception("Failed to send email notification for task_completed")
+
+    await _fanout_n8n("task.completed", task)
 
 
 async def notify_task_time_overrun(

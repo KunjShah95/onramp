@@ -17,7 +17,7 @@ function ConfusionLoop() {
   return (
     <div className="space-y-2">
       <div className="rounded-md border border-seam bg-well p-3">
-        <div className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">
+        <div className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-secondary">
           docs/architecture.md
         </div>
         <div className="mt-2 space-y-1.5">
@@ -69,16 +69,16 @@ function HealthLoop() {
       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
         {[0, 1].map((i) => (
           <div key={i} className="rounded-md border border-seam bg-well p-3">
-            <div className="font-code text-[10px] text-ink-tertiary">onboarding</div>
-            <div className="mt-1 font-body text-lg font-semibold text-ink-tertiary">N/A</div>
+            <div className="font-code text-[10px] text-ink-secondary">onboarding</div>
+            <div className="mt-1 font-body text-lg font-semibold text-ink-secondary">N/A</div>
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between rounded-md border border-seam bg-panel px-3 py-2">
-        <span className="font-code text-[10px] uppercase tracking-[0.12em] text-ink-tertiary">
+        <span className="font-code text-[10px] uppercase tracking-[0.12em] text-ink-secondary">
           success rate
         </span>
-        <span className="font-code text-[10px] text-ink-tertiary">n/a</span>
+        <span className="font-code text-[10px] text-ink-secondary">n/a</span>
       </div>
     </div>
   )

@@ -63,7 +63,7 @@ export default function MarketingFooter() {
           {/* brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-[rgb(var(--accent-foreground))] shadow-[0_0_20px_rgb(var(--accent-primary)/0.3)] ring-1 ring-seam transition-transform duration-200 group-hover:scale-105">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-accent-foreground shadow-[0_0_20px_rgb(var(--accent-primary)/0.3)] ring-1 ring-seam transition-transform duration-200 group-hover:scale-105">
                 <TreeStructure size={17} weight="bold" />
               </span>
               <span className="font-display text-base font-bold tracking-tight text-ink">ONRAMP</span>
