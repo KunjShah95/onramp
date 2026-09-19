@@ -856,6 +856,18 @@ async def execute_agent(
                     f"credits). Raise the key's cost limit in Settings to continue."
                 ),
             )
+        # Per-key DAILY cap: same 402 treatment using the rollover-aware
+        # counter surfaced by validate_key (stale dates read as zero).
+        key_daily_cap = auth.get("daily_credit_cap")
+        key_daily_used = int(auth.get("daily_credits_used", 0) or 0)
+        if APIKeyService.daily_cap_reached(key_daily_cap, key_daily_used, cost):
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    f"API key daily credit cap reached ({key_daily_used}/{key_daily_cap} "
+                    f"credits today). Raise the key's daily cap in Settings to continue."
+                ),
+            )
 
     # Get GitHub token for agents that might need it
     github_token = None

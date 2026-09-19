@@ -177,6 +177,85 @@ class TestCostLimitEnforcement:
         assert self._execute_health(created["raw_key"]).status_code == 200
 
 
+class TestDailyCapEnforcement:
+    """Per-key DAILY caps must bind: pre-request 402 gate + charged counter.
+
+    The 'health' agent costs 10 credits, so a daily cap of 15 allows exactly
+    one call per UTC day.
+    """
+
+    def test_daily_cap_exceeded_returns_402(self):
+        client = TestClient(_app(user=True))
+        created = client.post(f"{API_PREFIX}/ai/keys", json={
+            "org_name": "acme",
+            "credit_limit": 1000,  # monthly budget is not the binding limit here
+            "daily_credit_cap": 15,
+        }).json()
+        assert self._execute_health(created["raw_key"]).status_code == 200
+        resp = self._execute_health(created["raw_key"])
+        assert resp.status_code == 402
+        assert "daily" in resp.json()["detail"].lower()
+
+    @staticmethod
+    def _execute_health(raw_key: str):
+        return TestClient(_app(user=False)).post(
+            f"{API_PREFIX}/ai/agents/health",
+            headers={"X-API-Key": raw_key},
+            json={"repo_structure": {"files": [], "classes": [], "functions": []}},
+        )
+
+    def test_daily_counter_charged_on_success(self):
+        client = TestClient(_app(user=True))
+        created = client.post(f"{API_PREFIX}/ai/keys", json={
+            "org_name": "acme",
+            "credit_limit": 1000,
+            "daily_credit_cap": 100,
+        }).json()
+        assert self._execute_health(created["raw_key"]).status_code == 200
+        listed = client.get(f"{API_PREFIX}/ai/keys?org_name=acme").json()["keys"]
+        assert listed[0]["daily_credits_used"] == 10
+        assert listed[0]["credits_used"] == 10
+
+    async def test_daily_counter_resets_on_rollover(self, storage):
+        """A stale daily_usage_date reads as zero and re-stamps on charge."""
+        from datetime import timedelta
+        from app.services import api_key_service as aks
+
+        plain, _ = await aks.create_api_key(
+            name="rollover", user_id=TEST_UID,
+            credit_limit=1000, daily_credit_cap=15,
+        )
+        svc = aks.APIKeyService()
+        validated = await svc.validate_key(plain)
+        key_id = validated["key_id"]
+        assert await svc.increment_credits_used(key_id, 10) is not None
+
+        # Backdate the counter to yesterday (simulating spend on a prior day).
+        rec = await storage.get_document("api_keys", key_id)
+        perms = dict(rec["permissions"])
+        perms["daily_usage_date"] = (
+            datetime.now(timezone.utc) - timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        perms["daily_credits_used"] = 10
+        await storage.update_document("api_keys", key_id, {"permissions": perms})
+
+        # Yesterday's 10 no longer counts: charging 10 today must succeed…
+        assert await svc.increment_credits_used(key_id, 10) is not None
+        validated = await svc.validate_key(plain)
+        assert validated["daily_credits_used"] == 10
+        # …but the day's budget is now spent: a further charge is rejected.
+        assert await svc.increment_credits_used(key_id, 10) is None
+
+    def test_no_daily_cap_never_blocks(self):
+        client = TestClient(_app(user=True))
+        created = client.post(f"{API_PREFIX}/ai/keys", json={
+            "org_name": "acme",
+            "credit_limit": 1000,
+        }).json()
+        assert self._execute_health(created["raw_key"]).status_code == 200
+        assert self._execute_health(created["raw_key"]).status_code == 200
+
+
 class TestKeyExpiry:
     def test_create_key_with_expiry_returns_future_expires_at(self, client):
         resp = client.post(f"{API_PREFIX}/ai/keys", json={
