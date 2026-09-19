@@ -116,6 +116,7 @@ export default function DevSpacePage() {
           eyebrow="Folio 02 · Developer"
           title="Developer Space"
           subtitle="Full-access developer portal and tools."
+          pills={[{ label: 'Data', value: 'Demo' }]}
         />
       </motion.div>
 

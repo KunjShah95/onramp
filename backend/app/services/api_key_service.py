@@ -426,17 +426,23 @@ class APIKeyService:
         org_id: Optional[str] = None,
         name: Optional[str] = None,
         credit_limit: Optional[int] = None,
+        daily_credit_cap: Optional[int] = None,
         expires_in_days: Optional[int] = None,
     ) -> dict:
         """Create an API key scoped to an org (stored as a team).
 
         ``name`` is the human-friendly label for the key (defaults to the org
         name). ``credit_limit`` is an optional per-key cost budget in credits.
+        ``daily_credit_cap`` is an optional per-key DAILY credit cap — the
+        key stops working once its ``daily_credits_used`` for the current UTC
+        day reaches this value; the counter resets on date rollover.
         ``expires_in_days`` optionally auto-expires the key after N days.
         """
         if tier not in TIER_LIMITS:
             return {"error": f"Invalid tier: {tier}"}
         try:
+            # Validate credit caps combination before attempting storage.
+            validate_credit_caps(credit_limit, daily_credit_cap)
             # Org-centric: the org/team id IS the tenant scope for the key.
             team_scope = org_id or org_name
             plain_key, record = await create_api_key(
@@ -444,6 +450,7 @@ class APIKeyService:
                 team_id=team_scope,
                 permissions={"tier": tier, "created_by": created_by, "org_name": org_name},
                 credit_limit=credit_limit,
+                daily_credit_cap=daily_credit_cap,
                 expires_in_days=expires_in_days,
             )
             return {
@@ -454,6 +461,7 @@ class APIKeyService:
                 "tier": tier,
                 "name": record.get("name") or name or org_name,
                 "credit_limit": credit_limit,
+                "daily_credit_cap": daily_credit_cap,
                 "credits_used": 0,
                 "expires_at": record.get("expires_at"),
                 "is_active": True,
@@ -502,7 +510,9 @@ class APIKeyService:
             "tier": perms.get("tier", "free"),
             "key_id": rec.get("id"),
             "credit_limit": perms.get("credit_limit"),
+            "daily_credit_cap": perms.get("daily_credit_cap"),
             "credits_used": int(perms.get("credits_used", 0)),
+            "daily_credits_used": _daily_used_today(perms),
         }
 
     async def increment_credits_used(self, key_id: str, credits: int) -> Optional[dict]:
@@ -510,10 +520,24 @@ class APIKeyService:
 
         Uses an atomic increment where storage supports it; falls back to
         read-modify-write with retry on conflict.
+
+        Enforces the per-key ``daily_credit_cap``: if the key has one and
+        charging ``credits`` would exceed it for the current UTC day, the
+        increment is rejected (returns None). The daily counter resets on
+        date rollover (see :meth:`_daily_used_today`).
         """
         if not key_id:
             return None
         storage = get_storage()
+        record = await storage.get_document("api_keys", key_id)
+        if record is None:
+            return None
+        perms = dict(record.get("permissions") or {})
+        daily_cap = perms.get("daily_credit_cap")
+        if daily_cap is not None:
+            daily_used = _daily_used_today(perms)
+            if daily_used + int(credits) > int(daily_cap):
+                return None
         # Try atomic path if storage exposes it (Postgres uses jsonb_set + FOR UPDATE)
         if hasattr(storage, "increment_json_field"):
             try:

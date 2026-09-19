@@ -8,6 +8,7 @@ import { getPlanIntent } from '../lib/plan-intent'
 import { PageHeader } from '../components/ui/page-header'
 import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
+import { Modal } from '../components/ui/modal'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { useFeatureFlag } from '../context/FeatureFlagContext'
@@ -24,6 +25,8 @@ export default function BillingPage() {
   const [error, setError] = useState('')
   const [selectedTier, setSelectedTier] = useState<string | null>(null)
   const [subscribingTier, setSubscribingTier] = useState<string | null>(null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   // Wallet state
   const [wallet, setWallet] = useState<CreditWallet | null>(null)
@@ -164,10 +167,15 @@ export default function BillingPage() {
   const itemVariants = { hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }
 
   async function handleCancel() {
-    if (!teamId.trim() || !subscription) return
-    if (!confirm(`Cancel ${subscription.tier} plan? Your team keeps access until the end of the billing period.`)) return
-    try { await cancelSubscription(teamId.trim()); setSubscription(null); setSelectedTier(null); setWallet(null); toast.info('Plan cancelled', 'Access continues until period ends.') }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
+    if (!teamId.trim() || !subscription || cancelling) return
+    setCancelling(true)
+    try {
+      await cancelSubscription(teamId.trim())
+      setSubscription(null); setSelectedTier(null); setWallet(null)
+      setShowCancelConfirm(false)
+      toast.info('Plan cancelled', 'Access continues until period ends.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
+    finally { setCancelling(false) }
   }
 
   function loadRazorpayScript(): Promise<boolean> {
@@ -302,7 +310,7 @@ export default function BillingPage() {
             live={loading}
             action={subscription && canManage ? (
               <button
-                onClick={handleCancel}
+                onClick={() => setShowCancelConfirm(true)}
                 className="text-caption font-medium text-abort/80 hover:text-abort underline underline-offset-2 decoration-abort/30 hover:decoration-abort transition-colors"
               >
                 Cancel plan
@@ -578,6 +586,26 @@ export default function BillingPage() {
           </motion.div>
         </>
       )}
+
+      {/* ── Cancel-plan confirmation (designed modal, not window.confirm) ── */}
+      <Modal open={showCancelConfirm} onClose={() => !cancelling && setShowCancelConfirm(false)} title="Cancel plan" maxWidth="max-w-md">
+        <div className="p-5">
+          <p className="text-body-sm text-ink-secondary leading-relaxed">
+            Cancel the <span className="font-semibold text-ink capitalize">{subscription?.tier?.replace('_', ' ')}</span> plan
+            for <span className="font-semibold text-ink">{activeTeamName}</span>? Your team keeps
+            access until the end of the billing period.
+          </p>
+          <div className="flex justify-end gap-2.5 mt-5">
+            <button onClick={() => setShowCancelConfirm(false)} disabled={cancelling} className="btn-secondary">
+              Keep plan
+            </button>
+            <button onClick={handleCancel} disabled={cancelling} aria-busy={cancelling} className="btn-danger inline-flex items-center gap-2">
+              {cancelling && <Spinner className="w-3.5 h-3.5 animate-spin" aria-hidden />}
+              {cancelling ? 'Cancelling…' : 'Yes, cancel'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </motion.div>
   )
 }

@@ -19,7 +19,7 @@ import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { ApiKeysSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { listApiKeys, createApiKey, revokeApiKey, rotateApiKey } from '../lib/api'
 import type { ApiKey } from '../lib/api'
 import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
@@ -54,8 +54,15 @@ export default function ApiKeysPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const toast = useToast()
-  const { activeTeamId } = useAuth()
+  const { activeTeamId, role } = useAuth()
   const orgName = activeTeamId || 'default'
+
+  // Button-level guard (mirrors DeveloperPortal canManageKeys): the route
+  // guard only requires minRole="senior", so junior key-holders inside that
+  // band would otherwise reach create/revoke. Backend enforces too — this
+  // keeps the UI honest.
+  const canManageKeys = !!role && KEY_MANAGER_ROLES.includes(role)
+  const noKeyPermission = 'Only key managers can do this — ask your admin'
 
   const fetchKeys = useCallback(async () => {
     setLoading(true); setError('')
@@ -74,6 +81,7 @@ export default function ApiKeysPage() {
   }, [fetchKeys])
 
   const handleCreate = async () => {
+    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
     setCreating(true)
     const raw = Number(newKeyCostLimit.trim() || '')
     const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
@@ -90,6 +98,7 @@ export default function ApiKeysPage() {
   }
 
   const handleRotate = async (keyId: string) => {
+    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
     setRotating(keyId)
     try {
       const res = await rotateApiKey(keyId)
@@ -104,6 +113,7 @@ export default function ApiKeysPage() {
   }
 
   const handleRevoke = async (keyId: string) => {
+    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
     const prev = keys
     setKeys((cur) => cur.filter((k) => k.key_id !== keyId))
     try {
@@ -137,10 +147,12 @@ export default function ApiKeysPage() {
           flush
         />
         <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+          whileHover={canManageKeys ? { scale: 1.03 } : undefined}
+          whileTap={canManageKeys ? { scale: 0.97 } : undefined}
           onClick={() => { setRevealedRaw(null); setShowCreate(true) }}
-          className="btn btn-primary flex items-center gap-2 shrink-0"
+          disabled={!canManageKeys}
+          title={!canManageKeys ? noKeyPermission : ''}
+          className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
         >
           <Plus className="w-4 h-4" weight="bold" />
           Create Key
@@ -163,7 +175,7 @@ export default function ApiKeysPage() {
             title="No API keys"
             description="Create your first key to get started with API access."
             action={
-              <button onClick={() => setShowCreate(true)} className="btn btn-primary text-caption px-4 py-1.5">
+              <button onClick={() => setShowCreate(true)} disabled={!canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary text-caption px-4 py-1.5 disabled:opacity-40">
                 Create Key
               </button>
             }
@@ -231,9 +243,9 @@ export default function ApiKeysPage() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleRotate(apiKey.key_id)}
-                    disabled={!apiKey.is_active || rotating === apiKey.key_id}
+                    disabled={!apiKey.is_active || rotating === apiKey.key_id || !canManageKeys}
                     className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-go transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-                    title="Rotate (revoke + create new)"
+                    title={!canManageKeys ? noKeyPermission : 'Rotate (revoke + create new)'}
                   >
                     {rotating === apiKey.key_id ? (
                       <Spinner className="w-4 h-4 animate-spin" />
@@ -245,9 +257,9 @@ export default function ApiKeysPage() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleRevoke(apiKey.key_id)}
-                    disabled={!apiKey.is_active}
+                    disabled={!apiKey.is_active || !canManageKeys}
                     className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-                    title="Revoke"
+                    title={!canManageKeys ? noKeyPermission : 'Revoke'}
                   >
                     <Trash className="w-4 h-4" />
                   </motion.button>
@@ -362,7 +374,8 @@ export default function ApiKeysPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleCreate}
-                      disabled={creating}
+                      disabled={creating || !canManageKeys}
+                      title={!canManageKeys ? noKeyPermission : ''}
                       className="btn btn-primary w-full flex items-center justify-center gap-2"
                     >
                       {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}

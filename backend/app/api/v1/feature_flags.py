@@ -45,7 +45,8 @@ async def list_flags(
     return FlagsListResponse(flags=flags, count=len(flags))
 
 
-@router.get("/{team_id}/{flag_name}")
+@router.get("/{team_id}/{flag_name}",
+    responses={404: {"description": "Flag not found"}})
 async def get_flag(
     team_id: str,
     flag_name: str,
@@ -70,7 +71,8 @@ async def set_flag(
     return FlagResponse(**result)
 
 
-@router.delete("/{team_id}/{flag_name}")
+@router.delete("/{team_id}/{flag_name}",
+    responses={404: {"description": "Flag not found"}})
 async def delete_flag(
     team_id: str,
     flag_name: str,

@@ -52,7 +52,7 @@ export default function TopBar({ lastShortcut, onMenuClick }: TopBarProps) {
             type="button"
             onClick={onMenuClick}
             aria-label="Open navigation menu"
-            className="lg:hidden -ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-btn border border-seam text-ink-tertiary hover:text-ink hover:bg-well/60 transition-colors"
+            className="hit-slop lg:hidden -ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-btn border border-seam text-ink-tertiary hover:text-ink hover:bg-well/60 transition-colors"
           >
             <List size={15} weight="bold" />
           </button>

@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import ConsolePanel from '../components/ui/console-panel'
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { TeamSettingsSkeleton } from '../components/ui/Skeleton'
@@ -472,35 +473,35 @@ export default function TeamPage() {
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="border-collapse text-left w-full table-auto text-sm">
-                    <thead>
-                      <tr className="border-b border-seam bg-panel sticky top-0 z-10">
+                  <Table className="text-sm">
+                    <THead>
+                      <TR className="bg-panel sticky top-0 z-10">
                         {['User', 'Module', 'Source', 'Granted', ''].map((h, i) => (
-                          <th key={i} className={cn('py-3 text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold align-middle', i === 0 || i === 4 ? 'text-left px-5' : 'text-left px-4')}>{h}</th>
+                          <TH key={i} className={cn('py-3 text-[10px] uppercase tracking-widest align-middle', i === 0 || i === 4 ? 'px-5' : 'px-4')}>{h}</TH>
                         ))}
-                      </tr>
-                    </thead>
-                    <motion.tbody variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
+                      </TR>
+                    </THead>
+                    <TBody>
                       {permissions.map((p) => (
-                        <motion.tr key={p.id} variants={itemVariants} className="hover:bg-well/30 transition-colors">
-                          <td className="px-5 py-3 text-sm text-ink-secondary align-middle">{p.user_name || 'N/A'}</td>
-                          <td className="px-4 py-3 align-middle">
+                        <motion.tr key={p.id} variants={itemVariants} className="border-b border-seam last:border-b-0 hover:bg-well/30 transition-colors">
+                          <TD className="px-5 py-3 text-sm text-ink-secondary">{p.user_name || 'N/A'}</TD>
+                          <TD className="px-4 py-3">
                             <span className="px-2 py-0.5 rounded-lg bg-go/10 text-go text-[11px] font-mono border border-go/20">{p.module}</span>
-                          </td>
-                          <td className="px-4 py-3 align-middle">
+                          </TD>
+                          <TD className="px-4 py-3">
                             <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium',
                               p.source === 'task_completion' ? 'bg-go/10 text-go' : 'bg-go/10 text-go')}>
                               {p.source === 'task_completion' ? 'Task Auto' : 'Manual'}
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-[11px] text-ink-tertiary font-mono align-middle">{new Date(p.granted_at).toLocaleDateString()}</td>
-                          <td className="px-5 py-3 text-right align-middle">
+                          </TD>
+                          <TD className="px-4 py-3 text-[11px] text-ink-tertiary font-mono">{new Date(p.granted_at).toLocaleDateString()}</TD>
+                          <TD className="px-5 py-3 text-right">
                             <button onClick={() => handleRevokeModule(p.user_id, p.module)} className="text-[10px] text-abort/60 hover:text-abort transition-colors">Revoke</button>
-                          </td>
+                          </TD>
                         </motion.tr>
                       ))}
-                    </motion.tbody>
-                  </table>
+                    </TBody>
+                  </Table>
                 </div>
               </ConsolePanel>
             )}

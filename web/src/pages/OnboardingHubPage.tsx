@@ -60,6 +60,7 @@ export default function OnboardingHubPage() {
         pills={[
           { label: 'Checklist', value: `${completedCount}/${totalCount}` },
           { label: 'Tasks', value: `${seedData?.completed_tasks ?? 0}/${seedData?.total_tasks ?? 0}` },
+          { label: 'Data', value: 'Demo' },
         ]}
       />
 

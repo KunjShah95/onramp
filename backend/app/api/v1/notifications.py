@@ -181,7 +181,8 @@ async def get_unread_count_endpoint(
     return {"unread_count": count}
 
 
-@router.get("/{notification_id}")
+@router.get("/{notification_id}",
+    responses={404: {"description": "Endpoint not found"}})
 async def get_notification_endpoint(
     notification_id: str,
     user: dict = Depends(get_current_user),
@@ -221,7 +222,8 @@ async def mark_all_read(
     return {"marked_count": count}
 
 
-@router.delete("/{notification_id}")
+@router.delete("/{notification_id}",
+    responses={404: {"description": "Endpoint not found"}})
 async def delete_notification_endpoint(
     notification_id: str,
     user: dict = Depends(get_current_user),

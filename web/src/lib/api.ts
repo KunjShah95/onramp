@@ -1752,8 +1752,12 @@ export interface ApiKey {
   is_active: boolean
   /** Optional per-key cost budget in credits — the key stops at this limit. */
   credit_limit?: number | null
+  /** Optional per-key daily credit cap — resets each UTC day. */
+  daily_credit_cap?: number | null
   /** Cumulative credits charged to this key. */
   credits_used?: number
+  /** Credits charged today (UTC) — only meaningful when daily_credit_cap is set. */
+  daily_credits_used?: number
   /** When the key was last used (ISO) or null if never. */
   last_used_at?: string | null
   /** When the key auto-expires (ISO) or null if it never expires. */
@@ -1775,6 +1779,7 @@ export interface CreateApiKeyResult {
   key_id: string
   name?: string
   credit_limit?: number | null
+  daily_credit_cap?: number | null
   expires_at?: string | null
 }
 
@@ -1783,7 +1788,8 @@ export async function createApiKey(
   tier = 'free',
   name?: string,
   creditLimit?: number,
-  expiresInDays?: number
+  expiresInDays?: number,
+  dailyCreditCap?: number
 ): Promise<CreateApiKeyResult> {
   return request<CreateApiKeyResult>(
     `${API_BASE}/ai/keys`,
@@ -1793,6 +1799,7 @@ export async function createApiKey(
       name: name || undefined,
       credit_limit: creditLimit,
       expires_in_days: expiresInDays,
+      daily_credit_cap: dailyCreditCap,
     }
   )
 }

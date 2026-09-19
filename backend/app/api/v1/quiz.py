@@ -85,7 +85,8 @@ async def generate_quiz(
 # ── Get Quiz (without answers for fresh attempts) ────────────
 
 
-@router.get("/{quiz_id}")
+@router.get("/{quiz_id}",
+    responses={404: {"description": "Quiz not found"}})
 async def get_quiz(
     quiz_id: str,
     user: dict = Depends(get_current_user),
@@ -117,7 +118,8 @@ async def get_quiz(
 # ── Get Quiz with Answers (teacher/reviewer access) ──────────
 
 
-@router.get("/{quiz_id}/answers")
+@router.get("/{quiz_id}/answers",
+    responses={404: {"description": "Quiz not found"}})
 async def get_quiz_with_answers(
     quiz_id: str,
     user: dict = Depends(get_current_user),

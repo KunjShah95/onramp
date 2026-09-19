@@ -304,7 +304,8 @@ async def list_all_webhooks(
     return {"webhooks": webhooks, "count": len(webhooks)}
 
 
-@router.get("/webhooks/{webhook_id}")
+@router.get("/webhooks/{webhook_id}",
+    responses={404: {"description": "Webhook not found"}})
 async def get_admin_webhook(
     webhook_id: str,
     uid: str = Depends(_require_owner),
@@ -367,7 +368,8 @@ async def test_admin_webhook(
         return {"success": False, "status_code": None, "error": str(e)}
 
 
-@router.delete("/webhooks/{webhook_id}")
+@router.delete("/webhooks/{webhook_id}",
+    responses={404: {"description": "Webhook not found"}})
 async def delete_admin_webhook(
     webhook_id: str,
     uid: str = Depends(_require_owner),
@@ -521,7 +523,8 @@ async def set_platform_provider_key(
     return result
 
 
-@router.delete("/ai/provider-keys/{provider}")
+@router.delete("/ai/provider-keys/{provider}",
+    responses={404: {"description": "Provider key not found"}})
 async def delete_platform_provider_key(
     provider: str,
     req: Request,

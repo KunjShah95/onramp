@@ -62,7 +62,8 @@ async def create_subscription(
     )
 
 
-@router.get("/subscriptions/{team_id}")
+@router.get("/subscriptions/{team_id}",
+    responses={404: {"description": "No active subscription"}})
 async def get_subscription(
     team_id: str,
     user: dict = Depends(get_current_user),
@@ -74,7 +75,8 @@ async def get_subscription(
     return sub
 
 
-@router.patch("/subscriptions/{team_id}")
+@router.patch("/subscriptions/{team_id}",
+    responses={404: {"description": "No active subscription"}})
 async def update_subscription(
     team_id: str,
     request: UpdateBillingRequest,
@@ -87,7 +89,8 @@ async def update_subscription(
     return result
 
 
-@router.delete("/subscriptions/{team_id}")
+@router.delete("/subscriptions/{team_id}",
+    responses={404: {"description": "No active subscription"}})
 async def cancel_subscription(
     team_id: str,
     user: dict = Depends(get_current_user),

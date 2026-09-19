@@ -19,7 +19,7 @@ interface AppShellProps {
  */
 export default function AppShell({ sidebar, topbar, children }: AppShellProps) {
   return (
-    <div className="flex h-dvh overflow-hidden bg-transparent">
+    <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-transparent">
       {/* Sidebar */}
       {sidebar}
 

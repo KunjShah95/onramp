@@ -393,12 +393,21 @@ export class OnrampClient {
     return this.unwrap(res)
   }
 
-  /** Create a new API key for an org. */
-  async createApiKey(orgName: string, tier = 'free'): Promise<ApiKeyResult> {
+  /** Create a new API key for an org.
+   *
+   * `opts.credit_limit` sets an optional per-key monthly credit budget and
+   * `opts.expires_in_days` an optional expiry window — both are forwarded to
+   * `POST /api/v1/ai/keys` (see backend/app/api/v1/ai_gateway.py).
+   */
+  async createApiKey(
+    orgName: string,
+    tier = 'free',
+    opts: { credit_limit?: number; daily_credit_cap?: number; expires_in_days?: number } = {},
+  ): Promise<ApiKeyResult> {
     const res = await this.request<ApiKeyResult>(`${this.baseUrl}/api/v1/ai/keys`, {
       method: 'POST',
       headers: this.headers(),
-      body: JSON.stringify({ org_name: orgName, tier }),
+      body: JSON.stringify({ org_name: orgName, tier, ...opts }),
     })
     return this.unwrap(res)
   }

@@ -260,7 +260,7 @@ export default function DocsPage() {
     >
       <div className="flex max-w-6xl mx-auto">
         {/* Sidebar */}
-        <aside className="hidden md:block w-56 shrink-0 sticky top-[73px] self-start h-[calc(100vh-73px)] overflow-y-auto py-8 pr-4 border-r border-[hsl(var(--border))]">
+        <aside className="hidden md:block w-56 shrink-0 sticky top-[73px] self-start h-[calc(100vh-73px)] h-[calc(100dvh-73px)] overflow-y-auto py-8 pr-4 border-r border-[hsl(var(--border))]">
           <motion.div variants={containerVariants} initial="hidden" animate="visible">
             {sections.map((sec) => (
               <motion.div key={sec.id} variants={itemVariants} className="mb-6">

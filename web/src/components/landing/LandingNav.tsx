@@ -127,7 +127,7 @@ export default function LandingNav() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-ink-secondary md:hidden"
+            className="hit-slop flex h-9 w-9 items-center justify-center rounded-md text-ink-secondary md:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >

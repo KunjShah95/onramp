@@ -318,8 +318,8 @@ export default function TraineeDashboard() {
 
       {/* Raise PR modal */}
       {raisingPR && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-base border border-seam rounded-[3px] shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Raise pull request">
+          <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto bg-base border border-seam rounded-[3px] shadow-2xl my-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b border-seam">
               <div>
                 <p className="text-body-sm font-semibold text-ink">Raise Pull Request</p>

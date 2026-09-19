@@ -103,7 +103,8 @@ async def readiness():
     )
 
 
-@router.get("/metrics", tags=["ops"])
+@router.get("/metrics", tags=["ops"],
+    responses={404: {"description": "Metrics disabled"}})
 async def metrics():
     """Prometheus metrics in the text exposition format.
 

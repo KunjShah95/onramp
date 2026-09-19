@@ -1015,6 +1015,9 @@
     /* Non-static so framer-motion's useScroll({ target }) can measure offsets
        against the default scroll container without a dev warning. */
     position: relative;
+    /* Decorative ambient glows / seated cards use negative offsets — clip any
+       accidental horizontal overflow instead of letting the page scroll. */
+    overflow-x: clip;
   }
 
   body {
@@ -1024,6 +1027,33 @@
     color: var(--ink);
     background-color: var(--room);
     min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  /* ── Responsive media defaults — never overflow a mobile viewport ── */
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
+  img, video {
+    height: auto;
+  }
+
+  /* ── Hit-slop for sub-44px icon buttons (nav toggles, sidebar close).
+     Keeps the 28–36px visual size but expands the tap target to ≥44px
+     per WCAG 2.5.8 without shifting the layout. */
+  .hit-slop {
+    position: relative;
+  }
+  .hit-slop::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+  @media (pointer: fine) {
+    .hit-slop::after {
+      inset: 0;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -263,7 +263,7 @@ export default function DriftDetectionPage() {
                   live={verdict === 'go'}
                 >
                   <div className="flex flex-col sm:flex-row gap-5">
-                    <div className="font-display text-5xl font-bold tabular-nums text-ink leading-none">
+                    <div className="font-display text-4xl sm:text-5xl font-bold tabular-nums text-ink leading-none">
                       {result.drift_score}
                     </div>
                     <div className="flex-1">

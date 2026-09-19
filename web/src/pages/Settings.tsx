@@ -283,10 +283,6 @@ export default function Settings() {
     catch (e) { setWebhookTestResult(`FAILED: ${e instanceof Error ? e.message : 'test failed'}`); setTimeout(() => setWebhookTestResult(null), 3000) }
   }
 
-  function isValidSlackUrl(url: string) {
-    return /^https:\/\/hooks\.slack\.com\/services\/.+\/.+\/.+/.test(url.trim()) || /^https:\/\/.+/.test(url.trim())
-  }
-
   async function handleTestSlack() {
     const url = slackWebhook.trim()
     if (!url) { setSlackTestResult({ valid: false, error: 'Paste your incoming-webhook URL first.' }); return }
@@ -318,33 +314,38 @@ export default function Settings() {
   }
 
   async function handleSaveGithub() {
-    try { await saveIntegration('github', { token: githubToken }); setGithubConnected(true); setGithubToken('••••••••') }
-    catch { /* ignore */ }
+    const token = githubToken.trim()
+    if (!token || token.includes('••')) { toast.info('Nothing to save', 'Paste a fresh token to update, or Test first.'); return }
+    try {
+      await saveIntegration('github', { token })
+      setGithubConnected(true); setGithubToken('••••••••'); setGithubTestResult(null)
+      toast.success('GitHub connected')
+    } catch (e) { toast.error('Failed to save GitHub token', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleDisconnectGithub() {
-    try { await deleteIntegration('github'); setGithubConnected(false); setGithubToken('') }
-    catch { /* ignore */ }
+    try { await deleteIntegration('github'); setGithubConnected(false); setGithubToken(''); setGithubTestResult(null); toast.success('GitHub disconnected') }
+    catch (e) { toast.error('Failed to disconnect GitHub', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleTestGithub() {
-    const tokenToTest = githubToken || ''
-    if (!tokenToTest.trim() || githubConnected) return
+    const tokenToTest = githubToken.trim() || ''
+    if (!tokenToTest || tokenToTest.includes('••')) { setGithubTestResult({ valid: false, error: 'Paste a fresh token to test — saved tokens are masked.' }); return }
     setGithubTesting(true); setGithubTestResult(null)
-    try { const result = await testGithubToken(tokenToTest.trim()); setGithubTestResult(result) }
+    try { const result = await testGithubToken(tokenToTest); setGithubTestResult(result) }
     catch { setGithubTestResult({ valid: false, error: 'Failed to connect to server' }) }
     setGithubTesting(false)
   }
 
   async function handleSaveGitlab() {
     if (!gitlabToken.trim()) return
-    try { await saveIntegration('gitlab', { token: gitlabToken.trim() }); setGitlabConnected(true); setGitlabToken('••••••••'); setGitlabTestResult(null) }
-    catch { /* ignore */ }
+    try { await saveIntegration('gitlab', { token: gitlabToken.trim() }); setGitlabConnected(true); setGitlabToken('••••••••'); setGitlabTestResult(null); toast.success('GitLab connected') }
+    catch (e) { toast.error('Failed to save GitLab token', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleDisconnectGitlab() {
-    try { await deleteIntegration('gitlab'); setGitlabConnected(false); setGitlabToken(''); setGitlabTestResult(null) }
-    catch { /* ignore */ }
+    try { await deleteIntegration('gitlab'); setGitlabConnected(false); setGitlabToken(''); setGitlabTestResult(null); toast.success('GitLab disconnected') }
+    catch (e) { toast.error('Failed to disconnect GitLab', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleTestGitlab() {
@@ -360,12 +361,13 @@ export default function Settings() {
     try {
       await saveIntegration('bitbucket', { username: bitbucketUsername.trim(), app_password: bitbucketAppPassword })
       setBitbucketConnected(true); setBitbucketAppPassword('••••••••'); setBitbucketTestResult(null)
-    } catch { /* ignore */ }
+      toast.success('Bitbucket connected')
+    } catch (e) { toast.error('Failed to save Bitbucket credentials', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleDisconnectBitbucket() {
-    try { await deleteIntegration('bitbucket'); setBitbucketConnected(false); setBitbucketAppPassword(''); setBitbucketTestResult(null) }
-    catch { /* ignore */ }
+    try { await deleteIntegration('bitbucket'); setBitbucketConnected(false); setBitbucketAppPassword(''); setBitbucketTestResult(null); toast.success('Bitbucket disconnected') }
+    catch (e) { toast.error('Failed to disconnect Bitbucket', e instanceof Error ? e.message : undefined) }
   }
 
   async function handleTestBitbucket() {
@@ -968,16 +970,28 @@ export default function Settings() {
                 <div className="space-y-4">
                   <p className="text-caption text-ink-muted">Connect a Slack workspace by providing an incoming webhook URL from Slack.</p>
                   <div className="flex flex-wrap gap-3">
-                    <input value={slackWebhook} onChange={(e) => setSlackWebhook(e.target.value)}
+                    <input value={slackWebhook} onChange={(e) => { setSlackWebhook(e.target.value); setSlackTestResult(null) }}
                       placeholder="https://hooks.slack.com/services/..."
-                      className="input flex-1 min-w-[220px]" />
+                      className="input flex-1 min-w-[220px]" inputMode="url" autoComplete="off" spellCheck={false} />
                     <input value={slackChannel} onChange={(e) => setSlackChannel(e.target.value)}
                       placeholder="#general"
                       className="input w-28" />
-                    <button onClick={handleSaveSlack} disabled={!slackWebhook.trim()} className="btn">
-                      Connect
+                    <button onClick={handleTestSlack} disabled={!slackWebhook.trim() || slackTesting} className="btn btn-secondary">
+                      {slackTesting ? 'Testing…' : 'Test'}
+                    </button>
+                    <button onClick={handleSaveSlack} disabled={!slackWebhook.trim() || slackSaving} className="btn">
+                      {slackSaving ? 'Connecting…' : 'Connect'}
                     </button>
                   </div>
+                  {slackTestResult && (
+                    <div className={cn('text-caption flex items-center gap-2', slackTestResult.valid ? 'text-go' : 'text-abort')} role="status">
+                      {slackTestResult.valid ? (
+                        <><Check size={16} weight="bold" /> {slackTestResult.message || 'URL format looks valid.'}</>
+                      ) : (
+                        <><X size={16} weight="bold" /> {slackTestResult.error}</>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
@@ -1179,6 +1193,17 @@ export default function Settings() {
             >
               <p className="text-caption text-ink-muted mb-4">Send real-time events to external services.</p>
 
+              {webhookCreated && !showAddWebhook && (
+                <div className="bg-caution/10 border border-caution/25 rounded-card p-4 mb-5" role="alert">
+                  <p className="text-caption text-caution font-semibold mb-2 flex items-center gap-1.5">
+                    <Lock size={14} weight="fill" />
+                    Webhook created! Save this secret · it won't be shown again:
+                  </p>
+                  <code className="block text-caption font-code bg-panel-raised px-3 py-2 rounded-sm select-all break-all text-ink-secondary border border-seam">{webhookCreated.secret}</code>
+                  <button onClick={() => setWebhookCreated(null)} className="mt-2 text-caption text-ink-muted hover:text-ink">Dismiss</button>
+                </div>
+              )}
+
               {showAddWebhook && (
                 <div className="mb-5 p-5 bg-well border border-seam rounded-card space-y-4">
                   <div className="flex items-center gap-2">
@@ -1187,9 +1212,10 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="overline text-ink-muted mb-1.5 block">Payload URL</label>
-                    <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
+                    <input value={webhookUrl} onChange={(e) => { setWebhookUrl(e.target.value); setWebhookFormError('') }}
                       placeholder="https://example.com/webhooks/onramp"
-                      className="input" />
+                      className="input" inputMode="url" autoComplete="off" spellCheck={false} />
+                    <p className="text-caption text-ink-muted mt-1">Must be a public https:// URL. Localhost URLs won't receive deliveries.</p>
                   </div>
                   <div>
                     <label className="overline text-ink-muted mb-1.5 block">Description</label>
@@ -1215,20 +1241,14 @@ export default function Settings() {
                     </div>
                   </div>
                   <div className="flex justify-end gap-3 pt-2">
-                    <button onClick={() => { setShowAddWebhook(false); setWebhookCreated(null) }}
+                    <button onClick={() => { setShowAddWebhook(false); setWebhookCreated(null); setWebhookFormError('') }}
                       className="btn btn-ghost text-caption">Cancel</button>
                     <button onClick={handleCreateWebhook} disabled={!webhookUrl.trim()} className="btn text-caption">
                       Create Webhook
                     </button>
                   </div>
-                  {webhookCreated && (
-                    <div className="bg-caution/10 border border-caution/25 rounded-card p-4 mt-4">
-                      <p className="text-caption text-caution font-semibold mb-2 flex items-center gap-1.5">
-                        <Lock size={14} weight="fill" />
-                        Webhook created! Save this secret · it won't be shown again:
-                      </p>
-                      <code className="block text-caption font-code bg-panel-raised px-3 py-2 rounded-sm select-all break-all text-ink-secondary border border-seam">{webhookCreated.secret}</code>
-                    </div>
+                  {webhookFormError && (
+                    <p className="text-caption text-abort" role="alert">{webhookFormError}</p>
                   )}
                 </div>
               )}
@@ -1712,6 +1732,8 @@ function JiraIntegrationSection() {
   }
 
   async function handleConnect() {
+    if (!config.project_key) { toast.error('Pick a project first', 'Test & fetch projects, then select one.'); return }
+    if (!testResult?.valid) { toast.error('Test first', 'Run Test & Fetch Projects successfully before connecting.'); return }
     try {
       await saveIntegration('jira', config)
       setConnected(true)
@@ -1799,8 +1821,8 @@ function JiraIntegrationSection() {
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={handleConnect} disabled={!config.project_key}
-              className="btn">
+            <button onClick={handleConnect} disabled={!config.project_key || !testResult?.valid}
+              className="btn" title={!testResult?.valid ? 'Test & fetch projects first' : undefined}>
               Connect Jira
             </button>
           </div>
@@ -1863,6 +1885,9 @@ function LinearIntegrationSection() {
   }
 
   async function handleConnect() {
+    if (!teamId) { toast.error('Pick a team first', 'Test & fetch teams, then select one.'); return }
+    if (!testResult?.valid) { toast.error('Test first', 'Run Test & Fetch Teams successfully before connecting.'); return }
+    if (!apiKey || apiKey.includes('••')) { toast.error('Nothing to save', 'Paste a fresh API key.'); return }
     try {
       await saveIntegration('linear', { api_key: apiKey, team_id: teamId })
       setConnected(true)
@@ -1941,8 +1966,8 @@ function LinearIntegrationSection() {
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={handleConnect} disabled={!teamId}
-              className="btn">
+            <button onClick={handleConnect} disabled={!teamId || !testResult?.valid}
+              className="btn" title={!testResult?.valid ? 'Test & fetch teams first' : undefined}>
               Connect Linear
             </button>
           </div>

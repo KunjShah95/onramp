@@ -14,6 +14,7 @@ import {
   CaretRight,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { adminListAuditEvents, exportAuditEvents } from '../lib/api'
@@ -254,17 +255,17 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="border-collapse text-left w-full table-auto">
-              <thead>
-                <tr className="border-b border-seam sticky top-0 z-10 bg-panel">
-                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Event</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Actor</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Target</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Team</th>
-                  <th className="text-right px-3 sm:px-4 py-3 text-caption font-medium text-ink-tertiary uppercase tracking-wider align-middle">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
+            <Table>
+              <THead>
+                <TR className="sticky top-0 z-10 bg-panel">
+                  <TH className="px-3 sm:px-4 py-3 text-caption font-medium uppercase tracking-wider">Event</TH>
+                  <TH className="px-3 sm:px-4 py-3 text-caption font-medium uppercase tracking-wider">Actor</TH>
+                  <TH className="hidden md:table-cell px-3 sm:px-4 py-3 text-caption font-medium uppercase tracking-wider">Target</TH>
+                  <TH className="hidden md:table-cell px-3 sm:px-4 py-3 text-caption font-medium uppercase tracking-wider">Team</TH>
+                  <TH className="px-3 sm:px-4 py-3 text-caption font-medium uppercase tracking-wider text-right">Time</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {pageEvents.map((entry, i) => {
                   const style = EVENT_TYPE_ICONS[entry.event_type] ?? { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
                   const Icon = style.icon
@@ -274,9 +275,9 @@ export default function AuditLogPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.025 }}
-                      className="hover:bg-well/10 transition-colors group"
+                      className="border-b border-seam last:border-b-0 hover:bg-well/10 transition-colors group"
                     >
-                      <td className="px-3 sm:px-4 py-3 align-middle">
+                      <TD className="px-3 sm:px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${style.bg}`}>
                             <Icon className={`w-3.5 h-3.5 ${style.color}`} weight="fill" />
@@ -290,8 +291,8 @@ export default function AuditLogPage() {
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 align-middle">
+                      </TD>
+                      <TD className="px-3 sm:px-4 py-3">
                         {entry.actor_name ? (
                           <span className="text-body-sm text-ink-secondary font-medium">{entry.actor_name}</span>
                         ) : entry.actor_id ? (
@@ -301,8 +302,8 @@ export default function AuditLogPage() {
                         ) : (
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 align-middle">
+                      </TD>
+                      <TD className="hidden md:table-cell px-3 sm:px-4 py-3">
                         {entry.target_name ? (
                           <span className="text-body-xs text-ink-tertiary font-medium">{entry.target_name}</span>
                         ) : entry.target_id ? (
@@ -312,8 +313,8 @@ export default function AuditLogPage() {
                         ) : (
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 align-middle">
+                      </TD>
+                      <TD className="hidden md:table-cell px-3 sm:px-4 py-3">
                         {entry.team_name ? (
                           <span className="text-body-xs text-ink-tertiary font-medium">{entry.team_name}</span>
                         ) : entry.team_id ? (
@@ -323,17 +324,17 @@ export default function AuditLogPage() {
                         ) : (
                           <span className="text-body-xs text-ink-tertiary">N/A</span>
                         )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-right align-middle">
+                      </TD>
+                      <TD className="px-3 sm:px-4 py-3 text-right">
                         <span className="text-body-xs text-ink-tertiary/60 whitespace-nowrap" title={`${formatInIST(entry.timestamp)} IST`}>
                           {relativeTime(entry.timestamp)}
                         </span>
-                      </td>
+                      </TD>
                     </motion.tr>
                   )
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
         )}
 

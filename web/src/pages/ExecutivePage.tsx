@@ -92,6 +92,7 @@ export default function ExecutivePage() {
           eyebrow="Folio 03 · Executive"
           title="Executive Console"
           subtitle="Revenue trajectory · fleet status · treasury."
+          pills={[{ label: 'Data', value: 'Demo' }]}
         />
       </motion.div>
 

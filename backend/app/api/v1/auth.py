@@ -751,7 +751,8 @@ async def refresh_token(body: RefreshRequest, request: Request):
     return response
 
 
-@router.get("/me", response_model=MeResponse)
+@router.get("/me", response_model=MeResponse,
+    responses={404: {"description": "User not found"}})
 async def me(user: dict = Depends(get_current_user)):
     """Return the current user's profile from the backend."""
     uid = user.get("uid", "")
@@ -923,7 +924,8 @@ class UpdateProfileRequest(BaseModel):
     email: str | None = None  # accepted in schema but rejected in the handler
 
 
-@router.patch("/me", response_model=MeResponse)
+@router.patch("/me", response_model=MeResponse,
+    responses={404: {"description": "User not found"}})
 async def update_me(
     body: UpdateProfileRequest,
     user: dict = Depends(get_current_user),

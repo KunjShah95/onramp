@@ -1072,7 +1072,8 @@ async def peer_review_endpoint(
 # ── Quiz Gates ───────────────────────────────────────────────
 
 
-@router.get("/{task_id}/quiz-gate")
+@router.get("/{task_id}/quiz-gate",
+    responses={404: {"description": "Quiz gate not found"}})
 async def quiz_gate_endpoint(
     task_id: str,
     user: dict = Depends(get_current_user),

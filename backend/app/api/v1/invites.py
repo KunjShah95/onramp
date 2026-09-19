@@ -92,7 +92,8 @@ async def list_team_invites(
     return {"invites": invites, "count": len(invites)}
 
 
-@router.delete("/teams/{team_id}/invites/{invite_id}")
+@router.delete("/teams/{team_id}/invites/{invite_id}",
+    responses={404: {"description": "Invite not found"}})
 async def cancel_team_invite(
     team_id: str,
     invite_id: str,

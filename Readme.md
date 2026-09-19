@@ -233,6 +233,21 @@ Beyond free-first routing, three more layers keep LLM cost low:
 - **OpenAPI security scheme** — BearerAuth declared so `/docs` has an Authorize
   button and typed clients can be generated
 
+### Responsive, Compat & SEO
+
+- Mobile-first layouts (320px → desktop): responsive type scales, stacked grids,
+  horizontal-scroll table primitive, `100dvh` fallbacks, 44px tap targets
+  (`.hit-slop`), `overflow-x: clip` guards against decorative overflows
+- Per-route SEO snapshots: `npm run build` runs `web/scripts/seo-assets.mjs`,
+  baking title/description/canonical/OG tags into `dist/seo/*.html` for all
+  public routes (20 pages incl. blog) + rewriting `sitemap.xml`/`robots.txt`
+  to the canonical host — served via explicit Vercel rewrites
+- Security + cache headers in `web/vercel.json` (nosniff, DENY framing,
+  immutable `/assets/*` caching)
+- Audit scripts: `web/scripts/mobile-audit.mjs` (overflow sweep),
+  `cwv-audit.mjs` (throttled-mobile CWV), `audit-a11y.mjs`,
+  `audit-responsive.mjs`, `audit-orphans.mjs`
+
 ### PWA
 
 - Web app manifest + installable icons (any + maskable)
@@ -257,17 +272,19 @@ Beyond free-first routing, three more layers keep LLM cost low:
 - RBAC with 9 roles (junior_dev, developer, senior_dev, tester, cto, ceo, admin, member, hr)
 - OAuth2 social login (Google, GitHub) with CSRF state tokens + account linking
 - Password reset flow with short-lived JWT reset tokens
-- Alembic database migrations (28 versions)
+- Alembic database migrations (30+ versions)
 - CORS allowlist + Vercel regex, production env validation on boot
 - GitHub webhook HMAC-SHA256 signature verification
 
 ### Billing & API Gateway
 
 - Razorpay subscription management (free / pro / enterprise, INR)
-- API key management with usage tracking, credit limits, expiry
+- API key management with usage tracking, per-key credit budgets, expiry + rotation
+- Tier rate limits with **daily request caps** (free 100/day → enterprise 100k/day)
+- Cost / Balanced / Intelligence routing-mode dial per team (gateway + in-app chat)
 - OpenAI-compatible `/v1` gateway (chat, streaming, embeddings, models)
 - Rate limiting (Redis-backed) + usage quotas with endpoint-level breakdown
-- Per-team provider keys (BYOK) stored encrypted, with multi-key round-robin
+- Per-team provider keys (BYOK) stored Fernet-encrypted, with multi-key round-robin pools
 
 ### Notifications & Integrations
 
@@ -594,7 +611,7 @@ All accounts share the same password: **`demo123`**
 ### Running Tests
 
 ```bash
-# Backend tests (240+ test files covering services, APIs, and DB migrations;
+# Backend tests (76 test files covering services, APIs, and DB migrations;
 # dual storage backends: InMemoryStorage + PostgresStorage)
 cd backend
 python -m pytest tests/ -q                          # All tests (memory backend)
@@ -661,12 +678,20 @@ docker compose logs -f backend                         # Backend logs
 
 ### What's next
 
-- Real-time WebSocket notifications everywhere
-- Local AI model support (Ollama) as a first-class routing tier
+- Razorpay production webhook verification (currently skeleton)
+- GitLab & Bitbucket integration (GitHub only today)
 - PR review auto-apply suggestions
-- GitLab & Bitbucket integration
-- Community playbook marketplace
-- Mobile-responsive views for key pages
+- Custom per-key daily credit caps (today: tier daily request caps + per-key
+  monthly credit budgets)
+- Sitemap `lastmod` automation from git history (currently stamped at build)
+
+### Recently shipped
+
+- Mobile-responsive hardening across all pages (Sept 2026)
+- Per-route SEO snapshots + canonical-host rewrite at build (Sept 2026)
+- Developer Portal: BYOK provider pools, routing-mode dial, credit budgets
+- Community playbook marketplace, Ollama local-provider support,
+  real-time notification bell
 
 ---
 
@@ -711,23 +736,23 @@ acceptance with a public-path allowlist), plus Brotli/GZip compression.
 onramp/
 ├── backend/
 │   ├── app/
-│   │   ├── agents/          # 17 AI agents (HealthScorer, IssueResolutionAgent, …)
-│   │   ├── api/v1/          # 43 route modules (auth, tasks, autopilot, explore, …)
-│   │   ├── database/        # SQLAlchemy models (36), config
+│   │   ├── agents/          # 16 AI agents + base (HealthScorer, IssueResolutionAgent, …)
+│   │   ├── api/v1/          # 46 route modules (auth, tasks, autopilot, explore, …)
+│   │   ├── database/        # SQLAlchemy models (40), config
 │   │   ├── middleware/      # Auth, RateLimit, Logging, ResponseWrapper, Metrics, …
 │   │   ├── schemas/         # Pydantic schemas
 │   │   ├── services/        # Business logic (autopilot, github, task, ramp, …)
 │   │   ├── tasks/           # Celery tasks + beat schedule
 │   │   └── slack_bot/       # Slack integration
-│   ├── alembic/             # Database migrations (28 versions)
-│   ├── tests/               # 240+ pytest test files (dual memory+postgres storage)
+│   ├── alembic/             # Database migrations (30+ versions)
+│   ├── tests/               # 76 pytest test files (dual memory+postgres storage)
 │   └── scripts/             # Dev utilities (e2e flows, secrets)
 ├── web/
 │   ├── src/
 │   │   ├── components/      # Reusable UI (Sidebar, ConsolePanel, dashboard panels)
 │   │   ├── context/         # AuthContext, ThemeContext, ToastContext
 │   │   ├── lib/             # API client, utils, types
-│   │   ├── pages/           # 68 page components (role-gated)
+│   │   ├── pages/           # 60+ page components (role-gated)
 │   │   └── test/            # Vitest tests
 │   ├── e2e/                 # Playwright tests (auth, dashboard, review, a11y, perf)
 │   └── public/
@@ -782,6 +807,7 @@ onramp/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_API_URL` | ⬜ | API base URL (default: `http://localhost:8000/api/v1`) |
+| `VITE_APP_URL` | ⬜ | Canonical site URL — OG tags, canonicals, sitemap/robots rewrite (default: `http://localhost:5173`; set to prod domain in production) |
 
 ---
 

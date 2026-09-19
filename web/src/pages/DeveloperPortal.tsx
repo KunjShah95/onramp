@@ -61,6 +61,7 @@ export default function DeveloperPortal() {
   const [newKeyName, setNewKeyName] = useState('')
   const [newKeyTier, setNewKeyTier] = useState('pro')
   const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
+  const [newKeyDailyCap, setNewKeyDailyCap] = useState('')
   const [newKeyExpiry, setNewKeyExpiry] = useState('')
   const [creatingKey, setCreatingKey] = useState(false)
   const [providerKeys, setProviderKeys] = useState<Record<string, ProviderKeyInfo>>({})
@@ -158,11 +159,13 @@ export default function DeveloperPortal() {
     setCreatingKey(true); setKeyError('')
     const raw = Number(newKeyCostLimit.trim() || '')
     const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
+    const dailyCapRaw = Number(newKeyDailyCap.trim() || '')
+    const dailyCap = Number.isFinite(dailyCapRaw) && dailyCapRaw > 0 ? dailyCapRaw : undefined
     const expiresInDays = daysUntilExpiry(newKeyExpiry)
     try {
-      const data = await createApiKey(activeTeamId, newKeyTier, newKeyName.trim() || undefined, costLimit, expiresInDays)
+      const data = await createApiKey(activeTeamId, newKeyTier, newKeyName.trim() || undefined, costLimit, expiresInDays, dailyCap)
       setNewKey(data.raw_key)
-      setShowCreateForm(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyExpiry('')
+      setShowCreateForm(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyDailyCap(''); setNewKeyExpiry('')
       await fetchKeys()
       toast.success('Created', 'API key created · copy it now')
       setTab('overview')
@@ -244,6 +247,7 @@ export default function DeveloperPortal() {
           showCreateForm={showCreateForm} setShowCreateForm={setShowCreateForm}
           newKeyName={newKeyName} setNewKeyName={setNewKeyName} newKeyTier={newKeyTier} setNewKeyTier={setNewKeyTier}
           newKeyCostLimit={newKeyCostLimit} setNewKeyCostLimit={setNewKeyCostLimit}
+          newKeyDailyCap={newKeyDailyCap} setNewKeyDailyCap={setNewKeyDailyCap}
           newKeyExpiry={newKeyExpiry} setNewKeyExpiry={setNewKeyExpiry} today={today}
           creatingKey={creatingKey} canManageKeys={canManageKeys}
           onCreate={handleCreateKey} onRevoke={handleRevokeKey} onCopy={handleCopy} />
@@ -331,6 +335,7 @@ function KeysTab(props: {
   showCreateForm: boolean; setShowCreateForm: (v: boolean) => void
   newKeyName: string; setNewKeyName: (v: string) => void; newKeyTier: string; setNewKeyTier: (v: string) => void
   newKeyCostLimit: string; setNewKeyCostLimit: (v: string) => void
+  newKeyDailyCap: string; setNewKeyDailyCap: (v: string) => void
   newKeyExpiry: string; setNewKeyExpiry: (v: string) => void; today: string
   creatingKey: boolean; canManageKeys: boolean
   onCreate: () => void; onRevoke: (id: string) => void; onCopy: (id: string, c: string) => void
@@ -379,6 +384,10 @@ function KeysTab(props: {
             <Field label="Monthly credit cap (optional)" hint="Blank = no limit. The key stops working at this budget.">
               <input value={props.newKeyCostLimit} onChange={(e) => props.setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
                 inputMode="numeric" placeholder="e.g. 5000" className="input w-full" />
+            </Field>
+            <Field label="Daily credit cap (optional)" hint="Blank = no daily limit. Resets each UTC day.">
+              <input value={props.newKeyDailyCap} onChange={(e) => props.setNewKeyDailyCap(e.target.value.replace(/[^0-9]/g, ''))}
+                inputMode="numeric" placeholder="e.g. 500" className="input w-full" />
             </Field>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => props.setShowCreateForm(false)} className="min-h-[44px] px-4 text-[13px] text-ink-tertiary">Cancel</button>

@@ -137,13 +137,13 @@ function DeveloperList({
             className={cn(
               'w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group',
               isSelected
-                ? 'bg-amber-400/8 border border-amber-400/20 shadow-glow-sm'
+                ? 'bg-go/[0.07] border border-go/25 shadow-glow-sm'
                 : 'hover:bg-well/30 border border-transparent'
             )}
           >
             <div className={cn(
               'w-10 h-10 rounded-xl flex items-center justify-center font-display text-body-sm font-bold transition-all',
-              isSelected ? 'bg-amber-400/15 text-amber-400' : 'bg-well border border-seam text-ink-muted/40'
+              isSelected ? 'bg-go/10 text-go' : 'bg-well border border-seam text-ink-muted/40'
             )}>
               {dev.name.charAt(0).toUpperCase()}
             </div>
@@ -151,7 +151,7 @@ function DeveloperList({
               <div className="flex items-center gap-2">
                 <span className="text-body-sm font-medium text-ink truncate">{dev.name}</span>
                 {dev.at_risk && (
-                  <WarningCircle size={12} className="text-red-400 shrink-0" weight="fill" />
+                  <WarningCircle size={12} className="text-abort shrink-0" weight="fill" />
                 )}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -163,7 +163,7 @@ function DeveloperList({
                 <span className="text-caption text-ink-muted/40 tabular-nums">{dev.completion_pct}%</span>
               </div>
             </div>
-            <ArrowRight size={14} className={cn('shrink-0 transition-all', isSelected ? 'text-amber-400 opacity-100' : 'text-ink-muted/10 group-hover:text-ink-muted/40')} />
+            <ArrowRight size={14} className={cn('shrink-0 transition-all', isSelected ? 'text-go opacity-100' : 'text-ink-muted/10 group-hover:text-ink-muted/40')} />
           </motion.button>
         )
       })}
@@ -190,7 +190,7 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
             <StageIcon size={13} className={stage?.color || 'text-ink-muted'} weight="fill" />
             <span className={cn('text-body-xs font-code', stage?.color)}>{stage?.label || dev.stage}</span>
             {dev.at_risk && (
-              <span className="flex items-center gap-1 text-caption text-red-400 ml-1">
+              <span className="flex items-center gap-1 text-caption text-abort ml-1">
                 <WarningCircle size={10} weight="fill" /> At risk
               </span>
             )}
@@ -201,9 +201,9 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {[
-          { label: 'Tasks', val: `${dev.completed}/${dev.assigned}`, sub: 'completed', color: 'text-emerald-400', icon: CheckCircle },
-          { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : 'N/A', sub: 'to first PR', color: 'text-amber-400', icon: Clock },
-          { label: 'Streak', val: `${dev.current_streak}d`, sub: `best ${dev.longest_streak}d`, color: 'text-orange-400', icon: Fire },
+          { label: 'Tasks', val: `${dev.completed}/${dev.assigned}`, sub: 'completed', color: 'text-go', icon: CheckCircle },
+          { label: 'Ramp Time', val: dev.ramp_days !== null ? `${dev.ramp_days}d` : 'N/A', sub: 'to first PR', color: 'text-caution', icon: Clock },
+          { label: 'Streak', val: `${dev.current_streak}d`, sub: `best ${dev.longest_streak}d`, color: 'text-caution-lit', icon: Fire },
           { label: 'Stage', val: stage?.label || dev.stage, sub: 'onboarding', color: stage?.color || 'text-ink-muted', icon: ChartBar },
         ].map((stat) => (
           <motion.div
@@ -310,10 +310,10 @@ export default function HrPeoplePage() {
   }, [devData])
 
   const FILTERS: { key: StageFilter; label: string; color: string; activeColor: string }[] = [
-    { key: 'all', label: 'All', color: '', activeColor: 'bg-amber-400/10 text-amber-400 border-amber-400/20' },
-    { key: 'onboarding', label: `Onboarding ${stageCounts.onboarding}`, color: 'text-blue-400/60', activeColor: 'bg-blue-400/10 text-blue-400 border-blue-400/20' },
-    { key: 'ramping', label: `Ramping ${stageCounts.ramping}`, color: 'text-amber-400/60', activeColor: 'bg-amber-400/10 text-amber-400 border-amber-400/20' },
-    { key: 'contributing', label: `Contributing ${stageCounts.contributing}`, color: 'text-emerald-400/60', activeColor: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+    { key: 'all', label: 'All', color: '', activeColor: 'bg-caution/10 text-caution border-caution/25' },
+    { key: 'onboarding', label: `Onboarding ${stageCounts.onboarding}`, color: 'text-mission/70', activeColor: 'bg-mission/10 text-mission border-mission/25' },
+    { key: 'ramping', label: `Ramping ${stageCounts.ramping}`, color: 'text-caution/70', activeColor: 'bg-caution/10 text-caution border-caution/25' },
+    { key: 'contributing', label: `Contributing ${stageCounts.contributing}`, color: 'text-go/70', activeColor: 'bg-go/10 text-go border-go/25' },
     { key: 'independent', label: `Independent ${stageCounts.independent}`, color: 'text-violet-400/60', activeColor: 'bg-violet-400/10 text-violet-400 border-violet-400/20' },
   ]
 
@@ -391,7 +391,7 @@ export default function HrPeoplePage() {
             {selectedTeamId && (
               <Link
                 to={`/hr/cohort/${selectedTeamId}`}
-                className="inline-flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3.5 py-2 text-body-xs font-medium text-blue-300 transition-all hover:bg-blue-500/20 active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-xl border border-mission/25 bg-mission/10 px-3.5 py-2 text-body-xs font-medium text-mission transition-all hover:bg-mission/20 active:scale-[0.98]"
               >
                 <ChartBar size={15} weight="fill" />
                 Cohort analytics
@@ -408,10 +408,10 @@ export default function HrPeoplePage() {
           className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
         >
           {[
-            { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/8 border-blue-400/15' },
-            { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-emerald-400' : 'text-amber-400', bg: avgCompletion >= 50 ? 'bg-emerald-400/8 border-emerald-400/15' : 'bg-amber-400/8 border-amber-400/15' },
-            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : 'N/A', icon: Clock, color: 'text-amber-400', bg: 'bg-amber-400/8 border-amber-400/15' },
-            { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: atRiskCount > 0 ? 'bg-red-400/8 border-red-400/15' : 'bg-emerald-400/8 border-emerald-400/15' },
+            { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-mission', bg: 'bg-mission/10 border-mission/20' },
+            { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-go' : 'text-caution', bg: avgCompletion >= 50 ? 'bg-go/10 border-go/20' : 'bg-caution/10 border-caution/20' },
+            { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : 'N/A', icon: Clock, color: 'text-caution', bg: 'bg-caution/10 border-caution/20' },
+            { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-abort' : 'text-go', bg: atRiskCount > 0 ? 'bg-abort/10 border-abort/20' : 'bg-go/10 border-go/20' },
           ].map((m, i) => (
             <motion.div
               key={m.label}
@@ -470,7 +470,7 @@ export default function HrPeoplePage() {
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-well border border-seam rounded-xl pl-8 pr-3 py-2 text-body-xs text-ink placeholder:text-ink-muted/20 focus:outline-none focus:ring-1 focus:ring-amber-400/20 transition-all"
+                  className="w-full bg-well border border-seam rounded-xl pl-8 pr-3 py-2 text-body-xs text-ink placeholder:text-ink-muted/20 focus:outline-none focus:ring-1 focus:ring-go/25 transition-all"
                 />
               </div>
               <DeveloperList
@@ -500,8 +500,8 @@ export default function HrPeoplePage() {
                   {selectedHeatmap && (
                     <CardSpotlight className="p-5 mt-4">
                       <div className="flex items-center gap-2.5 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-amber-400/8 border border-amber-400/15 flex items-center justify-center">
-                          <CaretCircleRight size={16} className="text-amber-400" />
+                        <div className="w-8 h-8 rounded-lg bg-caution/10 border border-caution/20 flex items-center justify-center">
+                          <CaretCircleRight size={16} className="text-caution" />
                         </div>
                         <div>
                           <h2 className="font-display text-body-sm font-bold text-ink">Activity Heatmap</h2>

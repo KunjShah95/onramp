@@ -33,7 +33,8 @@ async def list_plans(team_id: str | None = None, user_id: str | None = None,
     return await ops.list_plans(team_id=team_id, user_id=user_id)
 
 
-@router.get("/{plan_id}")
+@router.get("/{plan_id}",
+    responses={404: {"description": "Plan not found"}})
 async def get_plan(plan_id: str, user: dict = Depends(get_current_user)):
     plan = await ops.get_plan(plan_id)
     if not plan:
@@ -41,7 +42,8 @@ async def get_plan(plan_id: str, user: dict = Depends(get_current_user)):
     return plan
 
 
-@router.get("/{plan_id}/roadmap")
+@router.get("/{plan_id}/roadmap",
+    responses={404: {"description": "Plan not found"}})
 async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user)):
     """Milestone roadmap with statuses (locked / available / in_progress / completed)."""
     roadmap = await ops.get_roadmap(plan_id)
@@ -50,7 +52,8 @@ async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user))
     return roadmap
 
 
-@router.patch("/{plan_id}")
+@router.patch("/{plan_id}",
+    responses={404: {"description": "Plan not found"}})
 async def update_plan(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
     plan = await ops.update_plan(plan_id, payload)
     if not plan:

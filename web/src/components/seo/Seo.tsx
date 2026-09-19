@@ -58,12 +58,14 @@ export default function Seo({
     upsertTag('og:type', 'meta', { property: 'og:type', content: type })
     upsertTag('og:url', 'meta', { property: 'og:url', content: url })
     upsertTag('og:image', 'meta', { property: 'og:image', content: image })
+    upsertTag('og:image:alt', 'meta', { property: 'og:image:alt', content: title })
 
     // Twitter card
     upsertTag('twitter:card', 'meta', { name: 'twitter:card', content: 'summary_large_image' })
     upsertTag('twitter:title', 'meta', { name: 'twitter:title', content: title })
     upsertTag('twitter:description', 'meta', { name: 'twitter:description', content: desc })
     upsertTag('twitter:image', 'meta', { name: 'twitter:image', content: image })
+    upsertTag('twitter:image:alt', 'meta', { name: 'twitter:image:alt', content: title })
 
     // Robots
     upsertTag('robots', 'meta', {

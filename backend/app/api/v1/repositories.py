@@ -125,7 +125,8 @@ async def get_repo(
     return repo_data
 
 
-@router.delete("/{repo_id}")
+@router.delete("/{repo_id}",
+    responses={404: {"description": "Repository not found"}})
 async def delete_repo(
     repo_id: str,
     user: dict = Depends(get_current_user),

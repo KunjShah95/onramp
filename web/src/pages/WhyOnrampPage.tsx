@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Brain, Code, Lightning } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 import PhilosophyHero from '../components/landing/PhilosophyHero'
 import CostAtScaleCalculator from '../components/landing/CostAtScaleCalculator'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -202,15 +203,15 @@ export default function WhyOnrampPage() {
         </motion.div>
         <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-seam bg-panel shadow-seam">
           <div className="overflow-x-auto">
-            <table className="w-full text-[13.5px]">
-              <thead>
-                <tr className="border-b border-seam bg-well">
-                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Aspect</th>
-                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Coding agents</th>
-                  <th className="px-6 py-3 text-left font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-primary">Onramp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5">
+            <Table className="text-[13.5px]">
+              <THead>
+                <TR className="bg-well">
+                  <TH className="px-6 py-3 font-code text-[11px] font-semibold uppercase tracking-[0.08em]">Aspect</TH>
+                  <TH className="px-6 py-3 font-code text-[11px] font-semibold uppercase tracking-[0.08em]">Coding agents</TH>
+                  <TH className="px-6 py-3 font-code text-[11px] font-semibold uppercase tracking-[0.08em] text-accent-primary">Onramp</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {[
                   ['Context', 'Re-reads the whole codebase per change', 'Indexed once · graph updates on change'],
                   ['Cost model', 'Per-seat subs + per-dev token burn', 'Flat per-workspace price'],
@@ -218,14 +219,14 @@ export default function WhyOnrampPage() {
                   ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
                   ['Understand WHY', 'No, just HOW', 'Yes, full context'],
                 ].map((row, idx) => (
-                  <tr key={idx} className="hover:bg-well transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-ink">{row[0]}</td>
-                    <td className="px-6 py-3.5 text-ink-tertiary">{row[1]}</td>
-                    <td className="px-6 py-3.5 font-medium text-accent-primary">{row[2]}</td>
-                  </tr>
+                  <TR key={idx} hoverable>
+                    <TD className="px-6 py-3.5 font-semibold text-ink">{row[0]}</TD>
+                    <TD className="px-6 py-3.5 text-ink-tertiary">{row[1]}</TD>
+                    <TD className="px-6 py-3.5 font-medium text-accent-primary">{row[2]}</TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
         </motion.div>
       </motion.div>

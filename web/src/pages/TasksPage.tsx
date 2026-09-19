@@ -21,6 +21,8 @@ import StatusBadge from '../components/ui/status-badge'
 import Pagination from '../components/ui/Pagination'
 import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
 import { useToast } from '../context/ToastContext'
+import { useRealTime } from '../context/RealTimeContext'
+import type { WsEvent } from '../hooks/useWebSocket'
 import { TasksPageSkeleton } from '../components/ui/Skeleton'
 import {
   Plus, X, Trash, MagnifyingGlass, Check, ArrowRight,
@@ -230,6 +232,33 @@ export default function TasksPage() {
     load()
     return () => { cancelled = true }
   }, [selectedTeam])
+
+  // Live updates: merge WS task_update events for this team into the list so
+  // assignment/state changes appear without a refetch. Deletes are applied
+  // structurally; tasks created elsewhere arrive on the next fetch.
+  const { onEvent } = useRealTime()
+  useEffect(() => {
+    const unsub = onEvent((event: WsEvent) => {
+      if (event.type !== 'task_update') return
+      if (event.task.team_id !== selectedTeam) return
+      const t = event.task
+      setTasks((prev) => {
+        if (event.event === 'deleted') return prev.filter((x) => x.task_id !== t.task_id)
+        const idx = prev.findIndex((x) => x.task_id === t.task_id)
+        if (idx === -1) return prev // created elsewhere — picked up on next fetch
+        const next = [...prev]
+        next[idx] = {
+          ...next[idx],
+          state: t.state,
+          title: t.title,
+          assigned_to: t.assigned_to ?? next[idx].assigned_to,
+          module: t.module ?? next[idx].module,
+        }
+        return next
+      })
+    })
+    return unsub
+  }, [onEvent, selectedTeam])
 
   useEffect(() => {
     let cancelled = false
@@ -717,7 +746,7 @@ export default function TasksPage() {
               <div className="flex justify-end gap-3">
                 <button onClick={() => { setShowImportIssue(false); setImportRepoUrl(''); setImportIssueNumber('') }} className="px-4 py-2 text-sm text-ink-tertiary hover:text-ink-secondary transition-colors">Cancel</button>
                 <button onClick={handleImportIssue} disabled={importing || !importRepoUrl.trim() || !importIssueNumber.trim()}
-                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                  className="btn-primary font-bold">
                   {importing ? 'Importing…' : 'Import Issue'}
                 </button>
               </div>
@@ -760,7 +789,7 @@ export default function TasksPage() {
                       </select>
                     </div>
                     <button onClick={handleCreateTemplate} disabled={tplCreating || !tplName.trim()}
-                      className="w-full bg-go hover:bg-go/90 text-white px-4 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40">
+                      className="btn-primary w-full font-bold">
                       {tplCreating ? 'Saving…' : 'Save Template'}
                     </button>
                   </div>
@@ -969,7 +998,7 @@ export default function TasksPage() {
                 <button onClick={handleCreateTask} disabled={creating || !formTitle.trim() || !selectedTeam}
                   title={!selectedTeam ? 'Select a team first' : ''}
                   aria-busy={creating}
-                  className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">
+                  className="btn-primary font-bold">
                   {creating ? 'Creating…' : 'Create Task'}
                 </button>
               </div>
@@ -1313,7 +1342,7 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'assigned' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">Start Working</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="btn-primary font-bold">Start Working</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
@@ -1330,13 +1359,13 @@ export default function TasksPage() {
                       <div className="flex gap-2 flex-wrap items-center">
                         {selectedTask.state === 'peer_review' ? (
                           <>
-                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} aria-label={`Approve ${selectedTask.title}`} className="bg-go hover:bg-go-lit text-white px-5 py-2 rounded-card text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Approve</button>
+                            <button onClick={() => handlePeerReview(selectedTask.task_id, true)} aria-label={`Approve ${selectedTask.title}`} className="btn-primary font-bold">Approve</button>
                             <button onClick={() => handlePeerReview(selectedTask.task_id, false)} className="px-4 py-2 rounded-card text-sm font-medium border border-abort/25 text-abort hover:bg-abort/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-abort/40">Request Changes</button>
                             <button onClick={() => handlePeerReview(selectedTask.task_id, true, true)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/30">Route to Product</button>
                           </>
                         ) : (
                           <>
-                            <button onClick={() => handleApprove(selectedTask.task_id)} aria-label={`Approve ${selectedTask.title}`} className="bg-go hover:bg-go-lit text-white px-5 py-2 rounded-card text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50">Approve</button>
+                            <button onClick={() => handleApprove(selectedTask.task_id)} aria-label={`Approve ${selectedTask.title}`} className="btn-primary font-bold">Approve</button>
                             <button onClick={() => handleReview(selectedTask.task_id, false)} className="px-4 py-2 rounded-card text-sm font-medium border border-abort/25 text-abort hover:bg-abort/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-abort/40">Request Changes</button>
                             <button onClick={() => handleReview(selectedTask.task_id, true, true)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-ink-secondary hover:text-ink hover:border-seam-strong transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/30">Route to Product</button>
                             <button onClick={() => handleClaimPeerReview(selectedTask.task_id)} className="px-4 py-2 rounded-card text-sm font-medium border border-seam text-mission hover:border-mission/40 hover:bg-mission/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mission/40 inline-flex items-center gap-1.5">
@@ -1350,7 +1379,7 @@ export default function TasksPage() {
                   )}
                   {selectedTask.state === 'needs_changes' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleStart(selectedTask.task_id)} className="bg-go hover:bg-go/90 text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">Resume Working</button>
+                      <button onClick={() => handleStart(selectedTask.task_id)} className="btn-primary font-bold">Resume Working</button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>
                     </div>
                   )}
@@ -1359,13 +1388,13 @@ export default function TasksPage() {
                       <Textarea value={reviewFeedback} onChange={(e) => setReviewFeedback(e.target.value)} placeholder="Product sign-off notes…" rows={2} />
                       <div className="flex gap-2">
                         <button onClick={() => handleReview(selectedTask.task_id, false)} className="bg-abort/80 hover:bg-abort text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Request Changes</button>
-                        <button onClick={() => handleApprove(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-4 py-2 rounded-card text-sm font-medium transition-colors">Approve & Sign Off</button>
+                        <button onClick={() => handleApprove(selectedTask.task_id)} className="btn-primary font-medium">Approve & Sign Off</button>
                       </div>
                     </div>
                   )}
                   {selectedTask.state === 'approved' && (
                     <div className="flex gap-2">
-                      <button onClick={() => handleComplete(selectedTask.task_id)} className="bg-go hover:bg-go-lit text-white px-6 py-2 rounded-card text-sm font-bold transition-colors">
+                      <button onClick={() => handleComplete(selectedTask.task_id)} className="btn-primary font-bold">
                         <Check className="w-4 h-4" weight="bold" /> Mark Completed & Unlock Modules
                       </button>
                       <button onClick={() => handleCancel(selectedTask.task_id)} className="text-abort/50 hover:text-abort text-sm px-3 transition-colors">Cancel</button>

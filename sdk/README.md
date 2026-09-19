@@ -53,6 +53,7 @@ console.log(result.credits_used, result.tier)
 // Usage + keys
 await onramp.validateApiKey('cf_...')
 const created = await onramp.createApiKey('my-org', 'free')
+const budgeted = await onramp.createApiKey('my-org', 'pro', { credit_limit: 5000, expires_in_days: 90 })
 await onramp.getUsage('my-org')
 await onramp.listTiers()
 ```
@@ -101,8 +102,8 @@ const client = new OpenAI({
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `validateApiKey(rawKey)` | `GET /api/v1/ai/keys/validate` | Validate a key, returns org + tier |
-| `createApiKey(orgName, tier)` | `POST /api/v1/ai/keys` | Create a new API key |
+| `validateApiKey(rawKey)` | `POST /api/v1/ai/keys/validate` | Validate a key, returns org + tier |
+| `createApiKey(orgName, tier, opts?)` | `POST /api/v1/ai/keys` | Create a new API key; `opts` accepts `credit_limit` (monthly credit budget), `daily_credit_cap` (daily cap, resets each UTC day), and `expires_in_days` |
 | `getUsage(orgName)` | `GET /api/v1/ai/usage/{orgName}` | Credit + request usage with endpoint breakdown |
 | `listTiers()` | `GET /api/v1/ai/tiers` | Tier limits + credit costs |
 

@@ -86,7 +86,8 @@ async def build_index(
     return doc
 
 
-@router.get("/{index_id}")
+@router.get("/{index_id}",
+    responses={404: {"description": "Index not found"}})
 async def get_index(
     index_id: str,
     user: dict = Depends(get_current_user),
@@ -98,7 +99,8 @@ async def get_index(
     return doc
 
 
-@router.get("/{index_id}/context")
+@router.get("/{index_id}/context",
+    responses={404: {"description": "Index not found"}})
 async def select_index(
     index_id: str,
     requirement: str = "",
@@ -119,7 +121,8 @@ async def select_index(
     return slice_doc
 
 
-@router.delete("/{index_id}")
+@router.delete("/{index_id}",
+    responses={404: {"description": "Index not found"}})
 async def evict_index(
     index_id: str,
     user: dict = Depends(get_current_user),

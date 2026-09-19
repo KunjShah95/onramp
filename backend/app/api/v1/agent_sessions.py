@@ -123,7 +123,8 @@ async def list_sessions(
     return {"sessions": sessions, "count": len(sessions)}
 
 
-@router.get("/{session_id}")
+@router.get("/{session_id}",
+    responses={404: {"description": "Session not found"}})
 async def get_session(session_id: str, include_history: bool = Query(True), history_limit: int = Query(50, ge=1, le=100), user: dict = Depends(get_current_user)):
     sess = await agent_context.get_session(session_id)
     if not sess:
@@ -169,7 +170,8 @@ async def handoff(session_id: str, body: HandoffRequest, user: dict = Depends(ge
     return {"child": child, "parent_id": session_id}
 
 
-@router.get("/{session_id}/thread")
+@router.get("/{session_id}/thread",
+    responses={404: {"description": "Session not found"}})
 async def get_thread(session_id: str, user: dict = Depends(get_current_user)):
     chain = await agent_context.get_thread(session_id)
     if not chain:
@@ -183,7 +185,8 @@ async def get_thread(session_id: str, user: dict = Depends(get_current_user)):
     return {"thread": chain, "leaf_history": history}
 
 
-@router.patch("/{session_id}/state")
+@router.patch("/{session_id}/state",
+    responses={404: {"description": "Session not found"}})
 async def set_state(session_id: str, state: str = Query(..., description="active|completed|failed|archived"), user: dict = Depends(get_current_user)):
     if state not in ("active", "completed", "failed", "archived"):
         raise HTTPException(status_code=400, detail="Invalid state")
@@ -198,7 +201,8 @@ async def set_state(session_id: str, state: str = Query(..., description="active
     return sess
 
 
-@router.patch("/{session_id}/scratchpad")
+@router.patch("/{session_id}/scratchpad",
+    responses={404: {"description": "Session not found"}})
 async def patch_scratchpad(session_id: str, patch: Dict[str, Any], user: dict = Depends(get_current_user)):
     existing = await agent_context.get_session(session_id)
     if not existing:

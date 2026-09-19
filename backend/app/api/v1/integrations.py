@@ -104,7 +104,8 @@ async def create_user_webhook(
     return webhook
 
 
-@router.get("/webhooks/{webhook_id}")
+@router.get("/webhooks/{webhook_id}",
+    responses={404: {"description": "Webhook not found"}})
 async def get_user_webhook(
     webhook_id: str,
     user: dict = Depends(get_current_user),
@@ -116,7 +117,8 @@ async def get_user_webhook(
     return webhook
 
 
-@router.put("/webhooks/{webhook_id}")
+@router.put("/webhooks/{webhook_id}",
+    responses={404: {"description": "Webhook not found"}})
 async def update_user_webhook(
     webhook_id: str,
     request: UpdateWebhookRequest,
@@ -130,7 +132,8 @@ async def update_user_webhook(
     return result
 
 
-@router.delete("/webhooks/{webhook_id}")
+@router.delete("/webhooks/{webhook_id}",
+    responses={404: {"description": "Webhook not found"}})
 async def delete_user_webhook(
     webhook_id: str,
     user: dict = Depends(get_current_user),

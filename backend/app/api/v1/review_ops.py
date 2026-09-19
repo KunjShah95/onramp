@@ -55,7 +55,8 @@ async def load_board(
     return await reviewer_load(tid)
 
 
-@router.get("/suggest")
+@router.get("/suggest",
+    responses={404: {"description": "Task not found in this team"}})
 async def suggest(
     request: Request,
     team_id: Optional[str] = Query(None),

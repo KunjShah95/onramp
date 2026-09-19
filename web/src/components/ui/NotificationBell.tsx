@@ -24,6 +24,8 @@ import {
   Spinner,
 } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
+import { useRealTime } from '../../context/RealTimeContext'
+import type { WsEvent } from '../../hooks/useWebSocket'
 import {
   listNotifications,
   getUnreadCount,
@@ -63,6 +65,34 @@ export default function NotificationBell() {
     }
     setLoading(false)
   }, [])
+
+  // Live updates: prepend WS notifications and bump the badge instead of
+  // waiting for the 2-minute poll. Dedupe guards against echo replays.
+  const { onEvent } = useRealTime()
+  useEffect(() => {
+    const unsub = onEvent((event: WsEvent) => {
+      if (event.type !== 'notification' || event.event !== 'new') return
+      const incoming = event.notification
+      setNotifications((prev) => {
+        if (prev.some((n) => n.notification_id === incoming.notification_id)) return prev
+        const mapped: OnrampNotification = {
+          notification_id: incoming.notification_id,
+          user_id: '',
+          type: incoming.type,
+          title: incoming.title,
+          message: incoming.message,
+          metadata: (incoming.metadata ?? {}) as Record<string, any>,
+          team_id: incoming.team_id ?? '',
+          read: incoming.read,
+          read_at: null,
+          created_at: incoming.created_at,
+        }
+        return [mapped, ...prev].slice(0, 10)
+      })
+      if (!incoming.read) setUnreadCount((c) => c + 1)
+    })
+    return unsub
+  }, [onEvent])
 
   // Poll for unread count (default 2 min, configurable via VITE_NOTIFICATION_POLL_INTERVAL)
   useEffect(() => {

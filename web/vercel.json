@@ -6,13 +6,117 @@
   "headers": [
     {
       "source": "/manifest.webmanifest",
-      "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/sitemap.xml",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
     }
   ],
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://onramp-tlfo.onrender.com/api/:path*"
+    },
+    {
+      "source": "/",
+      "destination": "/seo/index.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/seo/pricing.html"
+    },
+    {
+      "source": "/why-onramp",
+      "destination": "/seo/why-onramp.html"
+    },
+    {
+      "source": "/docs",
+      "destination": "/seo/docs.html"
+    },
+    {
+      "source": "/changelog",
+      "destination": "/seo/changelog.html"
+    },
+    {
+      "source": "/support",
+      "destination": "/seo/support.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/seo/about.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/seo/blog.html"
+    },
+    {
+      "source": "/blog/onboarding-hidden-tax-engineering-velocity",
+      "destination": "/seo/blog-onboarding-hidden-tax-engineering-velocity.html"
+    },
+    {
+      "source": "/blog/introducing-architecture-drift-detection",
+      "destination": "/seo/blog-introducing-architecture-drift-detection.html"
+    },
+    {
+      "source": "/blog/how-we-built-codebase-aware-ai-mentor",
+      "destination": "/seo/blog-how-we-built-codebase-aware-ai-mentor.html"
+    },
+    {
+      "source": "/blog/measuring-time-to-first-pr",
+      "destination": "/seo/blog-measuring-time-to-first-pr.html"
+    },
+    {
+      "source": "/blog/onramp-achieves-soc-2-type-ii-certification",
+      "destination": "/seo/blog-onramp-achieves-soc-2-type-ii-certification.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/seo/contact.html"
+    },
+    {
+      "source": "/customers",
+      "destination": "/seo/customers.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/seo/security.html"
+    },
+    {
+      "source": "/soc-2",
+      "destination": "/seo/soc-2.html"
+    },
+    {
+      "source": "/dpa",
+      "destination": "/seo/dpa.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/seo/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/seo/terms.html"
     },
     {
       "source": "/(.*)",

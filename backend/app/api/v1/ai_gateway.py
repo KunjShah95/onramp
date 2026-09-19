@@ -81,6 +81,7 @@ class CreateKeyRequest(BaseModel):
     tier: str = "free"
     name: Optional[str] = None
     credit_limit: Optional[int] = None
+    daily_credit_cap: Optional[int] = None
     expires_in_days: Optional[int] = None
     webhook_url: Optional[str] = None
     # NOTE: created_by is intentionally NOT accepted from the client.
@@ -118,6 +119,7 @@ class CreateKeyResponse(BaseModel):
     tier: str
     name: Optional[str] = None
     credit_limit: Optional[int] = None
+    daily_credit_cap: Optional[int] = None
     expires_at: Optional[str] = None
 
 
@@ -147,6 +149,7 @@ async def create_api_key(
         created_by=user["uid"],
         name=request.name,
         credit_limit=request.credit_limit,
+        daily_credit_cap=request.daily_credit_cap,
         expires_in_days=request.expires_in_days,
     )
     if "error" in result:

@@ -279,6 +279,12 @@ export default function App() {
                        <ErrorBoundary><TasksPage /></ErrorBoundary>
                      </Suspense>
                    } />
+                   {/* Developer Portal is intentionally NOT behind a RoleGuard:
+                       the read view only exposes own-team metadata (key names,
+                       usage, configured-flags — no raw secrets, see
+                       ProviderKeyInfo) so it is safe for every authed member.
+                       All mutations are gated in-component via canManageKeys
+                       (KEY_MANAGER_ROLES) and enforced again server-side. */}
                    <Route path="/developer-portal" element={
                      <Suspense fallback={<PageLoadingFallback />}>
                        <ErrorBoundary><DeveloperPortal /></ErrorBoundary>

@@ -70,7 +70,8 @@ async def list_paths(
     return {"paths": rows[:limit]}
 
 
-@router.get("/paths/{path_id}")
+@router.get("/paths/{path_id}",
+    responses={404: {"description": "Learning path not found"}})
 async def get_path(path_id: str, user: dict = Depends(get_current_user)):
     storage = get_storage()
     doc = await storage.get_document(COLLECTION, path_id)

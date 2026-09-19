@@ -18,6 +18,8 @@ import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
 import { NotificationsSkeleton } from '../components/ui/Skeleton'
 import Pagination from '../components/ui/Pagination'
+import { useRealTime } from '../context/RealTimeContext'
+import type { WsEvent } from '../hooks/useWebSocket'
 import { cn } from '../lib/utils'
 
 // Icons keyed on the notification `type` values the backend actually emits.
@@ -89,6 +91,33 @@ export default function NotificationsPage() {
     return () => { cancelled = true }
   }, [filter])
   useEffect(() => { setPage(0) }, [filter])
+
+  // Live updates: prepend incoming WS notifications (deduped). The unread
+  // counter derives from the list, so it stays correct for free.
+  const { onEvent } = useRealTime()
+  useEffect(() => {
+    const unsub = onEvent((event: WsEvent) => {
+      if (event.type !== 'notification' || event.event !== 'new') return
+      const incoming = event.notification
+      setNotifications((prev) => {
+        if (prev.some((n) => n.notification_id === incoming.notification_id)) return prev
+        const mapped: OnrampNotification = {
+          notification_id: incoming.notification_id,
+          user_id: '',
+          type: incoming.type,
+          title: incoming.title,
+          message: incoming.message,
+          metadata: (incoming.metadata ?? {}) as Record<string, any>,
+          team_id: incoming.team_id ?? '',
+          read: incoming.read,
+          read_at: null,
+          created_at: incoming.created_at,
+        }
+        return [mapped, ...prev]
+      })
+    })
+    return unsub
+  }, [onEvent])
 
   // Clamp page when the list shrinks (dismiss/clear) so we never strand on an empty page.
   useEffect(() => {

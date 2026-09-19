@@ -42,7 +42,8 @@ async def list_marketplace(
     return {"listings": listings, "count": len(listings)}
 
 
-@router.get("/playbooks/{listing_id}")
+@router.get("/playbooks/{listing_id}",
+    responses={404: {"description": "Listing not found"}})
 async def get_listing(listing_id: str, _user: dict = Depends(get_current_user)):
     listing = await service.get_listing(listing_id)
     if not listing:
@@ -64,7 +65,8 @@ async def publish(request: PublishRequest, user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.delete("/playbooks/{listing_id}")
+@router.delete("/playbooks/{listing_id}",
+    responses={404: {"description": "Listing not found"}})
 async def unpublish(listing_id: str, user: dict = Depends(get_current_user)):
     try:
         ok = await service.unpublish(listing_id, requester_id=user.get("uid", ""))
