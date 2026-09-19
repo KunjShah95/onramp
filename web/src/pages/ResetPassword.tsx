@@ -6,7 +6,7 @@ import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
 import { ArrowRight, CheckCircle, Lock, Clock, Warning } from '@phosphor-icons/react'
 import { resetPassword as apiResetPassword } from '../lib/api'
-import InputField from '../components/ui/first-principles/InputField'
+import PasswordField from '../components/ui/PasswordField'
 
 type PageState = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -159,10 +159,9 @@ export default function ResetPassword() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <InputField
+                <PasswordField
                   label="New Password"
                   name="password"
-                  type="password"
                   placeholder="Min. 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -172,10 +171,9 @@ export default function ResetPassword() {
                   autoComplete="new-password"
                   icon={<Lock size={15} weight="bold" />}
                 />
-                <InputField
+                <PasswordField
                   label="Confirm Password"
                   name="confirmPassword"
-                  type="password"
                   placeholder="Repeat your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

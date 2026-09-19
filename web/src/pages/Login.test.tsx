@@ -39,7 +39,7 @@ describe('Login', () => {
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.click(screen.getByRole('button', { name: /continue/i }))
     // Stage 2 — password + final sign-in
-    await user.type(screen.getByLabelText(/password/i), 'password123')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     await waitFor(() => {
       expect(mockAuthLogin).toHaveBeenCalledWith('test@test.com', 'password123', true)

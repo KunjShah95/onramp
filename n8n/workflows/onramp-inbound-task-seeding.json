@@ -1,0 +1,232 @@
+{
+  "name": "Onramp Inbound \u2014 Nightly Task Seeding",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "459a99bd-5587-47a9-9bfe-e8cee71f74dc",
+      "name": "Daily 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Edit team_id / title per faculty need. idempotency_key prevents duplicates on retry.\nconst day = new Date().toISOString().slice(0, 10);\nconst runId = day + '-' + Math.random().toString(36).slice(2, 8);\nreturn [{\n  json: {\n    body: {\n      action: 'create_task',\n      team_id: 'team_123',\n      title: 'Starter task for ' + day,\n      description: 'Seeded automatically by the n8n nightly workflow.',\n      priority: 'medium',\n      idempotency_key: 'n8n-nightly-' + runId,\n    }\n  }\n}];"
+      },
+      "id": "bc9bf204-a861-48e8-91a0-8827c2501e47",
+      "name": "Build Task Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// HMAC-SHA256 over the EXACT raw bytes the HTTP node will send.\n// The HTTP node below sends JSON.stringify($json.body) \u2014 keep them in sync.\nconst crypto = require('crypto');\nconst secret = $env.N8N_INBOUND_SECRET || 'REPLACE_WITH_N8N_INBOUND_SECRET';\nconst body = $input.first().json.body;\nconst raw = JSON.stringify(body);\nconst signature = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');\nreturn [{ json: { body, signature } }];"
+      },
+      "id": "d199a23e-25d0-440a-abd7-27d005668e44",
+      "name": "Sign Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/webhooks/n8n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Signature",
+              "value": "={{ $json.signature }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "1e154bba-27a6-4495-8dd4-3ef255f700cf",
+      "name": "POST to Onramp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "24385c95-4ab6-495a-b066-476936e7c243",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "50cd3902-4f37-401c-81a7-1351b9f3bd68",
+      "name": "Was It Created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8583420c-ca1d-4f69-8bfe-d3650ff50f90",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2b5720a9-edae-440a-afd6-63bd8e5d8440",
+      "name": "Inspect Failure",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## n8n \u2192 Onramp nightly seeding\\n1. Set env `N8N_INBOUND_SECRET` on BOTH n8n and the Onramp backend (same value).\\n2. Edit `team_id` in Build Task Payload.\\n3. Change the POST URL to your backend (`http://n8n:5678` cannot reach `localhost` from inside Docker \u2014 use `http://host.docker.internal:8000` on Docker Desktop or your backend host).\\n4. Activate, then run once manually and check Onramp Tasks.",
+        "height": 280,
+        "width": 400,
+        "color": 5
+      },
+      "id": "138cf963-46ff-4932-9f68-1601d9fb09a7",
+      "name": "Sticky Note - Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 8am": {
+      "main": [
+        [
+          {
+            "node": "Build Task Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Task Payload": {
+      "main": [
+        [
+          {
+            "node": "Sign Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Request": {
+      "main": [
+        [
+          {
+            "node": "POST to Onramp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to Onramp": {
+      "main": [
+        [
+          {
+            "node": "Was It Created?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was It Created?": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Inspect Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}

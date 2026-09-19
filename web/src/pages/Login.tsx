@@ -9,6 +9,7 @@ import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import InputField from '../components/ui/first-principles/InputField'
+import PasswordField from '../components/ui/PasswordField'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -155,17 +156,16 @@ export default function Login() {
               />
             ) : (
               <>
-                <InputField
+                <PasswordField
                   label="Password"
                   name="password"
-                  type="password"
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearError() }}
                   required
                   autoComplete="current-password"
                   autoFocus
-                  trailing={
+                  trailingExtra={
                     <Link to="/forgot-password" className="text-caption font-semibold text-go hover:underline">
                       Forgot?
                     </Link>

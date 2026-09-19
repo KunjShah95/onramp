@@ -90,8 +90,14 @@ export async function mockNeonAuth(page: Page) {
 const MOCK_TEAM_ID = 'team-42'
 
 export async function mockBackendAPIs(page: Page) {
+  // Stateful session: /auth/me returns 401 until login/register succeeds,
+  // mirroring HttpOnly-cookie session behaviour. This prevents tests from
+  // starting authenticated before any login request occurred.
+  let authenticated = false
+
   // ── Auth routes ──────────────────────────────────────────────────
   await page.route('**/api/v1/auth/login', async (route) => {
+    authenticated = true
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -106,6 +112,7 @@ export async function mockBackendAPIs(page: Page) {
   })
 
   await page.route('**/api/v1/auth/register', async (route) => {
+    authenticated = true
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -120,6 +127,13 @@ export async function mockBackendAPIs(page: Page) {
   })
 
   await page.route('**/api/v1/auth/me', async (route) => {
+    if (!authenticated) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not authenticated' }),
+      })
+    }
     return route.fulfill({
       status: 200,
       contentType: 'application/json',

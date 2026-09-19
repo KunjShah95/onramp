@@ -3854,6 +3854,65 @@ export async function listBitbucketRepos(config: Record<string, any>): Promise<{
   return request<{ repos: BitbucketRepo[]; count: number }>(`${API_BASE}/integrations/bitbucket/repos`, { config })
 }
 
+// ─── n8n Integration (two-way automation) ─────────────────────────────────
+
+export interface N8nStatus {
+  user_configured: boolean
+  user_enabled: boolean
+  user_webhook: string
+  user_base_url: string
+  user_events: string[]
+  has_api_key: boolean
+  env_configured: boolean
+  env_webhook: string
+  hmac_outbound: boolean
+  inbound_configured: boolean
+  inbound_url: string
+  supported_events: string[]
+}
+
+export interface N8nConfig {
+  webhook_url: string
+  base_url: string
+  api_key: string
+  events: string[]
+  enabled: boolean
+}
+
+export async function getN8nStatus(): Promise<N8nStatus> {
+  return get<N8nStatus>(`${API_BASE}/integrations/n8n/status`)
+}
+
+export async function getN8nConfig(): Promise<{ configured: boolean; config?: N8nConfig }> {
+  return get<{ configured: boolean; config?: N8nConfig }>(`${API_BASE}/integrations/n8n/config`)
+}
+
+export async function saveN8nConfig(config: N8nConfig): Promise<{ configured: boolean; config: N8nConfig }> {
+  return request<{ configured: boolean; config: N8nConfig }>(`${API_BASE}/integrations/n8n/config`, config, 'PUT')
+}
+
+export async function deleteN8nConfig(): Promise<{ deleted: boolean }> {
+  return fetchWithAuth<{ deleted: boolean }>(`${API_BASE}/integrations/n8n/config`, {
+    method: 'DELETE',
+  })
+}
+
+export async function testN8nConnection(args: { webhook_url?: string; base_url?: string; api_key?: string }): Promise<{ ok: boolean; mode?: string; message?: string; error?: string; status_code?: number }> {
+  return request(`${API_BASE}/integrations/n8n/test`, args)
+}
+
+export async function triggerN8nEvent(event: string, payload?: Record<string, any>, team_id?: string): Promise<{ ok: boolean; event: string }> {
+  return request(`${API_BASE}/integrations/n8n/trigger`, { event, payload: payload || {}, team_id })
+}
+
+export async function listN8nWorkflows(): Promise<{ workflows: Array<{ id: string; name: string; active: boolean }>; count: number; error?: string }> {
+  return get(`${API_BASE}/integrations/n8n/workflows`)
+}
+
+export async function getN8nTemplates(): Promise<{ inbound_url: string; files: string[]; templates: Array<{ name: string; description: string }>; outbound_envelope: unknown; inbound_envelope: unknown }> {
+  return get(`${API_BASE}/integrations/n8n/templates`)
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {

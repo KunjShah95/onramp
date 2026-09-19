@@ -292,6 +292,8 @@ async def get_integration_config(user_id: str, integration: str) -> Optional[dic
         result["config"] = config
     if integration == "linear" and config.get("api_key"):
         config["api_key"] = decrypt_token(config["api_key"])
+    if integration == "n8n" and config.get("api_key"):
+        config["api_key"] = decrypt_token(config["api_key"])
         result["config"] = config
     if integration == "slack" and config.get("webhook_url"):
         config["webhook_url"] = decrypt_token(config["webhook_url"])
@@ -319,6 +321,8 @@ async def save_integration_config(
     if integration == "jira" and config.get("api_token") and config["api_token"] != "••••••••":
         config["api_token"] = encrypt_token(config["api_token"])
     if integration == "linear" and config.get("api_key") and config["api_key"] != "••••••••":
+        config["api_key"] = encrypt_token(config["api_key"])
+    if integration == "n8n" and config.get("api_key") and config["api_key"] != "••••••••":
         config["api_key"] = encrypt_token(config["api_key"])
     if integration == "slack" and config.get("webhook_url") and "••" not in config["webhook_url"]:
         config["webhook_url"] = encrypt_token(config["webhook_url"])

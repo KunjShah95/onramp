@@ -1,0 +1,433 @@
+{
+  "name": "Onramp \u2014 Complete Automation Bus",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onramp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ced6767c-2ff8-41bd-b798-8311980bb725",
+      "name": "Onramp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "d332d6c0-88cd-41e0-b69b-889cd3ee65d3"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize the Onramp outbound envelope into a flat routing item.\n// Incoming shape: { event, source, timestamp, data: { task?, plan?, milestone?, pulse?, actor? } }\nconst body = $input.first().json;\nconst event = body.event || 'unknown';\nconst data = body.data || {};\nconst task = data.task || {};\nconst plan = data.plan || {};\nconst milestone = data.milestone || {};\nconst pulse = data.pulse || {};\nconst team_id = task.team_id || plan.team_id || data.team_id || '';\nconst title = task.title || plan.title || milestone.title || event;\nconst actor = data.actor || data.triggered_by || '';\nlet severity = 'info';\nif (event === 'ramp.stuck') severity = data.severity || 'medium';\nif (event === 'task.needs_changes') severity = 'medium';\nreturn [{\n  json: {\n    event, team_id, title, actor, severity,\n    task, plan, milestone, pulse,\n    raw: body,\n    received_at: new Date().toISOString(),\n  }\n}];"
+      },
+      "id": "443f1538-470e-40bb-af71-db200a0d6cbf",
+      "name": "Normalize Onramp Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "4100ff30-c863-42f1-80d8-c38e23f9da7b",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "onboarding",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "94f684df-375e-437b-a3d9-b2e3e5470640",
+      "name": "Is Onboarding Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a Telegram-ready message from the normalized item.\nconst item = $input.first().json;\nconst lines = [\n  '\ud83d\udce6 *Onramp update*',\n  '*Event:* `' + item.event + '`',\n  '*Title:* ' + item.title,\n];\nif (item.team_id) lines.push('*Team:* `' + item.team_id + '`');\nif (item.actor) lines.push('*By:* ' + item.actor);\nif (item.task && item.task.task_id) lines.push('*Task:* `' + item.task.task_id + '`');\nif (item.plan && item.plan.id) lines.push('*Plan:* `' + item.plan.id + '`');\nlines.push('', '_Sent from Onramp via n8n_');\nreturn [{ json: { chat_id: '@your_channel', text: lines.join('\\n'), source_event: item.event } }];\n// NOTE: replace @your_channel with your Telegram channel, or wire chat_id dynamically."
+      },
+      "id": "99490d46-5c78-4876-ba57-1e6a1aea5218",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "0776a355-be13-4cc5-973b-d559b1d6cc4f",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        180
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": null,
+          "name": "Telegram Bot \u2014 configure me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "01ba4671-bee7-49dc-abf2-f884cccb08f0",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "task.",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c70a6897-b3be-4b6c-920a-13da8c5eb088",
+      "name": "Is Task Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build a Slack-ready message from the normalized item.\nconst item = $input.first().json;\nlet icon = ':bell:';\nif (item.event.indexOf('completed') !== -1) icon = ':white_check_mark:';\nelse if (item.event.indexOf('approved') !== -1) icon = ':heavy_check_mark:';\nelse if (item.event.indexOf('merged') !== -1) icon = ':twisted_rightwards_arrows:';\nlet text = icon + ' *Onramp* `' + item.event + '` \u2014 *' + item.title + '*';\nif (item.team_id) text += ' (team `' + item.team_id + '`)';\nif (item.actor) text += ' \u2014 by ' + item.actor;\nreturn [{ json: { channel: '#onboarding', text, source_event: item.event } }];"
+      },
+      "id": "cccd6598-8d5e-43e6-8e8f-5087bd1ea79f",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $json.channel }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "26975f9d-127b-4927-a6e0-6b4fd27895ea",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        420
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": null,
+          "name": "Slack \u2014 configure me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "0f3ac966-fbd1-4f15-b60c-23d0faeb6d38",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "ramp",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "cd726e01-e149-4652-8291-e21b9c681730",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "pr.merged",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "14008814-83bb-4581-a043-499b81794584",
+      "name": "Is Ramp or PR Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build an escalation message for ramp.stuck / pr.merged.\nconst item = $input.first().json;\nconst urgent = (item.severity === 'high' || item.severity === 'critical');\nlet text = (urgent ? ':rotating_light: *URGENT* ' : ':warning: *Stuck-dev alert* ') + '`' + item.event + '`\\n';\ntext += '*' + item.title + '*';\nif (item.team_id) text += '\\nTeam: `' + item.team_id + '`';\ntext += '\\nSeverity: *' + (item.severity || 'medium') + '*\\nOpen Onramp \u2192 Ramp view to intervene.';\nreturn [{ json: { channel: '#onboarding-alerts', text, source_event: item.event } }];"
+      },
+      "id": "21bea10a-8b9b-4451-b7af-c65835a6cd71",
+      "name": "Format Escalation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $json.channel }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "928043a7-7f66-40b4-ad11-3c96f5c29454",
+      "name": "Send Escalation",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        620
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": null,
+          "name": "Slack \u2014 configure me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "id": "63e3353a-1c0c-4115-9337-a9078e5d1863",
+      "name": "Respond to Onramp",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Onramp \u2192 n8n \u2192 Telegram/Slack\\n1. Activate this workflow (toggle top-right).\\n2. Copy the PRODUCTION URL (`/webhook/onramp`, not `/webhook-test/onramp`).\\n3. Paste it in Onramp: Settings \u2192 Integrations \u2192 n8n \u2192 Test \u2192 Connect.\\n4. Configure the Telegram Bot + Slack credentials on the Send nodes.",
+        "height": 260,
+        "width": 380,
+        "color": 4
+      },
+      "id": "15a1d304-8dd4-49a2-a6ec-b1d8a2c2570c",
+      "name": "Sticky Note - Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Onramp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Onramp Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Onramp Event": {
+      "main": [
+        [
+          {
+            "node": "Is Onboarding Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Onboarding Event?": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Task Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Respond to Onramp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Task Event?": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Ramp or PR Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack": {
+      "main": [
+        [
+          {
+            "node": "Respond to Onramp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Ramp or PR Event?": {
+      "main": [
+        [
+          {
+            "node": "Format Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Onramp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Escalation": {
+      "main": [
+        [
+          {
+            "node": "Send Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Escalation": {
+      "main": [
+        [
+          {
+            "node": "Respond to Onramp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}

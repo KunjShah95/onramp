@@ -6,7 +6,7 @@ import PageTransition from '../components/ui/page-transition'
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
 import { ArrowRight, Lock } from '@phosphor-icons/react'
-import InputField from '../components/ui/first-principles/InputField'
+import PasswordField from '../components/ui/PasswordField'
 
 import { API_BASE } from '../lib/api'
 
@@ -74,10 +74,9 @@ export default function SetPassword() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <InputField
+            <PasswordField
               label="New Password"
               name="password"
-              type="password"
               placeholder="Min. 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -87,10 +86,9 @@ export default function SetPassword() {
               autoComplete="new-password"
               icon={<Lock size={15} weight="bold" />}
             />
-            <InputField
+            <PasswordField
               label="Confirm Password"
               name="confirm"
-              type="password"
               placeholder="Repeat your new password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
