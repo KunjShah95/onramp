@@ -52,7 +52,7 @@ export default function MetricsBoard() {
             className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
                 Time saved
               </span>
               <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
@@ -63,9 +63,9 @@ export default function MetricsBoard() {
                 duration={1.2}
                 className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="text-[13px] font-medium text-ink-tertiary">hours</span>
+              <span className="text-[13px] font-medium text-ink-secondary">hours</span>
             </div>
-            <p className="mt-2 text-[13px] text-ink-tertiary">per new hire, first month</p>
+            <p className="mt-2 text-[13px] text-ink-secondary">per new hire, first month</p>
             <div className="mt-5 border-t border-seam pt-4">
               <p className="text-[13px] font-medium text-ink">72% reduction in ramp-up time</p>
             </div>
@@ -80,7 +80,7 @@ export default function MetricsBoard() {
             className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
                 Onboarding lift
               </span>
               <span className="h-1.5 w-1.5 rounded-full bg-accent-via" />
@@ -91,14 +91,14 @@ export default function MetricsBoard() {
                 duration={1.2}
                 className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="text-[13px] font-medium text-ink-tertiary">developers</span>
+              <span className="text-[13px] font-medium text-ink-secondary">developers</span>
             </div>
-            <p className="mt-2 text-[13px] text-ink-tertiary">onboarded last month</p>
+            <p className="mt-2 text-[13px] text-ink-secondary">onboarded last month</p>
             <MiniBars />
             <div className="mt-4 border-t border-seam pt-4">
               <p className="text-[13px] font-medium text-ink">
                 1st PR in <span className="text-accent-primary">2.3 days</span>{' '}
-                <span className="text-ink-tertiary">(was 8.1)</span>
+                <span className="text-ink-secondary">(was 8.1)</span>
               </p>
             </div>
           </motion.div>
@@ -112,7 +112,7 @@ export default function MetricsBoard() {
             className={CARD}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
                 Team health
               </span>
               <span className="flex items-center gap-1.5 rounded-full border border-go/20 bg-go/[0.06] px-2 py-0.5 text-[11px] font-semibold text-go">
@@ -126,9 +126,9 @@ export default function MetricsBoard() {
                 duration={1.2}
                 className="font-body text-[clamp(2.6rem,5vw,3.4rem)] font-bold leading-none tracking-tight text-ink tabular-nums"
               />
-              <span className="text-[13px] font-medium text-ink-tertiary">%</span>
+              <span className="text-[13px] font-medium text-ink-secondary">%</span>
             </div>
-            <p className="mt-2 text-[13px] text-ink-tertiary">onboarding success rate</p>
+            <p className="mt-2 text-[13px] text-ink-secondary">onboarding success rate</p>
             <div className="mt-5 flex items-center gap-3 border-t border-seam pt-4">
               <span className="relative flex h-3 w-3">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-go/40" />
@@ -146,7 +146,7 @@ export default function MetricsBoard() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-6 font-code text-[11px] text-ink-tertiary"
+          className="mt-6 font-code text-[11px] text-ink-secondary"
         >
           Illustrative demo readings · the first index replaces them with your repository's numbers.
         </motion.p>

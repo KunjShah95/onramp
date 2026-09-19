@@ -48,7 +48,7 @@ export default function ClosingCta() {
               <Magnetic strength={0.2}>
                 <Link
                   to="/register"
-                  className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-8 text-[15px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_28px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_36px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
+                  className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-8 text-[15px] font-semibold text-accent-foreground shadow-[0_0_28px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_36px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
                 >
                   Try for free
                   <ArrowRight size={16} weight="bold" className="transition-transform group-hover:translate-x-0.5" />

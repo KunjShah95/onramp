@@ -94,7 +94,7 @@ export default function WhyOnrampPage() {
         {/* Why Onramp — featured, indigo accent, 7 cols */}
         <motion.div variants={itemVariants} className="md:col-span-7 rounded-2xl border border-accent-primary/15 bg-panel p-7 shadow-[0_8px_32px_rgb(var(--accent-primary)/0.10)]">
           <div className="flex items-center gap-3 mb-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-[rgb(var(--accent-foreground))] shadow-[0_0_18px_rgb(var(--accent-primary)/0.4)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-accent-foreground shadow-[0_0_18px_rgb(var(--accent-primary)/0.4)]">
               <Brain size={18} weight="bold" />
             </span>
             <div>
@@ -275,7 +275,7 @@ export default function WhyOnrampPage() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/pricing"
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_24px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-accent-foreground shadow-[0_0_24px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
             >
               Start 14-day trial
               <ArrowRight size={16} weight="bold" />

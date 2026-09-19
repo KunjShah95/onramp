@@ -60,7 +60,7 @@ export default function Pricing() {
                 type="button"
                 onClick={() => setAnnual(label === 'Annual')}
                 className={`relative rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                  active ? 'bg-accent-primary text-[rgb(var(--accent-foreground))]' : 'text-ink-secondary hover:text-ink'
+                  active ? 'bg-accent-primary text-accent-foreground' : 'text-ink-secondary hover:text-ink'
                 }`}
               >
                 {label}
@@ -85,14 +85,14 @@ export default function Pricing() {
           >
             <SpotlightCard className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
                   Free
                 </span>
                 <div className="mt-5 flex items-baseline gap-1">
                   <span className="font-body text-[40px] font-bold leading-none tracking-tight text-ink">$0</span>
-                  <span className="ml-1 text-[13px] text-ink-tertiary">forever</span>
+                  <span className="ml-1 text-[13px] text-ink-secondary">forever</span>
                 </div>
-                <p className="mt-3 text-[13px] text-ink-tertiary">
+                <p className="mt-3 text-[13px] text-ink-secondary">
                   For individuals exploring their own repo.
                 </p>
                 <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
@@ -138,9 +138,9 @@ export default function Pricing() {
                   <span className="font-body text-[40px] font-bold leading-none tracking-tight text-ink">
                     ${teamPrice}
                   </span>
-                  <span className="ml-1 text-[13px] text-ink-tertiary">/mo</span>
+                  <span className="ml-1 text-[13px] text-ink-secondary">/mo</span>
                 </div>
-                <p className="mt-3 text-[13px] text-ink-tertiary">per workspace · unlimited engineers</p>
+                <p className="mt-3 text-[13px] text-ink-secondary">per workspace · unlimited engineers</p>
                 <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
                   {TEAM_FEATURES.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
@@ -153,7 +153,7 @@ export default function Pricing() {
                 </ul>
                 <Link
                   to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_28px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
+                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-accent-foreground shadow-[0_0_28px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
                 >
                   Start 14-day trial
                   <ArrowRight size={14} weight="bold" />
@@ -172,7 +172,7 @@ export default function Pricing() {
           >
             <SpotlightCard className={SIDE_CARD}>
               <div className="flex h-full flex-col p-7">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
                   Enterprise
                 </span>
                 <div className="mt-5 flex items-baseline gap-1">
@@ -180,7 +180,7 @@ export default function Pricing() {
                     Custom
                   </span>
                 </div>
-                <p className="mt-3 text-[13px] text-ink-tertiary">
+                <p className="mt-3 text-[13px] text-ink-secondary">
                   For orgs that need control, security, and scale.
                 </p>
                 <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">

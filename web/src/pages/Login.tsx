@@ -9,6 +9,7 @@ import { ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
 import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import InputField from '../components/ui/first-principles/InputField'
+import PasswordField from '../components/ui/PasswordField'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -136,7 +137,7 @@ export default function Login() {
           {/* Divider — hairline, mono */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px bg-seam" />
-            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-tertiary">or email</span>
+            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-secondary">or email</span>
             <div className="flex-1 h-px bg-seam" />
           </div>
 
@@ -155,17 +156,16 @@ export default function Login() {
               />
             ) : (
               <>
-                <InputField
+                <PasswordField
                   label="Password"
                   name="password"
-                  type="password"
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearError() }}
                   required
                   autoComplete="current-password"
                   autoFocus
-                  trailing={
+                  trailingExtra={
                     <Link to="/forgot-password" className="text-caption font-semibold text-go hover:underline">
                       Forgot?
                     </Link>

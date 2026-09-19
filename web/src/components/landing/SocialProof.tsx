@@ -48,7 +48,7 @@ export default function SocialProof() {
           {INTEGRATIONS.map((c) => (
             <span
               key={c}
-              className="font-body text-[15px] font-semibold tracking-tight text-ink-tertiary"
+              className="font-body text-[15px] font-semibold tracking-tight text-ink-secondary"
             >
               {c}
             </span>
