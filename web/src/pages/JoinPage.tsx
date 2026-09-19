@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { X, Spinner, ArrowLeft, UserPlus } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import PageTransition from '../components/ui/page-transition'
@@ -49,14 +49,8 @@ export default function JoinPage() {
       <div className="min-h-screen bg-room text-ink antialiased">
       <Seo title="Join Your Team · Onramp" description="Accept your team invitation and start onboarding with Onramp." path="/join" noindex />
       <div className="min-h-screen bg-room flex items-center justify-center p-4 sm:p-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={status}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="w-full max-w-md"
-          >
+        
+          <div key={status} className="w-full max-w-md">
             <ConsolePanel rail={statusMeta.rail} designator={statusMeta.designator} status={statusMeta.status} className="text-center">
               {status === 'loading' && (
                 <div className="flex flex-col items-center gap-5 py-4">
@@ -105,8 +99,8 @@ export default function JoinPage() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        
       </div>
       </div>
     </PageTransition>

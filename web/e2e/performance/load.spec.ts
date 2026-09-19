@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test'
 
 const CONCURRENT_PAGES = 8
-const ROUTES = ['/', '/pricing', '/login', '/security', '/team', '/why-onramp', '/about', '/customers']
+const ROUTES = ['/', '/#pricing', '/login', '/security', '/team', '/why-onramp', '/about', '/customers']
 
 // Dev-server numbers are inflated (cold transforms + no CDN); this is a
 // hang-sentinel, not an SLO.

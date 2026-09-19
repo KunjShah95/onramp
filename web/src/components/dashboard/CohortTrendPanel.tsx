@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
 import { fetchCohortComparison, type CohortComparisonResponse } from '../../lib/api'
@@ -63,7 +62,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
           No cohorts yet. Groups form as developers join.
         </p>
       ) : (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+        <div className="space-y-3">
           {improving !== null && (
             <p className="text-caption text-ink-muted">
               Ramp trend:{' '}
@@ -73,7 +72,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
               · {totalBlockers} blocker{totalBlockers === 1 ? '' : 's'} across cohorts
             </p>
           )}
-          {cohorts.map((c, i) => (
+          {cohorts.map((c) => (
             <div key={c.cohort}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-body-xs text-ink font-medium truncate">
@@ -84,10 +83,8 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
                 </span>
               </div>
               <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((c.avg_ramp_days ?? 30) / 30) * 100, 100)}%` }}
-                  transition={{ duration: 0.5, delay: i * 0.06, ease: 'easeOut' }}
+                <div
+                  style={{ width: `${Math.min(((c.avg_ramp_days ?? 30) / 30) * 100, 100)}%` }}
                   className={cn(
                     'h-full',
                     c.avg_ramp_days != null && c.avg_ramp_days <= 7 ? 'bg-go'
@@ -103,7 +100,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
               </div>
             </div>
           ))}
-        </motion.div>
+        </div>
       )}
     </ConsolePanel>
   )

@@ -1,22 +1,9 @@
-import { motion } from 'framer-motion'
 import { type ReactNode } from 'react'
 
-const variants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-}
-
+/* Calm page wrapper — renders children directly with no animation.
+ * The previous framer-motion fade/slide on every route change was
+ * classic AI bloat: motion on navigation serves no job here.
+ * API preserved so all existing imports keep compiling. */
 export default function PageTransition({ children }: { children: ReactNode }) {
-  return (
-    <motion.div
-      variants={variants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={{ duration: 0.14, ease: 'easeOut' }}
-    >
-      {children}
-    </motion.div>
-  )
+  return <>{children}</>
 }

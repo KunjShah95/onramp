@@ -28,7 +28,7 @@ export default function HeroLockup({ links = [], cta = null, ghost = null, hero 
   const location = useLocation()
   return (
     <div className="relative bg-base text-ink">
-      <nav className="fixed inset-x-0 top-0 z-50 border-b border-seam/60 bg-base/85 backdrop-blur-xl">
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-[rgb(var(--border-rgb)/0.6)] bg-[rgb(var(--base-rgb)/0.85)] backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6 lg:px-10">
           <Link to="/" className="group flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-tile bg-go text-white transition-transform duration-200 group-hover:scale-[1.04]">
@@ -51,7 +51,7 @@ export default function HeroLockup({ links = [], cta = null, ghost = null, hero 
                 >
                   {l.label}
                   <span className={cn(
-                    'absolute -bottom-1 left-0 h-px bg-go transition-all duration-300',
+                    'absolute -bottom-1 left-0 h-px bg-go transition-colors',
                     active ? 'w-full' : 'w-0 group-hover:w-full',
                   )} />
                 </Link>

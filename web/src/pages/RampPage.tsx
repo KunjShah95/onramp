@@ -12,13 +12,14 @@ import {
   type RampStuckEntry,
 } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+
 import { isLeaderRole } from '../components/dashboard/RampPanel'
 import CostModelPanel from '../components/dashboard/CostModelPanel'
 import AgentBenchmarkPanel from '../components/dashboard/AgentBenchmarkPanel'
 import EfficiencyBenchmarkPanel from '../components/dashboard/EfficiencyBenchmarkPanel'
 import ConsolePanel from '../components/ui/console-panel'
 import { PageHeader } from '../components/ui/page-header'
-import StatusTile from '../components/ui/status-tile'
+
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 
 function formatDays(days: number | null | undefined): string {
@@ -66,10 +67,9 @@ function StuckCard({ entry }: { entry: RampStuckEntry }) {
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <StatusTile
-            status={entry.severity === 'high' ? 'abort' : 'caution'}
-            label={entry.severity === 'high' ? 'STUCK' : 'AT RISK'}
-          />
+          <span className={`font-code text-caption ${entry.severity === 'high' ? 'text-abort' : 'text-caution'}`}>
+            {entry.severity === 'high' ? 'STUCK' : 'AT RISK'}
+          </span>
           <span className="text-body-sm font-semibold text-ink truncate">
             {entry.name}
           </span>
@@ -118,7 +118,14 @@ function HealthCard({ health }: { health: RampHealth | undefined }) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <StatusTile status={status} label={label} />
+            <span className={`font-code text-caption ${
+ status === 'go' ? 'text-go' :
+ status === 'caution' ? 'text-caution' :
+ status === 'abort' ? 'text-abort' :
+ 'text-ink-muted'
+ }`}>
+              {label}
+            </span>
           </div>
           <div className="mt-3 text-4xl font-semibold text-ink tracking-tight font-code tabular-nums">
             {health.health_score ?? 'N/A'}
@@ -160,15 +167,15 @@ function HealthCard({ health }: { health: RampHealth | undefined }) {
 
 function RampStatusBadge({ profile }: { profile: RampTraineeProfile }) {
   if (profile.stuck_severity === 'high') {
-    return <StatusTile status="abort" label="STUCK" />
+    return <span className="font-code text-caption text-abort">STUCK</span>
   }
   if (profile.stuck_severity === 'medium') {
-    return <StatusTile status="caution" label="AT RISK" />
+    return <span className="font-code text-caption text-caution">AT RISK</span>
   }
   if (profile.ramp_days != null) {
-    return <StatusTile status="go" label="RAMPED" />
+    return <span className="font-code text-caption text-go">RAMPED</span>
   }
-  return <StatusTile status="idle" label="ONBOARDING" />
+  return <span className="font-code text-caption text-ink-muted">ONBOARDING</span>
 }
 
 export default function RampPage() {

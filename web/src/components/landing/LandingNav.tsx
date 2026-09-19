@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
-import { Magnetic } from '../ui/landing-motion'
 import { prefetchProps } from '../../lib/prefetch'
 import ThemeToggle from './ThemeToggle'
 import { useLandingTheme } from '../../hooks/useLandingTheme'
@@ -17,30 +15,22 @@ const NAV_LINKS = [
 
 const SECTION_IDS = ['the-gap', 'the-map', 'metrics', 'pricing']
 
+/* Calm nav — no hide-on-scroll, no blur-xl theatrics, no magnetic CTA,
+ * no layoutId spring underline, no glow shadow. Sticky bar, hairline
+ * border, plain active state. */
 export default function LandingNav() {
   const [open, setOpen] = useState(false)
-  const [hidden, setHidden] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string | null>(null)
-  const lastY = useRef(0)
-  const reduced = useReducedMotion()
   const { isLight } = useLandingTheme()
 
-  // Hide on scroll down, reveal on scroll up (past a small dead zone).
   useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY
-      setScrolled(y > 8)
-      if (y > 120 && y > lastY.current + 4) setHidden(true)
-      else if (y < lastY.current - 4 || y <= 120) setHidden(false)
-      lastY.current = y
-    }
+    const onScroll = () => setScrolled(window.scrollY > 8)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Scrollspy — track which anchor section is currently in the reading band.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -58,41 +48,32 @@ export default function LandingNav() {
   }, [])
 
   return (
-    <motion.nav
-      animate={reduced ? undefined : { y: hidden ? '-100%' : '0%' }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-      className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-300 ${
-        isLight
-          ? scrolled
-            ? 'border-black/10 bg-white/85 shadow-[0_8px_32px_rgba(15,23,42,0.06)]'
-            : 'border-black/5 bg-white/70'
-          : scrolled
-            ? 'border-seam-strong bg-room/80 shadow-[0_8px_32px_rgba(0,0,0,0.45)]'
-            : 'border-seam bg-room/60'
-      }`}
+    <nav
+      className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-150 ${
+ isLight
+ ? scrolled
+ ? 'border-black/10 bg-white'
+ : 'border-black/5 bg-white'
+ : scrolled
+ ? 'border-seam bg-room'
+ : 'border-seam bg-room'
+ }`}
     >
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
-        <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary to-accent-via text-white shadow-[0_0_20px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-hover:scale-105">
-            <TreeStructure size={16} weight="bold" />
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6 lg:px-8">
+        <Link to="/" className="flex items-center gap-2" aria-label="Onramp home">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-[var(--panel-raised)]">
+            <TreeStructure size={14} weight="bold" />
           </span>
-          <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
+          <span className="text-sm font-semibold tracking-tight text-ink">Onramp</span>
         </Link>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((l) => {
             const isRoute = !l.isAnchor
             const isActive = active === l.href
-            const cls = `relative rounded-md px-1 py-1 text-[13.5px] font-medium transition-colors ${
-              isActive ? 'text-ink' : 'text-ink-secondary hover:text-ink'
+            const cls = `text-[13.5px] transition-colors ${
+              isActive ? 'font-medium text-ink' : 'text-ink-secondary hover:text-ink'
             }`
-            const underline = isActive && (
-              <motion.span
-                layoutId="landing-nav-active"
-                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                className="absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full bg-accent-primary"
-              />
-            )
             return isRoute ? (
               <Link key={l.href} to={l.href} {...prefetchProps(l.href)} className={cls}>
                 {l.label}
@@ -100,7 +81,6 @@ export default function LandingNav() {
             ) : (
               <a key={l.href} href={l.href} className={cls}>
                 {l.label}
-                {underline}
               </a>
             )
           })}
@@ -110,24 +90,22 @@ export default function LandingNav() {
           <Link
             to="/login"
             {...prefetchProps('/login')}
-            className="hidden text-[13.5px] font-medium text-ink-secondary transition-colors hover:text-ink sm:inline"
+            className="hidden text-[13.5px] text-ink-secondary transition-colors hover:text-ink sm:inline"
           >
             Log in
           </Link>
           <ThemeToggle />
-          <Magnetic strength={0.18}>
-            <Link
-              to="/register"
-              {...prefetchProps('/register')}
-              className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13.5px] font-semibold text-[rgb(var(--accent-foreground))] shadow-[0_0_24px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_32px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
-            >
-              Try for free
-            </Link>
-          </Magnetic>
+          <Link
+            to="/register"
+            {...prefetchProps('/register')}
+            className="inline-flex items-center rounded-md bg-ink px-3.5 py-1.5 text-[13.5px] font-medium text-[var(--panel-raised)] transition-opacity hover:opacity-90"
+          >
+            Try for free
+          </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="hit-slop flex h-9 w-9 items-center justify-center rounded-md text-ink-secondary md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-ink-secondary md:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >
@@ -136,51 +114,35 @@ export default function LandingNav() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}            className={`overflow-hidden border-t md:hidden ${isLight ? 'border-black/5 bg-white' : 'border-seam bg-base'}`}>
-            <div className="flex flex-col gap-1 px-6 py-4">
-              {NAV_LINKS.map((l) => {
-                const isRoute = !l.isAnchor
-                const cls = `rounded-md px-2 py-2.5 text-[14px] font-medium transition-colors ${
-                  active === l.href ? 'bg-accent-primary/[0.08] text-accent-primary' : `text-ink-secondary hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`
-                }`
-                return isRoute ? (
-                  <Link
-                    key={l.href}
-                    to={l.href}
-                    onClick={() => setOpen(false)}
-                    className={cls}
-                  >
-                    {l.label}
-                  </Link>
-                ) : (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    onClick={() => setOpen(false)}
-                    className={cls}
-                  >
-                    {l.label}
-                  </a>
-                )
-              })}
-              <div className={`my-2 border-t ${isLight ? 'border-black/5' : 'border-seam'}`} />
-              <Link
-                to="/login"
-                onClick={() => setOpen(false)}
-                className={`rounded-md px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
-              >
-                Log in
-              </Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+      {open && (
+        <div className={`border-t md:hidden ${isLight ? 'border-black/5 bg-white' : 'border-seam bg-room'}`}>
+          <div className="flex flex-col gap-1 px-6 py-4">
+            {NAV_LINKS.map((l) => {
+              const isRoute = !l.isAnchor
+              const cls = `rounded-md px-2 py-2 text-sm ${
+                active === l.href ? 'font-medium text-ink' : 'text-ink-secondary hover:text-ink'
+              }`
+              return isRoute ? (
+                <Link key={l.href} to={l.href} onClick={() => setOpen(false)} className={cls}>
+                  {l.label}
+                </Link>
+              ) : (
+                <a key={l.href} href={l.href} onClick={() => setOpen(false)} className={cls}>
+                  {l.label}
+                </a>
+              )
+            })}
+            <div className={`my-2 border-t ${isLight ? 'border-black/5' : 'border-seam'}`} />
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-2 py-2 text-sm text-ink-secondary hover:text-ink"
+            >
+              Log in
+            </Link>
+          </div>
+        </div>
+      )}
+    </nav>
   )
 }

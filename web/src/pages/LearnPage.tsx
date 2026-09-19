@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   BookOpenText,
   Clock,
@@ -27,10 +27,6 @@ import ConsolePanel from '../components/ui/console-panel'
 import InputField from '../components/ui/first-principles/InputField'
 import { PageHeader } from '../components/ui/page-header'
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 const LEVELS = [
   { key: 'junior', label: 'Junior' },
@@ -197,7 +193,7 @@ export default function LearnPage() {
         />
 
         {/* Input rail — repo + level + generate */}
-        <motion.div initial="hidden" animate="show" variants={fade} className="mb-8">
+        <div className="mb-8">
           <ConsolePanel pad="dense">
             <div className="flex flex-col md:flex-row md:items-end gap-3">
               <div className="flex-1 min-w-0">
@@ -246,26 +242,21 @@ export default function LearnPage() {
               </button>
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Error */}
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-6"
-            >
+            <div className="overflow-hidden mb-6">
               <ConsolePanel pad="dense" status="abort" className="flex items-center justify-between">
                 <span className="text-[13px] text-abort">{error}</span>
                 <button onClick={handleGenerate} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
                   Retry
                 </button>
               </ConsolePanel>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Loading */}
         {loading && (
@@ -274,7 +265,7 @@ export default function LearnPage() {
 
         {/* Empty */}
         {!loading && !path && (
-          <motion.div initial="hidden" animate="show" variants={fade}>
+          <div>
             <ConsolePanel rail="Awaiting" designator="NO PATH YET" status="idle" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <BookOpenText size={26} className="text-ink-disabled" weight="duotone" />
@@ -284,19 +275,14 @@ export default function LearnPage() {
                 We'll analyze its structure and build a personalized 5–8 module learning path for your skill level.
               </p>
             </ConsolePanel>
-          </motion.div>
+          </div>
         )}
 
         {/* Path */}
         {!loading && path && (
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-            className="space-y-6"
-          >
+          <div className="space-y-6">
             {/* Verdict rail — path overview + start CTA */}
-            <motion.div variants={fade}>
+            <div>
               <ConsolePanel
                 rail="Path ready"
                 designator={`${path.path.length} MODULES`}
@@ -343,12 +329,12 @@ export default function LearnPage() {
                   )}
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Module grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {path.path.map((mod: LearningPathModule) => (
-                <motion.div key={`${mod.order}-${mod.name}`} variants={fade}>
+                <div key={`${mod.order}-${mod.name}`}>
                   <ConsolePanel rail={`Module ${mod.order}`} designator={mod.time_hours + 'H'} className="h-full flex flex-col">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <h3 className="font-display text-[16px] text-ink font-bold tracking-tight leading-snug">
@@ -398,29 +384,17 @@ export default function LearnPage() {
                       Take Quiz
                     </button>
                   </ConsolePanel>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
       {/* ── Quiz Modal ─────────────────────────────────────── */}
-      <AnimatePresence>
+      
         {quizModule && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4"
-            onClick={closeQuiz}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-panel border border-seam rounded-card w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-seam"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4" onClick={closeQuiz}>
+            <div className="bg-panel border border-seam rounded-card w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-seam" onClick={(e) => e.stopPropagation()}>
               {/* Modal header */}
               <div className="sticky top-0 z-10 bg-panel border-b border-seam px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -472,7 +446,7 @@ export default function LearnPage() {
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex-1 h-1 rounded-full bg-base overflow-hidden">
                         <div
-                          className="h-full bg-go transition-all duration-300"
+                          className="h-full bg-go transition-colors"
                           style={{ width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` }}
                         />
                       </div>
@@ -481,14 +455,8 @@ export default function LearnPage() {
                       </span>
                     </div>
 
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentQuestion}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="space-y-4"
-                      >
+                    
+                      <div key={currentQuestion} className="space-y-4">
                         <div className="flex items-start gap-2.5">
                           <span className="w-6 h-6 rounded-[2px] bg-base border border-seam flex items-center justify-center font-code text-[11px] text-ink-secondary shrink-0 mt-0.5">
                             {currentQuestion + 1}
@@ -539,8 +507,8 @@ export default function LearnPage() {
                             ))
                           )}
                         </div>
-                      </motion.div>
-                    </AnimatePresence>
+                      </div>
+                    
 
                     {/* Navigation */}
                     <div className="flex items-center justify-between mt-6 pt-4 border-t border-seam">
@@ -681,10 +649,10 @@ export default function LearnPage() {
                   </div>
                 )}
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      
       </div>
     </div>
   )

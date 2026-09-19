@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Heartbeat, Code, WarningCircle, Bug, GitBranch, Sparkle,
   CaretRight, ArrowUpRight,
@@ -26,28 +26,13 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
   const offset = circ - (score / 100) * circ
   const color = score >= 80 ? 'var(--go)' : score >= 60 ? 'var(--caution)' : 'var(--abort)'
   return (
-    <svg width={size} height={size} className="drop-shadow-glow shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="hsl(var(--seam))" strokeWidth={6} fill="none" />
-      <motion.circle
-        cx={size / 2} cy={size / 2} r={r}
-        stroke={color}
-        strokeWidth={6}
-        fill="none"
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
-      />
+    <svg width={size} height={size} className="shrink-0">
+      <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--seam)" strokeWidth={6} fill="none" />
+      <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray={circ} style={{ strokeDashoffset: offset, transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }} />
     </svg>
   )
 }
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 export default function CodeHealthPage() {
   const [repoUrl, setRepoUrl] = useState('')
@@ -78,16 +63,16 @@ export default function CodeHealthPage() {
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
+        <header className="mb-8">
           <PageHeader
             eyebrow="Folio · Code health"
             title="Code Health"
             subtitle="Score a GitHub repo on test coverage, maintainability, complexity, and overall health · one dominant read, drill down if you need to."
           />
-        </motion.header>
+        </header>
 
         {/* Action row */}
-        <motion.div initial="hidden" animate="show" variants={fade} className="mb-10">
+        <div className="mb-10">
           <ConsolePanel pad="dense" className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
             <div className="flex-1">
               <InputField
@@ -118,30 +103,25 @@ export default function CodeHealthPage() {
               <ArrowUpRight size={12} weight="bold" />
             </button>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Error */}
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-6"
-            >
+            <div className="overflow-hidden mb-6">
               <ConsolePanel pad="dense" className="flex items-center justify-between">
                 <span className="text-[13px] text-abort">{error}</span>
                 <button onClick={handleAnalyze} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
                   Retry
                 </button>
               </ConsolePanel>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Empty */}
         {!loading && !result && (
-          <motion.div initial="hidden" animate="show" variants={fade}>
+          <div>
             <ConsolePanel rail="Awaiting" designator="No data yet" status="idle" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <Heartbeat size={26} className="text-ink-disabled" weight="duotone" />
@@ -151,18 +131,13 @@ export default function CodeHealthPage() {
                 We'll score it on test coverage, maintainability, complexity, and overall health.
               </p>
             </ConsolePanel>
-          </motion.div>
+          </div>
         )}
 
         {/* Loading */}
-        <AnimatePresence>
+        
           {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-20"
-            >
+            <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="w-14 h-14 rounded-[3px] bg-caution/8 border border-caution/20 flex items-center justify-center mx-auto mb-3">
                   <div className="w-6 h-6 border-2 border-seam rounded-full border-t-caution animate-spin" />
@@ -170,17 +145,17 @@ export default function CodeHealthPage() {
                 <p className="font-code text-[13px] text-ink-secondary">Computing health score...</p>
                 <p className="font-code text-[11px] text-ink-tertiary mt-1">Analyzing repository metrics</p>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Results */}
-        <AnimatePresence>
+        
           {!loading && result && (
-            <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }} className="space-y-6">
+            <div className="space-y-6">
 
               {/* Verdict hero — the single dominant read */}
-              <motion.div variants={fade}>
+              <div>
                 <ConsolePanel rail="Verdict" designator="OVERALL" status={verdict === 'standby' ? 'caution' : verdict} live={verdict === 'go'}>
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                     <div className="relative shrink-0">
@@ -200,10 +175,10 @@ export default function CodeHealthPage() {
                     </div>
                   </div>
                 </ConsolePanel>
-              </motion.div>
+              </div>
 
               {/* Sub-signals — the four tiles that feed the score */}
-              <motion.div variants={fade} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: 'Test Coverage', value: `${result.test_coverage}%`, icon: Code, tone: result.test_coverage >= 70 ? 'go' : 'caution' },
                   { label: 'Maintainability', value: String(result.maintainability), icon: WarningCircle, tone: 'mission' as const },
@@ -228,11 +203,11 @@ export default function CodeHealthPage() {
                     )}>{s.value}</div>
                   </ConsolePanel>
                 ))}
-              </motion.div>
+              </div>
 
               {/* Recommendations — only if they exist */}
               {result.recommendations && result.recommendations.length > 0 && (
-                <motion.div variants={fade}>
+                <div>
                   <ConsolePanel
                     rail="Recommendations"
                     designator={`${result.recommendations.length} ACTIONS`}
@@ -240,30 +215,24 @@ export default function CodeHealthPage() {
                   >
                     <div className="space-y-2">
                       {result.recommendations.map((rec, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, x: -6 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.04 }}
-                          className={cn(
+                        <div key={i} className={cn(
                             'flex items-start gap-3 px-3 py-2.5 rounded-[3px]',
                             'bg-base border border-seam hover:border-seam-strong transition-colors'
-                          )}
-                        >
+                          )}>
                           <span className="font-code text-[11px] text-ink-tertiary tabular-nums mt-0.5 shrink-0 w-6">
                             {String(i + 1).padStart(2, '0')}
                           </span>
                           <CaretRight size={12} className="text-caution mt-1 shrink-0" weight="bold" />
                           <p className="font-body text-[13px] text-ink-secondary leading-relaxed flex-1">{rec}</p>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </ConsolePanel>
-                </motion.div>
+                </div>
               )}
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
       </div>
     </div>
   )

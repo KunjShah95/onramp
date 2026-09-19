@@ -1,39 +1,19 @@
-import { motion } from 'framer-motion'
 import { GithubLogo, MagnifyingGlass, Check } from '@phosphor-icons/react'
 import SectionHeading from './SectionHeading'
-import { SpotlightCard } from '../ui/landing-motion'
 
-const EASE = [0.16, 1, 0.3, 1] as const
+/* Calm how-it-works — three plain cards with static visuals.
+ * Removed: SpotlightCard glow, staggered springs, animated width /
+ * scale / progress-bar choreography, gradient fills. */
 
 function InstallVisual() {
   return (
-    <div className="relative flex h-40 items-center justify-center">
-      <div className="flex items-center gap-3">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-xl border border-seam bg-well shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-        >
-          <GithubLogo size={28} weight="fill" className="text-ink" />
-        </motion.div>
-        <motion.div
-          initial={{ width: 0 }}
-          whileInView={{ width: 64 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-          className="h-px bg-gradient-to-r from-seam to-go"
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.6 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-          className="flex h-16 w-16 items-center justify-center rounded-xl border border-go/25 bg-go/[0.06]"
-        >
-          <Check size={24} weight="bold" aria-hidden className="text-go shrink-0" />
-        </motion.div>
+    <div className="flex h-32 items-center justify-center gap-3">
+      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-seam bg-well">
+        <GithubLogo size={22} weight="fill" className="text-ink" />
+      </div>
+      <div className="h-px w-12 bg-seam-strong" aria-hidden />
+      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-seam bg-well">
+        <Check size={20} weight="bold" aria-hidden className="shrink-0 text-go" />
       </div>
     </div>
   )
@@ -41,27 +21,14 @@ function InstallVisual() {
 
 function IndexVisual() {
   return (
-    <div className="relative flex h-40 flex-col items-center justify-center gap-4 px-6">
-      <div className="grid grid-cols-4 gap-2">
+    <div className="flex h-32 flex-col items-center justify-center gap-3 px-6">
+      <div className="grid grid-cols-4 gap-2" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0.7 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.45, delay: 0.2 + i * 0.15, ease: EASE }}
-            className="h-9 w-9 rounded-md border border-seam bg-gradient-to-br from-accent-primary/15 to-accent-primary/5"
-          />
+          <div key={i} className="h-8 w-8 rounded-md border border-seam bg-well" />
         ))}
       </div>
-      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-seam">
-        <motion.div
-          initial={{ width: '0%' }}
-          whileInView={{ width: '100%' }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 1.4, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="h-full rounded-full bg-gradient-to-r from-accent-primary to-accent-via"
-        />
+      <div className="h-1.5 w-full max-w-[200px] rounded-full bg-well">
+        <div className="h-full w-full rounded-full bg-go" aria-hidden />
       </div>
       <span className="font-code text-[11px] text-ink-tertiary">indexed</span>
     </div>
@@ -70,37 +37,17 @@ function IndexVisual() {
 
 function OnboardVisual() {
   return (
-    <div className="relative flex h-40 flex-col justify-center gap-3 px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
-        className="flex items-center gap-2 rounded-lg border border-seam bg-well px-3 py-2 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-      >
-        <MagnifyingGlass size={13} className="text-accent-primary" />
+    <div className="flex h-32 flex-col justify-center gap-2 px-6">
+      <div className="flex items-center gap-2 rounded-md border border-seam bg-well px-3 py-2">
+        <MagnifyingGlass size={13} className="text-ink-tertiary" />
         <span className="font-code text-[11px] text-ink-secondary">how does billing work?</span>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, x: -12 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.5, delay: 0.6, ease: EASE }}
-        className="rounded-lg border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2"
-      >
-        <span className="font-code text-[11px] text-accent-primary">
+      </div>
+      <div className="rounded-md border border-seam bg-panel px-3 py-2">
+        <span className="font-code text-[11px] text-ink-secondary">
           Billing → payments/billing · owner @payments
         </span>
-      </motion.div>
-      <motion.span
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.4 }}
-        transition={{ duration: 0.4, delay: 1 }}
-        className="font-code text-[11px] text-ink-tertiary"
-      >
-        ship on day one
-      </motion.span>
+      </div>
+      <span className="font-code text-[11px] text-ink-tertiary">ship on day one</span>
     </div>
   )
 }
@@ -131,40 +78,28 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative scroll-mt-24 border-t border-seam bg-room">
-      <div className="mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
+    <section id="how-it-works" className="scroll-mt-20 border-t border-seam bg-room">
+      <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="How it works"
           heading={<>Three steps to a map that never goes stale.</>}
           sub="No onboarding deck, no wiki crawl. The map draws itself, and keeps drawing itself on every push."
         />
-        <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {STEPS.map((s, i) => (
-            <motion.div
-              key={s.n}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.7, delay: 0.1 + i * 0.1, ease: EASE }}
-              className="h-full"
-            >
-              <SpotlightCard
-                className="flex h-full flex-col rounded-card border border-seam bg-panel p-7 shadow-seam"
-                spotClassName="rounded-card"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-body text-sm font-bold text-accent-primary">{s.n}</span>
-                  <span className="flex items-center gap-1.5 rounded-full border border-go/20 bg-go/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-go">
-                    {s.time}
-                  </span>
-                </div>
-                <div className="mt-4 w-full">
-                  <s.visual />
-                </div>
-                <h3 className="mt-4 font-body text-lg font-semibold text-ink">{s.title}</h3>
-                <p className="mt-2 text-[14px] leading-[1.6] text-ink-tertiary">{s.body}</p>
-              </SpotlightCard>
-            </motion.div>
+        <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {STEPS.map((s) => (
+            <div key={s.n} className="flex h-full flex-col rounded-md border border-seam bg-panel p-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-ink-tertiary">{s.n}</span>
+                <span className="rounded-full border border-seam bg-well px-2.5 py-0.5 text-xs text-ink-secondary">
+                  {s.time}
+                </span>
+              </div>
+              <div className="mt-2 w-full">
+                <s.visual />
+              </div>
+              <h3 className="mt-2 text-base font-semibold text-ink">{s.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-tertiary">{s.body}</p>
+            </div>
           ))}
         </div>
       </div>

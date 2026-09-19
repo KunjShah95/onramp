@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star, Megaphone, Plus, CaretUp, Hexagon } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -99,17 +99,9 @@ const tagIcons = {
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
   { label: 'Changelog', href: '/changelog', active: true },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0 },
-}
 
 export default function ChangelogPage() {
   return (
@@ -120,11 +112,7 @@ export default function ChangelogPage() {
       <div className="max-w-2xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}
         <div className="mb-12">
-          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
-            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Changelog</span>
-          </span>
-          <h1 className="font-body text-3xl md:text-4xl mt-5 mb-3 font-bold tracking-[-0.02em] text-ink">
+          <h1 className="font-body text-3xl md:text-4xl mb-3 font-bold tracking-[-0.02em] text-ink">
             What's new in Onramp
           </h1>
           <p className="text-[15px] leading-[1.6] text-ink-secondary">
@@ -133,9 +121,9 @@ export default function ChangelogPage() {
         </div>
 
         {/* Entries */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-12">
+        <div className="space-y-12">
           {entries.map((entry) => (
-            <motion.div key={entry.version} variants={itemVariants} className="relative pl-7 border-l border-[hsl(var(--border))]">
+            <div key={entry.version} className="relative pl-7 border-l border-[hsl(var(--border))]">
               {/* Dot */}
               <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full border-2 border-[hsl(var(--accent))] bg-[hsl(var(--background))]" />
 
@@ -163,9 +151,9 @@ export default function ChangelogPage() {
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </MarketingLayout>
   )

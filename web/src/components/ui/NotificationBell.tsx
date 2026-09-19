@@ -192,20 +192,20 @@ export default function NotificationBell() {
   }
 
   const typeColors: Record<string, string> = {
-    task_assigned: 'text-blue-400',
+    task_assigned: 'text-mission',
     task_started: 'text-go',
-    task_submitted: 'text-purple-400',
-    task_reviewed: 'text-yellow-400',
+    task_submitted: 'text-mission',
+    task_reviewed: 'text-caution',
     task_approved: 'text-go',
     task_needs_changes: 'text-abort',
     task_completed: 'text-go',
     task_cancelled: 'text-ink-muted',
-    module_granted: 'text-emerald-400',
-    team_invite: 'text-pink-400',
+    module_granted: 'text-go',
+    team_invite: 'text-mission',
     system_alert: 'text-abort',
     pr_merged: 'text-mission',
     milestone_reached: 'text-go',
-    quiz_graded: 'text-amber-400',
+    quiz_graded: 'text-caution',
     dev_stuck: 'text-abort',
   }
 

@@ -5,7 +5,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+
 import { NavLink } from 'react-router-dom'
 import {
   Compass, ChatCircleDots, GitPullRequest, Heartbeat,
@@ -20,14 +20,6 @@ import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { fetchSeedRoleData } from '../lib/api'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
-}
 
 interface QuickLink {
   to: string
@@ -104,30 +96,25 @@ export default function DevSpacePage() {
 
   return (
     <PageTransition>
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6"
-      >
+      <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={item}>
+      <div>
         <PageHeader
           eyebrow="Folio 02 · Developer"
           title="Developer Space"
           subtitle="Full-access developer portal and tools."
           pills={[{ label: 'Data', value: 'Demo' }]}
         />
-      </motion.div>
+      </div>
 
         {error && (
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Signal Lost" designator="DEV" status="abort">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-abort text-body-sm font-code">{error}</p>
               </div>
             </ConsolePanel>
-          </motion.div>
+          </div>
         )}
 
         {loading ? (
@@ -143,21 +130,16 @@ export default function DevSpacePage() {
         ) : (
           <>
             {/* Telemetry */}
-            <motion.div variants={item}>
+            <div>
               <ReadoutBank callsign="Developer" items={readouts} columns={4} />
-            </motion.div>
+            </div>
 
             {/* Quick access */}
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel rail="Quick Access" designator={`${quickLinks.length} TOOLS`} status="go">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {quickLinks.map((link, i) => (
-                    <motion.div
-                      key={link.to}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03, type: 'spring', stiffness: 90, damping: 18 }}
-                    >
+                  {quickLinks.map((link) => (
+                    <div key={link.to}>
                       <NavLink to={link.to} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-go rounded-tile">
                         <div className="h-full p-3 rounded-tile bg-well border border-seam hover:border-seam-strong transition-colors group">
                           <div className="flex items-center gap-2.5 mb-1.5">
@@ -175,14 +157,14 @@ export default function DevSpacePage() {
                           </div>
                         </div>
                       </NavLink>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Recent Activity */}
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel
                 rail="Recent Activity"
                 designator={`${activity.length} EVENTS`}
@@ -200,12 +182,7 @@ export default function DevSpacePage() {
                     {activity.map((event) => {
                       const tone = stateTone[event.state] ?? 'standby'
                       return (
-                        <motion.div
-                          key={event.id}
-                          initial={{ opacity: 0, x: -6 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="flex items-center gap-3 py-2.5 px-1 hover:bg-well/40 transition-colors rounded-tile"
-                        >
+                        <div key={event.id} className="flex items-center gap-3 py-2.5 px-1 hover:bg-well/40 transition-colors rounded-tile">
                           <StatusTile status={tone} label={stateLabel[event.state] ?? event.state} />
                           <div className="flex-1 min-w-0">
                             <p className="text-body-sm text-ink truncate">{event.title}</p>
@@ -219,13 +196,13 @@ export default function DevSpacePage() {
                               )}
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       )
                     })}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Inline icon legend — used by stats (kept consistent with the kit) */}
             <div className="hidden">
@@ -234,7 +211,7 @@ export default function DevSpacePage() {
             </div>
           </>
         )}
-      </motion.div>
+      </div>
     </PageTransition>
   )
 }

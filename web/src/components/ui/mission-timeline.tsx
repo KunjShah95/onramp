@@ -1,6 +1,6 @@
-import { motion, useReducedMotion } from 'framer-motion'
 import { Check, Circle, Warning } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
+import { prefersReducedMotion } from '../../lib/device'
 
 export type StageState = 'complete' | 'active' | 'upcoming' | 'blocked'
 
@@ -37,7 +37,7 @@ function Node({ state }: { state: StageState }) {
  * active node pulsing. Horizontal on wide screens, a vertical ladder on mobile.
  */
 export default function MissionTimeline({ stages, className }: MissionTimelineProps) {
-  const reduce = useReducedMotion()
+  const reduce = prefersReducedMotion()
   const doneCount = stages.filter((s) => s.state === 'complete').length
   const activeIndex = stages.findIndex((s) => s.state === 'active')
   // Fill reaches the active node, else the last completed segment.
@@ -51,22 +51,10 @@ export default function MissionTimeline({ stages, className }: MissionTimelinePr
         <div className="relative">
           {/* rail */}
           <div className="absolute left-0 right-0 top-3 h-px bg-seam-strong" />
-          <motion.div
-            className="absolute left-0 top-3 h-px bg-go origin-left"
-            initial={reduce ? false : { scaleX: 0 }}
-            animate={{ scaleX: pct / 100 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            style={{ width: '100%' }}
-          />
+          <div className="absolute left-0 top-3 h-px bg-go origin-left" style={{ width: `${pct}%` }} />
           <ol className="relative flex justify-between">
-            {stages.map((s, i) => (
-              <motion.li
-                key={s.id}
-                className="flex flex-col items-center text-center gap-2 w-full"
-                initial={reduce ? false : { opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.06, ease: 'easeOut' }}
-              >
+            {stages.map((s) => (
+              <li key={s.id} className="flex flex-col items-center text-center gap-2 w-full">
                 <span
                   className={cn(
                     'relative z-10 w-6 h-6 rounded-full border flex items-center justify-center shrink-0',
@@ -87,7 +75,7 @@ export default function MissionTimeline({ stages, className }: MissionTimelinePr
                     {s.label}
                   </span>
                 </span>
-              </motion.li>
+              </li>
             ))}
           </ol>
         </div>

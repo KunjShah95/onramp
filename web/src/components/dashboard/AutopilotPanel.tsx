@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import ConsolePanel from '../ui/console-panel'
-import StatusBadge from '../ui/status-badge'
+
 import {
   runAutopilotAnalyze,
   type AutopilotAnalyzeResponse,
@@ -14,6 +13,22 @@ const ROLE_LABELS: Record<string, string> = {
   intern: 'Intern',
   developer: 'Junior Dev',
   senior_dev: 'Senior',
+}
+
+const statusLabel = (state: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    cancelled: 'Cancelled',
+    assigned: 'Assigned',
+    in_progress: 'In progress',
+    submitted: 'Submitted',
+    under_review: 'Under review',
+    needs_changes: 'Changes requested',
+    product_review: 'Product review',
+    approved: 'Approved',
+    completed: 'Done',
+  }
+  return labels[state] || state
 }
 
 /**
@@ -130,7 +145,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
 
       {/* Created tasks */}
       {result && !running && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div className="space-y-4">
           {tasks.length === 0 ? (
             <p className="text-caption text-ink-muted font-code">
               Analysis complete · no tasks created
@@ -148,7 +163,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-body-sm text-ink font-medium truncate">{t.title}</span>
-                      <StatusBadge state={t.state} />
+                      <span className="font-code text-caption text-ink-muted">{statusLabel(t.state)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-caption text-ink-muted">
                       <span className="font-code uppercase tracking-wide text-mission">
@@ -173,7 +188,7 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
               </span>
             </div>
           )}
-        </motion.div>
+        </div>
       )}
     </ConsolePanel>
   )

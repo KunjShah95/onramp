@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import Seo from '../components/seo/Seo'
 import LandingNav from '../components/landing/LandingNav'
 import Hero from '../components/landing/Hero'
@@ -26,6 +28,15 @@ import { useLandingTheme } from '../hooks/useLandingTheme'
 
 export default function LandingPage() {
   const { lightClass } = useLandingTheme()
+  const { hash } = useLocation()
+
+  // Deep-link support for /#pricing (and other section anchors) — React
+  // Router renders the page but doesn't scroll to the hash on its own.
+  useEffect(() => {
+    if (!hash) return
+    const el = document.getElementById(hash.replace('#', ''))
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [hash])
 
   return (
     <div

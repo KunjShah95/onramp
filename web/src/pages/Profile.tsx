@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+
 import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -17,10 +17,6 @@ function isSafeAvatarUrl(url: string): boolean {
   }
 }
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 export default function Profile() {
   const { user, logout, updateUser } = useAuth()
@@ -106,7 +102,7 @@ export default function Profile() {
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       <div className="max-w-2xl mx-auto">
-        <motion.div initial="hidden" animate="show" variants={fadeUp} className="space-y-5">
+        <div className="space-y-5">
           {/* Identity card — one surface, one rail */}
           <ConsolePanel rail="Identity" designator="ID CARD" status="go">
             <div className="flex items-start gap-5">
@@ -189,7 +185,7 @@ export default function Profile() {
             </a>
             <span className="font-mono">v2.4</span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

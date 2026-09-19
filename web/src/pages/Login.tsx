@@ -29,7 +29,7 @@ export default function Login() {
   const isSafe = typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes(':')
   const from = isSafe ? rawFrom : undefined
 
-  // Plan intent carried from /pricing via /register — after sign-in the user
+  // Plan intent carried from landing #pricing via /register — after sign-in the user
   // lands directly in the billing funnel (Razorpay checkout).
   const [searchParams] = useSearchParams()
   const planIntent = getPlanIntent(searchParams)

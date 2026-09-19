@@ -6,7 +6,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+
 import { ShieldCheck, Users, Key, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
@@ -61,14 +61,6 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
-}
 
 export default function AdminDashboardPage() {
   const SIG = { ...SIG_STATIC, ...useThemeSignals() }
@@ -162,9 +154,9 @@ export default function AdminDashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
+    <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={item}>
+      <div>
         <PageHeader
           eyebrow="Folio 04 · Admin"
           title="Admin Console"
@@ -173,17 +165,17 @@ export default function AdminDashboardPage() {
             <button onClick={() => fetchAdminData()} disabled={loading} className="btn-glass disabled:opacity-50">Refresh</button>
           }
         />
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div variants={item}>
+        <div>
           <ConsolePanel rail="Signal Lost" designator="SYSTEMS" status="abort">
             <div className="flex items-center justify-between gap-4">
               <p className="text-abort text-body-sm font-code">{error}</p>
               <button onClick={() => fetchAdminData()} disabled={loading} className="btn-glass !px-3 !py-1.5 text-caption shrink-0">Reacquire</button>
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
       )}
 
       {loading ? (
@@ -191,12 +183,12 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           {/* Systems telemetry */}
-          <motion.div variants={item}>
+          <div>
             <ReadoutBank callsign="Systems" items={readouts} columns={4} />
-          </motion.div>
+          </div>
 
           {/* LLM Cost Savings */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel
               rail="Treasury · LLM Cost Savings"
               designator={`FREE VS PAID · ${series.length || 14}D`}
@@ -252,10 +244,10 @@ export default function AdminDashboardPage() {
                 </>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Platform Provider Keys — managed via the website, not .env */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel
               rail="Provider Keys · Platform"
               designator={`${Object.keys(providerKeys).length}/${PROVIDER_OPTIONS.length} CONFIGURED`}
@@ -347,11 +339,11 @@ export default function AdminDashboardPage() {
                 Keys are Fernet-encrypted at rest and win over environment variables. Per-team BYOK keys (Developer Portal) still take precedence for that team's gateway calls.
               </div>
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Org health + audit log */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel rail="Fleet · Org Health" designator="STATUS" status="go">
                 <div className="space-y-2.5">
                   {[
@@ -367,9 +359,9 @@ export default function AdminDashboardPage() {
                   ))}
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel rail="Event Log · Audit" designator={`${audit.length} EVENTS`} status="standby">
                 {audit.length === 0 ? (
                   <EmptyState title="No audit events" description="Security and config events will appear here." />
@@ -378,8 +370,7 @@ export default function AdminDashboardPage() {
                     {audit.map((entry, i) => {
                       const tone = AUDIT_TONE[entry.event_type] ?? { tone: 'standby' as const, label: entry.event_type.replace(/_/g, ' ') }
                       return (
-                        <motion.div key={entry.event_id || i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                          className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
+                        <div key={entry.event_id || i} className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
                           <StatusTile status={tone.tone} label={tone.label} />
                           <div className="flex-1 min-w-0">
                             <p className="text-body-xs text-ink truncate">
@@ -388,17 +379,17 @@ export default function AdminDashboardPage() {
                             </p>
                           </div>
                           <span className="text-caption text-ink-muted readout shrink-0">{relativeTime(entry.timestamp)}</span>
-                        </motion.div>
+                        </div>
                       )
                     })}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </div>
 
           {/* Quick actions */}
-          <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Manage Users', icon: Users },
               { label: 'View API Keys', icon: Key },
@@ -410,9 +401,9 @@ export default function AdminDashboardPage() {
                 <span className="text-caption font-medium">{action.label}</span>
               </button>
             ))}
-          </motion.div>
+          </div>
         </>
       )}
-    </motion.div>
+    </div>
   )
 }

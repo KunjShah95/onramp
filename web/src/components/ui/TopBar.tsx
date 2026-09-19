@@ -38,12 +38,12 @@ export default function TopBar({ lastShortcut, onMenuClick }: TopBarProps) {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-40 h-11 border-b border-seam bg-base/70 backdrop-blur-xl flex items-center justify-between px-4 sm:px-5"
+      className="sticky top-0 z-40 h-11 border-b border-seam bg-[rgb(var(--base-rgb)/0.7)] backdrop-blur-xl flex items-center justify-between px-4 sm:px-5"
     >
-      {/* gradient seam — faint accent glow along the bottom edge (glass treatment) */}
+      {/* hairline seam along the bottom edge */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-seam"
       />
       {/* Left: hamburger (mobile) + section context + shortcut feedback */}
       <div className="flex items-center gap-2.5 min-w-0">
@@ -71,7 +71,7 @@ export default function TopBar({ lastShortcut, onMenuClick }: TopBarProps) {
         {lastShortcut && (
           <span
             className={cn(
-              'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[3px] text-[10px] font-code transition-all duration-300',
+              'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[3px] text-[10px] font-code transition-colors',
               'bg-go/10 text-go border border-go/20',
               'animate-fade-in'
             )}

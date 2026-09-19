@@ -6,7 +6,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+
 import { useToast } from '../context/ToastContext'
 import { createAccount, listTeams } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
@@ -20,14 +20,6 @@ import { Link } from 'react-router-dom'
 
 type TeamOption = { team_id: string; name: string }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
-}
 
 export default function AdminCreateAccount() {
   const toast = useToast()
@@ -99,33 +91,28 @@ export default function AdminCreateAccount() {
     : r === 'tester' ? 'Tester' : 'HR'
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="min-h-[calc(100vh-4rem)] max-w-2xl mx-auto space-y-6"
-    >
+    <div className="min-h-[calc(100vh-4rem)] max-w-2xl mx-auto space-y-6">
       {/* Back link */}
-      <motion.div variants={item}>
+      <div>
         <Link
           to="/admin"
           className="inline-flex items-center gap-1.5 text-caption text-ink-muted hover:text-ink transition-colors font-code"
         >
           <ArrowLeft size={13} weight="bold" /> Back to Admin
         </Link>
-      </motion.div>
+      </div>
 
       {/* Header */}
-      <motion.div variants={item}>
+      <div>
         <PageHeader
           eyebrow="Folio · Admin"
           title="Create Developer Account"
           subtitle="Provision a new developer account with a temporary password."
         />
-      </motion.div>
+      </div>
 
       {result ? (
-        <motion.div variants={item} className="space-y-5">
+        <div className="space-y-5">
           <ConsolePanel
             rail="Account Created"
             designator={result.email}
@@ -175,7 +162,7 @@ export default function AdminCreateAccount() {
             </div>
           </ConsolePanel>
 
-          <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={handleReset} className="btn flex-1 gap-2">
               <UserPlus size={14} weight="bold" />
               Provision Another
@@ -183,10 +170,10 @@ export default function AdminCreateAccount() {
             <Link to="/admin" className="btn-secondary flex-1 text-center gap-2">
               Back to Admin
             </Link>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       ) : (
-        <motion.form variants={item} onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <ConsolePanel
             rail="Account Provisioning"
             designator="FORM · READY"
@@ -289,8 +276,8 @@ export default function AdminCreateAccount() {
               </button>
             </div>
           </ConsolePanel>
-        </motion.form>
+        </form>
       )}
-    </motion.div>
+    </div>
   )
 }

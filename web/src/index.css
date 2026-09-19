@@ -1,34 +1,53 @@
-/* Fonts are loaded asynchronously from index.html (media="print" onload swap) so
+﻿/* Fonts are loaded asynchronously from index.html (media="print" onload swap) so
    they never block first paint. Keep the URL below in sync with index.html. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ONRAMP FOLIO — The Stacks. A research library for a living codebase. See DESIGN.md. */
+/* ONRAMP FOLIO â€” The Stacks. A research library for a living codebase. See DESIGN.md. */
 
 @layer base {
   :root {
-    /* Folio-native vars — THE WORKBENCH: warm paper, deep ink, one teal signal. */
+    /* Folio-native vars â€” THE WORKBENCH: warm paper, deep ink, one teal signal. */
     --room: #F3F1EC;
+    --room-rgb: 243 241 236;
     --base: #F9F8F4;
+    --base-rgb: 249 248 244;
     --panel: #FDFCF9;
+    --panel-rgb: 253 252 249;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #EFEDE6;
+    --well-rgb: 239 237 230;
     --inset: #E9E6DD;
+    --inset-rgb: 233 230 221;
     --ink: #1B1D22;
+    --ink-rgb: 27 29 34;
     --ink-secondary: #494E57;
+    --ink-secondary-rgb: 73 78 87;
     --ink-tertiary: #6B707B;
+    --ink-tertiary-rgb: 107 112 123;
     --ink-muted: #888D98;
+    --ink-muted-rgb: 136 141 152;
     --ink-disabled: #B3B7BF;
+    --ink-disabled-rgb: 179 183 191;
     --go: #0D6B5A;
+    --go-rgb: 13 107 90;
     --go-lit: #128574;
+    --go-lit-rgb: 18 133 116;
     --mission: #2E5D9E;
+    --mission-rgb: 46 93 158;
     --mission-lit: #3A72B8;
+    --mission-lit-rgb: 58 114 184;
     --caution: #A9641B;
+    --caution-rgb: 169 100 27;
     --caution-lit: #C07A26;
+    --caution-lit-rgb: 192 122 38;
     --abort: #BC3A2F;
+    --abort-rgb: 188 58 47;
     --abort-lit: #D24C41;
+    --abort-lit-rgb: 210 76 65;
     --seam: rgba(27,29,34,0.10);
     --seam-strong: rgba(27,29,34,0.17);
 
@@ -42,7 +61,7 @@
     --muted: 40 14% 95%;
     --muted-foreground: 225 9% 40%;
     --accent: 168 78% 24%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 255 255 255;
     --border: 40 10% 87%;
     --ring: 168 78% 24%;
     --radius: 0.3125rem;
@@ -81,27 +100,46 @@
     --info-lit: 58 114 184;
   }
 
-  /* ── Light theme (explicit) — mirrors :root ── */
+  /* â”€â”€ Light theme (explicit) â€” mirrors :root â”€â”€ */
   [data-theme='light'] {
     --room: #F3F1EC;
+    --room-rgb: 243 241 236;
     --base: #F9F8F4;
+    --base-rgb: 249 248 244;
     --panel: #FDFCF9;
+    --panel-rgb: 253 252 249;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #EFEDE6;
+    --well-rgb: 239 237 230;
     --inset: #E9E6DD;
+    --inset-rgb: 233 230 221;
     --ink: #1B1D22;
+    --ink-rgb: 27 29 34;
     --ink-secondary: #494E57;
+    --ink-secondary-rgb: 73 78 87;
     --ink-tertiary: #6B707B;
+    --ink-tertiary-rgb: 107 112 123;
     --ink-muted: #888D98;
+    --ink-muted-rgb: 136 141 152;
     --ink-disabled: #B3B7BF;
+    --ink-disabled-rgb: 179 183 191;
     --go: #0D6B5A;
+    --go-rgb: 13 107 90;
     --go-lit: #128574;
+    --go-lit-rgb: 18 133 116;
     --mission: #2E5D9E;
+    --mission-rgb: 46 93 158;
     --mission-lit: #3A72B8;
+    --mission-lit-rgb: 58 114 184;
     --caution: #A9641B;
+    --caution-rgb: 169 100 27;
     --caution-lit: #C07A26;
+    --caution-lit-rgb: 192 122 38;
     --abort: #BC3A2F;
+    --abort-rgb: 188 58 47;
     --abort-lit: #D24C41;
+    --abort-lit-rgb: 210 76 65;
     --seam: rgba(27,29,34,0.10);
     --seam-strong: rgba(27,29,34,0.17);
     --bg-void: 243 241 236;
@@ -136,28 +174,47 @@
     --popover-foreground: 232 11% 12%;
   }
 
-  /* ── Dark themes ─────────────────────────────── */
-  /* Himalayan — Folio night, warmer plaster */
+  /* â”€â”€ Dark themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* Himalayan â€” Folio night, warmer plaster */
   [data-theme='himalayan'] {
     --room: #060912;
+    --room-rgb: 6 9 18;
     --base: #0A1120;
+    --base-rgb: 10 17 32;
     --panel: #0C1426;
+    --panel-rgb: 12 20 38;
     --panel-raised: #111D35;
+    --panel-raised-rgb: 17 29 53;
     --well: #0F1830;
+    --well-rgb: 15 24 48;
     --inset: #0A1220;
+    --inset-rgb: 10 18 32;
     --ink: #F1F5FB;
+    --ink-rgb: 241 245 251;
     --ink-secondary: #A8B3C9;
+    --ink-secondary-rgb: 168 179 201;
     --ink-tertiary: #7E8AA5;
+    --ink-tertiary-rgb: 126 138 165;
     --ink-muted: #64708C;
+    --ink-muted-rgb: 100 112 140;
     --ink-disabled: #46536E;
+    --ink-disabled-rgb: 70 83 110;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #7FB0FF;
+    --mission-rgb: 127 176 255;
     --mission-lit: #A8C9FF;
+    --mission-lit-rgb: 168 201 255;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(241,245,251,0.12);
     --seam-strong: rgba(241,245,251,0.20);
     --bg-void: 6 9 18;
@@ -195,7 +252,7 @@
     --muted: 222 40% 16%;
     --muted-foreground: 0 0% 70%;
     --accent: 36 98% 50%;
-    --accent-foreground: 0 0% 8%;
+    --accent-foreground: 6 9 18;
     --border: 222 40% 20%;
     --ring: 36 98% 50%;
     --card: 222 40% 14%;
@@ -204,27 +261,46 @@
     --popover-foreground: 0 0% 95%;
   }
 
-  /* Midnight — cool indigo-dark with violet-blue accents */
+  /* Midnight â€” cool indigo-dark with violet-blue accents */
   [data-theme='midnight'] {
     --room: #080C1C;
+    --room-rgb: 8 12 28;
     --base: #0E1430;
+    --base-rgb: 14 20 48;
     --panel: #141B33;
+    --panel-rgb: 20 27 51;
     --panel-raised: #1A2547;
+    --panel-raised-rgb: 26 37 71;
     --well: #111938;
+    --well-rgb: 17 25 56;
     --inset: #0C1126;
+    --inset-rgb: 12 17 38;
     --ink: #EDF0FF;
+    --ink-rgb: 237 240 255;
     --ink-secondary: #ACB4D7;
+    --ink-secondary-rgb: 172 180 215;
     --ink-tertiary: #808AB2;
+    --ink-tertiary-rgb: 128 138 178;
     --ink-muted: #66709A;
+    --ink-muted-rgb: 102 112 154;
     --ink-disabled: #4C557A;
+    --ink-disabled-rgb: 76 85 122;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #7FB0FF;
+    --mission-rgb: 127 176 255;
     --mission-lit: #A8C9FF;
+    --mission-lit-rgb: 168 201 255;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(237,240,255,0.12);
     --seam-strong: rgba(237,240,255,0.20);
     --bg-void: 8 12 28;
@@ -262,7 +338,7 @@
     --muted: 232 44% 18%;
     --muted-foreground: 0 0% 70%;
     --accent: 239 84% 67%;
-    --accent-foreground: 0 0% 8%;
+    --accent-foreground: 6 9 18;
     --border: 232 40% 22%;
     --ring: 239 84% 67%;
     --card: 232 44% 14%;
@@ -271,27 +347,46 @@
     --popover-foreground: 0 0% 95%;
   }
 
-  /* Forest — earthy green-dark with fresh green accents */
+  /* Forest â€” earthy green-dark with fresh green accents */
   [data-theme='forest'] {
     --room: #071009;
+    --room-rgb: 7 16 9;
     --base: #0C1A0E;
+    --base-rgb: 12 26 14;
     --panel: #162613;
+    --panel-rgb: 22 38 19;
     --panel-raised: #1E341A;
+    --panel-raised-rgb: 30 52 26;
     --well: #13240F;
+    --well-rgb: 19 36 15;
     --inset: #0C1709;
+    --inset-rgb: 12 23 9;
     --ink: #F0FAF0;
+    --ink-rgb: 240 250 240;
     --ink-secondary: #AABEA8;
+    --ink-secondary-rgb: 170 190 168;
     --ink-tertiary: #7E947C;
+    --ink-tertiary-rgb: 126 148 124;
     --ink-muted: #647A62;
+    --ink-muted-rgb: 100 122 98;
     --ink-disabled: #4A6048;
+    --ink-disabled-rgb: 74 96 72;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #7FB0FF;
+    --mission-rgb: 127 176 255;
     --mission-lit: #A8C9FF;
+    --mission-lit-rgb: 168 201 255;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(240,250,240,0.12);
     --seam-strong: rgba(240,250,240,0.20);
     --bg-void: 7 16 9;
@@ -329,7 +424,7 @@
     --muted: 120 24% 16%;
     --muted-foreground: 0 0% 70%;
     --accent: 142 71% 45%;
-    --accent-foreground: 0 0% 8%;
+    --accent-foreground: 6 9 18;
     --border: 120 22% 20%;
     --ring: 142 71% 45%;
     --card: 120 30% 14%;
@@ -338,27 +433,46 @@
     --popover-foreground: 0 0% 95%;
   }
 
-  /* Purple — dusty indigo stacks, teal spine (not AI purple). */
+  /* Purple â€” dusty indigo stacks, teal spine (not AI purple). */
   [data-theme='purple'] {
     --room: #0C0618;
+    --room-rgb: 12 6 24;
     --base: #140C22;
+    --base-rgb: 20 12 34;
     --panel: #1C1430;
+    --panel-rgb: 28 20 48;
     --panel-raised: #251C3F;
+    --panel-raised-rgb: 37 28 63;
     --well: #1A1129;
+    --well-rgb: 26 17 41;
     --inset: #110A1E;
+    --inset-rgb: 17 10 30;
     --ink: #F5F0FF;
+    --ink-rgb: 245 240 255;
     --ink-secondary: #BEAFDC;
+    --ink-secondary-rgb: 190 175 220;
     --ink-tertiary: #9484B4;
+    --ink-tertiary-rgb: 148 132 180;
     --ink-muted: #786A98;
+    --ink-muted-rgb: 120 106 152;
     --ink-disabled: #5C507A;
+    --ink-disabled-rgb: 92 80 122;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #8B9AD4;
+    --mission-rgb: 139 154 212;
     --mission-lit: #A8B4E4;
+    --mission-lit-rgb: 168 180 228;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(245,240,255,0.12);
     --seam-strong: rgba(245,240,255,0.20);
     --bg-void: 12 6 24;
@@ -396,7 +510,7 @@
     --muted: 264 42% 18%;
     --muted-foreground: 0 0% 70%;
     --accent: 271 91% 65%;
-    --accent-foreground: 0 0% 8%;
+    --accent-foreground: 6 9 18;
     --border: 264 38% 22%;
     --ring: 271 91% 65%;
     --card: 264 42% 16%;
@@ -408,24 +522,43 @@
   /* Slate - Folio night. Evening stacks, same teal spine. */
   [data-theme='slate'] {
     --room: #12151C;
+    --room-rgb: 18 21 28;
     --base: #171B24;
+    --base-rgb: 23 27 36;
     --panel: #1D2330;
+    --panel-rgb: 29 35 48;
     --panel-raised: #252C3C;
+    --panel-raised-rgb: 37 44 60;
     --well: #1A2030;
+    --well-rgb: 26 32 48;
     --inset: #151922;
+    --inset-rgb: 21 25 34;
     --ink: #E8EEF6;
+    --ink-rgb: 232 238 246;
     --ink-secondary: #A8B4C6;
+    --ink-secondary-rgb: 168 180 198;
     --ink-tertiary: #8490A4;
+    --ink-tertiary-rgb: 132 144 164;
     --ink-muted: #6B778C;
+    --ink-muted-rgb: 107 119 140;
     --ink-disabled: #4E5A6E;
+    --ink-disabled-rgb: 78 90 110;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #7FB0FF;
+    --mission-rgb: 127 176 255;
     --mission-lit: #A8C9FF;
+    --mission-lit-rgb: 168 201 255;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(232,238,246,0.10);
     --seam-strong: rgba(232,238,246,0.18);
     --bg-void: 18 21 28;
@@ -463,7 +596,7 @@
     --muted: 220 16% 16%;
     --muted-foreground: 214 16% 70%;
     --accent: 176 48% 46%;
-    --accent-foreground: 220 18% 8%;
+    --accent-foreground: 6 9 18;
     --border: 220 16% 18%;
     --ring: 176 48% 46%;
     --card: 220 20% 14%;
@@ -477,24 +610,43 @@
      Genealogy: Raycast x Arc. */
   [data-theme='ember'] {
     --room: #120B07;
+    --room-rgb: 18 11 7;
     --base: #1A110A;
+    --base-rgb: 26 17 10;
     --panel: #221710;
+    --panel-rgb: 34 23 16;
     --panel-raised: #2C1F15;
+    --panel-raised-rgb: 44 31 21;
     --well: #1F150D;
+    --well-rgb: 31 21 13;
     --inset: #161009;
+    --inset-rgb: 22 16 9;
     --ink: #FFF4EA;
+    --ink-rgb: 255 244 234;
     --ink-secondary: #D6C2AF;
+    --ink-secondary-rgb: 214 194 175;
     --ink-tertiary: #A98F7A;
+    --ink-tertiary-rgb: 169 143 122;
     --ink-muted: #87705D;
+    --ink-muted-rgb: 135 112 93;
     --ink-disabled: #64503F;
+    --ink-disabled-rgb: 100 80 63;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #7FB0FF;
+    --mission-rgb: 127 176 255;
     --mission-lit: #A8C9FF;
+    --mission-lit-rgb: 168 201 255;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(255,244,234,0.12);
     --seam-strong: rgba(255,244,234,0.20);
     --bg-void: 18 11 7;
@@ -532,7 +684,7 @@
     --muted: 21 30% 15%;
     --muted-foreground: 0 0% 75%;
     --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 6%;
+    --accent-foreground: 6 9 18;
     --border: 22 30% 16%;
     --ring: 25 95% 53%;
     --card: 21 36% 12%;
@@ -546,24 +698,43 @@
      Genealogy: ReactBits x Aceternity. */
   [data-theme='aurora'] {
     --room: #050508;
+    --room-rgb: 5 5 8;
     --base: #0A0A12;
+    --base-rgb: 10 10 18;
     --panel: #10101C;
+    --panel-rgb: 16 16 28;
     --panel-raised: #181827;
+    --panel-raised-rgb: 24 24 39;
     --well: #0D0D18;
+    --well-rgb: 13 13 24;
     --inset: #080810;
+    --inset-rgb: 8 8 16;
     --ink: #F5F5FF;
+    --ink-rgb: 245 245 255;
     --ink-secondary: #B4B4D0;
+    --ink-secondary-rgb: 180 180 208;
     --ink-tertiary: #8686A6;
+    --ink-tertiary-rgb: 134 134 166;
     --ink-muted: #6B6B89;
+    --ink-muted-rgb: 107 107 137;
     --ink-disabled: #4C4C66;
+    --ink-disabled-rgb: 76 76 102;
     --go: #3DABA3;
+    --go-rgb: 61 171 163;
     --go-lit: #5BC4BC;
+    --go-lit-rgb: 91 196 188;
     --mission: #8B9AD4;
+    --mission-rgb: 139 154 212;
     --mission-lit: #A8B4E4;
+    --mission-lit-rgb: 168 180 228;
     --caution: #E0A04A;
+    --caution-rgb: 224 160 74;
     --caution-lit: #F0B86A;
+    --caution-lit-rgb: 240 184 106;
     --abort: #E07068;
+    --abort-rgb: 224 112 104;
     --abort-lit: #F09088;
+    --abort-lit-rgb: 240 144 136;
     --seam: rgba(245,245,255,0.12);
     --seam-strong: rgba(245,245,255,0.20);
     --bg-void: 5 5 8;
@@ -601,7 +772,7 @@
     --muted: 240 20% 14%;
     --muted-foreground: 0 0% 72%;
     --accent: 187 92% 53%;
-    --accent-foreground: 0 0% 6%;
+    --accent-foreground: 6 9 18;
     --border: 240 20% 14%;
     --ring: 258 90% 76%;
     --card: 240 24% 12%;
@@ -610,27 +781,46 @@
     --popover-foreground: 0 0% 95%;
   }
 
-  /* Paper — Editorial Sheet. Warm workbench paper, same spine as Light. */
+  /* Paper â€” Editorial Sheet. Warm workbench paper, same spine as Light. */
   [data-theme='paper'] {
     --room: #F3F1EC;
+    --room-rgb: 243 241 236;
     --base: #F9F8F4;
+    --base-rgb: 249 248 244;
     --panel: #FDFCF9;
+    --panel-rgb: 253 252 249;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #EFEDE6;
+    --well-rgb: 239 237 230;
     --inset: #E9E6DD;
+    --inset-rgb: 233 230 221;
     --ink: #1B1D22;
+    --ink-rgb: 27 29 34;
     --ink-secondary: #494E57;
+    --ink-secondary-rgb: 73 78 87;
     --ink-tertiary: #6B707B;
+    --ink-tertiary-rgb: 107 112 123;
     --ink-muted: #888D98;
+    --ink-muted-rgb: 136 141 152;
     --ink-disabled: #B3B7BF;
+    --ink-disabled-rgb: 179 183 191;
     --go: #0D6B5A;
+    --go-rgb: 13 107 90;
     --go-lit: #128574;
+    --go-lit-rgb: 18 133 116;
     --mission: #2E5D9E;
+    --mission-rgb: 46 93 158;
     --mission-lit: #3A72B8;
+    --mission-lit-rgb: 58 114 184;
     --caution: #A9641B;
+    --caution-rgb: 169 100 27;
     --caution-lit: #C07A26;
+    --caution-lit-rgb: 192 122 38;
     --abort: #BC3A2F;
+    --abort-rgb: 188 58 47;
     --abort-lit: #D24C41;
+    --abort-lit-rgb: 210 76 65;
     --seam: rgba(27,29,34,0.10);
     --seam-strong: rgba(27,29,34,0.17);
     --bg-void: 243 241 236;
@@ -672,32 +862,51 @@
     --muted: 40 14% 95%;
     --muted-foreground: 225 9% 40%;
     --accent: 168 78% 24%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 255 255 255;
     --border: 40 10% 87%;
     --ring: 168 78% 24%;
   }
 
-  /* ── Landing theme — pins the Shaders-inspired dark surface ── */
+  /* â”€â”€ Landing theme â€” pins the Shaders-inspired dark surface â”€â”€ */
   [data-theme='landing'] {
     --room: #050609;
+    --room-rgb: 5 6 9;
     --base: #08090D;
+    --base-rgb: 8 9 13;
     --panel: #0C0F14;
+    --panel-rgb: 12 15 20;
     --panel-raised: #11141B;
+    --panel-raised-rgb: 17 20 27;
     --well: #0A0C11;
+    --well-rgb: 10 12 17;
     --inset: #070809;
+    --inset-rgb: 7 8 9;
     --ink: #FFFFFF;
+    --ink-rgb: 255 255 255;
     --ink-secondary: #A8B3BF;
-    --ink-tertiary: #6B7280;
-    --ink-muted: #4B5563;
+    --ink-secondary-rgb: 168 179 191;
+    --ink-tertiary: #8E97A3;
+    --ink-tertiary-rgb: 142 151 163;
+    --ink-muted: #767F8C;
+    --ink-muted-rgb: 118 127 140;
     --ink-disabled: #374151;
+    --ink-disabled-rgb: 55 65 81;
     --go: #00D9FF;
+    --go-rgb: 0 217 255;
     --go-lit: #4AE3FF;
+    --go-lit-rgb: 74 227 255;
     --mission: #0EA5E9;
+    --mission-rgb: 14 165 233;
     --mission-lit: #38BDF8;
+    --mission-lit-rgb: 56 189 248;
     --caution: #F59E0B;
+    --caution-rgb: 245 158 11;
     --caution-lit: #FBBF24;
+    --caution-lit-rgb: 251 191 36;
     --abort: #F87171;
+    --abort-rgb: 248 113 113;
     --abort-lit: #FCA5A5;
+    --abort-lit-rgb: 252 165 165;
     --seam: rgba(255, 255, 255, 0.08);
     --seam-strong: rgba(255, 255, 255, 0.14);
     --bg-void: 5 6 9;
@@ -735,7 +944,7 @@
     --muted: 217 33% 20%;
     --muted-foreground: 0 0% 68%;
     --accent: 189 100% 50%;
-    --accent-foreground: 220 47% 3%;
+    --accent-foreground: 6 9 18;
     --border: 217 33% 24%;
     --ring: 189 100% 50%;
     --card: 220 25% 7%;
@@ -745,34 +954,53 @@
   }
 
 
-  /* ── Premium landing surface — Aceternity dark ───────
+  /* â”€â”€ Premium landing surface â€” Aceternity dark â”€â”€â”€â”€â”€â”€â”€
      The public landing page pins its own dark identity so it never
      follows the app's theme. Spec palette: true near-black canvas
      (#050609 room, #08090D base), a single electric-cyan accent
      (#00D9FF) doing all the color work, slate neutrals for copy.
-     Depth comes from radial glows and 1px white/8 borders — no
+     Depth comes from radial glows and 1px white/8 borders â€” no
      drop-shadow skeuomorphism. Typography: Space Mono display,
      Inter body, IBM Plex Mono data. */
   .landing-premium {
     --room: #050609;
+    --room-rgb: 5 6 9;
     --base: #08090D;
+    --base-rgb: 8 9 13;
     --panel: #0C0F14;
+    --panel-rgb: 12 15 20;
     --panel-raised: #11141B;
+    --panel-raised-rgb: 17 20 27;
     --well: #0A0C11;
+    --well-rgb: 10 12 17;
     --inset: #070809;
+    --inset-rgb: 7 8 9;
     --ink: #FFFFFF;
+    --ink-rgb: 255 255 255;
     --ink-secondary: #A8B3BF;
-    --ink-tertiary: #6B7280;
-    --ink-muted: #4B5563;
+    --ink-secondary-rgb: 168 179 191;
+    --ink-tertiary: #8E97A3;
+    --ink-tertiary-rgb: 142 151 163;
+    --ink-muted: #767F8C;
+    --ink-muted-rgb: 118 127 140;
     --ink-disabled: #374151;
+    --ink-disabled-rgb: 55 65 81;
     --go: #00D9FF;
+    --go-rgb: 0 217 255;
     --go-lit: #4AE3FF;
+    --go-lit-rgb: 74 227 255;
     --mission: #0EA5E9;
+    --mission-rgb: 14 165 233;
     --mission-lit: #38BDF8;
+    --mission-lit-rgb: 56 189 248;
     --caution: #F59E0B;
+    --caution-rgb: 245 158 11;
     --caution-lit: #FBBF24;
+    --caution-lit-rgb: 251 191 36;
     --abort: #F87171;
+    --abort-rgb: 248 113 113;
     --abort-lit: #FCA5A5;
+    --abort-lit-rgb: 252 165 165;
     --seam: rgba(255, 255, 255, 0.08);
     --seam-strong: rgba(255, 255, 255, 0.14);
     --bg-void: 5 6 9;
@@ -810,7 +1038,7 @@
     --muted: 217 33% 20%;
     --muted-foreground: 0 0% 68%;
     --accent: 189 100% 50%;
-    --accent-foreground: 220 47% 3%;
+    --accent-foreground: 6 9 18;
     --border: 217 33% 24%;
     --ring: 189 100% 50%;
     --card: 220 25% 7%;
@@ -827,8 +1055,8 @@
     color: #ffffff;
   }
 
-  /* ── Light premium surface (landing) ─────────────────────────
-     Daylight variant of the landing identity — Stripe/Notion energy:
+  /* â”€â”€ Light premium surface (landing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     Daylight variant of the landing identity â€” Stripe/Notion energy:
      white & slate-50 surfaces, slate ink, cyan-700 accent (same hue
      family as the dark mode's electric cyan, darkened for WCAG
      contrast on white). Declared after .landing-premium so it wins
@@ -836,27 +1064,46 @@
      `landing-premium landing-light` via useLandingTheme). */
   .landing-light {
     --room: #FFFFFF;
+    --room-rgb: 255 255 255;
     --base: #F8FAFC;
+    --base-rgb: 248 250 252;
     --panel: #FFFFFF;
+    --panel-rgb: 255 255 255;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #F1F5F9;
+    --well-rgb: 241 245 249;
     --inset: #EEF2F7;
+    --inset-rgb: 238 242 247;
     --ink: #0F172A;
+    --ink-rgb: 15 23 42;
     --ink-secondary: #475569;
+    --ink-secondary-rgb: 71 85 105;
     --ink-tertiary: #64748B;
+    --ink-tertiary-rgb: 100 116 139;
     --ink-muted: #94A3B8;
+    --ink-muted-rgb: 148 163 184;
     --ink-disabled: #CBD5E1;
-    /* Premium light system — cyan-700 primary (same family as dark mode's
+    --ink-disabled-rgb: 203 213 225;
+    /* Premium light system â€” cyan-700 primary (same family as dark mode's
        electric cyan, darkened for contrast on white).
        RGB triplets feed rgb(var(--token)) consumers; hex feeds raw CSS consumers. */
     --go: #0E7490;
+    --go-rgb: 14 116 144;
     --go-lit: #0891B2;
+    --go-lit-rgb: 8 145 178;
     --mission: #6366F1;
+    --mission-rgb: 99 102 241;
     --mission-lit: #818CF8;
+    --mission-lit-rgb: 129 140 248;
     --caution: #B45309;
+    --caution-rgb: 180 83 9;
     --caution-lit: #D97706;
+    --caution-lit-rgb: 217 119 6;
     --abort: #DC2626;
+    --abort-rgb: 220 38 38;
     --abort-lit: #F87171;
+    --abort-lit-rgb: 248 113 113;
     --seam: rgba(15, 23, 42, 0.08);
     --seam-strong: rgba(15, 23, 42, 0.14);
     --bg-void: 248 250 252;
@@ -894,7 +1141,7 @@
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 44%;
     --accent: 189 100% 29%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 255 255 255;
     --border: 214 32% 91%;
     --ring: 189 100% 29%;
     --card: 0 0% 100%;
@@ -908,60 +1155,62 @@
     color: #0F172A;
   }
 
-  /* ── Pre-paint mode guard ───────────────────────────────
+  /* â”€â”€ Pre-paint mode guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
      index.html adds `landing-mode-light` to <html> before first paint
      when the visitor's saved landing mode is light, so the light variant
-     applies immediately and returning visitors never see a dark→light
+     applies immediately and returning visitors never see a darkâ†’light
      flash while React hydrates. The :not(.landing-light) guard keeps
-     specificity below the real .landing-light block — once React mounts
+     specificity below the real .landing-light block â€” once React mounts
      and applies the actual class, these vars are overridden and the
      in-app toggle keeps working. */
   .landing-mode-light .landing-premium:not(.landing-light) {
     --room: #FFFFFF;
+    --room-rgb: 255 255 255;
     --base: #F8FAFC;
+    --base-rgb: 248 250 252;
     --panel: #FFFFFF;
+    --panel-rgb: 255 255 255;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #F1F5F9;
+    --well-rgb: 241 245 249;
     --inset: #EEF2F7;
+    --inset-rgb: 238 242 247;
     --ink: #0F172A;
+    --ink-rgb: 15 23 42;
     --ink-secondary: #475569;
+    --ink-secondary-rgb: 71 85 105;
     --ink-tertiary: #64748B;
+    --ink-tertiary-rgb: 100 116 139;
     --ink-muted: #94A3B8;
+    --ink-muted-rgb: 148 163 184;
     --ink-disabled: #CBD5E1;
+    --ink-disabled-rgb: 203 213 225;
     --go: #0E7490;
+    --go-rgb: 14 116 144;
     --go-lit: #0891B2;
+    --go-lit-rgb: 8 145 178;
     --seam: rgba(15, 23, 42, 0.08);
     --seam-strong: rgba(15, 23, 42, 0.14);
   }
 
-  /* ── Landing premium utilities ───────────────────── */
-  /* Headline gradient — hue swaps with the landing mode:
-     dark = electric cyan → sky → bright cyan over near-black;
-     light = cyan-700 → indigo (quiet, AA on white). */
-  .landing-premium .text-gradient {
-    background: linear-gradient(100deg, #00D9FF 0%, #38BDF8 45%, #7DD3FC 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* â”€â”€ Landing premium utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* Calm type â€” no gradient headlines. Plain ink in every mode. */
+  .landing-premium .text-gradient,
+  .landing-light .text-gradient,
+  .text-gradient {
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: var(--ink);
   }
 
-  .landing-light .text-gradient {
-    background: linear-gradient(100deg, #0E7490 0%, #0891B2 45%, #4F46E5 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Soft film-grain over the hero so flat surfaces don't band. */
+  /* Film-grain removed â€” flat surfaces stay flat. */
   .landing-premium .noise-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    display: none;
   }
 
-  /* ── bg-base — section band utility ────────────────────────
+  /* â”€â”€ bg-base â€” section band utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
      `base` is a theme variable but not a Tailwind color token
      (adding one would collide with the `text-base` font-size
      utility), so the section-band class is wired straight to the
@@ -1015,7 +1264,7 @@
     /* Non-static so framer-motion's useScroll({ target }) can measure offsets
        against the default scroll container without a dev warning. */
     position: relative;
-    /* Decorative ambient glows / seated cards use negative offsets — clip any
+    /* Decorative ambient glows / seated cards use negative offsets â€” clip any
        accidental horizontal overflow instead of letting the page scroll. */
     overflow-x: clip;
   }
@@ -1031,7 +1280,7 @@
     overflow-x: clip;
   }
 
-  /* ── Responsive media defaults — never overflow a mobile viewport ── */
+  /* â”€â”€ Responsive media defaults â€” never overflow a mobile viewport â”€â”€ */
   img, video, canvas, svg {
     max-width: 100%;
   }
@@ -1039,8 +1288,8 @@
     height: auto;
   }
 
-  /* ── Hit-slop for sub-44px icon buttons (nav toggles, sidebar close).
-     Keeps the 28–36px visual size but expands the tap target to ≥44px
+  /* â”€â”€ Hit-slop for sub-44px icon buttons (nav toggles, sidebar close).
+     Keeps the 28â€“36px visual size but expands the tap target to â‰¥44px
      per WCAG 2.5.8 without shifting the layout. */
   .hit-slop {
     position: relative;
@@ -1073,20 +1322,13 @@
     color: var(--mission-lit);
   }
 
-  /* App-wide gradient-text fallback — token-driven so it works in every
-     app theme. Scoped landing overrides (.landing-premium/.landing-light)
-     win the cascade where present. Fixes .text-gradient rendering as
-     invisible (transparent, no background) on auth pages. */
+  /* App-wide gradient-text fallback â€” disabled for calm type.
+     Plain ink everywhere; no transparent gradient text. */
   .text-gradient {
-    background: linear-gradient(
-      100deg,
-      rgb(var(--accent-primary)) 0%,
-      rgb(var(--accent-primary-hover)) 55%,
-      rgb(var(--info)) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: var(--ink);
   }
 
   button {
@@ -1116,7 +1358,7 @@
     background: rgba(var(--border-rgb), 0.30);
   }
 
-  /* ── Skip-to-content link — WCAG 2.4.1 Bypass Blocks ── */
+  /* â”€â”€ Skip-to-content link â€” WCAG 2.4.1 Bypass Blocks â”€â”€ */
   .skip-link {
     position: fixed;
     top: -56px;
@@ -1137,7 +1379,7 @@
     top: 12px;
   }
 
-  /* Autofill — light well (auth forms) */
+  /* Autofill â€” light well (auth forms) */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -1149,7 +1391,7 @@
 }
 
 @layer components {
-  /* ── HeatmapGem animations ───────────────────────────────
+  /* â”€â”€ HeatmapGem animations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    * CSS-driven rotation and scan sweep for the lightweight
    * gem replacement. No JavaScript animation frames required. */
   .animate-spin-slow {
@@ -1163,7 +1405,7 @@
     100% { transform: rotate(360deg); }
   }
 
-  /* ── Section panel ──────────────────────────────── */
+  /* â”€â”€ Section panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .console-panel,
   .card {
     background: var(--panel);
@@ -1188,7 +1430,7 @@
     box-shadow: 0 1px 2px rgba(27,29,34,0.03);
   }
 
-  /* ── Panel header strip ─────────────────────────── */
+  /* â”€â”€ Panel header strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .console-rail {
     display: flex;
     align-items: center;
@@ -1235,7 +1477,7 @@
     flex-shrink: 0;
   }
 
-  /* ── Status chips — dot + sentence case ─────────── */
+  /* â”€â”€ Status chips â€” dot + sentence case â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .status-tile {
     display: inline-flex;
     align-items: center;
@@ -1296,7 +1538,7 @@
     background: var(--well); color: var(--ink-muted); border: 1px solid var(--seam); box-shadow: none;
   }
 
-  /* ── Badges ─────────────────────────────────────── */
+  /* â”€â”€ Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 3px; font-size: 0.75rem; font-weight: 600; }
   .badge-accent { background: color-mix(in srgb, var(--go) 12%, transparent); color: var(--go); }
   .badge-success { background: color-mix(in srgb, var(--go) 12%, transparent); color: var(--go); }
@@ -1304,7 +1546,7 @@
   .badge-error { background: color-mix(in srgb, var(--abort) 12%, transparent); color: var(--abort); }
   .badge-info { background: color-mix(in srgb, var(--mission) 12%, transparent); color: var(--mission); }
 
-  /* ── Buttons ───────────────────────────────────── */
+  /* â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -1441,7 +1683,7 @@
     color: var(--ink-muted);
   }
 
-  /* ── Folio kicker — mono index line above page titles ── */
+  /* â”€â”€ Folio kicker â€” mono index line above page titles â”€â”€ */
   .index-kicker {
     display: inline-flex;
     align-items: center;
@@ -1461,7 +1703,7 @@
     background: var(--seam-strong);
   }
 
-  /* ── Section rule — short accent bar beside a title ── */
+  /* â”€â”€ Section rule â€” short accent bar beside a title â”€â”€ */
   .rule-accent {
     display: inline-block;
     height: 3px;
@@ -1470,7 +1712,7 @@
     border-radius: 1px;
   }
 
-  /* ── Metric strip — one ruled panel, cells split by hairlines ── */
+  /* â”€â”€ Metric strip â€” one ruled panel, cells split by hairlines â”€â”€ */
   .metric-strip {
     display: grid;
     border: 1px solid var(--seam);
@@ -1508,18 +1750,14 @@
 
 
 
-  /* ── Entrance / loaders ────────────────────────── */
+  /* â”€â”€ Entrance / loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .animate-in { animation: fadeIn 0.35s ease-out; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* ── Marquee drift (logo/wordmark rail) ────────── */
+  /* â”€â”€ Marquee drift removed â€” static rows only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .marquee-mask {
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%);
-    mask-image: linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%);
-  }
-  @keyframes marquee-x {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .loader {
@@ -1534,7 +1772,7 @@
   .ring-progress { transform: rotate(-90deg); transform-origin: 50% 50%; }
   .ring-progress circle { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1); }
 
-  /* ── Skeleton shimmer ──────────────────────────── */
+  /* â”€â”€ Skeleton shimmer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .animate-skeleton { position: relative; overflow: hidden; }
   .animate-skeleton::after {
     content: '';
@@ -1545,7 +1783,7 @@
   }
   @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 
-  /* ── Engineering plotboard grids ───────────────── */
+  /* â”€â”€ Engineering plotboard grids â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .dot-grid {
     background-size: 22px 22px;
     background-image: radial-gradient(circle, rgba(var(--border-rgb), 0.10) 1px, transparent 1px);
@@ -1561,20 +1799,19 @@
     background-size: 28px 28px;
   }
 
-  /* ── Glass → seated panel (legacy alias) ───────── */
+  /* â”€â”€ Glass â†’ plain panel (legacy alias, no blur) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .glass {
-    background: rgba(var(--bg-secondary), 0.85);
-    backdrop-filter: blur(8px);
+    background: var(--panel);
     border: 1px solid var(--seam);
   }
 
-  /* ── App sidebar shell (sticky + viewport height, dvh with vh fallback) ── */
+  /* â”€â”€ App sidebar shell (sticky + viewport height, dvh with vh fallback) â”€â”€ */
   .app-sidebar {
     height: 100vh;
     height: 100dvh;
   }
 
-  /* ── Mobile: keep decorative glows/dot-grids from causing sideways scroll ──
+  /* â”€â”€ Mobile: keep decorative glows/dot-grids from causing sideways scroll â”€â”€
      `clip` (unlike `hidden`) doesn't create a scroll container, so it can't
      break position: sticky children. */
   @media (max-width: 767px) {
@@ -1584,7 +1821,7 @@
     }
   }
 
-  /* ── Truncation ────────────────────────────────── */
+  /* â”€â”€ Truncation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .truncate-multiline {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -1592,7 +1829,7 @@
     overflow: hidden;
   }
 
-  /* ── Nexora legacy aliases (light-native) ──────── */
+  /* â”€â”€ Nexora legacy aliases (light-native) â”€â”€â”€â”€â”€â”€â”€â”€ */
   .nexora-glass {
     background: rgba(var(--bg-secondary), 0.75);
     border: 1px solid var(--seam);
@@ -1620,46 +1857,29 @@
   }
   .nexora-btn-ghost:hover { background: var(--well); }
 
-  /* ── Marketing surface (landing & public pages) ──
+  /* â”€â”€ Marketing surface (landing & public pages) â”€â”€
      Public marketing pages are designed as a daylit canvas and stay light
      even when the app is in a dark theme. Pin the full light palette scoped
      to the subtree so every var-driven component inside renders correctly. */
-  /* Marketing motion: instrument floor + reveal masks */
+  /* Marketing motion removed â€” plain bands, no beams or reveals */
   .mkt-floor {
-    background-color: #DDE1DD;
-    background-image:
-      radial-gradient(ellipse 90% 55% at 50% -10%, rgba(14, 122, 60, 0.09), transparent 55%),
-      linear-gradient(rgba(24, 27, 24, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(24, 27, 24, 0.045) 1px, transparent 1px);
-    background-size: auto, 56px 56px, 56px 56px;
-    background-position: center, center, center;
+    background-color: var(--base);
+    background-image: none;
   }
 
   .mkt-reveal {
-    clip-path: inset(0 0 100% 0);
-    animation: mktReveal 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
-  }
-
-  @keyframes mktReveal {
-    to { clip-path: inset(0 0 0% 0); }
+    clip-path: none;
+    animation: none;
   }
 
   .mkt-beam {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(14, 122, 60, 0.0) 20%,
-      rgba(14, 122, 60, 0.55) 50%,
-      rgba(14, 122, 60, 0.0) 80%,
-      transparent 100%
-    );
-    animation: mktBeam 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    display: none;
   }
 
   .section-surface {
     border: 1px solid var(--seam);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 247, 244, 0.96));
-    box-shadow: 0 0 0 1px rgba(24, 27, 24, 0.02), 0 10px 30px rgba(24, 27, 24, 0.06);
+    background: var(--panel);
+    box-shadow: none;
   }
 
   .editorial-pill {
@@ -1668,45 +1888,56 @@
     gap: 0.4rem;
     border: 1px solid var(--seam);
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.68);
+    background: var(--panel);
     padding: 0.35rem 0.65rem;
     font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink-muted);
-    backdrop-filter: blur(8px);
-  }
-
-  @keyframes mktBeam {
-    0% { transform: translateX(-120%); opacity: 0; }
-    15% { opacity: 1; }
-    55% { opacity: 1; }
-    100% { transform: translateX(120%); opacity: 0; }
+    color: var(--ink-secondary);
   }
 
   .marketing-surface {
     background-color: #DDE1DD;
     color: #181B18;
     --room: #DDE1DD;
+    --room-rgb: 221 225 221;
     --base: #E4E7E3;
+    --base-rgb: 228 231 227;
     --panel: #F6F7F4;
+    --panel-rgb: 246 247 244;
     --panel-raised: #FFFFFF;
+    --panel-raised-rgb: 255 255 255;
     --well: #EDEFEB;
+    --well-rgb: 237 239 235;
     --inset: #EAEDE9;
+    --inset-rgb: 234 237 233;
     --ink: #181B18;
+    --ink-rgb: 24 27 24;
     --ink-secondary: #565B54;
+    --ink-secondary-rgb: 86 91 84;
     --ink-tertiary: #6C716A;
+    --ink-tertiary-rgb: 108 113 106;
     --ink-muted: #7C817A;
+    --ink-muted-rgb: 124 129 122;
     --ink-disabled: #A7ABA4;
+    --ink-disabled-rgb: 167 171 164;
     --go: #0E7A3C;
+    --go-rgb: 14 122 60;
     --go-lit: #17A34A;
+    --go-lit-rgb: 23 163 74;
     --mission: #1A5FA8;
+    --mission-rgb: 26 95 168;
     --mission-lit: #2472C4;
+    --mission-lit-rgb: 36 114 196;
     --caution: #B5710A;
+    --caution-rgb: 181 113 10;
     --caution-lit: #D6870F;
+    --caution-lit-rgb: 214 135 15;
     --abort: #BE3A2E;
+    --abort-rgb: 190 58 46;
     --abort-lit: #D24C3F;
+    --abort-lit-rgb: 210 76 63;
     --seam: rgba(24,27,24,0.12);
     --seam-strong: rgba(24,27,24,0.20);
     --bg-void: 221 225 221;
@@ -1741,7 +1972,7 @@
     --popover-foreground: 120 6% 10%;
   }
 
-  /* ── Toast Animations ──────────────────────────── */
+  /* â”€â”€ Toast Animations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   .toast-enter { animation: toastEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
   @keyframes toastEnter {
     from { opacity: 0; transform: translateY(16px) scale(0.97); }
@@ -1754,7 +1985,7 @@
   }
 }
 
-/* ── Custom scrollbar styles (moved from inline <style> tags for CSP) ── */
+/* â”€â”€ Custom scrollbar styles (moved from inline <style> tags for CSP) â”€â”€ */
 @keyframes pulse-ring {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 0.05; }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   Storefront,
   MagnifyingGlass,
@@ -26,14 +26,6 @@ import {
   type Playbook,
 } from '../lib/api'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 const SORTS: { key: MarketplaceSort; label: string }[] = [
   { key: 'popular', label: 'Popular' },
@@ -158,33 +150,23 @@ export default function MarketplacePage() {
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-5xl mx-auto space-y-6"
-    >
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* ── Mission header ── */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">
+      <div className="flex items-start justify-between gap-6">
         <PageHeader
           eyebrow="Folio · Marketplace"
           title="Playbook Marketplace"
           subtitle="Discover, import, and rate onboarding playbooks from the community."
           flush
         />
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={openPublish}
-          className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5 shrink-0"
-        >
+        <button onClick={openPublish} className="btn btn-primary text-caption px-3 py-1.5 flex items-center gap-1.5 shrink-0">
           <UploadSimple className="w-3.5 h-3.5" weight="bold" />
           Publish
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
 
       {/* Controls */}
-      <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" />
           <input
@@ -210,13 +192,13 @@ export default function MarketplacePage() {
             </button>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
+        <div className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
           <button onClick={fetchListings} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
-        </motion.div>
+        </div>
       )}
 
       {loading && (
@@ -226,18 +208,18 @@ export default function MarketplacePage() {
       )}
 
       {!loading && listings.length === 0 && !error && (
-        <motion.div variants={itemVariants}>
+        <div>
           <EmptyState
             icon={<Storefront className="w-10 h-10 text-ink-disabled/40" weight="duotone" />}
             title={search ? 'No matching playbooks' : 'The marketplace is empty'}
             description={search ? 'Try a different search term.' : 'Be the first · publish one of your team playbooks.'}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* Grid */}
       {!loading && listings.length > 0 && (
-        <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {listings.map((l) => (
             <div key={l.listing_id} className="rounded-card border border-seam bg-panel p-5 flex flex-col gap-3 transition-colors hover:border-go/25">
               <div className="flex items-start justify-between gap-3">
@@ -280,7 +262,7 @@ export default function MarketplacePage() {
               </div>
             </div>
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* Publish modal */}
@@ -314,6 +296,6 @@ export default function MarketplacePage() {
           ))}
         </div>
       </Modal>
-    </motion.div>
+    </div>
   )
 }

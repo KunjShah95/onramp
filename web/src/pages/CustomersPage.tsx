@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { Star, Quotes, ArrowRight, Buildings, Rocket, ChartLineUp, Users } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -6,16 +6,10 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
 
 const logos = [
   'Vercel', 'Linear', 'Supabase', 'Cal.com', 'Trigger.dev', 'Railway',
@@ -86,21 +80,17 @@ export default function CustomersPage() {
     >
       <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-10 pb-24">
         {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-16 text-center max-w-4xl mx-auto">
-          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
-            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Customers</span>
-          </span>
-          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+        <div className="mb-16 text-center max-w-4xl mx-auto">
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
             Trusted by <span className="text-gradient">engineering teams</span> worldwide.
           </h1>
           <p className="text-[17px] leading-[1.6] text-ink-secondary max-w-2xl mx-auto">
             From fast-growing startups to established engineering orgs. Onramp helps teams ship faster, onboard smoother, and stay in flow.
           </p>
-        </motion.div>
+        </div>
 
         {/* Logo cloud — ruled strip */}
-        <motion.div {...fadeUp(0.08)} className="mb-16 rounded-2xl border border-seam bg-panel px-8 py-10 shadow-seam">
+        <div className="mb-16 rounded-card border border-seam bg-panel px-8 py-10 shadow-seam">
           <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary text-center mb-8">
             Trusted by leading engineering teams
           </p>
@@ -114,14 +104,14 @@ export default function CustomersPage() {
               </span>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Stats */}
-        <motion.div {...fadeUp(0.16)} className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
           {stats.map((s) => (
             <div
               key={s.label}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30"
+              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 text-center transition-colors hover:border-[hsl(var(--accent))]/30"
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] mx-auto mb-3">
                 <s.icon size={20} weight="duotone" />
@@ -130,16 +120,16 @@ export default function CustomersPage() {
               <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{s.label}</div>
             </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Testimonials */}
-        <motion.div {...fadeUp(0.24)} className="mb-20">
+        <div className="mb-20">
           <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-8 text-center">What our customers say</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t) => (
               <div
                 key={t.author}
-                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md flex flex-col"
+                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30 flex flex-col"
               >
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.stars }).map((_, si) => (
@@ -155,16 +145,16 @@ export default function CustomersPage() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Case studies */}
-        <motion.div {...fadeUp(0.32)} className="mb-16">
+        <div className="mb-16">
           <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-8 text-center">Case studies</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {caseStudies.map((cs) => (
               <div
                 key={cs.company}
-                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30"
+                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 transition-colors hover:border-[hsl(var(--accent))]/30"
               >
                 <h3 className="font-display text-lg font-semibold text-[hsl(var(--foreground))] mb-2 capitalize">{cs.company}</h3>
                 <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">{cs.description}</p>
@@ -175,10 +165,10 @@ export default function CustomersPage() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* CTA */}
-        <motion.div {...fadeUp(0.4)} className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
+        <div className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
           <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Ready to transform your onboarding?</h2>
           <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-lg mx-auto">
             Join hundreds of engineering teams already using Onramp to ship faster.
@@ -191,13 +181,13 @@ export default function CustomersPage() {
               Talk to sales <ArrowRight size={16} />
             </Link>
             <Link
-              to="/pricing"
+              to="/#pricing"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm font-semibold hover:bg-[hsl(var(--card))]/50 transition-all"
             >
               View pricing
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </MarketingLayout>
   )

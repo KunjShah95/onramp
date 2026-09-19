@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { ChartLineUp } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
 import ConsolePanel from '../components/ui/console-panel'
@@ -114,12 +114,7 @@ export default function HRDashboard() {
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-well/40 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-go rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${m.completion_pct}%` }}
-                          transition={{ duration: 0.5 }}
-                        />
+                        <div className="h-full bg-go rounded-full" style={{ width: `${m.completion_pct}%` }} />
                       </div>
                     </div>
                   )

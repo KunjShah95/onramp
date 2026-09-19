@@ -13,7 +13,7 @@ interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 
 /**
  * Floating-label input with sharp border + focus glow. Mission Control language:
- * seated, instrumented, no rounded-2xl soft-corner imports.
+ * seated, instrumented, no rounded-card soft-corner imports.
  */
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   ({ label, icon, trailing, sharp = true, className, id, ...rest }, ref) => {

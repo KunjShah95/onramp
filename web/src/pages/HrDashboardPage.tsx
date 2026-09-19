@@ -7,7 +7,7 @@
  */
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
@@ -38,8 +38,6 @@ const TOOLTIP = {
   boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
 }
 
-const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
-const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
 
 /** Big mono readout used inside cards for a headline measured value. */
 function CardReadout({ value, unit, color }: { value: string | number; unit: string; color?: string }) {
@@ -119,8 +117,7 @@ function CompletionRatesCard({ members }: { members: HrCompletionMember[] | unde
               <span className="readout text-caption tabular-nums text-ink-muted">{m.completed}/{m.assigned}</span>
             </div>
             <div className="h-2 rounded-tile bg-well overflow-hidden border border-seam">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${m.completion_pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }}
-                className={cn('h-full', m.completion_pct >= 80 ? 'bg-success' : m.completion_pct >= 50 ? 'bg-info' : m.completion_pct >= 25 ? 'bg-warning' : 'bg-error')} />
+              <div className={cn('h-full', m.completion_pct >= 80 ? 'bg-success' : m.completion_pct >= 50 ? 'bg-info' : m.completion_pct >= 25 ? 'bg-warning' : 'bg-error')} style={{ width: `${m.completion_pct}%` }} />
             </div>
           </div>
         ))}
@@ -246,8 +243,7 @@ function CohortComparisonCard({ cohorts }: { cohorts: CohortComparisonEntry[] | 
               <span className="readout text-caption tabular-nums text-ink-muted">{c.avg_ramp_days != null ? `${c.avg_ramp_days}d` : 'N/A'}</span>
             </div>
             <div className="h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(((c.avg_ramp_days ?? 999) / 30) * 100, 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
-                className={cn('h-full', c.avg_ramp_days != null && c.avg_ramp_days <= 7 ? 'bg-success' : c.avg_ramp_days != null && c.avg_ramp_days <= 14 ? 'bg-info' : 'bg-warning')} />
+              <div className={cn('h-full', c.avg_ramp_days != null && c.avg_ramp_days <= 7 ? 'bg-success' : c.avg_ramp_days != null && c.avg_ramp_days <= 14 ? 'bg-info' : 'bg-warning')} style={{ width: `${Math.min(((c.avg_ramp_days ?? 30) / 30) * 100, 100)}%` }} />
             </div>
             <div className="flex gap-3 mt-1 text-caption text-ink-muted">
               <span>{c.avg_days_to_first_pr != null ? `1st PR ${c.avg_days_to_first_pr}d` : 'no 1st PR'}</span>
@@ -324,9 +320,8 @@ function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
     <ConsolePanel rail="Attrition Risk" designator={`${risk.at_risk_count} FLAGGED`} status="abort">
       <CardReadout value={risk.at_risk_count} unit="member(s) flagged" color="text-abort" />
       <div className="space-y-2">
-        {risk.at_risk.map((m, i) => (
-          <motion.div key={m.user_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-            className="p-3 rounded-tile bg-abort/10/40 border border-abort/20">
+        {risk.at_risk.map((m) => (
+          <div key={m.user_id} className="p-3 rounded-tile bg-abort/10/40 border border-abort/20">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-5 h-5 rounded-tile bg-abort/10 border border-abort/25 flex items-center justify-center text-caption font-bold text-abort">{m.name.charAt(0).toUpperCase()}</div>
               <span className="text-body-xs font-medium text-ink">{m.name}</span>
@@ -338,7 +333,7 @@ function AttritionRiskCard({ risk }: { risk: HrAttritionRisk | undefined }) {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </div>
         ))}
       </div>
     </ConsolePanel>
@@ -428,47 +423,47 @@ export default function HrDashboardPage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden space-y-6">
+    <div className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden space-y-6">
       {/* Header */}
-      <motion.div variants={item}>
+      <div>
         <PageHeader
           eyebrow="Folio 07 · People"
           title="HR Console"
           subtitle={`${member_count} member${member_count !== 1 ? 's' : ''} in cohort`}
           actions={<TeamSelector teams={teams} selected={teamId} onChange={setSelectedTeamId} />}
         />
-      </motion.div>
+      </div>
 
       {/* Cohort telemetry */}
-      <motion.div variants={item}>
+      <div>
         <ReadoutBank callsign="Cohort" items={readouts} columns={4} />
-      </motion.div>
+      </div>
 
       {/* Row 1 */}
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <RampTimeCard rampTime={ramp_time} />
         <CohortFunnelCard members={onboarding_completion?.members} />
         <EngagementCard engagement={engagement} />
-      </motion.div>
+      </div>
 
       {/* Row 2 */}
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <CompletionRatesCard members={onboarding_completion?.members} />
         <AttritionRiskCard risk={attrition_risk} />
-      </motion.div>
+      </div>
 
       {/* Row 3 */}
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <ReviewAnalyticsCard analytics={reviewData} />
         <CohortComparisonCard cohorts={cohortsData?.cohorts} />
         <MentorMatchCard match={mentorData} members={devMembers} selectedId={activeDevId} onSelect={setSelectedDevId} />
-      </motion.div>
+      </div>
 
       {/* Row 4 — org ramp health + retention curves (shared leadership telemetry) */}
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <RampPanel teamId={teamId} />
         <RetentionCurvesPanel teamId={teamId} />
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }

@@ -15,7 +15,7 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
         onClick={toggle}
         aria-pressed={enabled}
         className={cn(
-          'relative min-h-[36px] min-w-[36px] w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
+          'relative min-h-[36px] min-w-[36px] w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
           enabled
             ? 'bg-abort/15 text-abort'
             : 'text-ink-muted hover:text-ink-secondary'
@@ -37,7 +37,7 @@ export default function RoastModeToggle({ compact }: RoastModeToggleProps) {
       onClick={toggle}
       aria-pressed={enabled}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-caption font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
         enabled
           ? 'bg-abort/15 text-abort border border-abort/25 shadow-sm'
           : 'bg-well/30 text-ink-tertiary border border-seam hover:text-ink-secondary'

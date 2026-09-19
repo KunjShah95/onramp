@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
@@ -121,11 +121,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
       )}
 
       {data && !error && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
+        <div className="space-y-4">
           {/* Readouts — health score first, then the wedge telemetry. */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <Readout
@@ -191,7 +187,7 @@ export default function RampPanel({ teamId }: { teamId?: string }) {
               No stuck devs · {data.trainee_count} trainee{data.trainee_count === 1 ? '' : 's'} on ramp
             </p>
           )}
-        </motion.div>
+        </div>
       )}
     </ConsolePanel>
   )

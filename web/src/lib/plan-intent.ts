@@ -2,7 +2,7 @@
  * Plan intent — carries a paid-plan choice across the public → auth → billing
  * funnel so every entry point lands in the single Razorpay checkout flow.
  *
- * Flow: /pricing (CTA appends ?plan=) → /register or /login (preserved) →
+ * Flow: landing #pricing (CTA appends ?plan=) → /register or /login (preserved) →
  * /billing?plan= (tier highlighted + scrolled into view) → createCheckoutSession
  * → Razorpay → back to /billing?checkout=success.
  */

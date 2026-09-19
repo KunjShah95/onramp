@@ -1,61 +1,102 @@
-import { motion } from 'framer-motion'
-import { Envelope, MapPin, ChatCircle } from '@phosphor-icons/react'
+import { Link } from 'react-router-dom'
+import {
+  Envelope,
+  ChatCircle,
+  MapPin,
+  ArrowUpRight,
+  BookOpenText,
+} from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
+import EditorialHero from '../components/marketing/EditorialHero'
+import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
-
-interface ContactItem {
+interface Channel {
   label: string
-  href?: string
   value: string
+  href: string
+  external?: boolean
 }
 
-const contactMethods: {
-  icon: React.ComponentType<{ size?: number; weight?: 'duotone'; className?: string }>
-  title: string
-  items: ContactItem[]
-}[] = [
-  {
-    icon: Envelope,
-    title: 'Email us',
-    items: [
-      { label: 'General inquiries', href: 'mailto:hello@onramp.ai', value: 'hello@onramp.ai' },
-      { label: 'Sales', href: 'mailto:sales@onramp.ai', value: 'sales@onramp.ai' },
-      { label: 'Support', href: 'mailto:support@onramp.ai', value: 'support@onramp.ai' },
-      { label: 'Press', href: 'mailto:press@onramp.ai', value: 'press@onramp.ai' },
-    ],
-  },
-  {
-    icon: ChatCircle,
-    title: 'Social',
-    items: [
-      { label: 'GitHub', href: 'https://github.com/onramp', value: 'github.com/onramp' },
-      { label: 'X (Twitter)', href: 'https://x.com/onramp', value: '@onramp' },
-      { label: 'LinkedIn', href: 'https://linkedin.com/company/onramp', value: '/company/onramp' },
-      { label: 'Discord', href: 'https://discord.gg/onramp', value: 'discord.gg/onramp' },
-    ],
-  },
-  {
-    icon: MapPin,
-    title: 'Office',
-    items: [
-      { label: 'Location', value: 'San Francisco, CA' },
-      { label: 'Time zone', value: 'Pacific Time (PT)' },
-    ],
-  },
+const EMAIL_CHANNELS: Channel[] = [
+  { label: 'General', value: 'hello@onramp.ai', href: 'mailto:hello@onramp.ai' },
+  { label: 'Sales', value: 'sales@onramp.ai', href: 'mailto:sales@onramp.ai' },
+  { label: 'Support', value: 'support@onramp.ai', href: 'mailto:support@onramp.ai' },
+  { label: 'Press', value: 'press@onramp.ai', href: 'mailto:press@onramp.ai' },
 ]
+
+const SOCIAL_CHANNELS: Channel[] = [
+  { label: 'GitHub', value: 'github.com/onramp', href: 'https://github.com/onramp', external: true },
+  { label: 'X', value: '@onramp', href: 'https://x.com/onramp', external: true },
+  { label: 'LinkedIn', value: '/company/onramp', href: 'https://linkedin.com/company/onramp', external: true },
+  { label: 'Discord', value: 'discord.gg/onramp', href: 'https://discord.gg/onramp', external: true },
+]
+
+type IconComponent = React.ComponentType<{ size?: number; weight?: 'bold' | 'duotone'; className?: string }>
+
+/** A ruled block of contact lines — mono label left, value right. */
+function ChannelGroup({
+  icon: Icon,
+  title,
+  channels,
+}: {
+  icon: IconComponent
+  title: string
+  channels: Channel[]
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 px-5 pb-2 pt-5">
+        <Icon size={13} weight="bold" className="text-ink-tertiary" />
+        <span className="overline">{title}</span>
+      </div>
+      <ul className="divide-y divide-seam border-t border-seam">
+        {channels.map((c) => (
+          <li key={c.label}>
+            <a
+              href={c.href}
+              {...(c.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+              className="group flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-well"
+            >
+              <span className="font-code text-[11px] uppercase tracking-[0.12em] text-ink-tertiary">
+                {c.label}
+              </span>
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-body-sm font-medium text-ink transition-colors group-hover:text-go">
+                <span className="truncate">{c.value}</span>
+                <ArrowUpRight
+                  size={12}
+                  weight="bold"
+                  className="shrink-0 text-ink-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+                />
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function TextField({
+  label,
+  id,
+  ...rest
+}: { label: string; id: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div>
+      <label htmlFor={id} className="field-label">
+        {label}
+      </label>
+      <input id={id} name={id} className="input mt-2" {...rest} />
+    </div>
+  )
+}
 
 export default function ContactPage() {
   return (
@@ -63,105 +104,143 @@ export default function ContactPage() {
       navLinks={navLinks}
       seo={{ title: 'Contact · Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
     >
-      <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
-        {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-16">
-          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
-            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Contact</span>
-          </span>
-          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold tracking-[-0.02em] text-ink">
-            Get in <span className="text-gradient">touch.</span>
-          </h1>
-          <p className="text-[17px] leading-[1.6] text-ink-secondary max-w-xl">
-            Have a question, want a demo, or just want to say hi? We get back within one business day.
-          </p>
-        </motion.div>
+      <div className="mx-auto max-w-6xl px-6 pb-24 pt-12 lg:px-10">
+        <EditorialHero
+          index="Contact — 01"
+          title="Get in touch."
+          lede="A question, a demo, a security review, or just a hello. Every message reaches a person on the team — not a ticket queue."
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {contactMethods.map((method, i) => (
-            <motion.div
-              key={method.title}
-              {...fadeUp(0.08 * i)}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md"
+        {/* Service readout */}
+        <MetricStrip className="mt-10 grid-cols-2 lg:grid-cols-4">
+          <MetricCell label="First reply" value="1 day" sub="Monday to Friday" />
+          <MetricCell label="Support" value="24/7" sub="Team & Enterprise" />
+          <MetricCell label="Channels" value="8" sub="Email · GitHub · X · LinkedIn" />
+          <MetricCell label="Based in" value="SF" sub="Pacific Time (PT)" />
+        </MetricStrip>
+
+        <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
+          {/* ── Message form ─────────────────────────────────────── */}
+          <section className="lg:col-span-7" aria-labelledby="contact-form-title">
+            <form
+              onSubmit={(e) => e.preventDefault()}
+              className="rounded-card border border-seam bg-panel"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] mb-4">
-                <method.icon size={20} weight="duotone" />
+              <div className="border-b border-seam px-6 py-5">
+                <h2
+                  id="contact-form-title"
+                  className="text-heading font-semibold text-ink"
+                >
+                  Send a message
+                </h2>
+                <p className="mt-1 text-body-sm text-ink-tertiary">
+                  Tell us what you're working on and we'll route it to the right person.
+                </p>
+              </div>
+
+              <div className="space-y-5 px-6 py-6">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <TextField
+                    label="Name"
+                    id="name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Ada Lovelace"
+                    required
+                  />
+                  <TextField
+                    label="Email"
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="ada@company.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <TextField
+                    label="Company"
+                    id="company"
+                    type="text"
+                    autoComplete="organization"
+                    placeholder="Optional"
+                  />
+                  <TextField
+                    label="Subject"
+                    id="subject"
+                    type="text"
+                    placeholder="What can we help with?"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="field-label">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows={6}
+                    required
+                    placeholder="Your team, your repo, and the outcome you're after."
+                    className="input mt-2 resize-y"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-seam px-6 py-4">
+                <p className="text-caption text-ink-tertiary">
+                  We'll only use your details to reply.
+                </p>
+                <button type="submit" className="btn">
+                  Send message
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* ── Direct channels ──────────────────────────────────── */}
+          <aside className="lg:col-span-5" aria-label="Direct contact channels">
+            <div className="overflow-hidden rounded-card border border-seam bg-panel">
+              <ChannelGroup icon={Envelope} title="Email" channels={EMAIL_CHANNELS} />
+              <ChannelGroup icon={ChatCircle} title="Social" channels={SOCIAL_CHANNELS} />
+
+              <div className="border-t border-seam px-5 py-5">
+                <div className="flex items-center gap-2">
+                  <MapPin size={13} weight="bold" className="text-ink-tertiary" />
+                  <span className="overline">Office</span>
+                </div>
+                <dl className="mt-3 space-y-2">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-body-sm text-ink-tertiary">Location</dt>
+                    <dd className="text-body-sm font-medium text-ink">San Francisco, CA</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-body-sm text-ink-tertiary">Time zone</dt>
+                    <dd className="text-body-sm font-medium text-ink">Pacific Time (PT)</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <Link
+              to="/support"
+              className="group mt-4 flex items-center justify-between gap-4 rounded-card border border-seam bg-panel px-5 py-4 transition-colors hover:bg-well"
+            >
+              <span className="flex items-center gap-3">
+                <BookOpenText size={16} weight="bold" className="text-ink-tertiary" />
+                <span className="text-body-sm font-medium text-ink">
+                  Looking for self-serve help?
+                </span>
               </span>
-              <h2 className="font-display text-base font-semibold text-[hsl(var(--foreground))] mb-4">{method.title}</h2>
-              <ul className="space-y-3">
-                {method.items.map((item) => (
-                  <li key={item.label}>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] block mb-0.5">
-                      {item.label}
-                    </span>
-                    {item.href ? (
-                      <a
-                        href={item.href}
-                        className="text-sm text-[hsl(var(--accent))] hover:underline font-medium"
-                      >
-                        {item.value}
-                      </a>
-                    ) : (
-                      <span className="text-sm text-[hsl(var(--foreground))]">{item.value}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-body-sm font-semibold text-go">
+                Support
+                <ArrowUpRight size={12} weight="bold" />
+              </span>
+            </Link>
+          </aside>
         </div>
-
-        {/* Contact form */}
-        <motion.div {...fadeUp(0.3)} className="mt-12 p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
-          <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-6">Send us a message</h2>
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Your name"
-                  className="w-full px-4 py-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]/30"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="you@company.com"
-                  className="w-full px-4 py-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]/30"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Subject</label>
-              <input
-                type="text"
-                name="subject"
-                placeholder="How can we help?"
-                className="w-full px-4 py-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]/30"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Message</label>
-              <textarea
-                name="message"
-                rows={4}
-                placeholder="Tell us more..."
-                className="w-full px-4 py-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--accent))]/30 resize-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold hover:opacity-90 transition-all"
-            >
-              Send message
-            </button>
-          </form>
-        </motion.div>
       </div>
     </MarketingLayout>
   )

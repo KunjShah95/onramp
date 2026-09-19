@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { Link, NavLink } from 'react-router-dom'
 import { Compass, House, BookOpenText, ArrowLeft } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
@@ -13,13 +13,8 @@ export default function NotFoundPage() {
       <div data-theme="landing" className={`landing-premium${lightClass} min-h-screen bg-room text-ink antialiased`}>
       <Seo title="Page Not Found · Onramp" description="The page you're looking for doesn't exist or may have moved." path="/404" noindex />
       <div className="min-h-screen flex px-4 items-center justify-center p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center max-w-md w-full"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-go/10 border border-go/20 flex items-center justify-center mx-auto mb-6">
+        <div className="text-center max-w-md w-full">
+          <div className="w-16 h-16 rounded-card bg-go/10 border border-go/20 flex items-center justify-center mx-auto mb-6">
             <Compass className="w-7 h-7 text-go" weight="duotone" />
           </div>
 
@@ -50,7 +45,7 @@ export default function NotFoundPage() {
             </NavLink>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-seam/50">
+          <div className="mt-8 pt-6 border-t border-[rgb(var(--border-rgb)/0.5)]">
             <p className="text-caption text-ink-tertiary mb-3">Looking for something specific?</p>
             <div className="flex items-center justify-center gap-5">
               <Link to="/explore" className="text-caption font-medium text-go hover:underline underline-offset-4">
@@ -65,7 +60,7 @@ export default function NotFoundPage() {
               </Link>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
       </div>
     </PageTransition>

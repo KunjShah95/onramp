@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { ArrowRight, ShieldCheck } from '@phosphor-icons/react'
 import MarketingLayout from './MarketingLayout'
 import type { NavLinkItem } from './MarketingNav'
@@ -21,18 +21,10 @@ interface LegalLayoutProps {
   seo?: SeoProps
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-}
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
@@ -52,9 +44,9 @@ export default function LegalLayout({ label, title, lastUpdated, intro, sections
         </div>
 
         {/* Sections */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-10">
+        <div className="space-y-10">
           {sections.map((section, idx) => (
-            <motion.section key={section.heading} variants={itemVariants} className="relative pl-6 border-l border-[hsl(var(--border))]">
+            <section key={section.heading} className="relative pl-6 border-l border-[hsl(var(--border))]">
               <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[hsl(var(--accent))] bg-[hsl(var(--background))]" />
               <h2 className="font-display text-lg font-bold text-[hsl(var(--foreground))] mb-3">
                 <span className="font-mono text-xs text-[hsl(var(--muted-foreground))] mr-2">{String(idx + 1).padStart(2, '0')}</span>
@@ -73,9 +65,9 @@ export default function LegalLayout({ label, title, lastUpdated, intro, sections
                   ))}
                 </ul>
               )}
-            </motion.section>
+            </section>
           ))}
-        </motion.div>
+        </div>
 
         {/* Footer cross-link */}
         <div className="mt-16 pt-6 border-t border-[hsl(var(--border))] flex flex-wrap gap-6 text-sm">

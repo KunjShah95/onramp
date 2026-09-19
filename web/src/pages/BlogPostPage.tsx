@@ -1,5 +1,5 @@
 import { Link, useParams, Navigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { Calendar, Tag, ArrowLeft, ArrowRight, Clock, ShareNetwork } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -8,15 +8,9 @@ import { posts } from '../data/blog'
 const navLinks: NavLinkItem[] = [
   { label: 'Blog', href: '/blog' },
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
 
 // Map of full article content per slug
 const articleContent: Record<string, string[]> = {
@@ -96,7 +90,7 @@ export default function BlogPostPage() {
     >
       <article className="max-w-3xl mx-auto px-6 pt-16 pb-24">
         {/* Back link */}
-        <motion.div {...fadeUp(0)}>
+        <div>
           <Link
             to="/blog"
             className="inline-flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--accent))] transition-colors mb-8"
@@ -104,10 +98,10 @@ export default function BlogPostPage() {
             <ArrowLeft size={14} weight="bold" />
             Back to blog
           </Link>
-        </motion.div>
+        </div>
 
         {/* Header */}
-        <motion.div {...fadeUp(0.04)} className="mb-10">
+        <div className="mb-10">
           <div className="flex items-center gap-3 text-xs text-[hsl(var(--muted-foreground))] mb-4">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] font-semibold">
               <Tag size={11} weight="fill" />
@@ -128,13 +122,13 @@ export default function BlogPostPage() {
           <p className="mt-4 text-lg text-[hsl(var(--muted-foreground))] leading-relaxed">
             {post.excerpt}
           </p>
-        </motion.div>
+        </div>
 
         {/* Divider */}
-        <motion.div {...fadeUp(0.08)} className="mb-10 h-px bg-[hsl(var(--border))]" />
+        <div className="mb-10 h-px bg-[hsl(var(--border))]" />
 
         {/* Content */}
-        <motion.div {...fadeUp(0.12)} className="prose prose-sm max-w-none">
+        <div className="prose prose-sm max-w-none">
           {content.map((paragraph, i) => (
             <p
               key={i}
@@ -143,10 +137,10 @@ export default function BlogPostPage() {
               {paragraph}
             </p>
           ))}
-        </motion.div>
+        </div>
 
         {/* Share */}
-        <motion.div {...fadeUp(0.16)} className="mt-12 pt-6 border-t border-[hsl(var(--border))]">
+        <div className="mt-12 pt-6 border-t border-[hsl(var(--border))]">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
               <ShareNetwork size={15} weight="duotone" />
@@ -161,14 +155,14 @@ export default function BlogPostPage() {
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Adjacent posts */}
-        <motion.div {...fadeUp(0.2)} className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {prevPost && (
             <Link
               to={`/blog/${prevPost.slug}`}
-              className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md"
+              className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30 "
             >
               <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1">
                 <ArrowLeft size={12} weight="bold" aria-hidden className="shrink-0" />
@@ -182,7 +176,7 @@ export default function BlogPostPage() {
           {nextPost && (
             <Link
               to={`/blog/${nextPost.slug}`}
-              className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30 hover:shadow-md sm:text-right"
+              className="group p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30 sm:text-right"
             >
               <span className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1">
                 Next
@@ -193,7 +187,7 @@ export default function BlogPostPage() {
               </span>
             </Link>
           )}
-        </motion.div>
+        </div>
       </article>
     </MarketingLayout>
   )

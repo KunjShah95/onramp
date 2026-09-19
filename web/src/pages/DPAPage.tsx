@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { FileText, Download, ShieldCheck, Clock, CheckCircle } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -6,16 +6,10 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
 
 const sections = [
   {
@@ -56,7 +50,7 @@ export default function DPAPage() {
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-16">
+        <div className="mb-16">
           <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
             <FileText className="w-4 h-4" weight="fill" />
             <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">DPA</span>
@@ -68,10 +62,10 @@ export default function DPAPage() {
             Our standard Data Processing Agreement outlines how we handle, process, and protect your personal data.
             It's available for all customers, with no procurement delays.
           </p>
-        </motion.div>
+        </div>
 
         {/* Download CTA */}
-        <motion.div {...fadeUp(0.08)} className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="font-display font-semibold text-[hsl(var(--foreground))]">Standard DPA Template</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">Last updated: July 2026 · PDF, 245 KB</p>
@@ -80,24 +74,20 @@ export default function DPAPage() {
             <Download size={16} weight="bold" />
             Download DPA
           </button>
-        </motion.div>
+        </div>
 
         {/* Sections */}
         <div className="space-y-6 mb-12">
-          {sections.map((s, i) => (
-            <motion.div
-              key={s.title}
-              {...fadeUp(0.16 + i * 0.08)}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30"
-            >
+          {sections.map((s) => (
+            <div key={s.title} className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30">
               <h2 className="font-display text-lg font-semibold text-[hsl(var(--foreground))] mb-3">{s.title}</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{s.content}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* How to get it signed */}
-        <motion.div {...fadeUp(0.32)} className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 mb-12">
+        <div className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 mb-12">
           <div className="flex items-center gap-3 mb-5">
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
               <CheckCircle size={18} weight="duotone" />
@@ -114,10 +104,10 @@ export default function DPAPage() {
               </li>
             ))}
           </ol>
-        </motion.div>
+        </div>
 
         {/* Sub-processors */}
-        <motion.div {...fadeUp(0.4)} className="mb-12">
+        <div className="mb-12">
           <div className="flex items-center gap-3 mb-5">
             <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
               <Clock size={18} weight="duotone" />
@@ -132,10 +122,10 @@ export default function DPAPage() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Questions */}
-        <motion.div {...fadeUp(0.48)} className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
+        <div className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
           <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-3">Questions about the DPA?</h2>
           <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-md mx-auto">
             If you need custom terms, have questions about data processing, or want to report a security concern.
@@ -146,7 +136,7 @@ export default function DPAPage() {
           >
             Contact our DPO
           </Link>
-        </motion.div>
+        </div>
       </div>
     </MarketingLayout>
   )

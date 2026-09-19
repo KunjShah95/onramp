@@ -13,7 +13,7 @@ import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check, GitBran
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import MissionTimeline, { type Stage } from '../components/ui/mission-timeline'
-import StatusBadge from '../components/ui/status-badge'
+
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { TraineeDashboardSkeleton } from '../components/ui/Skeleton'
@@ -30,6 +30,22 @@ function relativeTime(iso: string): string {
   if (d < 1) return 'today'
   if (d === 1) return 'yesterday'
   return `${d}d ago`
+}
+
+const statusLabel = (state: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    cancelled: 'Cancelled',
+    assigned: 'Assigned',
+    in_progress: 'In progress',
+    submitted: 'Submitted',
+    under_review: 'Under review',
+    needs_changes: 'Changes requested',
+    product_review: 'Product review',
+    approved: 'Approved',
+    completed: 'Done',
+  }
+  return labels[state] || state
 }
 
 interface RaisePRState {
@@ -247,7 +263,7 @@ export default function TraineeDashboard() {
                             <span className="text-caption text-ink-muted font-code truncate block">{repoUrl.replace('https://github.com/', '')}</span>
                           )}
                         </div>
-                        <StatusBadge state={task.state} />
+                        <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <button
@@ -305,7 +321,7 @@ export default function TraineeDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <StatusBadge state={task.state} />
+                      <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
                       <span className="text-caption text-ink-muted font-code">{task.module} · {relativeTime(task.updated_at)}</span>
                     </div>
                   </div>

@@ -31,6 +31,10 @@ const LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 
+export function statusLabel(state: string): string {
+  return LABELS[state] || state
+}
+
 export default function StatusBadge({ state, className }: StatusBadgeProps) {
   return (
     <span className={cn('status-tile', TILE[state] || 'status-tile-idle', className)}>

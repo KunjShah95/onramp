@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { Users, Stack, Lightning, TrendUp, ArrowRight, Check, Info } from '@phosphor-icons/react'
 
 // Real pricing verified Aug 2026 via web search — see footnote for sources.
@@ -139,15 +139,9 @@ function Slider({
           </span>
           {label}
         </label>
-        <motion.span
-          key={value}
-          initial={{ scale: 0.92, opacity: 0.7 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className="min-w-[36px] text-center rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-2.5 py-1 text-[12px] font-bold tabular-nums"
-        >
+        <span key={value} className="min-w-[36px] text-center rounded-full bg-[hsl(var(--foreground))] text-[hsl(var(--background))] px-2.5 py-1 text-[12px] font-bold tabular-nums">
           {value}
-        </motion.span>
+        </span>
       </div>
       <div className="relative">
         <input
@@ -216,10 +210,10 @@ export default function CostAtScaleCalculator() {
                 setChanges(p.changes)
               }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                activePreset === p.label
-                  ? 'bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))] shadow-sm'
-                  : 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--foreground))]/20 hover:bg-[hsl(var(--accent))]/6'
-              }`}
+ activePreset === p.label
+ ? 'bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))] shadow-sm'
+ : 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--foreground))]/20 hover:bg-[hsl(var(--accent))]/6'
+ }`}
             >
               {p.label}
             </button>
@@ -238,10 +232,10 @@ export default function CostAtScaleCalculator() {
               key={a.id}
               onClick={() => setSelectedId(a.id)}
               className={`px-3.5 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
-                selectedId === a.id
-                  ? 'bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))]'
-                  : 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'
-              }`}
+ selectedId === a.id
+ ? 'bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))]'
+ : 'bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]'
+ }`}
               title={a.notes}
             >
               {a.label} <span className={`ml-1 font-normal ${selectedId === a.id ? 'opacity-70' : 'opacity-60'}`}>· {fmtUsd(a.seatPrice)}/seat</span>
@@ -272,18 +266,9 @@ export default function CostAtScaleCalculator() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
             <div className="rounded-[10px] border border-[hsl(var(--abort))]/20 bg-[hsl(var(--abort))]/[0.06] p-4 sm:p-5">
               <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[hsl(var(--muted-foreground))] mb-1.5 truncate">{primary.agent.label} · /mo</div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={Math.round(primary.total)}
-                  initial={{ y: 6, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -6, opacity: 0 }}
-                  transition={{ duration: 0.22 }}
-                  className="font-mono text-[26px] sm:text-[30px] font-bold tracking-[-0.03em] text-[hsl(var(--foreground))] tabular-nums leading-none"
-                >
-                  {fmtUsd(primary.total)}
-                </motion.div>
-              </AnimatePresence>
+              <div className="font-mono text-[26px] sm:text-[30px] font-bold tracking-[-0.03em] text-[hsl(var(--foreground))] tabular-nums leading-none">
+                {fmtUsd(primary.total)}
+              </div>
               <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-2 font-mono leading-relaxed">
                 <span className="tabular-nums">{fmtUsd(primary.subs)} subs</span>
                 <span className="mx-1 opacity-40">·</span>
@@ -296,18 +281,9 @@ export default function CostAtScaleCalculator() {
             </div>
             <div className="rounded-[10px] border border-[hsl(var(--accent))]/25 bg-[hsl(var(--accent))]/[0.07] p-4 sm:p-5">
               <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[hsl(var(--muted-foreground))] mb-1.5">Onramp · /mo</div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={Math.round(onrampTotal)}
-                  initial={{ y: 6, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -6, opacity: 0 }}
-                  transition={{ duration: 0.22 }}
-                  className="font-mono text-[26px] sm:text-[30px] font-bold tracking-[-0.03em] text-[hsl(var(--accent))] tabular-nums leading-none"
-                >
-                  {fmtUsd(onrampTotal)}
-                </motion.div>
-              </AnimatePresence>
+              <div className="font-mono text-[26px] sm:text-[30px] font-bold tracking-[-0.03em] text-[hsl(var(--accent))] tabular-nums leading-none">
+                {fmtUsd(onrampTotal)}
+              </div>
               <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-2 font-mono leading-relaxed">
                 flat <span className="tabular-nums">{fmtUsd(ONRAMP_FLAT)}</span>
                 <span className="mx-1 opacity-40">·</span>
@@ -321,22 +297,14 @@ export default function CostAtScaleCalculator() {
             <div className="flex items-center gap-3">
               <span className="w-[88px] text-[11px] font-semibold text-[hsl(var(--muted-foreground))] truncate">{primary.agent.label.split(' ')[0]}</span>
               <div className="flex-1 h-2.5 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full bg-[hsl(var(--abort))]"
-                  animate={{ width: `${primaryBarPct}%` }}
-                  transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-                />
+                <div className="h-full rounded-full bg-[hsl(var(--abort))]" style={{ width: `${primaryBarPct}%` }} />
               </div>
               <span className="w-[64px] text-right text-xs font-mono font-semibold tabular-nums text-[hsl(var(--abort))]">{fmtUsd(primary.total)}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-[88px] text-[11px] font-semibold text-[hsl(var(--muted-foreground))]">Onramp</span>
               <div className="flex-1 h-2.5 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full bg-[hsl(var(--accent))]"
-                  animate={{ width: `${onrampBarPct}%` }}
-                  transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-                />
+                <div className="h-full rounded-full bg-[hsl(var(--accent))]" style={{ width: `${onrampBarPct}%` }} />
               </div>
               <span className="w-[64px] text-right text-xs font-mono font-semibold tabular-nums text-[hsl(var(--accent))]">{fmtUsd(onrampTotal)}</span>
             </div>
@@ -347,19 +315,14 @@ export default function CostAtScaleCalculator() {
               At <span className="font-semibold">{devs} devs × {products} products</span> × {changes} changes,{' '}
               <span className="font-mono font-bold tabular-nums">{primary.agent.label}</span> costs{' '}
               <span className="font-mono font-bold tabular-nums">{fmtUsd(primary.total)}/mo</span> —{' '}
-              <motion.span key={Math.round(primary.ratio * 10)} initial={{ scale: 0.96 }} animate={{ scale: 1 }} className="inline-flex items-center gap-1 font-bold">
+              <span className="inline-flex items-center gap-1 font-bold">
                 {primary.ratio.toFixed(1)}× more <ArrowRight size={12} weight="bold" className="opacity-70" />
-              </motion.span>{' '}
+              </span>{' '}
               than Onramp.
             </p>
-            <motion.p
-              key={Math.round(primary.savings)}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 font-mono text-[18px] font-bold tabular-nums tracking-[-0.02em]"
-            >
+            <p className="mt-2 font-mono text-[18px] font-bold tabular-nums tracking-[-0.02em]">
               {fmtUsd(primary.savings)} saved /mo · {fmtUsd(primary.savings * 12)} /yr
-            </motion.p>
+            </p>
           </div>
           <p className="text-center text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))] mt-4 font-mono">
             Every hire × every product multiplies the terminal-agent bill. Onramp flat never moves.

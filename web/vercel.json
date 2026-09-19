@@ -43,10 +43,6 @@
       "destination": "/seo/index.html"
     },
     {
-      "source": "/pricing",
-      "destination": "/seo/pricing.html"
-    },
-    {
       "source": "/why-onramp",
       "destination": "/seo/why-onramp.html"
     },

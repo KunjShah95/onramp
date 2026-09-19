@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { motion, AnimatePresence, useInView, useMotionValue, useSpring, useTransform, animate } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
@@ -45,36 +44,18 @@ const ASSIGNEE_COLORS: Record<string, string> = {
 }
 
 function ProgressRing({ pct, size = 88 }: { pct: number; size?: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { once: true, margin: '-40px' })
   const r = size * 0.42
   const circ = 2 * Math.PI * r
-  // A single spring drives the live arc AND the readout, so the number
-  // settles in lock-step with the ring — a weighted instrument, not a spinner.
-  const mv = useMotionValue(0)
-  const spring = useSpring(mv, { stiffness: 90, damping: 26, mass: 0.8 })
-  const dash = useTransform(spring, (v) => circ - (v / 100) * circ)
-  const [display, setDisplay] = useState(0)
-
-  useEffect(() => {
-    if (!inView) return
-    const controls = animate(mv, pct, { duration: 1.2, ease: [0.16, 1, 0.3, 1] })
-    const unsub = spring.on('change', (v) => setDisplay(Math.round(v)))
-    return () => { controls.stop(); unsub() }
-  }, [inView, pct, mv, spring])
+  // Static instrument: the arc and the readout both render from `pct`.
+  // No spring, no count-up, no in-view trigger.
+  const dash = circ - (pct / 100) * circ
+  const display = Math.round(pct)
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <svg width={size} height={size} className="block -rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(24,27,24,0.10)" strokeWidth={5} fill="none" />
-        <motion.circle
-          cx={size / 2} cy={size / 2} r={r}
-          stroke="var(--go)"
-          strokeWidth={5}
-          strokeLinecap="butt"
-          strokeDasharray={circ}
-          style={{ strokeDashoffset: dash }}
-        />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--go)" strokeWidth={5} strokeLinecap="butt" strokeDasharray={circ} style={{ strokeDashoffset: dash }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-display-sm font-bold text-ink tabular-nums leading-none">{display}</span>
@@ -269,14 +250,6 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
   )
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-}
 
 export default function OnboardingPlanPage() {
   const { user, activeTeamId } = useAuth()
@@ -358,7 +331,7 @@ export default function OnboardingPlanPage() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] relative">
+    <div className="min-h-[calc(100vh-4rem)] relative">
       <div className="max-w-6xl mx-auto">
         {createMutation.isError && (
           <div role="alert" className="mb-6 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">
@@ -366,7 +339,7 @@ export default function OnboardingPlanPage() {
           </div>
         )}
         {/* Hero */}
-        <motion.div variants={item} className="mb-10">
+        <div className="mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="flex items-center gap-6">
               <div className="relative shrink-0">
@@ -409,31 +382,21 @@ export default function OnboardingPlanPage() {
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {planToShow && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.35, duration: 0.4 }}
-            className="mb-9 flex items-center gap-3"
-          >
+          <div className="mb-9 flex items-center gap-3">
             <div className="flex-1 h-px bg-border/60 relative overflow-hidden">
-              <motion.div
-                className="absolute inset-y-0 left-0 bg-go"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
-              />
+              <div className="absolute inset-y-0 left-0 bg-go" />
             </div>
             <span className="readout text-[10px] text-ink-muted/60 tabular-nums uppercase tracking-wider shrink-0">
               OVERALL · {progressPct}%
             </span>
-          </motion.div>
+          </div>
         )}
 
         {!planToShow ? (
-          <motion.div variants={item}>
+          <div>
             <div className="rounded-card border border-seam bg-panel p-12 flex items-center justify-center min-h-[400px]">
               <div className="text-center max-w-sm">
                 <div className="w-16 h-16 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-5">
@@ -448,12 +411,12 @@ export default function OnboardingPlanPage() {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         ) : (
           <>
             {/* Pulse trend bar */}
             {pulses.length > 0 && (
-              <motion.div variants={item} className="mb-8">
+              <div className="mb-8">
                 <div className="relative overflow-hidden rounded-md border border-seam bg-panel shadow-seam p-5">
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-4">
@@ -468,27 +431,22 @@ export default function OnboardingPlanPage() {
                         { label: 'Support', val: trends.support_avg, color: 'text-ink' },
                         { label: 'Workload', val: trends.workload_avg, color: 'text-ink' },
                       ] as const).map(t => (
-                        <div key={t.label} className="text-center p-2.5 rounded-md bg-well/40 border border-seam/40">
-                          <motion.div
-                            className={cn('font-code text-display-sm font-bold tabular-nums', t.color)}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.1 }}
-                          >
+                        <div key={t.label} className="text-center p-2.5 rounded-md bg-well/40 border border-[rgb(var(--border-rgb)/0.4)]">
+                          <div className={cn('font-code text-display-sm font-bold tabular-nums', t.color)}>
                             {t.val !== null && t.val !== undefined ? Number(t.val).toFixed(1) : 'N/A'}
-                          </motion.div>
+                          </div>
                           <div className="text-overline text-ink-muted/40">{t.label}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* Pre-Boarding */}
             {preBoard.length > 0 && (
-              <motion.div variants={item} className="mb-8">
+              <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <ListChecks size={14} className="text-ink-tertiary" />
                   <h2 className="text-body-sm font-bold text-ink">Pre-Boarding</h2>
@@ -498,14 +456,10 @@ export default function OnboardingPlanPage() {
                   {preBoard.map((t: any) => {
                     const done = t.is_completed
                     return (
-                      <motion.div
-                        key={t.id}
-                        whileHover={{ y: -2 }}
-                        className={cn(
+                      <div key={t.id} className={cn(
                           'p-3 rounded-xl border transition-all',
-                          done ? 'bg-well/30 border-seam/30' : 'bg-panel border-seam hover:border-seam-strong'
-                        )}
-                      >
+                          done ? 'bg-well/30 border-[rgb(var(--border-rgb)/0.3)]' : 'bg-panel border-seam hover:border-seam-strong'
+                        )}>
                         <div className={cn(
                           'text-[10px] font-code px-1.5 py-0.5 rounded-md border inline-block mb-2',
                           ASSIGNEE_COLORS[t.assignee] || 'text-ink-muted/40 border-seam bg-well'
@@ -515,16 +469,16 @@ export default function OnboardingPlanPage() {
                         <p className={cn('text-body-xs leading-relaxed', done ? 'text-ink-muted/40 line-through' : 'text-ink')}>
                           {t.title}
                         </p>
-                      </motion.div>
+                      </div>
                     )
                   })}
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* Roadmap — dependency-aware progression */}
             {roadmap && roadmap.milestones.length > 0 && (
-              <motion.div variants={item} className="mb-10">
+              <div className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
                   <ListChecks size={14} className="text-ink-tertiary" />
                   <h2 className="text-body-sm font-bold text-ink">Roadmap</h2>
@@ -537,20 +491,13 @@ export default function OnboardingPlanPage() {
                     const cat = CATEGORY_CONFIG[m.category] || CATEGORY_CONFIG.technical
                     return (
                       <div key={m.id} className="flex items-stretch gap-2">
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          whileHover={{ y: -2 }}
-                          viewport={{ once: true, margin: '-40px' }}
-                          transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                          className={cn(
+                        <div className={cn(
                             'w-44 p-3 rounded-md border transition-all',
                             m.status === 'completed' && 'bg-well/30 border-seam',
                             m.status === 'in_progress' && 'bg-panel border-go',
                             m.status === 'available' && 'bg-panel border-seam hover:border-seam-strong',
-                            m.status === 'locked' && 'bg-well/40 border-seam/50 opacity-50'
-                          )}
-                        >
+                            m.status === 'locked' && 'bg-well/40 border-[rgb(var(--border-rgb)/0.5)] opacity-50'
+                          )}>
                           <div className="flex items-center gap-1.5 mb-1.5">
                             <cat.icon size={10} className="text-ink-muted/40" />
                             <span className="text-overline font-semibold uppercase tracking-widest">
@@ -575,7 +522,7 @@ export default function OnboardingPlanPage() {
                               needs {m.depends_on.length} prior
                             </div>
                           )}
-                        </motion.div>
+                        </div>
                         {i < roadmap.milestones.length - 1 && (
                           <div className="hidden sm:flex items-center text-ink-muted/20">
                             <CaretDoubleDown size={10} className="rotate-[-90deg]" />
@@ -585,11 +532,11 @@ export default function OnboardingPlanPage() {
                     )
                   })}
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* 30-60-90 Day Phases */}
-            <motion.div variants={item}>
+            <div>
               <div className="relative flex items-center gap-2 mb-6">
                 <div className="flex-1 h-px bg-border" />
                 <CaretDoubleDown size={14} className="text-ink-muted/40" />
@@ -600,14 +547,14 @@ export default function OnboardingPlanPage() {
                 <PhaseColumn label="60 Days · Growth" data={milestones60} icon={Target} hue="text-ink-secondary border-seam bg-well" />
                 <PhaseColumn label="90 Days · Flight" data={milestones90} icon={Rocket} hue="text-ink-secondary border-seam bg-well" />
               </div>
-            </motion.div>
+            </div>
           </>
         )}
       </div>
 
-      <AnimatePresence>
+      
         {showPulse && planToShow && <PulseCheckModal planId={planToShow.id} onClose={() => setShowPulse(false)} />}
-      </AnimatePresence>
-    </motion.div>
+      
+    </div>
   )
 }

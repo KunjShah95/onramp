@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { ShieldCheck, Lock, Eye, Cloud, FileLock } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -6,16 +6,10 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
 
 const categories = [
   {
@@ -71,7 +65,7 @@ export default function SecurityPage() {
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-16">
+        <div className="mb-16">
           <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
             <ShieldCheck className="w-4 h-4" weight="fill" />
             <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">Security</span>
@@ -83,14 +77,14 @@ export default function SecurityPage() {
             We take the security of your code and data seriously. Onramp employs industry-standard encryption,
             access controls, and compliance practices to keep your information safe.
           </p>
-        </motion.div>
+        </div>
 
         {/* Certifications */}
-        <motion.div {...fadeUp(0.08)} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
           {certifications.map((cert) => (
             <div
               key={cert.name}
-              className="p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30"
+              className="p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 transition-colors hover:border-[hsl(var(--accent))]/30"
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-display font-semibold text-[hsl(var(--foreground))]">{cert.name}</h3>
@@ -101,16 +95,12 @@ export default function SecurityPage() {
               <p className="text-sm text-[hsl(var(--muted-foreground))]">{cert.desc}</p>
             </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Security categories */}
         <div className="space-y-6">
-          {categories.map((cat, i) => (
-            <motion.div
-              key={cat.title}
-              {...fadeUp(0.16 + i * 0.08)}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:border-[hsl(var(--accent))]/30"
-            >
+          {categories.map((cat) => (
+            <div key={cat.title} className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30">
               <div className="flex items-center gap-3 mb-5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
                   <cat.icon size={18} weight="duotone" />
@@ -128,12 +118,12 @@ export default function SecurityPage() {
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* CTA */}
-        <motion.div {...fadeUp(0.6)} className="mt-12 text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
+        <div className="mt-12 text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
           <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-3">Have security questions?</h2>
           <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-md mx-auto">
             We're happy to share our security documentation, fill out your vendor assessment, or schedule a call.
@@ -152,7 +142,7 @@ export default function SecurityPage() {
               View DPA
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </MarketingLayout>
   )

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Key,
   Plus,
@@ -24,14 +24,6 @@ import { listApiKeys, createApiKey, revokeApiKey, rotateApiKey } from '../lib/ap
 import type { ApiKey } from '../lib/api'
 import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 const TIERS = ['free', 'pro', 'team', 'enterprise']
 
@@ -132,44 +124,32 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-4xl mx-auto space-y-8 relative"
-    >
+    <div className="max-w-4xl mx-auto space-y-8 relative">
       {/* ── Mission header ── */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6">
+      <div className="flex items-start justify-between gap-6">
         <PageHeader
           eyebrow="Folio · API keys"
           title="API Keys"
           subtitle="Programmatic access · keep keys secure, treat them like passwords."
           flush
         />
-        <motion.button
-          whileHover={canManageKeys ? { scale: 1.03 } : undefined}
-          whileTap={canManageKeys ? { scale: 0.97 } : undefined}
-          onClick={() => { setRevealedRaw(null); setShowCreate(true) }}
-          disabled={!canManageKeys}
-          title={!canManageKeys ? noKeyPermission : ''}
-          className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
-        >
+        <button onClick={() => { setRevealedRaw(null); setShowCreate(true) }} disabled={!canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40">
           <Plus className="w-4 h-4" weight="bold" />
           Create Key
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
+        <div className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
           <button onClick={fetchKeys} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
-        </motion.div>
+        </div>
       )}
 
-      {loading && <motion.div variants={itemVariants}><ApiKeysSkeleton /></motion.div>}
+      {loading && <div><ApiKeysSkeleton /></div>}
 
       {!loading && keys.length === 0 && (
-        <motion.div variants={itemVariants}>
+        <div>
           <EmptyState
             icon={<Key className="w-10 h-10 text-ink-disabled/40" weight="duotone" />}
             title="No API keys"
@@ -180,20 +160,13 @@ export default function ApiKeysPage() {
               </button>
             }
           />
-        </motion.div>
+        </div>
       )}
 
       {!loading && keys.length > 0 && (
-        <motion.div variants={itemVariants} className="space-y-3">
+        <div className="space-y-3">
           {keys.map((apiKey) => (
-            <motion.div
-              key={apiKey.key_id}
-              layout
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 80, damping: 18 }}
-              className="rounded-card border border-seam bg-panel p-5 hover:border-go/25 transition-colors"
-            >
+            <div key={apiKey.key_id} className="rounded-card border border-seam bg-panel p-5 hover:border-go/25 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -239,54 +212,29 @@ export default function ApiKeysPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleRotate(apiKey.key_id)}
-                    disabled={!apiKey.is_active || rotating === apiKey.key_id || !canManageKeys}
-                    className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-go transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-                    title={!canManageKeys ? noKeyPermission : 'Rotate (revoke + create new)'}
-                  >
+                  <button onClick={() => handleRotate(apiKey.key_id)} disabled={!apiKey.is_active || rotating === apiKey.key_id || !canManageKeys} className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-go transition-colors disabled:opacity-30 disabled:hover:text-ink-muted" title={!canManageKeys ? noKeyPermission : 'Rotate (revoke + create new)'}>
                     {rotating === apiKey.key_id ? (
                       <Spinner className="w-4 h-4 animate-spin" />
                     ) : (
                       <ArrowsClockwise className="w-4 h-4" />
                     )}
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleRevoke(apiKey.key_id)}
-                    disabled={!apiKey.is_active || !canManageKeys}
-                    className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-                    title={!canManageKeys ? noKeyPermission : 'Revoke'}
-                  >
+                  </button>
+                  <button onClick={() => handleRevoke(apiKey.key_id)} disabled={!apiKey.is_active || !canManageKeys} className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30 disabled:hover:text-ink-muted" title={!canManageKeys ? noKeyPermission : 'Revoke'}>
                     <Trash className="w-4 h-4" />
-                  </motion.button>
+                  </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* Create Modal */}
-      <AnimatePresence>
+      
         {showCreate && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-ink/50 z-40"
-              onClick={() => !revealedRaw && setShowCreate(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
+            <div className="fixed inset-0 bg-ink/50 z-40" onClick={() => !revealedRaw && setShowCreate(false)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <ConsolePanel rail="Credentials" designator="CREATE KEY" status="go" className="w-full max-w-md p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-display-xs font-display font-medium text-ink">
@@ -370,42 +318,24 @@ export default function ApiKeysPage() {
                       />
                       <p className="text-caption text-ink-muted mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleCreate}
-                      disabled={creating || !canManageKeys}
-                      title={!canManageKeys ? noKeyPermission : ''}
-                      className="btn btn-primary w-full flex items-center justify-center gap-2"
-                    >
+                    <button onClick={handleCreate} disabled={creating || !canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary w-full flex items-center justify-center gap-2">
                       {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
                       {creating ? 'Creating...' : 'Create Key'}
-                    </motion.button>
+                    </button>
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
+      
 
       {/* Rotated Key Modal */}
-      <AnimatePresence>
+      
         {revealedRotatedRaw && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-ink/50 z-40"
-              onClick={() => setRevealedRotatedRaw(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
+            <div className="fixed inset-0 bg-ink/50 z-40" onClick={() => setRevealedRotatedRaw(null)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <ConsolePanel rail="Credentials" designator="ROTATED KEY" status="go" className="w-full max-w-md p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-display-xs font-display font-medium text-ink">
@@ -434,13 +364,13 @@ export default function ApiKeysPage() {
                   </button>
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
+      
 
       {/* Security Note */}
-      <motion.div variants={itemVariants} className="rounded-card border border-mission/20 bg-panel p-5">
+      <div className="rounded-card border border-mission/20 bg-panel p-5">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-tile bg-mission/10 flex items-center justify-center shrink-0 mt-0.5">
             <ShieldCheck className="w-4 h-4 text-mission" weight="fill" />
@@ -457,7 +387,7 @@ export default function ApiKeysPage() {
             </ul>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }

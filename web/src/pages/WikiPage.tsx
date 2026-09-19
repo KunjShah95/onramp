@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import { generateWiki } from '../lib/api'
@@ -41,7 +41,7 @@ function MarkdownContent({ content }: { content: string }) {
               </div>
             )}
             {body && (
-              <div className="pl-3.5 border-l border-seam/30 text-body-sm text-ink-secondary leading-[1.8] space-y-3 max-w-none">
+              <div className="pl-3.5 border-l border-[rgb(var(--border-rgb)/0.3)] text-body-sm text-ink-secondary leading-[1.8] space-y-3 max-w-none">
                 {body.split('\n\n').map((p, j) => {
                   const isCode = p.startsWith('```')
                   if (isCode) {
@@ -86,14 +86,6 @@ function MarkdownContent({ content }: { content: string }) {
   )
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-}
 
 export default function WikiPage() {
   const [repoUrl, setRepoUrl] = useState('')
@@ -120,19 +112,19 @@ export default function WikiPage() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
+    <div className="relative min-h-[calc(100vh-4rem)]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
-        <motion.div variants={item} className="mb-8">
+        <div className="mb-8">
           <PageHeader
             eyebrow="Folio · Wiki"
             title="Onboarding Wiki"
             subtitle="Generate an onboarding guide from any GitHub repository"
           />
-        </motion.div>
+        </div>
 
         {/* Repo Input */}
-        <motion.div variants={item} className="mb-8">
+        <div className="mb-8">
           <div className="relative group">
             <div className="flex items-center gap-2 bg-well border border-seam group-focus-within:border-go/40 rounded-card px-4 py-3 transition-colors">
               <GitFork size={18} className="text-ink-muted shrink-0" weight="duotone" />
@@ -157,17 +149,12 @@ export default function WikiPage() {
             </div>
           </div>
           <p className="text-caption text-ink-muted/20 mt-2 ml-1">Paste a GitHub URL and the AI will analyze the codebase to produce a structured onboarding guide.</p>
-        </motion.div>
+        </div>
 
         {/* Loading state */}
-        <AnimatePresence>
+        
           {mutation.isPending && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-8"
-            >
+            <div className="mb-8">
               <CardSpotlight className="p-6 flex items-center justify-center min-h-[180px]">
                 <div className="text-center">
                   <div className="w-10 h-10 rounded-xl bg-caution/10 border border-caution/25 flex items-center justify-center mx-auto mb-3">
@@ -177,47 +164,38 @@ export default function WikiPage() {
                   <p className="text-caption text-ink-muted/20 mt-1">Reading code structure, extracting patterns, writing documentation</p>
                 </div>
               </CardSpotlight>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Error */}
-        <AnimatePresence>
+        
           {mutation.isError && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-8"
-            >
-              <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-3">
-                <Bug size={18} className="text-red-400 shrink-0 mt-0.5" weight="fill" />
+            <div className="mb-8">
+              <div className="p-4 rounded-xl border border-abort/20 bg-abort/5 flex items-start gap-3">
+                <Bug size={18} className="text-abort shrink-0 mt-0.5" weight="fill" />
                 <div>
-                  <p className="text-body-xs font-medium text-red-400">Generation failed</p>
+                  <p className="text-body-xs font-medium text-abort">Generation failed</p>
                   <p className="text-caption text-ink-muted/50 mt-0.5">{(mutation.error as any)?.message || 'Could not generate wiki. Check the URL and try again.'}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Results */}
-        <AnimatePresence>
+        
           {mutation.data && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-            >
+            <div>
               {/* Repo Stats Bar */}
-              <motion.div variants={item} className="mb-6">
+              <div className="mb-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-well border border-seam">
                     <FileCode size={12} className="text-ink-muted/40" />
                     <span className="text-caption font-code text-ink-muted/60">{mutation.data.stats.language}</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-well border border-seam">
-                    <Star size={12} className="text-amber-400" weight="fill" />
+                    <Star size={12} className="text-caution" weight="fill" />
                     <span className="text-caption font-code text-ink-muted/60 tabular-nums">{mutation.data.stats.stars}</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-well border border-seam">
@@ -225,12 +203,12 @@ export default function WikiPage() {
                     <span className="text-caption font-code text-ink-muted/60 tabular-nums">{mutation.data.stats.open_issues} issues</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-well border border-seam">
-                    <ArrowLineRight size={12} className="text-emerald-400" />
+                    <ArrowLineRight size={12} className="text-go" />
                     <span className="text-caption font-code text-ink-muted/60 tabular-nums">{mutation.data.stats.first_issues_found} first issues</span>
                   </div>
                   <div className="ml-auto text-caption text-ink-muted/20 tabular-nums">{new Date(mutation.data.generated_at).toLocaleDateString()}</div>
                 </div>
-              </motion.div>
+              </div>
 
               {/* Content Layout */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -266,7 +244,7 @@ export default function WikiPage() {
 
                     <button onClick={handleCopy}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-seam bg-well hover:bg-panel-raised text-body-xs text-ink-secondary hover:text-ink transition-all">
-                      {copied ? <Check size={14} className="text-emerald-400" weight="bold" /> : <Copy size={14} />}
+                      {copied ? <Check size={14} className="text-go" weight="bold" /> : <Copy size={14} />}
                       {copied ? 'Copied' : 'Copy Wiki'}
                     </button>
                   </div>
@@ -275,7 +253,7 @@ export default function WikiPage() {
                 {/* Content */}
                 <div className="lg:col-span-4 order-1 lg:order-2" ref={contentRef}>
                   <CardSpotlight className="p-6 sm:p-8">
-                    <div className="flex items-center gap-2 mb-6 pb-4 border-b border-seam/40">
+                    <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[rgb(var(--border-rgb)/0.4)]">
                       <BookOpen size={15} className="text-caution" />
                       <span className="font-display text-body-sm font-bold text-ink">Onboarding Guide</span>
                     </div>
@@ -283,10 +261,10 @@ export default function WikiPage() {
                   </CardSpotlight>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
       </div>
-    </motion.div>
+    </div>
   )
 }

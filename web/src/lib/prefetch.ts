@@ -16,7 +16,6 @@ type Loader = () => Promise<unknown>
 const loaders: Record<string, Loader> = {
   // ── Public / marketing ──────────────────────────────
   '/': () => import('../pages/LandingPage'),
-  '/pricing': () => import('../pages/PricingPage'),
   '/why-onramp': () => import('../pages/WhyOnrampPage'),
   '/changelog': () => import('../pages/ChangelogPage'),
   '/docs': () => import('../pages/DocsPage'),

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { ArrowRight, ArrowLeft, Code, Terminal } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -49,7 +49,7 @@ const sections = [
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs', active: true },
   { label: 'Changelog', href: '/changelog' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
 ]
 
 const codeBlock = (label: string, code: string) => (
@@ -239,14 +239,6 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
 
 const defaultSection = 'overview'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
-}
 
 export default function DocsPage() {
   const [active, setActive] = useState(defaultSection)
@@ -261,26 +253,26 @@ export default function DocsPage() {
       <div className="flex max-w-6xl mx-auto">
         {/* Sidebar */}
         <aside className="hidden md:block w-56 shrink-0 sticky top-[73px] self-start h-[calc(100vh-73px)] h-[calc(100dvh-73px)] overflow-y-auto py-8 pr-4 border-r border-[hsl(var(--border))]">
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+          <div>
             {sections.map((sec) => (
-              <motion.div key={sec.id} variants={itemVariants} className="mb-6">
+              <div key={sec.id} className="mb-6">
                 <p className="font-mono text-[10px] text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-2 px-3">{sec.title}</p>
                 {sec.items.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActive(item.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      active === item.id
-                        ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--accent))] font-medium'
-                        : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]/50'
-                    }`}
+ active === item.id
+ ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--accent))] font-medium'
+ : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]/50'
+ }`}
                   >
                     {item.label}
                   </button>
                 ))}
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </aside>
 
         {/* Content */}

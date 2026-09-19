@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import {
   createTask, listTasks, assignTask, startTask, submitTask, reviewTask,
@@ -17,7 +17,7 @@ import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
-import StatusBadge from '../components/ui/status-badge'
+
 import Pagination from '../components/ui/Pagination'
 import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
 import { useToast } from '../context/ToastContext'
@@ -47,12 +47,8 @@ const BOARD_COLUMNS: KanbanColumn[] = [
   { state: 'completed',      label: 'Done',      dot: 'bg-go',               designator: 'LANDED' },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
-}
+const statusLabel = (state: string) => BOARD_COLUMNS.find(c => c.state === state)?.label || state
+
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="overline text-ink-muted mb-1.5 block">{children}</label>
@@ -592,7 +588,7 @@ export default function TasksPage() {
   useEffect(() => { setPage(0) }, [filter])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
+    <div className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
         <PageHeader
           title="Tasks"
           eyebrow="Folio 02 · Tasks"
@@ -643,16 +639,9 @@ export default function TasksPage() {
                 >
                   <DotsThree size={18} weight="bold" />
                 </button>
-                <AnimatePresence>
+                
                   {showMore && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute right-0 top-full mt-2 w-48 rounded-[5px] border border-seam bg-panel-raised shadow-overhead overflow-hidden z-30"
-                      role="menu"
-                    >
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-[5px] border border-seam bg-panel-raised shadow-overhead overflow-hidden z-30" role="menu">
                       <button onClick={() => { setShowMore(false); setShowImportIssue(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
                         <GithubLogo size={16} /> Import Issue
                       </button>
@@ -665,9 +654,9 @@ export default function TasksPage() {
                       <button onClick={() => { setShowMore(false); handleExportTasks() }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors border-t border-seam" role="menuitem">
                         <DownloadSimple size={16} /> Export CSV
                       </button>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
+                
               </div>
               <button onClick={() => setShowCreate(!showCreate)} className="btn">
                 <Plus className="w-4 h-4" weight="bold" />
@@ -715,7 +704,7 @@ export default function TasksPage() {
                       const selected = importIssueNumber === String(iss.number)
                       return (
                         <button key={iss.number} onClick={() => { setImportIssueNumber(String(iss.number)); setImportAssignee(importAssignee) }}
-                          className={`flex items-center gap-2.5 w-full text-left bg-base/60 border rounded-card px-3 py-2 transition-colors ${selected ? 'border-go/60 bg-go/5' : 'border-seam hover:border-go/30'}`}>
+                          className={`flex items-center gap-2.5 w-full text-left bg-[rgb(var(--base-rgb)/0.6)] border rounded-card px-3 py-2 transition-colors ${selected ? 'border-go/60 bg-go/5' : 'border-seam hover:border-go/30'}`}>
                           <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${selected ? 'border-go bg-go' : 'border-seam'}`}>
                             {selected && <Check className="w-2.5 h-2.5 text-white" weight="bold" />}
                           </span>
@@ -806,7 +795,7 @@ export default function TasksPage() {
                         {templates.map((tpl) => {
                           const checked = selectedTemplates.has(tpl.template_id)
                           return (
-                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-base/60 border border-seam rounded-card px-3 py-2 hover:border-go/30 transition-colors">
+                            <label key={tpl.template_id} className="flex items-center gap-2.5 cursor-pointer bg-[rgb(var(--base-rgb)/0.6)] border border-seam rounded-card px-3 py-2 hover:border-go/30 transition-colors">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -937,7 +926,7 @@ export default function TasksPage() {
         )}
 
         {progress && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mb-6">
+          <div className="mb-6">
             <MetricStrip className="grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
               <MetricCell label="Total" value={progress.total} />
               <MetricCell label="Completed" value={progress.completed} accent="text-go" />
@@ -945,7 +934,7 @@ export default function TasksPage() {
               <MetricCell label="Pending review" value={progress.pending_review} accent="text-caution" />
               <MetricCell label="Blocked" value={progress.blocked} accent="text-abort" />
             </MetricStrip>
-          </motion.div>
+          </div>
         )}
 
         {error && <div role="alert" className="mb-5 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">{error}</div>}
@@ -1023,7 +1012,7 @@ export default function TasksPage() {
               icon={<ListChecks className="w-8 h-8" weight="thin" />}
             />
           ) : (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="overflow-x-auto pb-4">
+          <div className="overflow-x-auto pb-4">
             <KanbanBoard
               columns={BOARD_COLUMNS}
               tasks={filteredTasks as KanbanTask[]}
@@ -1039,7 +1028,7 @@ export default function TasksPage() {
                 ) : null
               }
             />
-          </motion.div>
+          </div>
           )
         )}
 
@@ -1060,16 +1049,16 @@ export default function TasksPage() {
                         <span key={h} className="text-[10px] uppercase tracking-widest text-ink-tertiary font-semibold">{h}</span>
                       ))}
                     </div>
-                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-border/60">
+                    <div className="divide-y divide-border/60">
                       {paginatedTasks.map((task) => (
-                        <motion.div key={task.task_id} variants={itemVariants}>
+                        <div key={task.task_id}>
                           <div onClick={() => setSelectedTask(task)}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTask(task) } }}
                             role="button"
                             tabIndex={0}
                             aria-label={`Task: ${task.title}`}
                             className="grid grid-cols-[120px_1fr_100px_80px_64px] gap-4 items-center px-5 py-3.5 hover:bg-well/30 cursor-pointer transition-colors group min-w-[500px] focus:outline-none focus:ring-1 focus:ring-go/40 rounded-card">
-                            <StatusBadge state={task.state} />
+                            <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
                             <div className="min-w-0">
                               <div className="text-xs sm:text-sm text-ink-secondary group-hover:text-ink truncate font-medium transition-colors">{task.title}</div>
                               {task.module && <div className="text-[10px] text-go/50 font-mono mt-0.5">{task.module}</div>}
@@ -1084,9 +1073,9 @@ export default function TasksPage() {
                             </div>
                             <span className="text-[11px] text-ink-tertiary font-mono">{task.estimated_hours ? `~${task.estimated_hours}h` : 'N/A'}</span>
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
-                    </motion.div>
+                    </div>
                   </div>
                   {totalPages > 1 && (
                     <div className="flex justify-end px-5 py-3 border-t border-seam">
@@ -1115,7 +1104,7 @@ export default function TasksPage() {
             >
               <div className="flex items-center justify-between px-5 py-3 border-b border-seam">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <StatusBadge state={selectedTask.state} />
+                  <span className="font-code text-caption text-ink-muted">{statusLabel(selectedTask.state)}</span>
                   <span className="flex items-center gap-1"><span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOTS[selectedTask.priority] ?? PRIORITY_DOTS.medium)} /><span className="text-[11px] font-medium capitalize text-ink-secondary">{selectedTask.priority}</span></span>
                 </div>
                 <button
@@ -1264,7 +1253,7 @@ export default function TasksPage() {
                       </div>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {selectedTask.pr_comments.map((c, i) => (
-                          <div key={i} className="text-[11px] bg-base/60 border border-seam rounded-card p-2.5">
+                          <div key={i} className="text-[11px] bg-[rgb(var(--base-rgb)/0.6)] border border-seam rounded-card p-2.5">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-go font-mono font-semibold">@{c.user}</span>
                               {c.path && <span className="text-ink-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
@@ -1433,12 +1422,7 @@ export default function TasksPage() {
             </div>
           </div>
         )}
-    </motion.div>
+    </div>
   )
 }
-
-
-
-
-
 

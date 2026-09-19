@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Code, GithubLogo, Warning, Check, Fire,
   Sparkle, ArrowRight, CopySimple, GitBranch, CaretDown,
@@ -11,14 +11,6 @@ import { PageHeader } from '../components/ui/page-header'
 import { useToast } from '../context/ToastContext'
 import { describePR, autoApplySuggestions, type AutoApplySuggestion, type AutoApplyResult } from '../lib/api'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-}
 
 export default function PRDescriptionPage() {
   // Deep-link support: /pr-describe?repo=https://github.com/o/r&pr=123
@@ -103,7 +95,7 @@ export default function PRDescriptionPage() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="w-full min-h-[calc(100vh-4rem)] relative">
+    <div className="w-full min-h-[calc(100vh-4rem)] relative">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <PageHeader
@@ -113,7 +105,7 @@ export default function PRDescriptionPage() {
         />
 
         {/* Inputs */}
-        <motion.div variants={item} className="mb-6">
+        <div className="mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative group">
               <div className="relative flex items-center bg-base border border-seam group-focus-within:border-go/50 rounded-[3px] px-3.5 py-2.5 transition-colors">
@@ -128,16 +120,11 @@ export default function PRDescriptionPage() {
               placeholder="# PR number"
               className="sm:w-36 bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3.5 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/20" />
           </div>
-        </motion.div>
+        </div>
 
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-6"
-            >
+            <div className="overflow-hidden mb-6">
               <div className="flex items-center justify-between p-3 rounded-[3px] bg-abort/5 border border-abort/20">
                 <div className="flex items-center gap-2.5">
                   <Warning size={16} className="text-abort shrink-0" weight="fill" />
@@ -146,12 +133,12 @@ export default function PRDescriptionPage() {
                 <button onClick={handleGenerate} disabled={generating}
                   className="text-caption text-abort/60 hover:text-abort underline">Retry</button>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Actions */}
-        <motion.div variants={item} className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-8">
           <button onClick={handleGenerate} disabled={generating || !repoUrl.trim() || !prNumber.trim()}
             className="flex items-center gap-2 bg-go hover:bg-go-lit disabled:opacity-40 text-[hsl(var(--primary-foreground))] px-5 py-2.5 rounded-[3px] text-body-sm font-semibold transition-all shadow-seam">
             {generating ? (
@@ -166,12 +153,12 @@ export default function PRDescriptionPage() {
               {copied ? 'Copied!' : 'Copy'}
             </button>
           )}
-        </motion.div>
+        </div>
 
         {/* Hot Take */}
-        <AnimatePresence>
+        
           {hotTake && (
-            <motion.div variants={item} className="mb-6">
+            <div className="mb-6">
               <div className="rounded-card border border-caution/20 bg-caution/5 p-5">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-card bg-caution/10 flex items-center justify-center shrink-0 border border-caution/10">
@@ -188,19 +175,14 @@ export default function PRDescriptionPage() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Output */}
-        <AnimatePresence mode="wait">
+        
           {description ? (
-            <motion.div
-              key="output"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
+            <div key="output">
               <div className="flex items-center gap-2 mb-3">
                 <Code size={14} className="text-go" />
                 <span className="text-body-xs font-semibold text-ink">Generated Description</span>
@@ -208,27 +190,22 @@ export default function PRDescriptionPage() {
               <CardSpotlight className="p-5">
                 <pre className="font-code text-body-xs text-ink-muted/70 leading-relaxed whitespace-pre-wrap">{description}</pre>
               </CardSpotlight>
-            </motion.div>
+            </div>
           ) : !generating && (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <CardSpotlight className="flex flex-col items-center justify-center py-16 text-center border border-seam/30">
+            <div key="empty">
+              <CardSpotlight className="flex flex-col items-center justify-center py-16 text-center border border-[rgb(var(--border-rgb)/0.3)]">
                 <div className="w-12 h-12 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-4">
                   <ArrowRight size={22} className="text-ink-muted/20" />
                 </div>
                 <p className="text-body-sm text-ink-muted/40 font-medium mb-1">No description yet</p>
                 <p className="text-caption text-ink-muted/20 max-w-xs">Enter a repository URL and PR number to generate an AI-written description.</p>
               </CardSpotlight>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Tips */}
-        <motion.div variants={item} className="mt-8">
+        <div className="mt-8">
           <div className="p-4 rounded-[3px] bg-well/30 border border-seam">
             <div className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-[3px] bg-caution/5 border border-caution/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -245,10 +222,10 @@ export default function PRDescriptionPage() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* ── Auto-Apply Fixes ───────────────────────────────────────── */}
-        <motion.div variants={item} className="mt-10">
+        <div className="mt-10">
           <button
             onClick={() => setShowAutoApply(!showAutoApply)}
             className="w-full flex items-center justify-between p-4 rounded-[3px] bg-well/30 border border-seam hover:bg-well/50 transition-all"
@@ -268,17 +245,12 @@ export default function PRDescriptionPage() {
             />
           </button>
 
-          <AnimatePresence>
+          
             {showAutoApply && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
+              <div className="overflow-hidden">
                 <div className="p-4 space-y-4">
                   {fixes.map((fix, idx) => (
-                    <div key={idx} className="p-3 rounded-[3px] border border-seam/60 bg-base/30 space-y-2.5">
+                    <div key={idx} className="p-3 rounded-[3px] border border-[rgb(var(--border-rgb)/0.6)] bg-[rgb(var(--base-rgb)/0.3)] space-y-2.5">
                       <div className="flex items-center justify-between">
                         <span className="text-caption font-medium text-ink-tertiary">Fix #{idx + 1}</span>
                         {fixes.length > 1 && (
@@ -341,7 +313,7 @@ export default function PRDescriptionPage() {
 
                   {/* Results */}
                   {applyResult && (
-                    <div className="p-3 rounded-[3px] bg-well/30 border border-seam/60 space-y-2">
+                    <div className="p-3 rounded-[3px] bg-well/30 border border-[rgb(var(--border-rgb)/0.6)] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-body-xs font-medium text-ink">Results</span>
                         <span className="font-code text-[12px] tabular-nums text-ink-tertiary">
@@ -377,11 +349,11 @@ export default function PRDescriptionPage() {
                     </div>
                   )}
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
-        </motion.div>
+          
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

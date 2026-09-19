@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -94,7 +94,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
           No cohorts yet. Retention curves form as developers join.
         </p>
       ) : (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div className="space-y-4">
           {latest && (
             <>
               <div className="flex items-baseline justify-between gap-3">
@@ -135,18 +135,13 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
           )}
 
           <div className="space-y-2">
-            {cohortEndpoints.map((c, i) => {
+            {cohortEndpoints.map((c) => {
               const t = retentionTone(c.retained)
               return (
                 <div key={c.label} className="flex items-center gap-3">
                   <span className="w-24 shrink-0 text-caption text-ink-muted truncate">{c.label}</span>
                   <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${c.retained}%` }}
-                      transition={{ duration: 0.5, delay: i * 0.06, ease: 'easeOut' }}
-                      className={cn('h-full', t === 'go' ? 'bg-go' : t === 'caution' ? 'bg-caution' : 'bg-abort')}
-                    />
+                    <div className={cn('h-full', t === 'go' ? 'bg-go' : t === 'caution' ? 'bg-caution' : 'bg-abort')} style={{ width: `${c.retained}%` }} />
                   </div>
                   <span className={cn('readout text-caption tabular-nums shrink-0 w-16 text-right', t === 'go' ? 'text-go' : t === 'caution' ? 'text-caution' : 'text-abort')}>
                     {c.retained.toFixed(0)}%
@@ -155,7 +150,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
               )
             })}
           </div>
-        </motion.div>
+        </div>
       )}
     </ConsolePanel>
   )

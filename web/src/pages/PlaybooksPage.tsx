@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   BookOpenText,
   Plus,
@@ -20,14 +20,6 @@ import { useAuth } from '../context/AuthContext'
 import { listPlaybooks, createPlaybook, archivePlaybook } from '../lib/api'
 import type { Playbook } from '../lib/api'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 export default function PlaybooksPage() {
   const [search, setSearch] = useState('')
@@ -116,43 +108,32 @@ export default function PlaybooksPage() {
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-5xl mx-auto space-y-8 relative"
-    >
+    <div className="max-w-5xl mx-auto space-y-8 relative">
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-6 relative">
+      <div className="flex items-start justify-between gap-6 relative">
         <PageHeader
           eyebrow="Folio · Playbooks"
           title="Playbooks"
           subtitle="Automated workflows and guided processes to standardize engineering operations."
           flush
         />
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setShowCreate(true)}
-          disabled={!activeTeamId}
-          className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40"
-        >
+        <button onClick={() => setShowCreate(true)} disabled={!activeTeamId} className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40">
           <Plus className="w-4 h-4" weight="bold" />
           New Playbook
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
+        <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => fetchPlaybooks()} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
-        </motion.div>
+        </div>
       )}
 
-      {loading && <motion.div variants={itemVariants}><PlaybooksSkeleton /></motion.div>}
+      {loading && <div><PlaybooksSkeleton /></div>}
 
       {!loading && playbooks.length === 0 && !error && (
-        <motion.div variants={itemVariants}>
+        <div>
           <EmptyState
             icon={<BookOpenText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
             title="No playbooks yet"
@@ -163,13 +144,13 @@ export default function PlaybooksPage() {
               </button>
             }
           />
-        </motion.div>
+        </div>
       )}
 
       {!loading && (
         <>
           {/* Search & Filters */}
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-tertiary" />
               <input
@@ -186,34 +167,29 @@ export default function PlaybooksPage() {
                   key={cat}
                   onClick={() => setCategory(cat)}
                   className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-all ${
-                    category === cat
-                      ? 'bg-go/15 text-go border border-go/30'
-                      : 'bg-well/30 text-ink-tertiary border border-seam hover:border-seam-strong'
-                  }`}
+ category === cat
+ ? 'bg-go/15 text-go border border-go/30'
+ : 'bg-well/30 text-ink-tertiary border border-seam hover:border-seam-strong'
+ }`}
                 >
                   {cat}
                 </button>
               ))}
             </div>
-          </motion.div>
+          </div>
 
           {filtered.length === 0 ? (
-            <motion.div variants={itemVariants}>
+            <div>
               <EmptyState
                 icon={<BookOpenText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
                 title="No playbooks found"
                 description={search ? 'Try a different search term' : 'No playbooks available in this category'}
               />
-            </motion.div>
+            </div>
           ) : (
-            <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((playbook, i) => (
-                <motion.div
-                  key={playbook.playbook_id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
-                >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((playbook) => (
+                <div key={playbook.playbook_id}>
                   <CardSpotlight className="p-5 h-full flex flex-col group">
                     <div className="flex items-center justify-between mb-4">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider bg-go/10 text-go">
@@ -222,7 +198,7 @@ export default function PlaybooksPage() {
                       <button
                         onClick={() => handleArchive(playbook.playbook_id)}
                         disabled={archiving === playbook.playbook_id}
-                        className="text-ink-tertiary hover:text-red-400 transition-colors disabled:opacity-40"
+                        className="text-ink-tertiary hover:text-abort transition-colors disabled:opacity-40"
                         title="Archive"
                       >
                         <Trash className="w-3.5 h-3.5" />
@@ -242,19 +218,14 @@ export default function PlaybooksPage() {
                         {playbook.use_count} uses
                       </span>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setOpenBook(playbook)}
-                      className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all"
-                    >
+                    <button onClick={() => setOpenBook(playbook)} className="w-full py-2 rounded-xl text-caption font-medium flex items-center justify-center gap-2 bg-go/10 text-go hover:bg-go/20 transition-all">
                       <Play className="w-3.5 h-3.5" weight="fill" />
                       Open
-                    </motion.button>
+                    </button>
                   </CardSpotlight>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
         </>
       )}
@@ -292,16 +263,10 @@ export default function PlaybooksPage() {
               className="input w-full font-code text-caption"
             />
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleCreate}
-            disabled={!newTitle.trim() || creating}
-            className="btn btn-primary w-full flex items-center justify-center gap-2"
-          >
+          <button onClick={handleCreate} disabled={!newTitle.trim() || creating} className="btn btn-primary w-full flex items-center justify-center gap-2">
             {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
             {creating ? 'Creating...' : 'Create Playbook'}
-          </motion.button>
+          </button>
         </div>
       </Modal>
 
@@ -321,6 +286,6 @@ export default function PlaybooksPage() {
           </div>
         )}
       </Modal>
-    </motion.div>
+    </div>
   )
 }

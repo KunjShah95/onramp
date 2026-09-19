@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import {
@@ -12,14 +12,6 @@ import { useAuth } from '../context/AuthContext'
 import { fetchTeamAnalytics } from '../lib/api'
 import type { TeamMemberProgress } from '../lib/api'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
-}
 
 export default function MemberDetailPage() {
   const [members, setMembers] = useState<TeamMemberProgress[]>([])
@@ -56,46 +48,41 @@ export default function MemberDetailPage() {
   }, [activeTeamId])
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="relative min-h-[calc(100vh-4rem)]">
+    <div className="relative min-h-[calc(100vh-4rem)]">
       <div className="max-w-5xl mx-auto">
         {/* Back */}
-        <motion.div variants={item} className="mb-6">
+        <div className="mb-6">
           <button className="flex items-center gap-1.5 text-caption text-ink-muted/40 hover:text-ink transition-colors group">
             <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
             Back to Team
           </button>
-        </motion.div>
+        </div>
 
         {/* Header */}
-        <motion.div variants={item} className="mb-8">
+        <div className="mb-8">
           <PageHeader
             eyebrow="Folio · People"
             title="Team Members"
             subtitle="Per-member onboarding progress and contribution stats"
           />
-        </motion.div>
+        </div>
 
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-6"
-            >
-              <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/15">
-                <span className="text-body-xs text-red-300">{error}</span>
+            <div className="overflow-hidden mb-6">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-abort/5 border border-abort/15">
+                <span className="text-body-xs text-abort">{error}</span>
                 <button onClick={fetchMembers} disabled={loading}
-                  className="text-caption text-red-400/60 hover:text-red-400 underline">Retry</button>
+                  className="text-caption text-abort/60 hover:text-abort underline">Retry</button>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {loading ? (
           <div className="py-8"><MemberListSkeleton /></div>
         ) : members.length === 0 ? (
-          <motion.div variants={item}>
+          <div>
             <CardSpotlight className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-14 h-14 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-4">
                 <User size={26} className="text-ink-muted/20" />
@@ -103,21 +90,16 @@ export default function MemberDetailPage() {
               <p className="text-body-sm text-ink-muted/40 font-medium mb-1">No members yet</p>
               <p className="text-caption text-ink-muted/20">Invite teammates to see their progress here.</p>
             </CardSpotlight>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div variants={item} className="space-y-3">
-            {members.map((m, i) => {
+          <div className="space-y-3">
+            {members.map((m) => {
               const initials = (m.name || '?').slice(0, 2).toUpperCase()
               // Backend completion_rate is already a percentage (0–100) — do NOT multiply.
               const rate = Math.round(m.completion_rate ?? 0)
-              const rateColor = rate >= 70 ? 'text-emerald-400' : rate >= 40 ? 'text-amber-400' : 'text-red-400'
+              const rateColor = rate >= 70 ? 'text-go' : rate >= 40 ? 'text-caution' : 'text-abort'
               return (
-                <motion.div
-                  key={m.user_id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.035 }}
-                >
+                <div key={m.user_id}>
                   <CardSpotlight className="p-5 group hover:border-seam-strong transition-all">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
                       <div className="w-12 h-12 rounded-card bg-well border border-seam flex items-center justify-center shrink-0">
@@ -134,23 +116,18 @@ export default function MemberDetailPage() {
 
                         <div className="mt-3 mb-4">
                           <div className="h-1.5 rounded-full bg-well overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${rate}%` }}
-                              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-                              className={cn('h-full rounded-full', rate >= 70 ? 'bg-emerald-400' : rate >= 40 ? 'bg-amber-400' : 'bg-red-400')}
-                            />
+                            <div className={cn('h-full rounded-full', rate >= 70 ? 'bg-go' : rate >= 40 ? 'bg-caution' : 'bg-abort')} style={{ width: `${rate}%` }} />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
-                            { label: 'Done', value: m.completed_tasks, icon: CheckCircle, color: 'text-emerald-400' },
-                            { label: 'In Progress', value: m.in_progress_tasks, icon: GitPullRequest, color: 'text-blue-400' },
-                            { label: 'Pending', value: m.pending_review, icon: Bug, color: 'text-amber-400' },
-                            { label: 'Total', value: m.total_tasks, icon: Code, color: 'text-purple-400' },
+                            { label: 'Done', value: m.completed_tasks, icon: CheckCircle, color: 'text-go' },
+                            { label: 'In Progress', value: m.in_progress_tasks, icon: GitPullRequest, color: 'text-mission' },
+                            { label: 'Pending', value: m.pending_review, icon: Bug, color: 'text-caution' },
+                            { label: 'Total', value: m.total_tasks, icon: Code, color: 'text-mission' },
                           ].map((stat) => (
-                            <div key={stat.label} className="p-2.5 rounded-xl bg-well/30 border border-seam/40 text-center">
+                            <div key={stat.label} className="p-2.5 rounded-xl bg-well/30 border border-[rgb(var(--border-rgb)/0.4)] text-center">
                               <stat.icon size={12} className={cn(stat.color, 'mx-auto mb-1')} weight="fill" />
                               <p className="text-body-xs font-semibold text-ink tabular-nums">{stat.value}</p>
                               <p className="text-overline text-ink-muted/30 mt-0.5">{stat.label}</p>
@@ -177,12 +154,12 @@ export default function MemberDetailPage() {
                       </div>
                     </div>
                   </CardSpotlight>
-                </motion.div>
+                </div>
               )
             })}
-          </motion.div>
+          </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

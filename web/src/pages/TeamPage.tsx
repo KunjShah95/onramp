@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import {
   createTeam, listTeams, addTeamMember, getTeamMembers, changeTeamTier,
@@ -50,14 +50,6 @@ const TIER_LABELS: Record<string, string> = {
   free: 'Free', startup: 'Startup', professional: 'Professional', enterprise: 'Enterprise',
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
-}
 
 export default function TeamPage() {
   const toast = useToast()
@@ -182,14 +174,14 @@ export default function TeamPage() {
 
   if (teamsLoading) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full min-h-[calc(100vh-4rem)]">
+      <div className="w-full min-h-[calc(100vh-4rem)]">
         <TeamSettingsSkeleton />
-      </motion.div>
+      </div>
     )
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
+    <div className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
         <PageHeader
           title="Team Management"
           subtitle={teamId && currentTeam ? `Managing ${currentTeam.name}` : 'Create teams, invite members, manage module-level access'}
@@ -333,10 +325,9 @@ export default function TeamPage() {
                     <h3 className="font-display text-display-xs font-bold text-ink tracking-tight">Your Teams</h3>
                   </div>
                 </div>
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
+                <div className="divide-y divide-seam">
                   {teams.map((t: any) => (
-                    <motion.div key={t.team_id} variants={itemVariants}
-                      className={cn('flex items-center justify-between px-5 py-4 hover:bg-well/30 transition-colors', teamId === t.team_id && 'bg-go/5')}>
+                    <div key={t.team_id} className={cn('flex items-center justify-between px-5 py-4 hover:bg-well/30 transition-colors', teamId === t.team_id && 'bg-go/5')}>
                       <div className="flex items-center gap-3">
                         <div className={cn('w-8 h-8 rounded-btn flex items-center justify-center text-xs font-bold',
                           teamId === t.team_id ? 'bg-go/20 text-go' : 'bg-well text-ink-tertiary')}>
@@ -354,9 +345,9 @@ export default function TeamPage() {
                         Manage
                         <ArrowRight className="w-3 h-3" weight="bold" />
                       </button>
-                    </motion.div>
+                    </div>
                   ))}
-                </motion.div>
+                </div>
               </ConsolePanel>
             )}
 
@@ -425,9 +416,9 @@ export default function TeamPage() {
                   icon={<Lock className="w-8 h-8" weight="thin" />}
                 />
               ) : (
-                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="divide-y divide-seam">
+                <div className="divide-y divide-seam">
                   {Object.entries(membersWithModules).map(([uid, info]) => (
-                    <motion.div key={uid} variants={itemVariants} className="px-5 py-4">
+                    <div key={uid} className="px-5 py-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-go/10 text-go flex items-center justify-center text-[11px] font-bold">
@@ -454,9 +445,9 @@ export default function TeamPage() {
                           </span>
                         ))}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </motion.div>
+                </div>
               )}
             </ConsolePanel>
 
@@ -483,7 +474,7 @@ export default function TeamPage() {
                     </THead>
                     <TBody>
                       {permissions.map((p) => (
-                        <motion.tr key={p.id} variants={itemVariants} className="border-b border-seam last:border-b-0 hover:bg-well/30 transition-colors">
+                        <tr key={p.id} className="border-b border-seam last:border-b-0 hover:bg-well/30 transition-colors">
                           <TD className="px-5 py-3 text-sm text-ink-secondary">{p.user_name || 'N/A'}</TD>
                           <TD className="px-4 py-3">
                             <span className="px-2 py-0.5 rounded-lg bg-go/10 text-go text-[11px] font-mono border border-go/20">{p.module}</span>
@@ -498,7 +489,7 @@ export default function TeamPage() {
                           <TD className="px-5 py-3 text-right">
                             <button onClick={() => handleRevokeModule(p.user_id, p.module)} className="text-[10px] text-abort/60 hover:text-abort transition-colors">Revoke</button>
                           </TD>
-                        </motion.tr>
+                        </tr>
                       ))}
                     </TBody>
                   </Table>
@@ -517,6 +508,6 @@ export default function TeamPage() {
             />
           </ConsolePanel>
         )}
-    </motion.div>
+    </div>
   )
 }

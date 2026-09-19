@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
 import {
@@ -11,10 +11,6 @@ import { useAuth } from '../context/AuthContext'
 import { getTeamModulePermissions } from '../lib/api'
 import type { ModulePermission } from '../lib/api'
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 export default function ModuleHealthPage() {
   const [permissions, setPermissions] = useState<ModulePermission[]>([])
@@ -65,13 +61,13 @@ export default function ModuleHealthPage() {
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade} className="mb-8">
+        <header className="mb-8">
           <PageHeader
             eyebrow="Folio · Module health"
             title="Module Health"
             subtitle="Module-level permissions your team holds · each module unlocks as trainees complete onboarding tasks."
           />
-        </motion.header>
+        </header>
 
         {/* Error */}
         {error && (
@@ -86,7 +82,7 @@ export default function ModuleHealthPage() {
         {loading ? (
           <div className="py-8"><ModuleAccessSkeleton /></div>
         ) : modules.length === 0 && permissions.length === 0 ? (
-          <motion.div initial="hidden" animate="show" variants={fade}>
+          <div>
             <ConsolePanel rail="No access" designator="AWAITING GRANTS" status="idle" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <Lock size={26} className="text-ink-disabled" weight="duotone" />
@@ -96,16 +92,11 @@ export default function ModuleHealthPage() {
                 Modules unlock automatically as trainees complete onboarding tasks.
               </p>
             </ConsolePanel>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-            className="space-y-6"
-          >
+          <div className="space-y-6">
             {/* Verdict bar — the single dominant read */}
-            <motion.div variants={fade}>
+            <div>
               <ConsolePanel
                 rail={grantedAll ? 'All granted' : 'Partial access'}
                 designator={`${granted} / ${total}`}
@@ -121,40 +112,29 @@ export default function ModuleHealthPage() {
               >
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-1 rounded-full bg-base overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${total > 0 ? (granted / total) * 100 : 0}%` }}
-                      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                      className="h-full bg-go"
-                    />
+                    <div className="h-full bg-go" style={{ width: `${total > 0 ? (granted / total) * 100 : 0}%` }} />
                   </div>
                   <span className="font-code text-[11px] text-ink-tertiary shrink-0">
                     {granted} of {total} unlocked
                   </span>
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Module grid */}
             {modules.length > 0 && (
-              <motion.div variants={fade}>
+              <div>
                 <ConsolePanel rail="Modules" designator={`${total} TOTAL`}>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {modules.map((mod, i) => {
+                    {modules.map((mod) => {
                       const isGranted = grantedModules.has(mod)
                       return (
-                        <motion.div
-                          key={mod}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.02 }}
-                          className={cn(
+                        <div key={mod} className={cn(
                             'flex items-center justify-between px-3 py-2.5 rounded-[3px] border transition-colors',
                             isGranted
                               ? 'bg-go/5 border-go/20'
                               : 'bg-base border-seam',
-                          )}
-                        >
+                          )}>
                           <span className={cn(
                             'font-code text-[12px] truncate',
                             isGranted ? 'text-ink' : 'text-ink-tertiary',
@@ -164,16 +144,16 @@ export default function ModuleHealthPage() {
                           ) : (
                             <Lock size={11} className="text-ink-disabled shrink-0 ml-2" />
                           )}
-                        </motion.div>
+                        </div>
                       )
                     })}
                   </div>
                 </ConsolePanel>
-              </motion.div>
+              </div>
             )}
 
             {/* Access grants */}
-            <motion.div variants={fade}>
+            <div>
               <ConsolePanel rail="Access Grants" designator={`${granted} ENTRIES`} status="standby">
                 {permissions.length === 0 ? (
                   <div className="py-6 text-center">
@@ -183,14 +163,8 @@ export default function ModuleHealthPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-seam">
-                    {permissions.map((p, i) => (
-                      <motion.div
-                        key={p.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03 }}
-                        className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
-                      >
+                    {permissions.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                         <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
                           <CheckCircle size={12} className="text-go" weight="fill" />
                         </div>
@@ -203,13 +177,13 @@ export default function ModuleHealthPage() {
                           </p>
                         </div>
                         <Code size={12} className="text-ink-disabled shrink-0" />
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </div>
     </div>

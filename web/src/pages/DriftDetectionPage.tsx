@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { useToast } from '../context/ToastContext'
 import { detectArchitectureDrift, type DriftResult } from '../lib/api'
 import { PageHeader } from '../components/ui/page-header'
@@ -34,10 +34,6 @@ const SEVERITY_TONE: Record<string, 'abort' | 'caution' | 'mission'> = {
   low: 'mission',
 }
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 export default function DriftDetectionPage() {
   const [repoUrl, setRepoUrl] = useState('')
@@ -107,16 +103,16 @@ export default function DriftDetectionPage() {
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <motion.header initial="hidden" animate="show" variants={fade}>
+        <header>
           <PageHeader
             eyebrow="Folio · Drift detection"
             title="Drift Detection"
             subtitle="Paste your architecture docs, optionally list code paths · find what's missing, what's undocumented, and how far the codebase has drifted."
           />
-        </motion.header>
+        </header>
 
         {/* Input panel */}
-        <motion.div initial="hidden" animate="show" variants={fade}>
+        <div>
           <ConsolePanel rail="Inputs" designator="DOCS + CODE" status="standby">
             <div className="space-y-4">
               <InputField
@@ -209,53 +205,38 @@ export default function DriftDetectionPage() {
               </div>
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Error */}
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
+            <div className="overflow-hidden">
               <ConsolePanel pad="dense" status="abort" className="flex items-center justify-between">
                 <span className="text-[13px] text-abort">{error}</span>
                 <button onClick={handleDetect} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
                   Retry
                 </button>
               </ConsolePanel>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Loading */}
-        <AnimatePresence>
+        
           {loading && !result && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-12"
-            >
+            <div className="flex flex-col items-center justify-center py-12">
               <Spinner size={28} className="text-go animate-spin mb-3" />
               <p className="font-body text-[13px] text-ink-secondary">Analyzing documentation against code structure…</p>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Results */}
-        <AnimatePresence>
+        
           {result && (
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={{ show: { transition: { staggerChildren: 0.06 } } }}
-              className="space-y-6"
-            >
+            <div className="space-y-6">
               {/* Verdict */}
-              <motion.div variants={fade}>
+              <div>
                 <ConsolePanel
                   rail={statusCfg.label}
                   designator={`DRIFT ${result.drift_score}/100`}
@@ -290,28 +271,22 @@ export default function DriftDetectionPage() {
                     </div>
                   </div>
                 </ConsolePanel>
-              </motion.div>
+              </div>
 
               {/* Alerts */}
               {result.alerts.length > 0 && (
-                <motion.div variants={fade}>
+                <div>
                   <ConsolePanel rail="Alerts" designator={`${result.alerts.length} SIGNALS`} status="caution">
                     <div className="space-y-2">
                       {result.alerts.map((alert, i) => {
                         const tone = SEVERITY_TONE[alert.severity] ?? 'mission'
                         return (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.04 }}
-                            className={cn(
+                          <div key={i} className={cn(
                               'rounded-[3px] border px-3.5 py-3',
                               tone === 'abort' && 'bg-abort/5 border-abort/20',
                               tone === 'caution' && 'bg-caution/5 border-caution/20',
                               tone === 'mission' && 'bg-mission/5 border-mission/20',
-                            )}
-                          >
+                            )}>
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className={cn(
                                 'px-2 py-0.5 rounded-[2px] text-[10px] font-semibold uppercase tracking-wider',
@@ -330,17 +305,17 @@ export default function DriftDetectionPage() {
                               <CaretRight size={11} className="mt-0.5 shrink-0 text-go" weight="bold" />
                               {alert.recommendation}
                             </p>
-                          </motion.div>
+                          </div>
                         )
                       })}
                     </div>
                   </ConsolePanel>
-                </motion.div>
+                </div>
               )}
 
               {/* Documented but missing */}
               {result.documented_but_missing.length > 0 && (
-                <motion.div variants={fade}>
+                <div>
                   <ConsolePanel rail="Documented but missing" designator={`${result.documented_but_missing.length} COMPONENTS`} status="abort">
                     <p className="font-body text-[13px] text-ink-secondary mb-3">
                       Components described in docs but absent from the codebase.
@@ -357,12 +332,12 @@ export default function DriftDetectionPage() {
                       ))}
                     </div>
                   </ConsolePanel>
-                </motion.div>
+                </div>
               )}
 
               {/* Undocumented */}
               {result.undocumented_components.length > 0 && (
-                <motion.div variants={fade}>
+                <div>
                   <ConsolePanel rail="Undocumented" designator={`${result.undocumented_components.length} COMPONENTS`} status="caution">
                     <p className="font-body text-[13px] text-ink-secondary mb-3">
                       Code components not mentioned in the architecture docs.
@@ -379,11 +354,11 @@ export default function DriftDetectionPage() {
                       ))}
                     </div>
                   </ConsolePanel>
-                </motion.div>
+                </div>
               )}
 
               {/* Re-run */}
-              <motion.div variants={fade} className="text-center pb-2">
+              <div className="text-center pb-2">
                 <button
                   onClick={handleDetect}
                   disabled={loading}
@@ -392,14 +367,14 @@ export default function DriftDetectionPage() {
                   <ArrowsClockwise size={12} className={cn(loading && 'animate-spin')} />
                   Re-run Detection
                 </button>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Empty */}
         {!result && !loading && !error && (
-          <motion.div initial="hidden" animate="show" variants={fade}>
+          <div>
             <ConsolePanel rail="Awaiting" designator="NO ANALYSIS" status="idle" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <Warning size={26} className="text-ink-disabled" weight="duotone" />
@@ -410,7 +385,7 @@ export default function DriftDetectionPage() {
                 then click <span className="font-code text-ink">Detect Drift</span> to compare them.
               </p>
             </ConsolePanel>
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   Bug,
   GitPullRequest,
@@ -29,10 +29,6 @@ const TABS: { key: 'all' | Level; label: string; level: Level }[] = [
   { key: 'senior', label: 'Hard', level: 'senior' },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
 
 function difficultyFromScore(score: number): { text: string; bg: string; label: string } {
   if (score <= 4) return { text: 'text-go', bg: 'bg-go/10', label: 'Easy' }
@@ -117,7 +113,7 @@ export default function FirstIssuePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full min-h-[calc(100vh-4rem)] max-w-5xl mx-auto space-y-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <PageHeader
           eyebrow="FIRST ISSUES · CONTRIBUTION GATE"
@@ -161,10 +157,10 @@ export default function FirstIssuePage() {
                 onClick={() => handleTabChange(t.key)}
                 disabled={loading}
                 className={`px-3 py-1.5 rounded-[3px] text-caption font-medium transition-all disabled:opacity-50 ${
-                  tab === t.key
-                    ? 'bg-panel-raised text-ink shadow-sm'
-                    : 'text-ink-tertiary hover:text-ink-secondary'
-                }`}
+ tab === t.key
+ ? 'bg-panel-raised text-ink shadow-sm'
+ : 'text-ink-tertiary hover:text-ink-secondary'
+ }`}
               >
                 {t.label}
               </button>
@@ -203,16 +199,10 @@ export default function FirstIssuePage() {
         {/* Issue List */}
         {!loading && issues.length > 0 && (
           <div className="space-y-3">
-            {issues.map((issue, i) => {
+            {issues.map((issue) => {
               const diff = difficultyFromScore(issue.complexity_score)
               return (
-                <motion.div
-                  key={`${issue.id}-${issue.number}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="card p-5 hover:border-go/30 transition-all group"
-                >
+                <div key={`${issue.id}-${issue.number}`} className="card p-5 hover:border-go/30 transition-all group">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1.5">
@@ -279,7 +269,7 @@ export default function FirstIssuePage() {
                       </button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
           </div>
@@ -396,6 +386,6 @@ export default function FirstIssuePage() {
           </div>
         )}
       </Modal>
-    </motion.div>
+    </div>
   )
 }

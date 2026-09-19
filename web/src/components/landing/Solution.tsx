@@ -1,95 +1,46 @@
-import { motion } from 'framer-motion'
-import { CheckCircle, GitBranch, Users, Waveform } from '@phosphor-icons/react'
 import ArchitectureMapStatic from './ArchitectureMapStatic'
 import SectionHeading from './SectionHeading'
 
-const EASE = [0.16, 1, 0.3, 1] as const
+/* Calm solution section — one bordered panel, static map, plain
+ * feature list below. Removed: radial glow, overlay callouts,
+ * scroll-triggered rise, dark-only window chrome. */
 
-const CALLOUTS = [
-  { icon: CheckCircle, color: 'text-go-lit', ring: 'border-go-lit/30', label: 'Every service indexed', note: 'from source, not docs' },
-  { icon: GitBranch, color: 'text-accent-via', ring: 'border-accent-via/30', label: 'Dependencies mapped', note: 'drawn as a live graph' },
-  { icon: Users, color: 'text-accent-via', ring: 'border-accent-via/30', label: 'Ownership visible', note: 'who owns what, always' },
-  { icon: Waveform, color: 'text-caution-lit', ring: 'border-caution/30', label: 'Updated on every push', note: 'fresh from HEAD' },
+const POINTS = [
+  { label: 'Every service indexed', note: 'from source, not docs' },
+  { label: 'Dependencies mapped', note: 'drawn as a live graph' },
+  { label: 'Ownership visible', note: 'who owns what, always' },
+  { label: 'Updated on every push', note: 'fresh from HEAD' },
 ]
 
 export default function Solution() {
   return (
-    <section id="the-map" className="relative scroll-mt-24 border-t border-seam bg-room">
-      <div className="relative mx-auto max-w-[1280px] px-6 py-24 lg:px-10 lg:py-32">
+    <section id="the-map" className="scroll-mt-20 border-t border-seam bg-room">
+      <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="The product"
           heading={<>One GitHub App. Instant clarity.</>}
           sub="Onramp parses your services, dependencies, and ownership straight from source. The map is the source of truth. It builds itself from HEAD and stays fresh on every push."
         />
 
-        <motion.div
-          initial={{ opacity: 0, y: 36 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.9, ease: EASE }}
-          className="relative mt-14 overflow-hidden"
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-x-8 top-4 bottom-0 rounded-[32px] opacity-80"
-            style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 40%, rgb(var(--accent-primary) / 0.09), transparent 65%)' }}
-          />
-          <div className="relative overflow-hidden rounded-xl border border-seam bg-[#0B1016] shadow-seam">
-            {/* static glow — Beams removed per motion restraint: hero spotlight is the one signature */}
-            <div aria-hidden className="absolute inset-0 z-0 opacity-60" />
-            <div className="relative z-10 flex items-center justify-between border-b border-white/10 px-5 py-3">
-              <div className="flex items-center gap-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-go-lit" />
-                <span className="font-code text-[11px] text-slate-400">Architecture map</span>
-              </div>
-              <span className="font-code text-[11px] text-slate-400">drag to orbit · scroll to build</span>
-            </div>
+        <div className="mt-10 overflow-hidden rounded-md border border-seam bg-panel">
+          <div className="flex items-center justify-between border-b border-seam px-4 py-2.5">
+            <span className="font-code text-xs text-ink-tertiary">Architecture map</span>
+            <span className="font-code text-xs text-ink-tertiary">fresh from HEAD</span>
+          </div>
+          <div className="h-[380px] sm:h-[440px]">
+            <ArchitectureMapStatic className="h-full w-full" />
+          </div>
+        </div>
 
-                                    <div className="relative z-10 h-[480px] sm:h-[560px] lg:h-[600px]">
-              <ArchitectureMapStatic className="h-full w-full" />
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {POINTS.map((p) => (
+            <div key={p.label} className="rounded-md border border-seam bg-panel px-4 py-3">
+              <div className="text-sm font-medium text-ink">{p.label}</div>
+              <div className="mt-0.5 font-code text-xs text-ink-tertiary">{p.note}</div>
             </div>
-
-              <div className="pointer-events-none absolute inset-0 z-20 hidden items-center justify-between p-6 lg:flex">
-                <div className="flex h-full flex-col justify-between gap-3">
-                  {CALLOUTS.slice(0, 2).map((c) => (
-                    <Callout key={c.label} {...c} />
-                  ))}
-                </div>
-                <div className="flex h-full flex-col items-end justify-between gap-3">
-                  {CALLOUTS.slice(2).map((c) => (
-                    <Callout key={c.label} {...c} />
-                  ))}
-                </div>
-              </div>
-            </div>
-        </motion.div>
+          ))}
+        </div>
       </div>
     </section>
-  )
-}
-
-function Callout({
-  icon: Icon,
-  color,
-  ring,
-  label,
-  note,
-}: {
-  icon: typeof CheckCircle
-  color: string
-  ring: string
-  label: string
-  note: string
-}) {
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-card border bg-[#0F1419]/90 px-4 py-3 shadow-seam ${ring}`}
-    >
-      <Icon size={18} weight="bold" className={color} />
-      <div>
-        <div className="font-body text-[12px] font-bold text-white">{label}</div>
-        <div className="font-code text-[10px] text-slate-400">{note}</div>
-      </div>
-    </div>
   )
 }

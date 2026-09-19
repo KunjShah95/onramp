@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   Eye, Heartbeat, Users, CheckCircle, GitBranch, ArrowRight, Warning,
 } from '@phosphor-icons/react'
@@ -17,14 +17,6 @@ import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
-}
 
 interface ReviewItem {
   id: string
@@ -519,20 +511,15 @@ export default function SeniorSpacePage() {
   ]
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-6xl mx-auto space-y-8 relative"
-    >
+    <div className="max-w-6xl mx-auto space-y-8 relative">
       {/* Header */}
-      <motion.div variants={itemVariants}>
+      <div>
         <PageHeader
           eyebrow="Folio 05 · Senior"
           title="Senior Developer Space"
           subtitle="Code quality, mentorship, and team oversight."
         />
-      </motion.div>
+      </div>
 
       {error && (
         <div className="px-4 py-3 rounded-card bg-abort/10 border border-abort/20 text-abort text-body-sm">{error}</div>
@@ -553,32 +540,26 @@ export default function SeniorSpacePage() {
       ) : (
         <>
           {/* Metrics — one ruled strip */}
-          <motion.div variants={itemVariants}>
+          <div>
             <MetricStrip className="grid-cols-2 lg:grid-cols-4">
               {metrics.map((m) => (
                 <MetricCell key={m.label} label={m.label} value={m.value} accent={m.color} />
               ))}
             </MetricStrip>
-          </motion.div>
+          </div>
 
           {/* Review Queue + Code Health */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div variants={itemVariants}>
+            <div>
               <ConsolePanel rail="Review Queue" designator={`${reviews.length} pending`} status="caution">
                 {reviews.length === 0 ? (
                   <EmptyState icon={<Eye className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No pending reviews" description="All caught up on reviews." />
                 ) : (
                   <div className="space-y-2">
-                    {reviews.map((review, i) => {
+                    {reviews.map((review) => {
                       const cfg = statusConfig[review.status]
                       return (
-                        <motion.div
-                          key={review.id}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className="flex items-start gap-3 p-3 rounded-card bg-well/20 border border-seam hover:border-caution/30 transition-colors cursor-pointer"
-                        >
+                        <div key={review.id} className="flex items-start gap-3 p-3 rounded-card bg-well/20 border border-seam hover:border-caution/30 transition-colors cursor-pointer">
                           <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', cfg.color.replace('text', 'bg'))} />
                           <div className="flex-1 min-w-0">
                             <p className="text-body-xs text-ink font-medium truncate">{review.title}</p>
@@ -589,28 +570,22 @@ export default function SeniorSpacePage() {
                               <span className="text-caption text-ink-tertiary/40">· {review.timestamp}</span>
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       )
                     })}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
 
-            <motion.div variants={itemVariants}>
+            <div>
               <ConsolePanel rail="Code Health" designator={`${d?.completion_rate ?? 0}%`} status="go">
                 {teamMembers.length === 0 ? (
                   <EmptyState icon={<Heartbeat className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No team data" description="Member progress data will appear here." />
                 ) : (
                   <div className="space-y-3">
-                    {teamMembers.map((m, i) => (
-                      <motion.div
-                        key={m.name}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.06 }}
-                        className="p-3 rounded-card bg-well/20 border border-seam"
-                      >
+                    {teamMembers.map((m) => (
+                      <div key={m.name} className="p-3 rounded-card bg-well/20 border border-seam">
                         <div className="flex items-center justify-between">
                           <span className="text-body-xs font-medium text-ink">{m.name}</span>
                           <span className={cn('text-caption font-code tabular-nums', m.completion >= 80 ? 'text-go' : m.completion >= 60 ? 'text-go' : 'text-abort')}>
@@ -626,17 +601,17 @@ export default function SeniorSpacePage() {
                         <div className="flex items-center justify-between text-caption text-ink-tertiary/50">
                           <span>{m.role}</span>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </div>
 
           {/* Module Access + Team Progress */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <motion.div variants={itemVariants}>
+            <div>
               <ConsolePanel rail="Module Access">
                 <div className="space-y-2">
                   {defaultModules.map((mod) => (
@@ -655,22 +630,16 @@ export default function SeniorSpacePage() {
                   ))}
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
-            <motion.div variants={itemVariants}>
+            <div>
               <ConsolePanel rail="Team Progress">
                 {teamMembers.length === 0 ? (
                   <EmptyState icon={<Users className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No team members" description="Team progress data will appear here." />
                 ) : (
                   <div className="space-y-3">
-                    {teamMembers.map((member, i) => (
-                      <motion.div
-                        key={member.name}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="flex items-center gap-3 p-2.5 rounded-card hover:bg-well/20 transition-colors"
-                      >
+                    {teamMembers.map((member) => (
+                      <div key={member.name} className="flex items-center gap-3 p-2.5 rounded-card hover:bg-well/20 transition-colors">
                         <div className="w-8 h-8 rounded-card bg-go/10 border border-go/20 flex items-center justify-center text-caption font-bold text-go shrink-0">
                           {member.name.charAt(0)}
                         </div>
@@ -691,43 +660,43 @@ export default function SeniorSpacePage() {
                             />
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </div>
 
           {/* API Cost Tracking */}
-          <motion.div variants={itemVariants}>
+          <div>
             <ConsolePanel rail="API Cost Tracking" designator="Per key · budget">
               <ApiCostTracking />
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* PR Review & Merge */}
           {activeTeamId && (
-            <motion.div variants={itemVariants}>
+            <div>
               <PRReviewPanel teamId={activeTeamId} />
-            </motion.div>
+            </div>
           )}
 
           {/* Assign Repository */}
           {activeTeamId && (
-            <motion.div variants={itemVariants}>
+            <div>
               <AssignRepoPanel teamId={activeTeamId} />
-            </motion.div>
+            </div>
           )}
           {!activeTeamId && (
-            <motion.div variants={itemVariants}>
+            <div>
               <ConsolePanel rail="Assign Repository" designator="senior · assign" status="standby">
                 <p className="text-body-sm text-ink-tertiary/60">No active team — join a team to assign repos.</p>
               </ConsolePanel>
-            </motion.div>
+            </div>
           )}
         </>
       )}
-    </motion.div>
+    </div>
   )
 }

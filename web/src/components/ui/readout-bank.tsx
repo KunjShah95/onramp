@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useReducedMotion } from 'framer-motion'
 import { ArrowUpRight, CaretUp, CaretDown } from '@phosphor-icons/react'
 import { cn } from '../../lib/utils'
 
@@ -30,32 +28,11 @@ interface ReadoutBankProps {
   className?: string
 }
 
-/** Count a number up from 0 → target on mount. Skips when reduced-motion. */
-function useCountUp(target: number, enabled: boolean, ms = 750) {
-  const [n, setN] = useState(enabled ? 0 : target)
-  const raf = useRef<number | undefined>(undefined)
-  useEffect(() => {
-    if (!enabled) { setN(target); return }
-    const start = performance.now()
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / ms)
-      // ease-out-expo — settles like an instrument needle
-      const eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p)
-      setN(target * eased)
-      if (p < 1) raf.current = requestAnimationFrame(tick)
-      else setN(target)
-    }
-    raf.current = requestAnimationFrame(tick)
-    return () => { if (raf.current) cancelAnimationFrame(raf.current) }
-  }, [target, enabled, ms])
-  return n
-}
-
-function Cell({ item, animate }: { item: Readout; animate: boolean }) {
+/** Static value — numbers render directly, no count-up. */
+function Cell({ item }: { item: Readout; animate?: boolean }) {
   const numeric = typeof item.value === 'number'
-  const counted = useCountUp(numeric ? (item.value as number) : 0, animate && numeric)
   const shown = numeric
-    ? `${item.prefix ?? ''}${Math.round(counted).toLocaleString()}${item.suffix ?? ''}`
+    ? `${item.prefix ?? ''}${Math.round(item.value as number).toLocaleString()}${item.suffix ?? ''}`
     : item.value
 
   const body = (
@@ -99,10 +76,9 @@ const colClass: Record<number, string> = {
 /**
  * Big Board (signature). Leadership/overview metrics as a butted bank of mono
  * readouts seamed by hairlines — not a row of floating hero cards. Flat and
- * seated per the design bible; the only motion is a needle-settle count-up.
+ * seated per the design bible; values render statically.
  */
 export default function ReadoutBank({ callsign, items, columns = 6, className }: ReadoutBankProps) {
-  const reduce = useReducedMotion()
   return (
     <div className={cn('rounded-card border border-seam bg-panel shadow-seam overflow-hidden', className)}>
       {callsign && (
@@ -112,7 +88,7 @@ export default function ReadoutBank({ callsign, items, columns = 6, className }:
       )}
       <div className={cn('grid grid-cols-2 divide-x divide-y xl:divide-y-0 divide-seam', colClass[columns])}>
         {items.map((item) => (
-          <Cell key={item.label} item={item} animate={!reduce} />
+          <Cell key={item.label} item={item} />
         ))}
       </div>
     </div>

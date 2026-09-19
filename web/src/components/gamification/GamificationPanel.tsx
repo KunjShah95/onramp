@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Trophy,
   Lightning,
@@ -54,9 +54,9 @@ function getProgressColor(xp: number, needed: number): string {
 // ── Rank medal icons ─────────────────────────────────────────
 
 function RankMedal({ rank }: { rank: number }) {
-  if (rank === 1) return <Trophy size={16} weight="fill" aria-hidden className="text-amber-400 shrink-0" />
+  if (rank === 1) return <Trophy size={16} weight="fill" aria-hidden className="text-caution shrink-0" />
   if (rank === 2) return <Medal size={16} weight="fill" aria-hidden className="text-ink-muted shrink-0" />
-  if (rank === 3) return <Medal size={16} aria-hidden className="text-amber-600 shrink-0" />
+  if (rank === 3) return <Medal size={16} aria-hidden className="text-caution shrink-0" />
   return <span className="text-body-sm font-mono font-bold text-ink" aria-hidden>#{rank}</span>
 }
 
@@ -71,7 +71,6 @@ export default function GamificationPanel() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [loginStreakFlame, setLoginStreakFlame] = useState(false)
   const { activeTeamId, user } = useAuth()
 
   async function loadData() {
@@ -98,8 +97,8 @@ export default function GamificationPanel() {
     const recorded = sessionStorage.getItem('cf_login_recorded')
     if (!recorded) {
       recordLogin().then((res) => {
+        void res
         sessionStorage.setItem('cf_login_recorded', 'true')
-        if (res.xp_awarded) setLoginStreakFlame(true)
       }).catch(() => {})
     }
   }, [])
@@ -153,18 +152,14 @@ export default function GamificationPanel() {
         </div>
 
         {/* Streak flame */}
-        <motion.div
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium ${
-            streak.current_streak > 0
-              ? 'bg-orange-500/10 text-orange-400'
-              : 'bg-well/30 text-ink-tertiary/50'
-          }`}
-          animate={loginStreakFlame ? { scale: [1, 1.2, 1], rotate: [0, -5, 5, 0] } : {}}
-          transition={{ duration: 0.5 }}
-        >
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-caption font-medium ${
+ streak.current_streak > 0
+ ? 'bg-caution/10 text-caution'
+ : 'bg-well/30 text-ink-tertiary/50'
+ }`}>
           <Fire className="w-3.5 h-3.5" weight="fill" />
           <span>{streak.current_streak} day{streak.current_streak !== 1 ? 's' : ''}</span>
-        </motion.div>
+        </div>
       </div>
 
       {/* ── XP Progress Bar ── */}
@@ -176,11 +171,9 @@ export default function GamificationPanel() {
           </span>
         </div>
         <div className="h-2 bg-well/30 rounded-full overflow-hidden">
-          <motion.div
+          <div
             className={`h-full rounded-full ${getProgressColor(xp_progress, xp_needed)}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
+            style={{ width: `${progressPct}%` }}
           />
         </div>
       </div>
@@ -192,10 +185,10 @@ export default function GamificationPanel() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-1.5 rounded-md text-caption font-medium transition-all capitalize ${
-              activeTab === tab
-                ? 'bg-go/10 text-go shadow-sm'
-                : 'text-ink-tertiary/60 hover:text-ink-secondary hover:bg-well/30'
-            }`}
+ activeTab === tab
+ ? 'bg-go/10 text-go shadow-sm'
+ : 'text-ink-tertiary/60 hover:text-ink-secondary hover:bg-well/30'
+ }`}
           >
             {tab === 'leaderboard' ? 'Rank' : tab === 'badges' ? `${badges_count} Badges` : 'Overview'}
           </button>
@@ -203,19 +196,13 @@ export default function GamificationPanel() {
       </div>
 
       {/* ── Tab Content ── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2 }}
-        >
+      
+        <div key={activeTab}>
           {activeTab === 'overview' && <OverviewTab summary={summary} />}
           {activeTab === 'badges' && <BadgesTab badges={badges} />}
           {activeTab === 'leaderboard' && <LeaderboardTab entries={leaderboard} />}
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      
     </CardSpotlight>
   )
 }
@@ -258,7 +245,7 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
       <div className="flex items-center justify-between">
         <span className="text-caption text-ink-tertiary/70">Longest streak</span>
         <span className="text-body-sm font-medium text-ink inline-flex items-center gap-1">
-          <Fire size={14} weight="fill" aria-hidden className="text-orange-400 shrink-0" />
+          <Fire size={14} weight="fill" aria-hidden className="text-caution shrink-0" />
           {streak.longest_streak} days
         </span>
       </div>
@@ -303,16 +290,10 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
 
   return (
     <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
-      {badges.map((badge, i) => (
-        <motion.div
-          key={badge.badge_key}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: i * 0.04 }}
-          className="p-2.5 rounded-lg bg-well/10 border border-go/5 hover:border-go/20 transition-colors"
-        >
+      {badges.map((badge) => (
+        <div key={badge.badge_key} className="p-2.5 rounded-lg bg-well/10 border border-go/5 hover:border-go/20 transition-colors">
           <div className="flex items-center gap-2 mb-1">
-            <Medal size={18} weight="duotone" aria-hidden className="shrink-0 text-amber-400" />
+            <Medal size={18} weight="duotone" aria-hidden className="shrink-0 text-caution" />
             <span className="text-body-sm font-medium text-ink truncate">
               {badge.badge_name}
             </span>
@@ -320,11 +301,11 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
           <p className="text-caption text-ink-tertiary/60 leading-tight">{badge.description}</p>
           {badge.xp_bonus > 0 && (
             <div className="mt-1 flex items-center gap-1">
-              <Lightning size={12} weight="fill" aria-hidden className="text-amber-400 shrink-0" />
-              <span className="text-[10px] text-amber-400/80 font-medium">+{badge.xp_bonus} XP</span>
+              <Lightning size={12} weight="fill" aria-hidden className="text-caution shrink-0" />
+              <span className="text-[10px] text-caution/80 font-medium">+{badge.xp_bonus} XP</span>
             </div>
           )}
-        </motion.div>
+        </div>
       ))}
     </div>
   )
@@ -345,18 +326,12 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
 
   return (
     <div className="space-y-1">
-      {entries.slice(0, 10).map((entry, i) => (
-        <motion.div
-          key={entry.user_id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.03 }}
-          className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
-            entry.rank <= 3
-              ? 'bg-amber-500/5 border border-amber-500/10'
-              : 'hover:bg-well/20'
-          }`}
-        >
+      {entries.slice(0, 10).map((entry) => (
+        <div key={entry.user_id} className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+ entry.rank <= 3
+ ? 'bg-caution/5 border border-caution/10'
+ : 'hover:bg-well/20'
+ }`}>
           {/* Rank */}
           <span className="w-6 flex items-center justify-center shrink-0" aria-hidden>
             <RankMedal rank={entry.rank} />
@@ -374,7 +349,7 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
           {/* XP */}
           <span className="text-body-sm font-medium text-ink font-mono">{entry.xp.toLocaleString()}</span>
           <span className="text-caption text-ink-tertiary/50">XP</span>
-        </motion.div>
+        </div>
       ))}
     </div>
   )

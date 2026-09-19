@@ -99,7 +99,6 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import ForgotPassword from '../pages/ForgotPassword'
 import JoinPage from '../pages/JoinPage'
-import PricingPage from '../pages/PricingPage'
 import ChangelogPage from '../pages/ChangelogPage'
 import DocsPage from '../pages/DocsPage'
 import PrivacyPage from '../pages/PrivacyPage'
@@ -138,7 +137,6 @@ describe('Auth pages', () => {
 })
 
 describe('Landing/marketing pages', () => {
-  it('renders PricingPage', () => expect(() => render(<PricingPage />)).not.toThrow())
   it('renders ChangelogPage', () => expect(() => render(<ChangelogPage />)).not.toThrow())
   it('renders DocsPage', () => expect(() => render(<DocsPage />)).not.toThrow())
   it('renders PrivacyPage', () => expect(() => render(<PrivacyPage />)).not.toThrow())

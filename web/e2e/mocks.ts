@@ -146,6 +146,21 @@ export async function mockBackendAPIs(page: Page) {
     })
   })
 
+  await page.route('**/api/v1/auth/refresh', async (route) => {
+    if (!authenticated) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Not authenticated' }),
+      })
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ token: FAKE_SESSION_TOKEN, refresh_token: 'fake-refresh-token' }),
+    })
+  })
+
   await page.route('**/api/v1/auth/check-provider*', async (route) => {
     return route.fulfill({
       status: 200,

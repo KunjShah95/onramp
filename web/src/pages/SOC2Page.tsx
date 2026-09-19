@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+
 import { ShieldCheck, FileText, MagnifyingGlass, Certificate, ListChecks, Eye, CheckCircle } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -6,16 +6,10 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
-  { label: 'Pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.35 },
-  transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] as const },
-})
 
 const trustPrinciples = [
   {
@@ -55,7 +49,7 @@ export default function SOC2Page() {
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}
-        <motion.div {...fadeUp(0)} className="mb-16">
+        <div className="mb-16">
           <div className="flex items-center gap-2 text-[hsl(var(--accent))] mb-4">
             <Certificate className="w-4 h-4" weight="fill" />
             <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">SOC 2</span>
@@ -69,10 +63,10 @@ export default function SOC2Page() {
             Onramp is undergoing SOC 2 Type II certification, audited by an independent third party against
             the AICPA Trust Services Criteria for Security, Confidentiality, Availability, and Processing Integrity.
           </p>
-        </motion.div>
+        </div>
 
         {/* Status banner */}
-        <motion.div {...fadeUp(0.08)} className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex items-start gap-4">
+        <div className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex items-start gap-4">
           <FileText size={24} weight="duotone" className="text-[hsl(var(--accent))] shrink-0 mt-0.5" />
           <div>
             <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II · In progress</h2>
@@ -81,16 +75,16 @@ export default function SOC2Page() {
               In the meantime, we operate with controls that meet or exceed SOC 2 requirements.
             </p>
           </div>
-        </motion.div>
+        </div>
 
         {/* Trust principles */}
-        <motion.div {...fadeUp(0.16)} className="mb-16">
+        <div className="mb-16">
           <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Trust Services Criteria</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {trustPrinciples.map((p) => (
               <div
                 key={p.title}
-                className="p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--accent))]/30"
+                className="p-5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] mb-3">
                   <p.icon size={18} weight="duotone" />
@@ -100,16 +94,12 @@ export default function SOC2Page() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Controls by category */}
         <div className="space-y-6 mb-16">
-          {controls.map((c, i) => (
-            <motion.div
-              key={c.category}
-              {...fadeUp(0.24 + i * 0.08)}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30"
-            >
+          {controls.map((c) => (
+            <div key={c.category} className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30">
               <h3 className="font-display text-base font-semibold text-[hsl(var(--foreground))] mb-4">{c.category}</h3>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {c.items.map((item) => (
@@ -119,12 +109,12 @@ export default function SOC2Page() {
                   </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Additional docs */}
-        <motion.div {...fadeUp(0.56)} className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 mb-12">
+        <div className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 mb-12">
           <h2 className="font-display text-lg font-semibold text-[hsl(var(--foreground))] mb-4">Related resources</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Link to="/security" className="flex items-center gap-2.5 p-3 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))]/20 text-sm text-[hsl(var(--foreground))] hover:border-[hsl(var(--accent))]/30 transition-colors">
@@ -136,10 +126,10 @@ export default function SOC2Page() {
               Data Processing Agreement
             </Link>
           </div>
-        </motion.div>
+        </div>
 
         {/* CTA */}
-        <motion.div {...fadeUp(0.64)} className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
+        <div className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
           <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-3">Need our SOC 2 report?</h2>
           <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-md mx-auto">
             Current and prospective customers can request our SOC 2 report under NDA.
@@ -150,7 +140,7 @@ export default function SOC2Page() {
           >
             Request report
           </Link>
-        </motion.div>
+        </div>
       </div>
     </MarketingLayout>
   )

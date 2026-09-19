@@ -45,7 +45,7 @@ export function SkeletonAvatar({ className }: SkeletonProps) {
 
 export function SkeletonCard({ className }: SkeletonProps) {
   return (
-    <div className={cn('card space-y-3 border-seam/30', className)}>
+    <div className={cn('card space-y-3 border-[rgb(var(--border-rgb)/0.3)]', className)}>
       <SkeletonTitle />
       <SkeletonText />
       <SkeletonText className="w-3/4" />
@@ -55,7 +55,7 @@ export function SkeletonCard({ className }: SkeletonProps) {
 
 export function SkeletonStatCard({ className }: SkeletonProps) {
   return (
-    <div className={cn('card border-seam/30', className)}>
+    <div className={cn('card border-[rgb(var(--border-rgb)/0.3)]', className)}>
       <SkeletonText className="w-20 h-3" />
       <SkeletonBase className="h-8 w-16 mt-2" />
       <SkeletonText className="w-24 h-3 mt-2" />
@@ -152,7 +152,7 @@ export function StatsGridSkeleton({ count = 4 }: { count?: number }) {
 
 export function ListPanelSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="card space-y-3 border-seam/30">
+    <div className="card space-y-3 border-[rgb(var(--border-rgb)/0.3)]">
       <SkeletonTitle className="w-40" />
       <div className="space-y-3 mt-4">
         {[...Array(rows)].map((_, i) => (
@@ -182,7 +182,7 @@ export function AnalysisSkeleton() {
       <SkeletonHeading className="mb-6" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="card border-seam/30">
+          <div key={i} className="card border-[rgb(var(--border-rgb)/0.3)]">
             <SkeletonTitle className="w-28" />
             <SkeletonBase className="h-8 w-20 mt-2" />
             <SkeletonText className="w-16 h-3 mt-2" />
@@ -201,7 +201,7 @@ export function RepoAnalysisSkeleton() {
     <div className="animate-in">
       <SkeletonText className="w-24 h-4 mb-2" />
       <SkeletonHeading className="mb-6" />
-      <div className="card border-seam/30 space-y-4">
+      <div className="card border-[rgb(var(--border-rgb)/0.3)] space-y-4">
         <SkeletonTitle className="w-44" />
         <SkeletonText className="w-3/4" />
         <SkeletonText className="w-1/2" />
@@ -219,7 +219,7 @@ export function ExploreResultSkeleton() {
   return (
     <div className="animate-in space-y-6">
       <StatsGridSkeleton count={4} />
-      <div className="card border-seam/30">
+      <div className="card border-[rgb(var(--border-rgb)/0.3)]">
         <div className="flex items-center justify-between">
           <SkeletonText className="w-32" />
           <SkeletonBadge />
@@ -261,7 +261,7 @@ export function IssueListSkeleton({ count = 3 }: { count?: number }) {
 
 export function GuideSkeleton() {
   return (
-    <div className="card border-seam/30 space-y-4">
+    <div className="card border-[rgb(var(--border-rgb)/0.3)] space-y-4">
       <SkeletonTitle className="w-3/4" />
       <SkeletonText />
       <SkeletonText className="w-3/4" />
@@ -281,7 +281,7 @@ export function GuideSkeleton() {
 
 export function ChatAreaSkeleton() {
   return (
-    <div className="flex-1 bg-well rounded-card border border-seam/30 p-4 flex flex-col gap-4">
+    <div className="flex-1 bg-well rounded-card border border-[rgb(var(--border-rgb)/0.3)] p-4 flex flex-col gap-4">
       <SkeletonBase className="h-12 w-3/4 rounded-card" />
       <SkeletonBase className="h-20 w-1/2 rounded-card ml-auto" />
       <SkeletonBase className="h-16 w-2/3 rounded-card" />
@@ -298,7 +298,7 @@ export function SettingsSkeleton() {
     <div className="animate-in max-w-lg space-y-6">
       <SkeletonHeading />
       {[...Array(2)].map((_, i) => (
-        <div key={i} className="card border-seam/30 space-y-4">
+        <div key={i} className="card border-[rgb(var(--border-rgb)/0.3)] space-y-4">
           <SkeletonTitle className="w-44" />
           <SkeletonBase className="h-5 w-48" />
           <SkeletonText className="w-28" />
@@ -314,7 +314,7 @@ export function ProfileSkeleton() {
   return (
     <div className="animate-in max-w-md">
       <SkeletonHeading />
-      <div className="card mt-8 border-seam/30">
+      <div className="card mt-8 border-[rgb(var(--border-rgb)/0.3)]">
         <div className="flex items-center gap-4 mb-6">
           <SkeletonBase className="h-16 w-16 rounded-full shrink-0" />
           <div className="space-y-2 flex-1">
@@ -542,7 +542,7 @@ export function LandingSkeleton() {
         ))}
       </div>
       {/* Footer */}
-      <div className="border-t border-seam/30 py-8 px-4">
+      <div className="border-t border-[rgb(var(--border-rgb)/0.3)] py-8 px-4">
         <div className="max-w-6xl mx-auto flex justify-between">
           <SkeletonText className="w-32" />
           <div className="flex gap-4">

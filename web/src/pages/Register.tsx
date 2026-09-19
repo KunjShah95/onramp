@@ -25,7 +25,7 @@ export default function Register() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // Plan intent carried from /pricing — after signup the user lands directly
+  // Plan intent carried from landing #pricing — after signup the user lands directly
   // in the billing funnel (Razorpay checkout) instead of the default home.
   const planIntent = getPlanIntent(searchParams)
   const postAuthDest = planIntent ? billingUrlWithPlan(planIntent) : null

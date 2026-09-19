@@ -37,10 +37,10 @@ interface LayerSpec {
 }
 
 const DOMAIN_COLORS: Record<Domain, string> = {
-  client: '#00D9FF',
-  api: '#06B6D4',
-  core: '#10B981',
-  data: '#5A7D9A',
+  client: 'var(--go)',
+  api: 'var(--go)',
+  core: 'var(--go)',
+  data: 'var(--ink-tertiary)',
 }
 
 const LAYERS: LayerSpec[] = [
@@ -87,8 +87,6 @@ const LAYERS: LayerSpec[] = [
 const X_POS = [150, 375, 610, 845]
 const CENTER_Y = 260
 const NODE_SPACING = 48
-const NODE_R = 9
-const RING_R = 15
 
 function nearestIndex(y: number, ys: number[]): number {
   let best = 0
@@ -157,8 +155,8 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
         className="h-full w-full max-w-[900px]"
         preserveAspectRatio="xMidYMid meet"
       >
-        <rect x="0" y="0" width="900" height="520" rx="12" fill="#0F1419" />
-        {/* dependency edges */}
+        <rect x="0" y="0" width="900" height="520" rx="6" fill="var(--panel)" />
+        {/* dependency edges — quiet hairlines */}
         {edges.map((e, i) => (
           <line
             key={`edge-${i}`}
@@ -166,32 +164,31 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
             y1={e.y1}
             x2={e.x2}
             y2={e.y2}
-            strokeWidth="1.5"
-            stroke="rgba(248,250,252,0.09)"
+            strokeWidth="1"
+            stroke="var(--seam-strong)"
           />
         ))}
-        {/* service nodes */}
+        {/* service nodes — one quiet accent, no neon rings */}
         {nodes.map((n) => (
           <g key={n.id}>
-            <circle cx={n.x} cy={n.y} r={NODE_R} fill={n.color} />
-            <circle cx={n.x} cy={n.y} r={RING_R} fill="none" stroke={`${n.color}44`} strokeWidth="1" />
+            <circle cx={n.x} cy={n.y} r={6} fill={n.color} opacity="0.85" />
             <text
               x={n.x}
-              y={n.y + 26}
+              y={n.y + 24}
               textAnchor="middle"
               fontSize="10"
-              fill="rgba(245,249,251,0.55)"
-              fontFamily="ui-monospace, 'JetBrains Mono', monospace"
+              fill="var(--ink-secondary)"
+              fontFamily="ui-monospace, 'IBM Plex Mono', monospace"
             >
               {n.name}
             </text>
             <text
               x={n.x}
-              y={n.y + 40}
+              y={n.y + 37}
               textAnchor="middle"
               fontSize="9"
-              fill="rgba(152,161,170,0.5)"
-              fontFamily="ui-monospace, 'JetBrains Mono', monospace"
+              fill="var(--ink-tertiary)"
+              fontFamily="ui-monospace, 'IBM Plex Mono', monospace"
             >
               {n.sub}
             </text>
@@ -205,10 +202,10 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
             y="28"
             textAnchor="middle"
             fontSize="10"
-            fontWeight={600}
-            letterSpacing="0.06em"
-            fill={DOMAIN_COLORS[layer.domain]}
-            fontFamily="ui-monospace, 'JetBrains Mono', monospace"
+            fontWeight={500}
+            letterSpacing="0.08em"
+            fill="var(--ink-tertiary)"
+            fontFamily="ui-monospace, 'IBM Plex Mono', monospace"
           >
             {layer.label}
           </text>

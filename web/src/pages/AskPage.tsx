@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   PaperPlaneRight,
   Spinner,
@@ -21,10 +21,6 @@ import RoutingModePicker, { type RoutingModeValue } from '../components/ui/Routi
 import ConsolePanel from '../components/ui/console-panel'
 import { PageHeader } from '../components/ui/page-header'
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 // The routing dial is persisted locally so a reload doesn't silently reset
 // it to Auto mid-conversation. Only the named presets (or null = Auto) are
@@ -274,7 +270,7 @@ export default function AskPage() {
         />
 
         {/* Anchor — repo input (status panel, not just a field) */}
-        <motion.div initial="hidden" animate="show" variants={fade} className="mb-4 shrink-0">
+        <div className="mb-4 shrink-0">
           <ConsolePanel
             rail={indexId ? 'Indexed' : 'Anchor'}
             designator="REPO"
@@ -300,22 +296,17 @@ export default function AskPage() {
               )}
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto rounded-[3px] border border-seam bg-panel">
           <div className="p-4 space-y-4">
-            <AnimatePresence initial={false}>
+            
               {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn(
+                <div key={msg.id} className={cn(
                     'flex items-start gap-3',
                     msg.role === 'user' ? 'justify-end' : ''
-                  )}
-                >
+                  )}>
                   {msg.role === 'assistant' && (
                     <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0 mt-0.5">
                       <Robot className="w-3.5 h-3.5 text-go" weight="fill" />
@@ -390,16 +381,12 @@ export default function AskPage() {
                       <User className="w-3.5 h-3.5 text-mission" weight="fill" />
                     </div>
                   )}
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
+            
 
             {loading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-3"
-              >
+              <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-[3px] bg-go/10 border border-go/20 flex items-center justify-center shrink-0">
                   <Robot className="w-3.5 h-3.5 text-go" weight="fill" />
                 </div>
@@ -409,7 +396,7 @@ export default function AskPage() {
                     {indexing ? 'Indexing repository…' : 'Thinking…'}
                   </span>
                 </div>
-              </motion.div>
+              </div>
             )}
             <div ref={bottomRef} />
           </div>

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
 import { fetchDoraSummary, fetchVelocityTrends, fetchTeamThroughput, listTeams } from '../../lib/api'
@@ -8,9 +7,6 @@ import { useAuth } from '../../context/AuthContext'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area,
 } from 'recharts'
-
-const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
-const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }
 
 function Panel({ callsign, designator, className, children }: { callsign: string; designator?: string; className?: string; children: React.ReactNode }) {
   return (
@@ -100,8 +96,8 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
   const hasThroughput = Array.isArray(throughputMembers) && throughputMembers.length > 0
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
-      <motion.div variants={item} className="flex items-center gap-6 flex-wrap">
+    <div className="space-y-5">
+      <div className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-3">
           <span className={
             (dora?.overall_score || 0) >= 75 ? 'text-display-sm font-bold font-code text-go'
@@ -112,17 +108,17 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
           </span>
           <span className="text-body-sm text-ink-muted font-code">DORA<br />Score</span>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {m?.deployment_frequency && <MetricBadge classification={m.deployment_frequency.classification} value={m.deployment_frequency.value} label="Deploy Frequency" />}
         {m?.lead_time_for_changes && <MetricBadge classification={m.lead_time_for_changes.classification} value={m.lead_time_for_changes.value} label="Lead Time" />}
         {m?.change_failure_rate && <MetricBadge classification={m.change_failure_rate.classification} value={m.change_failure_rate.value} label="Change Failure Rate" />}
         {m?.mttr && <MetricBadge classification={m.mttr.classification} value={m.mttr.value} label="MTTR" />}
-      </motion.div>
+      </div>
 
       {velocityData.length > 0 && (
-        <motion.div variants={item}><Panel callsign="Velocity" designator="12 weeks">
+        <Panel callsign="Velocity" designator="12 weeks">
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={velocityData}>
@@ -136,11 +132,11 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </Panel></motion.div>
+        </Panel>
       )}
 
       {hasThroughput && throughputMembers && (
-        <motion.div variants={item}><Panel callsign="Throughput" designator="30 days">
+        <Panel callsign="Throughput" designator="30 days">
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={throughputMembers.map(member => ({ name: member.name.length > 10 ? member.name.slice(0, 10) + '…' : member.name, completed: member.completed, inProgress: member.in_progress })).reverse()}>
@@ -153,12 +149,12 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Panel></motion.div>
+        </Panel>
       )}
 
       {!dora && (
         <div className="text-center py-10 text-ink-muted text-body-sm font-code">No DORA data yet. Complete tasks to generate metrics.</div>
       )}
-    </motion.div>
+    </div>
   )
 }

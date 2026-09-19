@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -81,7 +81,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
           No membership history yet. Flows form as people join.
         </p>
       ) : (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-body-xs text-ink font-medium">
               {data?.current_headcount ?? 0} on team · {data?.total_joined ?? 0} onboarded
@@ -113,7 +113,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
             </span>
             <span>· {totalDeactivated} total left</span>
           </div>
-        </motion.div>
+        </div>
       )}
     </ConsolePanel>
   )

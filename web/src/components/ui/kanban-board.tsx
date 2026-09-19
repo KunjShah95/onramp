@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { cn } from '../../lib/utils'
 
 /* ─────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export default function KanbanBoard({
                 else { setDraggingId(null); setDragOverState(null) }
               }}
               className={cn(
-                'flex w-60 shrink-0 flex-col rounded-md border transition-all duration-200',
+                'flex w-60 shrink-0 flex-col rounded-md border transition-colors duration-150',
                 isOver
                   ? 'border-go/50 bg-go/[0.04] shadow-[0_0_0_1px_rgb(var(--go-rgb)_/_0.25),0_8px_24px_-12px_rgb(var(--go-rgb)_/_0.35)]'
                   : 'border-seam bg-well/40'
@@ -134,66 +134,30 @@ export default function KanbanBoard({
                 <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   {col.label}
                 </h3>
-                <motion.span
-                  key={`${col.state}-${colTasks.length}`}
-                  initial={{ scale: 1.35, color: 'rgb(var(--accent-primary))' }}
-                  animate={{ scale: 1, color: 'rgb(var(--text-tertiary))' }}
-                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                  className="font-code text-[10px] tabular-nums"
-                >
+                <span key={`${col.state}-${colTasks.length}`} className="font-code text-[10px] tabular-nums">
                   {colTasks.length}
-                </motion.span>
+                </span>
               </div>
 
               {/* cards */}
               <div className="flex min-h-[120px] flex-1 flex-col gap-2 px-2 pb-2">
-                <AnimatePresence mode="popLayout">
+                
                   {colTasks.map((task) => (
-                    <motion.div
-                      key={task.task_id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                      draggable
-                      onDragStart={(e) => {
-                        const de = e as unknown as React.DragEvent
-                        if (de.dataTransfer) {
-                          de.dataTransfer.setData('text/plain', task.task_id)
-                          de.dataTransfer.effectAllowed = 'move'
-                        }
-                        setDraggingId(task.task_id)
-                        setDropError(null)
-                      }}
-                      onDragEnd={() => {
-                        if (!movedRef.current) {
-                          setDraggingId(null)
-                          setDragOverState(null)
-                        }
-                        movedRef.current = false
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Task: ${task.title} (${task.state.replace(/_/g, ' ')})`}
-                      className={cn(
+                    <div key={task.task_id} draggable role="button" tabIndex={0} aria-label={`Task: ${task.title} (${task.state.replace(/_/g, ' ')})`} className={cn(
                         'group relative cursor-grab rounded-card border border-seam bg-well p-3 shadow-seam',
                         'transition-colors hover:border-go/40 active:cursor-grabbing',
                         'focus:outline-none focus-visible:ring-1 focus-visible:ring-go/50',
                         draggingId === task.task_id && 'opacity-40'
-                      )}
-                      onClick={() => {
+                      )} onClick={() => {
                         // Suppress the click that fires right after a drag-drop.
                         if (Date.now() - justDraggedAtRef.current < 350) return
                         onTaskClick?.(task)
-                      }}
-                      onKeyDown={(e) => {
+                      }} onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
                           onTaskClick?.(task)
                         }
-                      }}
-                    >
+                      }}>
                       {/* top hairline — lights up on hover */}
                       <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-go/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
@@ -229,9 +193,9 @@ export default function KanbanBoard({
                         )}
                         {renderCardMeta?.(task)}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
-                </AnimatePresence>
+                
 
                 {colTasks.length === 0 && (
                   <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-seam py-8">
@@ -245,14 +209,9 @@ export default function KanbanBoard({
       </div>
 
       {/* status strip — shows while a move is in flight */}
-      <AnimatePresence>
+      
         {(moving || dropError) && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="sticky bottom-2 z-10 mt-1 flex w-fit items-center gap-2 rounded-card border border-seam bg-panel-raised px-3 py-1.5 shadow-overhead"
-          >
+          <div className="sticky bottom-2 z-10 mt-1 flex w-fit items-center gap-2 rounded-card border border-seam bg-panel-raised px-3 py-1.5 shadow-overhead">
             {moving ? (
               <>
                 <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-go/30 border-t-go" />
@@ -264,9 +223,9 @@ export default function KanbanBoard({
                 <span className="font-code text-[11px] text-abort">{dropError}</span>
               </>
             )}
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      
     </div>
   )
 }

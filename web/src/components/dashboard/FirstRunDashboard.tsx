@@ -7,7 +7,7 @@
  *   language as Mission Control, but for day zero.
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { motion } from 'framer-motion'
+
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { StatusVerdict, ConsoleCard } from '../ui/first-principles'
@@ -17,14 +17,6 @@ import {
   ChatCircleDots, Graph, ListChecks,
 } from '@phosphor-icons/react'
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 16 } },
-}
 
 interface FirstRunDashboardProps {
   /** True when the user already belongs to a team but it has no data yet. */
@@ -90,14 +82,9 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
   ]
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden"
-    >
+    <div className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 max-w-full overflow-x-hidden">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <motion.div variants={item} className="mb-6">
+      <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1.5">
           <span className="tile tile-go">Welcome</span>
           <span className="designator opacity-50">
@@ -112,10 +99,10 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             ? 'Your team is on station. Stock it with members and take your first flight.'
             : 'Your station is live. Set up your workspace and take your first flight.'}
         </p>
-      </motion.div>
+      </div>
 
       {/* ── Verdict hero ────────────────────────────────────────────── */}
-      <motion.div variants={item} className="mb-6">
+      <div className="mb-6">
         <StatusVerdict
           verdict="go"
           label={hasTeam ? 'Your team is ready' : 'All systems ready'}
@@ -131,16 +118,16 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             </button>
           }
         />
-      </motion.div>
+      </div>
 
       {/* ── Four next actions ──────────────────────────────────────── */}
-      <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6">
         {steps.map((s) => (
           <Link key={s.n} to={s.to} className="group block">
             <ConsoleCard
               rail={`STEP ${s.n}`}
               designator={s.designator}
-              className="h-full transition-all duration-200 hover:border-seam-strong hover:shadow-lift"
+              className="h-full transition-colors duration-150 hover:border-seam-strong "
             >
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-tile bg-well/60 border border-seam flex items-center justify-center text-ink-secondary group-hover:text-go group-hover:border-go/30 transition-colors shrink-0">
@@ -161,10 +148,10 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             </ConsoleCard>
           </Link>
         ))}
-      </motion.div>
+      </div>
 
       {/* ── What unlocks ───────────────────────────────────────────── */}
-      <motion.div variants={item}>
+      <div>
         <ConsolePanel rail="What unlocks next" designator="CAPABILITIES" status="go" live>
           <div className="flex flex-wrap gap-2">
             {CAPABILITIES.map((c) => (
@@ -178,7 +165,7 @@ export default function FirstRunDashboard({ hasTeam = false }: FirstRunDashboard
             ))}
           </div>
         </ConsolePanel>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }

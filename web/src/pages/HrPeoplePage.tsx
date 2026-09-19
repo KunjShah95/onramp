@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { PageHeader } from '../components/ui/page-header'
 import { cn } from '../lib/utils'
 import { fetchHrDevelopers, fetchHrHeatmap, listTeams } from '../lib/api'
@@ -17,7 +17,7 @@ const STAGE_CONFIG: Record<string, { label: string; color: string; glow: string;
   onboarding: { label: 'Onboarding', color: 'text-mission', glow: 'shadow-mission/10', icon: UserSwitch },
   ramping: { label: 'Ramping', color: 'text-caution', glow: 'shadow-caution/10', icon: Clock },
   contributing: { label: 'Contributing', color: 'text-go', glow: 'shadow-go/10', icon: Code },
-  independent: { label: 'Independent', color: 'text-violet-400', glow: 'shadow-violet-500/10', icon: CheckCircle },
+  independent: { label: 'Independent', color: 'text-mission', glow: '', icon: CheckCircle },
 }
 
 function ProgressRing({ pct, size = 72, strokeWidth = 4 }: { pct: number; size?: number; strokeWidth?: number }) {
@@ -27,15 +27,7 @@ function ProgressRing({ pct, size = 72, strokeWidth = 4 }: { pct: number; size?:
   return (
     <svg width={size} height={size} className="ring-progress shrink-0">
       <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--seam-strong)" strokeWidth={strokeWidth} />
-      <motion.circle
-        cx={size / 2} cy={size / 2} r={r}
-        stroke={pct >= 80 ? 'var(--go)' : pct >= 50 ? 'var(--caution)' : pct >= 25 ? 'var(--caution-lit)' : 'var(--abort)'}
-        strokeWidth={strokeWidth}
-        strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-      />
+      <circle cx={size / 2} cy={size / 2} r={r} stroke={pct >= 80 ? 'var(--go)' : pct >= 50 ? 'var(--caution)' : pct >= 25 ? 'var(--caution-lit)' : 'var(--abort)'} strokeWidth={strokeWidth} strokeDasharray={circ} style={{ strokeDashoffset: offset }} />
     </svg>
   )
 }
@@ -123,24 +115,17 @@ function DeveloperList({
       {filtered.length === 0 && (
         <p className="text-caption text-ink-muted/20 italic py-6 text-center">No developers match</p>
       )}
-      {filtered.map((dev, i) => {
+      {filtered.map((dev) => {
         const stage = STAGE_CONFIG[dev.stage]
         const StageIcon = stage?.icon || UserSwitch
         const isSelected = dev.user_id === selectedId
         return (
-          <motion.button
-            key={dev.user_id}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.025, duration: 0.3 }}
-            onClick={() => onSelect(dev.user_id)}
-            className={cn(
+          <button key={dev.user_id} onClick={() => onSelect(dev.user_id)} className={cn(
               'w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group',
               isSelected
                 ? 'bg-go/[0.07] border border-go/25 shadow-glow-sm'
                 : 'hover:bg-well/30 border border-transparent'
-            )}
-          >
+            )}>
             <div className={cn(
               'w-10 h-10 rounded-xl flex items-center justify-center font-display text-body-sm font-bold transition-all',
               isSelected ? 'bg-go/10 text-go' : 'bg-well border border-seam text-ink-muted/40'
@@ -164,7 +149,7 @@ function DeveloperList({
               </div>
             </div>
             <ArrowRight size={14} className={cn('shrink-0 transition-all', isSelected ? 'text-go opacity-100' : 'text-ink-muted/10 group-hover:text-ink-muted/40')} />
-          </motion.button>
+          </button>
         )
       })}
     </div>
@@ -206,18 +191,14 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
           { label: 'Streak', val: `${dev.current_streak}d`, sub: `best ${dev.longest_streak}d`, color: 'text-caution-lit', icon: Fire },
           { label: 'Stage', val: stage?.label || dev.stage, sub: 'onboarding', color: stage?.color || 'text-ink-muted', icon: ChartBar },
         ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            whileHover={{ y: -1 }}
-            className="p-3 rounded-xl bg-well/40 border border-seam/40 transition-all"
-          >
+          <div key={stat.label} className="p-3 rounded-xl bg-well/40 border border-[rgb(var(--border-rgb)/0.4)] transition-all">
             <div className="flex items-center gap-1.5 mb-1">
               <stat.icon size={11} className={stat.color} weight="fill" />
               <span className="text-caption text-ink-muted/40">{stat.label}</span>
             </div>
             <div className={cn('font-display text-body font-bold tabular-nums', stat.color)}>{stat.val}</div>
             <div className="text-caption text-ink-muted/20">{stat.sub}</div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -227,18 +208,13 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
           <span className="text-caption font-code text-ink-muted/30 tabular-nums">{dev.completion_pct}%</span>
         </div>
         <div className="relative h-2 rounded-full bg-well overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${dev.completion_pct}%` }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
+          <div className={cn(
               'h-full rounded-full',
               dev.completion_pct >= 80 ? 'bg-go' :
               dev.completion_pct >= 50 ? 'bg-caution' :
               dev.completion_pct >= 25 ? 'bg-caution-lit' :
               'bg-abort'
-            )}
-          />
+            )} style={{ width: `${dev.completion_pct}%` }} />
         </div>
       </div>
     </div>
@@ -314,7 +290,7 @@ export default function HrPeoplePage() {
     { key: 'onboarding', label: `Onboarding ${stageCounts.onboarding}`, color: 'text-mission/70', activeColor: 'bg-mission/10 text-mission border-mission/25' },
     { key: 'ramping', label: `Ramping ${stageCounts.ramping}`, color: 'text-caution/70', activeColor: 'bg-caution/10 text-caution border-caution/25' },
     { key: 'contributing', label: `Contributing ${stageCounts.contributing}`, color: 'text-go/70', activeColor: 'bg-go/10 text-go border-go/25' },
-    { key: 'independent', label: `Independent ${stageCounts.independent}`, color: 'text-violet-400/60', activeColor: 'bg-violet-400/10 text-violet-400 border-violet-400/20' },
+    { key: 'independent', label: `Independent ${stageCounts.independent}`, color: 'text-mission/60', activeColor: 'bg-mission/10 text-mission border-mission/20' },
   ]
 
   const atRiskCount = devData?.developers.filter((d) => d.at_risk).length || 0
@@ -346,20 +322,10 @@ export default function HrPeoplePage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="min-h-[calc(100vh-4rem)]"
-    >
+    <div className="min-h-[calc(100vh-4rem)]">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8"
-        >
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="w-11 h-11 rounded-card bg-well border border-seam flex items-center justify-center">
               <Users size={20} className="text-ink-tertiary" weight="regular" />
@@ -398,27 +364,17 @@ export default function HrPeoplePage() {
               </Link>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Metric Cards — one hero + 3 compact */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Total', value: devData?.developers.length || 0, icon: Users, color: 'text-mission', bg: 'bg-mission/10 border-mission/20' },
             { label: 'Avg Completion', value: `${avgCompletion}%`, icon: TrendUp, color: avgCompletion >= 50 ? 'text-go' : 'text-caution', bg: avgCompletion >= 50 ? 'bg-go/10 border-go/20' : 'bg-caution/10 border-caution/20' },
             { label: 'Avg Ramp', value: avgRamp ? `${Math.round(avgRamp)}d` : 'N/A', icon: Clock, color: 'text-caution', bg: 'bg-caution/10 border-caution/20' },
             { label: 'At Risk', value: atRiskCount, icon: WarningCircle, color: atRiskCount > 0 ? 'text-abort' : 'text-go', bg: atRiskCount > 0 ? 'bg-abort/10 border-abort/20' : 'bg-go/10 border-go/20' },
-          ].map((m, i) => (
-            <motion.div
-              key={m.label}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 + i * 0.04, duration: 0.4 }}
-            >
+          ].map((m) => (
+            <div key={m.label}>
               <div className={cn('relative p-4 rounded-card border shadow-seam transition-colors group', m.bg)}>
                 <div className="flex items-start justify-between mb-2">
                   <m.icon size={18} className={m.color} weight="regular" />
@@ -426,17 +382,12 @@ export default function HrPeoplePage() {
                 <div className={cn('font-display text-display-sm font-bold tracking-tight', m.color)}>{m.value}</div>
                 <div className="text-caption text-ink-muted/40 mt-0.5">{m.label}</div>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Stage Filters */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="flex flex-wrap items-center gap-1.5 mb-5"
-        >
+        <div className="flex flex-wrap items-center gap-1.5 mb-5">
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -451,15 +402,10 @@ export default function HrPeoplePage() {
               {f.label}
             </button>
           ))}
-        </motion.div>
+        </div>
 
         {/* Main Layout */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-5"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Developer List */}
           <div>
             <CardSpotlight className="p-4">
@@ -484,15 +430,9 @@ export default function HrPeoplePage() {
 
           {/* Detail + Heatmap */}
           <div className="lg:col-span-2 space-y-4">
-            <AnimatePresence mode="wait">
+            
               {selectedDev && selectedDevId ? (
-                <motion.div
-                  key={selectedDev.user_id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div key={selectedDev.user_id}>
                   <CardSpotlight className="p-5">
                     <DevDetailCard dev={selectedDev} />
                   </CardSpotlight>
@@ -511,14 +451,9 @@ export default function HrPeoplePage() {
                       <ActivityHeatmap days={selectedHeatmap.days} />
                     </CardSpotlight>
                   )}
-                </motion.div>
+                </div>
               ) : (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
+                <div key="empty">
                   <CardSpotlight className="p-10 flex items-center justify-center min-h-[300px]">
                     <div className="text-center max-w-xs">
                       <div className="w-14 h-14 rounded-card bg-well border border-seam flex items-center justify-center mx-auto mb-4">
@@ -528,12 +463,12 @@ export default function HrPeoplePage() {
                       <p className="text-caption text-ink-muted/20">Click any name to view onboarding details, progress, and activity patterns.</p>
                     </div>
                   </CardSpotlight>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            
           </div>
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

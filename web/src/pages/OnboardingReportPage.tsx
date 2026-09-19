@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   FileText,
   Download,
@@ -50,14 +50,6 @@ function renderContent(content: any) {
   return <p className="text-body-sm text-ink-secondary">{String(content)}</p>
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 export default function OnboardingReportPage() {
   const [repoUrl, setRepoUrl] = useState('')
@@ -103,14 +95,9 @@ export default function OnboardingReportPage() {
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-4xl mx-auto space-y-8 relative"
-    >
+    <div className="max-w-4xl mx-auto space-y-8 relative">
       {/* Header */}
-      <motion.div variants={itemVariants}>
+      <div>
         <PageHeader
           eyebrow="Folio 12 · Onboarding report"
           title="Onboarding Report"
@@ -124,10 +111,10 @@ export default function OnboardingReportPage() {
             ) : undefined
           }
         />
-      </motion.div>
+      </div>
 
       {/* Controls */}
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-3 md:items-center">
+      <div className="flex flex-col md:flex-row gap-3 md:items-center">
         <div className="relative flex items-center w-full md:flex-1">
           <GitBranch size={16} className="absolute left-3.5 text-ink-tertiary/40 pointer-events-none" />
           <input
@@ -144,10 +131,10 @@ export default function OnboardingReportPage() {
               key={l.key}
               onClick={() => setUserLevel(l.key)}
               className={`px-3 py-1.5 rounded-[3px] text-caption font-medium transition-colors ${
-                userLevel === l.key
-                  ? 'bg-panel-raised text-ink'
-                  : 'text-ink-tertiary hover:text-ink-secondary'
-              }`}
+ userLevel === l.key
+ ? 'bg-panel-raised text-ink'
+ : 'text-ink-tertiary hover:text-ink-secondary'
+ }`}
             >
               {l.label}
             </button>
@@ -157,19 +144,19 @@ export default function OnboardingReportPage() {
           <BookOpenText className="w-3.5 h-3.5" weight="fill" />
           {loading ? 'Generating…' : 'Generate'}
         </button>
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div variants={itemVariants} className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
+        <div className="px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
           <button onClick={handleGenerate} disabled={loading} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
-        </motion.div>
+        </div>
       )}
 
-      {loading && <motion.div variants={itemVariants}><ReportSkeleton /></motion.div>}
+      {loading && <div><ReportSkeleton /></div>}
 
       {!loading && !result && (
-        <motion.div variants={itemVariants}>
+        <div>
           <ConsolePanel rail="Start" designator="Awaiting input">
             <EmptyState
               icon={<FileText className="w-10 h-10 text-ink-tertiary/30" weight="duotone" />}
@@ -186,25 +173,20 @@ export default function OnboardingReportPage() {
               }
             />
           </ConsolePanel>
-        </motion.div>
+        </div>
       )}
 
       {!loading && result && (
-        <motion.div variants={itemVariants} className="space-y-4">
+        <div className="space-y-4">
           {result.report.map((section: ReportSection, i) => (
-            <motion.div
-              key={`${section.title}-${i}`}
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: i * 0.04, type: 'spring', stiffness: 80, damping: 18 }}
-            >
+            <div key={`${section.title}-${i}`}>
               <ConsolePanel rail={section.title}>
                 {renderContent(section.content)}
               </ConsolePanel>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   )
 }

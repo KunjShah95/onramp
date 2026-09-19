@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { MotionConfig } from 'framer-motion'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { TransitionProvider } from './context/TransitionContext'
 import { ToastProvider } from './context/ToastContext'
@@ -62,7 +61,6 @@ const PlaybooksPage = lazy(() => import('./pages/PlaybooksPage'))
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
-const PricingPage = lazy(() => import('./pages/PricingPage'))
 const WhyOnrampPage = lazy(() => import('./pages/WhyOnrampPage'))
 const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
@@ -112,7 +110,6 @@ const RampPage = lazy(() => import('./pages/RampPage'))
 
 export default function App() {
   return (
-    <MotionConfig reducedMotion="user">
     <BrowserRouter>
       <AuthProvider>
         <RealTimeProvider>
@@ -122,18 +119,14 @@ export default function App() {
           <ToastProvider>
           <ThemeProvider>
           <GlobalBackground>
-            <Routes>
-              {/* ── Public routes ────────────────────────────────── */}
+            <Routes>              {/* ── Public routes ────────────────────────────────── */}
               <Route path="/" element={
                 <Suspense fallback={<LandingLoadingFallback />}>
                   <ErrorBoundary><LandingPage /></ErrorBoundary>
                 </Suspense>
               } />
-              <Route path="/pricing" element={
-                <Suspense fallback={<PageLoadingFallback />}>
-                  <ErrorBoundary><PricingPage /></ErrorBoundary>
-                </Suspense>
-              } />
+              {/* Pricing lives on the landing page (#pricing) — /pricing redirects there. */}
+              <Route path="/pricing" element={<Navigate to="/#pricing" replace />} />
               <Route path="/why-onramp" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><WhyOnrampPage /></ErrorBoundary>
@@ -506,6 +499,5 @@ export default function App() {
         </RealTimeProvider>
       </AuthProvider>
     </BrowserRouter>
-    </MotionConfig>
   )
 }

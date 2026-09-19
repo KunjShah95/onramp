@@ -135,7 +135,7 @@ export default function UserMenu() {
           className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-xl border border-seam bg-base shadow-overhead animate-fade-in origin-top-right"
         >
           {/* Header: name + email */}
-          <div className="px-4 py-3 border-b border-seam/50">
+          <div className="px-4 py-3 border-b border-[rgb(var(--border-rgb)/0.5)]">
             <p className="text-body-sm font-semibold text-ink truncate">{name}</p>
             <p className="text-caption text-ink-tertiary truncate">{user?.email}</p>
           </div>
@@ -160,7 +160,7 @@ export default function UserMenu() {
             </button>
           </div>
 
-          <div className="border-t border-seam/50" />
+          <div className="border-t border-[rgb(var(--border-rgb)/0.5)]" />
 
           {/* Sign out */}
           <div className="p-1.5">

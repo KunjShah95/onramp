@@ -120,7 +120,7 @@ export default function AgentBenchmarkPanel() {
         {rows.map((a) => {
           const onrampCheaper = a.vs_onramp_usd >= 0
           return (
-            <div key={a.slug} className="flex items-center gap-3 py-1.5 border-b border-seam/50 last:border-0">
+            <div key={a.slug} className="flex items-center gap-3 py-1.5 border-b border-[rgb(var(--border-rgb)/0.5)] last:border-0">
               <div className="w-44 shrink-0 min-w-0">
                 <div className="text-body-xs text-ink font-medium truncate">{a.name}</div>
                 <div className="text-caption text-ink-muted truncate">{a.plan}</div>

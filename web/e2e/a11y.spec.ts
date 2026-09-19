@@ -119,10 +119,10 @@ test.describe('a11y — Public Pages', () => {
     await assertNoCriticalViolations(page, 'Register Page')
   })
 
-  test('pricing page has no critical accessibility violations', async ({ page }) => {
-    await page.goto('/pricing')
+  test('landing pricing section has no critical accessibility violations', async ({ page }) => {
+    await page.goto('/#pricing')
     await page.waitForLoadState('networkidle')
-    await assertNoCriticalViolations(page, 'Pricing Page')
+    await assertNoCriticalViolations(page, 'Landing Pricing Section')
   })
 
   test('docs page has no critical accessibility violations', async ({ page }) => {
@@ -336,8 +336,8 @@ test.describe('a11y — Landmarks & Structure', () => {
     await checkLandmarks(page)
   })
 
-  test('pricing page has proper ARIA landmarks', async ({ page }) => {
-    await page.goto('/pricing')
+  test('landing pricing section has proper ARIA landmarks', async ({ page }) => {
+    await page.goto('/#pricing')
     await page.waitForLoadState('networkidle')
     await checkLandmarks(page)
   })

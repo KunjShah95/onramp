@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   GitPullRequest,
   Clock,
@@ -44,10 +44,6 @@ const PRIORITY_BAR = {
   low: 'bg-ink-disabled',
 } as const
 
-const fade = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } },
-}
 
 function tabForState(state: string): string {
   if (state === 'submitted' || state === 'under_review' || state === 'product_review' || state === 'pending') return 'pending'
@@ -148,16 +144,16 @@ export default function ReviewQueuePage() {
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Header */}
-        <motion.div initial="hidden" animate="show" variants={fade}>
+        <div>
           <PageHeader
             eyebrow="Folio 11 · Reviews"
             title="Review Queue"
             subtitle="Pending PRs in one place. Filter by state and act on the row that needs it."
           />
-        </motion.div>
+        </div>
 
         {/* Verdict bar */}
-        <motion.div initial="hidden" animate="show" variants={fade}>
+        <div>
           <ConsolePanel
             rail={verdictTone === 'hold' ? 'Hold' : verdictTone === 'standby' ? 'Awaiting review' : 'Clear'}
             designator={`${pendingTotal} ACTIONABLE`}
@@ -187,32 +183,27 @@ export default function ReviewQueuePage() {
               ))}
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Review ops — load balancing + consistency (v1.5) */}
-        <motion.div initial="hidden" animate="show" variants={fade}>
+        <div>
           <ReviewOpsPanel teamId={teamId || undefined} />
-        </motion.div>
+        </div>
 
         {/* Error */}
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
+            <div className="overflow-hidden">
               <ConsolePanel pad="dense" status="abort" className="flex items-center justify-between">
                 <span className="text-[13px] text-abort">{error}</span>
                 <button onClick={fetchTasks} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">Retry</button>
               </ConsolePanel>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Filter tabs */}
-        <motion.div initial="hidden" animate="show" variants={fade}>
+        <div>
           <ConsolePanel pad="dense">
             <div className="flex items-center gap-1 flex-wrap">
               {TABS.map((f) => {
@@ -234,13 +225,13 @@ export default function ReviewQueuePage() {
               })}
             </div>
           </ConsolePanel>
-        </motion.div>
+        </div>
 
         {/* Queue */}
         {loading ? (
           <ReviewQueueSkeleton />
         ) : filtered.length === 0 ? (
-          <motion.div initial="hidden" animate="show" variants={fade}>
+          <div>
             <ConsolePanel rail="Queue" designator="EMPTY" status="go" className="py-16 text-center">
               <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
                 <GitPullRequest size={26} className="text-ink-disabled" weight="duotone" />
@@ -250,9 +241,9 @@ export default function ReviewQueuePage() {
                 No pull requests match this filter.
               </p>
             </ConsolePanel>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.04 } } }} className="space-y-2">
+          <div className="space-y-2">
             {filtered.map(({ task, status }) => {
               const style =
                 STATUS_CONFIG[task.state] ??
@@ -260,14 +251,10 @@ export default function ReviewQueuePage() {
                 { label: task.state, tone: 'idle' as const }
               const priorityBar = PRIORITY_BAR[(task.priority as keyof typeof PRIORITY_BAR) ?? 'low']
               return (
-                <motion.div
-                  key={task.task_id}
-                  variants={fade}
-                  className={cn(
+                <div key={task.task_id} className={cn(
                     'group flex items-start gap-3 rounded-[3px] bg-panel border border-seam px-4 py-3',
                     'hover:border-seam-strong transition-colors cursor-pointer'
-                  )}
-                >
+                  )}>
                   {/* Priority bar */}
                   <span className={cn('w-0.5 self-stretch rounded-full shrink-0', priorityBar)} aria-hidden />
 
@@ -327,10 +314,10 @@ export default function ReviewQueuePage() {
                       <ArrowRight size={11} weight="bold" className="mx-auto" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

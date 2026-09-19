@@ -175,16 +175,16 @@ test.describe('Performance — Public Pages', () => {
     expect(errors.length).toBe(0)
   })
 
-  test('pricing page meets performance thresholds', async ({ page }) => {
+  test('landing page meets performance thresholds', async ({ page }) => {
     const errors: string[] = []
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text())
     })
 
-    await page.goto('/pricing')
+    await page.goto('/#pricing')
     const metrics = await collectMetrics(page)
 
-    console.log(`\n  [PERF] Pricing Page:`)
+    console.log(`\n  [PERF] Landing Page:`)
     console.log(`    FCP:      ${metrics.fcp.toFixed(0)}ms`)
     console.log(`    DCL:      ${metrics.dcl.toFixed(0)}ms`)
     console.log(`    DOM:      ${metrics.domNodes} nodes`)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion } from 'framer-motion'
+
 import {
   ShieldCheck,
   FunnelSimple,
@@ -22,12 +22,12 @@ import type { AdminAuditEvent } from '../lib/api'
 import { formatInIST, formatKeyDate } from '../lib/utils'
 
 const EVENT_TYPE_ICONS: Record<string, { icon: typeof ShieldCheck; color: string; bg: string }> = {
-  auth: { icon: User, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  config: { icon: ShieldCheck, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  access: { icon: ShieldCheck, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  deploy: { icon: Terminal, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  api: { icon: Terminal, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-  user: { icon: User, color: 'text-pink-400', bg: 'bg-pink-500/10' },
+  auth: { icon: User, color: 'text-mission', bg: 'bg-mission/10' },
+  config: { icon: ShieldCheck, color: 'text-caution', bg: 'bg-caution/10' },
+  access: { icon: ShieldCheck, color: 'text-mission', bg: 'bg-mission/10' },
+  deploy: { icon: Terminal, color: 'text-go', bg: 'bg-go/10' },
+  api: { icon: Terminal, color: 'text-mission', bg: 'bg-mission/10' },
+  user: { icon: User, color: 'text-mission', bg: 'bg-mission/10' },
 }
 
 const EVENT_TYPES = ['', 'auth', 'config', 'access', 'deploy', 'api', 'user'] as const
@@ -116,13 +116,9 @@ export default function AuditLogPage() {
     }
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
-  }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-6xl mx-auto space-y-6 relative">
+    <div className="max-w-6xl mx-auto space-y-6 relative">
 
       {/* Header */}
       <PageHeader
@@ -148,10 +144,10 @@ export default function AuditLogPage() {
             <button
               onClick={() => setFilterVisible(!filterVisible)}
               className={`px-3 py-2 rounded-btn text-caption font-medium border transition-colors flex items-center gap-1.5 ${
-                filterVisible || filterType || filterActor
-                  ? 'border-go/40 text-go bg-go/5'
-                  : 'border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong'
-              }`}
+ filterVisible || filterType || filterActor
+ ? 'border-go/40 text-go bg-go/5'
+ : 'border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong'
+ }`}
             >
               <FunnelSimple className="w-3.5 h-3.5" />
               Filters
@@ -171,11 +167,7 @@ export default function AuditLogPage() {
 
       {/* Filters Panel */}
       {filterVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-panel border border-seam"
-        >
+        <div className="p-4 rounded-xl bg-panel border border-seam">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-body-sm font-medium text-ink">Filter Events</h3>
             <button onClick={() => { setFilterType(''); setFilterActor(''); setPage(0) }} className="text-caption text-go/70 hover:text-go transition-colors">
@@ -191,10 +183,10 @@ export default function AuditLogPage() {
                     key={t}
                     onClick={() => { setFilterType(t); setPage(0) }}
                     className={`px-3 py-1.5 rounded-lg text-caption font-medium transition-colors ${
-                      filterType === t
-                        ? 'bg-go/10 text-go border border-go/20'
-                        : 'bg-well/20 text-ink-secondary border border-transparent hover:bg-well/40'
-                    }`}
+ filterType === t
+ ? 'bg-go/10 text-go border border-go/20'
+ : 'bg-well/20 text-ink-secondary border border-transparent hover:bg-well/40'
+ }`}
                   >
                     {t || 'All'}
                   </button>
@@ -220,7 +212,7 @@ export default function AuditLogPage() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Error */}
@@ -267,16 +259,10 @@ export default function AuditLogPage() {
               </THead>
               <TBody>
                 {pageEvents.map((entry, i) => {
-                  const style = EVENT_TYPE_ICONS[entry.event_type] ?? { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
+                  const style = EVENT_TYPE_ICONS[entry.event_type] ?? { icon: ShieldCheck, color: 'text-go', bg: 'bg-go/10' }
                   const Icon = style.icon
                   return (
-                    <motion.tr
-                      key={entry.event_id || `${page}-${i}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.025 }}
-                      className="border-b border-seam last:border-b-0 hover:bg-well/10 transition-colors group"
-                    >
+                    <tr key={entry.event_id || `${page}-${i}`} className="border-b border-seam last:border-b-0 hover:bg-well/10 transition-colors group">
                       <TD className="px-3 sm:px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${style.bg}`}>
@@ -330,7 +316,7 @@ export default function AuditLogPage() {
                           {relativeTime(entry.timestamp)}
                         </span>
                       </TD>
-                    </motion.tr>
+                    </tr>
                   )
                 })}
               </TBody>
@@ -340,7 +326,7 @@ export default function AuditLogPage() {
 
         {/* Pagination */}
         {totalCount > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t border-seam/50">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t border-[rgb(var(--border-rgb)/0.5)]">
             <span className="text-caption text-ink-tertiary">
               {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
             </span>
@@ -360,10 +346,10 @@ export default function AuditLogPage() {
                     key={p}
                     onClick={() => setPage(p)}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-caption font-medium transition-colors ${
-                      p === page
-                        ? 'bg-go/10 text-go'
-                        : 'text-ink-tertiary hover:text-ink hover:bg-well/20'
-                    }`}
+ p === page
+ ? 'bg-go/10 text-go'
+ : 'text-ink-tertiary hover:text-ink hover:bg-well/20'
+ }`}
                   >
                     {p + 1}
                   </button>
@@ -380,6 +366,6 @@ export default function AuditLogPage() {
           </div>
         )}
       </ConsolePanel>
-    </motion.div>
+    </div>
   )
 }

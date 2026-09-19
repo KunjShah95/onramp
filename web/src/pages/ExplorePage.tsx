@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { analyzeArchitecture } from '../lib/api'
 import ForceGraph, { type GraphNode, type GraphEdge } from '../components/ForceGraph'
 import type { ArchitectureResult } from '../lib/types'
@@ -21,14 +21,6 @@ import {
   Spinner,
 } from '@phosphor-icons/react'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-}
 
 export default function ExplorePage() {
   const [repoUrl, setRepoUrl] = useState('')
@@ -152,7 +144,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="w-full min-h-[calc(100vh-4rem)] font-body text-ink max-w-full overflow-x-hidden relative">
+    <div className="w-full min-h-[calc(100vh-4rem)] font-body text-ink max-w-full overflow-x-hidden relative">
         {/* Header */}
         <PageHeader
           eyebrow="Folio 08 · Explore"
@@ -189,7 +181,7 @@ export default function ExplorePage() {
         {loading && !result && <ExploreResultSkeleton />}
 
         {/* ── Metric strip — single ruled panel, four readouts (matches Dashboard Folio 01) ── */}
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mb-6">
+        <div className="mb-6">
           <div className="metric-strip grid-cols-2 md:grid-cols-4">
             {([
               { label: 'Total files', value: result?.entities.files.length ?? '—', sub: result ? 'scanned' : 'awaiting index' },
@@ -208,11 +200,11 @@ export default function ExplorePage() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* ── Graph controls ──────────────────────────────── */}
         {result && !loading && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
               <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted/40 pointer-events-none" />
@@ -264,17 +256,12 @@ export default function ExplorePage() {
                 </button>
               </div>
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* ── Filter chips ────────────────────────────────── */}
         {showFilters && result && !loading && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-3 overflow-hidden"
-          >
+          <div className="mb-3 overflow-hidden">
             <div className="flex flex-wrap gap-1.5 p-2 bg-well/20 border border-seam rounded-[3px]">
               {Array.from(allGroups).map((group) => (
                 <button
@@ -284,14 +271,14 @@ export default function ExplorePage() {
                     'px-2.5 py-1 rounded-[3px] text-[11px] font-mono font-medium border transition-all',
                     (!activeGroups || activeGroups.has(group))
                       ? 'bg-mission/10 border-mission/25 text-mission'
-                      : 'bg-transparent border-seam/50 text-ink-muted/40 hover:text-ink-muted'
+                      : 'bg-transparent border-[rgb(var(--border-rgb)/0.5)] text-ink-muted/40 hover:text-ink-muted'
                   )}
                 >
                   {group}
                 </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ── Graph + Details layout ──────────────────────── */}
@@ -373,14 +360,9 @@ export default function ExplorePage() {
           </CardSpotlight>
 
           {/* ── Details panel ─────────────────────────────── */}
-          <AnimatePresence>
+          
             {selectedDetails && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="lg:w-[340px] shrink-0"
-              >
+              <div className="lg:w-[340px] shrink-0">
                 <CardSpotlight className="p-5 h-full">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2 min-w-0">
@@ -450,23 +432,23 @@ export default function ExplorePage() {
                     </div>
                   </div>
                 </CardSpotlight>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          
         </div>
 
         {/* ── Architecture insights ───────────────────────── */}
         {result && !loading && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <motion.div variants={itemVariants} className="bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
               <div className="text-overline text-ink-muted/50 font-semibold mb-2">Pattern</div>
               <div className="text-ink readout text-body-sm font-medium">{result.architecture_pattern}</div>
               <div className="text-caption text-ink-muted/40 mt-1">
                 {allNodes.length} services · {allEdges.length} dep edges
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div variants={itemVariants} className="md:col-span-2 bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
+            <div className="md:col-span-2 bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
               <div className="text-overline text-ink-muted/50 font-semibold mb-3">Services</div>
               {result.services && result.services.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -487,10 +469,10 @@ export default function ExplorePage() {
               ) : (
                 <span className="text-ink-disabled/50 text-body-xs">No distinct services identified.</span>
               )}
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
 
-    </motion.div>
+    </div>
   )
 }

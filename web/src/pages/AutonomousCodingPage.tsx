@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Robot, GithubLogo, GitBranch, GitPullRequest, FileCode, Play,
   Check, X, Warning, Spinner, TreeStructure, ClockCounterClockwise,
@@ -222,7 +222,7 @@ export default function AutonomousCodingPage() {
 
               {/* Changes (after a successful run) */}
               {result?.success && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
+                <div className="space-y-1">
                   <span className="overline text-ink-muted/70">Changes · PR #{result.pr_number}</span>
                   <div className="px-2 py-1.5 rounded-tile bg-well border border-seam space-y-1">
                     <div className="flex items-center justify-between text-body-xs font-code">
@@ -240,7 +240,7 @@ export default function AutonomousCodingPage() {
                       </div>
                     )}
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           ) : (
@@ -382,18 +382,14 @@ export default function AutonomousCodingPage() {
           <span className="flex items-center gap-1 opacity-90"><GithubLogo size={12} /> {shortRepo(repoUrl)}</span>
         </div>
         <div className="flex items-center gap-3">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={running ? 'run' : result ? (result.success ? 'go' : 'abort') : 'idle'}
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex items-center gap-1 uppercase tracking-wide"
-            >
+          
+            <span key={running ? 'run' : result ? (result.success ? 'go' : 'abort') : 'idle'} className="flex items-center gap-1 uppercase tracking-wide">
               {running ? <><Spinner size={11} className="animate-spin" /> Running</>
                 : result?.success ? <><Check size={11} weight="bold" /> PR #{result.pr_number}</>
                 : result ? <><X size={11} weight="bold" /> Failed</>
                 : <>Ready</>}
-            </motion.span>
-          </AnimatePresence>
+            </span>
+          
           {result?.success && <span className="opacity-90">{result.files_changed ?? 0} files · {result.patches_applied ?? 0} patches</span>}
         </div>
       </footer>

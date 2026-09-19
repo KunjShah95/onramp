@@ -10,7 +10,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { getToken } from '../lib/neon-auth'
 import { PageHeader } from '../components/ui/page-header'
@@ -73,8 +73,6 @@ function isValidTimeHHMM(v: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v)
 }
 
-const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
-const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } } }
 
 /** Signal switch — the one toggle control used across every settings seat. */
 function Toggle({ on, onChange, disabled, danger, label, describedBy }: {
@@ -101,7 +99,7 @@ function Toggle({ on, onChange, disabled, danger, label, describedBy }: {
       )}
     >
       <span aria-hidden="true" className={cn(
-        'absolute top-0.5 w-5 h-5 rounded-full bg-panel-raised shadow-sm transition-all duration-200',
+        'absolute top-0.5 w-5 h-5 rounded-full bg-panel-raised shadow-sm transition-colors duration-150',
         on ? 'left-[22px]' : 'left-[2px]'
       )} />
     </button>
@@ -484,18 +482,18 @@ export default function Settings() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show"      className="w-full max-w-5xl pt-4 sm:pt-8 pb-12">
+    <div className="w-full max-w-5xl pt-4 sm:pt-8 pb-12">
       {/* ── Header ── */}
-      <motion.div variants={item} className="mb-6">
+      <div className="mb-6">
         <PageHeader
           eyebrow="Folio · Settings"
           title="Settings"
           subtitle="Identity · signal routing · outbound links · federation · appearance"
         />
-      </motion.div>
+      </div>
 
       {/* ── Seat selector (segmented control) ── */}
-      <motion.div variants={item} className="mb-6">
+      <div className="mb-6">
         <div className="flex items-center gap-1 rounded-btn border border-seam bg-panel-raised p-1 shadow-seam w-fit max-w-full overflow-x-auto">
           {tabs.map(tab => (
             <button
@@ -514,12 +512,12 @@ export default function Settings() {
             </button>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Account Tab */}
       {activeTab === 'account' && (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
-          <motion.div variants={item}>
+        <div className="space-y-5">
+          <div>
             <ConsolePanel rail="Crew Profile" designator="IDENT" status="go">
               <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
                 <div className="flex flex-col items-center gap-4">
@@ -623,10 +621,10 @@ export default function Settings() {
                 </div>
               </div>
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* API Keys */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel
               rail="API Keys"
               designator="CREDENTIALS"
@@ -714,15 +712,14 @@ export default function Settings() {
               {keys.length === 0 ? (
                 <p className="text-caption text-ink-muted italic">No API keys yet.</p>
               ) : (
-                <motion.div variants={container} initial="hidden" animate="show" className="space-y-2.5">
+                <div className="space-y-2.5">
                   {keys.map(k => {
                     const limit = k.credit_limit ?? 0
                     const used = k.credits_used ?? k.usage_count ?? 0
                     const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
                     const exhausted = limit > 0 && used >= limit
                     return (
-                      <motion.div key={k.key_id} variants={item}
-                        className="bg-well border border-seam rounded-tile px-4 py-3">
+                      <div key={k.key_id} className="bg-well border border-seam rounded-tile px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
                             <Key size={16} className={cn('shrink-0', exhausted ? 'text-abort' : 'text-ink-muted')} />
@@ -762,20 +759,20 @@ export default function Settings() {
                             </button>
                           )}
                         </div>
-                      </motion.div>
+                      </div>
                     )
                   })}
-                </motion.div>
+                </div>
               )}
             </ConsolePanel>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
 
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
-          <motion.div variants={item}>
+        <div className="space-y-5">
+          <div>
             <ConsolePanel rail="Notification Channels" designator="CHANNEL MATRIX" status="go">
               <p className="text-caption text-ink-muted mb-4">Choose which types of notifications you receive and through which channels.</p>
 
@@ -828,9 +825,9 @@ export default function Settings() {
                 </>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
-          <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <ConsolePanel rail="Email Digest" designator="DIGEST" status="standby">
               <p className="text-caption text-ink-muted mb-4">Receive a summary of unread notifications via email.</p>
               {notifPrefs && (
@@ -881,9 +878,9 @@ export default function Settings() {
                 <p className="text-caption text-ink-muted italic">All hours unmuted.</p>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
-          <motion.div variants={item}>
+          <div>
             <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
               <div className="flex items-start gap-3">
                 <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
@@ -895,10 +892,10 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Senior Dev Roast Mode */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Senior Dev Roast Mode" designator="PERSONA" status="abort">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -937,8 +934,8 @@ export default function Settings() {
                 <p className="text-caption text-abort/70 italic mt-3">"Finally, someone who wants the truth. Buckle up." · Senior Dev Roast Bot</p>
               )}
             </ConsolePanel>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
 
       {/* SSO Tab */}
@@ -949,9 +946,9 @@ export default function Settings() {
 
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+        <div className="space-y-5">
           {/* Slack */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Slack" designator="CHAT RELAY" status={slackConnected ? 'go' : 'idle'}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -1003,10 +1000,10 @@ export default function Settings() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* GitHub */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="GitHub" designator="REPO ACCESS" status={githubConnected ? 'go' : 'idle'}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -1055,10 +1052,10 @@ export default function Settings() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* GitLab */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="GitLab" designator="REPO ACCESS" status={gitlabConnected ? 'go' : 'idle'}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -1107,10 +1104,10 @@ export default function Settings() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Bitbucket */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Bitbucket" designator="REPO ACCESS" status={bitbucketConnected ? 'go' : 'idle'}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -1162,31 +1159,31 @@ export default function Settings() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Jira */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Jira" designator="TICKET SYNC" status="standby">
               <JiraIntegrationSection />
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Linear */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Linear" designator="TICKET SYNC" status="standby">
               <LinearIntegrationSection />
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* n8n automation */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="n8n" designator="AUTOMATION BUS" status="standby">
               <N8nIntegrationSection />
             </ConsolePanel>
-          </motion.div>
+          </div>
 
           {/* Webhooks */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel
               rail="Webhooks"
               designator="EVENT BUS"
@@ -1324,9 +1321,9 @@ export default function Settings() {
                 </div>
               )}
             </ConsolePanel>
-          </motion.div>
+          </div>
 
-          <motion.div variants={item}>
+          <div>
             <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
               <div className="flex items-start gap-3">
                 <Lock size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
@@ -1337,10 +1334,10 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -1348,9 +1345,9 @@ function ThemeTabContent() {
   const { theme, accentColor, setTheme, setAccentColor, resetAccentColor } = useTheme()
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+    <div className="space-y-5">
       {/* Theme Picker */}
-      <motion.div variants={item}>
+      <div>
         <ConsolePanel rail="Theme" designator="APPEARANCE" status="standby">
           <p className="text-caption text-ink-muted mb-5">Choose your preferred instrument scheme.</p>
 
@@ -1359,7 +1356,7 @@ function ThemeTabContent() {
               const isActive = theme === t.id
               return (
                 <button key={t.id} onClick={() => setTheme(t.id as Theme)} data-theme={t.id}
-                  className={cn('relative group rounded-card border transition-all duration-200 overflow-hidden text-left',
+                  className={cn('relative group rounded-card border transition-colors duration-150 overflow-hidden text-left',
                     isActive ? 'border-go ring-1 ring-go/30 shadow-seam' : 'border-seam hover:border-seam-strong')}>
                   <div className="h-24 px-4 pt-4 pb-3">
                     <div className="flex items-center gap-2 mb-3">
@@ -1396,16 +1393,16 @@ function ThemeTabContent() {
             })}
           </div>
         </ConsolePanel>
-      </motion.div>
+      </div>
 
       {/* Accent Color */}
-      <motion.div variants={item}>
+      <div>
         <ConsolePanel rail="Accent Color" designator="SIGNAL OVERRIDE" status="standby">
           <p className="text-caption text-ink-muted mb-5">Override the theme's accent color with your own preference.</p>
 
           <div className="flex flex-wrap gap-3">
             <button onClick={resetAccentColor}
-              className={cn('w-10 h-10 rounded-tile border-2 transition-all duration-200 flex items-center justify-center bg-well',
+              className={cn('w-10 h-10 rounded-tile border-2 transition-colors duration-150 flex items-center justify-center bg-well',
                 !accentColor ? 'border-go ring-1 ring-go/30' : 'border-seam hover:border-seam-strong')}
               title="Default accent">
               <Eye size={16} className="text-ink-muted" />
@@ -1414,7 +1411,7 @@ function ThemeTabContent() {
               const isActive = accentColor === c.value
               return (
                 <button key={c.value} onClick={() => setAccentColor(c.value)}
-                  className={cn('w-10 h-10 rounded-tile border-2 transition-all duration-200',
+                  className={cn('w-10 h-10 rounded-tile border-2 transition-colors duration-150',
                     isActive ? 'border-go ring-1 ring-go/30' : 'border-seam hover:border-seam-strong')}
                   style={{ backgroundColor: c.value }} title={c.name} aria-label={c.name} />
               )
@@ -1424,10 +1421,10 @@ function ThemeTabContent() {
             {accentColor ? `Custom accent applied: ${ACCENT_COLORS.find(c => c.value === accentColor)?.name || accentColor}` : 'Using theme default accent'}
           </p>
         </ConsolePanel>
-      </motion.div>
+      </div>
 
       {/* Preview */}
-      <motion.div variants={item}>
+      <div>
         <ConsolePanel rail="Preview" designator="SAMPLE RIG" status="go">
           <p className="text-caption text-ink-muted mb-5">Sample UI elements with your selected theme.</p>
 
@@ -1471,9 +1468,9 @@ function ThemeTabContent() {
             </div>
           </div>
         </ConsolePanel>
-      </motion.div>
+      </div>
 
-      <motion.div variants={item}>
+      <div>
         <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
           <div className="flex items-start gap-3">
             <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
@@ -1484,8 +1481,8 @@ function ThemeTabContent() {
             </div>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
 
@@ -1569,8 +1566,8 @@ function SsoConfigSection() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
-      <motion.div variants={item}>
+    <div className="space-y-5">
+      <div>
         <ConsolePanel rail="SSO / SAML" designator="FEDERATION" status="standby">
           <p className="text-caption text-ink-muted mb-5">Configure single sign-on via SAML 2.0 identity providers.</p>
 
@@ -1663,9 +1660,9 @@ function SsoConfigSection() {
             </div>
           </div>
         </ConsolePanel>
-      </motion.div>
+      </div>
 
-      <motion.div variants={item}>
+      <div>
         <div className="bg-mission/5 border border-mission/15 rounded-card p-5">
           <div className="flex items-start gap-3">
             <Info size={20} className="text-mission shrink-0 mt-0.5" weight="fill" />
@@ -1676,11 +1673,10 @@ function SsoConfigSection() {
             </div>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }
-
 
 /*
  * Jira Integration Section
@@ -1846,7 +1842,6 @@ function JiraIntegrationSection() {
     </>
   )
 }
-
 
 /*
  * Linear Integration Section

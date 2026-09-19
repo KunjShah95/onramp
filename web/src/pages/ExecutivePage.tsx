@@ -7,7 +7,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+
 import { TrendUp, CaretUp, CaretDown } from '@phosphor-icons/react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -37,14 +37,6 @@ const TOOLTIP = {
   boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 90, damping: 18 } },
-}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -85,23 +77,23 @@ export default function ExecutivePage() {
   ]
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
+    <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div variants={item}>
+      <div>
         <PageHeader
           eyebrow="Folio 03 · Executive"
           title="Executive Console"
           subtitle="Revenue trajectory · fleet status · treasury."
           pills={[{ label: 'Data', value: 'Demo' }]}
         />
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div variants={item}>
+        <div>
           <ConsolePanel rail="Signal Lost" designator="ORG" status="abort">
             <p className="text-abort text-body-sm font-code">{error}</p>
           </ConsolePanel>
-        </motion.div>
+        </div>
       )}
 
       {loading ? (
@@ -116,13 +108,13 @@ export default function ExecutivePage() {
       ) : (
         <>
           {/* Big board readouts */}
-          <motion.div variants={item}>
+          <div>
             <ReadoutBank callsign="Org" items={readouts} columns={4} />
-          </motion.div>
+          </div>
 
           {/* Revenue trajectory + fleet */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
-            <motion.div variants={item} className="lg:col-span-3">
+            <div className="lg:col-span-3">
               <ConsolePanel rail="Revenue Trajectory" designator="MRR · 6-MO" status="go" live>
                 <div className="flex items-baseline gap-3 mb-3">
                   <span className="font-code tabular-nums text-3xl md:text-4xl font-semibold text-go leading-none">
@@ -153,26 +145,24 @@ export default function ExecutivePage() {
                   </ResponsiveContainer>
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Top Teams */}
-            <motion.div variants={item} className="lg:col-span-2">
+            <div className="lg:col-span-2">
               <ConsolePanel rail="Fleet · Top Teams" designator={`${d?.top_teams?.length ?? 0} TRACKED`} status="standby">
                 {!d?.top_teams?.length ? (
                   <EmptyState title="No teams" description="Teams will appear once created." />
                 ) : (
                   <div className="space-y-2.5">
-                    {d.top_teams.map((team: any, i: number) => (
-                      <motion.div key={team.name} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                        className="p-2.5 rounded-tile bg-well border border-seam">
+                    {d.top_teams.map((team: any) => (
+                      <div key={team.name} className="p-2.5 rounded-tile bg-well border border-seam">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-body-xs font-medium text-ink truncate">{team.name}</span>
                           <span className="text-caption text-ink-muted font-code">{team.members} crew</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${team.completion_rate}%` }} transition={{ duration: 0.7, delay: i * 0.05 }}
-                              className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} />
+                            <div className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} style={{ width: `${team.completion_rate}%` }} />
                           </div>
                           <span className={cn('readout text-caption tabular-nums', team.completion_rate >= 80 ? 'text-go' : team.completion_rate >= 60 ? 'text-mission' : 'text-abort')}>
                             {team.completion_rate}%
@@ -181,18 +171,18 @@ export default function ExecutivePage() {
                         <div className="mt-1.5 flex items-center gap-1 text-caption text-ink-muted">
                           <TrendUp size={11} weight="bold" /> <span className="font-code">Velocity {team.velocity}x</span>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </div>
 
           {/* Treasury + audit */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Billing */}
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel rail="Treasury · Billing" designator={`${d?.active_subscriptions ?? 0} SUBS`} status="go">
                 <div className="space-y-2.5">
                   {[
@@ -208,7 +198,7 @@ export default function ExecutivePage() {
                       <div key={t.key} className="flex items-center gap-3">
                         <span className="w-20 shrink-0"><StatusTile status={t.tone} label={t.tier} /></span>
                         <div className="flex-1 h-2 rounded-tile bg-well overflow-hidden border border-seam">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} className={cn('h-full', t.bar)} />
+                          <div className={cn('h-full', t.bar)} style={{ width: `${pct}%` }} />
                         </div>
                         <span className="flex items-center gap-1.5 shrink-0">
                           <span className="readout text-ink tabular-nums">{count}</span>
@@ -219,10 +209,10 @@ export default function ExecutivePage() {
                   })}
                 </div>
               </ConsolePanel>
-            </motion.div>
+            </div>
 
             {/* Audit */}
-            <motion.div variants={item}>
+            <div>
               <ConsolePanel rail="Event Log · Audit" designator={`${d?.recent_audit_events?.length ?? 0} EVENTS`} status="standby">
                 {!d?.recent_audit_events?.length ? (
                   <EmptyState title="No audit events" description="Security events will appear here." />
@@ -231,8 +221,7 @@ export default function ExecutivePage() {
                     {d.recent_audit_events.map((event: any, i: number) => {
                       const isDeploy = (event.action ?? '').toLowerCase().includes('deploy')
                       return (
-                        <motion.div key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                          className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
+                        <div key={i} className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
                           <StatusTile status={isDeploy ? 'go' : 'standby'} label={isDeploy ? 'Deploy' : 'Auth'} />
                           <div className="flex-1 min-w-0">
                             <p className="text-body-xs text-ink truncate">
@@ -240,46 +229,46 @@ export default function ExecutivePage() {
                             </p>
                           </div>
                           <span className="text-caption text-ink-muted readout shrink-0">{event.time}</span>
-                        </motion.div>
+                        </div>
                       )
                     })}
                   </div>
                 )}
               </ConsolePanel>
-            </motion.div>
+            </div>
           </div>
 
           {/* Ramp · Senior-Time — health score, ramp cost + stuck devs for the C-suite */}
-          <motion.div variants={item}>
+          <div>
             <RampPanel />
-          </motion.div>
+          </div>
 
           {/* Cohort trend — onboarding improvement across hiring cohorts */}
-          <motion.div variants={item}>
+          <div>
             <CohortTrendPanel />
-          </motion.div>
+          </div>
 
           {/* Retention curves + headcount flow — survival & hiring/attrition */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <motion.div variants={item}>
+            <div>
               <RetentionCurvesPanel />
-            </motion.div>
-            <motion.div variants={item}>
+            </div>
+            <div>
               <HeadcountFlowPanel />
-            </motion.div>
+            </div>
           </div>
 
           {/* Credential cost tracking — live API key budgets for the C-suite */}
-          <motion.div variants={item}>
+          <div>
             <ConsolePanel rail="Credential Cost · Tracking" designator="Live · gateway" status="go">
               <p className="text-caption text-ink-muted mb-4 font-code">
                 API key spend vs. budget · live from the gateway.
               </p>
               <ApiCostTracking />
             </ConsolePanel>
-          </motion.div>
+          </div>
         </>
       )}
-    </motion.div>
+    </div>
   )
 }

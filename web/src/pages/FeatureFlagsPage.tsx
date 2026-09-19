@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+
 import { ToggleLeft, ToggleRight, Plus, Trash, Spinner } from '@phosphor-icons/react'
 import { useAuth } from '../context/AuthContext'
 import { PageHeader } from '../components/ui/page-header'
@@ -22,15 +22,7 @@ const PRESET_FLAGS = [
   { name: 'linear_sync', description: 'Enable Linear ticket synchronization' },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0 },
-}
 
 export default function FeatureFlagsPage() {
   const { activeTeamId } = useAuth()
@@ -105,7 +97,7 @@ export default function FeatureFlagsPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible"      className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       <div className="mb-6">
         <PageHeader
           eyebrow="Folio · Feature flags"
@@ -134,7 +126,7 @@ export default function FeatureFlagsPage() {
               const enabled = isEnabled(preset.name)
               const togglingThis = toggling === preset.name
               return (
-                <motion.div key={preset.name} variants={itemVariants} className="card p-4 flex items-center justify-between gap-4">
+                <div key={preset.name} className="card p-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <code className="text-caption font-code text-go bg-go/5 px-2 py-0.5 rounded border border-go/15">
@@ -142,7 +134,7 @@ export default function FeatureFlagsPage() {
                       </code>
                       <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                        enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-well text-ink-muted'
+                        enabled ? 'bg-go/15 text-go' : 'bg-well text-ink-muted'
                       )}>
                         {enabled ? 'ON' : 'OFF'}
                       </span>
@@ -171,7 +163,7 @@ export default function FeatureFlagsPage() {
                       )}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
           </div>
@@ -185,7 +177,7 @@ export default function FeatureFlagsPage() {
             {flags
               .filter((f) => !PRESET_FLAGS.some((p) => p.name === f.flag_name))
               .map((flag) => (
-                <motion.div key={flag.id} variants={itemVariants} className="card p-4 flex items-center justify-between gap-4">
+                <div key={flag.id} className="card p-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <code className="text-caption font-code text-ink bg-well/50 px-2 py-0.5 rounded">{flag.flag_name}</code>
                   </div>
@@ -207,7 +199,7 @@ export default function FeatureFlagsPage() {
                       )}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ))}
 
             {/* Add custom flag */}
@@ -232,6 +224,6 @@ export default function FeatureFlagsPage() {
           </div>
         </>
       )}
-    </motion.div>
+    </div>
   )
 }

@@ -10,14 +10,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
-import StatusBadge from '../components/ui/status-badge'
+import { statusLabel } from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
-import { ScrollProgress } from '../components/ui/landing-motion'
 import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
@@ -36,19 +34,9 @@ const useSignals = useThemeSignals
 const TOOLTIP = {
   background: 'rgb(var(--bg-elevated))',
   border: '1px solid rgb(var(--border-rgb) / 0.18)',
-  borderRadius: '4px',
+  borderRadius: '6px',
   fontSize: '12px',
   color: 'rgb(var(--text-primary))',
-  boxShadow: '0 4px 16px rgb(var(--border-rgb) / 0.12)',
-}
-
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
 }
 
 function Panel({ callsign, designator, action, className, children }: {
@@ -191,11 +179,10 @@ export default function DashboardPage() {
     : 'N/A'
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden">
-      <ScrollProgress />
+    <div className="min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden">
 
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <div className="index-kicker mb-2.5">Folio 01 · Mission Control</div>
           <div className="flex items-center gap-3">
@@ -206,10 +193,10 @@ export default function DashboardPage() {
             {total_members} engineers · {total_trainees} trainee{total_trainees !== 1 ? 's' : ''} on the bench
           </p>
         </div>
-      </motion.div>
+      </div>
 
       {/* ── Contents line: tabs + primary action ─────────────────────── */}
-      <motion.div variants={item} className="flex items-center justify-between gap-4 border-b border-seam mb-6">
+      <div className="flex items-center justify-between gap-4 border-b border-seam mb-6">
         <div className="flex gap-6 -mb-px overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -235,12 +222,12 @@ export default function DashboardPage() {
           Review queue
           <ArrowRight size={14} weight="bold" className="ml-1.5" />
         </button>
-      </motion.div>
+      </div>
 
       {activeTab === 'overview' && (
         <>
           {/* ── Verdict ────────────────────────────────────────────────── */}
-          <motion.div variants={item} className="mb-6">
+          <div className="mb-6">
             <StatusVerdict
               verdict={verdict}
               label={verdictLabel}
@@ -252,10 +239,10 @@ export default function DashboardPage() {
                 </button>
               }
             />
-          </motion.div>
+          </div>
 
           {/* ── Four Readouts — one ruled strip, hairline-divided ─────── */}
-          <motion.div variants={item} className="mb-6">
+          <div className="mb-6">
             <MetricStrip className="grid-cols-2 lg:grid-cols-4">
               <MetricCell label="Active engineers" value={total_members} sub={`+ ${total_trainees} trainee${total_trainees !== 1 ? 's' : ''}`} />
               <MetricCell
@@ -272,10 +259,10 @@ export default function DashboardPage() {
                 sub={`${total_tasks} tasks total`}
               />
             </MetricStrip>
-          </motion.div>
+          </div>
 
           {/* ── Velocity + Distribution ────────────────────────────────── */}
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 mb-6">
             <ConsoleCard
               rail="Velocity"
               designator="TRAJECTORY · 7 DAYS"
@@ -287,22 +274,12 @@ export default function DashboardPage() {
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="fpColorCompleted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={sig.go} stopOpacity={0.28} />
-                          <stop offset="95%" stopColor={sig.go} stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="fpColorSubmitted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={sig.amber} stopOpacity={0.22} />
-                          <stop offset="95%" stopColor={sig.amber} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={sig.grid} vertical={false} />
+                      <CartesianGrid stroke={sig.grid} vertical={false} />
                       <XAxis dataKey="date" tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dy={6} />
                       <YAxis tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dx={-6} />
-                      <Tooltip contentStyle={TOOLTIP} cursor={{ stroke: sig.grid, strokeDasharray: '2 2' }} />
-                      <Area type="monotone" dataKey="completed" stroke={sig.go} strokeWidth={1.5} fill="url(#fpColorCompleted)" />
-                      <Area type="monotone" dataKey="submitted" stroke={sig.amber} strokeWidth={1.5} fill="url(#fpColorSubmitted)" />
+                      <Tooltip contentStyle={TOOLTIP} cursor={{ stroke: sig.grid }} />
+                      <Area type="monotone" dataKey="completed" stroke={sig.go} strokeWidth={1.5} fill={sig.go} fillOpacity={0.06} />
+                      <Area type="monotone" dataKey="submitted" stroke={sig.amber} strokeWidth={1.5} fill={sig.amber} fillOpacity={0.06} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -341,24 +318,24 @@ export default function DashboardPage() {
                 </div>
               )}
             </ConsoleCard>
-          </motion.div>
+          </div>
 
           {/* ── Ramp · Senior-Time ─────────────────────────────────────── */}
           {showRamp && (
-            <motion.div variants={item} className="mb-6">
+            <div className="mb-6">
               <RampPanel />
-            </motion.div>
+            </div>
           )}
 
           {/* ── Autopilot · Repo Pipeline ──────────────────────────────── */}
           {showRamp && (
-            <motion.div variants={item} className="mb-6">
+            <div className="mb-6">
               <AutopilotPanel />
-            </motion.div>
+            </div>
           )}
 
           {/* ── Review Rail ────────────────────────────────────────────── */}
-          <motion.div variants={item} className="mb-6">
+          <div className="mb-6">
             <Panel callsign="Review queue" designator={pending_reviews.length ? `${pending_reviews.length} pending` : 'clear'}
               action={<button onClick={() => navigate('/reviews')} className="text-caption text-ink-muted/60 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
               {pending_reviews.length === 0 ? (
@@ -380,7 +357,7 @@ export default function DashboardPage() {
                         <TD>
                           <span className="font-medium">{pr.title}</span>
                         </TD>
-                        <TD><StatusBadge state={pr.state} /></TD>
+                        <TD><span className="font-code text-caption text-ink-muted">{statusLabel(pr.state)}</span></TD>
                         <TD>
                           {pr.module ? (
                             <Link
@@ -408,34 +385,34 @@ export default function DashboardPage() {
                 </Table>
               )}
             </Panel>
-          </motion.div>
+          </div>
 
           {/* ── API Cost ───────────────────────────────────────────────── */}
-          <motion.div variants={item}>
+          <div>
             <Panel callsign="API cost" designator="KEYS · BUDGET">
               <ApiCostTracking />
             </Panel>
-          </motion.div>
+          </div>
         </>
       )}
 
       {/* ── Reviews tab ──────────────────────────────────────────────── */}
       {activeTab === 'reviews' && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <Panel callsign="Pending reviews" designator={pending_reviews.length ? `${pending_reviews.length} pending` : 'clear'}
             action={<button onClick={() => navigate('/reviews')} className="text-caption text-ink-muted/60 hover:text-ink-secondary transition-colors font-semibold flex items-center gap-1">Queue <ArrowRight size={12} weight="bold" /></button>}>
             {pending_reviews.length === 0 ? (
               <div className="text-center py-8 text-ink-muted text-body-sm">Review queue clear. Good velocity.</div>
             ) : (
               <div className="divide-y divide-seam">
-                {pending_reviews.map((pr, i) => (
-                  <motion.div key={pr.task_id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                {pending_reviews.map((pr) => (
+                  <div key={pr.task_id}
                     onClick={() => navigate('/reviews')}
                     className="flex items-start gap-3 py-3 hover:bg-well/50 cursor-pointer transition-colors rounded-sm px-1 -mx-1">
                     <div className="flex-1 min-w-0">
                       <div className="text-body-xs text-ink font-medium truncate">{pr.title}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <StatusBadge state={pr.state} />
+                        <span className="font-code text-caption text-ink-muted">{statusLabel(pr.state)}</span>
                         {pr.module && <Link to={`/module/${encodeURIComponent(pr.module)}`} className="text-caption text-mission hover:text-mission-lit font-code transition-colors">{pr.module}</Link>}
                         {pr.assigned_to && memberName(pr.assigned_to) && <span className="text-caption text-ink-muted">by {memberName(pr.assigned_to)}</span>}
                       </div>
@@ -446,22 +423,22 @@ export default function DashboardPage() {
                       )}
                       <span className="text-caption text-ink-muted readout shrink-0">{pr.created_at ? new Date(pr.created_at).toLocaleDateString() : 'N/A'}</span>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
           </Panel>
-        </motion.div>
+        </div>
       )}
 
       {/* ── DORA tab ─────────────────────────────────────────────────── */}
       {activeTab === 'dora' && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <Panel callsign="DORA metrics" designator="DEVOPS RESEARCH & ASSESSMENT">
             <DoraMetricsPanel />
           </Panel>
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   )
 }

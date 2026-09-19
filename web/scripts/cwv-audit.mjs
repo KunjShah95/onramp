@@ -9,7 +9,7 @@
 import { chromium } from '@playwright/test'
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173'
-const ROUTES = ['/', '/pricing', '/login']
+const ROUTES = ['/', '/#pricing', '/login']
 
 // 4x CPU slowdown + mobile network throttling (approx Fast 3G / mid-tier 4G)
 const CDP = { latency: 150, downloadThroughput: 1.6 * 1024 * 1024 / 8, uploadThroughput: 750 * 1024 / 8 }

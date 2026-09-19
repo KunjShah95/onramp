@@ -1,6 +1,6 @@
 import { useState, Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import { Check, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
@@ -10,14 +10,6 @@ import type { NavLinkItem } from '../components/layout/MarketingNav'
 
 const HeatmapGem = lazy(() => import('../components/ui/heatmap-gem'))
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-}
 
 type Currency = 'USD' | 'INR'
 const PRICES: Record<Currency, { sym: string; monthly: number; annual: number }> = {
@@ -51,7 +43,7 @@ const navLinks: NavLinkItem[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
-function Segmented({ options, value, onChange, pillId }: {
+function Segmented({ options, value, onChange }: {
   options: readonly string[]
   value: string
   onChange: (v: string) => void
@@ -72,11 +64,7 @@ function Segmented({ options, value, onChange, pillId }: {
             )}
           >
             {active && (
-              <motion.span
-                layoutId={pillId}
-                className="absolute inset-0 -z-10 rounded-[3px] bg-go shadow-seam"
-                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-              />
+              <span className="absolute inset-0 -z-10 rounded-[3px] bg-go shadow-seam" />
             )}
             {label}
           </button>
@@ -102,18 +90,11 @@ function TeamPrice({ sym, value, fmt }: { sym: string; value: number; fmt: (n: n
     <div className="flex items-baseline gap-1">
       <span className="mt-1 self-start font-display text-[22px] text-[hsl(var(--foreground))]">{sym}</span>
       <span className="relative inline-flex h-[60px] items-end overflow-hidden">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
-            key={value}
-            initial={{ y: '60%', opacity: 0 }}
-            animate={{ y: '0%', opacity: 1 }}
-            exit={{ y: '-60%', opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="font-display text-[48px] sm:text-[64px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums"
-          >
+        
+          <span key={value} className="font-display text-[48px] sm:text-[64px] leading-none tracking-tight text-[hsl(var(--foreground))] tabular-nums">
             {fmt(value)}
-          </motion.span>
-        </AnimatePresence>
+          </span>
+        
       </span>
     </div>
   )
@@ -151,12 +132,8 @@ export default function PricingPage() {
     >
       {/* Hero — one line, one anchor · same pill language */}
       <div className="relative pt-10 pb-10 px-6 text-center max-w-3xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}>
-          <span className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.18)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary" />
-            <span className="font-code text-[10px] font-medium uppercase tracking-[0.16em] text-ink-secondary">Pricing</span>
-          </span>
-          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mt-5 mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+        <div>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
             One flat price. <span className="text-gradient">Your whole team.</span>
           </h1>
           <p className="text-[16px] leading-[1.6] text-ink-secondary mb-8 max-w-xl mx-auto">
@@ -179,18 +156,13 @@ export default function PricingPage() {
               pillId="curpill"
             />
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* 3-tier pricing — equal width, Team featured */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-5 pb-20"
-      >
+      <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-5 pb-20">
         {/* Free — left */}
-        <motion.div variants={itemVariants} className="md:col-span-1">
+        <div className="md:col-span-1">
           <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-seam backdrop-blur-sm">
             <div className="callsign opacity-60">FREE</div>
             <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
@@ -218,11 +190,11 @@ export default function PricingPage() {
               ))}
             </ul>
           </div>
-        </motion.div>
+        </div>
 
         {/* Team — center, featured with gem */}
-        <motion.div variants={itemVariants} className="md:col-span-1">
-          <div className="relative flex h-full flex-col rounded-card border border-go/30 bg-gradient-to-br from-bg-secondary via-bg-secondary to-bg-secondary/80 shadow-overhead p-8 md:p-10 transition-all hover:border-go/50 overflow-hidden">
+        <div className="md:col-span-1">
+          <div className="relative flex h-full flex-col rounded-card border border-go/30 bg-bg-secondary shadow-overhead p-8 md:p-10 transition-all hover:border-go/50 overflow-hidden">
             {/* Heatmap gem — positioned top right, part of card design.
                 Hidden on small screens: the 320px WebGL canvas is expensive
                 on mobile GPUs and the glow div below carries the accent. */}
@@ -237,7 +209,7 @@ export default function PricingPage() {
 
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-go-lit motion-safe:animate-pulse-glow" />
+                <span className="w-1.5 h-1.5 rounded-full bg-go-lit " />
                 <span className="callsign text-go">TEAM · RECOMMENDED</span>
               </div>
               <span className="designator text-ink-secondary">{isAnnual ? 'ANNUAL · 17% OFF' : 'MONTHLY'}</span>
@@ -277,10 +249,10 @@ export default function PricingPage() {
               ))}
             </ul>
           </div>
-        </motion.div>
+        </div>
 
         {/* Enterprise — right */}
-        <motion.div variants={itemVariants} className="md:col-span-1">
+        <div className="md:col-span-1">
           <div className="relative flex h-full flex-col rounded-card border border-seam bg-panel p-7 transition-all hover:border-go/20 hover:shadow-seam backdrop-blur-sm">
             <div className="callsign opacity-60">ENTERPRISE</div>
             <p className="mt-1.5 text-[13.5px] text-[hsl(var(--muted-foreground))] font-body min-h-[38px]">
@@ -309,8 +281,8 @@ export default function PricingPage() {
               ))}
             </ul>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* FAQs — native details, no animation */}
       <div className="max-w-3xl mx-auto px-6 pb-24">

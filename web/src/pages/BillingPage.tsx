@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+
 import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
@@ -34,7 +34,7 @@ export default function BillingPage() {
   const [walletLoading, setWalletLoading] = useState(false)
   const [topUpAmount, setTopUpAmount] = useState(100)
 
-  // Plan intent carried from /pricing → /register|/login → here. The matching
+  // Plan intent carried from landing #pricing → /register|/login → here. The matching
   // tier card is highlighted and scrolled into view so the Razorpay checkout
   // funnel has a clear landing target.
   const [searchParams] = useSearchParams()
@@ -163,8 +163,6 @@ export default function BillingPage() {
     finally { setSubscribingTier(null) }
   }
 
-  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
-  const itemVariants = { hidden: { opacity: 0, y: 16, scale: 0.98 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }
 
   async function handleCancel() {
     if (!teamId.trim() || !subscription || cancelling) return
@@ -240,14 +238,9 @@ export default function BillingPage() {
     : 0
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="relative w-full max-w-6xl mx-auto min-h-[calc(100vh-4rem)] font-body text-ink"
-    >
+    <div className="relative w-full max-w-6xl mx-auto min-h-[calc(100vh-4rem)] font-body text-ink">
       {/* ── Header: title + workspace context in actions ── */}
-      <motion.div variants={itemVariants}>
+      <div>
         <PageHeader
           eyebrow="Folio · Billing"
           title="Billing & plans"
@@ -279,30 +272,30 @@ export default function BillingPage() {
             </div>
           }
         />
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div variants={itemVariants} role="alert" className="mb-5 flex items-start gap-3 px-4 py-3 rounded-card bg-abort/10 border border-abort/25 text-abort text-body-sm">
+        <div role="alert" className="mb-5 flex items-start gap-3 px-4 py-3 rounded-card bg-abort/10 border border-abort/25 text-abort text-body-sm">
           <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-abort-lit shrink-0" aria-hidden />
           <span className="flex-1">{error}</span>
           <button onClick={() => fetchSubscription()} className="underline underline-offset-2 text-caption shrink-0 hover:opacity-80">Retry</button>
-        </motion.div>
+        </div>
       )}
 
       {!teamId && (
-        <motion.div variants={itemVariants} className="mb-8">
+        <div className="mb-8">
           <EmptyState
             icon={<Buildings className="w-10 h-10 text-ink-tertiary/40" weight="duotone" />}
             title="No team workspace selected"
             description="Billing lives on a team. Create one to compare plans and subscribe."
             action={<a href="/team" className="btn btn-primary text-caption px-4 py-2">Go to Teams</a>}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* ── Current subscription overview ── */}
       {teamId && (
-        <motion.div variants={itemVariants} className="mb-8">
+        <div className="mb-8">
           <ConsolePanel
             rail="Current subscription"
             designator={activeTeamName.toUpperCase().slice(0, 24)}
@@ -323,7 +316,7 @@ export default function BillingPage() {
                 Loading subscription…
               </div>
             ) : subscription ? (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-seam/60 rounded-tile overflow-hidden border border-seam/60">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[rgb(var(--border-rgb)/0.6)] rounded-tile overflow-hidden border border-[rgb(var(--border-rgb)/0.6)]">
                 <div className="bg-panel p-4">
                   <div className="overline text-ink-muted mb-1.5 flex items-center gap-1.5">
                     <CreditCard className="w-3.5 h-3.5" aria-hidden /> Plan
@@ -371,12 +364,12 @@ export default function BillingPage() {
               </div>
             )}
           </ConsolePanel>
-        </motion.div>
+        </div>
       )}
 
       {/* ── Usage wallet (usage-based plans) ── */}
       {isUsageBased && (
-        <motion.div variants={itemVariants} className="mb-10">
+        <div className="mb-10">
           <ConsolePanel rail="Credit wallet" designator="PREPAID" status="go">
             {walletLoading ? (
               <div className="flex items-center gap-2 text-body-sm text-ink-muted py-2" role="status" aria-live="polite">
@@ -454,7 +447,7 @@ export default function BillingPage() {
                   {ledger.length > 0 && (
                     <div>
                       <h4 className="overline text-ink-muted mb-2">Recent activity</h4>
-                      <ol className="divide-y divide-seam/60 border border-seam/60 rounded-card overflow-hidden">
+                      <ol className="divide-y divide-[rgb(var(--border-rgb)/0.6)] border border-[rgb(var(--border-rgb)/0.6)] rounded-card overflow-hidden">
                         {ledger.map((entry) => (
                           <li key={entry.entry_id} className="flex items-center gap-3 px-3.5 py-2.5 bg-panel text-body-sm">
                             <span className={cn('w-6 h-6 rounded-tile flex items-center justify-center shrink-0', entry.delta > 0 ? 'bg-go/10 text-go' : 'bg-abort/10 text-abort')}>
@@ -474,13 +467,13 @@ export default function BillingPage() {
               <p className="text-body-sm text-ink-muted py-1">No wallet yet — it is created automatically with your first usage-based charge.</p>
             )}
           </ConsolePanel>
-        </motion.div>
+        </div>
       )}
 
       {/* ── Plan matrix ── */}
       {teamId && (
         <>
-          <motion.div variants={itemVariants} className="flex items-end justify-between gap-4 mb-4">
+          <div className="flex items-end justify-between gap-4 mb-4">
             <div>
               <div className="index-kicker mb-1.5">Tier matrix</div>
               <h2 className="font-display text-display-sm text-ink tracking-tight">Choose the plan that fits this team</h2>
@@ -488,28 +481,28 @@ export default function BillingPage() {
             <span className="hidden sm:inline-flex items-center gap-1.5 text-caption text-ink-tertiary shrink-0">
               <Receipt className="w-3.5 h-3.5" aria-hidden /> Invoices over email
             </span>
-          </motion.div>
+          </div>
 
-          <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
             {tiers.map((tier) => {
               const isCurrent = selectedTier === tier.id
               const isIntent = planIntent === tier.id && !isCurrent
               const busy = subscribingTier === tier.id
               const disabled = !teamId.trim() || isCurrent || !canManage || subscribingTier !== null
               return (
-                <motion.div key={tier.id} variants={itemVariants} className="h-full">
+                <div key={tier.id} className="h-full">
                   <article
                     aria-label={`${tier.label} plan`}
                     ref={(el) => { tierRefs.current[tier.id] = el }}
                     className={cn(
-                      'relative rounded-card border bg-panel p-5 flex flex-col h-full transition-all duration-200',
+                      'relative rounded-card border bg-panel p-5 flex flex-col h-full transition-colors duration-150',
                       isCurrent
                         ? 'border-go/40 ring-1 ring-go/20 shadow-lift'
                         : isIntent
                           ? 'border-go/50 ring-2 ring-go/25 shadow-lift'
                           : tier.popular
-                          ? 'border-seam-strong shadow-card hover:border-go/40 hover:shadow-lift hover:-translate-y-0.5'
-                          : 'border-seam shadow-seam hover:border-seam-strong hover:shadow-card hover:-translate-y-0.5'
+                          ? 'border-seam-strong shadow-card hover:border-go/40  '
+                          : 'border-seam shadow-seam hover:border-seam-strong hover:shadow-card '
                     )}
                   >
                     {/* top row: badge state */}
@@ -571,19 +564,19 @@ export default function BillingPage() {
                       {isCurrent ? 'Current plan' : busy ? 'Redirecting…' : tier.cta}
                     </button>
                   </article>
-                </motion.div>
+                </div>
               )
             })}
-          </motion.div>
+          </div>
 
           {/* ── Assurance strip ── */}
-          <motion.div variants={itemVariants} className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-caption text-ink-tertiary">
+          <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-caption text-ink-tertiary">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" aria-hidden /> Secure checkout via Razorpay</span>
             <span className="hidden sm:inline text-seam-strong" aria-hidden>·</span>
             <span className="inline-flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" aria-hidden /> GST invoices on every payment</span>
             <span className="hidden sm:inline text-seam-strong" aria-hidden>·</span>
             <span>Questions? <a href="/support" className="underline underline-offset-2 text-ink-secondary hover:text-ink">Talk to support</a></span>
-          </motion.div>
+          </div>
         </>
       )}
 
@@ -606,6 +599,6 @@ export default function BillingPage() {
           </div>
         </div>
       </Modal>
-    </motion.div>
+    </div>
   )
 }

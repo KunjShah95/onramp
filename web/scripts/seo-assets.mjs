@@ -60,13 +60,6 @@ const ROUTES = [
       'Onramp turns your repo into a live ramp — learning paths, graded tasks, and a review queue. New devs land their first merged PR faster, seniors stop re-answering the same questions.',
   },
   {
-    route: '/pricing',
-    file: 'pricing.html',
-    title: 'Pricing · One flat price. Your whole team. | Onramp',
-    description:
-      'No per-seat math. Every engineer can ask, explore, and onboard for one flat price per workspace. Free, Team, and Enterprise plans with a 14-day trial.',
-  },
-  {
     route: '/why-onramp',
     file: 'why-onramp.html',
     title: 'Why Onramp, Not Coding Agents | Onramp',
@@ -199,7 +192,6 @@ function resolveBase(template) {
 // Route → source file (relative to web/) for sitemap lastmod stamping.
 const ROUTE_SOURCES = {
   '/': 'src/pages/LandingPage.tsx',
-  '/pricing': 'src/pages/PricingPage.tsx',
   '/why-onramp': 'src/pages/WhyOnrampPage.tsx',
   '/docs': 'src/pages/DocsPage.tsx',
   '/changelog': 'src/pages/ChangelogPage.tsx',
