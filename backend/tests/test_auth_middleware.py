@@ -22,6 +22,7 @@ def _build_app():
         Route("/api/v1/billing/webhook", handler, methods=["POST"]),
         Route("/api/v1/billing/webhook-extra", handler),  # prefix, NOT in public_paths
         Route("/protected", handler),
+        Route("/api/v1/ai/agents", handler),  # gateway prefix (key-auth surface)
     ]
     app = Starlette(routes=routes)
     app.add_middleware(AuthMiddleware, public_paths=PUBLIC_PATHS)
@@ -96,4 +97,28 @@ class TestJWTValidation:
 
     def test_malformed_bearer_header_rejected(self, client):
         resp = client.get("/protected", headers={"Authorization": "NotBearer token"})
+        assert resp.status_code == 401
+
+
+class TestGatewayApiKeyPassthrough:
+    """X-API-Key / cf_ requests must reach the gateway route dependencies.
+
+    The middleware owns JWT sessions only; API keys are validated at the
+    route (get_user_or_api_key). Previously the middleware 401'd them, so
+    the whole AIaaS key path was dead on a live server (tests bypass
+    middleware, which is why they never caught it).
+    """
+
+    def test_x_api_key_passes_middleware_on_gateway_prefix(self, client):
+        resp = client.get("/api/v1/ai/agents", headers={"X-API-Key": "cf_test"})
+        assert resp.status_code != 401
+
+    def test_cf_bearer_passes_middleware_on_gateway_prefix(self, client):
+        resp = client.get(
+            "/api/v1/ai/agents", headers={"Authorization": "Bearer cf_test"}
+        )
+        assert resp.status_code != 401
+
+    def test_x_api_key_still_rejected_off_prefix(self, client):
+        resp = client.get("/protected", headers={"X-API-Key": "cf_test"})
         assert resp.status_code == 401

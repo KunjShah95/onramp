@@ -68,6 +68,11 @@ async def verify_session_token(token: str) -> dict | None:
     return None
 
 
+def _looks_like_api_key(value: str) -> bool:
+    """True when an Authorization header carries an API key, not a JWT."""
+    return value.startswith("Bearer ") and value.split(" ", 1)[1].startswith("cf_")
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, public_paths=None):
         super().__init__(app)
@@ -101,6 +106,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Browser SPA sends tokens via HttpOnly cookies (credentials:include).
         # API clients / mobile apps send tokens via Authorization header.
         # Both paths are supported for backward compatibility.
+        # API keys (X-API-Key header or cf_ Bearer token) are NOT session
+        # tokens — they are validated at the route dependency
+        # (get_user_or_api_key / gateway auth), never here.
         token = None
 
         # 1. Try HttpOnly cookie first (browser SPA path)
@@ -109,10 +117,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
             token = cookie_token
 
         # 2. Fall back to Authorization header (API client / mobile path)
-        if not token:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                token = auth_header.split(" ", 1)[1]
+        auth_header = request.headers.get("Authorization", "")
+        if not token and auth_header.startswith("Bearer ") \
+                and not _looks_like_api_key(auth_header):
+            token = auth_header.split(" ", 1)[1]
+
+        # 3. AIaaS / gateway API-key callers (checked before JWT enforcement:
+        #    API keys are not JWTs). Scoped to the gateway prefixes whose
+        #    route dependencies own key validation — every other path keeps
+        #    JWT enforcement, and JWT-only endpoints still 401 via
+        #    get_current_user when no session was established.
+        if token is None and path.startswith(("/api/v1/ai/", "/v1/")) and (
+            request.headers.get("X-API-Key")
+            or request.headers.get("x-api-key")
+            or _looks_like_api_key(auth_header)
+        ):
+            return await call_next(request)
 
         if not token:
             return self._cors_error_response(

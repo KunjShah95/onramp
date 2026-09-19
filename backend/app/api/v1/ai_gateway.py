@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -46,6 +47,14 @@ async def _require_key_manager_role(org_name: str, user: dict) -> str:
     First-touch: if org has no members, caller becomes owner.
     """
     KEY_MANAGER_ROLES = {"ceo", "cto", "admin", "senior_dev", "senior", "hr"}
+
+    # org_name is a team UUID on the wire (the frontend sends activeTeamId).
+    # Reject anything else with a 400 here — otherwise the team lookup below
+    # blows up with an asyncpg DataError and the client sees a bare 500.
+    try:
+        uuid.UUID(str(org_name))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid organization identifier")
 
     uid = user["uid"]
     members = await get_team_members(org_name)
