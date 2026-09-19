@@ -106,6 +106,28 @@ def _coerce_datetime_columns(model_cls: type, data: dict) -> dict:
     return data
 
 
+def _coerce_uuid_columns(model_cls: type, data: dict) -> dict:
+    """Normalize blank strings to None for UUID columns.
+
+    Service code (from the DynamicDocument era) uses ``""`` as "no value",
+    which asyncpg rejects for typed UUID columns — nullable FKs especially
+    (``invalid UUID '': length must be between 32..36 characters``). Coerce
+    blanks to None so those writes succeed. Writers should still pass None
+    directly; this is a backstop, not an API.
+    """
+    try:
+        columns = class_mapper(model_cls).columns
+    except Exception:
+        return data
+    for key, value in list(data.items()):
+        if not isinstance(value, str) or value.strip():
+            continue
+        col = columns.get(key)
+        if col is not None and isinstance(col.type, PG_UUID):
+            data[key] = None
+    return data
+
+
 # ── Model Registry ────────────────────────────────────────────────────────────
 # Maps collection name -> (model_class, pk_field_name, is_team_member_like, has_members_eager_load)
 
@@ -312,6 +334,7 @@ class PostgresStorage:
         model_cls, pk_field, is_tm, has_members = entry
         data = _translate_metadata_keys(model_cls, dict(data))
         data = _coerce_datetime_columns(model_cls, data)
+        data = _coerce_uuid_columns(model_cls, data)
 
         if is_tm:
             obj = model_cls(**data)
@@ -365,6 +388,7 @@ class PostgresStorage:
         model_cls, pk_field, is_tm, has_members = entry
         data = _translate_metadata_keys(model_cls, dict(data))
         data = _coerce_datetime_columns(model_cls, data)
+        data = _coerce_uuid_columns(model_cls, data)
         pk_val = self._get_pk_value(model_cls, pk_field, doc_id)
 
         if hasattr(model_cls, "updated_at"):

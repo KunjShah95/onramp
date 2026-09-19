@@ -29,6 +29,21 @@ def client():
         yield c
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _warmup(client):
+    """Unmeasured warmup hits so latency tests bill steady state, not cold start.
+
+    The first in-process request pays TestClient/event-loop/cold-cache
+    overhead (routinely >500ms on Windows); thresholds apply after that.
+    """
+    for path in ("/", "/health", "/api/v1/billing/pricing",
+                 "/api/v1/ai/tiers", "/api/v1/explore/health"):
+        try:
+            client.request("GET", path)
+        except Exception:
+            pass
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Baseline Performance Tests
 # ═══════════════════════════════════════════════════════════════════════

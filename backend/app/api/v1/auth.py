@@ -1040,9 +1040,14 @@ async def verify_email_post(body: VerifyEmailRequest):
 
 @router.get("/check-provider", response_model=ProviderCheckResponse)
 async def check_provider(email: str):
-    """Check what auth provider a given email uses (or if it's unregistered)."""
+    """Check what auth provider a given email uses (or if it's unregistered).
+
+    Anti-enumeration: password accounts return the same shape as unknown
+    emails (``registered=False``), so the endpoint is not an account oracle.
+    OAuth providers are surfaced (the login UI needs them for routing).
+    """
     record = await get_user_by_email(email)
-    if record is None:
+    if record is None or record.get("provider") == "password":
         return ProviderCheckResponse(email=email, registered=False, provider=None)
     return ProviderCheckResponse(
         email=email, registered=True, provider=record.get("provider")
