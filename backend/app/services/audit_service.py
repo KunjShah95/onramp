@@ -39,11 +39,15 @@ async def log_event(
     team_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> dict:
+    # team_id is a nullable UUID FK — never store "" (Postgres rejects it).
+    # Normalize empty/blank to None.
+    if not team_id or (isinstance(team_id, str) and not team_id.strip()):
+        team_id = None
     event = {
         "event_type": event_type,
         "actor_id": actor_id,
         "target_id": target_id,
-        "team_id": team_id or "",
+        "team_id": team_id,
         "metadata": metadata or {},
         "timestamp": _utcnow(),
     }
