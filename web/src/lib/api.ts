@@ -3909,7 +3909,11 @@ export async function listN8nWorkflows(): Promise<{ workflows: Array<{ id: strin
   return get(`${API_BASE}/integrations/n8n/workflows`)
 }
 
+<<<<<<< HEAD
 export async function getN8nTemplates(): Promise<{ inbound_url: string; files: string[]; templates: Array<{ name: string; description: string }>; outbound_envelope: unknown; inbound_envelope: unknown }> {
+=======
+export async function getN8nTemplates(): Promise<{ inbound_url: string; templates: Array<{ name: string; description: string }>; outbound_envelope: unknown; inbound_envelope: unknown }> {
+>>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
   return get(`${API_BASE}/integrations/n8n/templates`)
 }
 

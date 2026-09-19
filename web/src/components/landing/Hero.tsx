@@ -29,7 +29,11 @@ export default function Hero() {
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
                 to="/register"
+<<<<<<< HEAD
                 className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-5 text-sm font-medium text-[var(--panel-raised)] transition-colors hover:opacity-90"
+=======
+                className="group inline-flex h-12 items-center gap-2 rounded-md bg-accent-primary px-7 text-[15px] font-semibold text-accent-foreground shadow-[0_0_28px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_36px_rgb(var(--accent-primary)/0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
+>>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
               >
                 Try for free
                 <ArrowRight size={15} weight="bold" />
@@ -56,6 +60,7 @@ export default function Hero() {
                   14 services
                 </span>
               </div>
+<<<<<<< HEAD
               <div className="h-[340px] sm:h-[400px]">
                 <ArchitectureMapStatic className="h-full w-full" />
               </div>
@@ -68,6 +73,42 @@ export default function Hero() {
                 </p>
               </div>
             </div>
+=======
+
+              {/* seated telemetry cards — no float loops, no ping */}
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1.15, ease: EASE }}
+                className="absolute -left-5 top-16 z-30 hidden md:block"
+              >
+                <div className="flex items-center gap-2.5 rounded-card border border-seam bg-panel px-3.5 py-2.5 shadow-seam">
+                  <span className="h-2 w-2 rounded-full bg-go" aria-hidden />
+                  <div className="leading-tight">
+                    <p className="font-code text-[11px] font-semibold text-ink">Map updated</p>
+                    <p className="font-code text-[11px] text-ink-secondary">2m ago · 14 services</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1.3, ease: EASE }}
+                className="absolute -bottom-5 -right-4 z-30 hidden md:block"
+              >
+                <div className="flex items-center gap-2.5 rounded-card border border-seam bg-panel px-3.5 py-2.5 shadow-seam">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-go text-accent-foreground">
+                    <Check size={12} weight="bold" />
+                  </span>
+                  <div className="leading-tight">
+                    <p className="font-code text-[11px] font-semibold text-ink">First PR merged</p>
+                    <p className="font-code text-[11px] text-ink-secondary">Faster to value · #147</p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+>>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
           </div>
         </div>
       </div>

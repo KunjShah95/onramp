@@ -20,7 +20,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     const inputId = id ?? rest.name ?? `input-${label.toLowerCase().replace(/\s+/g, '-')}`
     return (
       <div className="space-y-1.5">
-        <label htmlFor={inputId} className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-tertiary">
+        <label htmlFor={inputId} className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
           {label}
         </label>
         <div className="relative group">

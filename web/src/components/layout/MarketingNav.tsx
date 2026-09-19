@@ -89,7 +89,11 @@ export default function MarketingNav({
           <Link
             to="/register"
             {...prefetchProps('/register')}
+<<<<<<< HEAD
             className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-[rgb(var(--accent-foreground))] transition-colors hover:bg-accent-primary-hover"
+=======
+            className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-accent-foreground shadow-[0_0_24px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_32px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
+>>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
           >
             Try for free
           </Link>

@@ -91,9 +91,9 @@ export default function AuthShell({
             <p className="text-[13px] leading-[1.6] text-ink-secondary">
               "Onramp cut our ramp time from 4 weeks to 5 days. New engineers ship to production in their first week."
             </p>
-            <p className="mt-2 font-code text-[11px] text-ink-tertiary">VP Engineering · Linear-style team · 14 services mapped</p>
+            <p className="mt-2 font-code text-[11px] text-ink-secondary">VP Engineering · Linear-style team · 14 services mapped</p>
           </div>
-          <p className="mt-4 font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs · free-first routing</p>
+          <p className="mt-4 font-code text-[11px] text-ink-secondary">Indexed from source · not from docs · free-first routing</p>
         </div>
       </div>
 
@@ -107,7 +107,7 @@ export default function AuthShell({
             </span>
             <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
           </Link>
-          <span className="inline-flex items-center gap-1.5 font-code text-[10px] uppercase tracking-[0.14em] text-ink-tertiary">
+          <span className="inline-flex items-center gap-1.5 font-code text-[10px] uppercase tracking-[0.14em] text-ink-secondary">
             <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
             {designator}
           </span>
@@ -120,7 +120,7 @@ export default function AuthShell({
               <div className="mb-7">
                 <div className="flex items-center gap-2">
                   <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-                  <span className="font-code text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary">{rail} · {designator}</span>
+                  <span className="font-code text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-secondary">{rail} · {designator}</span>
                 </div>
                 <h1 className="mt-3 font-body text-[22px] font-bold tracking-[-0.015em] text-ink">{title}</h1>
                 {subtitle && <div className="mt-2 text-[13.5px] leading-[1.6] text-ink-secondary">{subtitle}</div>}

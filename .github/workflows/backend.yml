@@ -66,6 +66,17 @@ jobs:
           echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
           cd backend && alembic upgrade head
 
+      - name: Ensure test encryption key (ephemeral fallback)
+        # The crypto suites (field encryption, PII backfill, provider usage)
+        # need a real Fernet key. Prefer the repo secret; otherwise generate
+        # an ephemeral one so forks / secret-less runs stay green.
+        run: |
+          if [ -z "${{ secrets.PII_ENCRYPTION_KEY }}" ]; then
+            KEY=$(python -c "import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())")
+            echo "PII_ENCRYPTION_KEY=$KEY" >> "$GITHUB_ENV"
+            echo "Using ephemeral PII_ENCRYPTION_KEY for tests (repo secret unset)"
+          fi
+
       - name: Run unit & integration tests (memory backend)
         run: |
           cd backend && python -m pytest tests/ -v --timeout=30 \
@@ -76,7 +87,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY || env.PII_ENCRYPTION_KEY }}
 
       - name: Run API contract tests (35 tests — response schemas & error shapes)
         run: |
@@ -85,7 +96,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY || env.PII_ENCRYPTION_KEY }}
 
       - name: Run load/performance tests (13 tests — latency & concurrent throughput)
         run: |
@@ -94,7 +105,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: memory
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY || env.PII_ENCRYPTION_KEY }}
 
       - name: Run tests (PostgreSQL backend)
         run: |
@@ -103,7 +114,7 @@ jobs:
           ENV: test
           STORAGE_BACKEND: postgres
           GROQ_API_KEY: sk-test-placeholder
-          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}
+          PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY || env.PII_ENCRYPTION_KEY }}
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

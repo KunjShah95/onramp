@@ -31,6 +31,7 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
+<<<<<<< HEAD
     <footer className="border-t border-seam bg-room">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         {/* Main grid - 4 columns */}
@@ -40,6 +41,34 @@ export default function Footer() {
             <Link to="/" className="inline-flex items-center gap-2 mb-6" aria-label="Onramp home">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ink text-[var(--panel-raised)]">
                 <TreeStructure size={20} weight="bold" />
+=======
+    <footer className="relative overflow-hidden border-t border-seam bg-room">
+      {/* ambient glows */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 left-[10%] h-[280px] w-[420px] rounded-full bg-accent-primary/[0.08] blur-[110px]" />
+        <div className="absolute -bottom-28 right-[6%] h-[260px] w-[400px] rounded-full bg-go/[0.06] blur-[110px]" />
+      </div>
+      {/* gradient seam on the top edge */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent" />
+      {/* dot grid faded toward the bottom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-50"          style={{
+          backgroundImage: 'radial-gradient(rgb(var(--border-rgb) / 0.10) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+          maskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, black 60%)',
+        }}
+      />
+
+      <div className="relative mx-auto max-w-[1280px] px-6 py-16 lg:px-10">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          {/* brand */}
+          <div className="sm:col-span-2">
+            <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-accent-foreground shadow-[0_0_20px_rgb(var(--accent-primary)/0.3)] ring-1 ring-seam transition-transform duration-200 group-hover:scale-105">
+                <TreeStructure size={17} weight="bold" />
+>>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
               </span>
               <span className="text-xl font-semibold tracking-tight text-ink">Onramp</span>
             </Link>
