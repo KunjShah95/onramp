@@ -8,6 +8,8 @@ import { useEffect } from 'react'
  * tags into <head> on mount. Tags carry a `data-seo` attribute so they are
  * updated in place (no duplicates accumulate on navigation), and pages that
  * don't render <Seo> keep the static defaults from index.html.
+ *
+ * Supports JSON-LD structured data via the `schema` prop for AEO/GEO optimization.
  */
 
 const BASE = (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/+$/, '') || 'https://onramp.app'
@@ -23,6 +25,8 @@ export interface SeoProps {
   image?: string
   /** Exclude the page from search engines (auth pages, app shell). */
   noindex?: boolean
+  /** JSON-LD structured data object(s) for rich results and AI citation. */
+  schema?: object | object[]
 }
 
 /** Upsert a tag identified by `data-seo="key"` — creates it if missing. */
@@ -36,6 +40,29 @@ function upsertTag(key: string, tag: 'meta' | 'link', attrs: Record<string, stri
   for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value)
 }
 
+/** Upsert a JSON-LD script tag with a unique key. */
+function upsertSchema(key: string, schema: object): void {
+  let el = document.head.querySelector<HTMLScriptElement>(`[data-seo-schema="${key}"]`)
+  if (!el) {
+    el = document.createElement('script')
+    el.type = 'application/ld+json'
+    el.setAttribute('data-seo-schema', key)
+    document.head.appendChild(el)
+  }
+  el.textContent = JSON.stringify(schema)
+}
+
+/** Remove schema tags not in the current page's schema list. */
+function cleanupSchemas(activeKeys: string[]): void {
+  const allSchemas = document.head.querySelectorAll<HTMLScriptElement>('[data-seo-schema]')
+  allSchemas.forEach((el) => {
+    const key = el.getAttribute('data-seo-schema')
+    if (key && !activeKeys.includes(key)) {
+      el.remove()
+    }
+  })
+}
+
 export default function Seo({
   title,
   description,
@@ -43,6 +70,7 @@ export default function Seo({
   type = 'website',
   image = DEFAULT_IMAGE,
   noindex = false,
+  schema,
 }: SeoProps) {
   useEffect(() => {
     const url = `${BASE}${path === '/' ? '/' : path}`
@@ -72,7 +100,22 @@ export default function Seo({
       name: 'robots',
       content: noindex ? 'noindex, nofollow' : 'index, follow',
     })
-  }, [title, description, path, type, image, noindex])
+
+    // Structured data (JSON-LD)
+    if (schema) {
+      const schemas = Array.isArray(schema) ? schema : [schema]
+      schemas.forEach((s, i) => {
+        const key = `schema-${path.replace(/\//g, '-')}-${i}`
+        upsertSchema(key, s)
+      })
+      // Clean up old schemas from previous pages
+      const activeKeys = schemas.map((_, i) => `schema-${path.replace(/\//g, '-')}-${i}`)
+      cleanupSchemas(activeKeys)
+    } else {
+      // Clean up all schemas if none provided for this page
+      cleanupSchemas([])
+    }
+  }, [title, description, path, type, image, noindex, schema])
 
   return null
 }

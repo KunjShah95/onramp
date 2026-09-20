@@ -74,7 +74,64 @@ const sections: LegalSection[] = [
   },
 ]
 
+/** Build TermsOfService schema */
+function buildTermsSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Terms of Service · Onramp',
+    description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.',
+    url: 'https://onramp.app/terms',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    datePublished: '2025-01-01',
+    dateModified: '2026-07-02',
+    mainEntity: {
+      '@type': 'TermsOfService',
+      name: 'Onramp Terms of Service',
+      description: 'Terms governing use of Onramp AI-powered developer onboarding platform.',
+      serviceType: 'SaaS',
+      governingLaw: 'US-CA',
+      lastUpdated: '2026-07-02',
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for Terms page */
+function buildTermsBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Legal',
+        item: 'https://onramp.app/terms',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Terms of Service',
+        item: 'https://onramp.app/terms',
+      },
+    ],
+  }
+}
+
 export default function TermsPage() {
+  const termsSchema = buildTermsSchema()
+  const breadcrumbSchema = buildTermsBreadcrumbSchema()
+
   return (
     <LegalLayout
       label="Legal"
@@ -82,7 +139,12 @@ export default function TermsPage() {
       lastUpdated="July 2, 2026"
       intro="These terms govern your use of Onramp. Please read them carefully; they include limits on our liability and your responsibilities when using AI-generated output."
       sections={sections}
-      seo={{ title: 'Terms of Service · Onramp', description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.', path: '/terms' }}
+      seo={{
+        title: 'Terms of Service · Onramp',
+        description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.',
+        path: '/terms',
+        schema: [termsSchema, breadcrumbSchema],
+      }}
     />
   )
 }

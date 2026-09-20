@@ -237,6 +237,126 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
   },
 }
 
+/** Build HowTo schema for the quickstart guide */
+function buildHowToSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to get started with Onramp',
+    description: 'Step-by-step guide to analyzing your first repository with Onramp and using the AI codebase mentor.',
+    image: 'https://onramp.app/og-image.png',
+    estimatedCost: {
+      '@type': 'MonetaryAmount',
+      currency: 'USD',
+      value: '0',
+    },
+    supply: [
+      { '@type': 'HowToSupply', name: 'GitHub repository URL (public or private with token)' },
+      { '@type': 'HowToSupply', name: 'Onramp account' },
+    ],
+    tool: [
+      { '@type': 'HowToTool', name: 'Onramp web app' },
+    ],
+    step: [
+      {
+        '@type': 'HowToStep',
+        name: 'Create an Onramp account',
+        text: 'Sign up at onramp.app using GitHub, Google, or email. The free plan includes 1 repository and 100 AI mentor questions per month.',
+        url: 'https://onramp.app/register',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Navigate to the Explore tab',
+        text: 'After logging in, click "Explore" in the navigation. This is where you add repositories for analysis.',
+        url: 'https://onramp.app/explore',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Paste a GitHub repository URL',
+        text: 'Enter any public GitHub URL (e.g., https://github.com/vercel/next.js) or connect a private repo with a GitHub token.',
+        url: 'https://onramp.app/explore',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Wait for analysis to complete',
+        text: 'Onramp clones, parses, and indexes the repository. Analysis takes ~30 seconds for small repos (<500 files), ~90 seconds for medium repos (<5k files), and 2-4 minutes for large repos (5k+ files).',
+        url: 'https://onramp.app/explore',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Explore the architecture graph',
+        text: 'View the live dependency graph showing services, modules, and their relationships. Click any node to see file paths, functions, and AI-generated summaries.',
+        url: 'https://onramp.app/explore',
+      },
+      {
+        '@type': 'HowToStep',
+        name: 'Ask questions about the codebase',
+        text: 'Navigate to "Ask Codebase" and ask questions in plain English. Onramp returns grounded answers with exact file paths and line numbers.',
+        url: 'https://onramp.app/ask',
+      },
+    ],
+    totalTime: 'PT5M',
+  }
+}
+
+/** Build FAQ schema for documentation */
+function buildDocsFAQSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What languages does Onramp support?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Onramp supports Python, JavaScript, TypeScript, Go, Rust, and Java with full AST parsing. Other languages are indexed as text with basic symbol extraction.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How long does repository analysis take?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Analysis time depends on repository size: small repos (<500 files) take ~30 seconds, medium repos (<5k files) take ~90 seconds, and large repos (5k+ files) take 2-4 minutes. Only diffs are re-processed on subsequent pushes.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can Onramp analyze private repositories?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Provide a GitHub personal access token with repo scope when adding a private repository. The token is encrypted and only used for cloning.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is my source code stored by Onramp?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. Onramp discards raw source files after analysis. Only the indexed knowledge graph (symbols, relationships, AI summaries) is stored. Your code never leaves the analysis pipeline.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I self-host Onramp?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Self-hosting via Docker Compose is available on the Enterprise plan. Requires Docker 24+, 4GB RAM minimum, and PostgreSQL. See the Self-hosting section for full setup instructions.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What LLM providers does Onramp use?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Onramp uses a free-first multi-provider router: OpenRouter, Gemini, Groq, NVIDIA, Mistral (free tiers), then OpenAI, Anthropic, Hugging Face (paid fallbacks), and local Ollama. Providers without API keys are skipped automatically.',
+        },
+      },
+    ],
+  }
+}
+
 const defaultSection = 'overview'
 
 
@@ -244,11 +364,19 @@ export default function DocsPage() {
   const [active, setActive] = useState(defaultSection)
   const current = content[active] ?? content[defaultSection]
 
+  const howToSchema = buildHowToSchema()
+  const faqSchema = buildDocsFAQSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
       topPadding="pt-0"
-      seo={{ title: 'Documentation · Onramp', description: 'Guides, API references, and setup walkthroughs for the whole Onramp platform.', path: '/docs' }}
+      seo={{
+        title: 'Documentation · Onramp',
+        description: 'Guides, API references, and setup walkthroughs for the whole Onramp platform. Learn how to analyze repos, ask your codebase, use the API, and self-host.',
+        path: '/docs',
+        schema: [howToSchema, faqSchema],
+      }}
     >
       <div className="flex max-w-6xl mx-auto">
         {/* Sidebar */}
@@ -262,10 +390,10 @@ export default function DocsPage() {
                     key={item.id}
                     onClick={() => setActive(item.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
- active === item.id
- ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--accent))] font-medium'
- : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]/50'
- }`}
+                      active === item.id
+                        ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--accent))] font-medium'
+                        : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))]/50'
+                    }`}
                   >
                     {item.label}
                   </button>

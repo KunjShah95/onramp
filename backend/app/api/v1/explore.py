@@ -52,6 +52,20 @@ async def analyze_repo(request: ExploreRequest, req: Request, response: Response
         if isinstance(result, dict) and sid:
             result["session_id"] = sid
         await complete_session(sid, "architecture_explorer", success=True, payload={"repo_url": request.repo_url, "index_id": request.index_id})
+        # Persist a durable snapshot so the graph survives reloads and Redis
+        # TTL expiry (best-effort — never block analysis on storage).
+        if isinstance(result, dict):
+            try:
+                from app.services.architecture_store import architecture_store
+
+                await architecture_store.save_from_analyze(
+                    result,
+                    repo_url=str(request.repo_url),
+                    branch=request.branch,
+                    index_id=request.index_id,
+                )
+            except Exception:
+                pass
         return result
     except HTTPException:
         raise

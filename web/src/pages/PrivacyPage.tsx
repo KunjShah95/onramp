@@ -75,7 +75,67 @@ const sections: LegalSection[] = [
   },
 ]
 
+/** Build PrivacyPolicy schema */
+function buildPrivacySchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Privacy Policy · Onramp',
+    description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.',
+    url: 'https://onramp.app/privacy',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    datePublished: '2025-01-01',
+    dateModified: '2026-07-02',
+    mainEntity: {
+      '@type': 'PrivacyPolicy',
+      name: 'Onramp Privacy Policy',
+      description: 'Comprehensive privacy policy covering data collection, AI processing, sharing, retention, security, cookies, user rights, and compliance with GDPR/CCPA.',
+      policyScope: 'Global',
+      applicableRegions: ['EU', 'US', 'CA'],
+      compliance: {
+        gdpr: true,
+        ccpa: true,
+      },
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for Privacy page */
+function buildPrivacyBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Legal',
+        item: 'https://onramp.app/privacy',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Privacy Policy',
+        item: 'https://onramp.app/privacy',
+      },
+    ],
+  }
+}
+
 export default function PrivacyPage() {
+  const privacySchema = buildPrivacySchema()
+  const breadcrumbSchema = buildPrivacyBreadcrumbSchema()
+
   return (
     <LegalLayout
       label="Legal"
@@ -83,7 +143,12 @@ export default function PrivacyPage() {
       lastUpdated="July 2, 2026"
       intro="This policy explains what information Onramp collects, how we use it, and the choices you have. It applies to the Onramp web application, API, and SDK."
       sections={sections}
-      seo={{ title: 'Privacy Policy · Onramp', description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.', path: '/privacy' }}
+      seo={{
+        title: 'Privacy Policy · Onramp',
+        description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.',
+        path: '/privacy',
+        schema: [privacySchema, breadcrumbSchema],
+      }}
     />
   )
 }

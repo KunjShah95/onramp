@@ -9,13 +9,7 @@ function ConfusionLoop() {
   return (
     <div className="space-y-2">
       <div className="rounded-md border border-seam bg-well p-3">
-<<<<<<< HEAD
         <div className="font-code text-[11px] text-ink-tertiary">docs/architecture.md</div>
-=======
-        <div className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-secondary">
-          docs/architecture.md
-        </div>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
         <div className="mt-2 space-y-1.5">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-1.5 rounded-full bg-seam" style={{ width: `${88 - i * 18}%` }} />
@@ -52,26 +46,14 @@ function HealthLoop() {
       <div className="grid grid-cols-2 gap-2">
         {[0, 1].map((i) => (
           <div key={i} className="rounded-md border border-seam bg-well p-3">
-<<<<<<< HEAD
             <div className="font-code text-[11px] text-ink-tertiary">onboarding</div>
             <div className="mt-1 text-lg font-semibold text-ink-tertiary">N/A</div>
-=======
-            <div className="font-code text-[10px] text-ink-secondary">onboarding</div>
-            <div className="mt-1 font-body text-lg font-semibold text-ink-secondary">N/A</div>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between rounded-md border border-seam bg-panel px-3 py-2">
-<<<<<<< HEAD
         <span className="font-code text-[11px] text-ink-tertiary">success rate</span>
         <span className="font-code text-[11px] text-ink-tertiary">n/a</span>
-=======
-        <span className="font-code text-[10px] uppercase tracking-[0.12em] text-ink-secondary">
-          success rate
-        </span>
-        <span className="font-code text-[10px] text-ink-secondary">n/a</span>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
       </div>
     </div>
   )

@@ -1,4 +1,3 @@
-
 import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star, Megaphone, Plus, CaretUp, Hexagon } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -7,6 +6,7 @@ const entries = [
   {
     version: '2.1.0',
     date: 'June 2026',
+    dateISO: '2026-06-15',
     tag: 'feature' as const,
     icon: GitPullRequest,
     title: 'PR Description Generator',
@@ -19,6 +19,7 @@ const entries = [
   {
     version: '2.0.4',
     date: 'May 2026',
+    dateISO: '2026-05-20',
     tag: 'feature' as const,
     icon: ChartBar,
     title: 'Streaming Q&A + Conversation Memory',
@@ -32,6 +33,7 @@ const entries = [
   {
     version: '2.0.3',
     date: 'April 2026',
+    dateISO: '2026-04-18',
     tag: 'fix' as const,
     icon: Star,
     title: 'Force Graph & Architecture Explorer',
@@ -45,6 +47,7 @@ const entries = [
   {
     version: '2.0.2',
     date: 'March 2026',
+    dateISO: '2026-03-22',
     tag: 'fix' as const,
     icon: ArrowCounterClockwise,
     title: 'Quota enforcement + usage tracking',
@@ -57,6 +60,7 @@ const entries = [
   {
     version: '2.0.1',
     date: 'February 2026',
+    dateISO: '2026-02-14',
     tag: 'improvement' as const,
     title: 'PostgreSQL backend + API key management',
     items: [
@@ -68,6 +72,7 @@ const entries = [
   {
     version: '2.0.0',
     date: 'January 2026',
+    dateISO: '2026-01-20',
     tag: 'major' as const,
     icon: Star,
     title: 'Onramp 2.0 - full rewrite',
@@ -81,7 +86,7 @@ const entries = [
 ]
 
 const tagStyles: Record<string, string> = {
-    major:       'bg-go/10 text-foreground border-go/25',
+  major:       'bg-go/10 text-foreground border-go/25',
   // Hardcoded light-theme hex values fail contrast on the dark landing
   // surface — use the semantic info/success tokens so badges adapt per theme.
   feature:     'bg-mission/10 text-mission border-mission/25',
@@ -102,12 +107,66 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
 ]
 
+/** Build ChangelogPage schema */
+function buildChangelogSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Onramp Changelog',
+    description: 'Product updates and release notes for Onramp — the AI-powered developer onboarding platform.',
+    url: 'https://onramp.app/changelog',
+    numberOfItems: entries.length,
+    itemListElement: entries.map((entry, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'SoftwareVersion',
+        name: `Onramp ${entry.version}`,
+        version: entry.version,
+        datePublished: entry.dateISO,
+        description: entry.items.join(' '),
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Web',
+      },
+    })),
+  }
+}
+
+/** Build BreadcrumbList schema for Changelog page */
+function buildChangelogBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Changelog',
+        item: 'https://onramp.app/changelog',
+      },
+    ],
+  }
+}
 
 export default function ChangelogPage() {
+  const changelogSchema = buildChangelogSchema()
+  const breadcrumbSchema = buildChangelogBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Changelog · Onramp', description: 'Product updates and release notes for Onramp · the AI-powered developer onboarding platform.', path: '/changelog' }}
+      seo={{
+        title: 'Changelog · Onramp',
+        description: 'Product updates and release notes for Onramp · the AI-powered developer onboarding platform.',
+        path: '/changelog',
+        schema: [changelogSchema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-2xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}

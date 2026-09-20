@@ -118,7 +118,7 @@ export default function Register() {
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px bg-seam" />
-            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-secondary">or email</span>
+            <span className="font-code text-[11px] font-medium uppercase tracking-[0.1em] text-ink-tertiary">or email</span>
             <div className="flex-1 h-px bg-seam" />
           </div>
 

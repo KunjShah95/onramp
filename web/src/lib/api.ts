@@ -1248,6 +1248,101 @@ export async function fetchRepoSections(
   )
 }
 
+// ── Durable architecture graph (permanent repo snapshots) ─────────────────
+
+export interface RepoGraphService {
+  name: string
+  files: string[]
+  description?: string
+}
+
+export interface RepoGraphCommit {
+  sha: string
+  author: string
+  email?: string
+  date: string | null
+  subject: string
+}
+
+export interface RepoGraphEvolution {
+  commit_count?: number
+  recent_commits?: RepoGraphCommit[]
+  head_changed_files?: string[]
+  top_contributors?: string[]
+  file_ownership?: Record<string, { changes: number; top_author: string; authors: string[] }>
+}
+
+export interface RepoGraphSnapshot {
+  id: string
+  repo_url: string
+  owner: string
+  name: string
+  branch: string
+  index_id?: string | null
+  commit?: string | null
+  architecture_pattern: string
+  services: RepoGraphService[]
+  dependencies: Record<string, string[]>
+  circular_dependencies: string[][]
+  architecture_diagram?: string
+  is_collapsed?: boolean
+  stats?: {
+    file_count?: number
+    class_count?: number
+    function_count?: number
+    import_count?: number
+  }
+  evolution?: RepoGraphEvolution
+  source: string
+  built_at: string
+}
+
+export interface RepoGraphResponse {
+  snapshot: RepoGraphSnapshot | null
+  repo_url: string
+  branch: string
+  /** true = cached index is on a newer commit; null = unknown. */
+  stale: boolean | null
+  /** true while a rebuild is in flight (cross-process Redis flag). */
+  building: boolean
+  history?: RepoGraphSnapshot[]
+}
+
+export async function fetchRepoGraph(
+  owner: string,
+  repo: string,
+  opts: { branch?: string; includeHistory?: boolean; historyLimit?: number } = {}
+): Promise<RepoGraphResponse> {
+  const params = new URLSearchParams()
+  if (opts.branch) params.set('branch', opts.branch)
+  if (opts.includeHistory) params.set('include_history', 'true')
+  if (opts.historyLimit) params.set('history_limit', String(opts.historyLimit))
+  const qs = params.toString()
+  return get<RepoGraphResponse>(
+    `${API_BASE}/repos/${owner}/${repo}/graph${qs ? `?${qs}` : ''}`
+  )
+}
+
+export async function rebuildRepoGraph(
+  owner: string,
+  repo: string,
+  branch = 'main'
+): Promise<RepoGraphResponse> {
+  return request<RepoGraphResponse>(
+    `${API_BASE}/repos/${owner}/${repo}/graph/rebuild?branch=${encodeURIComponent(branch)}`,
+    undefined
+  )
+}
+
+export async function fetchRepoGraphHistory(
+  owner: string,
+  repo: string,
+  limit = 20
+): Promise<RepoGraphSnapshot[]> {
+  const res = await fetchRepoGraph(owner, repo, { includeHistory: true, historyLimit: limit })
+  return res.history ?? []
+}
+
 // ── Seed Data ─────────────────────────────────────────────────
 export interface SeedRoleData {
   role: string
@@ -3909,11 +4004,7 @@ export async function listN8nWorkflows(): Promise<{ workflows: Array<{ id: strin
   return get(`${API_BASE}/integrations/n8n/workflows`)
 }
 
-<<<<<<< HEAD
 export async function getN8nTemplates(): Promise<{ inbound_url: string; files: string[]; templates: Array<{ name: string; description: string }>; outbound_envelope: unknown; inbound_envelope: unknown }> {
-=======
-export async function getN8nTemplates(): Promise<{ inbound_url: string; templates: Array<{ name: string; description: string }>; outbound_envelope: unknown; inbound_envelope: unknown }> {
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
   return get(`${API_BASE}/integrations/n8n/templates`)
 }
 

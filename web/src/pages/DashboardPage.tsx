@@ -256,7 +256,19 @@ export default function DashboardPage() {
                 label="Repo health"
                 value={codeHealth !== null ? `${codeHealth}%` : 'N/A'}
                 accent={codeHealth !== null && codeHealth < 50 ? 'text-abort' : undefined}
-                sub={`${total_tasks} tasks total`}
+                sub={
+                  reposData?.repos?.[0] ? (
+                    <Link
+                      to={`/explore?owner=${encodeURIComponent(reposData.repos[0].owner)}&repo=${encodeURIComponent(reposData.repos[0].name)}`}
+                      className="inline-flex items-center gap-1 text-mission hover:text-mission-lit transition-colors"
+                    >
+                      View architecture
+                      <ArrowRight size={10} weight="bold" />
+                    </Link>
+                  ) : (
+                    `${total_tasks} tasks total`
+                  )
+                }
               />
             </MetricStrip>
           </div>

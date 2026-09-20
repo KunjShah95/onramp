@@ -1,7 +1,39 @@
+# /robots.txt
 User-agent: *
 Allow: /
 
-# The SPA routes are client-rendered; allow everything public.
+# AI Search Bots — ALLOW ALL for maximum citation potential
+User-agent: GPTBot           # OpenAI / ChatGPT
+Allow: /
+
+User-agent: ChatGPT-User     # ChatGPT browsing mode
+Allow: /
+
+User-agent: PerplexityBot    # Perplexity AI
+Allow: /
+
+User-agent: ClaudeBot        # Anthropic Claude
+Allow: /
+
+User-agent: anthropic-ai     # Anthropic alternate
+Allow: /
+
+User-agent: Google-Extended   # Google Gemini & AI Overviews
+Allow: /
+
+User-agent: Bingbot          # Microsoft Copilot
+Allow: /
+
+# Block only training-only crawlers if desired (doesn't affect search citation)
+User-agent: CCBot            # Common Crawl - training only
+Disallow: /
+
+# Protect private/admin areas
+Disallow: /admin/
 Disallow: /api/
+Disallow: /private/
+Disallow: /checkout/
+Disallow: /account/
+Disallow: /*.json$
 
 Sitemap: https://onramp.app/sitemap.xml

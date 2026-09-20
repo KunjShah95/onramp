@@ -1,4 +1,3 @@
-
 import { UsersThree, Sparkle, Globe, ShieldCheck } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -8,7 +7,6 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
-
 
 const values = [
   {
@@ -33,11 +31,72 @@ const values = [
   },
 ]
 
+/** Build AboutPage schema */
+function buildAboutSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: 'About Onramp',
+    description: 'The team and mission behind Onramp — AI-powered developer onboarding for modern engineering teams.',
+    url: 'https://onramp.app/about',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      description: 'Onramp indexes your codebase into a live architecture map and guides developers through their first PR.',
+      url: 'https://onramp.app/',
+      logo: 'https://onramp.app/icon-512.svg',
+      sameAs: [
+        'https://twitter.com/onramp_ai',
+        'https://linkedin.com/company/onramp-ai',
+        'https://github.com/onramp-ai',
+      ],
+      foundingDate: '2025',
+      knowsAbout: [
+        'Developer onboarding',
+        'Codebase analysis',
+        'AI-powered developer tools',
+        'Architecture visualization',
+        'Engineering velocity',
+      ],
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for About page */
+function buildAboutBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'About',
+        item: 'https://onramp.app/about',
+      },
+    ],
+  }
+}
+
 export default function AboutPage() {
+  const aboutSchema = buildAboutSchema()
+  const breadcrumbSchema = buildAboutBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'About · Onramp', description: 'The team and mission behind Onramp · AI-powered developer onboarding for modern engineering teams.', path: '/about' }}
+      seo={{
+        title: 'About · Onramp',
+        description: 'The team and mission behind Onramp · AI-powered developer onboarding for modern engineering teams.',
+        path: '/about',
+        schema: [aboutSchema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Hero */}

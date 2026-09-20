@@ -98,11 +98,93 @@ function TextField({
   )
 }
 
+/** Build ContactPage schema */
+function buildContactSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    name: 'Contact · Onramp',
+    description: 'Talk to the Onramp team. We get back to you within one business day.',
+    url: 'https://onramp.app/contact',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      url: 'https://onramp.app/',
+      contactPoint: [
+        {
+          '@type': 'ContactPoint',
+          telephone: '+1-555-123-4567',
+          contactType: 'customer service',
+          availableLanguage: 'English',
+          email: 'hello@onramp.ai',
+        },
+        {
+          '@type': 'ContactPoint',
+          telephone: '+1-555-123-4567',
+          contactType: 'sales',
+          availableLanguage: 'English',
+          email: 'sales@onramp.ai',
+        },
+        {
+          '@type': 'ContactPoint',
+          telephone: '+1-555-123-4567',
+          contactType: 'technical support',
+          availableLanguage: 'English',
+          email: 'support@onramp.ai',
+        },
+        {
+          '@type': 'ContactPoint',
+          telephone: '+1-555-123-4567',
+          contactType: 'press',
+          availableLanguage: 'English',
+          email: 'press@onramp.ai',
+        },
+      ],
+      sameAs: [
+        'https://github.com/onramp',
+        'https://x.com/onramp',
+        'https://linkedin.com/company/onramp',
+        'https://discord.gg/onramp',
+      ],
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for Contact page */
+function buildContactBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Contact',
+        item: 'https://onramp.app/contact',
+      },
+    ],
+  }
+}
+
 export default function ContactPage() {
+  const contactSchema = buildContactSchema()
+  const breadcrumbSchema = buildContactBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Contact · Onramp', description: 'Talk to the Onramp team. We get back to you within one business day.', path: '/contact' }}
+      seo={{
+        title: 'Contact · Onramp',
+        description: 'Talk to the Onramp team. We get back to you within one business day.',
+        path: '/contact',
+        schema: [contactSchema, breadcrumbSchema],
+      }}
     >
       <div className="mx-auto max-w-6xl px-6 pb-24 pt-12 lg:px-10">
         <EditorialHero

@@ -372,12 +372,17 @@ async def _handle_push_event(payload: dict) -> dict:
 
     # Only registered repos get the rebuild + invalidation treatment.
     registered = False
+    repo_row: dict = {}
     try:
         from app.services.postgres_db import get_storage
 
         rows = await get_storage().list_documents("repositories") or []
         if repo_url:
-            registered = any((r.get("url") or "").strip() == repo_url for r in rows)
+            for r in rows:
+                if (r.get("url") or "").strip() == repo_url:
+                    registered = True
+                    repo_row = r
+                    break
         if not registered:
             for r in rows:
                 if (
@@ -385,6 +390,7 @@ async def _handle_push_event(payload: dict) -> dict:
                     == full_name.lower()
                 ):
                     registered = True
+                    repo_row = r
                     break
     except Exception:
         logger.exception("Failed to check repositories registry for %s", full_name)
@@ -424,8 +430,45 @@ async def _handle_push_event(payload: dict) -> dict:
             )
             task_id = getattr(result, "id", "")
             dispatched = True
+            # Flag "rebuilding" in the API process too, so an open page shows
+            # the state immediately instead of waiting for the worker.
+            try:
+                from app.services.architecture_store import architecture_store
+
+                await architecture_store.mark_building(scope)
+            except Exception:
+                logger.debug("Could not mark building for %s", scope, exc_info=True)
         except Exception:
             logger.exception("Failed to dispatch index rebuild for %s", repo_url)
+
+    # 3) Tell connected teammates the repo graph is being refreshed, so their
+    #    architecture view refetches once the rebuild lands. Best-effort.
+    head_sha = (payload.get("after") or (commits[-1].get("id") if commits else "") or "")[:12]
+    owner = repo_row.get("owner") or (full_name.split("/")[0] if "/" in full_name else "")
+    name = repo_row.get("name") or (full_name.split("/")[-1] if "/" in full_name else "")
+    if dispatched:
+        try:
+            from app.services.team_service import get_team_members
+            from app.services.ws_manager import manager
+
+            team_id = repo_row.get("team_id")
+            user_ids = []
+            if team_id:
+                members = await get_team_members(team_id) or []
+                user_ids = [m.get("user_id") for m in members if m.get("user_id")]
+            if user_ids:
+                await manager.broadcast_to_team(team_id, {
+                    "type": "repo_graph",
+                    "event": "rebuild_started",
+                    "repo_url": repo_url,
+                    "owner": owner,
+                    "name": name,
+                    "branch": _branch,
+                    "commit": head_sha,
+                    "commit_count": len(commits),
+                }, user_ids)
+        except Exception:
+            logger.exception("Failed to broadcast repo graph rebuild for %s", full_name)
 
     return {
         "handled": True,
@@ -433,6 +476,7 @@ async def _handle_push_event(payload: dict) -> dict:
         "branch": _branch,
         "commit_count": len(commits),
         "repo_url": repo_url,
+        "commit": head_sha,
         "rebuild_triggered": dispatched,
         "task_id": task_id,
         "cache_entries_evicted": evicted,

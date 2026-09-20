@@ -1,4 +1,3 @@
-
 import { Star, Quotes, ArrowRight, Buildings, Rocket, ChartLineUp, Users } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -9,7 +8,6 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
-
 
 const logos = [
   'Vercel', 'Linear', 'Supabase', 'Cal.com', 'Trigger.dev', 'Railway',
@@ -72,11 +70,86 @@ const caseStudies = [
   },
 ]
 
+/** Build CustomersPage schema */
+function buildCustomersSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Customers · Onramp',
+    description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding for companies like Vercel, Linear, and Supabase.',
+    url: 'https://onramp.app/customers',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      name: 'Onramp Customer Testimonials',
+      description: 'Verified testimonials from engineering leaders at leading tech companies.',
+      numberOfItems: testimonials.length,
+      itemListElement: testimonials.map((t, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Review',
+          author: {
+            '@type': 'Person',
+            name: t.author,
+            jobTitle: t.role,
+            worksFor: {
+              '@type': 'Organization',
+              name: t.company,
+            },
+          },
+          reviewRating: {
+            '@type': 'Rating',
+            ratingValue: t.stars,
+            bestRating: 5,
+            worstRating: 1,
+          },
+          reviewBody: t.quote,
+        },
+      })),
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for Customers page */
+function buildCustomersBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Customers',
+        item: 'https://onramp.app/customers',
+      },
+    ],
+  }
+}
+
 export default function CustomersPage() {
+  const customersSchema = buildCustomersSchema()
+  const breadcrumbSchema = buildCustomersBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Customers · Onramp', description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.', path: '/customers' }}
+      seo={{
+        title: 'Customers · Onramp',
+        description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.',
+        path: '/customers',
+        schema: [customersSchema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-10 pb-24">
         {/* Hero */}

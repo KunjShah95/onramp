@@ -13,11 +13,7 @@ interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
 /**
  * Password input with a persistent show/hide eye toggle.
  * Toggle is type="button" so it never submits the form, and uses
-<<<<<<< HEAD
  * onMouseDown preventDefault so the input keeps focus.
-=======
- * onMouseDown preventDefault so the input keeps focus (toggle never "jato rahe").
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
  */
 const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
   ({ label, trailingExtra, ...rest }, ref) => {

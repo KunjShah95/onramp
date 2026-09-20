@@ -11,12 +11,74 @@ const navLinks: NavLinkItem[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
+/** Build BreadcrumbList schema for blog listing */
+function buildBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: 'https://onramp.app/blog',
+      },
+    ],
+  }
+}
+
+/** Build Blog schema for the blog listing page */
+function buildBlogSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'Onramp Blog',
+    description: 'Engineering insights on developer onboarding, codebase analysis, and the AI that actually reads your code.',
+    url: 'https://onramp.app/blog',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://onramp.app/icon-512.svg',
+      },
+    },
+    blogPosts: posts.map((post) => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.excerpt,
+      url: `https://onramp.app/blog/${post.slug}`,
+      datePublished: post.dateISO,
+      dateModified: post.dateModifiedISO ?? post.dateISO,
+      author: {
+        '@type': 'Person',
+        name: post.author ?? 'Onramp Team',
+        url: post.authorUrl ?? 'https://onramp.app/about',
+      },
+      articleSection: post.category,
+    })),
+  }
+}
 
 export default function BlogPage() {
+  const breadcrumbSchema = buildBreadcrumbSchema()
+  const blogSchema = buildBlogSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Blog · Onramp', description: 'Engineering insights, product updates, and best practices on developer onboarding and team velocity.', path: '/blog' }}
+      seo={{
+        title: 'Blog · Onramp',
+        description: 'Engineering insights, product updates, and best practices on developer onboarding and team velocity.',
+        path: '/blog',
+        schema: [breadcrumbSchema, blogSchema],
+      }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-10 pb-24">
         {/* Header */}

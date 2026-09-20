@@ -42,7 +42,18 @@ export interface WsAgentEvent {
   payload?: Record<string, unknown>
 }
 
-export type WsEvent = WsNotificationEvent | WsTaskEvent | WsAgentEvent
+export interface WsRepoGraphEvent {
+  type: 'repo_graph'
+  event: 'rebuild_started' | 'updated'
+  repo_url?: string
+  owner?: string
+  name?: string
+  branch?: string
+  commit?: string
+  commit_count?: number
+}
+
+export type WsEvent = WsNotificationEvent | WsTaskEvent | WsAgentEvent | WsRepoGraphEvent
 
 type WsHandler = (event: WsEvent) => void
 

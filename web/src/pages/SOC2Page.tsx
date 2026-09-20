@@ -1,4 +1,3 @@
-
 import { ShieldCheck, FileText, MagnifyingGlass, Certificate, ListChecks, Eye, CheckCircle } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -9,7 +8,6 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
-
 
 const trustPrinciples = [
   {
@@ -41,11 +39,83 @@ const controls = [
   { category: 'Vulnerability Management', items: ['Monthly penetration tests', 'Dependency vulnerability scanning', 'Responsible disclosure program', 'Patch management within 30 days'] },
 ]
 
+/** Build SOC 2 schema */
+function buildSOC2Schema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'SOC 2 Type II · Onramp',
+    description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.',
+    url: 'https://onramp.app/soc-2',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    datePublished: '2025-01-01',
+    dateModified: '2026-07-02',
+    mainEntity: {
+      '@type': 'Certification',
+      name: 'SOC 2 Type II',
+      description: 'SOC 2 Type II certification for Security, Confidentiality, Availability, and Processing Integrity.',
+      certificationStatus: 'In Progress',
+      expectedCompletion: '2026-12-31',
+      trustServicesCriteria: [
+        'Security',
+        'Confidentiality',
+        'Availability',
+        'Processing Integrity',
+      ],
+      auditor: 'Independent AICPA-accredited auditor',
+      controls: controls.map((c) => ({
+        category: c.category,
+        controls: c.items,
+      })),
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for SOC 2 page */
+function buildSOC2BreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Security',
+        item: 'https://onramp.app/security',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'SOC 2 Type II',
+        item: 'https://onramp.app/soc-2',
+      },
+    ],
+  }
+}
+
 export default function SOC2Page() {
+  const soc2Schema = buildSOC2Schema()
+  const breadcrumbSchema = buildSOC2BreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'SOC 2 Type II · Onramp', description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.', path: '/soc-2' }}
+      seo={{
+        title: 'SOC 2 Type II · Onramp',
+        description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.',
+        path: '/soc-2',
+        schema: [soc2Schema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}

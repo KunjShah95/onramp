@@ -50,14 +50,14 @@ export default function LandingNav() {
   return (
     <nav
       className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-150 ${
- isLight
- ? scrolled
- ? 'border-black/10 bg-white'
- : 'border-black/5 bg-white'
- : scrolled
- ? 'border-seam bg-room'
- : 'border-seam bg-room'
- }`}
+        isLight
+          ? scrolled
+            ? 'border-black/10 bg-white'
+            : 'border-black/5 bg-white'
+          : scrolled
+            ? 'border-seam bg-room'
+            : 'border-seam bg-room'
+      }`}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2" aria-label="Onramp home">
@@ -95,7 +95,6 @@ export default function LandingNav() {
             Log in
           </Link>
           <ThemeToggle />
-<<<<<<< HEAD
           <Link
             to="/register"
             {...prefetchProps('/register')}
@@ -103,17 +102,6 @@ export default function LandingNav() {
           >
             Try for free
           </Link>
-=======
-          <Magnetic strength={0.18}>
-            <Link
-              to="/register"
-              {...prefetchProps('/register')}
-              className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13.5px] font-semibold text-accent-foreground shadow-[0_0_24px_rgb(var(--accent-primary)/0.4)] transition-all hover:bg-accent-primary-hover hover:shadow-[0_0_32px_rgb(var(--accent-primary)/0.55)] active:translate-y-px"
-            >
-              Try for free
-            </Link>
-          </Magnetic>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}

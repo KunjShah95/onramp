@@ -322,6 +322,125 @@ verbose (~2522 chars avg). All three fixes shipped as PRs #15–#17 with
 - Slack integration (channel config, event-driven standups)
 - Email via SendGrid (digest, alerts)
 
+### n8n Workflow Automation (Two-Way)
+
+**Self-hosted n8n** for faculty-grade automation between Onramp and external tools (Telegram, Slack, Email, HTTP, custom APIs).
+
+#### Outbound: Onramp → n8n
+Onramp events fan out to configured n8n Webhook URLs with HMAC-signed payloads:
+
+| Event Category | Events |
+|----------------|--------|
+| **Onboarding** | `onboarding.plan_created`, `.plan_updated`, `.plan_generated`, `.milestone_completed`, `.preboarding_completed`, `.pulse_submitted` |
+| **Task Lifecycle** | `task.assigned`, `.started`, `.submitted`, `.reviewed`, `.approved`, `.completed`, `.needs_changes`, `.cancelled` |
+| **Ramp & PR** | `ramp.stuck`, `pr.merged` |
+| **Test** | `test.ping` |
+
+**Config priority:** Per-user integration → Per-team integration → Env vars (`N8N_WEBHOOK_URL`, `N8N_ONBOARDING_WEBHOOK_URL`)
+
+#### Inbound: n8n → Onramp
+n8n workflows call `POST /api/v1/webhooks/n8n` with `X-N8N-Signature` header (HMAC-SHA256 of raw body using `N8N_INBOUND_SECRET`).
+
+Supported actions:
+- `create_task` — seed tasks nightly or on external triggers
+- `log_event` — audit log from n8n workflows
+
+#### Pre-built Workflows (Import via n8n UI: ⋯ → Import from File)
+
+| Workflow | File | Purpose |
+|----------|------|---------|
+| **Complete Automation Bus** | `n8n/workflows/onramp-complete-bus.json` | Routes all Onramp events → Telegram/Slack with severity-based formatting |
+| **Nightly Task Seeding** | `n8n/workflows/onramp-inbound-task-seeding.json` | Cron (8am daily) → creates tasks in Onramp via signed webhook |
+
+#### Local Development
+```bash
+# Start n8n with Docker Compose profile
+docker compose --profile n8n up -d
+
+# n8n UI: http://localhost:5678
+# Webhook base (from backend): http://n8n:5678/webhook/...
+# Webhook base (from host): http://localhost:5678/webhook/...
+```
+
+#### Production Deployment (Render)
+Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.n8n`. See [n8n Deployment Guide](./docs/n8n-deployment.md).
+
+---
+
+### Razorpay Billing (INR Subscriptions + Credit Wallet)
+
+**Production-ready** Razorpay integration with subscription lifecycle, webhook handling, and prepaid credit top-ups.
+
+#### Features
+- **Tiered Subscriptions**: Free / Startup (₹999/mo) / Professional (₹2999/mo) / Usage-Based (₹499/mo)
+- **Monthly & Annual Billing** with Razorpay Plans
+- **Credit Wallet**: Prepaid top-ups via Razorpay Orders + Checkout.js
+- **Webhook-Driven**: Idempotent, signature-verified handling of 10+ event types
+- **GST-Compliant Invoices** generated automatically by Razorpay
+
+#### Subscription Flow
+```
+User selects tier → POST /billing/checkout → Razorpay Checkout → Payment
+    → Webhook: subscription.activated → Local subscription created (active)
+    → Webhook: subscription.charged (renewals) → Period extended
+    → Webhook: subscription.cancelled → Status → canceled
+```
+
+#### Credit Wallet Flow
+```
+User enters amount → POST /billing/credits/order → Razorpay Order created
+    → Checkout.js modal opens → Payment
+    → POST /billing/credits/order/verify → Signature verified
+    → Webhook: payment.captured → Credits credited to wallet (idempotent)
+```
+
+#### Webhook Events Handled
+| Event | Action |
+|-------|--------|
+| `subscription.activated` | Create/activate local subscription, link Razorpay IDs |
+| `subscription.charged` | Extend period, update tier if changed |
+| `subscription.cancelled/completed/pending/halted/paused/resumed` | Sync status via `SUBSCRIPTION_STATUS_MAP` |
+| `payment.captured` (topup) | Credit wallet, record in ledger |
+| `payment.failed` | Log for audit |
+
+#### Idempotency & Safety
+- **Event-level deduplication** via `onramp_webhook_idempotency` collection (PK on event ID)
+- **HMAC-SHA256 verification** (primary) + Razorpay SDK verification (fallback)
+- **Amount validation** on credit top-ups (payment amount vs stored order amount)
+- **Fail-closed** in production when `RAZORPAY_WEBHOOK_SECRET` missing
+
+#### Required Environment Variables
+```bash
+# Razorpay credentials (test: rzp_test_... | live: rzp_live_...)
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxx
+
+# Plan IDs (create in Razorpay Dashboard → Products → Plans)
+RAZORPAY_PLAN_STARTUP=plan_xxxxxxxxxxxxx
+RAZORPAY_PLAN_PROFESSIONAL=plan_xxxxxxxxxxxxx
+RAZORPAY_PLAN_USAGE_BASED=plan_xxxxxxxxxxxxx
+
+# Webhook secret (generate: openssl rand -base64 32)
+RAZORPAY_WEBHOOK_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Dev only: allow unverified webhooks
+ALLOW_UNVERIFIED_RAZORPAY=true
+```
+
+#### Webhook Configuration
+**Razorpay Dashboard → Settings → Webhooks → Add Webhook**
+- **URL**: `https://your-api.onrender.com/api/v1/billing/webhook`
+- **Events**: Select all `subscription.*`, `payment.*`, `order.*`
+- **Secret**: Same as `RAZORPAY_WEBHOOK_SECRET`
+
+#### Test Cards (Razorpay Test Mode)
+| Card | Purpose |
+|------|---------|
+| `4111 1111 1111 1111` | Success (any future expiry, any CVV) |
+| `4000 0000 0000 0002` | Failed payment |
+| `4000 0000 0000 0069` | Expired card |
+| `4000 0000 0000 0127` | Insufficient funds |
+
 ---
 
 ## Tech Stack
@@ -364,6 +483,7 @@ verbose (~2522 chars avg). All three fixes shipped as PRs #15–#17 with
 | ----------- | ----------- |
 | **Backend Hosting** | Render (blueprint: API + Celery workers + Redis) or Railway |
 | **Frontend Hosting** | Vercel |
+| **Workflow Automation** | n8n (self-hosted, Docker/Render) |
 | **Containerization** | Docker Compose (hardened: non-root, healthchecks) |
 | **Reverse Proxy** | Nginx (non-root, port 8080) |
 | **CI/CD** | GitHub Actions |
@@ -436,7 +556,7 @@ account, or sign in with a [seeded account](#seeded-test-accounts).
 
 ## Docker Quick Start (One Command)
 
-Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI) with
+Start the **full stack** (PostgreSQL + Redis + Backend API + Frontend UI + n8n) with
 one command:
 
 ```bash
@@ -445,8 +565,9 @@ cp .env.example .env
 
 # 2. Set at least one AI provider API key in .env (GEMINI_API_KEY, OPENROUTER_API_KEY, etc.)
 
-# 3. Start all services
-docker compose up -d
+# 3. Start all services (add --profile n8n for workflow automation)
+docker compose up -d                    # Core stack only
+docker compose --profile n8n up -d      # Core + n8n
 
 # 4. View logs
 docker compose logs -f
@@ -455,6 +576,7 @@ docker compose logs -f
 #    Frontend: http://localhost:8080
 #    Backend API: http://localhost:8001
 #    API Docs: http://localhost:8001/docs
+#    n8n UI: http://localhost:5678 (with --profile n8n)
 
 # 6. Stop all services
 docker compose down
@@ -470,6 +592,7 @@ docker compose down
 | **Frontend (dev)** | <http://localhost:5173> | React app (Vite dev server, `npm run dev`) |
 | **Backend API** | <http://localhost:8001> | FastAPI backend |
 | **API Docs** | <http://localhost:8001/docs> | Swagger UI (interactive) |
+| **n8n** | <http://localhost:5678> | Workflow automation (with `--profile n8n`) |
 | **PostgreSQL** | localhost:5433 | Database (user: `onramp`, pass: `postgres_password`, db: `onramp`) |
 | **Redis** | localhost:6379 | Cache (pass: `redis_password`) |
 
@@ -540,17 +663,17 @@ node scripts/mobile-audit.mjs       # horizontal-overflow sweep of every route a
 
 ---
 
-## Deploying to Render (API + Celery Workers + Redis)
+## Deploying to Render (API + Celery Workers + Redis + n8n)
 
-The backend runs on Render as three services sharing one Redis (Key Value)
+The backend runs on Render as four services sharing one Redis (Key Value)
 instance. A [`render.yaml`](./render.yaml) blueprint defines the whole stack.
 
 ### Blueprint (recommended)
 
 1. Dashboard → **New → Blueprint** → connect this repo (pick the branch that
    contains `render.yaml`).
-2. Render creates: `onramp-redis` (Key Value), `onramp-api` (web service), and
-   `onramp-worker` + `onramp-beat` (background workers).
+2. Render creates: `onramp-redis` (Key Value), `onramp-api` (web service),
+   `onramp-worker` + `onramp-beat` (background workers), and `onramp-n8n` (web service).
 3. During creation you're prompted for the `sync: false` secrets.
 
 | Resource | Render type | What it runs |
@@ -559,17 +682,33 @@ instance. A [`render.yaml`](./render.yaml) blueprint defines the whole stack.
 | `onramp-api` | Web service | `alembic upgrade head` + uvicorn (production Dockerfile stage), health check `/health` |
 | `onramp-worker` | Background worker | `celery -A app.tasks.celery_app worker -Q agent-tasks,analytics-tasks,notification-tasks,default` |
 | `onramp-beat` | Background worker | `celery -A app.tasks.celery_app beat` (digests, nightly sweeps, repo indexes) |
+| `onramp-n8n` | Web service | n8n (Dockerfile.n8n), persistent disk at `/home/node/.n8n`, health check `/healthz` |
 
 > **Why background workers?** A Web Service must bind a port and passes a
 > deploy-time port scan. A Celery process binds none — creating it as a Web
 > Service times out the deploy with *"No open ports detected… create a
 > background worker instead"*.
+>
+> **Why n8n as Web Service?** n8n binds port 5678 and serves its UI + webhooks,
+> so it must be a Web Service (not a Background Worker).
 
 Secrets prompted on first apply (`sync: false`): `DATABASE_URL`, `JWT_SECRET`,
 `PII_ENCRYPTION_KEY`, `GITHUB_TOKEN_ENCRYPTION_KEY`, `API_KEY_HMAC_SECRET`,
 `CORS_ALLOWED_ORIGINS`, `BACKEND_URL`, `FRONTEND_URL`, plus optional
-LLM/OAuth/billing keys. All services share them via the `onramp-shared`
+LLM/OAuth/billing/n8n keys. All services share them via the `onramp-shared`
 environment group.
+
+### n8n Production Setup
+
+After deploying the blueprint:
+
+1. **Get n8n URL**: `https://onramp-n8n.onrender.com`
+2. **Access n8n UI**: Login with basic auth (set via `N8N_BASIC_AUTH_USER`/`PASSWORD`)
+3. **Import workflows**: Workflows → ⋯ → Import from File → select `n8n/workflows/*.json`
+4. **Configure credentials** on Telegram/Slack nodes
+5. **Activate workflows** (toggle top-right)
+6. **Copy production webhook URL**: `https://onramp-n8n.onrender.com/webhook/onramp`
+7. **Configure in Onramp**: Settings → Integrations → n8n → paste webhook URL → Test → Connect
 
 ### Manual dashboard setup (no blueprint)
 
@@ -588,7 +727,10 @@ environment group.
    celery -A app.tasks.celery_app beat -l info
    ```
 
-5. Set the **same env vars on every service** — use an Environment Group.
+5. **New → Web Service (n8n)** → root dir `.`, Dockerfile `Dockerfile.n8n`,
+   health check path `/healthz`, add persistent disk (10GB) at `/home/node/.n8n`.
+
+6. Set the **same env vars on every service** — use an Environment Group.
 
 ---
 
@@ -703,7 +845,6 @@ docker compose logs -f backend                         # Backend logs
 
 ### What's next
 
-- Razorpay production webhook verification (currently skeleton)
 - GitLab & Bitbucket integration (GitHub only today)
 - PR review auto-apply suggestions
 - Custom per-key daily credit caps (today: tier daily request caps + per-key
@@ -712,6 +853,8 @@ docker compose logs -f backend                         # Backend logs
 
 ### Recently shipped
 
+- **Razorpay billing integration** (subscriptions, webhooks, credit wallet) — Sept 2026
+- **n8n two-way workflow automation** (outbound events, inbound webhooks, pre-built workflows) — Sept 2026
 - Mobile-responsive hardening across all pages (Sept 2026)
 - Per-route SEO snapshots + canonical-host rewrite at build (Sept 2026)
 - Developer Portal: BYOK provider pools, routing-mode dial, credit budgets
@@ -826,6 +969,17 @@ onramp/
 | `LLM_CACHE_TTL` | ⬜ | Redis LLM cache TTL (default 1h) |
 | `LLM_SEMANTIC_CACHE` / `LLM_SEMANTIC_THRESHOLD` | ⬜ | Semantic cache tuning |
 | `ENABLE_API_DOCS` | ⬜ | Expose `/docs` in production |
+
+#### n8n Integration
+| Variable | Required | Description |
+| ---------- | ---------- | ------------- |
+| `N8N_WEBHOOK_URL` | ⬜ | Default outbound webhook URL (e.g., `https://n8n.example.com/webhook/onramp`) |
+| `N8N_ONBOARDING_WEBHOOK_URL` | ⬜ | Optional override for onboarding events |
+| `N8N_HMAC_SECRET` | ⬜ | HMAC secret for signing outbound payloads (generate: `openssl rand -base64 32`) |
+| `N8N_INBOUND_SECRET` | ⬜ | HMAC secret for verifying inbound n8n → Onramp calls (generate: `openssl rand -base64 32`) |
+| `N8N_TIMEOUT_SECONDS` | ⬜ | HTTP timeout for n8n calls (default: 5) |
+| `N8N_BASE_URL` | ⬜ | n8n host for API calls (e.g., `https://n8n.example.com`) |
+| `N8N_API_KEY` | ⬜ | n8n REST API key (for workflow listing) |
 
 ### Frontend (`web/.env`)
 

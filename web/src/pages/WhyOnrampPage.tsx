@@ -1,4 +1,3 @@
-
 import { ArrowRight, Brain, Code, Lightning } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -14,9 +13,75 @@ const navLinks: NavLinkItem[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
-
+/** Build FAQ schema for Why Onramp comparison page */
+function buildWhyOnrampFAQSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'How is Onramp different from GitHub Copilot or Cursor?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Coding agents like Copilot and Cursor re-read your entire codebase on every query, burning tokens per developer per session. Onramp indexes your codebase once, builds a persistent knowledge graph, and updates only the diff on each push. This means flat pricing per workspace (not per seat), grounded answers with file/line citations, and a cost model that doesn\'t scale with headcount.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Does Onramp replace coding agents?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No — they\'re complementary. Coding agents are great for writing code. Onramp is for understanding code. Use Onramp to onboard new hires, explore architecture, and answer "where is X?" questions. Use coding agents for "write me a function that does Y." Onramp\'s graph actually makes coding agents more effective by giving them better context.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What does "flat pricing per workspace" mean?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'You pay $99/month (or $82/month billed annually) per workspace, regardless of how many engineers use it. No per-seat math, no token burn costs. A team of 5 and a team of 50 pay the same price.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How does Onramp achieve token efficiency?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Three mechanisms: (1) Incremental indexing — only the git diff is re-processed on push, not the whole repo. (2) Free-first LLM router — routes through OpenRouter, Gemini, Groq, NVIDIA free tiers before paid fallbacks. (3) Redis semantic cache — identical or similar queries hit the cache instead of the LLM.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can Onramp analyze private repositories?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Provide a GitHub personal access token with repo scope when connecting a private repository. The token is encrypted at rest and only used for cloning during analysis.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is my source code stored by Onramp?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. Onramp discards raw source files after the analysis pipeline completes. Only the indexed knowledge graph — symbols, relationships, and AI-generated summaries — is persisted. Your proprietary code never leaves the analysis environment.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What languages does Onramp support?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Full AST parsing for Python, JavaScript, TypeScript, Go, Rust, and Java. Other languages are indexed as text with basic symbol extraction. The architecture graph works across all supported languages in a single repo.',
+        },
+      },
+    ],
+  }
+}
 
 export default function WhyOnrampPage() {
+  const faqSchema = buildWhyOnrampFAQSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
@@ -24,6 +89,7 @@ export default function WhyOnrampPage() {
         title: 'Why Onramp, Not Coding Agents | Onramp',
         description: 'Coding agents burn tokens re-reading your codebase on every change. Onramp indexes it once and answers from real context, a fraction of the cost at any team size.',
         path: '/why-onramp',
+        schema: faqSchema,
       }}
     >
       {/* Hero — same language as landing Hero */}
@@ -77,11 +143,7 @@ export default function WhyOnrampPage() {
         {/* Why Onramp — featured, accent rule, wider */}
         <div className="md:col-span-7 rounded-card border border-seam bg-panel p-6">
           <div className="flex items-center gap-3 mb-5">
-<<<<<<< HEAD
             <span className="flex h-9 w-9 items-center justify-center rounded-card bg-go text-[rgb(var(--accent-foreground))]">
-=======
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-accent-foreground shadow-[0_0_18px_rgb(var(--accent-primary)/0.4)]">
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
               <Brain size={18} weight="bold" />
             </span>
             <div>
@@ -139,7 +201,7 @@ export default function WhyOnrampPage() {
               icon: Lightning,
               kicker: '03 · Speed',
               title: 'Speed builds confidence',
-              desc: 'Fast onboarding lets devs contribute. First PR on day two beats “understanding” on day thirty.',
+              desc: 'Fast onboarding lets devs contribute. First PR on day two beats "understanding" on day thirty.',
             },
           ].map((pillar) => (
             <div key={pillar.kicker} className="rounded-card border border-seam bg-panel p-6">
@@ -227,13 +289,8 @@ export default function WhyOnrampPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-<<<<<<< HEAD
               to="/#pricing"
               className="inline-flex h-11 items-center gap-2 rounded-md bg-ink px-6 text-[15px] font-medium text-[var(--panel-raised)] transition-opacity hover:opacity-90"
-=======
-              to="/pricing"
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-accent-foreground shadow-[0_0_24px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
             >
               Start 14-day trial
               <ArrowRight size={16} weight="bold" />

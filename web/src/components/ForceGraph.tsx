@@ -33,7 +33,7 @@ interface Props {
   activeGroups?: Set<string> | null
 }
 
-const PALETTE = [
+export const PALETTE = [
   '#FF8C00', '#4DA8DA', '#E16A6A', '#6BCB77',
   '#A78BFA', '#F472B6', '#34D399', '#FBBF24',
   '#60A5FA', '#FB923C',
@@ -52,6 +52,32 @@ function computeGroupIndex(nodes: GraphNode[]): Map<string, number> {
   return seen
 }
 
+/** Read a theme RGB triplet (e.g. "27 29 34") from the document root. */
+function themeRgb(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
+/** Node radius from its file count — readable range, log-scaled spread. */
+function nodeRadius(files: number): number {
+  return Math.max(7, Math.min(22, 7 + Math.log2(Math.max(1, files)) * 2.6))
+}
+
+/**
+ * ForceGraph — interactive D3 force layout.
+ *
+ * The render is deliberately split into two effects:
+ *
+ * 1. **Structure** (nodes/edges/size) builds the SVG and runs the force
+ *    simulation exactly once per dataset. It never depends on hover,
+ *    selection, search or filter state.
+ * 2. **Style** applies highlight/dim/selection to the *existing* selections.
+ *
+ * This is what stops the graph from re-randomising its layout every time the
+ * pointer moves or a node is selected — the previous single-effect version
+ * tore the whole SVG down and re-ran the simulation on every state change.
+ */
 export default function ForceGraph({
   nodes: rawNodes,
   edges: rawEdges,
@@ -67,6 +93,18 @@ export default function ForceGraph({
   const simRef = useRef<d3Force.Simulation<GraphNode, GraphEdge> | null>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [tooltipData, setTooltipData] = useState<{ node: GraphNode; x: number; y: number } | null>(null)
+
+  // D3 selections from the structure pass, reused by the style pass.
+  const nodeSelRef = useRef<ReturnType<typeof d3Select> | null>(null)
+  const linkSelRef = useRef<ReturnType<typeof d3Select> | null>(null)
+  // Bumped after each structure rebuild so the style effect re-applies.
+  const [structVersion, setStructVersion] = useState(0)
+
+  // Latest click handler without retriggering the layout effect.
+  const onNodeClickRef = useRef(onNodeClick)
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick
+  }, [onNodeClick])
 
   // Store the group→color mapping so the tooltip can use it
   const groupColorsRef = useRef<Map<string, string>>(new Map())
@@ -97,15 +135,25 @@ export default function ForceGraph({
     groupColorsRef.current = colors
   }, [rawNodes, rawEdges])
 
+  // ── Structure pass: build SVG + simulation (dataset/size only) ──────────
   useEffect(() => {
-    if (!svgRef.current || rawNodes.length === 0) return
-
+    if (!svgRef.current) return
     const rect = containerRef.current?.getBoundingClientRect()
     const w = width ?? rect?.width ?? 800
     const h = height ?? rect?.height ?? 500
 
     const svg = d3Select(svgRef.current)
     svg.selectAll('*').remove()
+    nodeSelRef.current = null
+    linkSelRef.current = null
+
+    if (rawNodes.length === 0) {
+      setStructVersion((v) => v + 1)
+      return
+    }
+
+    const inkRgb = themeRgb('--ink-rgb', '27 29 34')
+    const borderRgb = themeRgb('--border-rgb', '140 140 140')
 
     // ── Zoom ──────────────────────────────────────────────
     const g = svg.append('g')
@@ -121,7 +169,6 @@ export default function ForceGraph({
     svg.call(zoom)
     svg.call(zoom.transform, zoomIdentity.translate(w / 2, h / 2))
 
-    // ── Group colors (use the shared mapping computed above) ──
     const groupColors = groupColorsRef.current
 
     // ── Clone data ────────────────────────────────────────
@@ -135,14 +182,13 @@ export default function ForceGraph({
       // Drop edges where either endpoint has no corresponding node — D3 throws otherwise
       .filter((e) => nodeIds.has(e.source as string) && nodeIds.has(e.target as string))
 
-    // ── Edges ─────────────────────────────────────────────
+    // ── Edges — theme-aware so they stay visible on every palette ─────────
     const link = g
       .append('g')
       .selectAll('line')
       .data(edges)
       .join('line')
-      .attr('stroke', '#FDFBF8')
-      .attr('stroke-opacity', 0.1)
+      .attr('stroke', `rgb(${borderRgb} / 0.55)`)
       .attr('stroke-width', 1.2)
 
     // ── Nodes ─────────────────────────────────────────────
@@ -176,84 +222,35 @@ export default function ForceGraph({
     // Outer glow
     node
       .append('circle')
-      .attr('r', (d) => Math.max(8, Math.min(16, (d.files?.length ?? 1) * 1.2)))
+      .attr('class', 'node-glow')
+      .attr('r', (d) => nodeRadius(d.files?.length ?? 1) + 3)
       .attr('fill', 'none')
       .attr('stroke', (d) => groupColors.get(d.group) ?? '#666')
       .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.2)
-      .attr('class', 'node-glow')
+      .attr('stroke-opacity', 0.25)
 
     // Main circle
     node
       .append('circle')
-      .attr('r', (d) => Math.max(6, Math.min(14, (d.files?.length ?? 1) * 1.2)))
+      .attr('class', 'node-core')
+      .attr('r', (d) => nodeRadius(d.files?.length ?? 1))
       .attr('fill', (d) => groupColors.get(d.group) ?? '#666')
-      .attr('stroke', '#1C1C1E')
-      .attr('stroke-width', 2)
+      .attr('stroke', `rgb(${inkRgb} / 0.35)`)
+      .attr('stroke-width', 1.5)
 
     // Label
     node
       .append('text')
-      .text((d) => (d.id.length > 22 ? d.id.slice(0, 20) + '…' : d.id))
-      .attr('x', (d) => Math.max(10, Math.min(18, (d.files?.length ?? 1) * 1.2 + 4)))
+      .attr('class', 'node-label')
+      .text((d) => (d.id.length > 26 ? d.id.slice(0, 24) + '…' : d.id))
+      .attr('x', (d) => nodeRadius(d.files?.length ?? 1) + 5)
       .attr('y', 4)
-      .attr('fill', '#FDFBF8')
-      .attr('font-size', 10)
-      .attr('font-family', 'monospace')
-      .attr('opacity', 0.7)
+      .attr('fill', `rgb(${inkRgb})`)
+      .attr('font-size', 11)
+      .attr('font-family', 'ui-monospace, SFMono-Regular, Menlo, monospace')
+      .attr('opacity', 0.82)
 
-    // ── Apply search highlight / dim ──────────────────────
-    const lowerQuery = searchQuery?.toLowerCase() ?? ''
-    const hasSearch = lowerQuery.length > 0
-
-    node.each(function (d: GraphNode) {
-      const el = d3Select(this)
-      const matches = hasSearch ? d.id.toLowerCase().includes(lowerQuery) : true
-      const isVisible = !activeGroups || activeGroups.has(d.group)
-
-      el.attr('opacity', isVisible ? (hasSearch ? (matches ? 1 : 0.12) : 1) : 0.06)
-        .attr('pointer-events', isVisible ? 'auto' : 'none')
-    })
-
-    link.each(function (d: GraphEdge) {
-      const sourceId = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
-      const targetId = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
-      const sourceVisible = !activeGroups || activeGroups.has(
-        rawNodes.find((n) => n.id === sourceId)?.group ?? ''
-      )
-      const targetVisible = !activeGroups || activeGroups.has(
-        rawNodes.find((n) => n.id === targetId)?.group ?? ''
-      )
-      const el = d3Select(this)
-      if (!sourceVisible || !targetVisible || (hasSearch &&
-        !sourceId.toLowerCase().includes(lowerQuery) &&
-        !targetId.toLowerCase().includes(lowerQuery))) {
-        el.attr('stroke-opacity', 0.02)
-      } else {
-        el.attr('stroke-opacity', 0.1)
-      }
-    })
-
-    // ── Selected node styling ─────────────────────────────
-    if (selectedNodeId) {
-      node.each(function (d: GraphNode) {
-        const el = d3Select(this)
-        const isSelected = d.id === selectedNodeId
-        if (isSelected) {
-          el.select('.node-glow')
-            .attr('stroke-opacity', 0.6)
-            .attr('stroke-width', 3)
-          el.select('circle:last-of-type')
-            .attr('stroke', '#FFF')
-            .attr('stroke-width', 3)
-          el.select('text')
-            .attr('font-weight', 'bold')
-            .attr('opacity', 1)
-        }
-      })
-    }
-
-    // ── Click → select ────────────────────────────────────
+    // ── Click → select (ref keeps the handler out of the deps) ───────────
     let clickTimer: ReturnType<typeof setTimeout> | null = null
     node.on('mousedown', () => {
       clickTimer = setTimeout(() => { clickTimer = null }, 200)
@@ -262,7 +259,7 @@ export default function ForceGraph({
       if (clickTimer) {
         clearTimeout(clickTimer)
         clickTimer = null
-        onNodeClick?.(d)
+        onNodeClickRef.current?.(d)
       }
     })
 
@@ -291,15 +288,14 @@ export default function ForceGraph({
     // For dense graphs (many nodes, few edges) use strong centering to keep nodes compact
     const edgeRatio = edges.length / Math.max(1, nodes.length)
     const chargeStrength = edgeRatio > 0.5 ? -300 : Math.max(-30, -30 * edgeRatio - 10)
-    const linkDist = Math.max(30, Math.min(120, 400 / Math.max(1, nodes.length)))
-    // Strong centering pull keeps sparse graphs from exploding
+    const linkDist = Math.max(36, Math.min(140, 460 / Math.max(1, nodes.length)))
     const centerStrength = edgeRatio < 0.1 ? 0.3 : 0.05
 
     const sim = d3Force.forceSimulation<GraphNode>(nodes)
       .force('link', d3Force.forceLink<GraphNode, GraphEdge>(edges).id((d) => d.id).distance(linkDist))
       .force('charge', d3Force.forceManyBody<GraphNode>().strength(chargeStrength))
       .force('center', d3Force.forceCenter<GraphNode>(0, 0))
-      .force('collision', d3Force.forceCollide<GraphNode>().radius(12))
+      .force('collision', d3Force.forceCollide<GraphNode>().radius(16))
       .force('bound-x', d3Force.forceX(0).strength(centerStrength))
       .force('bound-y', d3Force.forceY(0).strength(centerStrength))
 
@@ -319,22 +315,82 @@ export default function ForceGraph({
         minX = Math.min(minX, n.x ?? 0); maxX = Math.max(maxX, n.x ?? 0)
         minY = Math.min(minY, n.y ?? 0); maxY = Math.max(maxY, n.y ?? 0)
       }
-      const pad = 40
-      const rangeX = maxX - minX || 1, rangeY = maxY - minY || 1
-      // Minimum scale: ensure nodes are at least 4px radius on screen
-      const minNodeR = Math.max(6, Math.min(14, nodes.length > 0 ? (nodes[0].files?.length ?? 1) * 1.2 : 6))
+      if (!Number.isFinite(minX) || !Number.isFinite(minY)) return
+      const pad = 48
+      const rangeX = Math.max(1, maxX - minX)
+      const rangeY = Math.max(1, maxY - minY)
       const scaleToFit = Math.min((w - pad * 2) / rangeX, (h - pad * 2) / rangeY)
-      const finalScale = Math.max(scaleToFit, 4 / minNodeR) // never smaller than 4px node
-      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2
+      const finalScale = Math.max(0.2, Math.min(2, scaleToFit))
+      const cx = (minX + maxX) / 2
+      const cy = (minY + maxY) / 2
       const tx = w / 2 - finalScale * cx
       const ty = h / 2 - finalScale * cy
       g.attr('transform', `translate(${tx},${ty}) scale(${finalScale})`)
     })
 
     simRef.current = sim
+    nodeSelRef.current = node as any
+    linkSelRef.current = link as any
+    setStructVersion((v) => v + 1)
 
     return () => { sim.stop() }
-  }, [rawNodes, rawEdges, width, height, onNodeClick, selectedNodeId, searchQuery, activeGroups])
+  }, [rawNodes, rawEdges, width, height])
+
+  // ── Style pass: search / filter / selection (never rebuilds layout) ─────
+  useEffect(() => {
+    const node: any = nodeSelRef.current
+    const link: any = linkSelRef.current
+    if (!node) return
+
+    const lowerQuery = searchQuery?.toLowerCase() ?? ''
+    const hasSearch = lowerQuery.length > 0
+
+    node.each(function (this: SVGGElement, d: GraphNode) {
+      const el = d3Select(this)
+      const matches = hasSearch ? d.id.toLowerCase().includes(lowerQuery) : true
+      const isVisible = !activeGroups || activeGroups.has(d.group)
+      el.attr('opacity', isVisible ? (hasSearch ? (matches ? 1 : 0.12) : 1) : 0.06)
+        .attr('pointer-events', isVisible ? 'auto' : 'none')
+    })
+
+    link.each(function (this: SVGLineElement, d: GraphEdge) {
+      const sourceId = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
+      const targetId = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
+      const sourceVisible = !activeGroups || activeGroups.has(
+        rawNodes.find((n) => n.id === sourceId)?.group ?? ''
+      )
+      const targetVisible = !activeGroups || activeGroups.has(
+        rawNodes.find((n) => n.id === targetId)?.group ?? ''
+      )
+      const el = d3Select(this)
+      const matches = hasSearch && (
+        sourceId.toLowerCase().includes(lowerQuery) || targetId.toLowerCase().includes(lowerQuery)
+      )
+      if (!sourceVisible || !targetVisible) {
+        el.attr('stroke-opacity', 0.04)
+      } else if (hasSearch && !matches) {
+        el.attr('stroke-opacity', 0.05)
+      } else if (hasSearch) {
+        el.attr('stroke-opacity', 0.9)
+      } else {
+        el.attr('stroke-opacity', 1)
+      }
+    })
+
+    // Selected node styling
+    node.each(function (this: SVGGElement, d: GraphNode) {
+      const el = d3Select(this)
+      const isSelected = !!selectedNodeId && d.id === selectedNodeId
+      el.select('.node-glow')
+        .attr('stroke-opacity', isSelected ? 0.7 : 0.25)
+        .attr('stroke-width', isSelected ? 3 : 2)
+      el.select('.node-core')
+        .attr('stroke-width', isSelected ? 3 : 1.5)
+      el.select('.node-label')
+        .attr('font-weight', isSelected ? 'bold' : 'normal')
+        .attr('opacity', isSelected ? 1 : 0.82)
+    })
+  }, [structVersion, selectedNodeId, searchQuery, activeGroups, rawNodes])
 
   return (
     <div ref={containerRef} className="w-full h-full min-h-[400px] relative">
@@ -390,7 +446,6 @@ export default function ForceGraph({
           </div>
         </div>
       )}
-
     </div>
   )
 }

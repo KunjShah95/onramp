@@ -1,13 +1,21 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { analyzeArchitecture } from '../lib/api'
-import ForceGraph, { type GraphNode, type GraphEdge } from '../components/ForceGraph'
+import {
+  analyzeArchitecture,
+  fetchRepoGraph,
+  rebuildRepoGraph,
+  type RepoGraphSnapshot,
+} from '../lib/api'
+import ForceGraph, { PALETTE, type GraphNode, type GraphEdge } from '../components/ForceGraph'
 import type { ArchitectureResult } from '../lib/types'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import CardSpotlight from '../components/ui/card-spotlight'
 import { ExploreResultSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
+import { useRealTime } from '../context/RealTimeContext'
 import { cn } from '../lib/utils'
 import {
   MagnifyingGlass,
@@ -19,28 +27,176 @@ import {
   Cube,
   ArrowsOut,
   Spinner,
+  ArrowsClockwise,
 } from '@phosphor-icons/react'
 
+/**
+ * View model the page renders — normalised from either a live `/explore/analyze`
+ * result or a durable persisted snapshot. This is what makes the graph survive
+ * a reload: the persisted branch needs no live analysis to render.
+ */
+interface GraphViewModel {
+  source: 'live' | 'persisted'
+  services: { name: string; files: string[]; description?: string }[]
+  dependencies: Record<string, string[]>
+  circularDependencies: string[][]
+  architecturePattern: string
+  fileCount: number
+  classCount: number
+  functionCount: number
+  commit?: string | null
+  builtAt?: string
+  stale?: boolean | null
+  building?: boolean
+}
+
+function fromLive(result: ArchitectureResult): GraphViewModel {
+  return {
+    source: 'live',
+    services: result.services ?? [],
+    dependencies: result.dependencies ?? {},
+    circularDependencies: result.circular_dependencies ?? [],
+    architecturePattern: result.architecture_pattern,
+    fileCount: result.entities?.files?.length ?? 0,
+    classCount: result.entities?.classes?.length ?? 0,
+    functionCount: result.entities?.functions?.length ?? 0,
+  }
+}
+
+function fromSnapshot(snap: RepoGraphSnapshot): GraphViewModel {
+  return {
+    source: 'persisted',
+    services: snap.services ?? [],
+    dependencies: snap.dependencies ?? {},
+    circularDependencies: snap.circular_dependencies ?? [],
+    architecturePattern: snap.architecture_pattern,
+    fileCount: snap.stats?.file_count ?? 0,
+    classCount: snap.stats?.class_count ?? 0,
+    functionCount: snap.stats?.function_count ?? 0,
+    commit: snap.commit,
+    builtAt: snap.built_at,
+    stale: null,
+    building: false,
+  }
+}
+
+/**
+ * Group a service by its dominant top-level folder so node colours mean
+ * something (a layer/package cluster) instead of every service getting its
+ * own colour — the old behaviour made the palette decorative noise.
+ */
+function layerForFiles(files: string[]): string {
+  const counts = new Map<string, number>()
+  for (const f of files) {
+    const parts = f.split('/').filter(Boolean)
+    if (parts.length === 0) continue
+    const layer = parts.length > 1 ? parts[0] : '(root)'
+    counts.set(layer, (counts.get(layer) ?? 0) + 1)
+  }
+  let best = '(root)'
+  let bestN = -1
+  for (const [layer, n] of counts) {
+    if (n > bestN) { best = layer; bestN = n }
+  }
+  return best
+}
+
+function parseRepoInput(input: string): { owner: string; repo: string } | null {
+  const raw = input.trim().replace(/\.git$/, '').replace(/\/+$/, '')
+  if (!raw) return null
+  const parts = raw.includes('://')
+    ? raw.split('/').filter(Boolean).slice(-2)
+    : raw.split('/').filter(Boolean)
+  if (parts.length < 2) return null
+  return { owner: parts[parts.length - 2], repo: parts[parts.length - 1] }
+}
+
+function relativeTime(iso?: string): string {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (!Number.isFinite(then)) return ''
+  const mins = Math.round((Date.now() - then) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
 
 export default function ExplorePage() {
-  const [repoUrl, setRepoUrl] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const paramOwner = searchParams.get('owner')
+  const paramRepo = searchParams.get('repo')
+  const isRepoMode = Boolean(paramOwner && paramRepo)
+
+  const [repoUrl, setRepoUrl] = useState(
+    isRepoMode ? `github.com/${paramOwner}/${paramRepo}` : ''
+  )
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ArchitectureResult | null>(null)
+  const [liveResult, setLiveResult] = useState<ArchitectureResult | null>(null)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [drillNodeId, setDrillNodeId] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [activeGroups, setActiveGroups] = useState<Set<string> | null>(null)
 
   const toast = useToast()
+  const queryClient = useQueryClient()
+  const { onEvent } = useRealTime()
+
+  const repoGraphKey = ['repo-graph', paramOwner, paramRepo] as const
+
+  // ── Persisted, permanent graph (loaded from URL, survives reload) ───────
+  const graphQuery = useQuery({
+    queryKey: repoGraphKey,
+    queryFn: () => fetchRepoGraph(paramOwner as string, paramRepo as string, { branch: 'main' }),
+    enabled: isRepoMode,
+    staleTime: 30_000,
+    // While a push-triggered rebuild is in flight, poll until it lands.
+    refetchInterval: (query) => (query.state.data?.building ? 4000 : false),
+  })
+
+  const rebuildMutation = useMutation({
+    mutationFn: () => rebuildRepoGraph(paramOwner as string, paramRepo as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: repoGraphKey })
+      toast.success('Rebuild complete', 'Architecture graph updated to the latest commit')
+    },
+    onError: (err: unknown) => {
+      toast.error('Rebuild failed', err instanceof Error ? err.message : 'Unknown error')
+    },
+  })
+
+  // Live push events for this repo → refetch so the open page updates itself.
+  useEffect(() => {
+    if (!isRepoMode) return
+    const unsub = onEvent((event) => {
+      if (event.type !== 'repo_graph') return
+      const matches =
+        (event.owner && event.owner.toLowerCase() === paramOwner?.toLowerCase()) ||
+        (event.name && event.name.toLowerCase() === paramRepo?.toLowerCase())
+      if (!matches) return
+      toast.info?.('Rebuilding graph', `New commits on ${paramOwner}/${paramRepo}`)
+      queryClient.invalidateQueries({ queryKey: repoGraphKey })
+    })
+    return unsub
+  }, [isRepoMode, paramOwner, paramRepo, onEvent, queryClient])
 
   async function handleAnalyze() {
-    if (!repoUrl.trim()) return
+    const parsed = parseRepoInput(repoUrl)
+    if (!parsed) {
+      setError('Enter a repository as github.com/owner/repo')
+      return
+    }
     setLoading(true); setError(''); setSearchQuery(''); setSelectedNode(null); setDrillNodeId(null); setActiveGroups(null)
     try {
       const data = await analyzeArchitecture(repoUrl)
-      setResult(data)
-      toast.success('Analysis complete', `${repoUrl.split('/').pop()} · ${data.entities.files.length} files mapped`)
+      setLiveResult(data)
+      // Persist into the URL so the graph is restored from the durable
+      // snapshot on reload instead of vanishing.
+      setSearchParams({ owner: parsed.owner, repo: parsed.repo }, { replace: true })
+      toast.success('Analysis complete', `${parsed.repo} · ${data.entities.files.length} files mapped`)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze repository.')
       toast.error('Analysis failed', err.message)
@@ -49,27 +205,52 @@ export default function ExplorePage() {
     }
   }
 
-  // ── Build graph data from result ─────────────────────────────────
+  // ── Resolve snapshot → view model ───────────────────────────────────────
+  const snapshot: RepoGraphSnapshot | null = graphQuery.data?.snapshot ?? null
+  const vm: GraphViewModel | null = useMemo(() => {
+    if (liveResult) {
+      const live = fromLive(liveResult)
+      if (graphQuery.data) {
+        live.stale = graphQuery.data.stale
+        live.building = graphQuery.data.building
+        live.commit = snapshot?.commit ?? live.commit
+        live.builtAt = snapshot?.built_at ?? live.builtAt
+      }
+      return live
+    }
+    if (snapshot) {
+      return {
+        ...fromSnapshot(snapshot),
+        stale: graphQuery.data?.stale ?? null,
+        building: graphQuery.data?.building ?? false,
+      }
+    }
+    return null
+  }, [liveResult, snapshot, graphQuery.data])
+
+  const busy = loading || rebuildMutation.isPending || Boolean(vm?.building)
+
+  // ── Build graph data from view model ─────────────────────────────────────
   const allNodes: GraphNode[] = useMemo(() => {
-    if (!result) return []
-    return result.services?.map((s) => ({
+    if (!vm) return []
+    return vm.services.map((s) => ({
       id: s.name,
-      group: s.name,
+      group: layerForFiles(s.files ?? []),
       files: s.files,
       description: s.description,
-    })) ?? []
-  }, [result])
+    }))
+  }, [vm])
 
   const allEdges: GraphEdge[] = useMemo(() => {
-    if (!result) return []
+    if (!vm) return []
     // Build file → service lookup so we can map file-level deps to service-level edges
     const fileToService = new Map<string, string>()
-    for (const svc of (result.services ?? [])) {
+    for (const svc of vm.services) {
       for (const f of (svc.files ?? [])) fileToService.set(f, svc.name)
     }
     const seen = new Set<string>()
     const edges: GraphEdge[] = []
-    for (const [srcFile, tgtFiles] of Object.entries(result.dependencies ?? {})) {
+    for (const [srcFile, tgtFiles] of Object.entries(vm.dependencies ?? {})) {
       const srcSvc = fileToService.get(srcFile)
       if (!srcSvc) continue
       for (const tgtFile of tgtFiles) {
@@ -80,11 +261,15 @@ export default function ExplorePage() {
       }
     }
     return edges
-  }, [result])
+  }, [vm])
 
-  // ── Active groups for filtering ─────────────────────────────────
+  // ── Active groups for filtering ─────────────────────────────────────────
   const allGroups = useMemo(() => new Set(allNodes.map((n) => n.group)), [allNodes])
-  const [activeGroups, setActiveGroups] = useState<Set<string> | null>(null)
+  const groupOrder = useMemo(() => {
+    const seen: string[] = []
+    for (const n of allNodes) if (!seen.includes(n.group)) seen.push(n.group)
+    return seen
+  }, [allNodes])
 
   // Initialize activeGroups when data loads
   useEffect(() => {
@@ -93,13 +278,17 @@ export default function ExplorePage() {
     }
   }, [allGroups, activeGroups])
 
-  // ── Filtered data for drill-down ────────────────────────────────
+  // Reset filter when the dataset changes (new repo / rebuild).
+  useEffect(() => {
+    setActiveGroups(null)
+  }, [snapshot?.id, liveResult])
+
+  // ── Filtered data for drill-down ────────────────────────────────────────
   const displayNodes = useMemo(() => {
     if (!drillNodeId) return allNodes
     const neighborIds = new Set<string>()
     neighborIds.add(drillNodeId)
 
-    // Find immediate neighbors
     for (const edge of allEdges) {
       const sourceId = typeof edge.source === 'string' ? edge.source : edge.source.id
       const targetId = typeof edge.target === 'string' ? edge.target : edge.target.id
@@ -120,19 +309,19 @@ export default function ExplorePage() {
     })
   }, [allEdges, displayNodes, drillNodeId])
 
-  // ── Node details for selected node ──────────────────────────────
+  // ── Node details for selected node ──────────────────────────────────────
   const selectedDetails = useMemo(() => {
-    if (!selectedNode || !result) return null
-    const srv = result.services?.find((s) => s.name === selectedNode.id)
+    if (!selectedNode || !vm) return null
+    const srv = vm.services.find((s) => s.name === selectedNode.id)
     if (!srv) return null
 
     const edgesIn = allEdges.filter((e) => e.target === selectedNode.id)
     const edgesOut = allEdges.filter((e) => e.source === selectedNode.id)
 
     return { service: srv, edgesIn, edgesOut }
-  }, [selectedNode, result, allEdges])
+  }, [selectedNode, vm, allEdges])
 
-  // ── Toggle filter group ────────────────────────────────────────
+  // ── Toggle filter group ────────────────────────────────────────────────
   function toggleGroup(group: string) {
     setActiveGroups((prev) => {
       if (!prev) return new Set([group])
@@ -143,13 +332,23 @@ export default function ExplorePage() {
     })
   }
 
+  const graphLoading = isRepoMode && graphQuery.isLoading
+  const hasGraph = Boolean(vm && allNodes.length > 0)
+  const showError = error || (graphQuery.isError && !liveResult
+    ? (graphQuery.error instanceof Error ? graphQuery.error.message : 'Failed to load the saved graph.')
+    : '')
+
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] font-body text-ink max-w-full overflow-x-hidden relative">
         {/* Header */}
         <PageHeader
           eyebrow="Folio 08 · Explore"
           title="Architecture Explorer"
-          subtitle="Deep codebase analysis · dependency graph, service map, circular deps detection"
+          subtitle={
+            isRepoMode
+              ? `${paramOwner}/${paramRepo} · durable graph, updates on every push`
+              : 'Deep codebase analysis · dependency graph, service map, circular deps detection'
+          }
           actions={
             <div className="relative flex items-center w-full md:w-[360px]">
               <MagnifyingGlass size={16} className="absolute left-3 text-ink-muted/40 pointer-events-none" />
@@ -171,26 +370,70 @@ export default function ExplorePage() {
           }
         />
 
-        {error && (
+        {showError && (
           <div className="mb-6 px-4 py-3 rounded-[3px] bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={handleAnalyze} disabled={loading || !repoUrl.trim()} className="text-caption underline ml-4 text-abort/70 hover:text-abort disabled:opacity-50">Retry</button>
+            <span>{showError}</span>
+            <button
+              onClick={() => (isRepoMode ? graphQuery.refetch() : handleAnalyze())}
+              disabled={busy}
+              className="text-caption underline ml-4 text-abort/70 hover:text-abort disabled:opacity-50"
+            >
+              Retry
+            </button>
           </div>
         )}
 
-        {loading && !result && <ExploreResultSkeleton />}
+        {(loading || graphLoading) && !vm && <ExploreResultSkeleton />}
+
+        {/* ── Graph status bar — durable state (commit · built · stale) ── */}
+        {isRepoMode && vm && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[3px] border border-seam bg-well/30 px-3.5 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={cn(
+                'h-1.5 w-1.5 rounded-full shrink-0',
+                vm.building ? 'bg-amber-400 animate-pulse' : 'bg-go'
+              )} />
+              <span className="font-code text-[11px] text-ink-secondary truncate">
+                {vm.commit ? `pinned to ${vm.commit}` : 'no commit pinned'}
+              </span>
+            </div>
+            {vm.builtAt && (
+              <span className="font-code text-[11px] text-ink-muted/70">
+                built {relativeTime(vm.builtAt)}
+              </span>
+            )}
+            {vm.building && (
+              <span className="font-code text-[11px] text-amber-500">rebuilding…</span>
+            )}
+            {!vm.building && vm.stale === true && (
+              <span className="font-code text-[11px] text-amber-500">
+                newer commit available
+              </span>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => rebuildMutation.mutate()}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-[3px] border border-seam bg-panel px-2.5 py-1 text-caption font-medium text-ink-secondary hover:text-ink hover:border-go/40 transition-colors disabled:opacity-40"
+              >
+                <ArrowsClockwise size={13} weight="bold" className={busy ? 'animate-spin' : ''} />
+                Rebuild
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Metric strip — single ruled panel, four readouts (matches Dashboard Folio 01) ── */}
         <div className="mb-6">
           <div className="metric-strip grid-cols-2 md:grid-cols-4">
             {([
-              { label: 'Total files', value: result?.entities.files.length ?? '—', sub: result ? 'scanned' : 'awaiting index' },
-              { label: 'Classes', value: result?.entities.classes.length ?? '—', sub: result ? 'entities' : '—' },
-              { label: 'Functions', value: result?.entities.functions.length ?? '—', sub: result ? 'entities' : '—' },
+              { label: 'Total files', value: vm ? vm.fileCount : '—', sub: vm ? 'scanned' : 'awaiting index' },
+              { label: 'Classes', value: vm ? vm.classCount : '—', sub: vm ? 'entities' : '—' },
+              { label: 'Functions', value: vm ? vm.functionCount : '—', sub: vm ? 'entities' : '—' },
               {
                 label: 'Circular deps',
-                value: result?.circular_dependencies.length ?? '—',
-                sub: result ? (result.circular_dependencies.length > 0 ? 'needs attention' : 'clean') : '—',
+                value: vm ? vm.circularDependencies.length : '—',
+                sub: vm ? (vm.circularDependencies.length > 0 ? 'needs attention' : 'clean') : '—',
               },
             ] as const).map((stat) => (
               <div key={stat.label} className="metric-cell">
@@ -203,7 +446,7 @@ export default function ExplorePage() {
         </div>
 
         {/* ── Graph controls ──────────────────────────────── */}
-        {result && !loading && (
+        {hasGraph && !busy && (
           <div className="flex flex-wrap items-center gap-2 mb-3">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
@@ -232,7 +475,7 @@ export default function ExplorePage() {
               )}
             >
               <Funnel size={14} weight={showFilters ? 'fill' : 'regular'} />
-              Filters {activeGroups && activeGroups.size < allGroups.size ? `(${activeGroups.size})` : ''}
+              Layers {activeGroups && activeGroups.size < allGroups.size ? `(${activeGroups.size})` : ''}
             </button>
 
             {/* Drill-down indicator */}
@@ -259,8 +502,34 @@ export default function ExplorePage() {
           </div>
         )}
 
+        {/* ── Layer legend — colour meaning ───────────────── */}
+        {hasGraph && !busy && groupOrder.length > 1 && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+            {groupOrder.map((group, i) => {
+              const on = !activeGroups || activeGroups.has(group)
+              return (
+                <button
+                  key={group}
+                  onClick={() => toggleGroup(group)}
+                  className={cn(
+                    'flex items-center gap-1.5 text-[11px] font-code transition-opacity',
+                    on ? 'opacity-100' : 'opacity-35'
+                  )}
+                  title={`Toggle layer ${group}`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
+                  />
+                  <span className="text-ink-secondary">{group}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* ── Filter chips ────────────────────────────────── */}
-        {showFilters && result && !loading && (
+        {showFilters && hasGraph && !busy && (
           <div className="mb-3 overflow-hidden">
             <div className="flex flex-wrap gap-1.5 p-2 bg-well/20 border border-seam rounded-[3px]">
               {Array.from(allGroups).map((group) => (
@@ -300,49 +569,64 @@ export default function ExplorePage() {
                 <span className="text-ink-muted/30 text-caption font-code tracking-wide">
                   {drillNodeId
                     ? `drill: ${drillNodeId.slice(0, 24)}`
-                    : result
-                      ? `${result.architecture_pattern} · ${allNodes.length} nodes · ${allEdges.length} edges`
+                    : vm
+                      ? `${vm.architecturePattern} · ${allNodes.length} nodes · ${allEdges.length} edges`
                       : 'arch_graph.viz'}
                 </span>
               </div>
-              {result && (
+              {vm && (
                 <div className="absolute right-4 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-go" />
-                  <span className="text-caption text-go/70 font-code">live</span>
+                  <span className={cn('w-1.5 h-1.5 rounded-full', vm.building ? 'bg-amber-400' : 'bg-go')} />
+                  <span className={cn('text-caption font-code', vm.building ? 'text-amber-500' : 'text-go/70')}>
+                    {vm.building ? 'rebuilding' : vm.source === 'persisted' ? 'saved' : 'live'}
+                  </span>
                 </div>
               )}
             </div>
 
             {/* Content */}
             <div className="flex-1 relative overflow-hidden" style={{
-              backgroundImage: `url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjAzIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+\")`,
+              backgroundImage: `url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIwLjAzIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+")`,
             }}>
               <div className="absolute inset-0 bg-well/10 pointer-events-none z-10" />
 
-              {!result && !loading && (
+              {!vm && !busy && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                   <EmptyState
-                    title="Enter a GitHub URL above to analyze"
-                    description="Renders an interactive dependency graph with D3 force simulation"
+                    title={
+                      isRepoMode
+                        ? 'No saved graph for this repository yet'
+                        : 'Enter a GitHub URL above to analyze'
+                    }
+                    description={
+                      isRepoMode
+                        ? 'Build it once — it stays saved and refreshes on every push.'
+                        : 'Renders an interactive dependency graph with D3 force simulation'
+                    }
                     icon={<Graph size={40} />}
                     action={
-                      <button onClick={handleAnalyze}
-                        className="mt-2 px-5 py-2 rounded-[3px] text-caption border border-seam text-ink-muted hover:text-ink hover:bg-well transition-colors font-code">
-                        Initialize Graph
+                      <button
+                        onClick={() => (isRepoMode ? rebuildMutation.mutate() : handleAnalyze())}
+                        disabled={busy}
+                        className="mt-2 px-5 py-2 rounded-[3px] text-caption border border-seam text-ink-muted hover:text-ink hover:bg-well transition-colors font-code disabled:opacity-50"
+                      >
+                        {isRepoMode ? 'Build graph' : 'Initialize Graph'}
                       </button>
                     }
                   />
                 </div>
               )}
 
-              {loading && (
+              {busy && !vm && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                   <Spinner size={28} aria-hidden className="animate-spin text-go mb-4 shrink-0" />
-                  <p className="text-ink-muted/60 text-caption font-code animate-pulse">Cloning repository and parsing AST…</p>
+                  <p className="text-ink-muted/60 text-caption font-code animate-pulse">
+                    {isRepoMode ? 'Loading saved graph…' : 'Cloning repository and parsing AST…'}
+                  </p>
                 </div>
               )}
 
-              {result && !loading && (
+              {vm && allNodes.length > 0 && (
                 <div className="absolute inset-0 z-20">
                   <ForceGraph
                     nodes={displayNodes}
@@ -360,7 +644,7 @@ export default function ExplorePage() {
           </CardSpotlight>
 
           {/* ── Details panel ─────────────────────────────── */}
-          
+
             {selectedDetails && (
               <div className="lg:w-[340px] shrink-0">
                 <CardSpotlight className="p-5 h-full">
@@ -434,15 +718,15 @@ export default function ExplorePage() {
                 </CardSpotlight>
               </div>
             )}
-          
+
         </div>
 
         {/* ── Architecture insights ───────────────────────── */}
-        {result && !loading && (
+        {vm && !busy && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div className="bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
               <div className="text-overline text-ink-muted/50 font-semibold mb-2">Pattern</div>
-              <div className="text-ink readout text-body-sm font-medium">{result.architecture_pattern}</div>
+              <div className="text-ink readout text-body-sm font-medium">{vm.architecturePattern}</div>
               <div className="text-caption text-ink-muted/40 mt-1">
                 {allNodes.length} services · {allEdges.length} dep edges
               </div>
@@ -450,9 +734,9 @@ export default function ExplorePage() {
 
             <div className="md:col-span-2 bg-base border border-seam rounded-card p-4 hover:border-seam-strong transition-colors">
               <div className="text-overline text-ink-muted/50 font-semibold mb-3">Services</div>
-              {result.services && result.services.length > 0 ? (
+              {vm.services.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {result.services.map((srv, idx) => (
+                  {vm.services.map((srv, idx) => (
                     <button
                       key={idx}
                       onClick={() => {

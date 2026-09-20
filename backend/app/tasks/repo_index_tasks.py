@@ -50,6 +50,7 @@ def build_repo_index(
     max_files: int = 1000,
     force: bool = False,
     scope: str = "",
+    snapshot: bool = True,
 ) -> dict:
     """Clone + parse + index one repository (or return the cached document).
 
@@ -71,6 +72,21 @@ def build_repo_index(
         doc = await service.build(repo_url, branch=branch, max_files=max_files, force=force)
         _scope = scope or index_id_for(repo_url, branch)
         stats = doc.get("stats", {})
+        snapshot_written = False
+        # Persist a durable architecture snapshot from the fresh index so the
+        # graph updates on the new commit (webhook / nightly sweep). Best-effort:
+        # an index build must not fail because snapshot storage is unavailable.
+        if snapshot:
+            from app.services.architecture_store import architecture_store
+
+            await architecture_store.mark_building(doc.get("index_id"))
+            try:
+                saved = await architecture_store.save_from_index(doc, source="rebuild")
+                snapshot_written = saved is not None
+            except Exception:
+                logger.exception("Architecture snapshot failed for %s", repo_url)
+            finally:
+                await architecture_store.clear_building(doc.get("index_id"))
         return {
             "index_id": doc["index_id"],
             "repo_url": repo_url,
@@ -80,6 +96,7 @@ def build_repo_index(
             "file_count": stats.get("file_count", 0),
             "built_at": doc.get("built_at"),
             "scope": _scope,
+            "snapshot": snapshot_written,
         }
 
     try:

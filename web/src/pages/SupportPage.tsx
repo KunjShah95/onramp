@@ -55,11 +55,99 @@ const QUICK_PATHS = [
   { label: 'Changelog', href: '/changelog', Icon: ClockCounterClockwise },
 ]
 
+/** Build FAQ schema for support page */
+function buildSupportFAQSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'How fast does Onramp support respond?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'We typically respond within one business day (Monday–Friday). Team and Enterprise plans include 24/7 support with faster SLA guarantees.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Where can I find API documentation?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Full API reference is available at /docs under the API Reference section. It covers authentication, endpoints, request/response formats, and code examples.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I get a demo before signing up?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes! Contact our sales team at sales@onramp.ai to schedule a personalized demo with an engineer who can walk through your specific use case.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is there a community forum or Discord?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes, join our Discord at discord.gg/onramp for community discussion, feature requests, and direct access to the engineering team.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How do I report a security vulnerability?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Email security@onramp.ai with details. We run a responsible disclosure program and respond to all reports within 48 hours.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the SLA for Enterprise plans?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Enterprise plans include a 99.9% uptime SLA with financially backed credits. Contact sales for the full SLA document.',
+        },
+      },
+    ],
+  }
+}
+
+/** Build BreadcrumbList schema for Support page */
+function buildSupportBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Support',
+        item: 'https://onramp.app/support',
+      },
+    ],
+  }
+}
+
 export default function SupportPage() {
+  const faqSchema = buildSupportFAQSchema()
+  const breadcrumbSchema = buildSupportBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Support · Onramp', description: 'How can we help? Pick a channel and we usually respond within one business day.', path: '/support' }}
+      seo={{
+        title: 'Support · Onramp',
+        description: 'How can we help? Pick a channel and we usually respond within one business day.',
+        path: '/support',
+        schema: [faqSchema, breadcrumbSchema],
+      }}
     >
       <div className="mx-auto max-w-6xl px-6 pb-24 pt-12 lg:px-10">
         <EditorialHero

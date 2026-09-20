@@ -80,6 +80,7 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage'))
 const SecurityPage = lazy(() => import('./pages/SecurityPage'))
 const DPAPage = lazy(() => import('./pages/DPAPage'))
 const SOC2Page = lazy(() => import('./pages/SOC2Page'))
+const ComparisonPage = lazy(() => import('./pages/ComparisonPage'))
 
 // New Phase 2-5 pages
 const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
@@ -130,6 +131,11 @@ export default function App() {
               <Route path="/why-onramp" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><WhyOnrampPage /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/compare" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><ComparisonPage /></ErrorBoundary>
                 </Suspense>
               } />
               <Route path="/changelog" element={

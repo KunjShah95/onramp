@@ -1,0 +1,45 @@
+# Onramp
+
+> AI-powered developer onboarding. Onramp indexes your codebase into a live architecture map and guides developers through their first PR — turning weeks of tribal knowledge gathering into days of self-serve productivity.
+
+## Key Pages
+- [Product Overview](https://onramp.app/) — What we do and how it works
+- [Why Onramp](https://onramp.app/why-onramp) — Comparison vs coding agents
+- [Pricing](https://onramp.app/#pricing) — Transparent, flat pricing
+- [Documentation](https://onramp.app/docs) — Guides, API reference, self-hosting
+- [Blog](https://onramp.app/blog) — Engineering insights and product updates
+- [Security](https://onramp.app/security) — SOC 2 Type II, compliance, policies
+
+## What We Do
+
+Onramp solves the developer onboarding problem by automatically turning any GitHub repository into an interactive knowledge map. Instead of new hires spending 3-6 months piecing together tribal knowledge from senior engineers, Onramp parses the actual source code, builds a live dependency graph, and creates guided onboarding paths with an AI mentor that answers questions with file and line references.
+
+**Core capabilities:**
+- **Live Architecture Map**: Visual, searchable dependency graph updated on every push
+- **AI Codebase Mentor**: Ask questions in plain English, get answers grounded in your actual code with citations
+- **Guided Learning Paths**: Structured onboarding plans tailored to each hire's background
+- **First Issue Finder**: Curated, scope-appropriate first PRs for new developers
+- **Architecture Drift Detection**: Flags when the actual architecture diverges from documented design
+- **Time-to-First-PR Analytics**: Measure and improve onboarding velocity across teams
+
+## Target Audience
+- **Primary**: Engineering managers, CTOs, and VPs of Engineering at companies with 10-500+ developers
+- **Secondary**: Developer experience teams, platform teams, onboarding program owners
+- **Tertiary**: Individual developers joining new teams, open source contributors
+
+## Key Differentiators
+- **Parse once, answer forever**: Unlike coding agents that re-read the entire codebase on every query (burning tokens), Onramp indexes once and incrementally updates the knowledge graph on each push
+- **Flat pricing, not per-seat**: $99/month per workspace for unlimited engineers — no per-dev token burn or seat math
+- **Free-first LLM routing**: Multi-provider router with OpenRouter, Gemini, Groq, NVIDIA free tiers before paid fallbacks
+- **Grounded answers**: Every AI response cites specific files and line numbers from the actual codebase
+- **Privacy-first**: Raw source code is discarded after analysis; only the indexed graph representation is stored
+- **SOC 2 Type II certified**: Enterprise-grade security, availability, and confidentiality controls
+- **Self-hostable**: Docker Compose deployment for air-gapped or compliance-required environments
+
+## Supported Languages
+Python, JavaScript, TypeScript, Go, Rust, Java — with AST-level parsing for each
+
+## Pricing Summary
+- **Free**: 1 repository, 100 AI questions/month, live architecture map
+- **Team**: $99/mo (or $82/mo annual) per workspace — unlimited repos, unlimited questions, guided paths, GitHub/Slack/Linear sync
+- **Enterprise**: Custom — SSO/SAML, self-hosted, audit logs, dedicated success engineer, 99.9% SLA

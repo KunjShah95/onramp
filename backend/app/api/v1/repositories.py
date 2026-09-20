@@ -3,8 +3,10 @@ from typing import Optional, List
 from pydantic import BaseModel
 from app.services.postgres_db import get_storage, generate_id
 from app.api.v1.auth import get_current_user
+from app.services.quota import enforce_quota
 from app.llm import LLMRouter
 from app.services.issue_orchestrator import IssueOrchestrator
+from app.services.architecture_store import architecture_store
 
 router = APIRouter(prefix="/repos", tags=["repositories"])
 
@@ -161,6 +163,13 @@ async def repo_analysis(
     # Use the stored URL when available (otherwise falls back to github.com)
     repo_url = repo_data.get("url", "") or f"https://github.com/{owner}/{repo}"
 
+    # Durable architecture snapshot (if one was ever built) backs the graph
+    # counts below — real numbers instead of the old hardcoded 0/0 stub.
+    snapshot = await architecture_store.latest(repo_url=repo_url)
+    if snapshot is None:
+        snapshot = await architecture_store.latest(owner=owner, name=repo)
+    graph_counts = _graph_counts(snapshot)
+
     provider = detect_provider(repo_url)
     
     if provider == 'gitlab':
@@ -175,12 +184,15 @@ async def repo_analysis(
         stats = await gh.get_repo_stats(owner, repo)
 
     if not stats.get("available"):
-        # Honest unavailable state — no fabricated graph or scores.
+        # Honest unavailable state — no fabricated graph or scores. A stored
+        # snapshot (if any) still reports its real counts.
         return {
             "available": False,
             "owner": owner,
             "repo": repo,
-            "graph": {"nodes": 0, "edges": 0},
+            "graph": graph_counts,
+            "architecture_pattern": (snapshot or {}).get("architecture_pattern"),
+            "last_analyzed_at": (snapshot or {}).get("built_at"),
             "learning_paths": 0,
             "first_issues_identified": 0,
             "health_score": None,
@@ -208,10 +220,123 @@ async def repo_analysis(
         "health_score": stats.get("health_score"),
         "health_factors": stats.get("health_factors", []),
         "first_issues_identified": len(first_issues),
-        # Code-graph analysis requires cloning + parsing the repo, which is a
-        # separate pipeline; 0 here means "not yet computed", not fabricated.
-        "graph": {"nodes": 0, "edges": 0},
+        # From the durable architecture snapshot; 0/0 means "not built yet",
+        # not fabricated. Build it via POST /repos/{owner}/{repo}/graph/rebuild.
+        "graph": graph_counts,
+        "architecture_pattern": (snapshot or {}).get("architecture_pattern"),
+        "last_analyzed_at": (snapshot or {}).get("built_at"),
         "learning_paths": len(stats.get("topics", [])),
+    }
+
+
+def _repo_url_from_row(repo_data: dict, owner: str, repo: str) -> str:
+    """Stored clone/html URL, or a synthesized GitHub URL fallback."""
+    return (repo_data.get("url") or "").strip() or f"https://github.com/{owner}/{repo}"
+
+
+def _graph_counts(snapshot: dict | None) -> dict:
+    """Node/edge counts for a persisted snapshot (0 when absent)."""
+    if not snapshot:
+        return {"nodes": 0, "edges": 0}
+    services = snapshot.get("services") or []
+    deps = snapshot.get("dependencies") or {}
+    edges = 0
+    for targets in deps.values():
+        edges += len(targets or [])
+    return {"nodes": len(services), "edges": edges}
+
+
+@router.get("/{owner}/{repo}/graph")
+async def repo_graph(
+    owner: str,
+    repo: str,
+    branch: str = Query("main"),
+    include_history: bool = Query(False),
+    history_limit: int = Query(20, ge=1, le=100),
+    user: dict = Depends(get_current_user),
+):
+    """Return the persisted architecture snapshot for a tracked repository.
+
+    Durable (Postgres ``repo_analyses``) — survives reloads, Redis restarts
+    and TTL expiry. ``stale`` is True when the cached index is pinned to a
+    newer commit than the snapshot, False when they match, and null when
+    there is no cache to compare against.
+    """
+    repo_data = await _verify_repo_access(owner, repo, user)
+    repo_url = _repo_url_from_row(repo_data, owner, repo)
+
+    snapshot = await architecture_store.latest(repo_url=repo_url, branch=branch)
+    if snapshot is None:
+        # Snapshots may have been saved under a different URL form (clone vs
+        # html URL) — fall back to the owner/name pair.
+        snapshot = await architecture_store.latest(owner=owner, name=repo, branch=branch)
+
+    index_id = snapshot.get("index_id") if snapshot else None
+    building = await architecture_store.is_building(index_id)
+
+    stale = None
+    try:
+        from app.services.repo_context import RepoContextService, index_id_for
+
+        idx = await RepoContextService().get(index_id or index_id_for(repo_url, branch))
+        if idx is not None:
+            stale = (idx.get("commit") or "") != ((snapshot or {}).get("commit") or "")
+    except Exception:
+        stale = None
+
+    payload = {
+        "snapshot": snapshot,
+        "repo_url": repo_url,
+        "branch": branch,
+        "stale": stale,
+        "building": building,
+    }
+    if include_history:
+        payload["history"] = await architecture_store.history(
+            repo_url=repo_url, branch=branch, limit=history_limit
+        )
+    return payload
+
+
+@router.post("/{owner}/{repo}/graph/rebuild")
+async def rebuild_repo_graph(
+    owner: str,
+    repo: str,
+    branch: str = Query("main"),
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("explore"),
+):
+    """Force-rebuild the repo index and persist a fresh architecture snapshot.
+
+    Clones + parses once, then reuses the cached index to write the snapshot —
+    so the graph is durable and pinned to the new HEAD commit.
+    """
+    repo_data = await _verify_repo_access(owner, repo, user)
+    repo_url = _repo_url_from_row(repo_data, owner, repo)
+
+    from app.services.repo_context import RepoContextService, index_id_for
+
+    index_id = index_id_for(repo_url, branch)
+    await architecture_store.mark_building(index_id)
+    try:
+        index_doc = await RepoContextService().build(repo_url, branch=branch, force=True)
+        snapshot = await architecture_store.save_from_index(
+            index_doc,
+            source="manual",
+            team_id=repo_data.get("team_id"),
+            repo_id=repo_data.get("id"),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Rebuild failed: {exc}")
+    finally:
+        await architecture_store.clear_building(index_id)
+
+    return {
+        "snapshot": snapshot,
+        "repo_url": repo_url,
+        "branch": branch,
+        "stale": False,
+        "building": False,
     }
 
 

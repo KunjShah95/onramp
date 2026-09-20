@@ -1,4 +1,3 @@
-
 import { ShieldCheck, Lock, Eye, Cloud, FileLock } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -9,7 +8,6 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
-
 
 const categories = [
   {
@@ -57,11 +55,78 @@ const certifications = [
   { name: 'Data residency', status: 'US / EU', desc: 'Choose data storage region: US (Virginia) or EU (Frankfurt).' },
 ]
 
+/** Build SecurityPage schema */
+function buildSecuritySchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Security · Onramp',
+    description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.',
+    url: 'https://onramp.app/security',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    mainEntity: {
+      '@type': 'SecurityScheme',
+      name: 'Onramp Security Program',
+      description: 'Comprehensive security practices including encryption, access control, infrastructure security, and compliance.',
+      encryption: {
+        inTransit: 'TLS 1.3 minimum',
+        atRest: 'AES-256',
+        keyManagement: 'Per-tenant keys, 90-day rotation',
+      },
+      accessControl: {
+        authentication: 'OAuth 2.0/OIDC, SAML SSO, passwordless magic links',
+        authorization: 'RBAC with granular permissions',
+        mfa: 'Enforced for admin accounts',
+      },
+      compliance: {
+        soc2: 'SOC 2 Type II in progress',
+        gdpr: 'Compliant',
+        dpa: 'Available',
+        dataResidency: 'US (Virginia) or EU (Frankfurt)',
+      },
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for Security page */
+function buildSecurityBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Security',
+        item: 'https://onramp.app/security',
+      },
+    ],
+  }
+}
+
 export default function SecurityPage() {
+  const securitySchema = buildSecuritySchema()
+  const breadcrumbSchema = buildSecurityBreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Security · Onramp', description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.', path: '/security' }}
+      seo={{
+        title: 'Security · Onramp',
+        description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.',
+        path: '/security',
+        schema: [securitySchema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}

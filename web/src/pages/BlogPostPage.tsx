@@ -66,6 +66,38 @@ const articleContent: Record<string, string[]> = {
   ],
 }
 
+/** Build Article schema for blog posts */
+function buildArticleSchema(post: (typeof posts)[0], url: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    image: `${url}/og-image.png`,
+    author: {
+      '@type': 'Person',
+      name: post.author ?? 'Onramp Team',
+      url: post.authorUrl ?? 'https://onramp.app/about',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://onramp.app/icon-512.svg',
+      },
+    },
+    datePublished: post.dateISO,
+    dateModified: post.dateModifiedISO ?? post.dateISO,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': url,
+    },
+    articleSection: post.category,
+    keywords: [post.category, 'developer onboarding', 'AI', 'engineering velocity'],
+  }
+}
+
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const post = posts.find((p) => p.slug === slug)
@@ -83,10 +115,19 @@ export default function BlogPostPage() {
   const prevPost = currentIndex > 0 ? posts[currentIndex - 1] : null
   const nextPost = currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null
 
+  const pageUrl = `https://onramp.app/blog/${post.slug}`
+  const articleSchema = buildArticleSchema(post, pageUrl)
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: `${post.title} | Onramp Blog`, description: post.excerpt, path: `/blog/${post.slug}`, type: 'article' }}
+      seo={{
+        title: `${post.title} | Onramp Blog`,
+        description: post.excerpt,
+        path: `/blog/${post.slug}`,
+        type: 'article',
+        schema: articleSchema,
+      }}
     >
       <article className="max-w-3xl mx-auto px-6 pt-16 pb-24">
         {/* Back link */}

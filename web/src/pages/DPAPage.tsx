@@ -1,4 +1,3 @@
-
 import { FileText, Download, ShieldCheck, Clock, CheckCircle } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
@@ -9,7 +8,6 @@ const navLinks: NavLinkItem[] = [
   { label: 'Pricing', href: '/#pricing' },
   { label: 'Changelog', href: '/changelog' },
 ]
-
 
 const sections = [
   {
@@ -42,11 +40,85 @@ const steps = [
   'Our team signs and returns it within 5 business days',
 ]
 
+/** Build DPA schema */
+function buildDPASchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Data Processing Agreement · Onramp',
+    description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected under GDPR and CCPA.',
+    url: 'https://onramp.app/dpa',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Onramp',
+      logo: 'https://onramp.app/icon-512.svg',
+    },
+    datePublished: '2025-01-01',
+    dateModified: '2026-07-02',
+    mainEntity: {
+      '@type': 'DataProcessingAgreement',
+      name: 'Onramp Standard DPA',
+      description: 'Standard Data Processing Agreement covering all Onramp services.',
+      processor: {
+        '@type': 'Organization',
+        name: 'Onramp',
+        role: 'Data Processor',
+      },
+      controller: {
+        '@type': 'Organization',
+        name: 'Customer',
+        role: 'Data Controller',
+      },
+      applicableRegulations: ['GDPR', 'CCPA'],
+      dataProtectionOfficer: 'privacy@onramp.ai',
+      subProcessors: subprocessors,
+      breachNotification: '72 hours',
+      dataRetention: 'Upon termination or 30 days after deletion request',
+    },
+  }
+}
+
+/** Build BreadcrumbList schema for DPA page */
+function buildDPABreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://onramp.app/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Legal',
+        item: 'https://onramp.app/dpa',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Data Processing Agreement',
+        item: 'https://onramp.app/dpa',
+      },
+    ],
+  }
+}
+
 export default function DPAPage() {
+  const dpaSchema = buildDPASchema()
+  const breadcrumbSchema = buildDPABreadcrumbSchema()
+
   return (
     <MarketingLayout
       navLinks={navLinks}
-      seo={{ title: 'Data Processing Agreement · Onramp', description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.', path: '/dpa' }}
+      seo={{
+        title: 'Data Processing Agreement · Onramp',
+        description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.',
+        path: '/dpa',
+        schema: [dpaSchema, breadcrumbSchema],
+      }}
     >
       <div className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         {/* Hero */}

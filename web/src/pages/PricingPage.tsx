@@ -241,7 +241,7 @@ export default function PricingPage() {
             <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 border-t border-seam pt-7 text-sm flex-1">
               {TEAM_FEATURES.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-[14px] leading-[1.4] text-[hsl(var(--foreground))] font-body">
-                  <span className="mt-px flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-go text-accent-foreground">
+                  <span className="mt-px flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full bg-go text-[rgb(var(--accent-foreground))]">
                     <Check size={10} weight="bold" />
                   </span>
                   <span>{f}</span>

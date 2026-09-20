@@ -46,21 +46,80 @@ function FeatureList({ items }: { items: string[] }) {
   )
 }
 
+/** Build FAQ schema for pricing section */
+function buildPricingFAQSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What is included in the Free plan?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The Free plan includes 1 repository, 100 AI mentor questions per month, the live architecture map, and community support. It is free forever for individual developers.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is the Team plan per user or per workspace?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The Team plan is a flat $99/month per workspace (or $82/month billed annually). It includes unlimited engineers — no per-seat pricing.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Does the Team plan require a credit card for the trial?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. The 14-day trial on the Team plan does not require a credit card. You can start exploring with your full team immediately.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I self-host Onramp?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Self-hosting via Docker Compose is available on the Enterprise plan. You can run Onramp in your own VPC or on-premise with full data sovereignty.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What LLM providers does Onramp support?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Onramp uses a free-first multi-provider router supporting OpenRouter, Gemini, Groq, NVIDIA, Mistral, OpenAI, Anthropic, Hugging Face, and local Ollama. Providers without API keys are skipped automatically.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is Onramp SOC 2 compliant?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Onramp has achieved SOC 2 Type II certification, demonstrating operational effectiveness of security, availability, and confidentiality controls over a 6-month audit period.',
+        },
+      },
+    ],
+  }
+}
+
 export default function Pricing() {
   const [annual, setAnnual] = useState(true)
   const teamPrice = annual ? 82 : 99
+
+  const faqSchema = buildPricingFAQSchema()
 
   return (
     <section id="pricing" className="scroll-mt-20 border-t border-seam bg-room">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="Pricing"
-          align="center"
           heading={<>One flat price. Your whole team.</>}
           sub="No per-seat math. Every engineer can ask, explore, and onboard; you pay one price per workspace."
         />
 
-        <div className="mt-8 flex justify-center">
+        <div className="mx-auto mt-8 flex w-fit items-center gap-1 rounded-md border border-seam bg-panel p-1">
           {(['Monthly', 'Annual'] as const).map((label) => {
             const active = annual === (label === 'Annual')
             return (
@@ -68,15 +127,9 @@ export default function Pricing() {
                 key={label}
                 type="button"
                 onClick={() => setAnnual(label === 'Annual')}
-<<<<<<< HEAD
                 className={`rounded px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
- active ? 'bg-ink text-[var(--panel-raised)]' : 'text-ink-secondary hover:text-ink'
- }`}
-=======
-                className={`relative rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
-                  active ? 'bg-accent-primary text-accent-foreground' : 'text-ink-secondary hover:text-ink'
+                  active ? 'bg-ink text-[var(--panel-raised)]' : 'text-ink-secondary hover:text-ink'
                 }`}
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
               >
                 {label}
                 {label === 'Annual' && (
@@ -87,138 +140,6 @@ export default function Pricing() {
               </button>
             )
           })}
-<<<<<<< HEAD
-=======
-        </motion.div>
-
-        <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Free */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.65, delay: 0.05, ease: EASE }}
-            className="h-full"
-          >
-            <SpotlightCard className={SIDE_CARD}>
-              <div className="flex h-full flex-col p-7">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
-                  Free
-                </span>
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="font-body text-[40px] font-bold leading-none tracking-tight text-ink">$0</span>
-                  <span className="ml-1 text-[13px] text-ink-secondary">forever</span>
-                </div>
-                <p className="mt-3 text-[13px] text-ink-secondary">
-                  For individuals exploring their own repo.
-                </p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
-                  {STARTER_FEATURES.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                      <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-accent-primary/10">
-                        <Check size={10} weight="bold" className="text-accent-primary" />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-seam bg-panel px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-accent-primary/40 active:translate-y-px"
-                >
-                  Get started
-                  <ArrowRight size={14} weight="bold" />
-                </Link>
-              </div>
-            </SpotlightCard>
-          </motion.div>
-
-          {/* Team — featured */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.65, delay: 0.12, ease: EASE }}
-            className="relative"
-          >
-            <MovingBorder speed={9} className="shadow-overhead">
-              <div className="relative flex h-full flex-col overflow-hidden rounded-[23px] bg-panel p-7">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-accent-primary">
-                    Team
-                  </span>
-                  <span className="rounded-full border border-accent-primary/25 bg-accent-primary/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-accent-primary-hover">
-                    Recommended
-                  </span>
-                </div>
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="font-body text-[40px] font-bold leading-none tracking-tight text-ink">
-                    ${teamPrice}
-                  </span>
-                  <span className="ml-1 text-[13px] text-ink-secondary">/mo</span>
-                </div>
-                <p className="mt-3 text-[13px] text-ink-secondary">per workspace · unlimited engineers</p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
-                  {TEAM_FEATURES.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                      <span className="mt-0.5 flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full bg-accent-primary/10">
-                        <Check size={10} weight="bold" className="text-accent-primary" />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-primary px-6 py-3 text-[14px] font-semibold text-accent-foreground shadow-[0_0_28px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
-                >
-                  Start 14-day trial
-                  <ArrowRight size={14} weight="bold" />
-                </Link>
-              </div>
-            </MovingBorder>
-          </motion.div>
-
-          {/* Enterprise */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.65, delay: 0.19, ease: EASE }}
-            className="h-full"
-          >
-            <SpotlightCard className={SIDE_CARD}>
-              <div className="flex h-full flex-col p-7">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-secondary">
-                  Enterprise
-                </span>
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="font-body text-[40px] font-bold leading-none tracking-tight text-ink">
-                    Custom
-                  </span>
-                </div>
-                <p className="mt-3 text-[13px] text-ink-secondary">
-                  For orgs that need control, security, and scale.
-                </p>
-                <ul className="mt-7 flex-1 space-y-2.5 border-t border-seam pt-5">
-                  {ENTERPRISE_FEATURES.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13px] leading-[1.5] text-ink-secondary">
-                      <Check size={13} weight="bold" className="mt-0.5 shrink-0 text-go" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/register"
-                  className="mt-7 inline-flex items-center justify-center gap-1.5 rounded-md border border-seam bg-panel px-6 py-3 text-[14px] font-semibold text-ink transition-all hover:border-go/40 active:translate-y-px"
-                >
-                  Contact sales
-                  <ArrowRight size={14} weight="bold" />
-                </Link>
-              </div>
-            </SpotlightCard>
-          </motion.div>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -281,6 +202,26 @@ export default function Pricing() {
                 <ArrowRight size={14} weight="bold" />
               </Link>
             </div>
+          </div>
+        </div>
+
+        {/* FAQ Section for AEO/SEO */}
+        <div className="mt-12 max-w-3xl mx-auto" itemScope itemType="https://schema.org/FAQPage">
+          <h2 className="text-center font-display text-2xl font-semibold tracking-tight text-ink mb-8">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-4">
+            {faqSchema.mainEntity.map((faq: any, i: number) => (
+              <details key={i} className="group border border-seam rounded-lg bg-panel p-6" itemProp="mainEntity" itemScope itemType="https://schema.org/Question">
+                <summary className="flex items-center justify-between cursor-pointer list-none text-left font-medium text-ink" itemProp="name">
+                  {faq.name}
+                  <span className="text-ink-tertiary transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div className="mt-4 text-ink-secondary leading-relaxed" itemProp="acceptedAnswer" itemScope itemType="https://schema.org/Answer">
+                  <p itemProp="text">{faq.acceptedAnswer.text}</p>
+                </div>
+              </details>
+            ))}
           </div>
         </div>
 

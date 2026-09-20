@@ -105,7 +105,6 @@ export default {
           glow: 'rgb(var(--accent-glow) / 0.06)',
           primary: 'rgb(var(--accent-primary) / <alpha-value>)',
           'primary-hover': 'rgb(var(--accent-primary-hover) / <alpha-value>)',
-          foreground: 'hsl(var(--accent-foreground))',
         },
         text: {
           primary: 'rgb(var(--text-primary) / <alpha-value>)',
