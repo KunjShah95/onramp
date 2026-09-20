@@ -432,7 +432,8 @@ async def list_provider_keys(
     each entry reports ``configured`` plus audit metadata.
     """
     user_role = await _require_key_manager_role(org_name, user)
-    providers = await team_provider_keys.list_team_keys(org_name)
+    team_id = await resolve_org_team_id(org_name, user)
+    providers = await team_provider_keys.list_team_keys(team_id)
     await log_key_action(
         org_name=org_name,
         action="provider_keys_listed",
@@ -456,8 +457,9 @@ async def set_provider_key(
     key for this provider for the team's gateway requests.
     """
     user_role = await _require_key_manager_role(org_name, user)
+    team_id = await resolve_org_team_id(org_name, user)
     result = await team_provider_keys.set_team_key(
-        org_name, provider, request.api_key, user["uid"]
+        team_id, provider, request.api_key, user["uid"]
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -479,7 +481,8 @@ async def delete_provider_key(
 ):
     """Remove a team's BYOK key for a provider (falls back to platform key)."""
     user_role = await _require_key_manager_role(org_name, user)
-    ok = await team_provider_keys.delete_team_key(org_name, provider)
+    team_id = await resolve_org_team_id(org_name, user)
+    ok = await team_provider_keys.delete_team_key(team_id, provider)
     if not ok:
         raise HTTPException(
             status_code=404,
@@ -510,8 +513,9 @@ async def add_provider_key(
     as configured); this endpoint appends additional slots.
     """
     user_role = await _require_key_manager_role(org_name, user)
+    team_id = await resolve_org_team_id(org_name, user)
     result = await team_provider_keys.add_team_key(
-        org_name, provider, request.api_key, user["uid"]
+        team_id, provider, request.api_key, user["uid"]
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -538,7 +542,8 @@ async def remove_provider_key(
     no key matched ``key_id``.
     """
     user_role = await _require_key_manager_role(org_name, user)
-    ok = await team_provider_keys.remove_team_key(org_name, provider, key_id)
+    team_id = await resolve_org_team_id(org_name, user)
+    ok = await team_provider_keys.remove_team_key(team_id, provider, key_id)
     if not ok:
         raise HTTPException(
             status_code=404,
@@ -570,7 +575,8 @@ async def get_routing_mode(
     team hasn't set a preference.
     """
     await _require_key_manager_role(org_name, user)
-    mode = await team_routing_settings.get_team_routing_mode(org_name)
+    team_id = await resolve_org_team_id(org_name, user)
+    mode = await team_routing_settings.get_team_routing_mode(team_id)
     return {
         "org_name": org_name,
         "routing_mode": mode,
@@ -598,8 +604,9 @@ async def set_routing_mode(
     next gateway request (short TTL cache, no restart needed).
     """
     user_role = await _require_key_manager_role(org_name, user)
+    team_id = await resolve_org_team_id(org_name, user)
     result = await team_routing_settings.set_team_routing_mode(
-        org_name, request.routing_mode, user["uid"]
+        team_id, request.routing_mode, user["uid"]
     )
     await log_key_action(
         org_name=org_name,
@@ -850,6 +857,13 @@ async def execute_agent(
       - ``X-API-Key: <api_key>`` (programmatic access)
 
     The caller must have sufficient credits for the action.
+    
+    Billing flow (API key auth):
+      1. RESERVE credits atomically (SELECT FOR UPDATE) before execution
+      2. On reserve success: run agent
+      3. On agent success: reservation already committed
+      4. On agent failure/cancellation: REFUND credits
+      5. Fail closed: storage errors during reserve → 503, exhausted → 402
     """
     if agent_name not in _AGENT_REGISTRY:
         raise HTTPException(
@@ -881,35 +895,6 @@ async def execute_agent(
     if monthly_limit == 0:
         # usage_based tier — check wallet later
         pass
-
-    # Per-key cost budget: reject the call when charging this action's credits
-    # would push the key past its configured credit_limit. The counter is
-    # checked against the value captured at request start and charged after
-    # execution — best-effort enforcement, not a hard concurrency guarantee
-    # (two parallel calls near the limit can both pass this gate).
-    if auth.get("auth_method") == "api_key":
-        key_credit_limit = auth.get("credit_limit")
-        key_credits_used = int(auth.get("credits_used", 0) or 0)
-        if APIKeyService.cost_limit_reached(key_credit_limit, key_credits_used, cost):
-            raise HTTPException(
-                status_code=402,
-                detail=(
-                    f"API key cost limit reached ({key_credits_used}/{key_credit_limit} "
-                    f"credits). Raise the key's cost limit in Settings to continue."
-                ),
-            )
-        # Per-key DAILY cap: same 402 treatment using the rollover-aware
-        # counter surfaced by validate_key (stale dates read as zero).
-        key_daily_cap = auth.get("daily_credit_cap")
-        key_daily_used = int(auth.get("daily_credits_used", 0) or 0)
-        if APIKeyService.daily_cap_reached(key_daily_cap, key_daily_used, cost):
-            raise HTTPException(
-                status_code=402,
-                detail=(
-                    f"API key daily credit cap reached ({key_daily_used}/{key_daily_cap} "
-                    f"credits today). Raise the key's daily cap in Settings to continue."
-                ),
-            )
 
     # Get GitHub token for agents that might need it
     github_token = None
@@ -944,46 +929,94 @@ async def execute_agent(
 
         # Build kwargs from body (strip out auth-related keys)
         kwargs = {k: v for k, v in body.items() if k not in ("github_token",)}
-        result = await agent.execute(**kwargs)
-        # Close session + publish bus event
-        if sid:
-            try:
-                from app.services.agent_session_helper import complete_session
-                await complete_session(sid, agent_name, success=True, payload={"agent": agent_name})
-                if isinstance(result, dict):
-                    result["session_id"] = sid
-            except Exception:
-                pass
 
-        # Track usage (with provider attribution from the router, if any).
+        # ===== BILLING: Reserve credits BEFORE execution (API key auth only) =====
+        reserved = False
+        key_id = auth.get("key_id") if auth.get("auth_method") == "api_key" else None
+        if key_id:
+            reserve_result = await key_service.reserve_credits(key_id, cost)
+            outcome = reserve_result.get("outcome")
+            if outcome == "exhausted":
+                scope = reserve_result.get("scope", "monthly")
+                detail = (
+                    f"API key {'daily' if scope == 'daily' else 'monthly'} credit limit reached. "
+                    f"Raise the key's {'daily cap' if scope == 'daily' else 'cost limit'} in Settings to continue."
+                )
+                raise HTTPException(status_code=402, detail=detail)
+            elif outcome == "not_found":
+                raise HTTPException(status_code=401, detail="API key not found")
+            elif outcome == "error":
+                # Fail closed: storage error during reserve → 503
+                raise HTTPException(status_code=503, detail="Billing system unavailable, please retry")
+            elif outcome == "ok":
+                reserved = True
+            else:
+                # Unknown outcome, fail closed
+                raise HTTPException(status_code=503, detail="Billing system error, please retry")
+
         try:
-            uid = auth.get("uid", "unknown")
-            org = auth.get("org_name", uid)
-            await usage.record_usage(
-                org_name=org,
-                endpoint=agent_name,
-                credits=cost,
-                metadata=getattr(llm, "last_route", None),
-            )
-        except Exception:
-            pass  # usage tracking is non-critical
+            # Execute the agent
+            result = await agent.execute(**kwargs)
+            
+            # Close session + publish bus event on success
+            if sid:
+                try:
+                    from app.services.agent_session_helper import complete_session
+                    await complete_session(sid, agent_name, success=True, payload={"agent": agent_name})
+                    if isinstance(result, dict):
+                        result["session_id"] = sid
+                except Exception:
+                    pass
 
-        # Charge the per-key cost budget when the call was made with an API key
-        # (JWT sessions are covered by the org-level quota). Kept in its own
-        # guard so a telemetry failure can never skip the budget accounting.
-        if auth.get("auth_method") == "api_key" and auth.get("key_id"):
+            # Track usage (with provider attribution from the router, if any).
+            # Use team_id (UUID) as the canonical billing scope; fall back to org_name for JWT auth.
             try:
-                await key_service.increment_credits_used(auth["key_id"], cost)
+                uid = auth.get("uid", "unknown")
+                billing_scope = auth.get("team_id") or auth.get("org_name") or uid
+                await usage.record_usage(
+                    org_name=billing_scope,
+                    endpoint=agent_name,
+                    credits=cost,
+                    metadata=getattr(llm, "last_route", None),
+                )
             except Exception:
-                pass  # best-effort counter; enforcement re-checks on next call
+                pass  # usage tracking is non-critical
 
-        return {
-            "agent": agent_name,
-            "result": result,
-            "credits_used": cost,
-            "tier": tier,
-        }
+            return {
+                "agent": agent_name,
+                "result": result,
+                "credits_used": cost,
+                "tier": tier,
+            }
+
+        except Exception as e:
+            # Agent execution failed — refund credits if we reserved them
+            if reserved and key_id:
+                try:
+                    refund_result = await key_service.refund_credits(key_id, cost)
+                    if refund_result.get("outcome") != "ok":
+                        # Log but don't fail the response — the original error is more important
+                        logger.error(
+                            "Failed to refund credits for key %s after agent failure: %s",
+                            key_id, refund_result
+                        )
+                except Exception:
+                    logger.exception("Exception during credit refund for key %s", key_id)
+            
+            # Close session with failure status
+            if sid:
+                try:
+                    from app.services.agent_session_helper import complete_session
+                    await complete_session(sid, agent_name, success=False, payload={"agent": agent_name, "error": str(e)})
+                except Exception:
+                    pass
+            
+            # Re-raise the original exception
+            raise
+
     except ImportError as e:
         raise HTTPException(status_code=500, detail=f"Agent module not found: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

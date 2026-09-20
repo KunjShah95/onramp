@@ -572,6 +572,81 @@ class PostgresStorage:
 
         return await self._run(_incr)
 
+    async def adjust_api_key_credits(
+        self, key_id: str, delta: int, credit_limit: Optional[int] = None, daily_credit_cap: Optional[int] = None
+    ) -> dict:
+        """
+        Atomically adjust an API key's credit counters within a single transaction.
+
+        Uses SELECT FOR UPDATE to lock the key row, preventing race conditions
+        under parallel requests. Handles daily cap rollover (resets counter when
+        the stored date != today UTC).
+
+        Args:
+            key_id: The API key ID.
+            delta: Credit delta (positive to reserve/charge, negative to refund).
+            credit_limit: Optional monthly credit limit (None = no limit).
+            daily_credit_cap: Optional daily credit cap (None = no cap).
+
+        Returns:
+            Dict with keys:
+                - "outcome": "ok" | "exhausted" | "not_found" | "error"
+                - "scope": "monthly" | "daily" (only when outcome="exhausted")
+                - "record": Updated key record (when outcome="ok")
+        """
+        from sqlalchemy import select, func
+        from sqlalchemy.dialects.postgresql import JSONB
+        from datetime import datetime, timezone
+
+        async def _adjust(session: AsyncSession) -> dict:
+            from app.database.models import ApiKey
+
+            # Lock the row for update
+            stmt = select(ApiKey).where(ApiKey.id == key_id).with_for_update()
+            result = await session.execute(stmt)
+            key = result.scalar_one_or_none()
+
+            if key is None:
+                return {"outcome": "not_found", "scope": None, "record": None}
+
+            perms = dict(key.permissions or {})
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+            # Handle daily cap rollover
+            if perms.get("daily_credit_cap") is not None:
+                if perms.get("daily_usage_date") != today:
+                    perms["daily_credits_used"] = 0
+                    perms["daily_usage_date"] = today
+
+            # Check monthly limit (only when reserving/charging, not refunding)
+            if delta > 0 and credit_limit is not None:
+                current_used = int(perms.get("credits_used", 0))
+                if current_used + delta > int(credit_limit):
+                    return {"outcome": "exhausted", "scope": "monthly", "record": None}
+
+            # Check daily cap (only when reserving/charging, not refunding)
+            if delta > 0 and daily_credit_cap is not None:
+                daily_used = int(perms.get("daily_credits_used", 0))
+                if daily_used + delta > int(daily_credit_cap):
+                    return {"outcome": "exhausted", "scope": "daily", "record": None}
+
+            # Apply the delta
+            perms["credits_used"] = max(0, int(perms.get("credits_used", 0)) + delta)
+            if perms.get("daily_credit_cap") is not None:
+                perms["daily_credits_used"] = max(0, int(perms.get("daily_credits_used", 0)) + delta)
+
+            key.permissions = perms
+            key.updated_at = datetime.now(timezone.utc)
+            await session.flush()
+
+            return {"outcome": "ok", "scope": None, "record": key.to_dict()}
+
+        try:
+            return await self.run_in_transaction(_adjust)
+        except Exception as exc:
+            logger.exception("adjust_api_key_credits failed for key %s: %s", key_id, exc)
+            return {"outcome": "error", "scope": None, "record": None}
+
     async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
         """Update a document."""
         return await self._run(
@@ -828,6 +903,49 @@ class InMemoryStorage:
         rec[json_col] = perms
         rec["updated_at"] = datetime.now(timezone.utc).isoformat()
         return dict(rec)
+
+    async def adjust_api_key_credits(
+        self, key_id: str, delta: int, credit_limit: Optional[int] = None, daily_credit_cap: Optional[int] = None
+    ) -> dict:
+        """In-memory implementation of atomic credit adjustment for test parity."""
+        from datetime import datetime, timezone
+
+        rec = self._coll("api_keys").get(key_id)
+        if rec is None:
+            return {"outcome": "not_found", "scope": None, "record": None}
+
+        perms = dict(rec.get("permissions") or {})
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        # Handle daily cap rollover
+        if perms.get("daily_credit_cap") is not None:
+            if perms.get("daily_usage_date") != today:
+                perms["daily_credits_used"] = 0
+                perms["daily_usage_date"] = today
+
+        # Check monthly limit (only when reserving/charging, not refunding)
+        if delta > 0 and credit_limit is not None:
+            current_used = int(perms.get("credits_used", 0))
+            if current_used + delta > int(credit_limit):
+                return {"outcome": "exhausted", "scope": "monthly", "record": None}
+
+        # Check daily cap (only when reserving/charging, not refunding)
+        if delta > 0 and daily_credit_cap is not None:
+            daily_used = int(perms.get("daily_credits_used", 0))
+            if daily_used + delta > int(daily_credit_cap):
+                return {"outcome": "exhausted", "scope": "daily", "record": None}
+
+        # Apply the delta
+        perms["credits_used"] = max(0, int(perms.get("credits_used", 0)) + delta)
+        if perms.get("daily_credit_cap") is not None:
+            perms["daily_credits_used"] = max(0, int(perms.get("daily_credits_used", 0)) + delta)
+
+        rec["permissions"] = perms
+        rec["updated_at"] = datetime.now(timezone.utc).isoformat()
+        rec = self._serialize(rec)
+        self._coll("api_keys")[key_id] = rec
+
+        return {"outcome": "ok", "scope": None, "record": rec}
 
     @staticmethod
     def _matches(record: dict, key: str, op: str, value: Any) -> bool:

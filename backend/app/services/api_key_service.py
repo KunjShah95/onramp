@@ -584,6 +584,75 @@ class APIKeyService:
                 continue
         return None
 
+    async def reserve_credits(
+        self, key_id: str, credits: int
+    ) -> dict:
+        """
+        Reserve credits for an API key (atomic, with limits enforcement).
+
+        Uses the storage layer's atomic adjust_api_key_credits with SELECT FOR UPDATE
+        to prevent race conditions. Checks both monthly credit_limit and daily_credit_cap.
+
+        Returns:
+            Dict with keys:
+                - "outcome": "ok" | "exhausted" | "not_found" | "error"
+                - "scope": "monthly" | "daily" (only when outcome="exhausted")
+                - "record": Updated key record (when outcome="ok")
+        """
+        if not key_id:
+            return {"outcome": "error", "scope": None, "record": None, "detail": "key_id required"}
+
+        storage = get_storage()
+        key_record = await storage.get_document("api_keys", key_id)
+        if key_record is None:
+            return {"outcome": "not_found", "scope": None, "record": None}
+
+        perms = key_record.get("permissions") or {}
+        credit_limit = perms.get("credit_limit")
+        daily_credit_cap = perms.get("daily_credit_cap")
+
+        # Delegate to storage for atomic adjustment with locking
+        result = await storage.adjust_api_key_credits(
+            key_id=key_id,
+            delta=credits,
+            credit_limit=credit_limit,
+            daily_credit_cap=daily_credit_cap,
+        )
+        return result
+
+    async def refund_credits(self, key_id: str, credits: int) -> dict:
+        """
+        Refund credits to an API key (atomic).
+
+        Used when an agent execution fails after credits were reserved.
+        Does NOT enforce limits (refunds only decrease usage).
+
+        Returns:
+            Dict with keys:
+                - "outcome": "ok" | "not_found" | "error"
+                - "record": Updated key record (when outcome="ok")
+        """
+        if not key_id:
+            return {"outcome": "error", "scope": None, "record": None, "detail": "key_id required"}
+
+        storage = get_storage()
+        key_record = await storage.get_document("api_keys", key_id)
+        if key_record is None:
+            return {"outcome": "not_found", "scope": None, "record": None}
+
+        # Refund: negative delta, no limit checks needed
+        result = await storage.adjust_api_key_credits(
+            key_id=key_id,
+            delta=-credits,
+            credit_limit=None,  # No limit check on refund
+            daily_credit_cap=None,  # No daily cap check on refund
+        )
+        # Normalize outcome for refund (not_found/error stay, exhausted becomes ok)
+        if result["outcome"] == "exhausted":
+            result["outcome"] = "ok"
+            result["scope"] = None
+        return result
+
     @staticmethod
     def daily_cap_reached(daily_cap: Optional[int], daily_used: int, cost: int) -> bool:
         """Return True when charging ``cost`` credits would exceed the daily cap."""
@@ -593,8 +662,12 @@ class APIKeyService:
 
     @staticmethod
     def cost_limit_reached(credit_limit: Optional[int], credits_used: int, cost: int) -> bool:
-        """Return True when charging ``cost`` credits would exceed the key budget."""
-        if not credit_limit:
+        """Return True when charging ``cost`` credits would exceed the key budget.
+
+        Note: ``credit_limit=0`` means zero budget (block all charges).
+        ``credit_limit=None`` means no limit (unlimited).
+        """
+        if credit_limit is None:
             return False
         return int(credits_used) + int(cost) > int(credit_limit)
 

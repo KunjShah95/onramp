@@ -3,6 +3,9 @@ Webhook Service — manage webhook endpoints for external integrations.
 
 Users can register webhook URLs that receive HTTP POST requests when
 certain events occur (task assigned, PR submitted, etc.).
+
+Supports key rotation via GITHUB_TOKEN_ENCRYPTION_KEY (current) and
+GITHUB_TOKEN_ENCRYPTION_KEY_PREV (previous key for migration).
 """
 
 import hashlib
@@ -11,7 +14,7 @@ import json
 import logging
 import os
 import httpx
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone
 from typing import Optional, List
 from app.services.postgres_db import get_storage, generate_id
@@ -19,14 +22,38 @@ from app.services.postgres_db import get_storage, generate_id
 logger = logging.getLogger(__name__)
 
 
+def _get_fernet_keys() -> List[Fernet]:
+    """Get all valid Fernet keys in order: current first, then previous keys."""
+    keys = []
+    
+    # Current key (required in production)
+    current = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY")
+    if current:
+        try:
+            keys.append(Fernet(current.encode() if isinstance(current, str) else current))
+        except Exception:
+            logger.exception("Invalid GITHUB_TOKEN_ENCRYPTION_KEY format")
+    
+    # Previous key for rotation migration
+    prev = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY_PREV")
+    if prev:
+        try:
+            keys.append(Fernet(prev.encode() if isinstance(prev, str) else prev))
+        except Exception:
+            logger.exception("Invalid GITHUB_TOKEN_ENCRYPTION_KEY_PREV format")
+    
+    return keys
+
+
 def _get_fernet() -> Optional[Fernet]:
-    key = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY")
-    if not key:
+    """Get the current Fernet instance for encryption (backward compat)."""
+    current = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY")
+    if not current:
         return None
     try:
-        return Fernet(key.encode() if isinstance(key, str) else key)
-    except Exception as exc:
-        logger.warning("Invalid GITHUB_TOKEN_ENCRYPTION_KEY format: %s", exc)
+        return Fernet(current.encode() if isinstance(current, str) else current)
+    except Exception:
+        logger.exception("Invalid GITHUB_TOKEN_ENCRYPTION_KEY format")
         return None
 
 
@@ -45,8 +72,9 @@ def encrypt_token(plaintext: str) -> str:
 
 
 def decrypt_token(ciphertext: str) -> str:
-    f = _get_fernet()
-    if f is None:
+    """Strict decrypt using multi-key fallback for rotation support."""
+    fernet_keys = _get_fernet_keys()
+    if not fernet_keys:
         env = os.getenv("ENV", "development").lower()
         if env == "production":
             raise RuntimeError(
@@ -55,10 +83,33 @@ def decrypt_token(ciphertext: str) -> str:
             )
         logger.warning("GITHUB_TOKEN_ENCRYPTION_KEY not set — reading token in plaintext (dev only)")
         return ciphertext
+    
+    last_error = None
+    for f in fernet_keys:
+        try:
+            return f.decrypt(ciphertext.encode()).decode()
+        except InvalidToken:
+            last_error = "InvalidToken"
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+    
+    logger.error("Failed to decrypt GitHub token with all available keys — key rotation mismatch or corrupted data: %s", last_error)
+    # In production, raise to prevent using corrupted tokens
+    env = os.getenv("ENV", "development").lower()
+    if env == "production":
+        raise ValueError(f"Failed to decrypt GitHub token — key mismatch (last error: {last_error})")
+    return ciphertext
+
+
+def reencrypt_token(ciphertext: str) -> str:
+    """Re-encrypt a token with the current key (for migration scripts)."""
     try:
-        return f.decrypt(ciphertext.encode()).decode()
+        plaintext = decrypt_token(ciphertext)
+        return encrypt_token(plaintext)
     except Exception:
-        logger.error("Failed to decrypt GitHub token — key may have changed")
+        logger.warning("Failed to re-encrypt token, keeping original")
         return ciphertext
 
 COLLECTION = "onramp_webhooks"

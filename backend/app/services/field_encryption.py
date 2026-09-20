@@ -5,26 +5,62 @@ before storage and decrypted on read. A deterministic hash (email_hash) is store
 alongside encrypted email for lookup purposes while keeping the actual email
 encrypted at rest.
 
+Supports key rotation via PII_ENCRYPTION_KEY (current) and PII_ENCRYPTION_KEY_PREV
+(previous key for migration). On rotation:
+  1. Set PII_ENCRYPTION_KEY_PREV = old PII_ENCRYPTION_KEY
+  2. Set PII_ENCRYPTION_KEY = new key
+  3. Run migration script to re-encrypt existing data (or rely on lazy re-encryption on read)
+
 Env:
-    PII_ENCRYPTION_KEY: Fernet-compatible key (base64-urlsafe-32-bytes).
+    PII_ENCRYPTION_KEY: Current Fernet-compatible key (base64-urlsafe-32-bytes).
         Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    PII_ENCRYPTION_KEY_PREV: Previous key for decrypting legacy data during rotation.
 """
 
 import hashlib
 import logging
 import os
-from typing import Optional
-from cryptography.fernet import Fernet
+from typing import Optional, List
+from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
 
+def _get_fernet_keys() -> List[Fernet]:
+    """Get all valid Fernet keys in order: current first, then previous keys.
+    
+    Returns a list of Fernet instances for multi-key decryption support during rotation.
+    """
+    keys = []
+    
+    # Current key (required in production)
+    current = os.getenv("PII_ENCRYPTION_KEY")
+    if current:
+        try:
+            keys.append(Fernet(current.encode() if isinstance(current, str) else current))
+        except Exception:
+            logger.exception("Invalid PII_ENCRYPTION_KEY format")
+    
+    # Previous key(s) for rotation migration
+    prev = os.getenv("PII_ENCRYPTION_KEY_PREV")
+    if prev:
+        try:
+            keys.append(Fernet(prev.encode() if isinstance(prev, str) else prev))
+        except Exception:
+            logger.exception("Invalid PII_ENCRYPTION_KEY_PREV format")
+    
+    # Additional legacy keys could be added here as PII_ENCRYPTION_KEY_PREV2, etc.
+    
+    return keys
+
+
 def _get_fernet() -> Optional[Fernet]:
-    key = os.getenv("PII_ENCRYPTION_KEY")
-    if not key:
+    """Get the current Fernet instance for encryption (backward compat)."""
+    current = os.getenv("PII_ENCRYPTION_KEY")
+    if not current:
         return None
     try:
-        return Fernet(key.encode() if isinstance(key, str) else key)
+        return Fernet(current.encode() if isinstance(current, str) else current)
     except Exception:
         logger.exception("Invalid PII_ENCRYPTION_KEY format")
         return None
@@ -45,17 +81,28 @@ def encrypt_field(plaintext: str) -> str:
 
 
 def decrypt_field(ciphertext: str) -> str:
-    f = _get_fernet()
-    if f is None:
+    """Strict decrypt using multi-key fallback for rotation support.
+    
+    Tries current key first, then previous keys. Raises on failure so caller
+    can handle rotation explicitly (write paths must use strict decrypt).
+    """
+    fernet_keys = _get_fernet_keys()
+    if not fernet_keys:
         return ciphertext
-    try:
-        return f.decrypt(ciphertext.encode()).decode()
-    except Exception:
-        # Don't silently return ciphertext as plaintext — that causes double-encrypt
-        # on next write when caller treats ciphertext as plaintext. Raise so caller
-        # can handle rotation explicitly.
-        logger.exception("Failed to decrypt PII field — key may have changed")
-        raise ValueError("Failed to decrypt PII field — encryption key mismatch or corrupted data")
+    
+    last_error = None
+    for f in fernet_keys:
+        try:
+            return f.decrypt(ciphertext.encode()).decode()
+        except InvalidToken:
+            last_error = "InvalidToken"
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+    
+    logger.exception("Failed to decrypt PII field with all available keys — key rotation mismatch or corrupted data")
+    raise ValueError(f"Failed to decrypt PII field — encryption key mismatch or corrupted data (last error: {last_error})")
 
 
 def decrypt_field_lenient(ciphertext: str | None, fallback: str | None = None) -> str | None:
@@ -80,6 +127,20 @@ def decrypt_field_lenient(ciphertext: str | None, fallback: str | None = None) -
             "decrypt_field_lenient: returning plaintext fallback for undecryptable value"
         )
         return fallback if fallback is not None else ciphertext
+
+
+def reencrypt_field(ciphertext: str) -> str:
+    """Re-encrypt a field with the current key (for migration scripts).
+    
+    Decrypts using multi-key fallback and re-encrypts with current key.
+    Returns the newly encrypted value, or the original if decryption fails.
+    """
+    try:
+        plaintext = decrypt_field(ciphertext)
+        return encrypt_field(plaintext)
+    except Exception:
+        logger.warning("Failed to re-encrypt field, keeping original")
+        return ciphertext
 
 
 def _normalize_email(email: str) -> str:
