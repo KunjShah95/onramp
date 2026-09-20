@@ -2129,7 +2129,7 @@ function N8nIntegrationSection() {
           Paste your n8n <span className="font-code text-ink-secondary">Webhook</span> node URL (production URL, not{' '}
           <span className="font-code">/webhook-test/</span>). Ready-made workflows live in{' '}
           <span className="font-code text-ink-secondary">n8n/workflows/</span> — import them via
-          n8n UI → Workflows → ⋯ → Import from File (see docs/N8N_INTEGRATION.md).
+          n8n UI → Workflows → ⋯ → Import from File (see n8n/workflows/README.md).
         </p>
         <div className="space-y-3">
           <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}

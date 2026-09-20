@@ -167,6 +167,10 @@ async def get_user_or_api_key(request: Request) -> dict:
     org_name = perms.get("org_name") or key.get("org_name", "")
     tier = perms.get("tier", "free")
 
+    # team_id is the canonical usage scope (stored UUID); the
+    # permissions org_name is a display label.
+    team_id = key.get("team_id")
+    
     return {
         "uid": f"api:{org_name}" if org_name else "api:unknown",
         "email": f"api@{org_name}.placeholder" if org_name else "api@unknown.placeholder",
@@ -175,6 +179,7 @@ async def get_user_or_api_key(request: Request) -> dict:
         "auth_method": "api_key",
         "tier": tier,
         "org_name": org_name,
+        "team_id": team_id,
         "raw_key_record": key,
         # Per-key cost budget surfaced so gateway handlers can enforce limits.
         "key_id": key.get("key_id") or key.get("id"),

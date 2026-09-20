@@ -161,6 +161,9 @@ class TestProviderUsageEndpoint:
         await storage.create_document("users", "testuser", {
             "email": "t@test.com", "name": "Test", "is_active": True,
         })
+        await storage.create_document("teams", "acme", {
+            "id": "acme", "name": "Acme Corp", "created_at": "2024-01-01T00:00:00Z",
+        })
         await storage.create_document("team_members", generate_id(), {
             "team_id": "acme", "user_id": "testuser", "role": "admin",
         })
@@ -174,5 +177,10 @@ class TestProviderUsageEndpoint:
         assert data["tracked_requests"] == 1
 
     async def test_providers_endpoint_requires_membership(self, app):
+        storage = get_storage()
+        # Create team but NOT the membership - user should get 404 (no membership leak)
+        await storage.create_document("teams", "acme", {
+            "id": "acme", "name": "Acme Corp", "created_at": "2024-01-01T00:00:00Z",
+        })
         resp = TestClient(app).get("/api/v1/ai/usage/acme/providers")
-        assert resp.status_code == 403
+        assert resp.status_code == 404
