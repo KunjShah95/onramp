@@ -45,7 +45,7 @@ test.describe('New Dev → Allocated Repo Access', () => {
     // Landing on the dashboard should fetch GET /api/v1/repos for the dev's
     // team, then pull a health score for the first (allocated) repo. The
     // "Repo Health" readout renders that score — proof the repo was visible.
-    await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Repo Health').first()).toBeVisible({ timeout: 15_000 })
     // Value comes from the mocked health endpoint for octocat/Hello-World
     await expect(page.getByText('85%').first()).toBeVisible({ timeout: 10_000 })
@@ -70,7 +70,7 @@ test.describe('New Dev → Allocated Repo Access', () => {
 
   test('code health link routes to the allocated repo analysis page', async ({ page }) => {
     await signInAsNewDev(page)
-    await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
 
     // The sidebar's Code Health link routes to /code-health
     await page.locator('aside a[href="/code-health"]').first().click()
@@ -93,7 +93,7 @@ test.describe('New Dev → Allocated Repo Access', () => {
     })
     await signInAsNewDev(page)
 
-    await expect(page.getByText('Mission Control')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
     // No repo → health never fetched → Repo Health renders the N/A placeholder
     await expect(page.getByText('Repo Health').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('N/A').first()).toBeVisible({ timeout: 10_000 })
