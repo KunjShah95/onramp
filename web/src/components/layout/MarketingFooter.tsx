@@ -32,7 +32,6 @@ export default function MarketingFooter() {
           <span className="text-sm font-semibold tracking-tight text-ink">Onramp</span>
         </Link>
 
-<<<<<<< HEAD
         <span className="inline-flex shrink-0 items-center gap-1.5 font-code text-[11px] text-ink-tertiary">
           <span className="h-1.5 w-1.5 rounded-full bg-go" aria-hidden />
           map fresh · HEAD
@@ -46,17 +45,6 @@ export default function MarketingFooter() {
               className="text-[13px] text-ink-tertiary transition-colors hover:text-ink"
             >
               {link.label}
-=======
-      <div className="relative mx-auto max-w-[1280px] px-6 py-16 lg:px-10">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
-          {/* brand */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Link to="/" className="group inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary via-accent-via to-accent-to text-accent-foreground shadow-[0_0_20px_rgb(var(--accent-primary)/0.3)] ring-1 ring-seam transition-transform duration-200 group-hover:scale-105">
-                <TreeStructure size={17} weight="bold" />
-              </span>
-              <span className="font-display text-base font-bold tracking-tight text-ink">ONRAMP</span>
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
             </Link>
           ))}
         </nav>

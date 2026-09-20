@@ -161,6 +161,11 @@ class TestProviderUsageEndpoint:
         await storage.create_document("users", "testuser", {
             "email": "t@test.com", "name": "Test", "is_active": True,
         })
+        # The teams row backs the membership join used by org resolution —
+        # a team_members row alone has no resolvable team.
+        await storage.create_document("teams", "acme", {
+            "name": "acme", "description": "test team", "is_active": True,
+        })
         await storage.create_document("team_members", generate_id(), {
             "team_id": "acme", "user_id": "testuser", "role": "admin",
         })
@@ -174,5 +179,7 @@ class TestProviderUsageEndpoint:
         assert data["tracked_requests"] == 1
 
     async def test_providers_endpoint_requires_membership(self, app):
+        # Non-member of an unknown org → 404 from org resolution (no
+        # membership leak); a member of a different team would be 403.
         resp = TestClient(app).get("/api/v1/ai/usage/acme/providers")
-        assert resp.status_code == 403
+        assert resp.status_code == 404

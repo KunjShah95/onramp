@@ -1182,13 +1182,6 @@ export default function Settings() {
             </ConsolePanel>
           </div>
 
-          {/* n8n automation */}
-          <motion.div variants={item}>
-            <ConsolePanel rail="n8n" designator="AUTOMATION BUS" status="standby">
-              <N8nIntegrationSection />
-            </ConsolePanel>
-          </motion.div>
-
           {/* Webhooks */}
           <div>
             <ConsolePanel
@@ -2134,14 +2127,9 @@ function N8nIntegrationSection() {
       <div className="space-y-4">
         <p className="text-caption text-ink-muted">
           Paste your n8n <span className="font-code text-ink-secondary">Webhook</span> node URL (production URL, not{' '}
-<<<<<<< HEAD
           <span className="font-code">/webhook-test/</span>). Ready-made workflows live in{' '}
           <span className="font-code text-ink-secondary">n8n/workflows/</span> — import them via
           n8n UI → Workflows → ⋯ → Import from File (see docs/N8N_INTEGRATION.md).
-=======
-          <span className="font-code">/webhook-test/</span>). Onramp task, onboarding and ramp events POST a signed JSON envelope.
-          n8n workflows can call back via <span className="font-code text-ink-secondary">POST /api/v1/webhooks/n8n</span> (see docs/N8N_INTEGRATION.md).
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
         </p>
         <div className="space-y-3">
           <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}

@@ -77,11 +77,7 @@ export default function WhyOnrampPage() {
         {/* Why Onramp — featured, accent rule, wider */}
         <div className="md:col-span-7 rounded-card border border-seam bg-panel p-6">
           <div className="flex items-center gap-3 mb-5">
-<<<<<<< HEAD
-            <span className="flex h-9 w-9 items-center justify-center rounded-card bg-go text-[rgb(var(--accent-foreground))]">
-=======
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary text-accent-foreground shadow-[0_0_18px_rgb(var(--accent-primary)/0.4)]">
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
+            <span className="flex h-9 w-9 items-center justify-center rounded-card bg-go text-accent-foreground">
               <Brain size={18} weight="bold" />
             </span>
             <div>
@@ -227,13 +223,8 @@ export default function WhyOnrampPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-<<<<<<< HEAD
               to="/#pricing"
               className="inline-flex h-11 items-center gap-2 rounded-md bg-ink px-6 text-[15px] font-medium text-[var(--panel-raised)] transition-opacity hover:opacity-90"
-=======
-              to="/pricing"
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-accent-primary px-6 text-[15px] font-semibold text-accent-foreground shadow-[0_0_24px_rgb(var(--accent-primary)/0.35)] transition-all hover:bg-accent-primary-hover active:translate-y-px"
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
             >
               Start 14-day trial
               <ArrowRight size={16} weight="bold" />

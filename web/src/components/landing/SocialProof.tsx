@@ -36,14 +36,7 @@ export default function SocialProof() {
 
         <div className="mt-10 flex flex-wrap items-center gap-x-10 gap-y-3 border-y border-seam py-5">
           {INTEGRATIONS.map((c) => (
-<<<<<<< HEAD
             <span key={c} className="text-[15px] font-medium text-ink-tertiary">
-=======
-            <span
-              key={c}
-              className="font-body text-[15px] font-semibold tracking-tight text-ink-secondary"
-            >
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
               {c}
             </span>
           ))}

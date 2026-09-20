@@ -174,11 +174,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
             title={collapsed ? 'Onramp' : undefined}
             aria-label="Onramp home"
           >
-<<<<<<< HEAD
-            <div className="w-7 h-7 rounded-tile bg-accent-primary text-[rgb(var(--accent-foreground))] flex items-center justify-center">
-=======
-            <div className="w-7 h-7 rounded-tile bg-gradient-to-br from-accent-primary to-accent-via text-accent-foreground flex items-center justify-center shadow-[0_0_14px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-hover:scale-105">
->>>>>>> cae272328a35776c20cb7e65ca99143addd641e7
+            <div className="w-7 h-7 rounded-tile bg-accent-primary text-accent-foreground flex items-center justify-center">
               <span className="text-[11px] font-bold font-display tracking-tight">OR</span>
             </div>
             {!collapsed && (
