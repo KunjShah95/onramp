@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom'
 
 import { Check, ArrowRight } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
-import { useAuth } from '../context/AuthContext'
-import { billingUrlWithPlan } from '../lib/plan-intent'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 
@@ -114,12 +112,10 @@ export default function PricingPage() {
   const teamPrice = isAnnual ? c.annual : c.monthly
   const fmt = (n: number) => n.toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US')
 
-  // Logged-in visitors already have an account — route them straight into the
-  // billing funnel (Razorpay checkout) instead of bouncing them to /register.
-  // Logged-out visitors keep the signup path with the plan carried as intent.
-  const { user } = useAuth()
-  const freeHref = user ? billingUrlWithPlan('free') : '/register'
-  const teamHref = user ? billingUrlWithPlan('professional') : '/register?plan=professional'
+  // All pricing CTAs now route to the Contact page so prospects can
+  // start a conversation before entering the billing funnel.
+  const freeHref = '/contact?interest=free'
+  const teamHref = '/contact?interest=team'
 
   return (
     <MarketingLayout

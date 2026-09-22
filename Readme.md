@@ -327,10 +327,11 @@ verbose (~2522 chars avg). All three fixes shipped as PRs #15–#17 with
 **Self-hosted n8n** for faculty-grade automation between Onramp and external tools (Telegram, Slack, Email, HTTP, custom APIs).
 
 #### Outbound: Onramp → n8n
+
 Onramp events fan out to configured n8n Webhook URLs with HMAC-signed payloads:
 
 | Event Category | Events |
-|----------------|--------|
+| ---------------- | -------- |
 | **Onboarding** | `onboarding.plan_created`, `.plan_updated`, `.plan_generated`, `.milestone_completed`, `.preboarding_completed`, `.pulse_submitted` |
 | **Task Lifecycle** | `task.assigned`, `.started`, `.submitted`, `.reviewed`, `.approved`, `.completed`, `.needs_changes`, `.cancelled` |
 | **Ramp & PR** | `ramp.stuck`, `pr.merged` |
@@ -339,9 +340,11 @@ Onramp events fan out to configured n8n Webhook URLs with HMAC-signed payloads:
 **Config priority:** Per-user integration → Per-team integration → Env vars (`N8N_WEBHOOK_URL`, `N8N_ONBOARDING_WEBHOOK_URL`)
 
 #### Inbound: n8n → Onramp
+
 n8n workflows call `POST /api/v1/webhooks/n8n` with `X-N8N-Signature` header (HMAC-SHA256 of raw body using `N8N_INBOUND_SECRET`).
 
 Supported actions:
+
 - `create_task` — seed tasks nightly or on external triggers
 - `log_event` — audit log from n8n workflows
 
@@ -353,6 +356,7 @@ Supported actions:
 | **Nightly Task Seeding** | `n8n/workflows/onramp-inbound-task-seeding.json` | Cron (8am daily) → creates tasks in Onramp via signed webhook |
 
 #### Local Development
+
 ```bash
 # Start n8n with Docker Compose profile
 docker compose --profile n8n up -d
@@ -363,6 +367,7 @@ docker compose --profile n8n up -d
 ```
 
 #### Production Deployment (Render)
+
 Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.n8n`. See [n8n Deployment Guide](./docs/n8n-deployment.md).
 
 ---
@@ -372,6 +377,7 @@ Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.
 **Production-ready** Razorpay integration with subscription lifecycle, webhook handling, and prepaid credit top-ups.
 
 #### Features
+
 - **Tiered Subscriptions**: Free / Startup (₹999/mo) / Professional (₹2999/mo) / Usage-Based (₹499/mo)
 - **Monthly & Annual Billing** with Razorpay Plans
 - **Credit Wallet**: Prepaid top-ups via Razorpay Orders + Checkout.js
@@ -379,6 +385,7 @@ Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.
 - **GST-Compliant Invoices** generated automatically by Razorpay
 
 #### Subscription Flow
+
 ```
 User selects tier → POST /billing/checkout → Razorpay Checkout → Payment
     → Webhook: subscription.activated → Local subscription created (active)
@@ -387,6 +394,7 @@ User selects tier → POST /billing/checkout → Razorpay Checkout → Payment
 ```
 
 #### Credit Wallet Flow
+
 ```
 User enters amount → POST /billing/credits/order → Razorpay Order created
     → Checkout.js modal opens → Payment
@@ -395,8 +403,9 @@ User enters amount → POST /billing/credits/order → Razorpay Order created
 ```
 
 #### Webhook Events Handled
+
 | Event | Action |
-|-------|--------|
+| ------- | -------- |
 | `subscription.activated` | Create/activate local subscription, link Razorpay IDs |
 | `subscription.charged` | Extend period, update tier if changed |
 | `subscription.cancelled/completed/pending/halted/paused/resumed` | Sync status via `SUBSCRIPTION_STATUS_MAP` |
@@ -404,12 +413,14 @@ User enters amount → POST /billing/credits/order → Razorpay Order created
 | `payment.failed` | Log for audit |
 
 #### Idempotency & Safety
+
 - **Event-level deduplication** via `onramp_webhook_idempotency` collection (PK on event ID)
 - **HMAC-SHA256 verification** (primary) + Razorpay SDK verification (fallback)
 - **Amount validation** on credit top-ups (payment amount vs stored order amount)
 - **Fail-closed** in production when `RAZORPAY_WEBHOOK_SECRET` missing
 
 #### Required Environment Variables
+
 ```bash
 # Razorpay credentials (test: rzp_test_... | live: rzp_live_...)
 RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxx
@@ -428,14 +439,17 @@ ALLOW_UNVERIFIED_RAZORPAY=true
 ```
 
 #### Webhook Configuration
+
 **Razorpay Dashboard → Settings → Webhooks → Add Webhook**
+
 - **URL**: `https://your-api.onrender.com/api/v1/billing/webhook`
 - **Events**: Select all `subscription.*`, `payment.*`, `order.*`
 - **Secret**: Same as `RAZORPAY_WEBHOOK_SECRET`
 
 #### Test Cards (Razorpay Test Mode)
+
 | Card | Purpose |
-|------|---------|
+| ------ | --------- |
 | `4111 1111 1111 1111` | Success (any future expiry, any CVV) |
 | `4000 0000 0000 0002` | Failed payment |
 | `4000 0000 0000 0069` | Expired card |
@@ -971,6 +985,7 @@ onramp/
 | `ENABLE_API_DOCS` | ⬜ | Expose `/docs` in production |
 
 #### n8n Integration
+
 | Variable | Required | Description |
 | ---------- | ---------- | ------------- |
 | `N8N_WEBHOOK_URL` | ⬜ | Default outbound webhook URL (e.g., `https://n8n.example.com/webhook/onramp`) |

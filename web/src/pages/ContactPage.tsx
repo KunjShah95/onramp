@@ -203,7 +203,7 @@ export default function ContactPage() {
 
         <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
           {/* ── Message form ─────────────────────────────────────── */}
-          <section className="lg:col-span-7" aria-labelledby="contact-form-title">
+          <section id="message" className="lg:col-span-7" aria-labelledby="contact-form-title">
             <form
               onSubmit={(e) => e.preventDefault()}
               className="rounded-card border border-seam bg-panel"
@@ -283,12 +283,12 @@ export default function ContactPage() {
           </section>
 
           {/* ── Direct channels ──────────────────────────────────── */}
-          <aside className="lg:col-span-5" aria-label="Direct contact channels">
+          <aside id="channels" className="lg:col-span-5" aria-label="Direct contact channels">
             <div className="overflow-hidden rounded-card border border-seam bg-panel">
               <ChannelGroup icon={Envelope} title="Email" channels={EMAIL_CHANNELS} />
               <ChannelGroup icon={ChatCircle} title="Social" channels={SOCIAL_CHANNELS} />
 
-              <div className="border-t border-seam px-5 py-5">
+              <div className="border-t border-seam px-5 py-5" id="office">
                 <div className="flex items-center gap-2">
                   <MapPin size={13} weight="bold" className="text-ink-tertiary" />
                   <span className="overline">Office</span>
