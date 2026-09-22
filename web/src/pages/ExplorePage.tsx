@@ -618,9 +618,9 @@ export default function ExplorePage() {
               )}
 
               {busy && !vm && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-20" role="status">
                   <Spinner size={28} aria-hidden className="animate-spin text-go mb-4 shrink-0" />
-                  <p className="text-ink-muted/60 text-caption font-code animate-pulse">
+                  <p className="text-ink-muted text-caption font-code">
                     {isRepoMode ? 'Loading saved graph…' : 'Cloning repository and parsing AST…'}
                   </p>
                 </div>

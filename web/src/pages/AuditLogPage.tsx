@@ -16,6 +16,7 @@ import {
 import ConsolePanel from '../components/ui/console-panel'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 import { EmptyState } from '../components/ui/empty-state'
+import { SkeletonBase } from '../components/ui/Skeleton'
 import { PageHeader } from '../components/ui/page-header'
 import { adminListAuditEvents, exportAuditEvents } from '../lib/api'
 import type { AdminAuditEvent } from '../lib/api'
@@ -226,13 +227,13 @@ export default function AuditLogPage() {
       {/* Events Table */}
       <ConsolePanel pad="none" className="overflow-hidden">
         {loading && events.length === 0 ? (
-          <div className="p-8 space-y-3">
+          <div className="p-8 space-y-3" role="status" aria-label="Loading audit events">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 animate-pulse">
-                <div className="w-7 h-7 rounded-lg bg-well/30" />
+              <div key={i} className="flex items-center gap-3">
+                <SkeletonBase className="w-7 h-7 rounded-lg" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-32 bg-well/30 rounded" />
-                  <div className="h-2.5 w-48 bg-well/20 rounded" />
+                  <SkeletonBase className="h-3 w-32" />
+                  <SkeletonBase className="h-2.5 w-48" />
                 </div>
               </div>
             ))}

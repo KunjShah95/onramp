@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
 import { getToken } from '../lib/neon-auth'
 import { PageHeader } from '../components/ui/page-header'
+import { InlineLoading } from '../components/ui/Skeleton'
 import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
@@ -820,7 +821,7 @@ export default function Settings() {
 
                   <div className="flex items-center justify-end mt-4">
                     {notifPrefsMsg && <span className="text-caption text-go mr-3">{notifPrefsMsg}</span>}
-                    {notifPrefsSaving && <span className="text-caption text-ink-muted animate-pulse">Saving…</span>}
+                    {notifPrefsSaving && <InlineLoading label="Saving…" />}
                   </div>
                 </>
               )}

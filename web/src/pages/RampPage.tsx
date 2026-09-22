@@ -18,6 +18,7 @@ import CostModelPanel from '../components/dashboard/CostModelPanel'
 import AgentBenchmarkPanel from '../components/dashboard/AgentBenchmarkPanel'
 import EfficiencyBenchmarkPanel from '../components/dashboard/EfficiencyBenchmarkPanel'
 import ConsolePanel from '../components/ui/console-panel'
+import { SkeletonBase } from '../components/ui/Skeleton'
 import { PageHeader } from '../components/ui/page-header'
 
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
@@ -237,9 +238,9 @@ export default function RampPage() {
       )}
 
       {isLoading && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" role="status" aria-label="Loading ramp data">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-[92px] rounded-card border border-seam bg-panel animate-pulse" />
+            <SkeletonBase key={i} className="h-[92px] rounded-card border border-seam" />
           ))}
         </div>
       )}

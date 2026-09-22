@@ -267,7 +267,7 @@ function OverviewTab({ summary }: { summary: GamificationSummary }) {
             )
           })}
           {sortedSources.length === 0 && (
-            <p className="text-caption text-ink-tertiary/40 italic">No XP earned yet. Start exploring!</p>
+            <p className="text-caption text-ink-muted">No XP earned yet — start exploring to earn XP.</p>
           )}
         </div>
       </div>
@@ -282,8 +282,8 @@ function BadgesTab({ badges }: { badges: BadgeInfo[] }) {
     return (
       <div className="py-6 text-center">
         <Medal className="w-8 h-8 mx-auto mb-2 text-ink-tertiary/30" weight="duotone" />
-        <p className="text-caption text-ink-tertiary/50 italic">No badges earned yet.</p>
-        <p className="text-caption text-ink-tertiary/40 mt-1">Complete tasks and modules to earn badges!</p>
+        <p className="text-body-sm font-medium text-ink">No badges earned yet</p>
+        <p className="text-caption text-ink-muted mt-1">Complete tasks and modules to earn badges.</p>
       </div>
     )
   }
@@ -318,8 +318,8 @@ function LeaderboardTab({ entries }: { entries: LeaderboardEntry[] }) {
     return (
       <div className="py-6 text-center">
         <Crown className="w-8 h-8 mx-auto mb-2 text-ink-tertiary/30" weight="duotone" />
-        <p className="text-caption text-ink-tertiary/50 italic">No leaderboard data yet.</p>
-        <p className="text-caption text-ink-tertiary/40 mt-1">Join a team to see rankings!</p>
+        <p className="text-body-sm font-medium text-ink">No leaderboard data yet</p>
+        <p className="text-caption text-ink-muted mt-1">Join a team to see rankings.</p>
       </div>
     )
   }

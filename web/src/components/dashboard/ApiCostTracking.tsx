@@ -11,6 +11,7 @@ import { Key, Spinner, Warning } from '@phosphor-icons/react'
 import { useAuth } from '../../context/AuthContext'
 import { listApiKeys, getUsageSummary, getProviderUsage, type ApiKey, type UsageSummary, type ProviderUsage } from '../../lib/api'
 import { cn, formatKeyDate } from '../../lib/utils'
+import { EmptyRow } from '../ui/empty-state'
 
 /** Compact USD formatting — matches the Admin dashboard's cost figures. */
 function fmtUsd(n: number): string {
@@ -94,7 +95,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
 
           {/* Provider attribution — free-first routing savings */}
           {providerUsage && providerUsage.tracked_requests === 0 && (
-            <p className="text-center py-3 text-ink-tertiary text-xs">No provider attribution yet · appears once requests are routed.</p>
+            <EmptyRow label="No provider attribution yet — appears once requests are routed." />
           )}
           {providerUsage && providerUsage.tracked_requests > 0 && (
             <div>
@@ -154,9 +155,7 @@ export default function ApiCostTracking({ className }: { className?: string }) {
 
           {/* Per-key budget state */}
           {keys.length === 0 ? (
-            <p className="text-center py-6 text-ink-tertiary text-sm">
-              No API keys yet · create one in Settings or the Developer Portal.
-            </p>
+            <EmptyRow label="No API keys yet — create one in Settings or the Developer Portal." />
           ) : (
             <div className="space-y-2">
               {keys.map((key) => {

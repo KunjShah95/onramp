@@ -9,7 +9,7 @@ import { cn } from '../../lib/utils'
 
 export function Table({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
+    <div className={cn('table-scroll w-full overflow-x-auto overscroll-x-contain', className)}>
       <table className="w-full border-collapse text-left">{children}</table>
     </div>
   )

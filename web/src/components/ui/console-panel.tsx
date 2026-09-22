@@ -50,8 +50,8 @@ export default function ConsolePanel({
       className={cn(
         'rounded-card border border-seam bg-panel overflow-hidden',
         raised && 'bg-panel-raised',
-        hoverable && 'cursor-pointer transition-colors hover:border-seam-strong hover:bg-panel-raised',
-        interactive && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50',
+        hoverable && 'cursor-pointer transition-[transform,border-color,background-color] duration-150 ease-out hover:-translate-y-px hover:border-seam-strong hover:bg-panel-raised',
+        interactive && 'cursor-pointer transition-[transform,border-color,box-shadow] duration-150 ease-out hover:border-seam-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50 active:translate-y-px',
         className,
       )}
     >

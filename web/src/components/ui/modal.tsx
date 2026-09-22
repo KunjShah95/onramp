@@ -46,14 +46,14 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-2xl' }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+      className="modal-sheet backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 sm:p-6"
       onClick={onClose}
       role="presentation"
     >
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`bg-base border border-seam rounded-card w-full ${maxWidth} max-h-[85vh] overflow-y-auto shadow-overhead relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50`}
+        className={`modal-enter bg-base border border-seam rounded-card w-full ${maxWidth} max-h-[85vh] overflow-y-auto shadow-overhead relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

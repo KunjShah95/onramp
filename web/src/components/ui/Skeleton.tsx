@@ -7,6 +7,7 @@ interface SkeletonProps {
 export function SkeletonBase({ className }: SkeletonProps) {
   return (
     <div
+      aria-hidden="true"
       className={cn(
         'animate-skeleton rounded-md bg-panel-raised/50',
         className
@@ -82,6 +83,48 @@ export function SkeletonProgressBar({ className }: SkeletonProps) {
       <SkeletonTitle className="w-full" />
       <SkeletonBase className="h-2 w-full rounded-full" />
       <SkeletonText className="w-16 h-3" />
+    </div>
+  )
+}
+
+/** Small indeterminate spinner. Pair with adjacent text for context. */
+export function Spinner({ label, large, className }: { label?: string; large?: boolean; className?: string }) {
+  return (
+    <span role="status" className={cn('inline-loading', className)}>
+      <span className={cn('spinner', large && 'spinner-lg')} aria-hidden="true" />
+      {label && <span>{label}</span>}
+    </span>
+  )
+}
+
+/** Inline loading row for buttons-in-waiting, chat, and table footers. */
+export function InlineLoading({ label = 'Loading…', className }: { label?: string; className?: string }) {
+  return (
+    <span role="status" aria-live="polite" className={cn('inline-loading', className)}>
+      <span className="spinner" aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  )
+}
+
+/** Determinate progress bar (0–100). */
+export function ProgressBar({ value, label, className }: { value: number; label?: string; className?: string }) {
+  const clamped = Math.min(100, Math.max(0, value))
+  return (
+    <div className={cn('space-y-1.5', className)}>
+      {label && <div className="overline">{label}</div>}
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        className="h-1.5 w-full overflow-hidden rounded-full bg-well"
+      >
+        <div
+          className="h-full rounded-full bg-go transition-[width] duration-300 ease-out"
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
     </div>
   )
 }

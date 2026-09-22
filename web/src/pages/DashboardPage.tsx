@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
 import { statusLabel } from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
+import { EmptyRow } from '../components/ui/empty-state'
 import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
@@ -281,7 +282,7 @@ export default function DashboardPage() {
               className="lg:col-span-8"
             >
               {activityTrendData.length === 0 ? (
-                <div className="text-center py-8 text-ink-muted text-body-sm">No trajectory yet.</div>
+                <EmptyRow label="No trajectory yet — complete tasks to chart velocity." />
               ) : (
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">

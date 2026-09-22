@@ -297,9 +297,10 @@ export default function NotificationBell() {
             )}
 
             {!loading && notifications.length === 0 && (
-              <div className="flex flex-col items-center py-8 text-center">
+              <div className="flex flex-col items-center py-8 px-6 text-center">
                 <BellSlash size={32} aria-hidden className="text-ink-muted/30 mb-2 shrink-0" />
-                <p className="text-caption text-ink-muted/50">No notifications yet</p>
+                <p className="text-body-sm font-medium text-ink">No notifications yet</p>
+                <p className="text-caption text-ink-muted mt-1">You're all caught up.</p>
               </div>
             )}
 

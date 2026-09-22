@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
+import { EmptyRow } from '../ui/empty-state'
 import { fetchCohortRetention, type CohortRetentionResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { isLeaderRole } from './RampPanel'
@@ -90,9 +91,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
       live={tone === 'go'}
     >
       {cohorts.length === 0 ? (
-        <p className="text-caption text-ink-muted font-code py-2">
-          No cohorts yet. Retention curves form as developers join.
-        </p>
+        <EmptyRow label="No cohorts yet — retention curves form as developers join." />
       ) : (
         <div className="space-y-4">
           {latest && (

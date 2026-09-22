@@ -22,7 +22,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, pills, actions, mono, eyebrow, flush, className }: PageHeaderProps) {
   return (
-    <div className={cn('flex flex-col md:flex-row md:items-end justify-between gap-4', flush ? 'mb-4' : 'mb-6', className)}>
+    <div className={cn('flex flex-col gap-4', flush ? 'mb-4' : 'mb-6', 'md:flex-row md:items-end md:justify-between', className)}>
       <div className="min-w-0">
         {eyebrow && (
           <div className="index-kicker mb-2.5">
@@ -32,7 +32,7 @@ export function PageHeader({ title, subtitle, pills, actions, mono, eyebrow, flu
         <div className="flex items-center gap-3 min-w-0">
           <h1
             className={cn(
-              'font-display text-display-lg md:text-display-xl text-ink tracking-tight min-w-0',
+              'font-display text-display-lg md:text-display-xl text-ink tracking-tight min-w-0 text-balance',
               mono && 'font-code'
             )}
           >
@@ -41,7 +41,7 @@ export function PageHeader({ title, subtitle, pills, actions, mono, eyebrow, flu
           <span className="rule-accent hidden md:inline-block self-center shrink-0" aria-hidden />
         </div>
         {subtitle && (
-          <p className="text-body-sm text-ink-tertiary mt-2 max-w-xl">{subtitle}</p>
+          <p className="text-body-sm text-ink-tertiary mt-2 max-w-xl text-pretty">{subtitle}</p>
         )}
         {pills && pills.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 mt-3">
@@ -55,7 +55,7 @@ export function PageHeader({ title, subtitle, pills, actions, mono, eyebrow, flu
         )}
       </div>
       {actions && (
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">{actions}</div>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2.5 shrink-0 sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto">{actions}</div>
       )}
     </div>
   )

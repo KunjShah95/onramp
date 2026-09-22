@@ -20,6 +20,7 @@ import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
 import { resolveRepoIssue, submitTask, type ResolveIssueResult } from '../lib/api'
 import CodeEditor from '../components/ui/monaco-editor'
+import { EmptyRow } from '../components/ui/empty-state'
 
 type StageState = 'pending' | 'active' | 'done' | 'failed'
 const STAGES = ['Clone workspace', 'Analyse codebase', 'Generate patches', 'Open pull request'] as const
@@ -246,7 +247,7 @@ export default function AutonomousCodingPage() {
           ) : (
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {runs.length === 0 ? (
-                <p className="text-caption text-ink-muted p-3 text-center">No agent runs yet this session.</p>
+                <EmptyRow label="No agent runs yet this session — pick an issue and press Run." />
               ) : (
                 runs.map((r) => (
                   <button

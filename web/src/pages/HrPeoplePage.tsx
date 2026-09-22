@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { PageHeader } from '../components/ui/page-header'
+import { SkeletonBase } from '../components/ui/Skeleton'
 import { cn } from '../lib/utils'
 import { fetchHrDevelopers, fetchHrHeatmap, listTeams } from '../lib/api'
 import CardSpotlight from '../components/ui/card-spotlight'
@@ -302,20 +303,20 @@ export default function HrPeoplePage() {
 
   if (devLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] space-y-5 max-w-6xl mx-auto animate-in">
+      <div className="min-h-[calc(100vh-4rem)] space-y-5 max-w-6xl mx-auto animate-in" role="status" aria-label="Loading people directory">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-7 w-48 bg-panel rounded-lg animate-pulse" />
-            <div className="h-4 w-64 bg-panel rounded animate-pulse" />
+            <SkeletonBase className="h-7 w-48 rounded-lg" />
+            <SkeletonBase className="h-4 w-64" />
           </div>
-          <div className="h-9 w-36 bg-panel rounded-xl animate-pulse" />
+          <SkeletonBase className="h-9 w-36 rounded-xl" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-panel border border-seam animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <SkeletonBase key={i} className="h-24 rounded-xl border border-seam" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-1 h-96 rounded-xl bg-panel border border-seam animate-pulse" />
-          <div className="lg:col-span-2 h-96 rounded-xl bg-panel border border-seam animate-pulse" />
+          <SkeletonBase className="lg:col-span-1 h-96 rounded-xl border border-seam" />
+          <SkeletonBase className="lg:col-span-2 h-96 rounded-xl border border-seam" />
         </div>
       </div>
     )

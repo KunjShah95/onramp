@@ -7,7 +7,7 @@ function SkeletonBadge({ className }: { className?: string }) {
 
 export function PageLoadingFallback() {
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 animate-in">
+    <div role="status" aria-live="polite" aria-label="Loading page" className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 animate-in stack">
       <div className="flex items-center justify-between mb-6">
         <SkeletonHeading />
         <SkeletonButton />
@@ -38,7 +38,7 @@ export function PageLoadingFallback() {
 
 export function FormLoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div role="status" aria-live="polite" aria-label="Loading form" className="min-h-screen flex items-center justify-center p-4">
       <div className="bg-panel border border-seam rounded-card p-8 w-full max-w-[420px] space-y-4">
         <div className="flex flex-col items-center mb-6">
           <SkeletonBase className="h-12 w-12 rounded-xl mb-4" />
@@ -62,7 +62,7 @@ export function FormLoadingFallback() {
 
 export function LandingLoadingFallback() {
   return (
-    <div className="marketing-surface min-h-screen">
+    <div role="status" aria-live="polite" aria-label="Loading site" className="marketing-surface min-h-screen">
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center px-8 py-4 w-[95%] max-w-5xl bg-white/80 backdrop-blur-xl border border-[rgba(24,27,24,0.10)] rounded-full">
         <SkeletonText className="w-24" />
         <div className="hidden md:flex items-center gap-8">

@@ -1,0 +1,443 @@
+/* ─────────────────────────────────────────────────────────────
+   Polish layer — senior design-engineer pass.
+   One global stylesheet so all 60+ pages inherit the same
+   spacing · typography · loading · hover · empty · mobile ·
+   micro-interaction language without per-page edits.
+   Imported AFTER index.css (see main.tsx) so it refines,
+   never replaces, the Folio token system.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Motion tokens — one easing + three durations used everywhere. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-instant: 120ms;
+  --dur-fast: 160ms;
+  --dur-med: 280ms;
+  /* Spacing rhythm (4pt base). Pages compose with these steps. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+}
+
+/* ═══════════ 1 · SPACING — consistent page rhythm ═══════════ */
+
+/* App content column: comfortable gutters that grow with viewport,
+   plus safe-area padding so content never hugs the home indicator. */
+main {
+  scrollbar-gutter: stable;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+/* Vertical stack helper: pages opt in with class="stack" instead of
+   ad-hoc space-y-N values. Any direct-child gap stays on the scale. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.stack-dense {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.stack-loose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+@media (min-width: 640px) {
+  .stack { gap: var(--sp-8); }
+  .stack-loose { gap: var(--sp-10); }
+}
+
+/* Card padding breathes on desktop, stays compact on phones. */
+.card, .console-panel {
+  container-type: inline-size;
+}
+@container (max-width: 420px) {
+  .card, .console-panel { padding: var(--sp-4); }
+}
+
+/* Form rows: label → control → hint always share one rhythm. */
+form .space-y-1\.5 > * + * { margin-top: 2px; }
+
+/* Icon + text rows never collapse their gap. */
+[class*="gap-1"], [class*="gap-2"] { row-gap: inherit; }
+
+/* Anchor targets clear the sticky top bar. */
+[id] { scroll-margin-top: 64px; }
+
+/* ═══════════ 2 · TYPOGRAPHY — calm, measured, tabular ═══════════ */
+
+/* Headings balance across lines; body copy never goes full-bleed wide. */
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+.prose, .measure { max-width: 65ch; }
+
+/* Fluid display scale — clamps so hero titles never overflow a 360px phone
+   and never look lost on a 1440px monitor. Overrides the fixed px sizes. */
+.text-display-2xl { font-size: clamp(2rem, 1.4rem + 3vw, 2.5rem) !important; }
+.text-display-xl { font-size: clamp(1.625rem, 1.25rem + 1.9vw, 2rem) !important; }
+.text-display-lg { font-size: clamp(1.375rem, 1.15rem + 1.1vw, 1.75rem) !important; }
+.text-display-md { font-size: clamp(1.125rem, 1.02rem + 0.5vw, 1.375rem) !important; }
+
+/* Data readouts always use tabular figures — no layout jitter as numbers tick. */
+.readout, .font-code, [class*="tabular"] { font-variant-numeric: tabular-nums; }
+
+/* Links: quiet by default, underline blooms on hover with offset. */
+a:not([class*="btn"]):not([class*="rounded"]):not(.skip-link) {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+a:not([class*="btn"]):not([class*="rounded"]):not(.skip-link):hover {
+  text-decoration-color: currentColor;
+}
+
+/* Muted captions stay legible — floor at 12px, never lighter than tertiary
+   on colored grounds. */
+.text-caption { letter-spacing: 0.01em; }
+
+/* Truncation helpers beyond the 2-line clamp that already exists. */
+.truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═══════════ 3 · LOADING — skeletons, spinners, progress ═══════════ */
+
+/* Stronger, slower shimmer — visible on paper AND on dark rooms. */
+.animate-skeleton {
+  background-color: rgb(var(--well-rgb) / 0.7) !important;
+  border-radius: 4px;
+  min-height: 0.75rem;
+}
+.animate-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--ink-rgb) / 0.08) 45%,
+    rgb(var(--ink-rgb) / 0.12) 50%,
+    rgb(var(--ink-rgb) / 0.08) 55%,
+    transparent 100%
+  ) !important;
+  animation: polish-shimmer 1.6s var(--ease-out) infinite !important;
+}
+@keyframes polish-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Skeleton groups announce once via role="status" on the wrapper
+   (see LoadingFallback) — individual bars stay aria-hidden. */
+[aria-busy="true"] { cursor: progress; }
+[aria-busy="true"] .btn { cursor: progress; }
+
+/* Button loading state: dims label, shows spinner, blocks re-click. */
+.btn[data-loading="true"], .btn-glass[data-loading="true"],
+.btn-secondary[data-loading="true"] {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn[data-loading="true"]::after, .btn-glass[data-loading="true"]::after,
+.btn-secondary[data-loading="true"]::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  color: inherit;
+  filter: invert(0);
+  border-color: rgb(255 255 255 / 0.4);
+  border-top-color: #fff;
+  animation: polish-spin 0.7s linear infinite;
+}
+.btn-secondary[data-loading="true"]::after,
+.btn-glass[data-loading="true"]::after {
+  border-color: rgb(var(--ink-rgb) / 0.2);
+  border-top-color: var(--go);
+}
+
+/* Generic spinner + inline loading row (see Skeleton.tsx exports). */
+.spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 2px solid rgb(var(--ink-rgb) / 0.15);
+  border-top-color: var(--go);
+  animation: polish-spin 0.7s linear infinite;
+}
+.spinner-lg { width: 24px; height: 24px; border-width: 2.5px; }
+@keyframes polish-spin { to { transform: rotate(360deg); } }
+
+.inline-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-tertiary);
+  font-size: 0.8125rem;
+}
+
+/* Thin top progress bar for route transitions (see page-transition). */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 90;
+  transform-origin: left;
+  background: var(--go);
+  animation: route-progress 1.2s var(--ease-out) infinite;
+}
+@keyframes route-progress {
+  0% { transform: scaleX(0); opacity: 1; }
+  60% { transform: scaleX(0.7); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+/* ═══════════ 4 · HOVER — one language for every control ═══════════ */
+
+/* Pressable: every button compresses 1px + 0.98 scale on press. */
+.btn, .btn-secondary, .btn-glass, .btn-ghost, .btn-danger,
+.nexora-btn-primary, .nexora-btn-ghost {
+  will-change: transform;
+}
+.btn:active, .btn-secondary:active, .btn-glass:active,
+.btn-ghost:active, .btn-danger:active {
+  transform: translateY(1px) scale(0.98) !important;
+}
+
+/* Cards that are links/buttons lift a hair and seat the border. */
+a.card:hover, button.card:hover,
+.console-panel[class*="hover"]:hover {
+  transform: translateY(-1px);
+  border-color: var(--seam-strong) !important;
+  transition: transform var(--dur-instant) var(--ease-out),
+    border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+
+/* Table + list rows: quiet wash on hover, selected row keeps its spine. */
+tbody tr { transition: background-color var(--dur-instant) ease; }
+tbody tr:hover { background-color: rgb(var(--well-rgb) / 0.6); }
+[data-row="true"] { transition: background-color var(--dur-instant) ease; }
+[data-row="true"]:hover { background-color: rgb(var(--well-rgb) / 0.6); }
+
+/* Icon buttons: tile warms on hover, icon inherits ink. */
+button[class*="rounded-btn"]:has(> svg:only-child),
+a[class*="rounded-btn"]:has(> svg:only-child) {
+  transition: background-color var(--dur-instant) ease,
+    color var(--dur-instant) ease, border-color var(--dur-instant) ease,
+    transform var(--dur-instant) var(--ease-out);
+}
+button[class*="rounded-btn"]:has(> svg:only-child):hover,
+a[class*="rounded-btn"]:has(> svg:only-child):hover {
+  background-color: var(--well);
+}
+
+/* Nav items slide their label 1px on hover — felt, not seen. */
+aside nav a:hover, aside a[class*="rounded-btn"]:hover {
+  transition: background-color var(--dur-instant) ease, color var(--dur-instant) ease;
+}
+
+/* Disabled is unmistakable everywhere. */
+:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+
+/* Consistent keyboard ring for anything natively focusable that missed it. */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--go);
+  outline-offset: 2px;
+}
+
+/* ═══════════ 5 · EMPTY — dashed rooms, not blank holes ═══════════ */
+
+/* Opt-in dashed room for first-run / zero-data panels. */
+.empty-panel {
+  border: 1px dashed var(--seam-strong);
+  border-radius: 5px;
+  background: rgb(var(--well-rgb) / 0.4);
+  padding: var(--sp-8) var(--sp-6);
+}
+@media (min-width: 640px) {
+  .empty-panel { padding: var(--sp-10) var(--sp-8); }
+}
+
+/* Bare fallback paragraphs ("No X yet") that predate <EmptyState />
+   still read as intentional: centered, muted, breathing room. */
+main p[class*="text-center"][class*="text-ink-"] {
+  padding-top: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+
+/* Empty icon tile pops gently on mount. */
+.empty-tile { animation: empty-pop var(--dur-med) var(--ease-out) both; }
+@keyframes empty-pop {
+  from { opacity: 0; transform: scale(0.92) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ═══════════ 6 · MOBILE — thumb-first, no sideways scroll ═══════════ */
+
+/* Coarse pointers get 44px targets on primary actions + inputs. */
+@media (pointer: coarse) {
+  .btn, .btn-secondary, .btn-glass {
+    min-height: 44px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .input, select.input, textarea.input {
+    min-height: 44px;
+  }
+  /* iOS zooms when inputs are <16px — hold the line on phones. */
+  .input, select, textarea { font-size: 16px; }
+}
+@media (pointer: coarse) and (min-width: 768px) {
+  .input, select, textarea { font-size: 0.9375rem; }
+}
+
+/* Tables scroll inside their card instead of breaking the viewport. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-inline: calc(var(--sp-4) * -1);
+  padding-inline: var(--sp-4);
+  scrollbar-width: thin;
+}
+@media (min-width: 640px) {
+  .table-scroll { margin-inline: 0; padding-inline: 0; }
+}
+.table-scroll table { min-width: 560px; width: 100%; }
+
+/* Grids that were 4-up on desktop collapse gracefully by default.
+   (Pages with bespoke grids are untouched — this only helps the
+   generic stat grids that forgot their mobile breakpoint.) */
+.grid-collapse-sm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+@media (min-width: 1024px) {
+  .grid-collapse-sm { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Page headers stack actions full-width on phones. */
+@media (max-width: 767px) {
+  [class*="PageHeader"] + * { min-width: 0; }
+}
+
+/* Dialogs become bottom sheets on phones (see modal.tsx). */
+@media (max-width: 639px) {
+  .modal-sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-sheet > div[role="dialog"] {
+    border-radius: 12px 12px 0 0 !important;
+    max-height: 92dvh !important;
+    width: 100% !important;
+    animation: sheet-up var(--dur-med) var(--ease-out) both !important;
+  }
+}
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Long words (hashes, keys, URLs) never blow out a 360px viewport. */
+main { overflow-wrap: anywhere; }
+code, .font-code { overflow-wrap: anywhere; }
+
+/* ═══════════ 7 · MICRO-INTERACTIONS — felt, 120–280ms ═══════════ */
+
+/* Entrance: mount once, rise 6px, settle. Opt in with class="reveal". */
+.reveal { animation: reveal-up var(--dur-med) var(--ease-out) both; }
+.reveal-1 { animation-delay: 40ms; }
+.reveal-2 { animation-delay: 90ms; }
+.reveal-3 { animation-delay: 140ms; }
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal + popover mount. */
+.modal-enter { animation: modal-in var(--dur-med) var(--ease-out) both; }
+.modal-enter::before { content: none; }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.backdrop-enter { animation: backdrop-in var(--dur-fast) ease-out both; }
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Status dots breathe when live. */
+.dot-live { position: relative; }
+.dot-live::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  opacity: 0.4;
+  animation: dot-ping 2s var(--ease-out) infinite;
+}
+@keyframes dot-ping {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  70% { transform: scale(1.15); opacity: 0; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+/* Copy buttons + toggles confirm with a 160ms check flash. */
+.flash-ok { animation: flash-ok var(--dur-med) var(--ease-out); }
+@keyframes flash-ok {
+  0% { background-color: rgb(var(--go-rgb) / 0.18); }
+  100% { background-color: transparent; }
+}
+
+/* Error shake for invalid fields — 200ms, 4px, once. */
+.shake { animation: field-shake 0.2s ease-out; }
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Number tick: values that update get tabular figures + a soft fade. */
+.tick { animation: tick-fade var(--dur-fast) ease-out; }
+@keyframes tick-fade {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* ── Reduced motion: everything settles instantly ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-skeleton::after { animation: none !important; opacity: 0.5; }
+  .reveal, .reveal-1, .reveal-2, .reveal-3,
+  .modal-enter, .backdrop-enter, .empty-tile,
+  .route-progress, .dot-live::after {
+    animation: none !important;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

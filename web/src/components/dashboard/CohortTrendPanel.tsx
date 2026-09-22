@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
+import { EmptyRow } from '../ui/empty-state'
 import { fetchCohortComparison, type CohortComparisonResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { isLeaderRole } from './RampPanel'
@@ -58,9 +59,7 @@ export default function CohortTrendPanel({ teamId }: { teamId?: string }) {
       live={improving === true}
     >
       {cohorts.length === 0 ? (
-        <p className="text-caption text-ink-muted font-code py-2">
-          No cohorts yet. Groups form as developers join.
-        </p>
+        <EmptyRow label="No cohorts yet — groups form as developers join." />
       ) : (
         <div className="space-y-3">
           {improving !== null && (

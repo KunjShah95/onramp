@@ -6,6 +6,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import ConsolePanel from '../components/ui/console-panel'
+import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import InputField from '../components/ui/first-principles/InputField'
 import { useToast } from '../context/ToastContext'
@@ -122,14 +123,13 @@ export default function CodeHealthPage() {
         {/* Empty */}
         {!loading && !result && (
           <div>
-            <ConsolePanel rail="Awaiting" designator="No data yet" status="idle" className="py-16 text-center">
-              <div className="w-14 h-14 rounded-[3px] bg-base border border-seam flex items-center justify-center mx-auto mb-4">
-                <Heartbeat size={26} className="text-ink-disabled" weight="duotone" />
-              </div>
-              <p className="font-display text-lg text-ink font-semibold mb-1">Enter a repository</p>
-              <p className="text-[13px] text-ink-tertiary max-w-sm mx-auto">
-                We'll score it on test coverage, maintainability, complexity, and overall health.
-              </p>
+            <ConsolePanel rail="Awaiting" designator="No data yet" status="idle">
+              <EmptyState
+                icon={<Heartbeat size={26} className="text-ink-disabled" weight="duotone" />}
+                eyebrow="Code health"
+                title="Enter a repository"
+                description="We'll score it on test coverage, maintainability, complexity, and overall health."
+              />
             </ConsolePanel>
           </div>
         )}

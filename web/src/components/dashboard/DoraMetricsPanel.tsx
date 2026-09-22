@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '../../lib/utils'
 import ConsolePanel from '../ui/console-panel'
+import { EmptyRow } from '../ui/empty-state'
+import { SkeletonBase } from '../ui/Skeleton'
 import { fetchDoraSummary, fetchVelocityTrends, fetchTeamThroughput, listTeams } from '../../lib/api'
 import type { DoraSummary, VelocityTrend, MemberThroughput } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -76,7 +78,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
   })
 
   if (isLoading) {
-    return <div aria-busy="true" aria-label="Loading DORA metrics" className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-tile bg-well animate-pulse border border-seam" />)}</div>
+    return <div aria-busy="true" aria-label="Loading DORA metrics" role="status" className="grid grid-cols-2 sm:grid-cols-4 gap-3">{[1,2,3,4].map(i => <SkeletonBase key={i} className="h-24 rounded-tile border border-seam" />)}</div>
   }
 
   if (isError) {
@@ -153,7 +155,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
       )}
 
       {!dora && (
-        <div className="text-center py-10 text-ink-muted text-body-sm font-code">No DORA data yet. Complete tasks to generate metrics.</div>
+        <EmptyRow label="No DORA data yet — complete tasks to generate metrics." />
       )}
     </div>
   )

@@ -14,7 +14,7 @@ import CardSpotlight from '../components/ui/card-spotlight'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { Modal } from '../components/ui/modal'
-import { FirstIssueSkeleton } from '../components/ui/Skeleton'
+import { FirstIssueSkeleton, InlineLoading } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { findIssues, generateGuide, fetchPairWalkthrough } from '../lib/api'
 import type { PairWalkthroughResult } from '../lib/api'
@@ -299,7 +299,7 @@ export default function FirstIssuePage() {
         onClose={() => setGuideIssue(null)}
         title={guideIssue ? `Guide · ${guideIssue.title}` : 'Guide'}
       >
-        {guideLoading && <p className="text-caption text-ink-tertiary animate-pulse">Generating step-by-step guide…</p>}
+        {guideLoading && <InlineLoading label="Generating step-by-step guide…" />}
         {guideError && <p className="text-caption text-abort">{guideError}</p>}
         {guide && (
           <div className="space-y-5">
@@ -351,7 +351,7 @@ export default function FirstIssuePage() {
         title={walkIssue ? `Walkthrough · ${walkIssue.title}` : 'Walkthrough'}
         maxWidth="max-w-3xl"
       >
-        {walkLoading && <p className="text-caption text-ink-tertiary animate-pulse">Narrating senior-dev walkthrough…</p>}
+        {walkLoading && <InlineLoading label="Narrating senior-dev walkthrough…" />}
         {walkError && <p className="text-caption text-abort">{walkError}</p>}
         {walk && (
           <div className="space-y-5">

@@ -152,7 +152,7 @@ export default function ReviewOpsPanel({ teamId }: { teamId?: string }) {
         <div>
           <p className="overline text-ink-muted/60 mb-2">Reviewer load</p>
           {reviewers.length === 0 ? (
-            <p className="text-[11px] text-ink-tertiary">No reviewers on this team yet.</p>
+            <p className="text-caption text-ink-muted">No reviewers on this team yet.</p>
           ) : (
             <div className="space-y-2">
               {reviewers.slice(0, 6).map((r) => {

@@ -172,7 +172,7 @@ export default function FeatureFlagsPage() {
           <div className="space-y-2">
             <h3 className="text-body-sm font-medium text-ink mb-3">Custom Flags</h3>
             {flags.filter((f) => !PRESET_FLAGS.some((p) => p.name === f.flag_name)).length === 0 && (
-              <p className="text-caption text-ink-tertiary/60 mb-3">No custom flags yet.</p>
+              <p className="text-caption text-ink-muted mb-3">No custom flags yet.</p>
             )}
             {flags
               .filter((f) => !PRESET_FLAGS.some((p) => p.name === f.flag_name))

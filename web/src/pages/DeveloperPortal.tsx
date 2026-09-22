@@ -6,6 +6,7 @@ import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, li
 import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
 import { Code, Key, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Play, Robot, Terminal, PencilSimple, CheckCircle, Circle, BookOpen, Gauge } from '@phosphor-icons/react'
 import { PageHeader } from '../components/ui/page-header'
+import { EmptyRow } from '../components/ui/empty-state'
 import CodeEditor from '../components/ui/monaco-editor'
 import { PROVIDER_OPTIONS } from '../lib/providers'
 import { cn } from '../lib/utils'
@@ -443,7 +444,7 @@ function KeysTab(props: {
               })}
             </ul>
           ) : (
-            <div className="text-center py-10 text-sm text-ink-tertiary">No keys yet. Create one to make your first call.</div>
+            <EmptyRow label="No keys yet — create one to make your first call." />
           )}
       </section>
     </div>
@@ -489,7 +490,7 @@ function ModelsTab(props: {
                 disabled={props.savingRoutingMode || !props.canManageKeys}
                 onClick={() => props.onRouting(o.v)}
                 className={cn('min-h-[52px] rounded-btn px-2 py-2 text-center transition-all disabled:opacity-50',
-                  props.routingMode === o.v ? 'bg-bg text-ink shadow border border-go/30' : 'text-ink-tertiary hover:text-ink')}>
+                  props.routingMode === o.v ? 'bg-panel-raised text-ink shadow border border-go/30' : 'text-ink-tertiary hover:text-ink')}>
                 <span className="block text-[13px] font-bold">{o.label}</span>
                 <span className="block text-[11px] opacity-70">{o.sub}</span>
               </button>
@@ -613,7 +614,7 @@ function UsageTab({ usage, tierInfo }: { usage: any; tierInfo: RateLimitInfo | n
             )}
           </>
         ) : (
-          <p className="text-sm text-ink-tertiary py-4">No usage yet — make a call and it shows up here.</p>
+          <EmptyRow label="No usage yet — make a call and it shows up here." />
         )}
       </section>
 
@@ -767,7 +768,7 @@ function PlaygroundTab() {
             <button type="button" onClick={() => window.location.reload()} className="underline font-medium">Retry</button>
           </div>
         ) : agents.length === 0 ? (
-          <p className="text-[13px] text-ink-tertiary py-4">No agents available on this server yet.</p>
+          <EmptyRow label="No agents available on this server yet." />
         ) : (
           <>
             <span className="field-label" id="agent-label">Agent</span>

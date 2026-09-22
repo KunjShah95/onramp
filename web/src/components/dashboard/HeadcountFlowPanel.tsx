@@ -4,6 +4,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import ConsolePanel from '../ui/console-panel'
+import { EmptyRow } from '../ui/empty-state'
 import { fetchHeadcountFlow, type HeadcountFlowResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { isLeaderRole } from './RampPanel'
@@ -77,9 +78,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
       live={tone === 'go'}
     >
       {months.length === 0 ? (
-        <p className="text-caption text-ink-muted font-code py-2">
-          No membership history yet. Flows form as people join.
-        </p>
+        <EmptyRow label="No membership history yet — flows form as people join." />
       ) : (
         <div className="space-y-4">
           <div className="flex items-baseline justify-between gap-3">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConsolePanel from '../ui/console-panel'
+import { SkeletonBase } from '../ui/Skeleton'
 
 import {
   runAutopilotAnalyze,
@@ -136,9 +137,9 @@ export default function AutopilotPanel({ teamId }: { teamId?: string }) {
       )}
 
       {running && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" role="status" aria-label="Analyzing repository">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded-tile bg-well/40 animate-pulse" />
+            <SkeletonBase key={i} className="h-14 rounded-tile" />
           ))}
         </div>
       )}

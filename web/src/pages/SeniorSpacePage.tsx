@@ -4,7 +4,8 @@ import {
   Eye, Heartbeat, Users, CheckCircle, GitBranch, ArrowRight, Warning,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
-import { EmptyState } from '../components/ui/empty-state'
+import { EmptyState, EmptyRow } from '../components/ui/empty-state'
+import { InlineLoading } from '../components/ui/Skeleton'
 import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { cn } from '../lib/utils'
@@ -131,9 +132,9 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
       live={prs.length > 0}
     >
       {loading ? (
-        <p className="text-caption text-ink-tertiary/50 animate-pulse">Loading PRs…</p>
+        <InlineLoading label="Loading PRs…" />
       ) : prs.length === 0 ? (
-        <p className="text-caption text-ink-tertiary/50">No PRs awaiting review.</p>
+        <EmptyRow label="No PRs awaiting review." />
       ) : (
         <div className="space-y-3">
           {prs.map((task) => {

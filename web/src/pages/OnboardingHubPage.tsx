@@ -5,6 +5,7 @@ import {
   CheckCircle, Circle, ArrowRight, Clock, Code,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
+import { SkeletonBase } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { useAuth } from '../context/AuthContext'
@@ -69,14 +70,14 @@ export default function OnboardingHubPage() {
       )}
 
       {loading ? (
-        <div className="space-y-6">
+        <div className="space-y-6" role="status" aria-label="Loading onboarding hub">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-72 rounded-card border border-seam bg-panel animate-pulse" />
-            <div className="h-72 rounded-card border border-seam bg-panel animate-pulse" />
+            <SkeletonBase className="lg:col-span-2 h-72 rounded-card border border-seam" />
+            <SkeletonBase className="h-72 rounded-card border border-seam" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 rounded-card border border-seam bg-panel animate-pulse" />
+              <SkeletonBase key={i} className="h-28 rounded-card border border-seam" />
             ))}
           </div>
         </div>

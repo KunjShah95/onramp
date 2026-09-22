@@ -9,7 +9,7 @@ import {
   Spinner,
   Users,
 } from '@phosphor-icons/react'
-import { EmptyState } from '../components/ui/empty-state'
+import { EmptyState, EmptyRow } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { Modal } from '../components/ui/modal'
 import { useToast } from '../context/ToastContext'
@@ -202,7 +202,7 @@ export default function MarketplacePage() {
       )}
 
       {loading && (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex items-center justify-center py-16" role="status" aria-label="Loading marketplace">
           <Spinner className="w-6 h-6 text-go animate-spin" />
         </div>
       )}
@@ -221,7 +221,7 @@ export default function MarketplacePage() {
       {!loading && listings.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
           {listings.map((l) => (
-            <div key={l.listing_id} className="rounded-card border border-seam bg-panel p-5 flex flex-col gap-3 transition-colors hover:border-go/25">
+            <div key={l.listing_id} className="rounded-card border border-seam bg-panel p-5 flex flex-col gap-3 transition-[transform,border-color] duration-150 ease-out hover:-translate-y-px hover:border-seam-strong">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-body font-medium text-ink line-clamp-1">{l.title}</h3>
                 <span className="flex items-center gap-1 text-caption text-ink-muted shrink-0">
@@ -269,9 +269,7 @@ export default function MarketplacePage() {
       <Modal open={showPublish} onClose={() => setShowPublish(false)} title="Publish a playbook">
         <div className="space-y-2 max-h-[50vh] overflow-y-auto">
           {myPlaybooks.length === 0 && (
-            <p className="text-body-sm text-ink-muted py-6 text-center">
-              No team playbooks to publish. Create one first on the Playbooks page.
-            </p>
+            <EmptyRow label="No team playbooks to publish — create one first on the Playbooks page." />
           )}
           {myPlaybooks.map((pb) => (
             <div

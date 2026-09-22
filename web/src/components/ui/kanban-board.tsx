@@ -198,8 +198,8 @@ export default function KanbanBoard({
                 
 
                 {colTasks.length === 0 && (
-                  <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-seam py-8">
-                    <p className="text-[10px] uppercase tracking-widest text-ink-muted/40">{emptyLabel}</p>
+                  <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-seam-strong bg-well/40 py-8 transition-colors">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-muted">{emptyLabel}</p>
                   </div>
                 )}
               </div>

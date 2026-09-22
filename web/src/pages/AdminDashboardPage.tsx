@@ -202,7 +202,7 @@ export default function AdminDashboardPage() {
               ) : undefined}
             >
               {!usageDetail || usageDetail.tracked_requests === 0 ? (
-                <EmptyState title="No LLM traffic tracked yet" description="Gateway and agent requests will appear here once the router starts serving traffic." />
+                <EmptyState eyebrow="Treasury" title="No LLM traffic tracked yet" description="Gateway and agent requests will appear here once the router starts serving traffic." />
               ) : (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
