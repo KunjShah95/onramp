@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check } from '@phosphor-icons/react'
+import { ArrowRight } from '@phosphor-icons/react'
 import ArchitectureMapStatic from './ArchitectureMapStatic'
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -18,8 +18,7 @@ export default function Hero() {
         <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
           {/* copy */}
           <div className="pt-2">
-            <p className="inline-flex items-center gap-2 rounded-full border border-seam bg-panel px-3 py-1 text-xs font-medium text-ink-secondary">
-              <span className="h-1.5 w-1.5 rounded-full bg-go" aria-hidden />
+            <p className="text-xs font-medium text-ink-secondary">
               Live architecture map for your repo
             </p>
             <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl">
@@ -56,7 +55,6 @@ export default function Hero() {
               <div className="flex items-center justify-between border-b border-seam px-4 py-2.5">
                 <span className="font-code text-xs text-ink-tertiary">acme/platform · architecture</span>
                 <span className="flex items-center gap-1.5 font-code text-xs text-ink-tertiary">
-                  <span className="h-1.5 w-1.5 rounded-full bg-go" aria-hidden />
                   14 services
                 </span>
               </div>
@@ -64,9 +62,6 @@ export default function Hero() {
                 <ArchitectureMapStatic className="h-full w-full" />
               </div>
               <div className="flex items-center gap-2 border-t border-seam px-4 py-2.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-go/10">
-                  <Check size={11} weight="bold" className="text-go" />
-                </span>
                 <p className="text-[13px] text-ink-secondary">
                   Map updated 2m ago · First PR merged #147
                 </p>

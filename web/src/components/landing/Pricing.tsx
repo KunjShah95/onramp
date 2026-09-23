@@ -166,7 +166,7 @@ export default function Pricing() {
             <div className="flex h-full flex-col p-6">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium uppercase tracking-wider text-ink">Team</span>
-                <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-medium text-[var(--panel-raised)]">
+                <span className="text-xs font-medium text-ink">
                   Recommended
                 </span>
               </div>

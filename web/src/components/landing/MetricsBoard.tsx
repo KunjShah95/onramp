@@ -70,7 +70,7 @@ export default function MetricsBoard() {
               <span className="text-xs font-medium uppercase tracking-wider text-ink-tertiary">
                 Team health
               </span>
-              <span className="rounded-full border border-seam bg-well px-2 py-0.5 text-xs font-medium text-ink-secondary">
+              <span className="text-xs font-medium text-ink-secondary">
                 Stable
               </span>
             </div>

@@ -90,7 +90,7 @@ export default function HowItWorks() {
             <div key={s.n} className="flex h-full flex-col rounded-md border border-seam bg-panel p-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-ink-tertiary">{s.n}</span>
-                <span className="rounded-full border border-seam bg-well px-2.5 py-0.5 text-xs text-ink-secondary">
+                <span className="text-xs text-ink-secondary">
                   {s.time}
                 </span>
               </div>

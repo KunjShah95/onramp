@@ -159,7 +159,6 @@ export default function MarketingFooter() {
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <span className="inline-flex items-center gap-1.5 font-code text-[11px] text-ink-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-go" aria-hidden />
               map fresh · HEAD
             </span>
             <button
