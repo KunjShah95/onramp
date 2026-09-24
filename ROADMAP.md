@@ -2,7 +2,7 @@
 
 **Last updated:** 24 September 2026
 **Status:** Release-candidate hardening and the v1.4–v1.6 wedge are built. Production launch remains gated by staging verification, customer validation, billing verification, backup/restore proof, and operational readiness.
-**Planning convention:** The windows below are sequencing estimates, not committed launch dates. No production migration or deployment has been executed.
+**Planning convention:** The windows below are sequencing estimates, not committed launch dates. The configured Neon OnRamp schema migration was explicitly approved and executed on 24 September 2026; no application deployment or traffic cutover has been performed.
 
 This document is the source of truth for the future roadmap. `STATUS.md` records current implementation status; `features_mvp.md`, `versions.md`, and `GAPS.md` are supporting audits and may contain historical assumptions that must be re-verified before they are used as release gates.
 
@@ -48,7 +48,7 @@ These are targets from `PROBLEM.md`, not claims about current customer results:
 ### Shipped product and platform
 
 | Area | Current state |
-|---|---|
+| --- | --- |
 | Core product | Architecture Explorer, First-PR Accelerator, Learning Path Generator, Repo Q&A, onboarding reports, task workflow, dashboards, notifications, integrations, and billing surfaces are implemented. |
 | Wedge | Ramp profiles, senior-time cost model, stuck detection, org health, retention curves, headcount flows, review load/suggestion/consistency, ROI and efficiency benchmark harnesses are built. |
 | Repository intelligence | Team-owned repository registration, durable grants, single and batch indexing, job status APIs, revocation, deletion cleanup, derived embeddings, and graph context are implemented. |
@@ -57,26 +57,27 @@ These are targets from `PROBLEM.md`, not claims about current customer results:
 | Automation | GitHub/webhook and n8n signing, timestamped replay protection, deterministic idempotency, per-team delivery boundaries, and platform-admin allowlists are implemented. |
 | Security hardening | Tenant isolation, HttpOnly cookie auth, API-key hashing, SSRF controls, webhook verification, refresh-token rotation, production boundary validation, and truthful public copy are implemented. |
 | Observability | Structured logs, correlation IDs, `/health`, `/ready`, `/metrics`, provider LLM latency/error metrics, and frontend health surfaces are available. |
-| Data/migrations | Alembic chain is through `031_embedding_chunk_tenant_scope`; offline upgrade/downgrade SQL generation is covered by tests. Live online backfills remain a staging task. |
+| Data/migrations | Alembic chain is through `031_embedding_chunk_tenant_scope`; offline upgrade/downgrade SQL generation is covered by tests. The configured Neon OnRamp database is at head, with migrations `030` and `031` applied and tenant columns/constraints verified; backup/restore and deployed smoke verification remain open. |
 
 ### Verification baseline
 
 | Check | Latest verified result |
-|---|---|
+| --- | --- |
 | Backend | 1,252 passed, 202 skipped in memory mode |
 | Frontend | 82 Vitest/RTL tests; TypeScript, build, SEO check, and `npm audit` pass |
 | SDK | 10 tests; typecheck and build pass |
 | Playwright | 70 selected tests pass across auth/cookie, accessibility, billing, core flows, load, and Lighthouse suites |
 | Backend dependency audit | `pip-audit` reports no known vulnerabilities |
 | Frontend dependency audit | `npm audit --audit-level=high` reports zero vulnerabilities |
-| Migrations | Offline upgrade and downgrade SQL generation pass; `alembic heads` is `031_embedding_chunk_tenant_scope` |
+| Migrations | Offline upgrade and downgrade SQL generation pass; `alembic current` is `031_embedding_chunk_tenant_scope`. `alembic check` reports pre-existing model/schema drift that still needs a deliberate parity migration. |
 
 ### Current external blockers
 
-- No staging PostgreSQL/Redis credentials are available in the local environment.
-- Online data backfills in migrations `010_backfill_email_hash` and `022_backfill_encrypt_pii` require the application encryption settings and a live database.
+- The configured Neon OnRamp database is reachable and verified at `031_embedding_chunk_tenant_scope`; migrations `030` and `031` were applied on 24 September 2026 after explicit approval.
+- Online data state for migrations `010_backfill_email_hash` and `022_backfill_encrypt_pii` was verified by aggregate checks: all 39 users have `email_hash`, and all 39 user email/name values use the encrypted field format.
+- A separate staging clone, verified backup restore, and deployed smoke test are still pending.
 - Razorpay test-mode credentials and real webhook delivery are not available.
-- Backup restoration and five-team customer validation have not been completed.
+- Five-team customer validation has not been completed.
 - OpenTelemetry export, production uptime alerting, and enterprise controls remain future work.
 
 ---
@@ -115,8 +116,8 @@ Platform hardening, security, documentation, and operational work may run in par
 **Dependency:** Staging environment, secret manager, database/Redis access, payment test credentials
 
 | ID | Workstream | Deliverable | Status | Evidence required |
-|---|---|---|---|---|
-| REL-01 | Database | Run `alembic upgrade head` online against a production-shaped staging clone; inspect migrations `010`, `022`, `030`, and `031`; verify user, session, repository, index, event, and embedding tenant data. | 🔴 Blocked on staging DB | Migration log, schema queries, row counts, rollback/restore notes |
+| --- | --- | --- | --- | --- |
+| REL-01 | Database | Run `alembic upgrade head` online against a production-shaped staging clone; inspect migrations `010`, `022`, `030`, and `031`; verify user, session, repository, index, event, and embedding tenant data. | ✅ Configured Neon OnRamp applied through `031`; clone/restore rehearsal and model-parity migration pending | Migration log, schema queries, row counts, rollback/restore notes |
 | REL-02 | Data safety | Verify automated Postgres backups/PITR retention and perform a restore drill into an isolated database. | 🔴 Not started | Restore timestamp, application smoke result, documented RPO/RTO |
 | REL-03 | Runtime | Verify `/health`, `/ready`, Redis connectivity, database connectivity, worker connectivity, and graceful dependency degradation. | 🟡 Partially implemented; staging pending | Smoke-test output from the deployed image |
 | REL-04 | Secrets | Move database, LLM, GitHub, encryption, billing, and n8n secrets to the production secret manager; rotate the local throwaway database credential. | 🔴 Operator action | Secret inventory and rotation record; no secrets in git/logs |
@@ -148,7 +149,7 @@ Production launch is allowed only when:
 **Dependency:** Five design-partner teams, interview script, baseline data access
 
 | ID | Activity | Outcome | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | VAL-01 | Run the five-team interview protocol in `docs/validation-interview-script.md`. | Evidence on current ramp pain, senior time, alert value, and willingness to pay. | 🔴 Required |
 | VAL-02 | Capture a pre-onboarding baseline for each team. | Time-to-first-PR, review turnaround, question volume, senior interruptions, and retention starting point. | 🔴 Required |
 | VAL-03 | Calibrate team cost assumptions through `PUT /ramp/cost-model`. | Team-specific ranges replace generic estimates where evidence supports them. | 🟡 Harness built; interviews pending |
@@ -176,7 +177,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 **Dependency:** Existing ramp alerts, repository Q&A, learning paths, wiki, notification system, and WebSocket infrastructure
 
 | ID | Feature | Implementation boundary | Status | Success measure |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | INT-01 | Deep-link stuck nudges | Enrich `dev_stuck` notifications with signal, task, and repository context; route to Ask, Learning Path, Wiki, or the failing task. | 🟡 Next | Nudge click-through and self-serve resolution rate |
 | INT-02 | Slack intercept | Mirror deduped stuck signals to the configured team channel with Ramp/Ask actions and quiet-hour handling. | 🟡 Next | Useful alert rate; no alert-volume regression |
 | INT-03 | Live ramp updates | Publish throttled `ramp_update` events containing team-scoped health/stuck deltas. | 🟡 Next | Reduced polling; no unscoped WebSocket delivery |
@@ -199,7 +200,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 **Dependency:** `task_service` transitions, Review Ops, ramp cost model, review queue
 
 | ID | Feature | Implementation boundary | Status | Guardrail |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | REV-01 | Review-events ledger | Add append-only, tenant-scoped review events for decision, reviewer, elapsed time, rework, and prior decision. | 🟡 Next | Immutable audit trail; no prompt/code content |
 | REV-02 | Turnaround in ramp economics | Feed measured review-cycle time into the ramp cost model and sensitivity band. | 🟡 Next | Show measured vs assumed values |
 | REV-03 | Inline reviewer suggestion | Surface the existing task-scoped reviewer suggestion in queue rows and provide an authorized assignment action. | 🟡 Next | Exclude unauthorized/self-review assignments |
@@ -223,7 +224,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 **Dependency:** Repository grants, durable index jobs, team health, DORA, existing batch-index work
 
 | ID | Feature | Implementation boundary | Status | Guardrail |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | SCALE-01 | Multi-repository rollup | Aggregate repository ownership, language mix, file counts, index freshness, and job health by team. | 🟡 Partially grounded | Team membership required for every repository |
 | SCALE-02 | Organization health | Add an explicitly authorized org/portfolio scope with a documented weighted aggregation method. | 🟡 Next | No implicit cross-team access |
 | SCALE-03 | Freshness signal | Surface index/wiki freshness as a small health component until interviews justify a standalone P4 product. | 🟡 Next | Label stale and unknown states separately |
@@ -249,8 +250,8 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 ### 9.1 Correctness and API contracts
 
 | ID | Work | Status | Exit evidence |
-|---|---|---|---|
-| OPS-01 | Re-audit `GAPS.md` against the current code; close or explicitly accept billing `None` returns, architecture error semantics, WebSocket null handling, Redis failure logging, route-header logging, and missing OpenAPI 404s. | 🟡 Re-audit required | Regression test and issue disposition for each gap |
+| --- | --- | --- | --- |
+| OPS-01 | Re-audit `GAPS.md` against the current code; close or explicitly accept billing `None` returns, architecture error semantics, WebSocket null handling, Redis failure logging, route-header logging, missing OpenAPI 404s, and the model/schema drift reported by `alembic check`. | 🟡 Re-audit required | Regression test and issue disposition for each gap |
 | OPS-02 | Move response envelopes out of body-buffering middleware where practical; make SSE exclusions explicit and test streaming under load. | 🟡 Partial exclusion exists | No buffering/regression for `/ask/query/stream` |
 | OPS-03 | Validate digest schedules, provider configuration, webhook payloads, and external-service timeouts at write time. | 🟡 Verify | Negative tests for invalid configuration |
 | OPS-04 | Complete the Firestore/dynamic-document migration plan or document the supported compatibility boundary. | 🟡 Partial | Typed data inventory and migration decision |
@@ -258,7 +259,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 ### 9.2 Runtime and data reliability
 
 | ID | Work | Status | Exit evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | OPS-05 | Queue-backed digests, batch notifications, report generation, and index maintenance with bounded retries and dead-letter handling. | 🟡 Partial | Worker failure/retry dashboard and runbook |
 | OPS-06 | Define Redis cache persistence, invalidation, and graceful-degradation semantics per surface. | 🟡 Partial | Cache hit/miss dashboards and documented behavior |
 | OPS-07 | Validate DB pool sizing, worker count, provider quotas, and backpressure under expected load. | 🟡 Pending staging | p95 latency and saturation report |
@@ -268,7 +269,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 ### 9.3 Supply chain and delivery
 
 | ID | Work | Status | Exit evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | OPS-10 | Keep `ruff`, frontend lint/type checks, `pip-audit`, `npm audit`, migration SQL checks, and Playwright required in CI. | 🟡 Wired; host confirmation pending | Green protected-branch run |
 | OPS-11 | Add dependency review, lockfile drift checks, artifact provenance, and release signing where supported by the deployment target. | 🟡 Next | CI policy and release artifact record |
 | OPS-12 | Add p95 API/SSE budgets, bundle-size budgets, and Lighthouse budgets to CI. | 🟡 Next | Performance report stored per release |
@@ -291,7 +292,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 **Dependency:** Five-team evidence, stable billing, trustworthy metrics, support capacity
 
 | ID | Workstream | Roadmap item | Status | Guardrail |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | GROW-01 | Activation | First-10-day onboarding checklist, role-specific paths, first useful answer, and first-PR milestones. | 🟡 Progress endpoint/UI/SDK built; activation loop next | Measure activation, not vanity signups |
 | GROW-02 | Expansion | Team-level usage, seat/team limits, invitations, and expansion prompts tied to actual value events. | 🟡 Next | Never pressure users with unverified savings claims |
 | GROW-03 | Billing | Surface metered LLM spend, credits, plan limits, invoices, and downgrade paths transparently. | 🟡 Partial | Reconcile every charge with usage records |
@@ -316,7 +317,7 @@ If the evidence fails, update the problem statement and cut scope rather than ad
 **Dependency:** Signed design-partner requirement and explicit scope/owner
 
 | ID | Control | Trigger | Current posture | Required proof |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | ENT-01 | Production SSO/OIDC | Enterprise deal requires centralized identity | Scaffold only; not a production claim | Provider conformance, key rotation, JIT/session tests, recovery runbook |
 | ENT-02 | SAML | Enterprise deal requires SAML | `sso_service.py` scaffold exists; requires security review and protocol tests | Signed assertion validation, replay protection, tenant mapping |
 | ENT-03 | SCIM provisioning | Customer requires automated user lifecycle | Not committed | Deactivate/disable behavior, group mapping, audit trail |
@@ -338,7 +339,7 @@ Do not begin an enterprise control merely because a scaffold exists. Require a n
 These are deliberately not scheduled. They require evidence or an explicit strategy change.
 
 | Area | Option | Revisit trigger |
-|---|---|---|
+| --- | --- | --- |
 | Ecosystem | Public playbook marketplace and community content | Internal playbook usage and moderation capacity are proven |
 | Developer surface | VS Code extension for repository walkthroughs and pair programming | Sustained usage of Silent Pair Programming and a supported extension owner |
 | Local models | Self-hosted/Ollama enterprise offering | Customer data-residency or air-gapped requirement |
@@ -400,7 +401,7 @@ These apply to every roadmap phase and are not optional “later” work.
 ### Product outcomes
 
 | Metric | Definition | First use |
-|---|---|---|
+| --- | --- | --- |
 | Time to first merged PR | Median elapsed time from team join/first task to first merged PR | Baseline in VAL-02, compare after v1.7 |
 | Senior minutes per new developer | Measured review/question/re-engagement minutes, split by source | Ramp cost model and interviews |
 | Self-serve resolution | Stuck-sourced questions resolved through Ask/Wiki/Learn without senior escalation | v1.7 intercept analytics |
@@ -478,7 +479,7 @@ A roadmap item is done only when:
 Suggested accountable roles:
 
 | Area | Accountable role |
-|---|---|
+| --- | --- |
 | Wedge and customer evidence | Product + Customer Success |
 | Backend/API/data | Backend lead |
 | Web/E2E/accessibility | Frontend lead |
