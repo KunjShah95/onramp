@@ -44,6 +44,8 @@ envVarGroups:
         sync: false
       - key: N8N_ALLOWED_TEAM_IDS
         sync: false
+      - key: WEBHOOK_SIGNING_SECRET
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: BACKEND_URL

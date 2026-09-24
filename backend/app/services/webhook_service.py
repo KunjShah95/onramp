@@ -13,6 +13,7 @@ import hmac
 import json
 import logging
 import os
+import time
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone
@@ -440,18 +441,31 @@ async def send_webhook(
     if not webhook_url:
         return True
 
-    payload = {
+    delivery_id = generate_id()
+    envelope = {
+        "id": delivery_id,
         "event": event_type,
+        "schema_version": 1,
+        "occurred_at": int(time.time()),
+        "source": "onramp",
         "key_id": key_id,
         "org_name": org_name,
-        "timestamp": details.get("timestamp"),
-        "details": details,
+        "data": details,
     }
-
     try:
         validate_outbound_url(webhook_url)
+        body = json.dumps(envelope, default=str, separators=(",", ":"))
+        secret = os.getenv("WEBHOOK_SIGNING_SECRET", "")
+        if not secret and os.getenv("ENV", "development").lower() == "production":
+            logger.error("WEBHOOK_SIGNING_SECRET is not configured; refusing delivery")
+            return False
+        headers = {"Content-Type": "application/json", "X-Onramp-Delivery": delivery_id, "X-Onramp-Event": event_type, "X-Onramp-Schema-Version": "1"}
+        if secret:
+            timestamp = str(envelope["occurred_at"])
+            signature = hmac.new(secret.encode(), timestamp.encode() + b"." + body.encode(), hashlib.sha256).hexdigest()
+            headers.update({"X-Onramp-Timestamp": timestamp, "X-Onramp-Signature": f"sha256={signature}"})
         async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
-            response = await client.post(webhook_url, json=payload)
+            response = await client.post(webhook_url, content=body, headers=headers)
             response.raise_for_status()
             return True
     except Exception as e:
