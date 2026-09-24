@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { mockNeonAuth, mockBackendAPIs, mockDashboardAPI } from './mocks'
+import { mockNeonAuth, mockBackendAPIs, mockDashboardAPI, FAKE_UID, FAKE_EMAIL, FAKE_NAME } from './mocks'
 
 test.describe('Login Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -111,6 +111,41 @@ test.describe('Login Flow — End-to-End Auth', () => {
     // Navigate back to login — should be redirected away
     await page.goto('/login')
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
+  })
+
+  test('hydrates a session from an HttpOnly cookie', async ({ page }) => {
+    await page.context().addCookies([{
+      name: 'onramp_access_token',
+      value: 'http-only-access-token',
+      domain: 'localhost',
+      path: '/api',
+      httpOnly: true,
+      sameSite: 'Lax',
+    }])
+    await mockBackendAPIs(page)
+    // Replace the shared auth/me route with one that verifies the browser
+    // actually sent the HttpOnly cookie on the cross-port API request.
+    await page.unroute('**/api/v1/auth/me')
+    let cookieWasSent = false
+    await page.route('**/api/v1/auth/me', async (route) => {
+      const headers = await route.request().allHeaders()
+      cookieWasSent = (headers.cookie || '').includes('onramp_access_token=http-only-access-token')
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          uid: FAKE_UID,
+          email: FAKE_EMAIL,
+          name: FAKE_NAME,
+          provider: 'password',
+        }),
+      })
+    })
+    await mockDashboardAPI(page)
+
+    await page.goto('/dashboard')
+    await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
+    expect(cookieWasSent).toBe(true)
   })
 })
 
