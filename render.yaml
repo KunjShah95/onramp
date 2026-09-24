@@ -101,7 +101,7 @@ services:
   # ── Redis (Key Value) — private-network only ────────────────────────────
   - type: keyvalue
     name: onramp-redis
-    plan: free # 25 MB, no persistence — bump to a paid plan for real traffic
+    plan: starter # persistent paid Redis; free tier loses broker/results/state
     ipAllowList: [] # [] = only allow internal (Render service) connections
 
   # ── API — FastAPI web service ───────────────────────────────────────────
