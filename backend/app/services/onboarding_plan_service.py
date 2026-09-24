@@ -131,6 +131,58 @@ async def get_plan(plan_id: str) -> dict | None:
         return None
 
 
+async def get_plan_progress(plan_id: str) -> dict | None:
+    """Return a compact first-10-days progress view for plan dashboards."""
+    plan = await get_plan(plan_id)
+    if not plan:
+        return None
+
+    milestones = plan.get("milestones", []) or []
+    pre_boarding = plan.get("pre_boarding_tasks", []) or []
+    completed_milestones = [m for m in milestones if m.get("is_completed")]
+    required_pre = [t for t in pre_boarding if t.get("is_required", True)]
+    completed_pre = [t for t in required_pre if t.get("is_completed")]
+    next_milestone = next(
+        (m for m in sorted(milestones, key=lambda item: (item.get("day_target", 999), item.get("sort_order", 0))) if not m.get("is_completed")),
+        None,
+    )
+    next_preboarding = next(
+        (t for t in sorted(pre_boarding, key=lambda item: item.get("sort_order", 0)) if t.get("is_required", True) and not t.get("is_completed")),
+        None,
+    )
+
+    total_units = len(milestones) + len(required_pre)
+    completed_units = len(completed_milestones) + len(completed_pre)
+    completion_percent = round((completed_units / total_units) * 100, 1) if total_units else 0.0
+
+    try:
+        start = datetime.fromisoformat(str(plan.get("start_date", "")).replace("Z", "+00:00"))
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        days_elapsed = max((datetime.now(timezone.utc) - start).days, 0)
+    except (TypeError, ValueError):
+        days_elapsed = 0
+
+    return {
+        "plan_id": plan_id,
+        "team_id": plan.get("team_id"),
+        "user_id": plan.get("user_id"),
+        "status": plan.get("status", "draft"),
+        "days_elapsed": days_elapsed,
+        "completion_percent": completion_percent,
+        "milestones": {
+            "completed": len(completed_milestones),
+            "total": len(milestones),
+        },
+        "pre_boarding": {
+            "completed": len(completed_pre),
+            "total": len(required_pre),
+        },
+        "next_milestone": next_milestone,
+        "next_pre_boarding_task": next_preboarding,
+    }
+
+
 async def list_plans(team_id: str | None = None, user_id: str | None = None) -> list[dict]:
     storage = get_storage()
     filters = []

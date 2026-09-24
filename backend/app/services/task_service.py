@@ -665,10 +665,10 @@ async def find_tasks_by_source_issue(repo_url: str, issue_number: int) -> List[d
     target = _normalize_repo_url(repo_url)
     # Optimized Postgres path: fetch only rows where source_issue is not null (bounded scan)
     try:
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import Task
         from sqlalchemy import select
-        async with async_session_factory() as session:
+        async with db_config.get_session_factory()() as session:
             result = await session.execute(select(Task).where(Task.source_issue.isnot(None)))
             rows = result.scalars().all()
             tasks = [r.to_dict() for r in rows]

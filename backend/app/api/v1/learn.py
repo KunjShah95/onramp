@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from app.agents import LearningPathGenerator
 from app.api.v1.auth import get_current_user
+from app.api.v1.index_access import authorize_repo_index
 from app.services.postgres_db import get_storage, generate_id
 from app.services.quota import enforce_quota
 from app.services.agent_session_helper import get_session, complete_session, fail_session
@@ -27,7 +28,14 @@ async def generate_path(
     _q=enforce_quota("learn"),
 ):
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("learning_path_generator", user_id=user.get("uid"), index_id=request.index_id, scratchpad={"user_level": request.user_level, "repo_url": request.repo_url})
+    team_id = await authorize_repo_index(user, request.index_id) if request.index_id else None
+    sid = await get_session(
+        "learning_path_generator",
+        user_id=user.get("uid"),
+        team_id=team_id,
+        index_id=request.index_id,
+        scratchpad={"user_level": request.user_level, "repo_url": request.repo_url},
+    )
     generator = LearningPathGenerator(llm, session_id=sid) if sid else LearningPathGenerator(llm)
     try:
         result = await generator.execute(

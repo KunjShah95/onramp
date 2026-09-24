@@ -426,7 +426,11 @@ async def _handle_push_event(payload: dict) -> dict:
             import app.tasks.repo_index_tasks as _repo_index_tasks
 
             result = _repo_index_tasks.build_repo_index.delay(
-                repo_url, branch=_branch, force=True, scope=scope
+                repo_url,
+                branch=_branch,
+                force=True,
+                scope=scope,
+                team_id=repo_row.get("team_id"),
             )
             task_id = getattr(result, "id", "")
             dispatched = True

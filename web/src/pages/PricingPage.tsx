@@ -25,11 +25,11 @@ const TEAM_FEATURES = [
 ]
 
 const STARTER_FEATURES = ['1 repository', '100 AI mentor questions / mo', 'Live architecture map', 'Community support']
-const ENTERPRISE_FEATURES = ['SSO / SAML & SCIM', 'Self-hosted or private cloud', 'Audit logs & SOC 2 Type II', 'Dedicated success engineer', '99.9% uptime SLA']
+const ENTERPRISE_FEATURES = ['SSO / SAML & SCIM (roadmap)', 'Self-hosted or private cloud (roadmap)', 'Audit logs; SOC 2 Type II in progress', 'Dedicated success engineer', 'Uptime commitment: to be finalized']
 
 const faqs = [
   { question: 'How long does setup take?', answer: 'Under two minutes. Install the GitHub app, pick a repository, and Onramp indexes it in the background.' },
-  { question: 'Is my source code stored anywhere?', answer: 'No. Onramp reads your code to build an analysis graph and metadata, then discards the raw source. Self-hosting is available on Enterprise.' },
+  { question: 'Is my source code stored anywhere?', answer: 'Temporary clones are removed after indexing. Tenant-scoped derived documents and embeddings are retained to power grounded answers; retention and deletion controls are being expanded. Controlled self-hosting is an Enterprise roadmap item.' },
   { question: 'How does the AI mentor stay accurate?', answer: 'Every answer is grounded in your indexed code with file and line references. The index refreshes on each push.' },
   { question: 'Is there a free trial?', answer: 'Yes. The Team plan includes a 14-day free trial with full access. No credit card required.' },
 ]

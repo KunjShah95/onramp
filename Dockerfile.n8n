@@ -1,0 +1,18 @@
+# ── n8n for Render (referenced by render.yaml: onramp-n8n) ──────────────
+# Pins the upstream image and adds a healthcheck against /healthz.
+# Render settings for this service:
+#   runtime: docker, dockerfilePath: ./Dockerfile.n8n, rootDir: .
+#   healthCheckPath: /healthz, disk 10GB at /home/node/.n8n
+# Required env (see render.yaml): N8N_HOST, N8N_PROTOCOL=https,
+# WEBHOOK_URL=https://<your-n8n>.onrender.com/, N8N_ENCRYPTION_KEY,
+# N8N_INBOUND_SECRET (must match backend).
+FROM n8nio/n8n:2.41.0
+
+USER root
+RUN apk add --no-cache wget
+
+USER node
+EXPOSE 5678
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:5678/healthz || exit 1

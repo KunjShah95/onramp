@@ -7,7 +7,8 @@ SDK only disables that one provider), and USD+INR pricing attribution.
 Providers are skipped when their API key is unset. HuggingFace comes in two
 flavors: a cloud provider (``HF_INFERENCE``, the OpenAI-compatible Inference
 API, keyed by ``HUGGINGFACE_API_KEY``) and a local provider (``HUGGINGFACE``,
-available only when ``sentence-transformers`` is installed). Ollama is always
+available only when ``sentence-transformers`` is installed **and**
+``EMBEDDINGS_ALLOW_LOCAL`` is explicitly enabled). Ollama is always
 in the chain (checked at call time, like the LLM router). With nothing
 configured the router still constructs — ``is_available`` is then ``False``
 and callers fall back to keyword search.
@@ -171,7 +172,12 @@ class EmbeddingRouter:
     ) -> bool:
         """Availability, honoring per-request BYOK + platform overrides."""
         if provider == EmbeddingProvider.HUGGINGFACE:
-            return self._hf_installed()
+            # Local model imports can load a large ML stack and are not a
+            # safe implicit fallback merely because the package is installed.
+            # Require an explicit opt-in; cloud/Ollama providers remain
+            # automatic.  This also keeps test/dev startup deterministic.
+            allow_local = os.getenv("EMBEDDINGS_ALLOW_LOCAL", "").strip().lower()
+            return allow_local in {"1", "true", "yes", "on"} and self._hf_installed()
         if provider == EmbeddingProvider.OLLAMA:
             # Local provider counts as available only when the user points at
             # an Ollama instance; keeps is_available False with no config.

@@ -68,7 +68,7 @@ const content: Record<string, { title: string; body: React.ReactNode }> = {
     body: (
       <div className="space-y-6 text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
         <p>
-          Onramp turns any GitHub repository into an interactive knowledge map. Paste a URL, and within 2 minutes you get a live dependency graph, a searchable codebase, and a guided onboarding path, all derived from the actual source code, not documentation.
+          Onramp turns a registered GitHub repository into an interactive knowledge map. Start an analysis job and, when it completes, explore a dependency graph, searchable codebase context, and a guided onboarding path derived from the actual source code rather than stale documentation.
         </p>
         <h2 className="font-semibold text-base font-display">How it works</h2>
         <p>Onramp runs a 3-stage pipeline on your repository:</p>
@@ -326,7 +326,7 @@ function buildDocsFAQSchema() {
         name: 'Can Onramp analyze private repositories?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Provide a GitHub personal access token with repo scope when adding a private repository. The token is encrypted and only used for cloning.',
+          text: 'Private repositories are supported for registered workspaces when the connected GitHub credential has permission to clone them. Access is tenant-scoped and the token is used for repository operations; it is not exposed to clients.',
         },
       },
       {
@@ -334,7 +334,7 @@ function buildDocsFAQSchema() {
         name: 'Is my source code stored by Onramp?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'No. Onramp discards raw source files after analysis. Only the indexed knowledge graph (symbols, relationships, AI summaries) is stored. Your code never leaves the analysis pipeline.',
+          text: 'The temporary checkout is removed after indexing. Derived repository documents, symbols, and embeddings are retained so authorized users can query the repository context; retention and deletion controls are being expanded.',
         },
       },
       {
@@ -342,7 +342,7 @@ function buildDocsFAQSchema() {
         name: 'Can I self-host Onramp?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Self-hosting via Docker Compose is available on the Enterprise plan. Requires Docker 24+, 4GB RAM minimum, and PostgreSQL. See the Self-hosting section for full setup instructions.',
+          text: 'Docker-based deployment artifacts are included for controlled environments. Production self-hosting, upgrades, backups, and support are an Enterprise roadmap item; contact us for the current scope.',
         },
       },
       {

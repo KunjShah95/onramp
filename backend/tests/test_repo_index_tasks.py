@@ -15,7 +15,7 @@ import pytest
 from app.services.repo_context import RepoContextService, index_id_for
 from app.services.postgres_db import get_storage
 from app.tasks import repo_index_tasks
-from app.tasks.repo_index_tasks import build_repo_index, refresh_repo_indexes
+from app.tasks.repo_index_tasks import build_ask_index, build_repo_index, refresh_repo_indexes
 
 FRESH_URL = "https://github.com/acme/fresh"
 MISSING_URL = "https://github.com/acme/missing"
@@ -189,6 +189,34 @@ class TestBuildRepoIndexTask:
         doc = _run(RepoContextService().get(index_id_for(url, "main")))
         assert doc is not None
         assert doc["stats"]["file_count"] == 2
+
+
+class TestBuildAskIndexTask:
+    def test_uses_stable_id_and_grants_team_access(self, monkeypatch):
+        from app.agents.repo_qa import RepoQA
+        from app.services.github_service import GitHubService
+        from app.services.repo_index_access import has_index_access
+
+        calls = {}
+
+        async def fake_clone(self, url, branch="main"):
+            calls["url"] = url
+            return "/tmp/fake-ask-repo"
+
+        async def fake_index(self, path, index_id=None):
+            calls["path"] = path
+            calls["index_id"] = index_id
+
+        monkeypatch.setattr(GitHubService, "clone_repo", fake_clone)
+        monkeypatch.setattr(RepoQA, "index_repo", fake_index)
+
+        url = "https://github.com/acme/app"
+        result = build_ask_index.delay(url, team_id="team-test").get(timeout=10)
+
+        assert result["index_id"] == index_id_for(url, "main")
+        assert result["status"] == "indexed"
+        assert calls["index_id"] == index_id_for(url, "main")
+        assert _run(has_index_access(index_id_for(url, "main"), "team-test"))
 
 
 class TestRefreshRepoIndexes:

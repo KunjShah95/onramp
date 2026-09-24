@@ -15,44 +15,44 @@ const categories = [
     title: 'Encryption',
     items: [
       { label: 'Data in transit', value: 'TLS 1.3 (min) · all traffic encrypted via HTTPS and WSS' },
-      { label: 'Data at rest', value: 'AES-256 encryption for all stored data, including backups' },
-      { label: 'Key management', value: 'Per-tenant encryption keys, rotated automatically every 90 days' },
+      { label: 'Data at rest', value: 'AES-256 encryption for stored data, including backups (platform-managed keys; per-tenant BYOK on Enterprise roadmap)' },
+      { label: 'Key management', value: 'Platform-managed rotation; per-tenant rotation interval on Enterprise roadmap' },
     ],
   },
   {
     icon: Eye,
     title: 'Access control',
     items: [
-      { label: 'Authentication', value: 'OAuth 2.0 / OIDC, SAML SSO, passwordless via magic link' },
-      { label: 'Authorization', value: 'Role-based access control (RBAC) with granular permissions' },
-      { label: 'MFA', value: 'Multi-factor authentication enforced for admin accounts' },
+      { label: 'Authentication', value: 'Cookie-based JWT auth; OAuth 2.0 / OIDC and SAML SSO on Enterprise roadmap' },
+      { label: 'Authorization', value: 'Team-scoped RBAC with workspace roles (granular permissions roadmap)' },
+      { label: 'MFA', value: 'MFA on roadmap; enforced admin MFA not yet implemented' },
     ],
   },
   {
     icon: Cloud,
     title: 'Infrastructure',
     items: [
-      { label: 'Hosting', value: 'SOC 2 audited cloud providers (AWS, GCP)' },
-      { label: 'Isolation', value: 'Tenant data isolated at the application layer' },
-      { label: 'Backups', value: 'Automated daily snapshots with 30-day retention' },
+      { label: 'Hosting', value: 'Hosted on audited cloud providers (provider SOC reports available on request)' },
+      { label: 'Isolation', value: 'Tenant data isolated at the application layer; row-level enforcement in progress' },
+      { label: 'Backups', value: 'Automated snapshots (verify retention/restore per deployment; see Trust Center)' },
     ],
   },
   {
     icon: FileLock,
     title: 'Compliance',
     items: [
-      { label: 'Certifications', value: 'SOC 2 Type II (in progress), GDPR compliant' },
-      { label: 'Data processing', value: 'Standard DPA signed with all customers upon request' },
-      { label: 'Audit log', value: 'Immutable audit trail of all admin and system actions' },
+      { label: 'Certifications', value: 'SOC 2 Type II in progress (not certified); GDPR controls in progress' },
+      { label: 'Data processing', value: 'DPA template and subprocessor terms in progress; request a draft' },
+      { label: 'Audit log', value: 'Audit events retained; immutable export on Enterprise roadmap' },
     ],
   },
 ]
 
 const certifications = [
-  { name: 'SOC 2 Type II', status: 'In progress', desc: 'Annual third-party audit for security, availability, and confidentiality.' },
-  { name: 'GDPR', status: 'Compliant', desc: 'Full compliance with EU General Data Protection Regulation requirements.' },
+  { name: 'SOC 2 Type II', status: 'In progress — not certified', desc: 'Third-party audit in progress; certification not yet achieved.' },
+  { name: 'GDPR', status: 'In progress', desc: 'GDPR controls in progress; DPA available on request.' },
   { name: 'DPA', status: 'Available', desc: 'Standard Data Processing Agreement available for all customers.' },
-  { name: 'Data residency', status: 'US / EU', desc: 'Choose data storage region: US (Virginia) or EU (Frankfurt).' },
+  { name: 'Data residency', status: 'Roadmap', desc: 'Single-region deployment today; US/EU residency on Enterprise roadmap.' },
 ]
 
 /** Build SecurityPage schema */
@@ -61,7 +61,7 @@ function buildSecuritySchema() {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: 'Security · Onramp',
-    description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.',
+    description: 'Onramp security practices: encryption, access controls, SOC 2 Type II audit status, GDPR control progress, and a responsible disclosure program.',
     url: 'https://onramp.app/security',
     publisher: {
       '@type': 'Organization',
@@ -75,18 +75,18 @@ function buildSecuritySchema() {
       encryption: {
         inTransit: 'TLS 1.3 minimum',
         atRest: 'AES-256',
-        keyManagement: 'Per-tenant keys, 90-day rotation',
+        keyManagement: 'Platform-managed rotation; per-tenant rotation on Enterprise roadmap',
       },
       accessControl: {
-        authentication: 'OAuth 2.0/OIDC, SAML SSO, passwordless magic links',
-        authorization: 'RBAC with granular permissions',
-        mfa: 'Enforced for admin accounts',
+        authentication: 'Cookie-based JWT auth; OAuth/OIDC and SAML SSO on Enterprise roadmap',
+        authorization: 'Team-scoped RBAC; granular permissions roadmap',
+        mfa: 'Not enforced for admin accounts',
       },
       compliance: {
-        soc2: 'SOC 2 Type II in progress',
-        gdpr: 'Compliant',
-        dpa: 'Available',
-        dataResidency: 'US (Virginia) or EU (Frankfurt)',
+        soc2: 'SOC 2 Type II in progress — not certified',
+        gdpr: 'Controls in progress',
+        dpa: 'Available on request',
+        dataResidency: 'Single-region today; US/EU residency on Enterprise roadmap',
       },
     },
   }
@@ -123,7 +123,7 @@ export default function SecurityPage() {
       navLinks={navLinks}
       seo={{
         title: 'Security · Onramp',
-        description: 'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.',
+        description: 'Onramp security practices: encryption, access controls, SOC 2 Type II audit status, GDPR control progress, and a responsible disclosure program.',
         path: '/security',
         schema: [securitySchema, breadcrumbSchema],
       }}

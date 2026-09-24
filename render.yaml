@@ -6,6 +6,7 @@
 #   - onramp-api     (web service)      — FastAPI / uvicorn  (health: /health)
 #   - onramp-worker  (background worker) — Celery task queues
 #   - onramp-beat    (background worker) — Celery beat scheduler
+#   - onramp-n8n     (web service)      — n8n automation (Dockerfile.n8n, health: /healthz)
 #
 # Apply: Dashboard → New → Blueprint → connect this repo, or the Render CLI
 # (`render blueprint apply`). Existing services are matched by name.
@@ -74,6 +75,21 @@ envVarGroups:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      # ── n8n automation bus (two-way: Onramp <-> n8n) ──
+      # Outbound: backend POSTs task/onboarding/ramp events to N8N_WEBHOOK_URL.
+      # Inbound: n8n POSTs POST {BACKEND_URL}/api/v1/webhooks/n8n signed with
+      # X-N8N-Signature: sha256=<hmac(raw_body, N8N_INBOUND_SECRET)>.
+      # Per-user override (no restart): Settings → Integrations → n8n.
+      - key: N8N_WEBHOOK_URL
+        sync: false
+      - key: N8N_ONBOARDING_WEBHOOK_URL
+        sync: false
+      - key: N8N_HMAC_SECRET
+        sync: false
+      - key: N8N_INBOUND_SECRET
+        sync: false
+      - key: N8N_TIMEOUT_SECONDS
+        value: 5
 
 services:
   # ── Redis (Key Value) — private-network only ────────────────────────────
@@ -135,3 +151,48 @@ services:
           name: onramp-redis
           type: keyvalue
           property: connectionString
+
+  # ── n8n — automation bus (UI + webhooks) ──────────────────────────────
+  # Binds 5678, so it must be a Web Service (not a Background Worker).
+  # Build from Dockerfile.n8n at the repo root (pins n8nio/n8n + healthcheck).
+  # After first deploy: open https://onramp-n8n.onrender.com, import
+  # n8n/workflows/*.json, set Slack/Telegram creds, Activate, then paste the
+  # production webhook URL into Onramp Settings → Integrations → n8n
+  # (or into N8N_WEBHOOK_URL in onramp-shared).
+  - type: web
+    name: onramp-n8n
+    runtime: docker
+    rootDir: .
+    dockerfilePath: ./Dockerfile.n8n
+    plan: starter
+    branch: main
+    healthCheckPath: /healthz
+    disk:
+      name: n8n-data
+      mountPath: /home/node/.n8n
+      sizeGB: 10
+    envVars:
+      - key: N8N_PORT
+        value: 5678
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_HOST
+        fromService:
+          name: onramp-n8n
+          type: web
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      # Public base URL n8n uses for webhook URLs + OAuth2 redirect
+      # (https://<n8n-host>/rest/oauth2-credential/callback).
+      # Fill after first deploy, e.g. https://onramp-n8n.onrender.com/
+      - key: WEBHOOK_URL
+        sync: false
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: GENERIC_TIMEZONE
+        value: UTC
+      # Must match backend N8N_INBOUND_SECRET so the nightly-seeding workflow
+      # can sign POSTs to /api/v1/webhooks/n8n (see n8n/workflows/README.md).
+      - key: N8N_INBOUND_SECRET
+        sync: false
+      - key: N8N_DIAGNOSTICS_ENABLED
+        value: false

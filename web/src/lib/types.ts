@@ -102,6 +102,9 @@ export interface QAResult {
 
 export interface IndexResult {
   index_id: string
+  repo_url?: string
+  branch?: string
+  team_id?: string
 }
 
 export interface HistoryTurn {

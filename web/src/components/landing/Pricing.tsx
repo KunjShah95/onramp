@@ -24,7 +24,7 @@ const TEAM_FEATURES = [
 const ENTERPRISE_FEATURES = [
   'SSO / SAML & SCIM',
   'Self-hosted or private cloud',
-  'Audit logs & SOC 2 Type II',
+  'Audit logs & SOC 2 Type II (in progress)',
   'Dedicated success engineer',
   '99.9% uptime SLA',
 ]
@@ -97,7 +97,7 @@ function buildPricingFAQSchema() {
         name: 'Is Onramp SOC 2 compliant?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Onramp has achieved SOC 2 Type II certification, demonstrating operational effectiveness of security, availability, and confidentiality controls over a 6-month audit period.',
+          text: 'SOC 2 Type II is in progress, not yet certified. See /security for current scope.',
         },
       },
     ],

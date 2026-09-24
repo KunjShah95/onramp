@@ -884,6 +884,19 @@ async def execute_agent(
                 detail=f"Missing required parameter '{param}'. Required: {agent_info['required_params']}",
             )
 
+    # Index IDs are tenant-scoped resources, not arbitrary cache keys. API
+    # keys carry their canonical team scope; JWT callers go through the shared
+    # membership-aware helper.
+    if body.get("index_id"):
+        if auth.get("auth_method") == "api_key":
+            from app.services.repo_index_access import has_index_access
+            team_id = auth.get("team_id")
+            if not team_id or not await has_index_access(str(body["index_id"]), str(team_id)):
+                raise HTTPException(status_code=403, detail="Index is not available to this API key")
+        else:
+            from app.api.v1.index_access import authorize_repo_index
+            await authorize_repo_index(auth, str(body["index_id"]))
+
     # Check credits
     cost = APIKeyService.get_credit_cost(agent_info["credit_action"])
     tier = auth.get("tier", "free")

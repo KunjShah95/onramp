@@ -13,12 +13,17 @@ Regenerate after editing the generator: `python scripts/generate_n8n_workflows.p
 
 1. Start n8n: `docker compose --profile n8n up -d` → open http://localhost:5678
 2. Workflows (left sidebar) → `⋯` → **Import from File** → select the `.json`
-3. Complete-bus workflow:
-   - Open **Send Telegram** → create/select a **Telegram Bot** credential
-     (talk to `@BotFather` → `/newbot` → paste the token into n8n).
-   - Change `@your_channel` in **Format Telegram Message** to your channel/chat id.
-   - Open **Send Slack** / **Send Escalation** → create/select a **Slack OAuth2** credential,
-     confirm `#onboarding` / `#onboarding-alerts` channels exist.
+3. Complete-bus workflow — **Slack setup (Incoming Webhooks, no OAuth)**:
+   - Go to https://api.slack.com/apps → **Create New App** → **From scratch**
+   - **Incoming Webhooks** → toggle On → **Add New Webhook to Workspace**
+   - Pick `#onboarding` → copy the webhook URL (starts with `https://hooks.slack.com/...`)
+   - Repeat → pick `#onboarding-alerts` → copy that URL too
+   - In n8n: **Settings → Environment Variables** → add:
+     - `SLACK_WEBHOOK_ONBOARDING` = first URL
+     - `SLACK_WEBHOOK_ALERTS` = second URL
+   - **Telegram** (optional): Open **Send Telegram** → create/select a **Telegram Bot** credential
+     (talk to `@BotFather` → `/newbot` → paste token). Change `@your_channel` in
+     **Format Telegram Message** to your channel/chat id.
    - Toggle **Active** (top-right). Copy the **Production URL**
      (`https://<n8n-host>/webhook/onramp` — never the `/webhook-test/` URL).
 4. Inbound workflow:
@@ -32,3 +37,13 @@ Regenerate after editing the generator: `python scripts/generate_n8n_workflows.p
    - Toggle **Active**, then **Execute Workflow** once manually.
 5. Back in Onramp: Settings → Integrations → **n8n** → paste the production
    webhook URL → **Test connection** → **Connect** → **Fire event**.
+
+## Production (Render `onramp-n8n`)
+
+1. Blueprint already creates `onramp-n8n` (`Dockerfile.n8n`, `/healthz`, disk
+   `/home/node/.n8n`). After first deploy set `WEBHOOK_URL=https://<your-n8n>.onrender.com/`
+   and `N8N_INBOUND_SECRET` = backend's value, then redeploy.
+2. Import the `.json` files, recreate Slack OAuth2 with redirect
+   `https://<your-n8n>.onrender.com/rest/oauth2-credential/callback`, Activate.
+3. Inbound workflow: POST to `https://<onramp-api>.onrender.com/api/v1/webhooks/n8n`.
+4. Verify: `GET /integrations/n8n/status` → `env_configured:true, inbound_configured:true`.

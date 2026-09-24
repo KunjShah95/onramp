@@ -416,9 +416,10 @@ export async function generateGuide(
   })
 }
 
-export async function indexRepo(repoPath: string): Promise<IndexResult> {
+export async function indexRepo(repoUrl: string, branch = 'main'): Promise<IndexResult> {
   return request<IndexResult>(`${API_BASE}/ask/index`, {
-    repo_path: repoPath,
+    repo_url: repoUrl,
+    branch,
   })
 }
 
@@ -4543,8 +4544,24 @@ export async function listOnboardingPlans(params?: {
   return get<OnboardingPlan[]>(`${API_BASE}/onboarding-plans${qs ? '?' + qs : ''}`)
 }
 
+export interface OnboardingPlanProgress {
+  plan_id: string
+  team_id?: string
+  user_id?: string
+  days_elapsed: number
+  completion_percent: number
+  milestones: { completed: number; total: number }
+  pre_boarding: { completed: number; total: number }
+  next_milestone?: OnboardingMilestone
+  next_pre_boarding_task?: PreBoardingTask
+}
+
 export async function getOnboardingPlan(planId: string): Promise<OnboardingPlan> {
   return get<OnboardingPlan>(`${API_BASE}/onboarding-plans/${planId}`)
+}
+
+export async function getOnboardingPlanProgress(planId: string): Promise<OnboardingPlanProgress> {
+  return get<OnboardingPlanProgress>(`${API_BASE}/onboarding-plans/${planId}/progress`)
 }
 
 export async function updateOnboardingPlan(planId: string, data: Partial<{

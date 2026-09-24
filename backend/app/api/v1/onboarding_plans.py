@@ -9,12 +9,42 @@ logger = logging.getLogger("onramp.api.onboarding_plans")
 router = APIRouter(prefix="/onboarding-plans", tags=["onboarding-plans"])
 
 
+async def _require_team_member(user: dict, team_id: str) -> None:
+    if not team_id:
+        raise HTTPException(status_code=400, detail="team_id is required")
+    from app.services.team_service import get_team_members
+    members = await get_team_members(team_id)
+    uid = user.get("uid", "")
+    if not any((member.get("user_id") or member.get("id")) == uid for member in members or []):
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+
+
+async def _assert_plan_access(plan: dict, user: dict) -> None:
+    uid = user.get("uid", "")
+    if plan.get("user_id") == uid or plan.get("created_by") == uid:
+        return
+    await _require_team_member(user, plan.get("team_id"))
+
+
+async def _get_authorized_plan(plan_id: str, user: dict) -> dict:
+    plan = await ops.get_plan(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    await _assert_plan_access(plan, user)
+    return plan
+
+
 @router.post("")
 async def create_plan(payload: dict, user: dict = Depends(get_current_user)):
     team_id = payload.get("team_id")
     target_user_id = payload.get("user_id")
     if not team_id or not target_user_id:
         raise HTTPException(status_code=400, detail="team_id and user_id required")
+    await _require_team_member(user, team_id)
+    from app.services.team_service import get_team_members
+    members = await get_team_members(team_id)
+    if not any((member.get("user_id") or member.get("id")) == target_user_id for member in members or []):
+        raise HTTPException(status_code=403, detail="Target user is not a member of this team")
     plan = await ops.create_plan(
         team_id=team_id, user_id=target_user_id,
         created_by=user["uid"],
@@ -30,22 +60,49 @@ async def create_plan(payload: dict, user: dict = Depends(get_current_user)):
 @router.get("")
 async def list_plans(team_id: str | None = None, user_id: str | None = None,
                      user: dict = Depends(get_current_user)):
-    return await ops.list_plans(team_id=team_id, user_id=user_id)
+    uid = user.get("uid", "")
+    if team_id:
+        await _require_team_member(user, team_id)
+        return await ops.list_plans(team_id=team_id)
+    if user_id and user_id != uid:
+        # A caller may inspect their own plans; team-wide visibility is
+        # available through an explicit team_id that has been authorized.
+        raise HTTPException(status_code=403, detail="Not your onboarding plans")
+    from app.services.team_service import get_user_teams
+    teams = await get_user_teams(uid)
+    if teams:
+        visible: dict[str, dict] = {}
+        for team in teams:
+            tid = team.get("id") or team.get("team_id")
+            for plan in await ops.list_plans(team_id=tid):
+                visible[plan["id"]] = plan
+        return list(visible.values())
+    return await ops.list_plans(user_id=uid)
 
 
 @router.get("/{plan_id}",
     responses={404: {"description": "Plan not found"}})
 async def get_plan(plan_id: str, user: dict = Depends(get_current_user)):
-    plan = await ops.get_plan(plan_id)
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
+    plan = await _get_authorized_plan(plan_id, user)
     return plan
+
+
+@router.get("/{plan_id}/progress",
+    responses={404: {"description": "Plan not found"}})
+async def get_plan_progress(plan_id: str, user: dict = Depends(get_current_user)):
+    """Compact first-10-days progress view for the plan dashboard."""
+    await _get_authorized_plan(plan_id, user)
+    progress = await ops.get_plan_progress(plan_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return progress
 
 
 @router.get("/{plan_id}/roadmap",
     responses={404: {"description": "Plan not found"}})
 async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user)):
     """Milestone roadmap with statuses (locked / available / in_progress / completed)."""
+    await _get_authorized_plan(plan_id, user)
     roadmap = await ops.get_roadmap(plan_id)
     if not roadmap:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -55,6 +112,7 @@ async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user))
 @router.patch("/{plan_id}",
     responses={404: {"description": "Plan not found"}})
 async def update_plan(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    await _get_authorized_plan(plan_id, user)
     plan = await ops.update_plan(plan_id, payload)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -63,17 +121,24 @@ async def update_plan(plan_id: str, payload: dict, user: dict = Depends(get_curr
 
 @router.post("/{plan_id}/pulse")
 async def submit_pulse(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    await _get_authorized_plan(plan_id, user)
     pulse = await ops.submit_pulse(plan_id, payload)
     return pulse
 
 
 @router.get("/{plan_id}/pulse-trends")
 async def get_pulse_trends(plan_id: str, user: dict = Depends(get_current_user)):
+    await _get_authorized_plan(plan_id, user)
     return await ops.get_pulse_trends(plan_id)
 
 
 @router.post("/milestones/{milestone_id}/complete")
 async def complete_milestone(milestone_id: str, user: dict = Depends(get_current_user)):
+    from app.services.postgres_db import get_storage
+    milestone = await get_storage().get_document("onboarding_milestones", milestone_id)
+    if not milestone:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    await _get_authorized_plan(milestone.get("plan_id"), user)
     m = await ops.complete_milestone(milestone_id)
     if not m:
         raise HTTPException(status_code=404, detail="Milestone not found")
@@ -82,6 +147,11 @@ async def complete_milestone(milestone_id: str, user: dict = Depends(get_current
 
 @router.post("/pre-boarding/{task_id}/complete")
 async def complete_preboarding(task_id: str, user: dict = Depends(get_current_user)):
+    from app.services.postgres_db import get_storage
+    task = await get_storage().get_document("pre_boarding_tasks", task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Pre-boarding task not found")
+    await _get_authorized_plan(task.get("plan_id"), user)
     t = await ops.complete_preboarding(task_id)
     if not t:
         raise HTTPException(status_code=404, detail="Pre-boarding task not found")
@@ -90,6 +160,7 @@ async def complete_preboarding(task_id: str, user: dict = Depends(get_current_us
 
 @router.get("/team/{team_id}/pulse-overview")
 async def team_pulse_overview(team_id: str, user: dict = Depends(get_current_user)):
+    await _require_team_member(user, team_id)
     return {"members": await ops.get_team_pulse_overview(team_id)}
 
 
@@ -105,6 +176,17 @@ async def generate_plan(payload: dict, user: dict = Depends(get_current_user)):
     repo_url = payload.get("repo_url")
     if not team_id or not target_user_id or not repo_url:
         raise HTTPException(status_code=400, detail="team_id, user_id, and repo_url required")
+    await _require_team_member(user, team_id)
+    from app.services.repo_index_access import find_registered_repository
+    repository = await find_registered_repository(repo_url)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository is not registered for this workspace")
+    if str(repository.get("team_id")) != str(team_id):
+        raise HTTPException(status_code=403, detail="Repository belongs to another team")
+    from app.services.team_service import get_team_members
+    members = await get_team_members(team_id)
+    if not any((member.get("user_id") or member.get("id")) == target_user_id for member in members or []):
+        raise HTTPException(status_code=403, detail="Target user is not a member of this team")
     plan = await ops.generate_plan_from_learning_path(
         team_id=team_id,
         user_id=target_user_id,

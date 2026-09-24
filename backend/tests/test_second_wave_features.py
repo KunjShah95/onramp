@@ -361,6 +361,17 @@ class TestRoadmapDag:
         from app.services.onboarding_plan_service import get_roadmap
         assert await get_roadmap("no-such-plan") is None
 
+    async def test_progress_view_returns_next_action(self):
+        from app.services.onboarding_plan_service import get_plan_progress
+        plan_id, _ = await self._seed_plan([
+            {"title": "A", "sort_order": 0, "is_completed": True},
+            {"title": "B", "sort_order": 1},
+        ])
+        progress = await get_plan_progress(plan_id)
+        assert progress["milestones"] == {"completed": 1, "total": 2}
+        assert progress["next_milestone"]["title"] == "B"
+        assert progress["completion_percent"] == 50.0
+
 
 # ═══════════════════════════════════════════════════════════════
 # DORA metrics service

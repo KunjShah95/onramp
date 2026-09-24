@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional, List
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from app.services.issue_orchestrator import IssueOrchestrator
 from app.services.architecture_store import architecture_store
 
 router = APIRouter(prefix="/repos", tags=["repositories"])
+logger = logging.getLogger(__name__)
 
 class ResolveIssueRequest(BaseModel):
     repo_url: str
@@ -34,8 +36,11 @@ async def _verify_repo_access(owner: str, repo: str, user: dict) -> dict:
     teams = await get_user_teams(uid)
     team_ids = {t.get("team_id") or t.get("id") for t in teams}
     repo_team = repo_data.get("team_id")
-    if repo_team and repo_team not in team_ids:
-        raise HTTPException(status_code=403, detail="Access denied")
+    if repo_team:
+        if str(repo_team) not in {str(tid) for tid in team_ids}:
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Repository is not assigned to a team")
     return repo_data
 
 
@@ -49,12 +54,12 @@ async def list_repos(
 
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
-    user_team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    user_team_ids = {str(t.get("team_id") or t.get("id")) for t in teams}
 
     if team_id:
-        if team_id not in user_team_ids:
+        if str(team_id) not in user_team_ids:
             raise HTTPException(status_code=403, detail="Access denied")
-        query_team_ids = {team_id}
+        query_team_ids = {str(team_id)}
     else:
         query_team_ids = user_team_ids
 
@@ -96,11 +101,14 @@ async def create_repo(
         raise HTTPException(status_code=409, detail="Repository already tracked")
 
     uid = user.get("uid", "")
-    resolved_team_id = team_id
+    from app.services.team_service import get_user_teams
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in (teams or [])}
+    resolved_team_id = team_id or (next(iter(team_ids), None) if team_ids else None)
     if not resolved_team_id:
-        from app.services.team_service import get_user_teams
-        teams = await get_user_teams(uid)
-        resolved_team_id = teams[0].get("team_id") if teams else None
+        raise HTTPException(status_code=403, detail="A team membership is required")
+    if str(resolved_team_id) not in {str(tid) for tid in team_ids}:
+        raise HTTPException(status_code=403, detail="Not a member of this team")
 
     doc_id = generate_id()
     repo = await _storage.create_document("repositories", doc_id, {
@@ -142,9 +150,23 @@ async def delete_repo(
     teams = await get_user_teams(uid)
     team_ids = {t.get("team_id") or t.get("id") for t in teams}
     repo_team = repo.get("team_id")
-    if repo_team and repo_team not in team_ids:
+    if repo_team and str(repo_team) not in {str(tid) for tid in team_ids}:
         raise HTTPException(status_code=403, detail="Access denied")
     await _storage.delete_document("repositories", repo_id)
+    try:
+        from app.services.embeddings_service import EmbeddingsService
+        from app.services.repo_context import RepoContextService, index_id_for
+        from app.services.repo_index_access import revoke_index_access
+        repo_url = (repo.get("url") or f"https://github.com/{repo.get('owner', '')}/{repo.get('name', '')}").strip()
+        index_id = index_id_for(repo_url, repo.get("branch") or "main")
+        # Delete derived vectors/documents as well as the access grant. This
+        # makes repository removal an actual retention boundary rather than
+        # merely hiding the registry row.
+        await EmbeddingsService().delete_index(index_id)
+        await RepoContextService().evict(index_id)
+        await revoke_index_access(index_id)
+    except Exception:
+        logger.exception("Failed to revoke index grants for repository %s", repo_id)
     return {"ok": True}
 
 

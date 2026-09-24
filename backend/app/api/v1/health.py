@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import HealthScorer
+from app.api.v1.auth import get_current_user
+from app.api.v1.index_access import authorize_repo_index
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 router = APIRouter(prefix="/repos", tags=["health"])
@@ -15,7 +17,13 @@ class HealthRequest(BaseModel):
 
 
 @router.post("/{owner}/{repo}/health")
-async def get_health(owner: str, repo: str, request: HealthRequest, req: Request):
+async def get_health(
+    owner: str,
+    repo: str,
+    request: HealthRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+):
     index_id = request.index_id
     repo_structure = request.repo_structure
     if not repo_structure and not index_id:
@@ -32,8 +40,15 @@ async def get_health(owner: str, repo: str, request: HealthRequest, req: Request
             index_id = index_id_for(repos[0]["url"])
     if not repo_structure and not index_id:
         raise HTTPException(status_code=400, detail="Provide either repo_structure or index_id")
+    team_id = await authorize_repo_index(user, index_id) if index_id else None
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("health_scorer", index_id=index_id, scratchpad={"owner": owner, "repo": repo, "mode": request.mode})
+    sid = await get_session(
+        "health_scorer",
+        user_id=user.get("uid"),
+        team_id=team_id,
+        index_id=index_id,
+        scratchpad={"owner": owner, "repo": repo, "mode": request.mode},
+    )
     scorer = HealthScorer(llm, session_id=sid) if sid else HealthScorer(llm)
     try:
         result = await scorer.execute(

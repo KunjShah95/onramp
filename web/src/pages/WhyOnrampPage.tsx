@@ -64,7 +64,7 @@ function buildWhyOnrampFAQSchema() {
         name: 'Is my source code stored by Onramp?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'No. Onramp discards raw source files after the analysis pipeline completes. Only the indexed knowledge graph — symbols, relationships, and AI-generated summaries — is persisted. Your proprietary code never leaves the analysis environment.',
+          text: 'Onramp stores tenant-scoped derived documents and embeddings needed for search and answers. Temporary clones are removed after indexing; retention and deletion controls are being expanded.',
         },
       },
       {

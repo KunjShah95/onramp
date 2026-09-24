@@ -106,7 +106,7 @@ function buildSupportFAQSchema() {
         name: 'What is the SLA for Enterprise plans?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Enterprise plans include a 99.9% uptime SLA with financially backed credits. Contact sales for the full SLA document.',
+          text: 'No public uptime SLA is promised yet. We are defining service commitments and escalation paths with design partners; contact sales for the current operational scope.',
         },
       },
     ],

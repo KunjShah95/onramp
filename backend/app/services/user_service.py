@@ -197,7 +197,16 @@ async def deactivate_user(uid: str) -> dict:
     for p in paths:
         await storage.delete_document("onramp_learning_paths", p["id"])
 
-    # 8. Anonymize user record and mark inactive
+    # 8. Remove async-index job bindings owned by this user. Repository
+    # grants remain with the team so deleting one member never destroys shared
+    # workspace indexes.
+    jobs = await storage.query_documents(
+        "onramp_index_jobs", [("requested_by", "==", uid)]
+    )
+    for job in jobs:
+        await storage.delete_document("onramp_index_jobs", job["id"])
+
+    # 9. Anonymize user record and mark inactive
     anonymized = {
         "email": encrypt_field(f"deleted-{uid[:8]}@onramp.ai"),
         "name": encrypt_field("Deleted User"),

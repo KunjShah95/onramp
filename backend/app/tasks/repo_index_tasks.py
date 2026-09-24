@@ -21,6 +21,7 @@ repositories, which is network-bound heavy work):
 import asyncio
 import logging
 import os
+import shutil
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -51,6 +52,7 @@ def build_repo_index(
     force: bool = False,
     scope: str = "",
     snapshot: bool = True,
+    team_id: Optional[str] = None,
 ) -> dict:
     """Clone + parse + index one repository (or return the cached document).
 
@@ -70,6 +72,9 @@ def build_repo_index(
     async def _run() -> dict:
         service = RepoContextService()
         doc = await service.build(repo_url, branch=branch, max_files=max_files, force=force)
+        if team_id:
+            from app.services.repo_index_access import grant_index_access
+            await grant_index_access(doc["index_id"], team_id, repo_url, branch)
         _scope = scope or index_id_for(repo_url, branch)
         stats = doc.get("stats", {})
         snapshot_written = False
@@ -117,6 +122,63 @@ def build_repo_index(
         if loop.is_running():
             loop.call_soon_threadsafe(loop.stop)
         if not loop.is_closed():
+            loop.close()
+
+
+@shared_task(
+    queue="agent-tasks",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    acks_late=True,
+)
+def build_ask_index(
+    self,
+    repo_url: str,
+    branch: str = "main",
+    team_id: Optional[str] = None,
+) -> dict:
+    """Clone and vectorize a repository for the Ask surface.
+
+    This is separate from ``build_repo_index`` because the Ask contract uses
+    the embeddings collection while the graph endpoints use the compact repo
+    context document.  Both now use the same stable ``index_id`` and access
+    grant, so the next migration can unify their storage without changing API
+    identifiers.
+    """
+    import asyncio
+    from app.agents.repo_qa import RepoQA
+    from app.services.github_service import GitHubService
+    from app.services.repo_context import index_id_for
+    from app.services.repo_index_access import grant_index_access
+
+    async def _run() -> dict:
+        path = await GitHubService().clone_repo(repo_url, branch)
+        try:
+            index_id = index_id_for(repo_url, branch)
+            await RepoQA(None).index_repo(path, index_id=index_id)
+            if team_id:
+                await grant_index_access(index_id, team_id, repo_url, branch)
+            return {
+                "index_id": index_id,
+                "repo_url": repo_url,
+                "branch": branch,
+                "team_id": team_id,
+                "status": "indexed",
+            }
+        finally:
+            shutil.rmtree(path, ignore_errors=True)
+
+    loop = None
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(_run())
+    except Exception as exc:
+        logger.exception("Ask index build failed for %s", repo_url)
+        raise self.retry(exc=exc)
+    finally:
+        if loop is not None and not loop.is_closed():
             loop.close()
 
 
@@ -237,6 +299,9 @@ def refresh_repo_indexes(
                 if doc and not force and not _index_is_stale(
                     doc, age, ttl_hours=ttl_hours, cold_window_hours=cold_window_hours
                 ):
+                    if row.get("team_id"):
+                        from app.services.repo_index_access import grant_index_access
+                        await grant_index_access(index_id, row.get("team_id"), url, branch)
                     fresh += 1
                     continue
                 # A present-but-stale doc MUST be forced: build(force=False)
@@ -247,7 +312,11 @@ def refresh_repo_indexes(
                 rebuild_force = force or doc is not None
                 build_repo_index.apply_async(
                     args=[url],
-                    kwargs={"branch": branch, "force": rebuild_force},
+                    kwargs={
+                        "branch": branch,
+                        "force": rebuild_force,
+                        "team_id": row.get("team_id"),
+                    },
                     queue="agent-tasks",
                 )
                 enqueued += 1

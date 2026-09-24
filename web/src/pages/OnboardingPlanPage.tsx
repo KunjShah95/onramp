@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
-import { createOnboardingPlan, getOnboardingPlan, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
+import { createOnboardingPlan, getOnboardingPlan, getOnboardingPlanProgress, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import StatusTile from '../components/ui/status-tile'
 import { Modal } from '../components/ui/modal'
@@ -268,6 +268,14 @@ export default function OnboardingPlanPage() {
     enabled: !!planId, staleTime: 15_000,
   })
 
+  const progressPlanId = planId || plans?.[0]?.id
+  const { data: planProgress } = useQuery({
+    queryKey: ['planProgress', progressPlanId],
+    queryFn: () => getOnboardingPlanProgress(progressPlanId!),
+    enabled: !!progressPlanId,
+    staleTime: 15_000,
+  })
+
   const { data: pulseData } = useQuery({
     queryKey: ['pulseTrends', planId],
     queryFn: () => getPulseTrends(planId!),
@@ -297,7 +305,8 @@ export default function OnboardingPlanPage() {
   const trends = pulseData?.trends || {}
   const allDone = [...milestones30, ...milestones60, ...milestones90].filter((m: any) => m.is_completed).length
   const allTotal = [...milestones30, ...milestones60, ...milestones90].length
-  const progressPct = allTotal > 0 ? Math.round((allDone / allTotal) * 100) : 0
+  const fallbackProgressPct = allTotal > 0 ? Math.round((allDone / allTotal) * 100) : 0
+  const progressPct = planProgress?.completion_percent ?? fallbackProgressPct
   const preDone = preBoard.filter((t: any) => t.is_completed).length
 
   if (plansLoadingAny) {
@@ -414,6 +423,20 @@ export default function OnboardingPlanPage() {
           </div>
         ) : (
           <>
+            {planProgress?.next_milestone && (
+              <div className="mb-7 flex items-center gap-3 rounded-card border border-seam bg-panel px-4 py-3">
+                <div className="w-8 h-8 rounded-tile bg-well border border-seam flex items-center justify-center text-mission shrink-0">
+                  <Target size={15} weight="fill" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-widest text-ink-muted/50">Next milestone</p>
+                  <p className="text-body-xs text-ink truncate">{planProgress.next_milestone.title}</p>
+                </div>
+                <span className="ml-auto text-caption text-ink-muted/50 tabular-nums shrink-0">
+                  Day {planProgress.next_milestone.day_target}
+                </span>
+              </div>
+            )}
             {/* Pulse trend bar */}
             {pulses.length > 0 && (
               <div className="mb-8">

@@ -1,7 +1,14 @@
 # Onramp 2.0 — Implementation Status
 
-**Updated:** 2026-08-21
+**Updated:** 2026-09-24
 **Overall Completion:** release-candidate hardening + wedge built (all 5 phases + v1.4-v1.6 wedge + Phase 0 cost-model harness; see `ROADMAP.md` + `features_mvp.md` for readiness checklist)
+
+## Security & truthfulness hardening (Sep 2026, in progress)
+
+- Tenant isolation: `/ask/index` accepts only https URLs (no local paths); agent bus has no global WS fan-out; sessions/bus/index reads require team membership; Celery tasks carry `team_id`. Tests: `test_agent_tenant_scoping.py`, `test_repo_index_access.py` (12 passed).
+- Claims: SOC 2 marked in-progress site-wide; source retention states encrypted excerpts/embeddings; customers page anonymized to design partners; new `/trust` Trust Center page (draft).
+- Hygiene: Neon dep removed, `react-router-dom` → 7.18.4, frontend/backend audits blocking, new SDK CI workflow, n8n image pinned (`n8nio/n8n:2.41.0`), n8n/GitHub webhooks fail-closed HMAC.
+- Still open: opaque `repository_context` records, full clean-env backend suite, lockfile audit re-run, Playwright cookie-auth contracts, lint ratchet, EU AI Act legal review.
 
 ---
 

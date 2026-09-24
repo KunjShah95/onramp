@@ -83,7 +83,7 @@ function buildComparisonFAQSchema() {
         name: 'Does Onramp work with private repositories?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Provide a GitHub personal access token with repo scope. The token is encrypted at rest and only used for cloning during analysis. Onramp never stores your raw source code — only the indexed knowledge graph.',
+          text: 'Private repositories are supported for registered workspaces when the connected GitHub credential has permission to clone them. Temporary clones are removed after indexing; tenant-scoped derived documents and embeddings are retained to power grounded answers. Retention and deletion controls are being expanded.',
         },
       },
       {

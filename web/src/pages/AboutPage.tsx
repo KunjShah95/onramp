@@ -27,7 +27,7 @@ const values = [
   {
     icon: ShieldCheck,
     title: 'Privacy by design',
-    desc: 'Your code stays yours. We process source to build an analysis graph, then discard raw content. No training on customer data.',
+    desc: 'Your code stays yours. We process registered repositories to build tenant-scoped derived context, remove temporary clones after indexing, and do not train models on customer data.',
   },
 ]
 

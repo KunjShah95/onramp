@@ -1,0 +1,45 @@
+name: SDK CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - ".github/workflows/sdk.yml"
+  pull_request:
+    paths:
+      - "sdk/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "sdk/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: sdk
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+        working-directory: sdk
+
+      - name: Dependency vulnerability scan (npm audit)
+        run: npm audit --audit-level=high
+        working-directory: sdk
+
+      - name: Run unit tests
+        run: npm test
+        working-directory: sdk
+
+      - name: Build
+        run: npm run build
+        working-directory: sdk

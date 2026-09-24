@@ -89,18 +89,7 @@ export function getAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// ── Neon Auth (legacy, kept for OAuth redirect compatibility) ────────────────
-
-const NEON_AUTH_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEON_AUTH_URL) || ''
-
-export function getNeonLoginUrl(provider: 'google' | 'github'): string {
-  return `${NEON_AUTH_URL}/api/auth/oauth/${provider}/authorize`
-}
-
-export function getNeonRegisterUrl(): string {
-  return `${NEON_AUTH_URL}/api/auth/register`
-}
-
-export function getNeonLoginEmailUrl(): string {
-  return `${NEON_AUTH_URL}/api/auth/login`
-}
+// ── Legacy Neon Auth removed ─────────────────────────────────────────────
+// Custom JWT cookie auth is used. The VITE_NEON_AUTH_URL helpers were
+// removed 2026-09-23 as part of the dependency-hygiene cleanup
+// (@neondatabase/neon-js dropped from package.json).

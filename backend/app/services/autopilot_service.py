@@ -190,7 +190,13 @@ class AutopilotService:
                 from app.services.agent_context import agent_context
                 from app.services.agent_bus import agent_bus
                 await agent_context.append_message(pipeline_session_id, role="assistant", content=f"Autopilot analyze complete: {len(issues)} issues", agent_type="architecture_explorer")
-                await agent_bus.publish("autopilot.analyze.completed", payload={"repo_url": repo_url, "issue_count": len(issues), "session_id": pipeline_session_id}, source_session_id=pipeline_session_id, source_agent="architecture_explorer")
+                await agent_bus.publish(
+                    "autopilot.analyze.completed",
+                    payload={"repo_url": repo_url, "issue_count": len(issues), "session_id": pipeline_session_id},
+                    source_session_id=pipeline_session_id,
+                    source_agent="architecture_explorer",
+                    team_id=team_id,
+                )
             except Exception:
                 pass
         return report

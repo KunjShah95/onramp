@@ -389,11 +389,17 @@ class TestEndpointIndexParams:
 
         monkeypatch.setattr(rc.repo_context_service, "get", fake_get)
 
+        async def fake_authorize(_user, _index_id):
+            return "team-test"
+
+        monkeypatch.setattr(health_module, "authorize_repo_index", fake_authorize)
+
         application = FastAPI()
         application.state.llm = None
 
         @application.middleware("http")
-        async def _noop_mw(request, call_next):
+        async def _auth_mw(request, call_next):
+            request.state.user = {"uid": "test-user", "email": "test@example.com"}
             return await call_next(request)
 
         application.include_router(health_module.router)
@@ -415,6 +421,12 @@ class TestEndpointIndexParams:
 
         application = FastAPI()
         application.state.llm = None
+
+        @application.middleware("http")
+        async def _auth_mw(request, call_next):
+            request.state.user = {"uid": "test-user", "email": "test@example.com"}
+            return await call_next(request)
+
         application.include_router(health_module.router)
         resp = TestClient(application).post(
             "/repos/acme/app/health",
@@ -437,9 +449,15 @@ class TestEndpointIndexParams:
                 "name": "test",
                 "permissions": {"tier": "free", "org_name": "testorg"},
                 "org_name": "testorg",
+                "team_id": "team-test",
             }
 
         monkeypatch.setattr(api_key_service, "validate_api_key", fake_validate)
+
+        async def fake_index_access(_index_id, _team_id):
+            return True
+
+        monkeypatch.setattr("app.services.repo_index_access.has_index_access", fake_index_access)
 
         class _NoopLLM:
             def __init__(self):

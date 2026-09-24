@@ -1,9 +1,8 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// @neondatabase/neon-js/auth is no longer used — the project uses custom JWT auth.
-// Keeping this mock empty avoids import errors if any transitive dep references it.
-vi.mock('@neondatabase/neon-js/auth', () => ({}))
+// Legacy Neon auth removed — custom JWT cookie auth is used.
+// No @neondatabase/neon-js mock needed.
 
 Element.prototype.scrollIntoView = vi.fn()
 

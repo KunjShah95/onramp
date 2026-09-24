@@ -1,6 +1,7 @@
 """HTTP tests for the repo-context index endpoints (/repos/index)."""
 
 import pytest
+from unittest.mock import AsyncMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -13,6 +14,10 @@ def _make_app(monkeypatch, fake_service):
     from app.api.v1 import repo_index
 
     repo_index._service = fake_service
+    # Authorization is covered separately; these endpoint tests focus on
+    # request/response behavior and use a verified test scope.
+    repo_index._repository_team = AsyncMock(return_value="team-test")
+    repo_index._authorize_index = AsyncMock(return_value="team-test")
     application = FastAPI()
 
     @application.middleware("http")
@@ -96,9 +101,9 @@ class TestBuildIndex:
         dispatched = {}
 
         class _FakeTask:
-            def delay(self, repo_url, branch="main", max_files=1000, force=False):
+            def delay(self, repo_url, branch="main", max_files=1000, force=False, team_id=None):
                 dispatched.update(
-                    repo_url=repo_url, branch=branch, max_files=max_files, force=force
+                    repo_url=repo_url, branch=branch, max_files=max_files, force=force, team_id=team_id
                 )
                 return SimpleNamespace(id="task-abc123")
 

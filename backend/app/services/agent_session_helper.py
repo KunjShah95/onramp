@@ -20,7 +20,14 @@ async def complete_session(session_id: Optional[str], agent_type: str, success: 
         from app.services.agent_context import agent_context
         from app.services.agent_bus import agent_bus
         await agent_context.set_state(session_id, "completed" if success else "failed")
-        await agent_bus.publish(f"agent.{agent_type}.completed", payload={"session_id": session_id, **(payload or {})}, source_session_id=session_id, source_agent=agent_type)
+        session = await agent_context.get_session(session_id)
+        await agent_bus.publish(
+            f"agent.{agent_type}.completed",
+            payload={"session_id": session_id, **(payload or {})},
+            source_session_id=session_id,
+            source_agent=agent_type,
+            team_id=(session or {}).get("team_id"),
+        )
     except Exception:
         pass
 

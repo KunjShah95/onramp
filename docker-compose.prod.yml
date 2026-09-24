@@ -88,6 +88,12 @@ services:
       - BACKEND_URL=${BACKEND_URL}
       - FRONTEND_URL=${FRONTEND_URL}
       - TRUST_PROXY=true
+      # ── n8n automation bus (two-way) ──
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - N8N_ONBOARDING_WEBHOOK_URL=${N8N_ONBOARDING_WEBHOOK_URL:-}
+      - N8N_HMAC_SECRET=${N8N_HMAC_SECRET:-}
+      - N8N_INBOUND_SECRET=${N8N_INBOUND_SECRET:-}
+      - N8N_TIMEOUT_SECONDS=${N8N_TIMEOUT_SECONDS:-5}
       # Construct REDIS_URL for Docker self-hosted (Railway auto-injects it)
       - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
     depends_on:
@@ -159,6 +165,12 @@ services:
       - SENTRY_DSN=${SENTRY_DSN}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - TRUST_PROXY=true
+      # n8n fan-out runs inside Celery notification tasks — same vars as backend
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - N8N_ONBOARDING_WEBHOOK_URL=${N8N_ONBOARDING_WEBHOOK_URL:-}
+      - N8N_HMAC_SECRET=${N8N_HMAC_SECRET:-}
+      - N8N_INBOUND_SECRET=${N8N_INBOUND_SECRET:-}
+      - N8N_TIMEOUT_SECONDS=${N8N_TIMEOUT_SECONDS:-5}
       # Construct REDIS_URL for Docker self-hosted (Railway auto-injects it)
       - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
     depends_on:
@@ -201,6 +213,38 @@ services:
         limits:
           memory: 512M
 
+  # ── n8n automation bus (self-host parity with Render onramp-n8n) ─────
+  # UI: http://localhost:5678 | webhooks: ${N8N_PUBLIC_URL:-http://localhost:5678/}/webhook/...
+  # Import n8n/workflows/*.json, set Slack/Telegram creds, Activate, then paste
+  # the production URL into Onramp Settings → Integrations → n8n (or N8N_WEBHOOK_URL).
+  n8n:
+    image: n8nio/n8n:2.41.0
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-me-to-a-random-32-char-string}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+      - N8N_INBOUND_SECRET=${N8N_INBOUND_SECRET:-}
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
 volumes:
   redis_data:
   postgres_data:
+  n8n_data:

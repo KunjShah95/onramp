@@ -38,6 +38,11 @@ def _build_explore_app(monkeypatch, explorer_cls):
     from app.api.v1 import explore as explore_module
 
     monkeypatch.setattr(explore_module, "ArchitectureExplorer", explorer_cls)
+
+    async def _authorized_repo(_user, _repo_url, _team_id=None):
+        return "team-test"
+
+    monkeypatch.setattr(explore_module, "authorize_registered_repository", _authorized_repo)
     application = FastAPI()
     application.state.llm = SimpleNamespace(last_route=None)
 

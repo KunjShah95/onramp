@@ -66,6 +66,41 @@ describe('OnrampClient', () => {
     })
   })
 
+  it('builds repository indexes with tenant and async options', async () => {
+    const fetchMock = mockFetch(() =>
+      jsonResponse({ queued: true, task_id: 'task-1', index_id: 'idx-1' }),
+    )
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+
+    const result = await client.buildRepositoryIndex('https://github.com/acme/app', {
+      branch: 'main',
+      asyncBuild: true,
+      teamId: 'team-1',
+    })
+
+    expect(result.task_id).toBe('task-1')
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.example.com/api/v1/repos/index')
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      repo_url: 'https://github.com/acme/app',
+      branch: 'main',
+      async_build: true,
+      team_id: 'team-1',
+    })
+  })
+
+  it('fetches ramp summary and unwraps the response envelope', async () => {
+    const fetchMock = mockFetch(() =>
+      jsonResponse({ success: true, data: { team_id: 'team-1', totals: { trainees: 2 } } }),
+    )
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+
+    const summary = await client.getRampSummary('team-1')
+
+    expect(summary.team_id).toBe('team-1')
+    const [url] = fetchMock.mock.calls[0] as [string]
+    expect(url).toBe('https://api.example.com/api/v1/ramp/summary?team_id=team-1')
+  })
   it('embeddings request body shape', async () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ object: 'list', data: [], model: 'gemini/x', usage: { prompt_tokens: 3, total_tokens: 3 } }),

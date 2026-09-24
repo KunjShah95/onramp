@@ -127,7 +127,13 @@ class IssueOrchestrator:
                     from app.services.agent_bus import agent_bus as _bus
                     await _ac.append_message(session_id, role="assistant", content=summary[:4000], agent_type="issue_resolution")
                     await _ac.set_state(session_id, "completed")
-                    await _bus.publish("issue.resolved", payload={"repo_url": repo_url, "branch": fix_branch, "fixes": len(fixes), "session_id": session_id}, source_session_id=session_id, source_agent="issue_resolution")
+                    await _bus.publish(
+                        "issue.resolved",
+                        payload={"repo_url": repo_url, "branch": fix_branch, "fixes": len(fixes), "session_id": session_id},
+                        source_session_id=session_id,
+                        source_agent="issue_resolution",
+                        team_id=team_id,
+                    )
                 except Exception:
                     pass
             return result

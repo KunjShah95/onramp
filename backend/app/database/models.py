@@ -1683,11 +1683,18 @@ class AgentEvent(Base):
     source_session_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("onramp_agent_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     source_agent: Mapped[str | None] = mapped_column(String(100), nullable=True)
     target_agent: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Tenant boundary for event history and realtime delivery.  Older rows may
+    # be NULL (created before tenant scoping was introduced); they are retained
+    # for audit/debugging but are never broadcast to user WebSockets.
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
 
     __table_args__ = (
         Index("ix_agent_events_type_created", "event_type", "created_at"),
+        Index("ix_agent_events_team_created", "team_id", "created_at"),
         {"extend_existing": True}
     )
 
@@ -1698,6 +1705,7 @@ class AgentEvent(Base):
             "source_session_id": self.source_session_id,
             "source_agent": self.source_agent,
             "target_agent": self.target_agent,
+            "team_id": self.team_id,
             "payload": self.payload or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

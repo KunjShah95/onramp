@@ -19,6 +19,12 @@ from pydantic import BaseModel
 from app.api.v1.auth import get_current_user
 from app.services.quota import enforce_quota
 from app.services.repo_context import RepoContextService
+from app.services.repo_index_access import (
+    find_registered_repository,
+    grant_index_access,
+    list_index_grants,
+    parse_github_repo,
+)
 
 router = APIRouter(prefix="/repos/index", tags=["repo-context"])
 
@@ -31,6 +37,64 @@ class BuildIndexRequest(BaseModel):
     max_files: int = 1000
     force: bool = False
     async_build: bool = False
+    team_id: Optional[str] = None
+
+
+async def _accessible_team_ids(user: dict) -> set[str]:
+    uid = user.get("uid", "")
+    if not uid or uid.startswith("api:"):
+        return {str(user["team_id"])} if user.get("team_id") else set()
+    try:
+        from app.services.team_service import get_user_teams
+        teams = await get_user_teams(uid)
+    except Exception:
+        return set()
+    return {
+        str(team.get("id") or team.get("team_id"))
+        for team in (teams or [])
+        if team.get("id") or team.get("team_id")
+    }
+
+
+async def _repository_team(user: dict, repo_url: str, requested_team_id: Optional[str]) -> str:
+    if not parse_github_repo(repo_url):
+        raise HTTPException(status_code=400, detail="Only strict GitHub HTTPS repository URLs are supported")
+    repository = await find_registered_repository(repo_url)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository is not registered for this workspace")
+    repository_team_id = repository.get("team_id")
+    if not repository_team_id:
+        raise HTTPException(status_code=403, detail="Repository is not assigned to a team")
+    accessible = await _accessible_team_ids(user)
+    if str(repository_team_id) not in accessible:
+        raise HTTPException(status_code=403, detail="Repository belongs to another team")
+    if requested_team_id and str(requested_team_id) != str(repository_team_id):
+        raise HTTPException(status_code=403, detail="Repository belongs to another team")
+    return str(repository_team_id)
+
+
+async def _authorize_index(user: dict, index_id: str) -> str:
+    accessible = await _accessible_team_ids(user)
+    grants = await list_index_grants(index_id)
+    if grants:
+        allowed = {
+            str(grant.get("team_id"))
+            for grant in grants
+            if grant.get("team_id") and str(grant.get("team_id")) in accessible
+        }
+        if allowed:
+            return sorted(allowed)[0]
+        raise HTTPException(status_code=403, detail="Index belongs to another team")
+
+    doc = await _service.get(index_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Index not found")
+    repository = await find_registered_repository(doc.get("repo_url", ""))
+    team_id = str(repository.get("team_id")) if repository and repository.get("team_id") else None
+    if not team_id or team_id not in accessible:
+        raise HTTPException(status_code=403, detail="Index belongs to another team")
+    await grant_index_access(index_id, team_id, doc.get("repo_url", ""), doc.get("branch", "main"))
+    return team_id
 
 
 @router.post("")
@@ -50,6 +114,7 @@ async def build_index(
     task id immediately, so indexes can be pre-built (e.g. on repo
     registration) without blocking the request.
     """
+    team_id = await _repository_team(user, request.repo_url, request.team_id)
     if request.async_build:
         # Lazy import so the API layer never hard-depends on Celery.
         from app.tasks.repo_index_tasks import build_repo_index as _build_task
@@ -60,6 +125,7 @@ async def build_index(
                 branch=request.branch,
                 max_files=request.max_files,
                 force=request.force,
+                team_id=team_id,
             )
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Failed to enqueue index build: {exc}")
@@ -79,6 +145,7 @@ async def build_index(
             max_files=request.max_files,
             force=request.force,
         )
+        await grant_index_access(doc["index_id"], team_id, request.repo_url, request.branch)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -93,6 +160,7 @@ async def get_index(
     user: dict = Depends(get_current_user),
 ):
     """Return the full context document (entities + graph + stats)."""
+    await _authorize_index(user, index_id)
     doc = await _service.get(index_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Index not found")
@@ -115,6 +183,7 @@ async def select_index(
     """
     if not requirement.strip():
         raise HTTPException(status_code=400, detail="requirement is required")
+    await _authorize_index(user, index_id)
     slice_doc = await _service.select_context(index_id, requirement, max_tokens=max_tokens)
     if slice_doc is None:
         raise HTTPException(status_code=404, detail="Index not found")
@@ -128,6 +197,7 @@ async def evict_index(
     user: dict = Depends(get_current_user),
 ):
     """Evict the cached index so the next build re-parses the repo."""
+    await _authorize_index(user, index_id)
     removed = await _service.evict(index_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Index not found")

@@ -80,6 +80,7 @@ const CustomersPage = lazy(() => import('./pages/CustomersPage'))
 const SecurityPage = lazy(() => import('./pages/SecurityPage'))
 const DPAPage = lazy(() => import('./pages/DPAPage'))
 const SOC2Page = lazy(() => import('./pages/SOC2Page'))
+const TrustCenterPage = lazy(() => import('./pages/TrustCenterPage'))
 const ComparisonPage = lazy(() => import('./pages/ComparisonPage'))
 
 // New Phase 2-5 pages
@@ -241,6 +242,11 @@ export default function App() {
               <Route path="/soc-2" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><SOC2Page /></ErrorBoundary>
+                </Suspense>
+              } />
+              <Route path="/trust" element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ErrorBoundary><TrustCenterPage /></ErrorBoundary>
                 </Suspense>
               } />
 

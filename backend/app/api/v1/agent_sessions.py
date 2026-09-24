@@ -12,6 +12,7 @@ Agent Sessions & Bus API — stateful inter-agent communication.
 - GET    /api/v1/agent-sessions/prompts/catalog — list all agent system prompts (for debugging)
 """
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,6 +25,7 @@ from app.services.agent_bus import agent_bus
 
 router = APIRouter(prefix="/agent-sessions", tags=["agent-sessions"])
 bus_router = APIRouter(prefix="/agent-bus", tags=["agent-bus"])
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ──────────────────────────────────────────────────────────
@@ -54,11 +56,27 @@ class HandoffRequest(BaseModel):
 
 
 class PublishEventRequest(BaseModel):
-    event_type: str
+    event_type: str = Field(..., min_length=1, max_length=100)
     payload: Optional[Dict[str, Any]] = None
     source_session_id: Optional[str] = None
     source_agent: Optional[str] = None
     target_agent: Optional[str] = None
+    team_id: Optional[str] = Field(default=None, max_length=100)
+
+
+async def _require_team_member(user: dict, team_id: str) -> None:
+    """Raise 403 unless ``user`` belongs to ``team_id``."""
+    uid = user.get("uid", "")
+    if not uid or not team_id:
+        raise HTTPException(status_code=403, detail="team_id is required")
+    try:
+        from app.services.team_service import get_user_teams
+        teams = await get_user_teams(uid)
+        if any(t.get("id") == team_id or t.get("team_id") == team_id for t in (teams or [])):
+            return
+    except Exception:
+        pass
+    raise HTTPException(status_code=403, detail="Not a member of this team")
 
 
 async def _assert_session_access(sess: dict, user: dict):
@@ -85,15 +103,78 @@ async def _assert_session_access(sess: dict, user: dict):
             pass
     raise HTTPException(status_code=403, detail="Forbidden: not owner or team member")
 
+
+async def _user_team_ids(user: dict) -> set[str]:
+    """Return the caller's verified team memberships, failing closed."""
+    uid = user.get("uid", "")
+    if not uid or uid.startswith("api:"):
+        return {str(user.get("team_id"))} if user.get("team_id") else set()
+
+    try:
+        from app.services.team_service import get_user_teams
+
+        teams = await get_user_teams(uid)
+    except Exception:
+        logger.exception("Failed to resolve team memberships for user %s", uid)
+        return set()
+
+    return {
+        str(team.get("id") or team.get("team_id"))
+        for team in (teams or [])
+        if team.get("id") or team.get("team_id")
+    }
+
+
+async def _require_team_access(user: dict, team_id: Optional[str]) -> set[str]:
+    """Validate an optional team scope and return all accessible team IDs."""
+    accessible = await _user_team_ids(user)
+    if team_id and str(team_id) not in accessible:
+        raise HTTPException(status_code=403, detail="Forbidden: not a team member")
+    return accessible
+
+
+async def _primary_team_id(user: dict) -> Optional[str]:
+    """Choose a deterministic default scope for user-created resources."""
+    accessible = await _user_team_ids(user)
+    if not accessible:
+        return None
+    return sorted(accessible)[0]
+
+
 # ── Session endpoints ────────────────────────────────────────────────
 
 @router.post("")
 async def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)):
     if not is_known_agent(body.agent_type):
         raise HTTPException(status_code=400, detail=f"Unknown agent_type '{body.agent_type}'. Known: {sorted(all_prompts().keys())}")
+
+    effective_team_id = body.team_id
+    await _require_team_access(user, effective_team_id)
+
+    # A child session must inherit/agree with its parent's tenant. This also
+    # prevents a caller from attaching a new session to an arbitrary parent.
+    if body.parent_id:
+        parent = await agent_context.get_session(body.parent_id)
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent session not found")
+        await _assert_session_access(parent, user)
+        parent_team_id = parent.get("team_id")
+        if effective_team_id and parent_team_id and str(effective_team_id) != str(parent_team_id):
+            raise HTTPException(status_code=403, detail="Parent session belongs to another team")
+        if not effective_team_id:
+            effective_team_id = parent_team_id
+
+    # User-created sessions are tenant-scoped whenever the user has a team.
+    if not effective_team_id:
+        effective_team_id = await _primary_team_id(user)
+
+    if body.index_id:
+        from app.api.v1.index_access import authorize_repo_index
+        await authorize_repo_index(user, body.index_id, effective_team_id)
+
     sess = await agent_context.create_session(
         agent_type=body.agent_type,
-        team_id=body.team_id,
+        team_id=effective_team_id,
         user_id=user.get("uid"),
         index_id=body.index_id,
         parent_id=body.parent_id,
@@ -103,9 +184,10 @@ async def create_session(body: CreateSessionRequest, user: dict = Depends(get_cu
     )
     await agent_bus.publish(
         "agent.session.created",
-        payload={"session_id": sess["id"], "agent_type": body.agent_type, "team_id": body.team_id},
+        payload={"session_id": sess["id"], "agent_type": body.agent_type},
         source_session_id=sess["id"],
         source_agent=body.agent_type,
+        team_id=effective_team_id,
     )
     return sess
 
@@ -119,7 +201,27 @@ async def list_sessions(
     offset: int = Query(0, ge=0),
     user: dict = Depends(get_current_user),
 ):
-    sessions = await agent_context.list_sessions(team_id=team_id, agent_type=agent_type, state=state, limit=limit, offset=offset)
+    if team_id:
+        await _require_team_member(user, team_id)
+        sessions = await agent_context.list_sessions(
+            team_id=team_id,
+            agent_type=agent_type,
+            state=state,
+            limit=limit,
+            offset=offset,
+        )
+    else:
+        # Query the database with an explicit allow-list rather than fetching
+        # every session and filtering in Python after the fact.
+        accessible_teams = await _user_team_ids(user)
+        sessions = await agent_context.list_sessions(
+            user_id=user.get("uid"),
+            team_ids=sorted(accessible_teams),
+            agent_type=agent_type,
+            state=state,
+            limit=limit,
+            offset=offset,
+        )
     return {"sessions": sessions, "count": len(sessions)}
 
 
@@ -176,12 +278,12 @@ async def get_thread(session_id: str, user: dict = Depends(get_current_user)):
     chain = await agent_context.get_thread(session_id)
     if not chain:
         raise HTTPException(status_code=404, detail="Session not found")
-    # IDOR: ensure leaf session is accessible (covers parent chain via ownership)
+    # Validate every link, not only the leaf: a caller must not be able to
+    # read private parent-session history by requesting a child thread.
+    for session in chain:
+        await _assert_session_access(session, user)
     leaf = chain[-1] if chain else None
-    if leaf:
-        await _assert_session_access(leaf, user)
-    # Also include history for leaf
-    history = await agent_context.get_history(session_id, limit=50)
+    history = await agent_context.get_history(leaf["id"], limit=50) if leaf else []
     return {"thread": chain, "leaf_history": history}
 
 
@@ -197,7 +299,13 @@ async def set_state(session_id: str, state: str = Query(..., description="active
     sess = await agent_context.set_state(session_id, state)
     if not sess:
         raise HTTPException(status_code=404, detail="Session not found")
-    await agent_bus.publish("agent.session.state_changed", payload={"session_id": session_id, "state": state}, source_session_id=session_id, source_agent=sess.get("agent_type"))
+    await agent_bus.publish(
+        "agent.session.state_changed",
+        payload={"session_id": session_id, "state": state},
+        source_session_id=session_id,
+        source_agent=sess.get("agent_type"),
+        team_id=sess.get("team_id"),
+    )
     return sess
 
 
@@ -216,9 +324,21 @@ async def patch_scratchpad(session_id: str, patch: Dict[str, Any], user: dict = 
 
 @router.get("/prompts/catalog")
 async def prompts_catalog(user: dict = Depends(get_current_user)):
-    """List all registered agent system prompts (useful for debugging / version audit)."""
+    """List registered prompt versions; previews are restricted to operators."""
     catalog = all_prompts()
-    return {"agents": sorted(catalog.keys()), "prompts": {k: {"version": v["version"], "preview": str(v["system_prompt"])[:160]} for k, v in catalog.items()}}
+    can_preview = bool(
+        user.get("is_admin")
+        or user.get("auth_method") == "api_key"
+        or str(user.get("role", "")).lower() in {"admin", "ceo", "hr"}
+    )
+    prompts = {
+        key: {
+            "version": value["version"],
+            **({"preview": str(value["system_prompt"])[:160]} if can_preview else {}),
+        }
+        for key, value in catalog.items()
+    }
+    return {"agents": sorted(catalog.keys()), "prompts": prompts}
 
 
 # ── Bus endpoints ────────────────────────────────────────────────────
@@ -226,20 +346,43 @@ async def prompts_catalog(user: dict = Depends(get_current_user)):
 @bus_router.get("/events")
 async def list_events(
     event_type: Optional[str] = Query(None),
+    team_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: dict = Depends(get_current_user),
 ):
-    events = await agent_bus.list_events(event_type=event_type, limit=limit, offset=offset)
+    if not team_id:
+        raise HTTPException(status_code=400, detail="team_id is required")
+    await _require_team_member(user, team_id)
+    events = await agent_bus.list_events(event_type=event_type, limit=limit, offset=offset, team_id=team_id)
     return {"events": events, "count": len(events)}
 
 
 @bus_router.post("/publish")
 async def publish_event(body: PublishEventRequest, user: dict = Depends(get_current_user)):
+    payload = dict(body.payload or {})
+    team_id = body.team_id or payload.pop("team_id", None)
+    if not team_id:
+        raise HTTPException(status_code=400, detail="team_id is required")
+    await _require_team_member(user, team_id)
+
+    # If the event references a session, the caller must have access to it and
+    # the event may not claim a different tenant than that session.
+    if body.source_session_id:
+        sess = await agent_context.get_session(body.source_session_id)
+        if not sess:
+            raise HTTPException(status_code=404, detail="Source session not found")
+        await _assert_session_access(sess, user)
+        session_team_id = sess.get("team_id")
+        if session_team_id and str(session_team_id) != str(team_id):
+            raise HTTPException(status_code=403, detail="Source session belongs to another team")
+
     rec = await agent_bus.publish(
-        body.event_type, payload=body.payload,
+        body.event_type,
+        payload=payload,
         source_session_id=body.source_session_id,
         source_agent=body.source_agent,
         target_agent=body.target_agent,
+        team_id=team_id,
     )
     return rec

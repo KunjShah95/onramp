@@ -1,9 +1,11 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, HttpUrl
 from app.agents import ArchitectureExplorer
 from app.services.quota import enforce_quota
 from app.api.v1.llm_route import attach_served_route_header
+from app.api.v1.auth import get_current_user
+from app.api.v1.index_access import authorize_registered_repository, authorize_repo_index
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 router = APIRouter(prefix="/explore", tags=["architecture"])
@@ -30,10 +32,26 @@ def _extract_github_token(request: ExploreRequest, req: Request) -> Optional[str
 
 
 @router.post("/analyze")
-async def analyze_repo(request: ExploreRequest, req: Request, response: Response, _q=enforce_quota("explore")):
+async def analyze_repo(
+    request: ExploreRequest,
+    req: Request,
+    response: Response,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("explore"),
+):
     llm = getattr(req.app.state, "llm", None)
     github_token = _extract_github_token(request, req)
-    sid = await get_session("architecture_explorer", index_id=request.index_id, scratchpad={"repo_url": request.repo_url, "branch": request.branch})
+    if request.index_id:
+        team_id = await authorize_repo_index(user, request.index_id)
+    else:
+        team_id = await authorize_registered_repository(user, str(request.repo_url))
+    sid = await get_session(
+        "architecture_explorer",
+        user_id=user.get("uid"),
+        team_id=team_id,
+        index_id=request.index_id,
+        scratchpad={"repo_url": request.repo_url, "branch": request.branch},
+    )
     explorer = ArchitectureExplorer(llm, github_token=github_token, session_id=sid) if sid else ArchitectureExplorer(llm, github_token=github_token)
     before_route = getattr(llm, "last_route", None)
     try:

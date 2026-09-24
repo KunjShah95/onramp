@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select, desc, func, text
+from sqlalchemy import select, desc, func, text, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.prompts import get_system_prompt
@@ -51,10 +51,21 @@ async def _redis():
         return None
 
 
+def _session_factory():
+    """Return the configured SQLAlchemy session factory.
+
+    Older code imported a non-existent ``async_session_factory`` module
+    attribute, which meant agent sessions/events silently failed to persist.
+    Keep the lookup lazy so tests can replace the configured factory.
+    """
+    from app.database.config import db_config
+    return db_config.get_session_factory()
+
+
 async def _get_db() -> AsyncSession:
-    from app.database.config import async_session_factory
-    # async_session_factory is the sessionmaker; create a session
-    async with async_session_factory() as session:
+    from app.database.config import db_config
+    # db_config owns the configured sessionmaker; create a session lazily.
+    async with db_config.get_session_factory()() as session:
         yield session  # type: ignore
 
 
@@ -156,7 +167,7 @@ class AgentContextService:
         system_prompt: Optional[str] = None,
         scratchpad: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentSession, AgentMessage
 
         prompt, version = get_system_prompt(agent_type)
@@ -182,7 +193,7 @@ class AgentContextService:
             "updated_at": now,
         }
 
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             db.add(AgentSession(**data))
             await db.commit()
             # Seed the system message so history is self-contained
@@ -211,9 +222,9 @@ class AgentContextService:
         cached = await _cache_get(session_id)
         if cached:
             return cached
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentSession
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             res = await db.execute(select(AgentSession).where(AgentSession.id == session_id))
             row = res.scalar_one_or_none()
             if not row:
@@ -223,9 +234,9 @@ class AgentContextService:
             return d
 
     async def update_scratchpad(self, session_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentSession
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             res = await db.execute(select(AgentSession).where(AgentSession.id == session_id))
             row = res.scalar_one_or_none()
             if not row:
@@ -241,9 +252,9 @@ class AgentContextService:
             return d
 
     async def set_state(self, session_id: str, state: str) -> Optional[Dict[str, Any]]:
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentSession
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             res = await db.execute(select(AgentSession).where(AgentSession.id == session_id))
             row = res.scalar_one_or_none()
             if not row:
@@ -269,7 +280,7 @@ class AgentContextService:
         handoff_to: Optional[str] = None,
         handoff_payload: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentMessage, AgentSession
         mid = _uid()
         now = _now()
@@ -285,7 +296,7 @@ class AgentContextService:
             "handoff_payload": handoff_payload,
             "created_at": now,
         }
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             db.add(AgentMessage(**row_data))
             # bump turn_count for assistant/user turns
             if role in ("user", "assistant"):
@@ -311,9 +322,9 @@ class AgentContextService:
             if len(cached) >= limit or len(cached) >= 1:
                 # Verify cache isn't stale by checking DB count quickly
                 pass
-        from app.database.config import async_session_factory
+        from app.database.config import db_config
         from app.database.models import AgentMessage
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             # Single query: get last N by desc then reverse (removed unused asc query)
             res2 = await db.execute(
                 select(AgentMessage)
@@ -387,13 +398,29 @@ class AgentContextService:
     async def list_sessions(
         self, team_id: Optional[str] = None, agent_type: Optional[str] = None,
         state: Optional[str] = None, limit: int = 50, offset: int = 0,
+        user_id: Optional[str] = None, team_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        from app.database.config import async_session_factory
+        """List sessions within an explicit access scope.
+
+        ``team_id`` is the narrowest scope.  ``team_ids`` + ``user_id`` are
+        used by authenticated callers that may belong to multiple teams; they
+        must never be left unset in an HTTP handler.
+        """
+        from app.database.config import db_config
         from app.database.models import AgentSession
-        async with async_session_factory() as db:
+        async with _session_factory()() as db:
             q = select(AgentSession).order_by(desc(AgentSession.updated_at))
             if team_id:
                 q = q.where(AgentSession.team_id == team_id)
+            elif team_ids is not None:
+                scopes = []
+                if team_ids:
+                    scopes.append(AgentSession.team_id.in_(team_ids))
+                if user_id:
+                    scopes.append(AgentSession.user_id == user_id)
+                q = q.where(or_(*scopes) if scopes else AgentSession.id.is_(None))
+            elif user_id:
+                q = q.where(AgentSession.user_id == user_id)
             if agent_type:
                 q = q.where(AgentSession.agent_type == agent_type)
             if state:

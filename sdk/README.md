@@ -56,6 +56,18 @@ const created = await onramp.createApiKey('my-org', 'free')
 const budgeted = await onramp.createApiKey('my-org', 'pro', { credit_limit: 5000, expires_in_days: 90 })
 await onramp.getUsage('my-org')
 await onramp.listTiers()
+
+// Repository + onboarding APIs (use a JWT/session token for user-scoped routes)
+const repos = await onramp.listRepositories('team-123')
+const index = await onramp.buildRepositoryIndex('https://github.com/acme/app', {
+  teamId: 'team-123',
+  asyncBuild: true,
+})
+if (index.queued) {
+  const job = await onramp.getIndexJob(index.task_id!)
+  console.log(job.status)
+}
+const ramp = await onramp.getRampSummary('team-123')
 ```
 
 ## Client options

@@ -132,6 +132,18 @@ def _build_app(monkeypatch, docs):
     )
     monkeypatch.setattr(EmbeddingsService, "search", _search)
 
+    async def _authorized_index(_user, _index_id, _team_id=None):
+        return "team-1"
+
+    # Index ownership has dedicated authorization tests; this fixture keeps
+    # route/header tests focused on their fake documents and router.
+    monkeypatch.setattr(ask_module, "_authorize_index", _authorized_index)
+
+    async def _member(_user, _team_id):
+        return True
+
+    monkeypatch.setattr(ask_module, "_is_team_member", _member)
+
     class FakeExplorer:
         query_type = QueryType.REASONING
 
@@ -143,6 +155,11 @@ def _build_app(monkeypatch, docs):
             return {"repo": kwargs.get("repo_url"), "services": []}
 
     monkeypatch.setattr(explore_module, "ArchitectureExplorer", FakeExplorer)
+
+    async def _authorized_repo(_user, _repo_url, _team_id=None):
+        return "team-1"
+
+    monkeypatch.setattr(explore_module, "authorize_registered_repository", _authorized_repo)
 
     application = FastAPI()
     application.state.llm = FakeRouter()
@@ -370,10 +387,9 @@ class TestAskEndpoint:
         async def _not_member(user, team_id):
             return False
 
-        monkeypatch.setattr(ask_module, "_is_team_member", _not_member)
-
         doc = SimpleNamespace(filename="app/main.py", doc_type="source", content="print('hi')")
         app = _build_app(monkeypatch, [doc])
+        monkeypatch.setattr(ask_module, "_is_team_member", _not_member)
         client = TestClient(app)
         body = _ask_body()
         body["team_id"] = "other-team"
@@ -415,10 +431,9 @@ class TestAskEndpoint:
         async def _not_member(user, team_id):
             return False
 
-        monkeypatch.setattr(ask_module, "_is_team_member", _not_member)
-
         doc = SimpleNamespace(filename="app/main.py", doc_type="source", content="print('hi')")
         app = _build_app(monkeypatch, [doc])
+        monkeypatch.setattr(ask_module, "_is_team_member", _not_member)
         client = TestClient(app)
         body = _ask_body()
         body["team_id"] = "other-team"

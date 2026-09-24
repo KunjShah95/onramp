@@ -1,4 +1,4 @@
-import { Star, Quotes, ArrowRight, Buildings, Rocket, ChartLineUp, Users } from '@phosphor-icons/react'
+import { ArrowRight, ChartLineUp, Compass, Flag, Gauge, Users } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
@@ -9,258 +9,167 @@ const navLinks: NavLinkItem[] = [
   { label: 'Changelog', href: '/changelog' },
 ]
 
-const logos = [
-  'Vercel', 'Linear', 'Supabase', 'Cal.com', 'Trigger.dev', 'Railway',
-]
-
-interface Testimonial {
-  quote: string
-  author: string
-  role: string
-  company: string
-  stars: number
-}
-
-const testimonials: Testimonial[] = [
+const validationSignals = [
   {
-    quote: "Onramp cut our new-hire ramp time from 4 weeks to 5 days. New engineers ship to production in their first week. It's changed how we think about onboarding entirely.",
-    author: 'Sarah Chen',
-    role: 'VP of Engineering',
-    company: 'Linear',
-    stars: 5,
+    icon: Gauge,
+    value: 'TBD',
+    label: 'Median time to first merged PR',
+    detail: 'Measured with participating teams, not projected.',
   },
   {
-    quote: "The architecture map alone saved us hours of documentation time. Every PR now comes with automatic context. Our code reviews are faster and more meaningful.",
-    author: 'Marcus Rivera',
-    role: 'CTO',
-    company: 'Supabase',
-    stars: 5,
+    icon: ChartLineUp,
+    value: 'TBD',
+    label: 'Repository context adoption',
+    detail: 'Tracking repeated questions and time-to-answer.',
   },
   {
-    quote: "We scaled from 5 to 40 engineers in 18 months. Onramp made that possible without our senior team becoming bottlenecks. It's our secret weapon for growth.",
-    author: 'Alex Thompson',
-    role: 'Head of Developer Experience',
-    company: 'Vercel',
-    stars: 5,
+    icon: Users,
+    value: 'Pilot',
+    label: 'Design-partner cohort',
+    detail: 'A small validation group is onboarding now.',
   },
 ]
 
-const stats = [
-  { icon: Rocket, value: '3×', label: 'Faster onboarding' },
-  { icon: ChartLineUp, value: '87%', label: 'First PR within week 1' },
-  { icon: Users, value: '10K+', label: 'Repositories indexed' },
-  { icon: Buildings, value: '500+', label: 'Teams onboarded' },
-]
-
-const caseStudies = [
+const learningTracks = [
   {
-    company: 'Fintech startup',
-    description: 'Reduced senior engineer OOO time by 60% using AI-powered codebase explanations and guided learning paths.',
-    result: '60% less context-switching',
+    icon: Compass,
+    title: 'Repository context',
+    description: 'Does grounding answers in the team\'s real code reduce repeated searching and stale guidance?',
   },
   {
-    company: 'E-commerce platform',
-    description: 'Onboarded 12 new engineers across 3 time zones in a single quarter without slowing down the release cycle.',
-    result: '12 hires shipped in Q1',
+    icon: Flag,
+    title: 'First contribution',
+    description: 'Can guided learning, task context, and review gates shorten the path to a safe first change?',
   },
   {
-    company: 'Dev tools company',
-    description: 'Turned their monorepo into a navigable knowledge graph, eliminating the 2-week "just read the code" phase.',
-    result: '80% fewer onboarding questions',
+    icon: ChartLineUp,
+    title: 'Team visibility',
+    description: 'Can leaders see ramp signals and review load without adding another status meeting?',
   },
 ]
 
-/** Build CustomersPage schema */
-function buildCustomersSchema() {
+/** Build an honest, non-testimonial validation-page schema. */
+function buildValidationSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: 'Customers · Onramp',
-    description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding for companies like Vercel, Linear, and Supabase.',
+    name: 'Validation program · Onramp',
+    description:
+      'Onramp is validating repository-grounded developer onboarding with a small design-partner cohort. No customer logos or outcome claims are published before they are measured.',
     url: 'https://onramp.app/customers',
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
       logo: 'https://onramp.app/icon-512.svg',
     },
-    mainEntity: {
-      '@type': 'ItemList',
-      name: 'Onramp Customer Testimonials',
-      description: 'Verified testimonials from engineering leaders at leading tech companies.',
-      numberOfItems: testimonials.length,
-      itemListElement: testimonials.map((t, i) => ({
-        '@type': 'ListItem',
-        position: i + 1,
-        item: {
-          '@type': 'Review',
-          author: {
-            '@type': 'Person',
-            name: t.author,
-            jobTitle: t.role,
-            worksFor: {
-              '@type': 'Organization',
-              name: t.company,
-            },
-          },
-          reviewRating: {
-            '@type': 'Rating',
-            ratingValue: t.stars,
-            bestRating: 5,
-            worstRating: 1,
-          },
-          reviewBody: t.quote,
-        },
-      })),
-    },
   }
 }
 
-/** Build BreadcrumbList schema for Customers page */
+/** Build BreadcrumbList schema for the validation page. */
 function buildCustomersBreadcrumbSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: 'Home',
-        item: 'https://onramp.app/',
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: 'Customers',
-        item: 'https://onramp.app/customers',
-      },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://onramp.app/' },
+      { '@type': 'ListItem', position: 2, name: 'Validation', item: 'https://onramp.app/customers' },
     ],
   }
 }
 
 export default function CustomersPage() {
-  const customersSchema = buildCustomersSchema()
+  const validationSchema = buildValidationSchema()
   const breadcrumbSchema = buildCustomersBreadcrumbSchema()
 
   return (
     <MarketingLayout
       navLinks={navLinks}
       seo={{
-        title: 'Customers · Onramp',
-        description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.',
+        title: 'Validation program · Onramp',
+        description:
+          'See how Onramp is validating repository-grounded onboarding with a small design-partner cohort.',
         path: '/customers',
-        schema: [customersSchema, breadcrumbSchema],
+        schema: [validationSchema, breadcrumbSchema],
       }}
     >
       <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-10 pb-24">
-        {/* Hero */}
-        <div className="mb-16 text-center max-w-4xl mx-auto">
-          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mb-4 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
-            Trusted by <span className="text-gradient">engineering teams</span> worldwide.
+        <div className="mb-20 text-center max-w-4xl mx-auto">
+          <p className="font-code text-[11px] uppercase tracking-[0.16em] text-ink-tertiary mb-5">
+            Validation program
+          </p>
+          <h1 className="font-body text-[clamp(2rem,4.2vw,3rem)] mb-5 font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+            Building the onboarding layer with <span className="text-gradient">real teams</span>.
           </h1>
           <p className="text-[17px] leading-[1.6] text-ink-secondary max-w-2xl mx-auto">
-            From fast-growing startups to established engineering orgs. Onramp helps teams ship faster, onboard smoother, and stay in flow.
+            Onramp is in an early validation phase with a small design-partner cohort. We publish what we
+            measure — not logos, testimonials, or outcome numbers we have not earned yet.
           </p>
         </div>
 
-        {/* Logo cloud — ruled strip */}
-        <div className="mb-16 rounded-card border border-seam bg-panel px-8 py-10 shadow-seam">
-          <p className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary text-center mb-8">
-            Trusted by leading engineering teams
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {logos.map((name) => (
-              <span
-                key={name}
-                className="font-code text-[13px] font-semibold tracking-tight text-ink-tertiary/40"
-              >
-                {name}
-              </span>
-            ))}
+        <section className="mb-20" aria-labelledby="validation-signals">
+          <div className="mb-8 text-center">
+            <h2 id="validation-signals" className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">
+              Signals we are measuring
+            </h2>
+            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+              These values remain TBD until the validation study is complete.
+            </p>
           </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 text-center transition-colors hover:border-[hsl(var(--accent))]/30"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] mx-auto mb-3">
-                <s.icon size={20} weight="duotone" />
-              </span>
-              <div className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{s.value}</div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Testimonials */}
-        <div className="mb-20">
-          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-8 text-center">What our customers say</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
+            {validationSignals.map((signal) => (
               <div
-                key={t.author}
-                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 transition-colors hover:border-[hsl(var(--accent))]/30 flex flex-col"
+                key={signal.label}
+                className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 p-6 text-center"
               >
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, si) => (
-                    <Star key={si} size={14} weight="fill" className="text-[hsl(var(--accent))]" />
-                  ))}
-                </div>
-                <Quotes size={20} weight="fill" className="text-[hsl(var(--accent))]/20 mb-3" />
-                <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed flex-1 mb-4 italic">"{t.quote}"</p>
-                <div>
-                  <div className="text-sm font-semibold text-[hsl(var(--foreground))]">{t.author}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">{t.role}, {t.company}</div>
-                </div>
+                <span className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))]">
+                  <signal.icon size={20} weight="duotone" />
+                </span>
+                <div className="font-display text-3xl font-bold text-[hsl(var(--foreground))]">{signal.value}</div>
+                <div className="mt-1 text-sm font-semibold text-[hsl(var(--foreground))]">{signal.label}</div>
+                <p className="mt-3 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">{signal.detail}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Case studies */}
-        <div className="mb-16">
-          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-8 text-center">Case studies</h2>
+        <section className="mb-20" aria-labelledby="learning-tracks">
+          <div className="mb-8 text-center">
+            <h2 id="learning-tracks" className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">
+              What the cohort is helping us learn
+            </h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {caseStudies.map((cs) => (
-              <div
-                key={cs.company}
-                className="p-6 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 transition-colors hover:border-[hsl(var(--accent))]/30"
-              >
-                <h3 className="font-display text-lg font-semibold text-[hsl(var(--foreground))] mb-2 capitalize">{cs.company}</h3>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">{cs.description}</p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] text-xs font-semibold">
-                  <ArrowRight size={12} weight="bold" />
-                  {cs.result}
-                </div>
+            {learningTracks.map((track) => (
+              <div key={track.title} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/30 p-6">
+                <track.icon size={22} className="mb-4 text-[hsl(var(--accent))]" weight="duotone" />
+                <h3 className="font-display text-lg font-semibold text-[hsl(var(--foreground))]">{track.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">{track.description}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* CTA */}
-        <div className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
-          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))] mb-3">Ready to transform your onboarding?</h2>
-          <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-lg mx-auto">
-            Join hundreds of engineering teams already using Onramp to ship faster.
+        <section className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/40 p-8 text-center">
+          <h2 className="font-display text-2xl font-bold text-[hsl(var(--foreground))]">Help us validate the product</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
+            If your team is onboarding developers into a real repository, we would value a conversation about
+            your current workflow and the evidence we should collect.
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <div className="mt-6 flex items-center justify-center gap-4">
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold hover:opacity-90 transition-all"
+              className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-5 py-2.5 text-sm font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:opacity-90"
             >
-              Talk to sales <ArrowRight size={16} />
+              Join the validation cohort <ArrowRight size={16} />
             </Link>
             <Link
-              to="/#pricing"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[hsl(var(--border))] text-[hsl(var(--foreground))] text-sm font-semibold hover:bg-[hsl(var(--card))]/50 transition-all"
+              to="/docs"
+              className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-5 py-2.5 text-sm font-semibold text-[hsl(var(--foreground))] transition-all hover:bg-[hsl(var(--card))]/50"
             >
-              View pricing
+              Read the product docs
             </Link>
           </div>
-        </div>
+        </section>
       </div>
     </MarketingLayout>
   )

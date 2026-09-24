@@ -1,13 +1,23 @@
 import json
 import logging
+import re
 from typing import Any, Dict, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from app.agents import RepoQA
 from app.services.quota import enforce_quota
 from app.services.conversation_service import ConversationService
+from app.services.repo_context import RepoContextService, index_id_for
+from app.services.repo_index_access import (
+    find_registered_repository,
+    grant_index_access,
+    get_index_job,
+    list_index_grants,
+    parse_github_repo,
+    record_index_job,
+)
 from app.api.v1.auth import get_current_user
 from app.api.v1.llm_route import (
     attach_served_route_header,
@@ -23,13 +33,23 @@ logger = logging.getLogger("onramp.ask")
 router = APIRouter(prefix="/ask", tags=["qa"])
 
 _conversation = ConversationService()
+_repo_context = RepoContextService()
 
 # In-memory cache for active repo_qa sessions per (user_id, index_id) -> session_id
 _ASK_SESSIONS: Dict[str, str] = {}
 
 
 class IndexRequest(BaseModel):
-    repo_path: str = Field(..., max_length=500)
+    # ``repo_path`` is retained as a deprecated wire alias for older clients;
+    # both fields now carry a repository URL, never a server filesystem path.
+    repo_url: Optional[str] = Field(default=None, max_length=500)
+    repo_path: Optional[str] = Field(default=None, max_length=500)
+    branch: str = Field(default="main", min_length=1, max_length=255)
+    team_id: Optional[str] = Field(default=None, max_length=100)
+    async_build: bool = False
+
+    def repository_url(self) -> str:
+        return (self.repo_url or self.repo_path or "").strip()
 
 
 class QueryRequest(BaseModel):
@@ -141,15 +161,205 @@ async def _resolve_team_routing(
     }
 
 
+async def _accessible_team_ids(user: dict) -> set[str]:
+    """Resolve team memberships for repository/index authorization."""
+    uid = user.get("uid", "")
+    if not uid or uid.startswith("api:"):
+        return {str(user["team_id"])} if user.get("team_id") else set()
+    try:
+        from app.services.team_service import get_user_teams
+        teams = await get_user_teams(uid)
+    except Exception:
+        logger.exception("Failed to resolve teams for repository access")
+        return set()
+    return {
+        str(team.get("id") or team.get("team_id"))
+        for team in (teams or [])
+        if team.get("id") or team.get("team_id")
+    }
+
+
+async def _resolve_user_team(user: dict, requested_team_id: Optional[str]) -> str:
+    accessible = await _accessible_team_ids(user)
+    if requested_team_id:
+        if str(requested_team_id) not in accessible:
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+        return str(requested_team_id)
+    if not accessible:
+        raise HTTPException(status_code=403, detail="A team membership is required")
+    return sorted(accessible)[0]
+
+
+async def _authorize_index(
+    user: dict,
+    index_id: str,
+    requested_team_id: Optional[str] = None,
+) -> str:
+    """Return the team allowed to use an index, or reject the request."""
+    accessible = await _accessible_team_ids(user)
+    if requested_team_id and str(requested_team_id) not in accessible:
+        # Do this before looking up the index so an explicit cross-team scope
+        # gets a deterministic 403 without revealing whether the index exists.
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+    grants = await list_index_grants(index_id)
+    if grants:
+        allowed = {
+            str(grant.get("team_id"))
+            for grant in grants
+            if grant.get("team_id") and str(grant.get("team_id")) in accessible
+        }
+        if requested_team_id and str(requested_team_id) not in allowed:
+            raise HTTPException(status_code=403, detail="Index belongs to another team")
+        if allowed:
+            return str(requested_team_id) if requested_team_id else sorted(allowed)[0]
+        raise HTTPException(status_code=403, detail="Index belongs to another team")
+
+    # Compatibility path for indexes created before durable grants existed:
+    # only accept them when the repository registry independently proves the
+    # caller owns the workspace.  Unknown/unregistered indexes stay private.
+    doc = await _repo_context.get(index_id)
+    repo_url = (doc or {}).get("repo_url", "")
+    if not repo_url:
+        raise HTTPException(status_code=404, detail="Index not found")
+    repository = await find_registered_repository(repo_url)
+    team_id = str(repository.get("team_id")) if repository and repository.get("team_id") else None
+    if not team_id or team_id not in accessible:
+        raise HTTPException(status_code=403, detail="Index belongs to another team")
+    if requested_team_id and str(requested_team_id) != team_id:
+        raise HTTPException(status_code=403, detail="Index belongs to another team")
+    await grant_index_access(index_id, team_id, repo_url, (doc or {}).get("branch", "main"))
+    return team_id
+
+
 @router.post("/index")
-async def index_repo(request: IndexRequest, req: Request, _q=enforce_quota("analyze")):
+async def index_repo(
+    request: IndexRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("analyze"),
+):
+    repo_url = request.repository_url()
+    if not repo_url:
+        raise HTTPException(status_code=400, detail="repo_url is required")
+    if not parse_github_repo(repo_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Only strict https://github.com/owner/repository URLs are supported",
+        )
+
+    repository = await find_registered_repository(repo_url)
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository is not registered for this workspace")
+    repository_team_id = repository.get("team_id")
+    if not repository_team_id:
+        raise HTTPException(status_code=403, detail="Repository is not assigned to a team")
+
+    team_id = await _resolve_user_team(user, request.team_id or str(repository_team_id))
+    if str(repository_team_id) != team_id:
+        raise HTTPException(status_code=403, detail="Repository belongs to another team")
+
+    index_id = index_id_for(repo_url, request.branch)
+    if request.async_build:
+        from app.tasks.repo_index_tasks import build_ask_index
+
+        try:
+            task = build_ask_index.delay(
+                repo_url,
+                branch=request.branch,
+                team_id=team_id,
+            )
+            task_id = str(getattr(task, "id", ""))
+            if not task_id:
+                raise RuntimeError("Index task did not return an id")
+            await record_index_job(
+                task_id=task_id,
+                requested_by=user.get("uid", ""),
+                team_id=team_id,
+                index_id=index_id,
+                repo_url=repo_url,
+            )
+        except Exception as exc:
+            logger.exception("Failed to enqueue Ask index build for %s", repo_url)
+            raise HTTPException(status_code=502, detail="Failed to enqueue repository indexing")
+        return JSONResponse(
+            status_code=202,
+            content={
+                "queued": True,
+                "task_id": task_id,
+                "index_id": index_id,
+                "repo_url": repo_url,
+                "branch": request.branch,
+                "team_id": team_id,
+            },
+        )
+
+    import shutil
     llm = getattr(req.app.state, "llm", None)
     qa = RepoQA(llm)
+    cloned_path: str | None = None
     try:
-        index_id = await qa.index_repo(request.repo_path)
-        return {"index_id": index_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        from app.services.github_service import GitHubService
+        github = GitHubService()
+        # Clone into an isolated temp dir; never walk a caller-supplied path.
+        cloned_path = await github.clone_repo(repo_url, request.branch)
+        await qa.index_repo(cloned_path, index_id=index_id)
+        await grant_index_access(index_id, team_id, repo_url, request.branch)
+        return {
+            "index_id": index_id,
+            "repo_url": repo_url,
+            "branch": request.branch,
+            "team_id": team_id,
+        }
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Ask repository indexing failed for %s", repo_url)
+        raise HTTPException(status_code=502, detail="Repository indexing failed")
+    finally:
+        if cloned_path:
+            shutil.rmtree(cloned_path, ignore_errors=True)
+
+
+@router.get("/jobs/{task_id}")
+async def index_job_status(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Return a redacted status for an asynchronous Ask index build."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task id")
+
+    job = await get_index_job(task_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Index job not found")
+    uid = user.get("uid", "")
+    if job.get("requested_by") != uid:
+        if not job.get("team_id") or str(job.get("team_id")) not in await _accessible_team_ids(user):
+            raise HTTPException(status_code=403, detail="Index job belongs to another team")
+
+    from celery.result import AsyncResult
+    from app.tasks.celery_app import celery_app
+
+    result = AsyncResult(task_id, app=celery_app)
+    state = result.state
+    response: Dict[str, Any] = {"task_id": task_id, "status": state}
+    if state == "SUCCESS":
+        payload = result.result if isinstance(result.result, dict) else {}
+        team_id = payload.get("team_id")
+        if team_id and str(team_id) not in await _accessible_team_ids(user):
+            raise HTTPException(status_code=403, detail="Not a member of this team")
+        response["result"] = {
+            key: payload.get(key)
+            for key in ("index_id", "repo_url", "branch", "team_id", "status")
+            if key in payload
+        }
+    elif state == "FAILURE":
+        # Do not return exception text: it can contain filesystem paths or
+        # provider details. The server log remains the diagnostic source.
+        response["error"] = "Indexing failed"
+    return response
 
 
 async def _get_memory(user_id: str, index_id: str, question: str, use_memory: bool) -> str:
@@ -160,9 +370,19 @@ async def _get_memory(user_id: str, index_id: str, question: str, use_memory: bo
 
 
 async def _get_or_create_ask_session(user_id: str, index_id: str, team_id: Optional[str] = None) -> Optional[str]:
+    """Resolve the active ask session for (user, index), shared across workers.
+
+    The mapping lives in Redis (``ask:session:{user}:{index}``, 24h TTL) with
+    the in-process dict as a fallback, so multiple API workers reuse the same
+    session instead of creating one each. The session itself is durable in
+    Postgres via ``agent_context``; this is only a lookup cache.
+    """
     key = f"{user_id}:{index_id}"
-    sid = _ASK_SESSIONS.get(key)
-    if sid:
+    redis_key = f"ask:session:{user_id}:{index_id}"
+
+    async def _active(sid: Optional[str]) -> Optional[str]:
+        if not sid:
+            return None
         try:
             from app.services.agent_context import agent_context
             sess = await agent_context.get_session(sid)
@@ -170,10 +390,37 @@ async def _get_or_create_ask_session(user_id: str, index_id: str, team_id: Optio
                 return sid
         except Exception:
             pass
+        return None
+
+    # 1. Redis (cross-worker) — best effort.
+    try:
+        from app.services.cache_service import get_client
+        client = await get_client()
+        if client is not None:
+            cached = await client.get(redis_key)
+            sid = cached.decode() if isinstance(cached, bytes) else cached
+            active = await _active(sid)
+            if active:
+                _ASK_SESSIONS[key] = active
+                return active
+    except Exception:
+        logger.debug("ask session redis lookup failed — in-process fallback", exc_info=True)
+    # 2. In-process fallback.
+    sid = _ASK_SESSIONS.get(key)
+    active = await _active(sid)
+    if active:
+        return active
     try:
         from app.services.agent_context import agent_context
         sess = await agent_context.create_session(agent_type="repo_qa", team_id=team_id, user_id=user_id, index_id=index_id, scratchpad={"source": "ask"})
         _ASK_SESSIONS[key] = sess["id"]
+        try:
+            from app.services.cache_service import get_client
+            client = await get_client()
+            if client is not None:
+                await client.setex(redis_key, 24 * 3600, sess["id"])
+        except Exception:
+            pass
         return sess["id"]
     except Exception:
         logger.debug("ask session creation failed — stateless fallback", exc_info=True)
@@ -189,8 +436,10 @@ async def query_repo(
     _q=enforce_quota("chat"),
 ):
     llm = getattr(req.app.state, "llm", None)
-    # Session-aware: bind RepoQA to a persistent per-(user,index_id) session
-    team = await _resolve_team_routing(user, request.team_id)
+    # Authorize the index before reading conversation memory or creating a
+    # session.  The index grant, not a client-supplied team_id, is authoritative.
+    index_team_id = await _authorize_index(user, request.index_id, request.team_id)
+    team = await _resolve_team_routing(user, index_team_id)
     routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
     ask_session_id = await _get_or_create_ask_session(user.get("uid", ""), request.index_id, team_id=team["org"])
     qa = RepoQA(llm, session_id=ask_session_id) if ask_session_id else RepoQA(llm)
@@ -232,7 +481,8 @@ async def query_repo_stream(
 ):
     """Stream the answer as Server-Sent Events (text/event-stream)."""
     llm = getattr(req.app.state, "llm", None)
-    team = await _resolve_team_routing(user, request.team_id)
+    index_team_id = await _authorize_index(user, request.index_id, request.team_id)
+    team = await _resolve_team_routing(user, index_team_id)
     routing_mode = await resolve_team_routing_mode(team["org"], request.routing_mode)
     ask_session_id = await _get_or_create_ask_session(user.get("uid", ""), request.index_id, team_id=team["org"])
     qa = RepoQA(llm, session_id=ask_session_id) if ask_session_id else RepoQA(llm)

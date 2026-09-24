@@ -28,6 +28,7 @@ const loaders: Record<string, Loader> = {
   '/security': () => import('../pages/SecurityPage'),
   '/dpa': () => import('../pages/DPAPage'),
   '/soc-2': () => import('../pages/SOC2Page'),
+  '/trust': () => import('../pages/TrustCenterPage'),
   '/privacy': () => import('../pages/PrivacyPage'),
   '/terms': () => import('../pages/TermsPage'),
 

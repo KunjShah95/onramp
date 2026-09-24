@@ -23,7 +23,7 @@ const trustPrinciples = [
   {
     icon: ListChecks,
     title: 'Availability',
-    desc: 'The system is available for operation and use as committed. Our SLA targets 99.9% uptime with redundancy across multiple availability zones.',
+    desc: 'The availability criteria describe the controls and evidence we use to evaluate uptime, recovery, and operational resilience.',
   },
   {
     icon: MagnifyingGlass,
@@ -33,10 +33,10 @@ const trustPrinciples = [
 ]
 
 const controls = [
-  { category: 'Access Control', items: ['MFA enforced for all admin accounts', 'Role-based access with least privilege', 'Quarterly access reviews', 'Automated de-provisioning'] },
-  { category: 'Data Protection', items: ['AES-256 encryption at rest', 'TLS 1.3 for data in transit', 'Automated backup with DR testing', 'Data retention and deletion policies'] },
-  { category: 'Monitoring & Logging', items: ['24/7 infrastructure monitoring', 'Immutable audit trail', 'SIEM integration', 'Anomaly detection and alerting'] },
-  { category: 'Vulnerability Management', items: ['Monthly penetration tests', 'Dependency vulnerability scanning', 'Responsible disclosure program', 'Patch management within 30 days'] },
+  { category: 'Access Control', items: ['Team-scoped RBAC and tenant boundaries', 'MFA and SSO: Enterprise roadmap', 'Quarterly access reviews: program work in progress', 'Automated de-provisioning: platform controls under review'] },
+  { category: 'Data Protection', items: ['AES-256 encryption at rest', 'TLS 1.3 for data in transit', 'Backup and restoration testing: deployment checklist in progress', 'Retention and deletion controls: roadmap'] },
+  { category: 'Monitoring & Logging', items: ['Application and provider health monitoring', 'Structured audit events; immutable export roadmap', 'SIEM integration: roadmap', 'Alerting is being expanded with production rollout'] },
+  { category: 'Vulnerability Management', items: ['Dependency scanning in CI', 'Security review cadence: being established', 'Responsible disclosure program', 'Patch SLAs: operating process under review'] },
 ]
 
 /** Build SOC 2 schema */
@@ -45,7 +45,7 @@ function buildSOC2Schema() {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: 'SOC 2 Type II · Onramp',
-    description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.',
+    description: 'SOC 2 Type II audit work in progress. Onramp is not yet certified.',
     url: 'https://onramp.app/soc-2',
     publisher: {
       '@type': 'Organization',
@@ -57,16 +57,14 @@ function buildSOC2Schema() {
     mainEntity: {
       '@type': 'Certification',
       name: 'SOC 2 Type II',
-      description: 'SOC 2 Type II certification for Security, Confidentiality, Availability, and Processing Integrity.',
-      certificationStatus: 'In Progress',
-      expectedCompletion: '2026-12-31',
+      description: 'SOC 2 Type II certification work in progress for Security, Confidentiality, Availability, and Processing Integrity. Onramp is not yet certified.',
+      certificationStatus: 'In Progress — not certified',
       trustServicesCriteria: [
         'Security',
         'Confidentiality',
         'Availability',
         'Processing Integrity',
       ],
-      auditor: 'Independent AICPA-accredited auditor',
       controls: controls.map((c) => ({
         category: c.category,
         controls: c.items,
@@ -112,7 +110,7 @@ export default function SOC2Page() {
       navLinks={navLinks}
       seo={{
         title: 'SOC 2 Type II · Onramp',
-        description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.',
+        description: 'SOC 2 Type II audit work in progress. Onramp is not yet certified.',
         path: '/soc-2',
         schema: [soc2Schema, breadcrumbSchema],
       }}
@@ -141,8 +139,7 @@ export default function SOC2Page() {
           <div>
             <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II · In progress</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
-              Our audit is currently underway with an independent AICPA-accredited auditor. We expect to complete the certification process by Q4 2026.
-              In the meantime, we operate with controls that meet or exceed SOC 2 requirements.
+              Our Type II audit work is in progress. We have not completed certification, and this page will be updated when an independent auditor completes the review and any remediation. The controls listed below describe current work and roadmap items, not completed certification claims.
             </p>
           </div>
         </div>
@@ -200,15 +197,15 @@ export default function SOC2Page() {
 
         {/* CTA */}
         <div className="text-center p-8 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]/50">
-          <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-3">Need our SOC 2 report?</h2>
+          <h2 className="font-display text-xl font-bold text-[hsl(var(--foreground))] mb-3">Need a security overview?</h2>
           <p className="text-[hsl(var(--muted-foreground))] mb-6 max-w-md mx-auto">
-            Current and prospective customers can request our SOC 2 report under NDA.
+            Contact us for the current security posture and the status of our SOC 2 Type II program. A final audit report is not available yet.
           </p>
           <Link
             to="/contact"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-semibold hover:opacity-90 transition-all"
           >
-            Request report
+            Contact security
           </Link>
         </div>
       </div>

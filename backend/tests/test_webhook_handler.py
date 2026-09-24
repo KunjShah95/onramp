@@ -410,8 +410,8 @@ class TestHandlePushEvent:
         # Patch the celery dispatch to capture the call (no broker in tests).
         dispatched = {}
 
-        def fake_delay(url, branch="main", force=False, scope=""):
-            dispatched.update(url=url, branch=branch, force=force, scope=scope)
+        def fake_delay(url, branch="main", force=False, scope="", team_id=None):
+            dispatched.update(url=url, branch=branch, force=force, scope=scope, team_id=team_id)
             return type("R", (), {"id": "task-push-1"})()
 
         from app.tasks import repo_index_tasks
@@ -440,6 +440,7 @@ class TestHandlePushEvent:
             "branch": "main",
             "force": True,
             "scope": scope,
+            "team_id": None,
         }
         # The stale cached answer is gone.
         assert await llm_cache.get_cached("chat", "how does auth work", None, 2000, scope=scope) is None

@@ -34,8 +34,15 @@ class RepoQA(BaseAgent):
     async def execute(self, **kwargs) -> Dict[str, Any]:
         return {"status": "ok"}
 
-    async def index_repo(self, repo_path: str) -> str:
-        index_id = hashlib.md5(repo_path.encode()).hexdigest()[:12]
+    async def index_repo(self, repo_path: str, index_id: Optional[str] = None) -> str:
+        """Index a checkout under a caller-supplied stable ID.
+
+        Local/temporary checkout paths must not become the public index key:
+        callers that clone a repository should pass the canonical
+        ``index_id_for(repo_url, branch)`` value so subsequent queries resolve
+        the same index.  The MD5 fallback remains for legacy/internal callers.
+        """
+        index_id = index_id or hashlib.md5(repo_path.encode()).hexdigest()[:12]
         await self.embeddings.index_documents(index_id, repo_path)
         return index_id
 

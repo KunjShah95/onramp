@@ -118,6 +118,68 @@ export interface TierLimitsInfo {
   credit_costs: Record<string, number>
 }
 
+export interface RepositoryRecord {
+  id?: string
+  name: string
+  owner: string
+  team_id?: string
+  url?: string
+  status?: string
+  [key: string]: unknown
+}
+
+export interface RepositoryIndexOptions {
+  branch?: string
+  maxFiles?: number
+  force?: boolean
+  asyncBuild?: boolean
+  teamId?: string
+}
+
+export interface RepositoryIndexResult {
+  index_id: string
+  repo_url?: string
+  branch?: string
+  team_id?: string
+  queued?: boolean
+  task_id?: string
+  [key: string]: unknown
+}
+
+export interface IndexJob {
+  task_id: string
+  status: string
+  result?: RepositoryIndexResult
+  error?: string
+}
+
+export interface RampSummary {
+  team_id?: string
+  profiles?: unknown[]
+  benchmark?: Record<string, unknown>
+  cost_model?: Record<string, unknown>
+  totals?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface RampCostModel {
+  senior_hourly_rate_usd?: number
+  review_hours_per_cycle?: number
+  stalled_weekly_hours?: number
+}
+
+export interface OnboardingProgress {
+  plan_id: string
+  team_id?: string
+  user_id?: string
+  days_elapsed: number
+  completion_percent: number
+  milestones: { completed: number; total: number }
+  pre_boarding: { completed: number; total: number }
+  next_milestone?: Record<string, unknown>
+  next_pre_boarding_task?: Record<string, unknown>
+}
+
 // ── Errors ──────────────────────────────────────────────────────────────
 
 export class OnrampApiError extends Error {
@@ -353,6 +415,125 @@ export class OnrampClient {
         user: options.user,
       }),
     })
+  }
+
+  // ── Repository, index, and ramp APIs ────────────────────────────────
+
+  private apiUrl(path: string): string {
+    return `${this.baseUrl}/api/v1${path}`
+  }
+
+  private withQuery(path: string, params: Record<string, string | number | undefined> = {}): string {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') query.set(key, String(value))
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return this.apiUrl(`${path}${suffix}`)
+  }
+
+  /** List repositories visible to the authenticated workspace. */
+  async listRepositories(teamId?: string): Promise<RepositoryRecord[]> {
+    const res = await this.request<{ repos: RepositoryRecord[] }>(
+      this.withQuery('/repos', { team_id: teamId }),
+      { method: 'GET', headers: this.headers() },
+    )
+    return this.unwrap(res).repos
+  }
+
+  /** Register a repository for a team before indexing or analysis. */
+  async createRepository(input: {
+    name: string
+    owner: string
+    url?: string
+    language?: string
+    description?: string
+    teamId?: string
+  }): Promise<RepositoryRecord> {
+    const res = await this.request<RepositoryRecord>(this.apiUrl('/repos'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        name: input.name,
+        owner: input.owner,
+        url: input.url,
+        language: input.language,
+        description: input.description,
+        team_id: input.teamId,
+      }),
+    })
+    return this.unwrap(res)
+  }
+
+  /** Build or queue a repository context/embedding index. */
+  async buildRepositoryIndex(
+    repoUrl: string,
+    options: RepositoryIndexOptions = {},
+  ): Promise<RepositoryIndexResult> {
+    const res = await this.request<RepositoryIndexResult>(this.apiUrl('/repos/index'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        repo_url: repoUrl,
+        branch: options.branch ?? 'main',
+        max_files: options.maxFiles ?? 1000,
+        force: options.force ?? false,
+        async_build: options.asyncBuild ?? false,
+        team_id: options.teamId,
+      }),
+    })
+    return this.unwrap(res)
+  }
+
+  /** Poll an asynchronous repository-index job. */
+  async getIndexJob(taskId: string): Promise<IndexJob> {
+    const res = await this.request<IndexJob>(this.apiUrl(`/ask/jobs/${encodeURIComponent(taskId)}`), {
+      method: 'GET',
+      headers: this.headers(),
+    })
+    return this.unwrap(res)
+  }
+
+  /** Fetch the Track → Quantify → Intercept ramp summary. */
+  async getRampSummary(teamId?: string): Promise<RampSummary> {
+    const res = await this.request<RampSummary>(
+      this.withQuery('/ramp/summary', { team_id: teamId }),
+      { method: 'GET', headers: this.headers() },
+    )
+    return this.unwrap(res)
+  }
+
+  /** Fetch the current stuck-dev list without firing alerts. */
+  async getRampStuck(teamId?: string): Promise<Record<string, unknown>> {
+    const res = await this.request<Record<string, unknown>>(
+      this.withQuery('/ramp/stuck', { team_id: teamId }),
+      { method: 'GET', headers: this.headers() },
+    )
+    return this.unwrap(res)
+  }
+
+  /** Update a team's calibrated senior-time cost model (leader role required). */
+  async updateRampCostModel(
+    model: RampCostModel,
+    teamId?: string,
+  ): Promise<Record<string, unknown>> {
+    const res = await this.request<Record<string, unknown>>(
+      this.withQuery('/ramp/cost-model', { team_id: teamId }),
+      {
+        method: 'PUT',
+        headers: this.headers(),
+        body: JSON.stringify(model),
+      },
+    )
+    return this.unwrap(res)
+  }
+  /** Fetch the compact first-10-days progress view for an onboarding plan. */
+  async getOnboardingProgress(planId: string): Promise<OnboardingProgress> {
+    const res = await this.request<OnboardingProgress>(
+      this.apiUrl(`/onboarding-plans/${encodeURIComponent(planId)}/progress`),
+      { method: 'GET', headers: this.headers() },
+    )
+    return this.unwrap(res)
   }
 
   // ── AIaaS agent endpoints ───────────────────────────────────────────

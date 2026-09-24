@@ -37,6 +37,7 @@ def score_repo_health(
     owner: str,
     repo: str,
     repo_structure: dict,
+    team_id: Optional[str] = None,
 ) -> dict:
     """Score a repository's code health using the HealthScorer agent.
 
@@ -53,7 +54,11 @@ def score_repo_health(
         sess_id = None
         try:
             from app.services.agent_context import agent_context
-            sess = await agent_context.create_session(agent_type="health_scorer", scratchpad={"owner": owner, "repo": repo})
+            sess = await agent_context.create_session(
+                agent_type="health_scorer",
+                team_id=team_id,
+                scratchpad={"owner": owner, "repo": repo},
+            )
             sess_id = sess["id"]
         except Exception:
             pass
@@ -66,7 +71,13 @@ def score_repo_health(
                 from app.services.agent_context import agent_context as _ac
                 from app.services.agent_bus import agent_bus as _bus
                 await _ac.set_state(sess_id, "completed")
-                await _bus.publish("agent.health_scored", payload={"owner": owner, "repo": repo, "score": result.get("score"), "session_id": sess_id}, source_session_id=sess_id, source_agent="health_scorer")
+                await _bus.publish(
+                    "agent.health_scored",
+                    payload={"owner": owner, "repo": repo, "score": result.get("score"), "session_id": sess_id},
+                    source_session_id=sess_id,
+                    source_agent="health_scorer",
+                    team_id=team_id,
+                )
             except Exception:
                 pass
         return result
@@ -96,6 +107,7 @@ def analyze_pr_diffs(
     repo: str,
     pr_number: int,
     diff_content: str,
+    team_id: Optional[str] = None,
 ) -> dict:
     """Run PR review analysis on a diff."""
     import asyncio
@@ -107,7 +119,11 @@ def analyze_pr_diffs(
         sess_id = None
         try:
             from app.services.agent_context import agent_context
-            sess = await agent_context.create_session(agent_type="pr_review", scratchpad={"owner": owner, "repo": repo, "pr_number": pr_number})
+            sess = await agent_context.create_session(
+                agent_type="pr_review",
+                team_id=team_id,
+                scratchpad={"owner": owner, "repo": repo, "pr_number": pr_number},
+            )
             sess_id = sess["id"]
         except Exception:
             pass
@@ -119,7 +135,13 @@ def analyze_pr_diffs(
                 from app.services.agent_bus import agent_bus as _bus
                 await _ac.append_message(sess_id, role="assistant", content=str(result)[:4000], agent_type="pr_review")
                 await _ac.set_state(sess_id, "completed")
-                await _bus.publish("agent.pr_reviewed", payload={"owner": owner, "repo": repo, "pr_number": pr_number, "session_id": sess_id}, source_session_id=sess_id, source_agent="pr_review")
+                await _bus.publish(
+                    "agent.pr_reviewed",
+                    payload={"owner": owner, "repo": repo, "pr_number": pr_number, "session_id": sess_id},
+                    source_session_id=sess_id,
+                    source_agent="pr_review",
+                    team_id=team_id,
+                )
             except Exception:
                 pass
         return result
@@ -147,6 +169,7 @@ def generate_learning_path(
     user_id: str,
     repo_structure: dict,
     role: str = "developer",
+    team_id: Optional[str] = None,
 ) -> dict:
     """Generate a personalized learning path from a codebase structure."""
     import asyncio
@@ -158,7 +181,12 @@ def generate_learning_path(
         sess_id = None
         try:
             from app.services.agent_context import agent_context
-            sess = await agent_context.create_session(agent_type="learning_path_generator", user_id=user_id, scratchpad={"role": role})
+            sess = await agent_context.create_session(
+                agent_type="learning_path_generator",
+                user_id=user_id,
+                team_id=team_id,
+                scratchpad={"role": role},
+            )
             sess_id = sess["id"]
         except Exception:
             pass
@@ -169,7 +197,13 @@ def generate_learning_path(
                 from app.services.agent_context import agent_context as _ac
                 from app.services.agent_bus import agent_bus as _bus
                 await _ac.set_state(sess_id, "completed")
-                await _bus.publish("agent.learning_path.generated", payload={"user_id": user_id, "role": role, "session_id": sess_id}, source_session_id=sess_id, source_agent="learning_path_generator")
+                await _bus.publish(
+                    "agent.learning_path.generated",
+                    payload={"user_id": user_id, "role": role, "session_id": sess_id},
+                    source_session_id=sess_id,
+                    source_agent="learning_path_generator",
+                    team_id=team_id,
+                )
             except Exception:
                 pass
         return {"user_id": user_id, "learning_path": path, "session_id": sess_id}
@@ -237,6 +271,7 @@ def autonomous_code_change(
     issue_description: str,
     branch_name: str = "",
     base_branch: str = "main",
+    team_id: Optional[str] = None,
 ) -> dict:
     """Run the autonomous coding agent to implement an issue and open a PR.
 
@@ -255,7 +290,12 @@ def autonomous_code_change(
             from app.services.agent_context import agent_context
             from app.services.repo_context import index_id_for
             idx = index_id_for(repo_url, base_branch)
-            sess = await agent_context.create_session(agent_type="coding_agent", index_id=idx, scratchpad={"repo_url": repo_url, "issue": issue_description[:500]})
+            sess = await agent_context.create_session(
+                agent_type="coding_agent",
+                team_id=team_id,
+                index_id=idx,
+                scratchpad={"repo_url": repo_url, "issue": issue_description[:500]},
+            )
             sess_id = sess["id"]
         except Exception:
             pass
@@ -271,7 +311,13 @@ def autonomous_code_change(
                 from app.services.agent_context import agent_context as _ac
                 from app.services.agent_bus import agent_bus as _bus
                 await _ac.set_state(sess_id, "completed" if result.get("success") else "failed")
-                await _bus.publish("agent.coding.completed", payload={"repo_url": repo_url, "success": result.get("success"), "pr_url": result.get("pr_url"), "session_id": sess_id}, source_session_id=sess_id, source_agent="coding_agent")
+                await _bus.publish(
+                    "agent.coding.completed",
+                    payload={"repo_url": repo_url, "success": result.get("success"), "pr_url": result.get("pr_url"), "session_id": sess_id},
+                    source_session_id=sess_id,
+                    source_agent="coding_agent",
+                    team_id=team_id,
+                )
             except Exception:
                 pass
         result["session_id"] = sess_id

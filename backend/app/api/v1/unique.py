@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import (
     SilentPairProgramming,
@@ -7,6 +7,8 @@ from app.agents import (
     CodebaseTrailer,
     DriftDetector,
 )
+from app.api.v1.auth import get_current_user
+from app.api.v1.index_access import authorize_repo_index
 from app.services.quota import enforce_quota
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
@@ -43,9 +45,18 @@ class DriftRequest(BaseModel):
 
 
 @router.post("/pair/walkthrough")
-async def generate_walkthrough(request: WalkthroughRequest, req: Request, _q=enforce_quota("generate")):
+async def generate_walkthrough(
+    request: WalkthroughRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("generate"),
+):
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("silent_pair_programming", scratchpad={"issue_title": request.issue_title})
+    sid = await get_session(
+        "silent_pair_programming",
+        user_id=user.get("uid"),
+        scratchpad={"issue_title": request.issue_title},
+    )
     agent = SilentPairProgramming(llm, session_id=sid) if sid else SilentPairProgramming(llm)
     try:
         result = await agent.generate_walkthrough(
@@ -63,9 +74,21 @@ async def generate_walkthrough(request: WalkthroughRequest, req: Request, _q=enf
 
 
 @router.post("/patterns/find-similar")
-async def find_patterns(request: PatternRequest, req: Request, _q=enforce_quota("analyze")):
+async def find_patterns(
+    request: PatternRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("analyze"),
+):
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("pattern_recognition", index_id=request.index_id, scratchpad={"pattern": request.pattern})
+    team_id = await authorize_repo_index(user, request.index_id) if request.index_id else None
+    sid = await get_session(
+        "pattern_recognition",
+        user_id=user.get("uid"),
+        team_id=team_id,
+        index_id=request.index_id,
+        scratchpad={"pattern": request.pattern},
+    )
     agent = PatternRecognition(llm, session_id=sid) if sid else PatternRecognition(llm)
     try:
         result = await agent.find_similar(
@@ -84,9 +107,18 @@ async def find_patterns(request: PatternRequest, req: Request, _q=enforce_quota(
 
 
 @router.post("/test-checklist/generate")
-async def generate_test_checklist(request: TestChecklistRequest, req: Request, _q=enforce_quota("analyze")):
+async def generate_test_checklist(
+    request: TestChecklistRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("analyze"),
+):
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("regression_test_generator", scratchpad={"diff_len": len(request.pr_diff)})
+    sid = await get_session(
+        "regression_test_generator",
+        user_id=user.get("uid"),
+        scratchpad={"diff_len": len(request.pr_diff)},
+    )
     agent = RegressionTestGenerator(llm, session_id=sid) if sid else RegressionTestGenerator(llm)
     try:
         result = await agent.generate(
@@ -103,10 +135,19 @@ async def generate_test_checklist(request: TestChecklistRequest, req: Request, _
 
 
 @router.post("/trailer")
-async def generate_trailer(request: TrailerRequest, req: Request, _q=enforce_quota("trailer")):
+async def generate_trailer(
+    request: TrailerRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("trailer"),
+):
     """Generate a movie-trailer-style summary of a codebase (viral/demo feature)."""
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("codebase_trailer", scratchpad={"repo_url": request.repo_url})
+    sid = await get_session(
+        "codebase_trailer",
+        user_id=user.get("uid"),
+        scratchpad={"repo_url": request.repo_url},
+    )
     agent = CodebaseTrailer(llm, session_id=sid) if sid else CodebaseTrailer(llm)
     try:
         result = await agent.generate(
@@ -123,11 +164,23 @@ async def generate_trailer(request: TrailerRequest, req: Request, _q=enforce_quo
 
 
 @router.post("/drift/detect")
-async def detect_drift(request: DriftRequest, req: Request, _q=enforce_quota("analyze")):
+async def detect_drift(
+    request: DriftRequest,
+    req: Request,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("analyze"),
+):
     """Detect architecture drift — where documented architecture diverges from the
     actual code structure. Returns a drift score, status, and severity-ranked alerts."""
     llm = getattr(req.app.state, "llm", None)
-    sid = await get_session("drift_detector", index_id=request.index_id, scratchpad={"has_docs": bool(request.docs)})
+    team_id = await authorize_repo_index(user, request.index_id) if request.index_id else None
+    sid = await get_session(
+        "drift_detector",
+        user_id=user.get("uid"),
+        team_id=team_id,
+        index_id=request.index_id,
+        scratchpad={"has_docs": bool(request.docs)},
+    )
     agent = DriftDetector(llm, session_id=sid) if sid else DriftDetector(llm)
     try:
         result = await agent.execute(
