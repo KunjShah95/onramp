@@ -290,6 +290,16 @@ LLM_CALLS_TOTAL = register(Counter(
     "LLM provider calls, by provider and free/paid attribution.",
     labelnames=("provider", "free"),
 ))
+LLM_REQUEST_DURATION = register(Histogram(
+    "onramp_llm_request_duration_seconds",
+    "LLM provider request latency, by provider, operation, and outcome.",
+    labelnames=("provider", "operation", "status"),
+))
+LLM_ERRORS_TOTAL = register(Counter(
+    "onramp_llm_errors_total",
+    "LLM provider errors, by provider, operation, and exception type.",
+    labelnames=("provider", "operation", "error_type"),
+))
 LLM_CACHE_HITS = register(Counter(
     "onramp_llm_cache_hits_total",
     "LLM response-cache hits (exact + semantic), by tier.",
@@ -348,6 +358,25 @@ def record_llm_call(provider: str, free: bool) -> None:
     """Record a served LLM provider call."""
     LLM_CALLS_TOTAL.inc(
         labels={"provider": provider, "free": "true" if free else "false"}
+    )
+
+
+def record_llm_latency(provider: str, operation: str, duration_s: float, status: str) -> None:
+    """Record one provider attempt's latency and terminal status."""
+    LLM_REQUEST_DURATION.observe(
+        max(0.0, float(duration_s)),
+        labels={"provider": provider, "operation": operation, "status": status},
+    )
+
+
+def record_llm_error(provider: str, operation: str, error_type: str) -> None:
+    """Record a provider exception without including prompt or response data."""
+    LLM_ERRORS_TOTAL.inc(
+        labels={
+            "provider": provider,
+            "operation": operation,
+            "error_type": str(error_type or "unknown")[:100],
+        }
     )
 
 

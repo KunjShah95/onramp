@@ -64,16 +64,29 @@ depends_on: Union[str, Sequence[str], None] = None
 # ── Idempotency helpers ──────────────────────────────────────────────────────
 
 
+def _offline() -> bool:
+    """Whether Alembic is generating SQL without a live database bind."""
+    return getattr(op.get_context(), "as_sql", False)
+
+
 def _inspector():
+    # ``MockConnection`` cannot be inspected. Offline mode uses the explicit
+    # DDL paths below and must not attempt database introspection.
+    if _offline():
+        return None
     return sa.inspect(op.get_bind())
 
 
 def _has_table(name: str) -> bool:
+    if _offline():
+        # Offline SQL is generated for a clean schema path. Returning True
+        # keeps both CREATE TABLE and CREATE INDEX statements in the script.
+        return True
     return _inspector().has_table(name)
 
 
 def _existing_indexes(table: str) -> set:
-    if not _has_table(table):
+    if _offline() or not _has_table(table):
         return set()
     return {ix["name"] for ix in _inspector().get_indexes(table)}
 

@@ -37,6 +37,21 @@ def _record_llm_call(provider, free: bool) -> None:
     except Exception:
         pass
 
+
+def _record_llm_latency(provider: str, operation: str, duration_s: float, status: str) -> None:
+    try:
+        metrics.record_llm_latency(provider, operation, duration_s, status)
+    except Exception:
+        pass
+
+
+def _record_llm_error(provider: str, operation: str, error_type: str) -> None:
+    try:
+        metrics.record_llm_error(provider, operation, error_type)
+    except Exception:
+        pass
+
+
 logger = logging.getLogger("onramp.llm")
 
 
@@ -1453,6 +1468,8 @@ class LLMRouter:
             if not self._is_available(provider, provider_keys):
                 continue
 
+            started = time.perf_counter()
+            status = "error"
             try:
                 # Pass optional kwargs only when set so existing call stubs
                 # (monkeypatched _call_provider in tests) keep working.
@@ -1472,12 +1489,21 @@ class LLMRouter:
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider: {provider.value}")
                     self.current_provider = provider
+                status = "success"
                 return response, provider
             except Exception as e:
                 self.health.record(provider, False)
+                _record_llm_error(provider.value, "completion", type(e).__name__)
                 err_msg = f"{provider.value} failed: {str(e)}"
                 logger.warning(err_msg)
                 errors.append(err_msg)
+            finally:
+                _record_llm_latency(
+                    provider.value,
+                    "completion",
+                    time.perf_counter() - started,
+                    status,
+                )
 
         raise RuntimeError(f"All LLM providers exhausted. Errors: {'; '.join(errors)}")
 
@@ -1748,6 +1774,8 @@ class LLMRouter:
             )
             yielded = False
             partial: List[str] = []
+            started = time.perf_counter()
+            status = "error"
             try:
                 stream_kwargs: Dict[str, Any] = {}
                 if provider_keys:
@@ -1770,9 +1798,12 @@ class LLMRouter:
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider (stream): {provider.value}")
                     self.current_provider = provider
+                _record_llm_call(provider.value, self.providers[provider].get("free", False))
+                status = "success"
                 return
             except Exception as e:
                 self.health.record(provider, False)
+                _record_llm_error(provider.value, "stream", type(e).__name__)
                 if yielded:
                     if not (continue_enabled and has_next):
                         raise
@@ -1789,6 +1820,13 @@ class LLMRouter:
                 logger.warning(err_msg)
                 errors.append(err_msg)
                 continue_from = None
+            finally:
+                _record_llm_latency(
+                    provider.value,
+                    "stream",
+                    time.perf_counter() - started,
+                    status,
+                )
         raise RuntimeError(f"All LLM providers exhausted (stream). Errors: {'; '.join(errors)}")
 
     async def _stream_provider(

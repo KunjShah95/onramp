@@ -172,3 +172,11 @@ def test_record_llm_call_and_cache():
     assert 'onramp_llm_cache_hits_total{tier="semantic"} 1' in text
     assert "onramp_llm_cache_misses_total 1" in text
     assert 'onramp_embedding_calls_total{provider="gemini"} 1' in text
+
+
+def test_record_llm_latency_and_error_metadata():
+    metrics.record_llm_latency("groq", "completion", 0.125, "success")
+    metrics.record_llm_error("groq", "completion", "TimeoutError")
+    text = metrics.generate_metrics()
+    assert 'onramp_llm_request_duration_seconds_count{operation="completion",provider="groq",status="success"} 1' in text
+    assert 'onramp_llm_errors_total{error_type="TimeoutError",operation="completion",provider="groq"} 1' in text

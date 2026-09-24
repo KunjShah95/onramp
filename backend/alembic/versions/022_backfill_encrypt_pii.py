@@ -73,6 +73,11 @@ def _encrypt_plaintext_users(connection: Any, encrypt: Callable[[str], str]) -> 
 
 
 def upgrade() -> None:
+    if getattr(op.get_context(), "as_sql", False):
+        # PII encryption requires the application Fernet key and Python-side
+        # row processing; an offline schema script must not claim it ran.
+        op.execute("-- Onramp: run the online PII encryption backfill before serving traffic.")
+        return
     from app.services.field_encryption import encrypt_field
 
     summary = _encrypt_plaintext_users(op.get_bind(), encrypt_field)
@@ -84,6 +89,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if getattr(op.get_context(), "as_sql", False):
+        op.execute("-- Onramp: PII backfill downgrade is intentionally blocked; restore from backup.")
+        return
     raise NotImplementedError(
         "022_backfill_encrypt_pii cannot be downgraded — decrypting PII back to "
         "plaintext is a deliberate security downgrade. Restore from a backup instead."

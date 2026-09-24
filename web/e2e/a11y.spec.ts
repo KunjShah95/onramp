@@ -26,22 +26,19 @@ async function settleAnimations(page: any) {
   await page.waitForTimeout(50)
 }
 
-// Lazy routes render a skeleton while their chunk loads, and
-// waitForLoadState('networkidle') can resolve mid-load. Wait for the skeleton
-// to appear, then for it to disappear, so scans see the actual page rather
-// than an empty shell. If the chunk is warm and content renders instantly the
-// skeleton may never be observed as attached — that's fine, we just proceed.
+// Lazy routes render their shell while the chunk loads. Waiting for the
+// semantic main landmark is both more reliable and substantially faster than
+// waiting for a skeleton selector that may never be attached on a warm Vite
+// server.
 async function waitForContent(page: any) {
-  // Cold Vite dev servers compile lazy route chunks on demand; under parallel
-  // workers several chunks can compile at once and the skeleton stays up for
-  // several seconds. Give the waits generous headroom so the scan sees the
-  // settled page rather than an empty shell.
+  const main = page.locator('main').first()
   try {
-    await page.waitForSelector('.animate-skeleton', { state: 'attached', timeout: 15_000 })
+    await main.waitFor({ state: 'visible', timeout: 10_000 })
   } catch {
-    // Skeleton never observed: content already rendered (warm chunk).
+    await page.locator('body').waitFor({ state: 'visible', timeout: 10_000 })
   }
-  await page.waitForSelector('.animate-skeleton', { state: 'detached', timeout: 45_000 })
+  // Let the final route transition settle before axe reads the DOM.
+  await page.waitForTimeout(150)
 }
 
 // Helper: run axe and assert no critical or serious violations

@@ -6,10 +6,11 @@
 ## Security & truthfulness hardening (Sep 2026, in progress)
 
 - Tenant isolation: `/ask/index` accepts only https URLs (no local paths); agent bus has no global WS fan-out; sessions/bus/index reads require team membership; Celery tasks carry `team_id`. Tests: `test_agent_tenant_scoping.py`, `test_repo_index_access.py` (12 passed).
-- Claims: SOC 2 marked in-progress site-wide; source retention states encrypted excerpts/embeddings; customers page anonymized to design partners; new `/trust` Trust Center page (draft).
+- Claims: SOC 2 marked in-progress site-wide; source-retention copy distinguishes temporary checkouts from retained tenant-scoped derived context; customers page anonymized to design partners; new `/trust` Trust Center page (draft).
 - Hygiene: Neon dep removed, `react-router-dom` → 7.18.4, frontend/backend audits blocking, new SDK CI workflow, n8n image pinned (`n8nio/n8n:2.41.0`), n8n/GitHub webhooks fail-closed HMAC.
-- Still open: opaque `repository_context` records, clean-environment Postgres/Redis integration run, Playwright cookie-auth contracts, lint ratchet, EU AI Act legal review. Frontend and backend lockfile audits now pass.
+- Still open: opaque `repository_context` records, clean-environment Postgres/Redis integration run, Playwright cookie-auth contracts, lint ratchet, EU AI Act legal review. Frontend and backend lockfile audits now pass; Alembic offline upgrade/downgrade SQL generation is covered, but live staging migration execution remains pending.
 - Follow-up hardening now in progress: async/single and batch index jobs with durable job bindings, repository-delete derived-data cleanup, tenant-checked onboarding plan reads, n8n per-team delivery targets, read-only MCP tools, and a deterministic grounded-answer evaluation harness.
+- Observability: provider-level LLM latency/error metrics are exported through `/metrics`; OpenTelemetry export remains future work.
 
 ---
 
@@ -75,7 +76,7 @@
 |---------|--------|
 | Team Management | ✅ Complete |
 | Playbooks | ✅ Complete |
-| Razorpay Billing (INR) | ✅ Complete (skeleton — needs real webhook) |
+| Razorpay Billing (INR) | 🟡 Integration-ready — signature verification, idempotency, and webhook handling are implemented; live merchant credentials, reconciliation, and production webhook verification remain deployment tasks |
 | Frontend: Dashboard | ✅ Complete |
 | Frontend: Team Page | ✅ Complete |
 | Frontend: Playbooks | ✅ Complete |
@@ -109,7 +110,7 @@
 
 | Suite | Location | Status |
 |-------|----------|--------|
-| Backend (auth middleware, rate limit, RBAC guard, billing webhook, storage `in` filter, migration ordering, prod env validation, ramp/review-ops/benchmark, repo index, embeddings, DORA, RBAC) | `backend/tests/` — 63 files, 700+ tests | ✅ 1,247 passed, 202 skipped in memory mode; clean Postgres run remains a separate CI gate |
+| Backend (auth middleware, rate limit, RBAC guard, billing webhook, storage `in` filter, migration ordering, prod env validation, ramp/review-ops/benchmark, repo index, embeddings, DORA, RBAC) | `backend/tests/` — 63 files, 700+ tests | ✅ 1,252 passed, 202 skipped in memory mode; clean Postgres run remains a separate CI gate |
 | Frontend (Vitest + RTL) | `web/src/` — `*.test.tsx` + `src/test/` | ✅ 82 tests; strict TS, production build, SEO check, and `npm audit` pass |
 | E2E (Playwright) | `web/e2e/` | ✅ 65+ specs (auth, dashboard, review-queue, explore, team, billing, a11y, perf); required CI gate remains environment-specific |
 | SDK | `sdk/` | ✅ 10 tests, typecheck, build |
@@ -221,10 +222,10 @@ See `features_mvp.md` (release gate) and `versions.md` (roadmap). Highest-priori
 |------|----------|---------|
 | 14 newly-wired pages: retry + refresh buttons | Done | Added Retry buttons to AdminDashboard, ReviewQueue, MemberDetail, ModuleHealth, TraineeDashboard; Refresh buttons on TraineeDashboard + AdminDashboard |
 | Rotate DB password + prod secret manager | High | Local `.env` uses a throwaway value; prod must come from a secret manager |
-| `DateTime(timezone=True)` migration | Medium | Values are tz-aware UTC; column types still naive — needs Alembic migration 004 |
+| `DateTime(timezone=True)` migration | ✅ Applied | Timezone-aware columns are in the Alembic chain (migration 005) |
 | Razorpay test-mode E2E verification | Medium | checkout → active → cancel → downgrade against real test webhooks |
-| render.yaml off free tiers | Medium | Free tiers sleep; staging-only until upgraded |
-| E2E / Playwright suite in CI | Low | Auth flow + core-4 happy paths; `web/e2e/` specs exist but are not wired into CI |
+| render.yaml production plan | Medium | Persistent starter plans are configured; verify provider quotas and costs before launch |
+| E2E / Playwright suite in CI | ✅ Selected gate wired | Frontend CI runs auth, dashboard, review queue, explore, billing, team, repo-access, a11y, load, and Lighthouse specs; all 69 selected Playwright tests passed in component runs |
 | K8s / Terraform / Cloud Run manifests | Removed | `kubernetes/` removed — it described a different "onramp" project (Firestore, Celery, cert-manager) and was **not deployable**; self-host is via `docker-compose.yml` / `docker-compose.prod.yml` |
 
 ---
@@ -240,7 +241,7 @@ PR description, Review queue, Admin, Member/Module views) are now wired.
 ---
 
 **Status:** release-candidate hardening + wedge built (v1.4-v1.6 + Phase 0); validation interviews next
-**Tests:** 700+ backend (63 files) · 58+ frontend · 65+ E2E · 6 SDK — see Test Status above
+**Tests:** 1,252 backend (63 files) · 82 frontend · 69 selected E2E passed locally · 10 SDK — see Test Status above
 **Pages:** 58+ components (44+ routes, all wired via 114 typed fns)
-**Routers:** 42+ routers · 16 AI agents · 60+ services · 34 tables (28 migrations)
-**Next:** run the 5-team validation interviews (`docs/validation-interview-script.md`), CI green on main, Razorpay test-mode E2E, staging deploy
+**Routers:** 42+ routers · 16 AI agents · 60+ services · 34 tables (31 migrations)
+**Next:** run the 5-team validation interviews (`docs/validation-interview-script.md`), execute migrations on staging/Postgres, Razorpay test-mode E2E, and a production smoke check

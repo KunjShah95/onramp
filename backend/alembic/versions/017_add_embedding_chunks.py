@@ -32,8 +32,9 @@ def _dimensions() -> int:
 
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    inspector = sa.inspect(op.get_bind())
-    if not inspector.has_table("onramp_embedding_chunks"):
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
+    if offline or not inspector.has_table("onramp_embedding_chunks"):
         op.create_table(
             "onramp_embedding_chunks",
             sa.Column("chunk_id", sa.String(255), primary_key=True),
@@ -47,7 +48,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         )
-    indexes = {ix["name"] for ix in inspector.get_indexes("onramp_embedding_chunks")}
+    indexes = set() if offline else {ix["name"] for ix in inspector.get_indexes("onramp_embedding_chunks")}
     if "ix_embedding_chunks_index_id" not in indexes:
         op.create_index(
             "ix_embedding_chunks_index_id",

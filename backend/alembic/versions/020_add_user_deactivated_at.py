@@ -19,7 +19,13 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _offline() -> bool:
+    return getattr(op.get_context(), "as_sql", False)
+
+
 def _has_column(table: str, column: str) -> bool:
+    if _offline():
+        return False
     insp = sa.inspect(op.get_bind())
     if not insp.has_table(table):
         return False
@@ -35,5 +41,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if _has_column("users", "deactivated_at"):
+    if _offline() or _has_column("users", "deactivated_at"):
         op.drop_column("users", "deactivated_at")

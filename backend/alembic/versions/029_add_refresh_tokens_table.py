@@ -28,8 +28,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
-    if not inspector.has_table("refresh_tokens"):
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
+    if offline or not inspector.has_table("refresh_tokens"):
         op.create_table(
             "refresh_tokens",
             sa.Column("id", UUID(as_uuid=False), primary_key=True),
@@ -63,8 +64,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
-    if inspector.has_table("refresh_tokens"):
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
+    if offline or inspector.has_table("refresh_tokens"):
         op.drop_index("ix_refresh_tokens_token_hash", table_name="refresh_tokens")
         op.drop_index("ix_refresh_tokens_user_id", table_name="refresh_tokens")
         op.drop_table("refresh_tokens")

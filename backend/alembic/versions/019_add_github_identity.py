@@ -19,7 +19,13 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _offline() -> bool:
+    return getattr(op.get_context(), "as_sql", False)
+
+
 def _has_column(table: str, column: str) -> bool:
+    if _offline():
+        return False
     insp = sa.inspect(op.get_bind())
     if not insp.has_table(table):
         return False
@@ -29,14 +35,19 @@ def _has_column(table: str, column: str) -> bool:
 def upgrade() -> None:
     if not _has_column("users", "github_username"):
         op.add_column("users", sa.Column("github_username", sa.String(39), nullable=True))
-        op.create_index("ix_users_github_username", "users", ["github_username"], unique=False)
     if not _has_column("users", "github_id"):
         op.add_column("users", sa.Column("github_id", sa.String(64), nullable=True))
+    if _offline():
+        op.create_index("ix_users_github_username", "users", ["github_username"], unique=False)
+    else:
+        indexes = {ix["name"] for ix in sa.inspect(op.get_bind()).get_indexes("users")}
+        if "ix_users_github_username" not in indexes:
+            op.create_index("ix_users_github_username", "users", ["github_username"], unique=False)
 
 
 def downgrade() -> None:
-    if _has_column("users", "github_id"):
+    if _offline() or _has_column("users", "github_id"):
         op.drop_column("users", "github_id")
-    if _has_column("users", "github_username"):
+    if _offline() or _has_column("users", "github_username"):
         op.drop_index("ix_users_github_username", table_name="users")
         op.drop_column("users", "github_username")

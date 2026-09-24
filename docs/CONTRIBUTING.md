@@ -97,7 +97,7 @@ backend/              FastAPI monolith (39 routers, 16 agents, 52 services)
   app/services/       Shared services (github, llm, embeddings, oauth, ...)
   app/database/       SQLAlchemy 2.0 models + config
   app/middleware/     Auth, rate limit, logging, security headers
-  alembic/            Migrations (head: 022_backfill_encrypt_pii)
+  alembic/            Migrations (head: 031_embedding_chunk_tenant_scope)
 web/                  React 19 + Vite + Tailwind frontend (67 pages)
   src/pages/          Route pages (code-split)
   src/lib/            API client, types, auth helpers

@@ -46,6 +46,12 @@ def _decrypt_field(ciphertext: str) -> str:
 
 
 def upgrade() -> None:
+    if getattr(op.get_context(), "as_sql", False):
+        # Fernet decryption and per-row hashing require application secrets;
+        # emit an explicit marker so an offline schema script is not mistaken
+        # for a completed data backfill.
+        op.execute("-- Onramp: run the online email_hash backfill before serving traffic.")
+        return
     connection = op.get_bind()
 
     # Find all users that need a hash
@@ -79,6 +85,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if getattr(op.get_context(), "as_sql", False):
+        op.execute("-- Onramp: run the online email_hash rollback before applying offline downgrade.")
+        return
     # Revert: set email_hash back to NULL for all rows that have an email_hash
     # (makes the downgrade re-runnable without affecting newly created users).
     connection = op.get_bind()

@@ -17,9 +17,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
 
-    if not inspector.has_table("onramp_agent_sessions"):
+    if offline or not inspector.has_table("onramp_agent_sessions"):
         op.create_table(
             "onramp_agent_sessions",
             sa.Column("id", UUID(as_uuid=False), primary_key=True),
@@ -38,7 +39,7 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         )
 
-    if not inspector.has_table("onramp_agent_messages"):
+    if offline or not inspector.has_table("onramp_agent_messages"):
         op.create_table(
             "onramp_agent_messages",
             sa.Column("id", UUID(as_uuid=False), primary_key=True),
@@ -53,7 +54,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         )
 
-    if not inspector.has_table("onramp_agent_events"):
+    if offline or not inspector.has_table("onramp_agent_events"):
         op.create_table(
             "onramp_agent_events",
             sa.Column("id", UUID(as_uuid=False), primary_key=True),

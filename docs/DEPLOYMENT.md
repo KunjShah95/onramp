@@ -295,6 +295,20 @@ Railway applies migrations during deployment. If you need to run them manually:
 railway run python -m alembic upgrade head
 ```
 
+Before a release, validate the migration chain without a live connection:
+
+```bash
+cd backend
+python -m alembic upgrade head --sql > /tmp/onramp-upgrade.sql
+python -m alembic downgrade head:base --sql > /tmp/onramp-downgrade.sql
+```
+
+Migrations `010_backfill_email_hash` and `022_backfill_encrypt_pii` require the
+application's encryption settings and a live database, so their offline SQL
+contains an explicit marker and does **not** claim to perform the data backfill.
+Run the normal online `alembic upgrade head` against staging/production before
+serving traffic, then verify the affected user columns.
+
 ---
 
 ## Cost Estimates (Railway + Vercel)
@@ -315,9 +329,23 @@ railway run python -m alembic upgrade head
 | ---------- | ------------- |
 | `GET /health` | Liveness probe — always 200 while running |
 | `GET /ready` | Readiness — 503 when Postgres/Redis unreachable |
-| `GET /metrics` | Prometheus metrics |
+| `GET /metrics` | Prometheus metrics, including bounded LLM provider latency/error telemetry |
 | `GET /docs` | Swagger API docs — **off by default in production** (`ENABLE_API_DOCS=true`) |
 | Sentry | Error tracking (configure `SENTRY_DSN`) |
+
+### LLM observability
+
+The LLM router exports provider-level Prometheus telemetry without prompts,
+responses, API keys, or customer identifiers:
+
+- `onramp_llm_request_duration_seconds{provider,operation,status}` — completion and streaming latency.
+- `onramp_llm_errors_total{provider,operation,error_type}` — exception classes only.
+- `onramp_llm_calls_total{provider,free}` — served provider calls and free/paid attribution.
+- `onramp_llm_cache_hits_total{tier}` and `onramp_llm_cache_misses_total` — response-cache behavior.
+
+Provider and operation labels are bounded; model IDs and request content are not
+used as labels. A future OpenTelemetry exporter can consume the same fields
+without changing the router contract.
 
 ---
 

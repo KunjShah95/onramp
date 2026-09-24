@@ -65,6 +65,12 @@ jobs:
           echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
           cd backend && alembic upgrade head
 
+      - name: Verify offline migration SQL
+        run: |
+          cd backend
+          alembic upgrade head --sql >/dev/null
+          alembic downgrade head:base --sql >/dev/null
+
       - name: Generate ephemeral test encryption key
         id: test-key
         # Test steps prefer the repository secret. This generated fallback

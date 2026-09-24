@@ -17,9 +17,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
-    if not inspector.has_table("onramp_embedding_chunks"):
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
+    if not offline and not inspector.has_table("onramp_embedding_chunks"):
         return
+
+    if offline:
+        op.add_column(
+            "onramp_embedding_chunks",
+            sa.Column("team_id", sa.UUID(as_uuid=False), nullable=True),
+        )
+        op.create_foreign_key(
+            "fk_embedding_chunks_team_id",
+            "onramp_embedding_chunks",
+            "teams",
+            ["team_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
+        op.create_index("ix_embedding_chunks_team_id", "onramp_embedding_chunks", ["team_id"])
+        return
+
     columns = {column["name"] for column in inspector.get_columns("onramp_embedding_chunks")}
     if "team_id" not in columns:
         op.add_column(
@@ -40,8 +58,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    inspector = sa.inspect(op.get_bind())
-    if not inspector.has_table("onramp_embedding_chunks"):
+    offline = getattr(op.get_context(), "as_sql", False)
+    inspector = None if offline else sa.inspect(op.get_bind())
+    if not offline and not inspector.has_table("onramp_embedding_chunks"):
+        return
+    if offline:
+        op.drop_index("ix_embedding_chunks_team_id", table_name="onramp_embedding_chunks")
+        op.drop_constraint(
+            "fk_embedding_chunks_team_id",
+            "onramp_embedding_chunks",
+            type_="foreignkey",
+        )
+        op.drop_column("onramp_embedding_chunks", "team_id")
         return
     indexes = {index["name"] for index in inspector.get_indexes("onramp_embedding_chunks")}
     if "ix_embedding_chunks_team_id" in indexes:

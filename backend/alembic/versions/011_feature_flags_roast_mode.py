@@ -25,12 +25,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _offline() -> bool:
+    return getattr(op.get_context(), "as_sql", False)
+
+
 def _has_table(name: str) -> bool:
+    if _offline():
+        return True
     return sa.inspect(op.get_bind()).has_table(name)
 
 
 def _existing_indexes(table: str) -> set:
-    if not _has_table(table):
+    if _offline() or not _has_table(table):
         return set()
     return {ix["name"] for ix in sa.inspect(op.get_bind()).get_indexes(table)}
 
@@ -62,14 +68,21 @@ def upgrade() -> None:
 
     # ── roast_mode_enabled column (added to existing notification_preferences) ──
     if _has_table("onramp_notification_preferences"):
-        insp = sa.inspect(op.get_bind())
-        columns = {c["name"] for c in insp.get_columns("onramp_notification_preferences")}
-        if "roast_mode_enabled" not in columns:
+        if _offline():
             op.add_column(
                 "onramp_notification_preferences",
                 sa.Column("roast_mode_enabled", sa.Boolean(), nullable=False,
                           server_default=sa.false()),
             )
+        else:
+            insp = sa.inspect(op.get_bind())
+            columns = {c["name"] for c in insp.get_columns("onramp_notification_preferences")}
+            if "roast_mode_enabled" not in columns:
+                op.add_column(
+                    "onramp_notification_preferences",
+                    sa.Column("roast_mode_enabled", sa.Boolean(), nullable=False,
+                              server_default=sa.false()),
+                )
 
 
 def downgrade() -> None:
@@ -78,7 +91,10 @@ def downgrade() -> None:
 
     # Remove roast_mode_enabled column
     if _has_table("onramp_notification_preferences"):
-        insp = sa.inspect(op.get_bind())
-        columns = {c["name"] for c in insp.get_columns("onramp_notification_preferences")}
-        if "roast_mode_enabled" in columns:
+        if _offline():
             op.drop_column("onramp_notification_preferences", "roast_mode_enabled")
+        else:
+            insp = sa.inspect(op.get_bind())
+            columns = {c["name"] for c in insp.get_columns("onramp_notification_preferences")}
+            if "roast_mode_enabled" in columns:
+                op.drop_column("onramp_notification_preferences", "roast_mode_enabled")
