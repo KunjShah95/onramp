@@ -1,334 +1,514 @@
-# 🗺️ Onramp 2.0 — Product Roadmap (Problem-First)
+# Onramp — Consolidated Product & Technical Roadmap
 
-**Last updated:** 21 Aug 2026 (future scope v1.7–v2.2 added — problem-traceable, codebase-grounded)
-**Status:** ✅ v1.4 wedge built (Track → Quantify → Intercept) · ✅ v1.5 wave 1 (review load-balancing + consistency) · ✅ v1.6 wave 3 (headcount flows + cohort deltas) · ✅ Phase 0 (cost-model dials + ROI/efficiency benchmarks) · 🔴 **Validation gate blocking v1.7** — 5-team interviews must converge the cost model before any future code ships · Future scope v1.7–v2.2 defined below, each item traced to PROBLEM.md and to an existing file/service
+**Last updated:** 24 September 2026
+**Status:** Release-candidate hardening and the v1.4–v1.6 wedge are built. Production launch remains gated by staging verification, customer validation, billing verification, backup/restore proof, and operational readiness.
+**Planning convention:** The windows below are sequencing estimates, not committed launch dates. No production migration or deployment has been executed.
 
----
-
-## 🎯 North Star — the problem we solve
-
-> **New developers waste expensive senior-developer time while ramping up, and engineering leaders have no way to track the ramp or intercept the drain — costing senior devs their focus and companies real money.**
-
-Root cause: **institutional knowledge fails to flow to the people who need it.** Every feature below is judged against this problem — if a feature doesn't serve it, it's cut.
-
-**Evidence:** customer conversations — leaders couldn't track new devs; new devs burned senior time; the cost was real and financial.
-
-**Full problem statement, cost math, personas & metrics → [PROBLEM.md](./PROBLEM.md)**
-
-### Wedge — Ramp Visibility & Senior-Time Protection
-
-1. **Track** — every new dev's ramp is visible: learned, working on, stuck on.
-2. **Quantify** — the cost of ramp: senior hours burned, review cycles, ramp lag vs. benchmark.
-3. **Intercept** — self-serve routing (Repo Q&A / learning paths / wiki) + stuck-dev alerts, before more senior time is lost.
-
-### The four pillars (one root problem)
-
-| Pillar | Pain | Persona | Metric | Status |
-| --- | --- | --- | --- | --- |
-| **P1 · Ramp-up** | Slow ramp; senior time drained | New devs + leads | Time-to-first-merged-PR ↓ | ✅ v1.4 wedge · 🔜 v1.7 hardens intercept (deep-link nudge, Slack, WebSocket) |
-| **P2 · Reviews** | Review bottleneck | Seniors, leads | Review turnaround ↓ | ✅ v1.5 wave 1 · 🔜 v1.8 instruments it (review-events log, per-task suggest, consistency v2) |
-| **P3 · Visibility** | Blind leaders | CTO / EM / HR | Stuck surfaced <24h | ✅ v1.6 wave 3 · 🔜 v1.9 rolls up org + multi-repo + DORA join |
-| **P4 · Stale docs** | Docs drift from code | Everyone | Q&A without humans ↑ | 🔵 Folded into P1 · v1.9 adds 5% freshness signal; never standalone until interviews promote it |
+This document is the source of truth for the future roadmap. `STATUS.md` records current implementation status; `features_mvp.md`, `versions.md`, and `GAPS.md` are supporting audits and may contain historical assumptions that must be re-verified before they are used as release gates.
 
 ---
 
-## ✅ Done — v1.0 → v1.3 (history)
+## 1. Mission, wedge, and guardrails
 
-### MVP (v1.0) — Complete
+### North Star
 
-- **Auth & teams:** email/password + JWT, RBAC (8 roles), team creation/invites/membership, team switching, PostgreSQL sessions.
-- **AI tools:** Architecture Explorer, First PR Accelerator, Learning Path Generator, Repo Q&A (streaming SSE), PR Description Generator, Code Health Scorer, Pattern Recognition, Silent Pair Programming, Quiz Generator, Regression Test Generator.
-- **Onboarding & learning:** Onboarding Report Generator, Trainee Dashboard, gamification (XP/levels/badges/streaks/leaderboards), module-level access, learning paths, Onboarding Hub.
-- **Task workflow:** full lifecycle (create → assign → start → submit → review → approve → complete), AI-assisted review, review queue with status badges, product sign-off gate.
-- **Leadership dashboards:** CTO/Executive dashboard, Senior Dev Space, task distribution/completion charts, activity trends.
-- **Billing & API gateway:** Razorpay subscriptions (free/pro/enterprise), API keys with usage tracking, rate limiting, quotas.
+> New developers waste expensive senior-developer time while ramping up, and engineering leaders have no reliable way to track the ramp or intercept the drain.
 
-### v1.1 — Complete
+Onramp exists to make institutional knowledge flow to the people who need it:
 
-- **Auth & security:** OAuth2 (Google/GitHub) with CSRF state, password reset, role expansion (ceo/cto/senior_dev/tester).
-- **Onboarding plans:** 30-60-90 day plans, milestone tracking, pulse check-ins, review sign-off.
-- **Playbooks / Wiki / Quiz:** playbook CRUD + tags + usage; AI wikis from repo URLs; module quizzes with grading notifications.
-- **HR dashboard:** team health metrics, people management, role-scoped views.
-- **Notifications & integrations:** notification center (14 event types), bell + badge, webhooks (create/test/rotate/logs), GitHub token validation, Slack, SendGrid.
-- **UX polish:** 50+ design tokens, 15+ skeleton loaders, keyboard shortcuts, ambient backgrounds, error boundaries, changelog/pricing/privacy/terms pages.
-- **Drill-downs:** member detail, module health, Dev Space, Senior Space.
-- **Admin & infra:** admin dashboard (API keys, usage, audit events), audit log, user deactivation, dynamic-document table migration (21 collections).
+1. **Track** — make ramp progress, work, questions, reviews, and blockers visible.
+2. **Quantify** — measure senior time, review friction, ramp lag, and delivery outcomes.
+3. **Intercept** — route stuck developers to self-serve answers and leaders to timely interventions.
 
-### v1.2 — Production Launch & Polish — Complete
+Every proposed feature must improve at least one part of that loop. Features without a clear problem trace are deferred.
 
-Production readiness (Railway/Render + Vercel + managed PG + Redis + CI/CD + SSL) · real-time WebSocket notifications · interactive repo graph · milestone roadmap view · session refresh/remember-me · full mobile responsiveness (44 pages) · WCAG 2.1 AA audit · pagination · E2E suite (65+ tests) · API contract tests (31) · keyboard shortcuts · Jira/Linear sync · feature flags.
+### Product principles
 
-### v1.3 — Enterprise + AI Acceleration — Complete
+- **Tenant-safe by default** — every repository, index, job, session, event, document, and MCP result is team-scoped and membership-checked.
+- **Truthful by default** — never imply certifications, customer logos, benchmarks, savings, or compliance that have not been verified.
+- **Measure before optimizing** — collect baselines before declaring a product or cost win.
+- **Graceful failure** — provider, Redis, queue, and integration failures must be bounded, observable, and recoverable.
+- **Small reversible increments** — append-only migrations, feature flags, and versioned APIs.
+- **No speculative enterprise work** — build SSO, SCIM, residency, and self-hosting when a real deal or regulatory requirement creates the trigger.
 
-SSO/SAML (Okta + Entra ID) with domain-based routing · real-time audit log UI · HMAC-SHA256 API key hashing · DORA/velocity metrics · CI/CD auto PR review · architecture drift detection · playbook marketplace · usage-based billing tier (credit wallet + metered drawdown) · team feature flags · autonomous coding agent (issue → PR) · Ollama local models · PR auto-apply · AIaaS public API gateway + `@onramp/sdk` · VS Code extension groundwork · PWA (manifest + service worker) · `/metrics` observability (Prometheus text format) · JSON logging · request correlation IDs · hardened security headers · non-root Docker.
+### Primary hypotheses to validate
 
----
+These are targets from `PROBLEM.md`, not claims about current customer results:
 
-## 🎯 v1.4 — Wedge: Ramp Visibility & Senior-Time Protection
-
-**Theme:** Make the ramp measurable and the senior-time drain interceptable.
-**Est. effort:** 3–4 weeks
-**Focus:** The complete **Track → Quantify → Intercept** loop for new devs. Nothing else ships until this loop is proven with real teams.
-
-### ✅ Wave 1 — built (Ramp service + `/ramp` API + Ramp page)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Track | **Per-trainee ramp profiles** — ramp days vs team benchmark, completion, review cycles, stalled work, questions asked | ✅ Built (`ramp_service.get_ramp_summary` → `GET /ramp/summary`) |
-| Quantify | **Senior-time cost per new dev** — review cycles × 0.5h + stalled re-engagement, at ~$90/hr | ✅ Built (`senior_time_estimate`, totals on `/ramp/summary`) |
-| Intercept | **Stuck-dev detector** — stalled task (>5d) · review loop (≥2 cycles) · review timeout (>24h) · inactivity (>7d) | ✅ Built (`ramp_service.detect_stuck` → `GET /ramp/stuck`) |
-| Intercept | **Stuck-dev alerts** — deduped ≤1/day `dev_stuck` notifications to leaders + self-serve nudge to trainee | ✅ Built (`fire_stuck_alerts` → `POST /ramp/check` + Celery `check_stuck_devs` every 6h) |
-| UI | **Ramp page** (`/ramp`, senior+ roles) — benchmark/cost cards, stuck panel, per-trainee table | ✅ Built (`web/src/pages/RampPage.tsx`) |
-| Tests | Ramp service + authz tests (memory backend) | ✅ 12 tests, all passing |
-
-### Next (wave 2)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Validate | Pressure-test the cost model with 3–5 customer conversations | 🔴 Blocking (PROBLEM.md) |
-| Intercept | Self-serve-first routing nudge deep-link (Ask Codebase / Learning Path on alert click) | 🆕 |
-| Dashboards | Surface ramp cost + stuck list inside CTO/Executive dashboard (charts built) | ✅ Built (`RampPanel` on Mission Control + Executive Console) |
-| Track | Time-to-first-merged-PR wired to GitHub PR-merge webhook data — login-keyed milestones (linked accounts) + `pr_merged_at` stamp on the auto-completed task (works for teams WITHOUT linked GitHub accounts) | ✅ Built |
-
-**Exit criteria for v1.4:** 3–5 real teams using the loop; senior-time-per-new-dev measured; stuck-dev alert latency < 24h; time-to-first-merged-PR baseline captured.
+- Median time-to-first-merged-PR decreases from a measured baseline.
+- Senior time per new developer decreases materially after self-serve interception.
+- A meaningful majority of new-developer questions resolve without a senior developer.
+- Leaders receive a stuck-developer signal within 24 hours.
+- Review turnaround and rework improve without increasing review workload.
 
 ---
 
-## 🔵 v1.5 — Reviews (P2)
+## 2. Current baseline
 
-The senior-time drain continues past ramp — attack the review bottleneck.
+### Shipped product and platform
 
-### ✅ Wave 1 — built (load balancing + consistency)
+| Area | Current state |
+|---|---|
+| Core product | Architecture Explorer, First-PR Accelerator, Learning Path Generator, Repo Q&A, onboarding reports, task workflow, dashboards, notifications, integrations, and billing surfaces are implemented. |
+| Wedge | Ramp profiles, senior-time cost model, stuck detection, org health, retention curves, headcount flows, review load/suggestion/consistency, ROI and efficiency benchmark harnesses are built. |
+| Repository intelligence | Team-owned repository registration, durable grants, single and batch indexing, job status APIs, revocation, deletion cleanup, derived embeddings, and graph context are implemented. |
+| Developer platform | `cf_` API keys, TypeScript SDK, repository/index/ramp/onboarding methods, read-only tenant-scoped MCP tools, and CI coverage are implemented. |
+| Evaluation | A provider-agnostic grounded-answer harness with fixtures, CLI integration, and documentation is built; production regression datasets and model-change gates remain future work. |
+| Automation | GitHub/webhook and n8n signing, timestamped replay protection, deterministic idempotency, per-team delivery boundaries, and platform-admin allowlists are implemented. |
+| Security hardening | Tenant isolation, HttpOnly cookie auth, API-key hashing, SSRF controls, webhook verification, refresh-token rotation, production boundary validation, and truthful public copy are implemented. |
+| Observability | Structured logs, correlation IDs, `/health`, `/ready`, `/metrics`, provider LLM latency/error metrics, and frontend health surfaces are available. |
+| Data/migrations | Alembic chain is through `031_embedding_chunk_tenant_scope`; offline upgrade/downgrade SQL generation is covered by tests. Live online backfills remain a staging task. |
 
-| Area | Feature | Status |
-| --- | --- | --- |
-| Load | **Reviewer load board** — per-reviewer pending/in-review counts, 30d volume, oldest wait, 0-100 load score | ✅ Built (`review_ops_service.reviewer_load` → `GET /review-ops/load`) |
-| Load | **Next-reviewer suggestion** — least-loaded capable reviewer, assignee excluded, rework tie-break | ✅ Built (`suggest_reviewer` → `GET /review-ops/suggest`) |
-| Consistency | **Per-reviewer consistency scores** — turnaround + variance + rework/calibration → 0-100 (null below 3 reviews) | ✅ Built (`consistency_scores` → `GET /review-ops/consistency`) |
-| Attribution | **Reviewer recorded on every outcome** — `reviewed_by` now set on needs_changes / product_review / approved | ✅ Built (`task_service.transition_task`) |
-| UI | **Review Ops panel on the review queue** (`/reviews`) — suggestion callout, load bars, score badges | ✅ Built (`ReviewOpsPanel.tsx`) |
-| Tests | Load, suggestion, consistency, re-submission regression, authz | ✅ 12 tests, all passing |
+### Verification baseline
 
-### Next (wave 2)
+| Check | Latest verified result |
+|---|---|
+| Backend | 1,252 passed, 202 skipped in memory mode |
+| Frontend | 82 Vitest/RTL tests; TypeScript, build, SEO check, and `npm audit` pass |
+| SDK | 10 tests; typecheck and build pass |
+| Playwright | 70 selected tests pass across auth/cookie, accessibility, billing, core flows, load, and Lighthouse suites |
+| Backend dependency audit | `pip-audit` reports no known vulnerabilities |
+| Frontend dependency audit | `npm audit --audit-level=high` reports zero vulnerabilities |
+| Migrations | Offline upgrade and downgrade SQL generation pass; `alembic heads` is `031_embedding_chunk_tenant_scope` |
 
-- Review turnaround metrics folded into the ramp cost view (P1 × P2 shared data).
-- Per-task suggestion wired into the queue rows (the `task_id` variant exists — surface it in the Review action).
-- Review-events log to close the consistency blind spot (approval "stickiness" is currently not measurable — see `review_ops_service` docstring).
-- Regression test generator + PR descriptions as review accelerators (built).
+### Current external blockers
 
----
-
-## 🔵 v1.6 — Org-Level Visibility (P3)
-
-Reporting layer on top of P1 + P2 data.
-
-### ✅ Wave 1 — built (org ramp health + cohort trend)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Health | **Org ramp health score** — composite 0-100 (ramp velocity 20% / completion 15% / stuck 20% / review health 15% / first-PR 15% / **attrition 15%**) with grade (healthy ≥80 · at_risk 50-79 · critical <50 · no_data) + component drill-down | ✅ Built (`ramp_service.ramp_health` → `GET /ramp/health`) |
-| Health | **First-PR benchmark** — team median days-to-first-merged-PR (webhook-stamped, works without linked GitHub accounts) | ✅ Built (`first_pr_benchmark_days` on `/ramp/summary`) |
-| Health | **Backfill script** — stamps `pr_merged_at` on webhook-auto-completed tasks for teams with pre-existing merges (dry-run default) | ✅ Built (`backfill_pr_merged_at.py`) |
-| UI | **Health card on Ramp page** — score, grade, per-component bars | ✅ Built (`RampPage.tsx` HealthCard) |
-| UI | **Health readout on leadership consoles** — score + grade LED on RampPanel (Mission Control + Executive) | ✅ Built (`RampPanel.tsx`) |
-| UI | **Cohort trend panel** — cohort comparison surfaced on the Executive Console (previously HR-only) | ✅ Built (`CohortTrendPanel.tsx`) |
-| Detector | **Inactivity false-positive fix** — no-activity signal only fires for trainees with OPEN work (completed/cancelled-only teams are healthy, not stuck) | ✅ Built + regression test |
-| Tests | Health score math, empty team, stuck-heavy team, review-analytics-failure path, detector regression | ✅ 6 tests, all passing |
-
-### ✅ Wave 2 — built (attrition-risk weighted + retention curves)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Health | **Attrition risk folded into health score** — `attrition_health` as a weighted 6th component (150 pts off per full at-risk ratio; weights rebalanced to sum 1.0) | ✅ Built (`ramp_health` + `at_risk_count` exposure) |
-| Retention | **Cohort retention curves** — retained % / active % survival at 30/60/90/120/180d after joining, join-relative per cohort (deactivation = leave signal) | ✅ Built (`hr_metrics_service.cohort_retention` → `GET /hr/cohort-retention/{team_id}`) |
-| UI | **Retention curves on CTO seat** — newest cohort charted + per-cohort 180d retention trend across cohorts | ✅ Built (`RetentionCurvesPanel.tsx` on Executive Console) |
-| Detector | **Retention bucket semantics fix** — buckets are join-relative (a member deactivated at day 50 drops out at the 60d bucket, not the 30d one) | ✅ Built + regression test |
-| Tests | Attrition component lowers composite · retention curve drop-out · empty team · endpoint smoke | ✅ 4 tests, all passing |
-
-### ✅ Wave 3 — built (headcount flows + cohort size deltas)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Headcount | **Headcount flows per month** — joined (team_members.joined_at) vs. deactivated (users.deactivated_at) per calendar month, with net change | ✅ Built (`hr_metrics_service.headcount_flow` → `GET /hr/headcount-flow/{team_id}`) |
-| Headcount | **Cohort size deltas + trajectory** — cumulative cohort_size (total onboarded) and headcount (net) running totals per month | ✅ Built (same payload) |
-| UI | **Headcount flow on CTO seat** — joined/left bars + headcount line chart, net-growing/shrinking signal | ✅ Built (`HeadcountFlowPanel.tsx`, 2-col grid with retention) |
-| UI | **Org health + retention on the HR console** — RampPanel (health score + stuck) and retention curves mounted on the HR dashboard; HR added to the shared leader-role gate (`LEADER_ROLES`), `/ramp` nav + read-only Ramp page for HR (check button stays leader-only) | ✅ Built (`HrDashboardPage.tsx`, `RampPanel.tsx`, `Sidebar.tsx`) |
-| Tests | Month bucketing + cumulative math · empty team | ✅ 2 tests, all passing |
-
-### ✅ Phase 0 — cost-model validation harness (pressure-testing the assumptions)
-
-| Area | Feature | Status |
-| --- | --- | --- |
-| Calibration | **Tunable cost model** — env-driven platform defaults (`ONRAMP_SENIOR_HOURLY_RATE` etc.) + per-team overrides (`team_cost_settings`) with validated ranges | ✅ Built (`team_cost_settings.py`, threaded through `get_ramp_summary`) |
-| API | **`GET /ramp/cost-model`** (member) — effective assumptions, source, measured signals, sensitivity band · **`PUT /ramp/cost-model`** (leader) — partial calibration | ✅ Built (`ramp.py`) |
-| Measurement | **Measured signals bound the assumptions** — avg elapsed review cycle vs 0.5h, stalled re-engagement weeks, review-cycle count | ✅ Built (`_measured_cost_stats` on the summary + Ramp page CostModel card) |
-| Honesty | **Sensitivity band** — `cost_low ≤ cost_current ≤ cost_high` across the $75–100/hr · 0.25–1h/cycle band (PROBLEM.md's working numbers) | ✅ Built (`cost_sensitivity`) |
-| Runbook | **Interview script updated** — 5-team protocol + the product-side measurement loop + how to feed results into the dials | ✅ `docs/validation-interview-script.md` |
-| Benchmark | **Ramp vs Onramp ROI tracker** — senior ramp cost vs Onramp at the **live subscription price** (active billing subscription, INR→USD, else team override, else the $99/mo platform default — `price_source` labels which), React-scoped (`stack=react` filters cost to React-repo tasks; team stack always reported honestly), snapshot history for tracking over time | ✅ Built (`ramp_vs_onramp_benchmark` → `GET /ramp/benchmark` + `POST /ramp/benchmark/snapshot`) |
-| Benchmark | **Terminal coding agents vs Onramp** — per-agent team monthly cost (per-dev subscription × dev count) vs Onramp's **live subscription price** (same `price_source` logic), for the team's detected stack (React when repos are JS/TS), documented Aug-2026 catalog (Claude Code, Codex, Gemini CLI, Cursor) + snapshot tracking | ✅ Built (`agent_benchmark_service` → `GET /ramp/agent-benchmark` + `POST /ramp/agent-benchmark/snapshot`, `AgentBenchmarkPanel.tsx` on the Ramp page) |
-| Benchmark | **Live-price resolution** — `resolve_benchmark_price`: explicit team override → live `onramp_subscriptions` (INR→USD at `ONRAMP_INR_TO_USD_RATE`, default ₹84/$) → $99 platform default; free-tier teams (₹0) correctly fall back to the default instead of an infinite ROI; the original ₹ amount rides along (`onramp_price_inr`) so panels show the conversion step (e.g. "₹2,999 ≈ $35.70/mo") | ✅ Built (`team_cost_settings.resolve_benchmark_price` + `live_subscription_price`, UI labels show the source + conversion) |
-| Benchmark | **Token-efficiency benchmark** — the "why we're cheaper" story in tokens AND dollars, mechanism-first: a step-by-step "when the codebase changes" comparison (agent re-reads the whole repo = `tokens_per_change` vs Onramp re-embeds only changed files = `graph_refresh.tokens_per_change`, ~10%) + measured 30d usage (free-key %, spend) + subscriptions; headline per-change token savings and monthly $ savings; change-frequency dial (the faster the churn, the wider the gap); codebase-size default grounded in indexed `file_count` (new model column + migration); honest caveat that changed-files-only re-embed is the target architecture | ✅ Built (`token_efficiency_benchmark` → `GET /ramp/efficiency-benchmark`, `EfficiencyBenchmarkPanel.tsx` on the Ramp page) |
-| Benchmark | **Headcount / hiring simulation** — "hire more devs? agents charge per seat AND per context": `dev_count` simulates agent costs at any team size (per-dev subscriptions × N **+ per-dev token burn** — each agent holds its own codebase copy, so tokens scale with headcount too; `per_dev_token_burn=false` models a shared/reused context) vs Onramp's flat price; leaders record the exact scenario (`POST /ramp/efficiency-benchmark/headcount`) and read back the saved record history — the scaling story (agent cost grows with every hire on both dimensions, Onramp stays flat) tracked over time | ✅ Built (`token_efficiency_benchmark(dev_count=…, per_dev_token_burn=…)` + `record_headcount_scenario`, hiring dial + per-dev toggle + record button + history in `EfficiencyBenchmarkPanel`) |
-| Benchmark | **Multi-product scaling** — "several devs × several products": `product_count` treats each product as its own codebase, so agent re-reads compound devs × products × changes while Onramp's flat price never moves (refresh scales only with total changed files); recorded scenarios carry `product_count`; **public `CostAtScaleCalculator` on the Why Onramp marketing page** (devs/products/changes sliders → live agent vs Onramp monthly totals) | ✅ Built (`token_efficiency_benchmark(product_count=…)`, products slider + history label in `EfficiencyBenchmarkPanel`, `CostAtScaleCalculator.tsx` on `WhyOnrampPage.tsx`) |
-| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401 · headcount scaling (agent-only) · headcount record roundtrip · headcount 401s · per-dev token burn (tokens scale with headcount) · shared-context mode · multi-product compounding (devs × products, Onramp refresh scales only with total tokens)** | ✅ 32 tests, all passing |
-| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401 · headcount scaling (agent-only) · headcount record roundtrip · headcount 401s** | ✅ 29 tests, all passing |
-| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip · **live subscription wins over default · team override wins over subscription · free-tier fallback · efficiency math (token rate, ratios) · measured-usage aggregation (free %, sub-cent spend) · tunable inputs + file-count default · endpoint 401** | ✅ 25 tests, all passing |
-| Tests | Settings resolution/override/validation · sensitivity band · endpoint authz · summary honors override · ROI math · React scoping · price override · snapshot history · agent comparison parity · React labelling · snapshot roundtrip | ✅ 17 tests, all passing |
-
-### Next (wave 4) — validation gate (blocking all v1.7+)
-
-- Run the 5-team validation interviews and converge the defaults from real calibration data (`docs/validation-interview-script.md`).
-- P4 (stale docs) — drift detection + wiki freshness (built) never standalone — stays folded into P1 until interviews prove a standalone docs pain.
-
-**Gate:** No v1.7 code ships until ≥3/5 leaders land within 2× of cost assumptions and ≥4/5 confirm stuck-alert value. Per-team `PUT /ramp/cost-model` calibrations must converge.
+- No staging PostgreSQL/Redis credentials are available in the local environment.
+- Online data backfills in migrations `010_backfill_email_hash` and `022_backfill_encrypt_pii` require the application encryption settings and a live database.
+- Razorpay test-mode credentials and real webhook delivery are not available.
+- Backup restoration and five-team customer validation have not been completed.
+- OpenTelemetry export, production uptime alerting, and enterprise controls remain future work.
 
 ---
 
-## 🔜 v1.7 — Intercept Hardening (close the self-serve loop)
+## 3. Roadmap map and dependencies
 
-**Theme:** Alerts are worthless if they don't route to an answer. Wire every stuck signal to a self-serve surface that already exists.  
-**Est. effort:** 2–3 weeks · **Depends on:** v1.4 validation gate + existing Q&A/wiki/learn index  
-**Problem trace:** PROBLEM.md P1 Intercept — “≥70% of new-dev questions resolve without a senior”
+```text
+P0 Release readiness
+  ├─ staging migrations + health/readiness + backup restore
+  ├─ Razorpay test-mode E2E + n8n replay/idempotency verification
+  └─ secrets, CI, smoke, monitoring
+          ↓
+Validation gate: five teams + calibrated baselines
+          ↓
+v1.7 Intercept hardening
+          ↓
+v1.8 Review intelligence
+          ↓
+v1.9 Org / multi-repo visibility
+          ↓
+v2.0 Platform hardening and scale
+          ↓
+v2.1 Growth and monetization
+          ↓
+v2.2 Enterprise controls (demand-gated)
+```
 
-| Area | Feature | Why now (codebase grounding) |
-| --- | --- | --- |
-| Intercept | **Deep-link nudge** — `dev_stuck` notification → one-tap `Ask Codebase` (pre-filled with signal context) + `Learning Path` + `Wiki` CTA; trainee nudge carries `?signal=stalled_task&task_id=...` so the surface opens scoped to the failing task | `ramp_service.fire_stuck_alerts` → `notification_helpers.notify_dev_stuck` already splits leader vs trainee; the trainee copy is generic. Wire the task context that `stuck_signals()` already returns (`task_id`, `code`). No new collection, just payload enrichment + frontend route param. |
-| Intercept | **Slack intercept** — same deduped alert mirrored to team Slack channel (`slack_service`) with “View ramp” + “Ask” buttons; respects quiet hours | `slack_service` + `digest_service` + Celery `check_stuck_devs` every 6h already exist; add a `slack_intercept` event type (15th) and reuse webhook/Slack channel config from `integrations.py`. |
-| Track | **WebSocket ramp live** — push `stuck_count` + `health_score` delta over `ws_manager` so Ramp/Executive panels update without poll; badge on bell already real-time | `ws_manager` + `useWebSocket` exists for task presence; extend event `ramp_update` with throttling. Small payload, same infra. |
-| Measure | **Self-serve resolution rate** — log `ask/query` + `wiki` + `learn` opens that originate from a stuck nudge (`?source=stuck_nudge`) and whether the stuck signal clears within 48h; new `GET /ramp/intercept-stats` | Closes the P1 success metric loop; uses existing `onramp_conversations`, `audit_log_service`, and `detect_stuck` re-check. No PII beyond user_id. |
-| Polish | **Stale-signal hygiene** — auto-clear: when a trainee resolves the underlying task/PR, the matching `question_spike`/`stalled_task` signal drops on next `detect_stuck`; show “resolved” toast | Prevents alert fatigue; leverages existing `stuck_signals` idempotence + `task_service.transition_task` state machine. |
-
-**Exit criteria:** Nudge CTR ≥30% in dogfooding; stuck→clear within 48h ≥50%; no increase in alert volume (dedupe holds).
-
----
-
-## 🔜 v1.8 — Review Intelligence (P2 deepening)
-
-**Theme:** Reviews are the other half of senior-time burn. Instrument what v1.5 left as a blind spot.  
-**Est. effort:** 3 weeks · **Depends on:** v1.5 wave 1 + v1.7 intercept data  
-**Problem trace:** PROBLEM.md P2 — Review bottleneck; ROADMAP P2 Next items
-
-| Area | Feature | Why now |
-| --- | --- | --- |
-| Instrument | **Review-events log** — append-only `review_events` table (reviewer_id, task_id, decision, elapsed_ms, rework flag) populated from `task_service.transition_task`; backfills from existing `reviewed_by` + `review_cycles` | `review_ops_service` docstring explicitly calls this the blind spot: “approval stickiness not measurable.” Fixes GAPS #16-adjacent observability. Powers all below. |
-| Quantify | **Turnaround folded into ramp cost** — `review_analytics.avg_review_turnaround_hours` already exists; feed it into `_measured_cost_stats` vs `REVIEW_HOURS_PER_CYCLE` so the sensitivity band tightens with real data | `ramp_service._measured_cost_stats` already computes `avg_cycle_elapsed_hours`; wire the join instead of showing them side-by-side. |
-| Load | **Per-task suggestion in queue rows** — surface `GET /review-ops/suggest?task_id=...` inline on `ReviewQueuePage` (assignee excluded, rework tie-break already in service); add “Assign” CTA that writes `reviewed_by` | Service already supports `task_id` variant — purely a `ReviewOpsPanel.tsx` + `ReviewQueuePage.tsx` UI pass. |
-| Consistency | **Calibrated consistency v2** — include review-events variance + rework rate + approval “stickiness” (same reviewer approving own prior needs_changes) into the 0–100 score; null threshold stays at 3 reviews | Extends `review_ops_service.consistency_scores` with the new log; honest null below 3 protects small samples. |
-| Assist | **PR description + regression checklist as review accelerators** — auto-attach generated `POST /pr-review/describe` + `RegressionTestGenerator` output to the review task view; gated by feature flag | Both agents/services exist (`pr_review.py`, `regression_test_generator`); just wire into the review drawer. |
-
-**Exit criteria:** Review-events log populates on every transition; queue rows show suggestion; consistency null <3 holds; turnaround appears in `GET /ramp/cost-model` measured block.
+Platform hardening, security, documentation, and operational work may run in parallel, but no growth feature should make the release gate less truthful or less reliable.
 
 ---
 
-## 🔜 v1.9 — Org Scale & Multi-Repo Visibility (P3 expansion)
+## 4. P0 — Release readiness and controlled launch
 
-**Theme:** One repo is a demo; real teams own 3–10 repos. Health must roll up.  
-**Est. effort:** 3–4 weeks · **Depends on:** v1.6 headcount/retention + `repo_context` index  
-**Problem trace:** PROBLEM.md “leaders blind” at org level, not just team level
+**Window:** Immediately, before production traffic
+**Owner:** Platform/Infra + Backend + Finance/Operations
+**Dependency:** Staging environment, secret manager, database/Redis access, payment test credentials
 
-| Area | Feature | Grounding |
-| --- | --- | --- |
-| Index | **Multi-repo rollup** — `GET /repos/index/summary?team_id=` aggregates `file_count`, `language` stacks, and `index_id` freshness per team (stale >24h flagged); reuses `repo_context.py` 24h TTL + webhook eviction | `repo_context.py` + `parser_service` (20+ langs) + nightly Celery rebuild already model single-repo freshness; roll up rather than rebuild. |
-| Health | **Org rollup health** — `GET /ramp/health?scope=org` median across teams with `trainee_count`-weighted stuck ratio; reuses `ramp_health()` composite (6 components) without new math | `hr_metrics_service` already aggregates per-team; org is a weighted mean, not a new score. |
-| Drift | **Wiki freshness signal** — surface `drift_detector` + `wiki_service` staleness (last wiki gen vs last push) as a 7th health component (weight 5%, rebalancing others to 95%); stays folded into P1 unless interviews promote it | Both services exist but never surfaced in health; low weight keeps P4 from becoming standalone. |
-| DORA | **DORA × ramp join** — overlay `dora_metrics_service` (deployment frequency, lead time) on the cohort retention/headcount charts on Executive Console; no new DORA math | `dora_metrics_service` already built; just a `CohortTrendPanel` companion overlay. |
-| Autopilot | **Autopilot at org scale** — `POST /autopilot/run` accepts `team_id` + `repo_urls[]` and fans out with shared rate-limit + deduped issue→task creation (existing idempotence on title+repo) | `autopilot_service` + `issue_orchestrator` already handle single-repo; batch is a loop with existing dedupe. |
+| ID | Workstream | Deliverable | Status | Evidence required |
+|---|---|---|---|---|
+| REL-01 | Database | Run `alembic upgrade head` online against a production-shaped staging clone; inspect migrations `010`, `022`, `030`, and `031`; verify user, session, repository, index, event, and embedding tenant data. | 🔴 Blocked on staging DB | Migration log, schema queries, row counts, rollback/restore notes |
+| REL-02 | Data safety | Verify automated Postgres backups/PITR retention and perform a restore drill into an isolated database. | 🔴 Not started | Restore timestamp, application smoke result, documented RPO/RTO |
+| REL-03 | Runtime | Verify `/health`, `/ready`, Redis connectivity, database connectivity, worker connectivity, and graceful dependency degradation. | 🟡 Partially implemented; staging pending | Smoke-test output from the deployed image |
+| REL-04 | Secrets | Move database, LLM, GitHub, encryption, billing, and n8n secrets to the production secret manager; rotate the local throwaway database credential. | 🔴 Operator action | Secret inventory and rotation record; no secrets in git/logs |
+| REL-05 | Payments | Run Razorpay test-mode checkout → active subscription → cancellation → downgrade using signed webhooks and reconciliation checks. | 🔴 Credentials unavailable | Test transaction IDs, webhook signatures, idempotency result, final subscription state |
+| REL-06 | Automation | Exercise n8n inbound replay, timestamp expiry, duplicate delivery, invalid signature, unauthorized team, and outbound delivery behavior. | 🟡 Code tested; live integration pending | Staging n8n run and webhook audit trail |
+| REL-07 | CI/CD | Require backend, frontend, SDK, lint, dependency audit, migration SQL, and selected Playwright gates on `main`. | 🟡 Workflows wired; host CI confirmation pending | Green CI run and immutable build/artifact reference |
+| REL-08 | Observability | Configure uptime monitoring, error alerting, log retention, and a rollback owner for the launch window. | 🟡 Metrics/logs exist; external alerting pending | Alert test and incident runbook |
+| REL-09 | Launch smoke | Deploy the exact candidate artifact, exercise health/readiness, login/cookie session, one repository index, one Q&A request, and one billing read path. | 🔴 Pending staging | Timestamped smoke report tied to the release commit |
+| REL-10 | Customer comms | Update pricing, security, privacy, DPA, retention, and status language to match verified capabilities only. | ✅ Truthfulness pass complete; legal review remains | Legal/product sign-off before publication |
 
-**Exit criteria:** Team with 3 repos shows rollup freshness; org health = weighted mean (manual calc matches); Executive Console shows DORA + ramp on same timeline.
+### Release gate exit criteria
 
----
+Production launch is allowed only when:
 
-## 🛠️ v2.0 — Platform Hardening & Scale (pay down GAPS.md + STATUS.md debt)
-
-**Theme:** No new wedge until the platform is honest about failures.  
-**Est. effort:** 3–4 weeks parallelizable · **Depends on:** nothing — can run alongside v1.7/1.8  
-**Problem trace:** Not wedge — reliability that makes wedge trustworthy
-
-| Gap | Fix | File |
-| --- | --- | --- |
-| GAPS #3 | Document/fix `billing_service.py` None returns — typed `Optional` + callers handle `None` with 404 semantics, OpenAPI 404 declared | `billing_service.py:75,80,95` |
-| GAPS #6 | Architecture explorer returns typed error, not `None` — `explore.py:28` raises `HTTPException(422)` with `detail` so callers don't swallow | `explore.py:28` |
-| GAPS #9 | Null-check `task.get("assigned_to")` in `ws_manager` broadcast | `task_service.py:27-28` + `ws_manager.py` |
-| GAPS #10 | Redis failures log at WARNING with `team_id`/`index_id` context, not silent | `repo_context.py:46-53` |
-| GAPS #11 | LLM route header errors log at WARNING | `llm_route.py:48-50` |
-| GAPS #12 | Declare 404 in OpenAPI for all `get_by_id` paths (tasks, teams, playbooks, etc.) | Multiple routers |
-| Robustness | **LLM timeouts** — per-provider `timeout=30s` + `retry=2` in `llm.py` fallback chain; streaming excluded | `llm.py` |
-| Robustness | **Cache persistence docs + Redis fallback** — `cache.py` documents in-memory loss on restart; `cache_service` already Redis-backed, no code change | `cache.py:11-62` |
-| Reliability | **Email digest time validation** — `cron` string validated at write, not at Celery beat | `api.ts:2376` + `digest_service.py` |
-| Infra | **Connection pool sizing** — validate `DB_POOL_SIZE`/`WORKERS=4` vs Neon/Render limits; document in `docs/ARCHITECTURE.md` | `database/config.py` |
-| Infra | **Backup + restore drill** — Neon PITR retention verified + `scripts/restore_drill.sh` + runbook | `features_mvp.md §6` |
-| Infra | **Receive-then-validate** — move `{success,data}` envelope from `ResponseWrapperMiddleware` body-buffer to router layer; first-class SSE exclusion for `/ask/query/stream` | `middleware/response_wrapper.py` + `ask.py` |
-| CI | `ruff` + `eslint` + `pip-audit`/`npm audit` in GitHub Actions; Playwright E2E gated in CI (not just local) | `.github/workflows/*` |
-| Perf | p95 budgets + bundle/Lighthouse gate (`Lighthouse ≥90` on `/`, vendor chunk <350kB gz) | `features_mvp.md §7` |
-
-**Exit criteria:** `GAPS.md` 0 × `NEEDS FIX`; `features_mvp.md` §§3–7 checked; CI includes lint+sec+ E2E; one successful backup restore drill.
+- The online migration chain and data backfills succeed on a staging clone.
+- A backup restores successfully and the restored application passes smoke checks.
+- Production-shaped secrets are supplied by the secret manager and rotated where required.
+- Razorpay test-mode lifecycle and signed webhook reconciliation pass.
+- CI is green and the candidate artifact is reproducible.
+- Uptime/error alerts have been tested.
+- A rollback plan, owner, and incident window are documented.
 
 ---
 
-## 🌱 v2.1 — Growth & Monetization (only after v2.0 green)
+## 5. Validation gate — prove the wedge before expanding it
 
-**Theme:** Make the wedge monetizable and discoverable.  
-**Est. effort:** 4 weeks · **Depends on:** v2.0 hardening + Razorpay E2E green
+**Window:** Immediately after release readiness; blocks v1.7+ feature expansion
+**Owner:** Product + Customer Success + Engineering
+**Dependency:** Five design-partner teams, interview script, baseline data access
 
-| Area | Feature | Notes |
-| --- | --- | --- |
-| Billing | **Metered LLM spend per team** — surface `usage_tracker` + `credit_service` burn vs `credit_wallet` on Billing page; per-team `GET /billing/usage?team_id=` | `usage_tracker.py` + `llm_costs.py` already capture per-call provider/cost; just aggregate. |
-| Gateway | **Public API docs portal** — publish OpenAPI at `/docs` (already gated by `ENABLE_API_DOCS`) + generated SDK examples for `GET /ramp/*` wedge endpoints | `main.py:_show_api_docs` + `sdk/` (6 tests). |
-| Playbooks | **Playbook marketplace graduation** — ratings, install count, fork-to-team; `marketplace_service` already has CRUD + tags | Small schema add (`rating`, `install_count`), no new service. |
-| SDK | **SDK wedge examples** — `@onramp/sdk` typed `ramp.*` client (summary, stuck, health) with retries | Follows existing `ai_gateway` SDK pattern. |
-| Admin | **Waitlist + feature flags self-serve** — `AdminDashboardPage` waitlist triage + per-team flag overrides | `feature_flag_service` + `admin.py` table migration. |
-| Privacy | **GDPR self-serve deletion** — `DELETE /accounts/me` purges PII (Fernet fields) + audit tombstone | Required once EU users exist (`features_mvp.md §6`). |
+| ID | Activity | Outcome | Status |
+|---|---|---|---|
+| VAL-01 | Run the five-team interview protocol in `docs/validation-interview-script.md`. | Evidence on current ramp pain, senior time, alert value, and willingness to pay. | 🔴 Required |
+| VAL-02 | Capture a pre-onboarding baseline for each team. | Time-to-first-PR, review turnaround, question volume, senior interruptions, and retention starting point. | 🔴 Required |
+| VAL-03 | Calibrate team cost assumptions through `PUT /ramp/cost-model`. | Team-specific ranges replace generic estimates where evidence supports them. | 🟡 Harness built; interviews pending |
+| VAL-04 | Measure first-10-day onboarding progress. | Activation, first useful answer, first task/PR, and early stuck signals per team. | 🟡 Endpoint/UI/SDK built; baseline pending |
+| VAL-05 | Review results with product and customers. | Decide whether to continue, narrow, or change the wedge before adding scope. | 🔴 Decision gate |
+| VAL-06 | Expand the provider-agnostic grounded-answer evaluation harness. | Add representative fixtures, citation/grounding checks, model/provider regression runs, and a reviewed failure taxonomy without treating benchmark scores as customer outcomes. | 🟡 Harness built; production dataset pending |
 
----
+### Validation decision rule
 
-## 🏢 v2.2 — Enterprise (demand-driven, never speculative)
+Do not ship v1.7–v1.9 feature scope until:
 
-Gated on a real deal. Do not build speculatively — each line below is expensive and **conflicts with the wedge if built early** (see `versions.md`).
+- At least three of five leaders show the measured problem is material.
+- At least four of five confirm that stuck alerts or self-serve routing are valuable.
+- The cost model is plausible for at least three teams or is explicitly narrowed to a different metric.
+- The team agrees on a baseline and a follow-up measurement window.
 
-| Item | Trigger to build |
-| --- | --- |
-| **SSO/SAML (Okta + Entra ID)** | Enterprise deal requires it — `sso_service.py` scaffold exists, wire SAML assertion → RBAC |
-| **Audit-log export + retention** | Deal requires 90d export — `audit_log_service` + `audit.py` already structured, add S3/CVS export |
-| **Self-hosted / VPC** | Deal requires data residency — productize `docker-compose.prod.yml` (removed `kubernetes/` — it described a different Firestore-based project and was not deployable) |
-| **VS Code extension** | ≥100 WAU on Silent Pair Programming — ship in-editor walkthrough via `silent_pair_programming` agent |
-| **Multi-org analytics** | Org owns ≥5 teams — roll `ramp_health` org-wide with org-level RBAC |
-| **SLA + status page** | Paid tier needs it — uptime robot + `/health` → public status |
+If the evidence fails, update the problem statement and cut scope rather than adding more dashboards.
 
 ---
 
-## ⏸️ Shelved / De-prioritized (explicitly not in v1.7–v2.2)
+## 6. v1.7 — Intercept hardening
 
-| Item | Why shelved | Revisit when |
-| --- | --- | --- |
-| AIaaS gateway / SDK / usage-based billing | A different business (AI-API reselling) — conflicts with the onboarding problem | We deliberately decide to pivot |
-| Community marketplace | Ecosystem, not problem-solving | Wedge is proven with paying teams |
-| Ollama self-hosted models | Enterprise niche | Self-host demand from a real deal |
-| SSO/SAML, SCIM, SOC2, tenant isolation, secrets vault | Enterprise stage-gates, not problems | An enterprise deal requires them |
-| "Senior Dev Roast", codebase trailer, hot-take review, DevScore crowns | No problem attached | Never, unless engagement data says otherwise |
+**Theme:** An alert is useful only when it routes a developer to an answer and a leader to an action.
+**Window:** After validation; estimated 2–3 weeks
+**Dependency:** Existing ramp alerts, repository Q&A, learning paths, wiki, notification system, and WebSocket infrastructure
 
----
+| ID | Feature | Implementation boundary | Status | Success measure |
+|---|---|---|---|---|
+| INT-01 | Deep-link stuck nudges | Enrich `dev_stuck` notifications with signal, task, and repository context; route to Ask, Learning Path, Wiki, or the failing task. | 🟡 Next | Nudge click-through and self-serve resolution rate |
+| INT-02 | Slack intercept | Mirror deduped stuck signals to the configured team channel with Ramp/Ask actions and quiet-hour handling. | 🟡 Next | Useful alert rate; no alert-volume regression |
+| INT-03 | Live ramp updates | Publish throttled `ramp_update` events containing team-scoped health/stuck deltas. | 🟡 Next | Reduced polling; no unscoped WebSocket delivery |
+| INT-04 | Intercept analytics | Add source-tagged events for stuck → Ask/Wiki/Learn and a team-authorized intercept-stats endpoint. | 🟡 Next | ≥70% self-serve resolution hypothesis validated against baseline |
+| INT-05 | Signal hygiene | Clear stale/resolved signals when the underlying task, PR, or conversation is resolved; prevent alert fatigue. | 🟡 Next | Lower repeat-alert rate; faster 48h clearance |
 
-## 🧪 Testing & Reliability (current) + what v2.0 adds
+### v1.7 exit criteria
 
-- **Backend:** 700+ passing pytest (`backend/tests/` — 63 test files, async fixtures, dual memory+postgres storage), incl. observability, API contract (31), load/performance (12), ramp/review-ops/benchmark (32).
-- **Frontend:** 58+ Vitest + RTL tests; strict-mode TypeScript, zero errors.
-- **SDK:** 6 tests. **E2E:** 65+ Playwright (auth, dashboard, review-queue, explore, team, billing, a11y, perf + Lighthouse) — *still local-only; v2.0 gates it in CI*.
-- **CI (today):** GitHub Actions — backend (compileall + alembic + pytest w/ PG service) and frontend (tsc + vitest + build).
-- **CI (v2.0):** + `ruff` + `eslint` + `pip-audit`/`npm audit` + Playwright E2E required gate + p95/bundle/Lighthouse budget.
-- **Observability:** `/metrics` (10 families, Prometheus text format) + JSON logging (`LOG_FORMAT=json`), request correlation IDs, `/health` `/ready`; v1.7 adds `ramp_update` WebSocket + `GET /ramp/intercept-stats`, v1.8 adds `review_events` table + turnaround in cost-model measured block.
-
-## 📊 Key Metrics
-
-| Metric | Current |
-| --- | --- |
-| Backend API routers / endpoints | 42+ routers · 115+ endpoints |
-| Frontend pages / AI agents / DB tables | 58+ components (44+ routes) / 16 agents / 34 tables (28 migrations) |
-| Tests (backend + frontend + sdk + E2E) | 800+ |
-| Auth providers | 4 (email/password JWT, Google OAuth, GitHub OAuth, optional Neon JWKS) |
-| Integrations | 7 (Slack, GitHub, Webhooks, Jira, Linear, GitLab, Bitbucket) |
-| Notification event types | 14–15 |
-| Services | 60+ |
+- Every stuck signal has a safe, team-scoped next action.
+- A stuck signal can be traced to its originating task and cleared after resolution.
+- WebSocket events are tenant-scoped and bounded.
+- Interception metrics can be calculated without exposing prompts, source code, or customer content.
 
 ---
 
-*This roadmap is a living document. Every item traces back to the problem statement in [PROBLEM.md](./PROBLEM.md) — if it doesn't, it's cut.*
+## 7. v1.8 — Review intelligence
+
+**Theme:** Measure and reduce the review bottleneck without hiding workload or rewarding unsafe speed.
+**Window:** After v1.7 intercept data; estimated 3 weeks
+**Dependency:** `task_service` transitions, Review Ops, ramp cost model, review queue
+
+| ID | Feature | Implementation boundary | Status | Guardrail |
+|---|---|---|---|---|
+| REV-01 | Review-events ledger | Add append-only, tenant-scoped review events for decision, reviewer, elapsed time, rework, and prior decision. | 🟡 Next | Immutable audit trail; no prompt/code content |
+| REV-02 | Turnaround in ramp economics | Feed measured review-cycle time into the ramp cost model and sensitivity band. | 🟡 Next | Show measured vs assumed values |
+| REV-03 | Inline reviewer suggestion | Surface the existing task-scoped reviewer suggestion in queue rows and provide an authorized assignment action. | 🟡 Next | Exclude unauthorized/self-review assignments |
+| REV-04 | Consistency v2 | Recalculate consistency using rework, variance, and approval stickiness only after enough events exist. | 🟡 Next | Keep null below a documented sample threshold |
+| REV-05 | Review accelerators | Attach generated PR description and regression checklist to the review drawer behind a feature flag. | 🟡 Next | Human approval remains mandatory |
+| REV-06 | Review quality guardrails | Track escaped defects, reopen rate, and review latency together; do not optimize a single metric. | 🟡 Next | Publish methodology and sample-size caveats |
+
+### v1.8 exit criteria
+
+- Review events are created on every relevant task transition.
+- Queue suggestions and assignment actions are authorization-tested.
+- Review metrics are reproducible and explainable from the event ledger.
+- No metric implies developer quality or productivity from a small, biased sample.
+
+---
+
+## 8. v1.9 — Organization and multi-repository visibility
+
+**Theme:** A single repository is a demo; real teams need a trustworthy portfolio view.
+**Window:** After v1.8 and validated org-level demand; estimated 3–4 weeks
+**Dependency:** Repository grants, durable index jobs, team health, DORA, existing batch-index work
+
+| ID | Feature | Implementation boundary | Status | Guardrail |
+|---|---|---|---|---|
+| SCALE-01 | Multi-repository rollup | Aggregate repository ownership, language mix, file counts, index freshness, and job health by team. | 🟡 Partially grounded | Team membership required for every repository |
+| SCALE-02 | Organization health | Add an explicitly authorized org/portfolio scope with a documented weighted aggregation method. | 🟡 Next | No implicit cross-team access |
+| SCALE-03 | Freshness signal | Surface index/wiki freshness as a small health component until interviews justify a standalone P4 product. | 🟡 Next | Label stale and unknown states separately |
+| SCALE-04 | DORA × ramp view | Join deployment frequency/lead time to ramp and retention views without inventing causality. | 🟡 Next | Correlation is not presented as causation |
+| SCALE-05 | Batch autopilot | Extend existing single-repo orchestration to bounded, idempotent multi-repo batches. | 🟡 Existing batch indexing is built; orchestration remains | Per-repo authorization, rate limits, retries, and partial failure reporting |
+| SCALE-06 | Portfolio retention/deletion | Make repository deletion remove derived documents, embeddings, graph data, and queued jobs consistently. | ✅ Core cleanup built; portfolio UX pending | Verify no orphaned derived data |
+
+### v1.9 exit criteria
+
+- A three-repository team can see freshness and health without leaking another team's data.
+- Organization aggregates are reproducible from member-team data.
+- Multi-repo jobs expose per-item success, retry, and cancellation state.
+- DORA and ramp measures are shown as separate, methodologically honest signals.
+
+---
+
+## 9. v2.0 — Platform hardening, reliability, and scale
+
+**Theme:** Make the platform boringly dependable before adding more surface area.
+**Window:** Parallel with v1.7–v1.9; estimated 3–6 weeks
+**Dependency:** Ongoing; no feature may bypass tenant/auth/test gates
+
+### 9.1 Correctness and API contracts
+
+| ID | Work | Status | Exit evidence |
+|---|---|---|---|
+| OPS-01 | Re-audit `GAPS.md` against the current code; close or explicitly accept billing `None` returns, architecture error semantics, WebSocket null handling, Redis failure logging, route-header logging, and missing OpenAPI 404s. | 🟡 Re-audit required | Regression test and issue disposition for each gap |
+| OPS-02 | Move response envelopes out of body-buffering middleware where practical; make SSE exclusions explicit and test streaming under load. | 🟡 Partial exclusion exists | No buffering/regression for `/ask/query/stream` |
+| OPS-03 | Validate digest schedules, provider configuration, webhook payloads, and external-service timeouts at write time. | 🟡 Verify | Negative tests for invalid configuration |
+| OPS-04 | Complete the Firestore/dynamic-document migration plan or document the supported compatibility boundary. | 🟡 Partial | Typed data inventory and migration decision |
+
+### 9.2 Runtime and data reliability
+
+| ID | Work | Status | Exit evidence |
+|---|---|---|---|
+| OPS-05 | Queue-backed digests, batch notifications, report generation, and index maintenance with bounded retries and dead-letter handling. | 🟡 Partial | Worker failure/retry dashboard and runbook |
+| OPS-06 | Define Redis cache persistence, invalidation, and graceful-degradation semantics per surface. | 🟡 Partial | Cache hit/miss dashboards and documented behavior |
+| OPS-07 | Validate DB pool sizing, worker count, provider quotas, and backpressure under expected load. | 🟡 Pending staging | p95 latency and saturation report |
+| OPS-08 | Add data retention, account deletion, export, and audit-tombstone workflows for PII and derived repository data. | 🟡 Partial | End-to-end deletion/export test with audit evidence |
+| OPS-09 | Expand Prometheus metrics into provider cost/latency dashboards and optional OpenTelemetry export without exporting prompts, responses, secrets, or customer identifiers. | 🟡 Bounded metrics built; OTel future | Dashboard and exporter contract |
+
+### 9.3 Supply chain and delivery
+
+| ID | Work | Status | Exit evidence |
+|---|---|---|---|
+| OPS-10 | Keep `ruff`, frontend lint/type checks, `pip-audit`, `npm audit`, migration SQL checks, and Playwright required in CI. | 🟡 Wired; host confirmation pending | Green protected-branch run |
+| OPS-11 | Add dependency review, lockfile drift checks, artifact provenance, and release signing where supported by the deployment target. | 🟡 Next | CI policy and release artifact record |
+| OPS-12 | Add p95 API/SSE budgets, bundle-size budgets, and Lighthouse budgets to CI. | 🟡 Next | Performance report stored per release |
+| OPS-13 | Maintain rollback, incident response, dependency outage, and customer-communication runbooks. | 🟡 Next | Tabletop exercise completed |
+
+### v2.0 exit criteria
+
+- The current gap audit has no unowned high-severity item.
+- Streaming, queues, Redis, and database failure modes are tested and observable.
+- Data export/deletion and backup restoration are proven.
+- CI and performance gates protect the release branch.
+- OTel is optional and bounded; Prometheus remains the baseline.
+
+---
+
+## 10. v2.1 — Growth, monetization, and product-led adoption
+
+**Theme:** Turn validated wedge value into sustainable adoption without changing the core problem.
+**Window:** After v2.0 reliability and Razorpay E2E; estimated 4–6 weeks
+**Dependency:** Five-team evidence, stable billing, trustworthy metrics, support capacity
+
+| ID | Workstream | Roadmap item | Status | Guardrail |
+|---|---|---|---|---|
+| GROW-01 | Activation | First-10-day onboarding checklist, role-specific paths, first useful answer, and first-PR milestones. | 🟡 Progress endpoint/UI/SDK built; activation loop next | Measure activation, not vanity signups |
+| GROW-02 | Expansion | Team-level usage, seat/team limits, invitations, and expansion prompts tied to actual value events. | 🟡 Next | Never pressure users with unverified savings claims |
+| GROW-03 | Billing | Surface metered LLM spend, credits, plan limits, invoices, and downgrade paths transparently. | 🟡 Partial | Reconcile every charge with usage records |
+| GROW-04 | Developer adoption | Publish generated API docs, SDK examples for Ramp/Repositories/Onboarding, and quickstarts for CI and MCP. | 🟡 SDK expanded; portal/examples next | Examples must use tenant-safe auth |
+| GROW-05 | Content | Turn validated ramp/review evidence into anonymized, methodologically transparent case studies. | ⏸️ Evidence-gated | No invented customers, testimonials, or outcomes |
+| GROW-06 | Marketplace | Mature playbooks only after internal usage proves value; add ratings/installs only with moderation and abuse controls. | ⏸️ Deprioritized | Ecosystem work must not displace the wedge |
+| GROW-07 | Lifecycle | Transactional email, Slack, and in-product guidance for onboarding, stuck signals, billing, and incidents. | 🟡 Partial | Deliverability and unsubscribe controls required |
+
+### v2.1 exit criteria
+
+- Activation and retention can be measured from first login through first PR.
+- Billing is understandable, reconciled, and reversible.
+- SDK/API examples work against a clean environment.
+- Public claims are linked to evidence or clearly labeled as estimates.
+
+---
+
+## 11. v2.2 — Enterprise controls (demand-gated)
+
+**Theme:** Build controls when a real customer, contract, or regulatory obligation requires them.
+**Window:** No committed date; revisit at deal review
+**Dependency:** Signed design-partner requirement and explicit scope/owner
+
+| ID | Control | Trigger | Current posture | Required proof |
+|---|---|---|---|---|
+| ENT-01 | Production SSO/OIDC | Enterprise deal requires centralized identity | Scaffold only; not a production claim | Provider conformance, key rotation, JIT/session tests, recovery runbook |
+| ENT-02 | SAML | Enterprise deal requires SAML | `sso_service.py` scaffold exists; requires security review and protocol tests | Signed assertion validation, replay protection, tenant mapping |
+| ENT-03 | SCIM provisioning | Customer requires automated user lifecycle | Not committed | Deactivate/disable behavior, group mapping, audit trail |
+| ENT-04 | Admin MFA and session policy | Privileged production access requires stronger authentication | Not committed | phishing-resistant factor, recovery, lockout, break-glass procedure |
+| ENT-05 | Audit export and retention | Contract requires export or defined retention | Audit foundation exists; export/retention policy next | Immutable export, access control, deletion/retention tests |
+| ENT-06 | Data residency/self-host/VPC | Contract requires deployment or storage control | Self-host compose exists; no VPC product | Isolated deployment, upgrade path, restore runbook |
+| ENT-07 | Multi-org analytics | Customer operates multiple teams under one org | Team-scoped foundation exists | Explicit org grants, weighted metrics, cross-team tests |
+| ENT-08 | SLA/status page | Paid contract requires uptime commitment | Internal health endpoints exist | External status, alert escalation, incident communication |
+| ENT-09 | Enterprise support | Contract requires response targets | Not committed | Severity taxonomy, on-call ownership, customer communication templates |
+
+### Enterprise gate
+
+Do not begin an enterprise control merely because a scaffold exists. Require a named customer requirement, acceptance criteria, security review, support owner, and maintenance plan first.
+
+---
+
+## 12. Long-term and exploratory roadmap
+
+These are deliberately not scheduled. They require evidence or an explicit strategy change.
+
+| Area | Option | Revisit trigger |
+|---|---|---|
+| Ecosystem | Public playbook marketplace and community content | Internal playbook usage and moderation capacity are proven |
+| Developer surface | VS Code extension for repository walkthroughs and pair programming | Sustained usage of Silent Pair Programming and a supported extension owner |
+| Local models | Self-hosted/Ollama enterprise offering | Customer data-residency or air-gapped requirement |
+| Research | Autonomous coding and broader issue-to-PR automation | Demonstrated review quality, rollback safety, and customer demand |
+| Platform pivot | AIaaS gateway as a separate business | Explicit board/product decision; it is not part of the current onboarding wedge |
+| Advanced analytics | Causal ROI, skill graphs, and predictive ramp modeling | Sufficient longitudinal data and transparent methodology |
+
+---
+
+## 13. Cross-cutting workstreams
+
+These apply to every roadmap phase and are not optional “later” work.
+
+### Security and trust
+
+- Maintain tenant isolation and membership checks for every new read/write/event path.
+- Keep replay protection, signature verification, idempotency, and revocation in place.
+- Rotate secrets and encryption keys through the secret manager.
+- Treat repository source, prompts, embeddings, audit records, and telemetry as sensitive data.
+- Keep public security/compliance language truthful and review it with legal before publication.
+
+### Data and privacy
+
+- Minimize collection; document purpose, retention, deletion, and access paths.
+- Encrypt sensitive fields and avoid logging request bodies or source content.
+- Make tenant export/deletion cover derived documents, embeddings, graph data, jobs, and sessions.
+- Record data lineage for index and benchmark records.
+
+### Reliability
+
+- Define SLOs for API availability, index freshness, job completion, Q&A latency, and alert delivery.
+- Use bounded timeouts, retries with jitter, circuit breakers, idempotency, and dead-letter handling.
+- Test dependency outages, partial batch failures, queue restarts, Redis loss, and database failover.
+- Keep `/health` for liveness and `/ready` for dependency readiness.
+
+### Developer experience
+
+- Every external API has typed SDK coverage, examples, authentication guidance, and contract tests.
+- Every long-running operation has a job/status/cancellation contract.
+- Every migration has online/offline behavior documented and an append-only rollback policy.
+- Keep local, CI, and staging configuration shapes documented without copying secrets.
+
+### Customer success and evidence
+
+- Maintain a customer-validation record for every material product claim.
+- Review activation, first-10-day progress, first-PR time, alert usefulness, support burden, and retention.
+- Treat user feedback as evidence, not as a substitute for measurement.
+
+### Legal and communications
+
+- Keep privacy, terms, DPA, retention, security, and pricing pages synchronized with actual behavior.
+- Do not publish “SOC 2 certified,” “GDPR compliant,” customer logos, or savings claims without the required evidence and review.
+- Maintain a changelog entry for behavior changes, migrations, and breaking API changes.
+
+---
+
+## 14. Metrics and measurement plan
+
+### Product outcomes
+
+| Metric | Definition | First use |
+|---|---|---|
+| Time to first merged PR | Median elapsed time from team join/first task to first merged PR | Baseline in VAL-02, compare after v1.7 |
+| Senior minutes per new developer | Measured review/question/re-engagement minutes, split by source | Ramp cost model and interviews |
+| Self-serve resolution | Stuck-sourced questions resolved through Ask/Wiki/Learn without senior escalation | v1.7 intercept analytics |
+| Stuck-signal latency | Time from qualifying stall to leader notification | v1.4/v1.7 operational metric |
+| Review turnaround | Time from review request to decision, with rework shown separately | v1.8 |
+| Ramp health | Existing composite score with component drill-down | v1.6, method documented |
+| Retention/activation | Join-relative retention and first-10-day progress | VAL-04 and v2.1 |
+
+### Operational metrics
+
+- API p50/p95/p99 latency and error rate by route.
+- Q&A/SSE time to first token and completion failures.
+- Index queue depth, job success/retry/cancel rate, and index freshness.
+- WebSocket connection count, delivery failures, and reconnect rate.
+- Provider request latency, error class, token/cost attribution, and fallback rate.
+- n8n/webhook signature failures, replay blocks, idempotent duplicates, and delivery latency.
+- Database pool utilization, Redis hit/miss/failure rate, and queue dead letters.
+
+### Business metrics
+
+- Activation: team reaches first useful indexed answer and first assigned task.
+- Paid conversion and expansion, with refunds/downgrades reconciled to billing events.
+- Support contacts per active team and time to resolution.
+- Retention by cohort and plan, without implying causation from benchmark models.
+
+Every dashboard must show its time window, sample size, source, and known limitations.
+
+---
+
+## 15. Decision gates and kill criteria
+
+### Stop or narrow a feature when
+
+- It does not trace to a validated onboarding/review/visibility pain.
+- It adds unscoped data access, unreviewed AI output, or an unrecoverable migration.
+- It increases senior workload, alert volume, or support burden without a measured benefit.
+- It relies on invented customer evidence, unverified pricing, or compliance language.
+- It cannot be tested with a tenant boundary, failure mode, and rollback plan.
+
+### Required gates
+
+- **Security gate:** threat model, tenant/auth tests, secret handling, and data classification complete.
+- **Data gate:** migration, backup, retention, deletion, and rollback plan complete.
+- **Reliability gate:** timeout, retry, idempotency, queue, and dependency-outage tests complete.
+- **Customer gate:** baseline and success metric defined before claiming improvement.
+- **Launch gate:** CI, staging smoke, payment test, monitoring, and rollback evidence complete.
+
+---
+
+## 16. Definition of Done
+
+A roadmap item is done only when:
+
+1. The user/problem outcome and non-goals are documented.
+2. Acceptance criteria and failure behavior are explicit.
+3. Tenant/authz tests cover allowed, denied, and cross-tenant cases.
+4. Unit and integration tests cover happy path, malformed input, dependency failure, and retries where relevant.
+5. API/SDK/OpenAPI documentation is updated for externally visible behavior.
+6. Metrics and logs are bounded and do not contain secrets or customer content.
+7. Migrations are append-only and have online/offline behavior documented.
+8. CI passes and a staging smoke test is attached for release-affecting work.
+9. Product, engineering, and security/legal reviewers approve their respective concerns.
+10. The changelog and `STATUS.md` reflect the actual state.
+
+---
+
+## 17. Working cadence and ownership
+
+- **Weekly:** release-gate status, customer validation evidence, security/reliability risks, and dependency health.
+- **Per phase:** review scope against the problem statement and remove work that is not measurable.
+- **Per release:** tag the exact candidate, attach test/smoke/migration evidence, and record rollback owner.
+- **Monthly:** review activation, retention, support burden, cost, and reliability trends with product and customer success.
+- **Quarterly:** re-evaluate enterprise triggers, shelved items, and whether the wedge should be narrowed or expanded.
+
+Suggested accountable roles:
+
+| Area | Accountable role |
+|---|---|
+| Wedge and customer evidence | Product + Customer Success |
+| Backend/API/data | Backend lead |
+| Web/E2E/accessibility | Frontend lead |
+| Platform/SRE/security | Platform/Infra + Security |
+| Billing/operations | Finance/Operations |
+| Legal/privacy/claims | Legal/Privacy reviewer |
+
+---
+
+## 18. Versioning policy
+
+- Use SemVer; breaking API changes require a major version.
+- Keep `/api/v1` stable through v1.x; add versioned endpoints for incompatible changes.
+- Treat Alembic migrations as append-only after release; never rewrite a shipped migration without a documented recovery plan.
+- Tag releases from `main` only after CI, staging, and smoke evidence pass.
+- Maintain `CHANGELOG.md` for user-visible behavior, security fixes, migrations, and breaking changes.
+- Keep `STATUS.md` as the current implementation snapshot and update it in the same change as shipped work.
+
+---
+
+## 19. Source documents
+
+- `STATUS.md` — current implementation, test counts, blockers, and truthfulness notes.
+- `PROBLEM.md` — problem statement, personas, working cost assumptions, and success hypotheses.
+- `features_mvp.md` — historical release-readiness audit; re-verify before using as a gate.
+- `versions.md` — historical version plan; this roadmap supersedes its future sequencing.
+- `GAPS.md` — code audit; re-check statuses against the current tree.
+- `docs/DEPLOYMENT.md` — migration, deployment, observability, and staging runbook.
+- `docs/validation-interview-script.md` — five-team validation protocol.
+
+---
+
+*This is a living roadmap. Update it when evidence changes, not merely when code ships. Every future item must name the problem it serves, the evidence that will validate it, and the safety boundary that prevents it from damaging trust.*
