@@ -456,11 +456,20 @@ class SlackBot:
 
         secret = _get_signing_secret()
         if not secret:
-            logger.warning(
-                "SLACK_SIGNING_SECRET not set — skipping interactive payload "
-                "signature verification (insecure; only for development)."
-            )
-            return True
+            logger.error("SLACK_SIGNING_SECRET not set — rejecting Slack request")
+            return False
+
+        # Reject stale signed requests to prevent replay. Slack's signing
+        # scheme includes the timestamp, but the signature alone does not
+        # expire it.
+        try:
+            request_ts = int(timestamp)
+        except (TypeError, ValueError):
+            return False
+        import time
+        if abs(int(time.time()) - request_ts) > 300:
+            logger.warning("Rejecting stale Slack request timestamp: %s", timestamp)
+            return False
 
         # Slack uses the format: v0=HMAC-SHA256(secret, v0:{timestamp}:{body})
         sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"

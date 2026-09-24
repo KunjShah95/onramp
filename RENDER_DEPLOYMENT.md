@@ -130,6 +130,7 @@ N8N_WEBHOOK_URL=https://onramp-n8n.onrender.com/webhook/onramp
 N8N_ONBOARDING_WEBHOOK_URL=  # optional override
 N8N_HMAC_SECRET=<random>     # optional: signs backend → n8n (X-Onramp-Signature)
 N8N_INBOUND_SECRET=<random>  # REQUIRED for n8n → backend; must match onramp-n8n
+N8N_ALLOWED_TEAM_IDS=team-a,team-b  # optional allow-list for inbound automation
 N8N_TIMEOUT_SECONDS=5
 # n8n service (onramp-n8n — set once after first deploy):
 WEBHOOK_URL=https://onramp-n8n.onrender.com/
@@ -284,5 +285,17 @@ After deployment:
 
 ---
 
-**Last Updated:** 2026-08-21
+### Automated smoke check
+
+Run the dependency-free probe against a deployed environment before promoting a release:
+
+```bash
+python backend/scripts/smoke_test.py --base-url https://<api-host>
+# With an API-key route check (the key is never printed):
+python backend/scripts/smoke_test.py --base-url https://<api-host> --api-key "$ONRAMP_API_KEY"
+```
+
+`/health` verifies process liveness; `/ready` verifies configured database and Redis dependencies. A green smoke check does not replace the monthly backup-restore exercise above.
+
+**Last Updated:** 2026-09-24
 **Related:** `render.yaml`, `Readme.md:Deploying to Render`, `GAPS.md`, `docs/DEPLOYMENT.md`

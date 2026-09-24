@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {
+      "case_id": "synthetic-auth-example",
+      "question": "Where is token validation implemented?",
+      "answer": "Token validation is implemented in src/auth.py.",
+      "expected_files": ["src/auth.py"],
+      "required_terms": ["token", "validation"]
+    }
+  ]
+}

@@ -274,16 +274,14 @@ class AutopilotService:
 
     @staticmethod
     def _default_branch(repo_url: str) -> Optional[str]:
-        try:
-            out = subprocess.run(
-                ["git", "ls-remote", "--symref", repo_url, "HEAD"],
-                capture_output=True, text=True, timeout=30,
-            )
-            for line in out.stdout.splitlines():
-                if line.startswith("ref:") and "HEAD" in line:
-                    return line.split("refs/heads/")[-1].split()[0]
-        except Exception:
-            pass
+        """Return no fallback branch for untrusted input.
+
+        Older code invoked ``git ls-remote`` on the caller-controlled URL.
+        Git remote helpers can execute commands (for example ``ext::``), so a
+        failed strict clone must never fall through to another Git transport.
+        Callers should discover the default branch through a validated provider
+        API and retry explicitly.
+        """
         return None
 
     # ── Step 2: parse + graph ───────────────────────────────────────────

@@ -174,6 +174,29 @@ async def test_publish_event_rejects_cross_team_source_session(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_create_session_authorizes_index_before_binding(monkeypatch):
+    from app.api.v1 import agent_sessions as module
+
+    monkeypatch.setattr(module, "_user_team_ids", AsyncMock(return_value={"team-a"}))
+    authorize = AsyncMock(return_value="team-a")
+    monkeypatch.setattr("app.api.v1.index_access.authorize_repo_index", authorize)
+    monkeypatch.setattr(
+        module.agent_context,
+        "create_session",
+        AsyncMock(return_value={"id": "session-a", "team_id": "team-a"}),
+    )
+    monkeypatch.setattr(module.agent_bus, "publish", AsyncMock())
+
+    result = await module.create_session(
+        module.CreateSessionRequest(agent_type="repo_qa", index_id="index-a"),
+        {"uid": "user-a"},
+    )
+
+    assert result["id"] == "session-a"
+    authorize.assert_awaited_once_with({"uid": "user-a"}, "index-a", "team-a")
+
+
+@pytest.mark.asyncio
 async def test_publish_event_does_not_mutate_caller_payload(monkeypatch):
     from app.api.v1 import agent_sessions as module
 

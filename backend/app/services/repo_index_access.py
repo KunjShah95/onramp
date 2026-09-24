@@ -8,6 +8,7 @@ index_id)`` pair.  It does not store source code or embeddings.
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -40,6 +41,8 @@ def parse_github_repo(repo_url: str) -> Optional[tuple[str, str]]:
     if repo.endswith(".git"):
         repo = repo[:-4]
     if not owner or not repo or ".." in owner or ".." in repo:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", owner) or not re.fullmatch(r"[A-Za-z0-9_.-]+", repo):
         return None
     return owner, repo
 

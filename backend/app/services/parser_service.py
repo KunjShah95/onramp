@@ -428,10 +428,14 @@ class ParserService:
         module_map = {}
         parsed_count = 0
 
-        for root, dirs, files in os.walk(repo_path):
+        repo_root = os.path.realpath(repo_path)
+        for root, dirs, files in os.walk(repo_path, followlinks=False):
             dirs[:] = [d for d in dirs if d not in self.IGNORE_DIRS]
             for fname in files:
                 fpath = os.path.join(root, fname)
+                if os.path.islink(fpath) or not os.path.realpath(fpath).startswith(repo_root + os.sep):
+                    logger.warning("Skipping symlink or out-of-tree path: %s", fpath)
+                    continue
                 ext = Path(fname).suffix.lower()
                 if ext not in self.SUPPORTED_EXTS:
                     continue

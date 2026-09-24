@@ -34,7 +34,14 @@ class RepoQA(BaseAgent):
     async def execute(self, **kwargs) -> Dict[str, Any]:
         return {"status": "ok"}
 
-    async def index_repo(self, repo_path: str, index_id: Optional[str] = None) -> str:
+    async def index_repo(
+        self,
+        repo_path: str,
+        index_id: Optional[str] = None,
+        team_id: Optional[str] = None,
+        repo_url: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> str:
         """Index a checkout under a caller-supplied stable ID.
 
         Local/temporary checkout paths must not become the public index key:
@@ -43,7 +50,13 @@ class RepoQA(BaseAgent):
         the same index.  The MD5 fallback remains for legacy/internal callers.
         """
         index_id = index_id or hashlib.md5(repo_path.encode()).hexdigest()[:12]
-        await self.embeddings.index_documents(index_id, repo_path)
+        await self.embeddings.index_documents(
+            index_id,
+            repo_path,
+            team_id=team_id,
+            repo_url=repo_url,
+            branch=branch,
+        )
         return index_id
 
     @staticmethod

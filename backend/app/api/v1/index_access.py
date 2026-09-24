@@ -11,6 +11,7 @@ from app.services.repo_index_access import (
     find_registered_repository,
     grant_index_access,
     list_index_grants,
+    parse_github_repo,
 )
 
 
@@ -35,23 +36,32 @@ async def authorize_registered_repository(
     repo_url: str,
     requested_team_id: Optional[str] = None,
 ) -> str:
-    """Require a registered, team-owned repository for direct analysis."""
-    from app.services.repo_index_access import parse_github_repo
+    """Compatibility name for the registered-repository/team authorizer."""
+    return await authorize_registered_repo(user, repo_url, requested_team_id)
 
+
+async def authorize_registered_repo(
+    user: dict,
+    repo_url: str,
+    requested_team_id: Optional[str] = None,
+) -> str:
+    """Require an exact registered-repository/team match.
+
+    Repository URLs are not authorization. Every GitHub read/write must be
+    tied to a repository registration owned by a team the caller belongs to.
+    """
     if not parse_github_repo(repo_url):
         raise HTTPException(status_code=400, detail="Only strict GitHub HTTPS repository URLs are supported")
-    repository = await find_registered_repository(repo_url)
-    if not repository:
-        raise HTTPException(status_code=404, detail="Repository is not registered for this workspace")
-    team_id = str(repository.get("team_id")) if repository.get("team_id") else None
-    if not team_id:
-        raise HTTPException(status_code=403, detail="Repository is not assigned to a team")
     accessible = await _team_ids(user)
-    if team_id not in accessible:
+    if requested_team_id and str(requested_team_id) not in accessible:
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+    repository = await find_registered_repository(repo_url)
+    owner_team = str(repository.get("team_id")) if repository and repository.get("team_id") else None
+    if not owner_team or owner_team not in accessible:
+        raise HTTPException(status_code=403, detail="Repository is not registered for an accessible team")
+    if requested_team_id and str(requested_team_id) != owner_team:
         raise HTTPException(status_code=403, detail="Repository belongs to another team")
-    if requested_team_id and str(requested_team_id) != team_id:
-        raise HTTPException(status_code=403, detail="Repository belongs to another team")
-    return team_id
+    return owner_team
 
 
 async def authorize_repo_index(

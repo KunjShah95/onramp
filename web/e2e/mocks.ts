@@ -489,8 +489,8 @@ export async function mockBillingAPI(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           team_id: MOCK_TEAM_ID,
-          tier: 'pro',
-          price: 49,
+          tier: 'startup',
+          price: 999,
           billing_cycle: 'monthly',
           status: 'active',
           created_at: '2025-06-01T00:00:00Z',

@@ -8,7 +8,8 @@
 - Tenant isolation: `/ask/index` accepts only https URLs (no local paths); agent bus has no global WS fan-out; sessions/bus/index reads require team membership; Celery tasks carry `team_id`. Tests: `test_agent_tenant_scoping.py`, `test_repo_index_access.py` (12 passed).
 - Claims: SOC 2 marked in-progress site-wide; source retention states encrypted excerpts/embeddings; customers page anonymized to design partners; new `/trust` Trust Center page (draft).
 - Hygiene: Neon dep removed, `react-router-dom` → 7.18.4, frontend/backend audits blocking, new SDK CI workflow, n8n image pinned (`n8nio/n8n:2.41.0`), n8n/GitHub webhooks fail-closed HMAC.
-- Still open: opaque `repository_context` records, full clean-env backend suite, lockfile audit re-run, Playwright cookie-auth contracts, lint ratchet, EU AI Act legal review.
+- Still open: opaque `repository_context` records, clean-environment Postgres/Redis integration run, Playwright cookie-auth contracts, lint ratchet, EU AI Act legal review. Frontend and backend lockfile audits now pass.
+- Follow-up hardening now in progress: async/single and batch index jobs with durable job bindings, repository-delete derived-data cleanup, tenant-checked onboarding plan reads, n8n per-team delivery targets, read-only MCP tools, and a deterministic grounded-answer evaluation harness.
 
 ---
 
@@ -108,10 +109,10 @@
 
 | Suite | Location | Status |
 |-------|----------|--------|
-| Backend (auth middleware, rate limit, RBAC guard, billing webhook, storage `in` filter, migration ordering, prod env validation, ramp/review-ops/benchmark, repo index, embeddings, DORA, RBAC) | `backend/tests/` — 63 files, 700+ tests | ✅ Passing (memory + Postgres variants) |
-| Frontend (Vitest + RTL) | `web/src/` — `*.test.tsx` + `src/test/` | ✅ 58+ tests, strict TS zero errors; `frontend.yml` runs `vitest run` + `tsc --noEmit` + `build` |
-| E2E (Playwright) | `web/e2e/` | ✅ 65+ specs (auth, dashboard, review-queue, explore, team, billing, a11y, perf); not yet wired into required CI gate |
-| SDK | `sdk/` | ✅ 6 tests |
+| Backend (auth middleware, rate limit, RBAC guard, billing webhook, storage `in` filter, migration ordering, prod env validation, ramp/review-ops/benchmark, repo index, embeddings, DORA, RBAC) | `backend/tests/` — 63 files, 700+ tests | ✅ 1,247 passed, 202 skipped in memory mode; clean Postgres run remains a separate CI gate |
+| Frontend (Vitest + RTL) | `web/src/` — `*.test.tsx` + `src/test/` | ✅ 82 tests; strict TS, production build, SEO check, and `npm audit` pass |
+| E2E (Playwright) | `web/e2e/` | ✅ 65+ specs (auth, dashboard, review-queue, explore, team, billing, a11y, perf); required CI gate remains environment-specific |
+| SDK | `sdk/` | ✅ 10 tests, typecheck, build |
 
 > See `ROADMAP.md:Testing & Reliability` for full breakdown.
 

@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from app.api.v1.auth import get_current_user
+from app.services.outbound_url import OutboundURLError, validate_outbound_url
 from app.services.webhook_service import (
     create_webhook,
     list_webhooks,
@@ -95,6 +96,11 @@ async def create_user_webhook(
                 detail=f"Unsupported event '{event}'. Supported: {SUPPORTED_EVENTS}",
             )
 
+    try:
+        validate_outbound_url(request.url)
+    except OutboundURLError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     webhook = await create_webhook(
         user_id=user.get("uid", ""),
         url=request.url,
@@ -110,11 +116,14 @@ async def get_user_webhook(
     webhook_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Get a single webhook with full details including secret."""
+    """Get a single webhook; the signing secret is never returned after creation."""
     webhook = await get_webhook(webhook_id)
     if not webhook or webhook.get("user_id") != user.get("uid", ""):
         raise HTTPException(status_code=404, detail="Webhook not found")
-    return webhook
+    safe = dict(webhook)
+    if safe.get("secret"):
+        safe["secret"] = "••••••••"
+    return safe
 
 
 @router.put("/webhooks/{webhook_id}",
@@ -125,6 +134,11 @@ async def update_user_webhook(
     user: dict = Depends(get_current_user),
 ):
     """Update a webhook."""
+    if request.url is not None:
+        try:
+            validate_outbound_url(request.url)
+        except OutboundURLError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     result = await update_webhook(webhook_id, user.get("uid", ""), updates)
     if not result:

@@ -302,7 +302,13 @@ async def index_repo(
         github = GitHubService()
         # Clone into an isolated temp dir; never walk a caller-supplied path.
         cloned_path = await github.clone_repo(repo_url, request.branch)
-        await qa.index_repo(cloned_path, index_id=index_id)
+        await qa.index_repo(
+            cloned_path,
+            index_id=index_id,
+            team_id=team_id,
+            repo_url=repo_url,
+            branch=request.branch,
+        )
         await grant_index_access(index_id, team_id, repo_url, request.branch)
         return {
             "index_id": index_id,

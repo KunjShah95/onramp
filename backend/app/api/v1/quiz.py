@@ -104,8 +104,10 @@ async def get_quiz(
     doc = await storage.get_document(QUIZZES_COLLECTION, quiz_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Quiz not found")
+    if doc.get("user_id") and doc.get("user_id") != user.get("uid"):
+        raise HTTPException(status_code=403, detail="Quiz belongs to another user")
 
-    # Return questions without correct_answer field for a fresh quiz attempt
+    # Return questions without correct_answer field for a fresh attempt
     questions_stripped = []
     for q in doc.get("questions", []):
         q_copy = dict(q)
@@ -137,6 +139,8 @@ async def get_quiz_with_answers(
     doc = await storage.get_document(QUIZZES_COLLECTION, quiz_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Quiz not found")
+    if doc.get("user_id") and doc.get("user_id") != user.get("uid"):
+        raise HTTPException(status_code=403, detail="Quiz belongs to another user")
 
     return {
         "quiz_id": quiz_id,
@@ -163,6 +167,8 @@ async def submit_quiz_answers(
     quiz_doc = await storage.get_document(QUIZZES_COLLECTION, quiz_id)
     if not quiz_doc:
         raise HTTPException(status_code=404, detail="Quiz not found")
+    if quiz_doc.get("user_id") and quiz_doc.get("user_id") != user.get("uid"):
+        raise HTTPException(status_code=403, detail="Quiz belongs to another user")
 
     uid = user.get("uid", "anonymous")
     llm = getattr(req.app.state, "llm", None)

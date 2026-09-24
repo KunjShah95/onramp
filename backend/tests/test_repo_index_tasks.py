@@ -203,7 +203,7 @@ class TestBuildAskIndexTask:
             calls["url"] = url
             return "/tmp/fake-ask-repo"
 
-        async def fake_index(self, path, index_id=None):
+        async def fake_index(self, path, index_id=None, **_kwargs):
             calls["path"] = path
             calls["index_id"] = index_id
 

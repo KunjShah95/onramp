@@ -307,6 +307,28 @@ Response 202:
 {"queued": true, "task_id": "...", "repo_url": "...", "branch": "main"}
 ```
 
+### Queue Multiple Repository Indexes
+
+```http
+POST /repos/index/batch
+{"repo_urls": ["https://github.com/acme/app", "https://github.com/acme/api"],
+ "branch": "main", "async_build": true}
+```
+
+Returns `202` with one task per unique registered repository. Each repository
+is authorized independently against the caller's team. Poll a task with
+`GET /repos/index/jobs/{task_id}`.
+
+### Ask Index Jobs
+
+```http
+GET /ask/jobs/{task_id}
+```
+
+Returns `PENDING`, `STARTED`, `SUCCESS`, or `FAILURE` without exposing raw
+provider or filesystem errors. A job binding is required, and a caller must
+match the requesting user or team.
+
 Indexes are also **pre-built and auto-refreshed on a schedule**: the
 `refresh_repo_indexes` Celery beat task runs nightly (03:00 UTC) against
 the repositories registry and enqueues a build for every repo whose cached
@@ -367,10 +389,12 @@ is safe to drop straight into an LLM prompt.
 ### Evict Index
 
 ```http
-DELETE /repos/index/{index_id}
+DELETE /repos/index/{index_id}?purge_derived=true
 ```
 
-Removes the cached index so the next build re-parses the repo.
+Removes the cached context. `purge_derived=true` also deletes derived embedding
+documents/chunks for that index; repository removal performs the same cleanup
+automatically.
 
 ### Reuse from Agents (all LLM-backed agents)
 
@@ -463,11 +487,17 @@ Response 200:
 POST /ask/index
 Content-Type: application/json
 
-{"repo_path": "/tmp/cloned-repo"}
+{"repo_url": "https://github.com/acme/app", "branch": "main"}
 
 Response 200:
-{"index_id": "..."}
+{"index_id": "...", "repo_url": "...", "branch": "main", "team_id": "..."}
 ```
+
+The legacy `repo_path` field is accepted only as a deprecated URL alias; local
+filesystem paths are rejected. Repositories must be registered and visible to
+the caller's team. Set `"async_build": true` to queue durable indexing and
+receive `202` with a task id; poll `GET /ask/jobs/{task_id}` for a redacted,
+tenant-scoped status.
 
 ### Query Codebase
 
@@ -497,7 +527,15 @@ DELETE /ask/history/{index_id}
 
 ---
 
-## Reports
+### Read-only MCP tools
+
+Authenticated MCP clients can call `POST /mcp` with JSON-RPC methods
+`initialize`, `ping`, `tools/list`, and `tools/call`. The server exposes only
+`repo_context` and `repo_search`; both authorize the requested index against
+the caller's team before reading data. It intentionally has no task, write,
+or administrative tools.
+
+
 
 ### Generate Onboarding Report
 
@@ -1122,6 +1160,7 @@ POST /onboarding-plans
 POST /onboarding-plans/generate
 GET  /onboarding-plans
 GET  /onboarding-plans/{plan_id}
+GET  /onboarding-plans/{plan_id}/progress
 GET  /onboarding-plans/{plan_id}/roadmap
 PATCH /onboarding-plans/{plan_id}
 POST /onboarding-plans/{plan_id}/pulse

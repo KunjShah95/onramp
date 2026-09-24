@@ -45,6 +45,11 @@
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0"
   },
+  "overrides": {
+    "monaco-editor": {
+      "dompurify": "3.4.16"
+    }
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.61.1",

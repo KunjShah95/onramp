@@ -28,10 +28,9 @@ test.describe('Billing Page', () => {
   })
 
   test('displays current subscription from mock data', async ({ page }) => {
-    // The subscription card shows "Current Plan" heading
-    await expect(page.getByText('Current Plan').first()).toBeVisible()
-    // The tier badge shows "pro" — also check the price (billed in INR)
-    await expect(page.getByText('₹49').first()).toBeVisible()
+    // The active plan card is labelled and the mocked price is rendered.
+    await expect(page.getByRole('button', { name: 'Current plan' })).toBeVisible()
+    await expect(page.getByText('₹999').first()).toBeVisible()
   })
 
   test('shows pricing tier cards', async ({ page }) => {

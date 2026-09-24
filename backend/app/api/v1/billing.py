@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 from app.services.billing_service import BillingService
@@ -27,6 +28,16 @@ async def require_team_membership(team_id: str, user: dict) -> None:
         )
 
 
+async def require_team_admin(team_id: str, user: dict) -> None:
+    """Require team membership with an owner/admin billing role."""
+    await require_team_membership(team_id, user)
+    members = await get_team_members(team_id)
+    uid = user.get("uid")
+    roles = {m.get("role", "member") for m in members if (m.get("user_id") or m.get("uid") or m.get("id")) == uid}
+    if not roles.intersection({"admin", "ceo", "cto", "senior", "senior_dev"}):
+        raise HTTPException(status_code=403, detail="Team billing administrator required")
+
+
 class CreateSubscriptionRequest(BaseModel):
     team_id: str
     tier: str = "free"
@@ -54,7 +65,7 @@ async def create_subscription(
     request: CreateSubscriptionRequest,
     user: dict = Depends(get_current_user),
 ):
-    await require_team_membership(request.team_id, user)
+    await require_team_admin(request.team_id, user)
     return await billing.create_subscription(
         team_id=request.team_id,
         tier=request.tier,
@@ -82,7 +93,7 @@ async def update_subscription(
     request: UpdateBillingRequest,
     user: dict = Depends(get_current_user),
 ):
-    await require_team_membership(team_id, user)
+    await require_team_admin(team_id, user)
     result = await billing.update_subscription(team_id, request.tier)
     if not result:
         raise HTTPException(status_code=404, detail="No active subscription")
@@ -95,7 +106,7 @@ async def cancel_subscription(
     team_id: str,
     user: dict = Depends(get_current_user),
 ):
-    await require_team_membership(team_id, user)
+    await require_team_admin(team_id, user)
     success = await billing.cancel_subscription(team_id)
     if not success:
         raise HTTPException(status_code=404, detail="No active subscription")
@@ -108,7 +119,7 @@ async def attach_razorpay(
     request: AttachRazorpayRequest,
     user: dict = Depends(get_current_user),
 ):
-    await require_team_membership(team_id, user)
+    await require_team_admin(team_id, user)
     success = await billing.attach_razorpay(
         team_id,
         request.razorpay_customer_id,
@@ -125,7 +136,7 @@ async def create_checkout(
     user: dict = Depends(get_current_user),
 ):
     """Create a Razorpay subscription checkout for a paid tier."""
-    await require_team_membership(request.team_id, user)
+    await require_team_admin(request.team_id, user)
     result = await billing.create_checkout_session(
         request.team_id, request.tier, request.success_url, request.cancel_url
     )
@@ -190,6 +201,8 @@ async def top_up_credits(
     signature (`/credits/order/verify`). The amount is the number of credits
     purchased. Returns the updated wallet.
     """
+    if os.getenv("ENV", "development").lower() == "production":
+        raise HTTPException(status_code=403, detail="Manual credit top-ups are disabled; use verified payment")
     return await credits.add_credits(user.get("uid", ""), request.amount, reason="topup")
 
 

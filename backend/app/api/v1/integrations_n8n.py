@@ -23,6 +23,7 @@ Management (authenticated):
 import hashlib
 import hmac
 import json
+import os
 import logging
 import os
 
@@ -119,6 +120,7 @@ async def get_config(user: dict = Depends(get_current_user)):
 @router.put("/config")
 async def save_config(body: N8nConfigRequest, user: dict = Depends(get_current_user)):
     from app.services import n8n_service as n8n
+    from app.services.outbound_url import OutboundURLError, validate_outbound_url
 
     cfg = {
         "webhook_url": body.webhook_url.strip(),
@@ -135,10 +137,13 @@ async def save_config(body: N8nConfigRequest, user: dict = Depends(get_current_u
             )
     if not cfg["webhook_url"] and not cfg["base_url"]:
         raise HTTPException(status_code=400, detail="Provide webhook_url and/or base_url.")
-    if cfg["webhook_url"] and not cfg["webhook_url"].startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="webhook_url must start with http(s)://")
-    if cfg["base_url"] and not cfg["base_url"].startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="base_url must start with http(s)://")
+    try:
+        if cfg["webhook_url"]:
+            validate_outbound_url(cfg["webhook_url"])
+        if cfg["base_url"]:
+            validate_outbound_url(cfg["base_url"])
+    except OutboundURLError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     # Preserve existing api_key when the client sends back the masked placeholder
     api_key = body.api_key.strip()
@@ -166,6 +171,7 @@ async def delete_config(user: dict = Depends(get_current_user)):
 async def test_connection(body: N8nTestRequest, user: dict = Depends(get_current_user)):
     """Test reachability using explicit URLs, falling back to saved config."""
     from app.services import n8n_service as n8n
+    from app.services.outbound_url import OutboundURLError, validate_outbound_url
 
     webhook_url = body.webhook_url.strip()
     base_url = body.base_url.strip()
@@ -183,6 +189,13 @@ async def test_connection(body: N8nTestRequest, user: dict = Depends(get_current
         row = await get_integration_config(user.get("uid", ""), "n8n")
         cfg = ((row or {}).get("config", {}) or {})
         api_key = cfg.get("api_key", "")
+    try:
+        if webhook_url:
+            validate_outbound_url(webhook_url)
+        if base_url:
+            validate_outbound_url(base_url)
+    except OutboundURLError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return await n8n.test_connection(webhook_url=webhook_url, base_url=base_url, api_key=api_key)
 
 
@@ -199,6 +212,11 @@ async def manual_trigger(body: N8nTriggerRequest, user: dict = Depends(get_curre
         )
     payload = dict(body.payload or {})
     payload.setdefault("triggered_by", user.get("uid"))
+    if body.team_id:
+        from app.services.team_service import get_user_teams
+        teams = await get_user_teams(user.get("uid", ""))
+        if str(body.team_id) not in {str(t.get("id") or t.get("team_id")) for t in (teams or [])}:
+            raise HTTPException(status_code=403, detail="Not a member of this team")
     ok = await n8n.notify(event, payload, team_id=body.team_id, user_id=user.get("uid", ""))
     if not ok:
         raise HTTPException(
@@ -329,6 +347,29 @@ async def n8n_inbound(
         title = (payload.get("title") or "").strip()
         if not team_id or not title:
             raise HTTPException(status_code=400, detail="create_task requires team_id and title")
+        allowed_teams = {
+            value.strip()
+            for value in os.getenv("N8N_ALLOWED_TEAM_IDS", "").split(",")
+            if value.strip()
+        }
+        if os.getenv("ENV", "development").lower() == "production" and team_id not in allowed_teams:
+            raise HTTPException(status_code=403, detail="n8n workflow is not authorized for this team")
+        from app.services.team_service import get_team
+        if not await get_team(team_id):
+            raise HTTPException(status_code=404, detail="Team not found")
+        if payload.get("assigned_to"):
+            from app.services.team_service import get_team_members
+            members = await get_team_members(team_id)
+            member_ids = {m.get("user_id") or m.get("uid") or m.get("id") for m in members}
+            if payload["assigned_to"] not in member_ids:
+                raise HTTPException(status_code=400, detail="assigned_to is not a member of this team")
+        allowed_teams = {
+            item.strip()
+            for item in os.getenv("N8N_ALLOWED_TEAM_IDS", "").split(",")
+            if item.strip()
+        }
+        if allowed_teams and team_id not in allowed_teams:
+            raise HTTPException(status_code=403, detail="n8n is not authorized for this team")
         priority = (payload.get("priority") or "medium").strip().lower()
         if priority not in ("low", "medium", "high", "urgent"):
             priority = "medium"

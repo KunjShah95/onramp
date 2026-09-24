@@ -106,7 +106,9 @@ services:
       resources:
         limits:
           memory: 2G
-      replicas: 2
+      # Migrations run once before the single application container starts.
+      # Run a dedicated release migration job before scaling replicas in production.
+      replicas: 1
 
   frontend:
     build:

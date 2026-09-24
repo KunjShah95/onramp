@@ -18,6 +18,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone
 from typing import Optional, List
 from app.services.postgres_db import get_storage, generate_id
+from app.services.outbound_url import OutboundURLError, validate_outbound_url
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +288,7 @@ async def test_webhook(webhook_id: str, user_id: str) -> dict:
     }
 
     try:
+        validate_outbound_url(webhook["url"])
         secret = webhook.get("secret", "")
         body = json.dumps(payload)
         signature = hmac.new(
@@ -295,7 +297,7 @@ async def test_webhook(webhook_id: str, user_id: str) -> dict:
             hashlib.sha256,
         ).hexdigest()
 
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
             resp = await client.post(
                 webhook["url"],
                 content=body,
@@ -447,7 +449,8 @@ async def send_webhook(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        validate_outbound_url(webhook_url)
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
             response = await client.post(webhook_url, json=payload)
             response.raise_for_status()
             return True

@@ -18,6 +18,7 @@ from typing import Optional, List, Dict, Any
 import httpx
 
 from app.services.webhook_service import get_integration_config, save_integration_config
+from app.services.outbound_url import OutboundURLError, validate_outbound_url
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ def _utcnow() -> str:
 
 def _build_client(base_url: str, email: str, api_token: str) -> httpx.AsyncClient:
     """Build an authenticated httpx client for Jira REST API v3."""
+    validate_outbound_url(base_url)
     return httpx.AsyncClient(
         base_url=base_url.rstrip("/"),
         auth=(email, api_token),

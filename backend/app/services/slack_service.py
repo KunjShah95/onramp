@@ -59,6 +59,9 @@ def _format_task_message(task: dict, event: str, actor_name: str = "") -> str:
     return "\n".join(lines)
 
 
+from app.services.outbound_url import OutboundURLError, validate_outbound_url
+
+
 def _format_module_message(module: str, source: str) -> str:
     """Format a Slack message for a module grant event."""
     return (
@@ -76,8 +79,13 @@ class SlackService:
     async def post_message(self, text: str, channel: str = "#general") -> bool:
         if not self.webhook_url:
             return False
+        try:
+            validate_outbound_url(self.webhook_url)
+        except OutboundURLError as exc:
+            logger.warning("Blocked unsafe Slack webhook: %s", exc)
+            return False
         payload = {"channel": channel, "text": text, "mrkdwn": True}
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=False) as client:
             resp = await client.post(self.webhook_url, json=payload)
             return resp.is_success
 

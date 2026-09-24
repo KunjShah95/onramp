@@ -156,7 +156,7 @@ services:
   # container use http://n8n:5678/webhook/... Set N8N_WEBHOOK_URL accordingly
   # (or save the URL per-user in Settings → Integrations → n8n, no restart).
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.41.0
     ports:
       - "5678:5678"
     environment:

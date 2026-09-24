@@ -117,7 +117,7 @@ const ROUTES = [
     file: 'blog-how-we-built-codebase-aware-ai-mentor.html',
     title: 'How we built a codebase-aware AI mentor | Onramp Blog',
     description:
-      "Behind the scenes of Onramp's AI: how we parse, index, and ground answers in real repository structure, without storing source code.",
+      "Behind the scenes of Onramp's AI: how we parse, index, and ground answers in real repository structure, with tenant-scoped derived context.",
     type: 'article',
   },
   {
@@ -131,9 +131,9 @@ const ROUTES = [
   {
     route: '/blog/onramp-achieves-soc-2-type-ii-certification',
     file: 'blog-onramp-achieves-soc-2-type-ii-certification.html',
-    title: 'Onramp achieves SOC 2 Type II certification | Onramp Blog',
+    title: 'SOC 2 Type II: work in progress | Onramp Blog',
     description:
-      "We're proud to announce that Onramp has completed its SOC 2 Type II audit, reinforcing our commitment to security and data protection.",
+      'SOC 2 Type II audit work is in progress. Onramp is not yet certified; see the security page for current status.',
     type: 'article',
   },
   {
@@ -145,27 +145,27 @@ const ROUTES = [
   {
     route: '/customers',
     file: 'customers.html',
-    title: 'Customers · Onramp',
-    description: 'Teams that stopped searching start shipping. See how Onramp accelerates developer onboarding.',
+    title: 'Validation program · Onramp',
+    description: 'Current Onramp validation signals and design-partner program for repository-grounded onboarding.',
   },
   {
     route: '/security',
     file: 'security.html',
     title: 'Security · Onramp',
     description:
-      'Onramp security practices: encryption, access controls, SOC 2 Type II, GDPR compliance, and a responsible disclosure program.',
+      'Onramp security practices: encryption, access controls, SOC 2 Type II audit status, GDPR control progress, and a responsible disclosure program.',
   },
   {
     route: '/soc-2',
     file: 'soc-2.html',
     title: 'SOC 2 Type II · Onramp',
-    description: 'Onramp is SOC 2 Type II certified. Learn how we protect customer data with industry-leading security controls.',
+    description: 'SOC 2 Type II audit work in progress. Onramp is not yet certified.',
   },
   {
     route: '/dpa',
     file: 'dpa.html',
-    title: 'Data Processing Agreement · Onramp',
-    description: 'Onramp Data Processing Agreement (DPA) governing how customer data is processed and protected.',
+    title: 'Data processing status · Onramp',
+    description: 'Current Onramp data-processing program status and DPA roadmap.',
   },
   {
     route: '/privacy',

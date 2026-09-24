@@ -6,6 +6,7 @@ from app.services.quota import enforce_quota
 from app.services.github_service import GitHubService
 from app.api.v1.auth import get_current_user
 from app.services.agent_session_helper import get_session, complete_session, fail_session
+from app.api.v1.index_access import authorize_registered_repo
 import os
 
 router = APIRouter(prefix="/pr-review", tags=["pr-review"])
@@ -49,6 +50,7 @@ async def review_pr(
     _q=enforce_quota("pr_review"),
 ):
     """Review a GitHub PR and return structured feedback."""
+    await authorize_registered_repo(user, request.repo_url)
     llm = getattr(req.app.state, "llm", None)
     github_token = os.getenv("GITHUB_TOKEN")
     sid = await get_session("pr_review", user_id=user.get("uid"), scratchpad={"repo_url": request.repo_url, "pr_number": request.pr_number})
@@ -91,6 +93,7 @@ async def describe_pr(
     _q=enforce_quota("pr_review"),
 ):
     """Generate a PR description from the diff."""
+    await authorize_registered_repo(user, request.repo_url)
     llm = getattr(req.app.state, "llm", None)
     github_token = os.getenv("GITHUB_TOKEN")
     agent = PRReviewAgent(llm, github_token)
@@ -114,7 +117,7 @@ async def describe_pr(
 @router.post("/auto-apply")
 async def auto_apply_suggestions(
     request: AutoApplyRequest,
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     _q=enforce_quota("pr_review"),
 ):
     """Apply multiple review suggestions as inline fix commits on the PR branch.
@@ -127,6 +130,13 @@ async def auto_apply_suggestions(
     Uses GitHub's Git Data API (blob -> tree -> commit -> update ref) to create
     one commit per suggestion on the PR's head branch.
     """
+    repo_team_id = await authorize_registered_repo(user, request.repo_url)
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+    teams = await get_user_teams(user.get("uid", ""))
+    roles = [t.get("role", "member") for t in (teams or []) if (t.get("team_id") or t.get("id")) == repo_team_id]
+    if not any(ROLE_HIERARCHY.get(role, 0) >= ROLE_HIERARCHY["senior"] for role in roles):
+        raise HTTPException(status_code=403, detail="Senior team role required to modify repository code")
     github_token = os.getenv("GITHUB_TOKEN")
     gh = GitHubService(github_token)
     try:
@@ -153,10 +163,17 @@ async def auto_apply_suggestions(
 @router.post("/auto-apply/single")
 async def auto_apply_single(
     request: AutoApplySingleRequest,
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     _q=enforce_quota("pr_review"),
 ):
     """Apply a single review suggestion as an inline fix commit."""
+    repo_team_id = await authorize_registered_repo(user, request.repo_url)
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+    teams = await get_user_teams(user.get("uid", ""))
+    roles = [t.get("role", "member") for t in (teams or []) if (t.get("team_id") or t.get("id")) == repo_team_id]
+    if not any(ROLE_HIERARCHY.get(role, 0) >= ROLE_HIERARCHY["senior"] for role in roles):
+        raise HTTPException(status_code=403, detail="Senior team role required to modify repository code")
     github_token = os.getenv("GITHUB_TOKEN")
     gh = GitHubService(github_token)
     try:

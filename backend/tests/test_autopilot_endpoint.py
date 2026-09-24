@@ -91,6 +91,9 @@ def _make_app(monkeypatch, fake_service=None, with_auth=True):
         fake_service = _FakeAutopilotService()
     monkeypatch.setattr(autopilot, "AutopilotService", lambda llm=None, github_token=None: fake_service)
 
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(autopilot, "authorize_registered_repo", AsyncMock(return_value="team-test"))
+
     application = FastAPI()
     application.state.llm = None
 

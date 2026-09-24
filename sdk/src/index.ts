@@ -146,6 +146,12 @@ export interface RepositoryIndexResult {
   [key: string]: unknown
 }
 
+export interface RepositoryIndexBatchResult {
+  queued: boolean
+  count: number
+  jobs: RepositoryIndexResult[]
+}
+
 export interface IndexJob {
   task_id: string
   status: string
@@ -178,6 +184,12 @@ export interface OnboardingProgress {
   pre_boarding: { completed: number; total: number }
   next_milestone?: Record<string, unknown>
   next_pre_boarding_task?: Record<string, unknown>
+}
+
+export interface McpTool {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
 }
 
 // ── Errors ──────────────────────────────────────────────────────────────
@@ -485,9 +497,38 @@ export class OnrampClient {
     return this.unwrap(res)
   }
 
+  /** Queue up to twenty registered repositories in one asynchronous batch. */
+  async buildRepositoryIndexBatch(
+    repoUrls: string[],
+    options: Omit<RepositoryIndexOptions, 'asyncBuild'> = {},
+  ): Promise<RepositoryIndexBatchResult> {
+    const res = await this.request<RepositoryIndexBatchResult>(this.apiUrl('/repos/index/batch'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        repo_urls: repoUrls,
+        branch: options.branch ?? 'main',
+        max_files: options.maxFiles ?? 1000,
+        force: options.force ?? false,
+        async_build: true,
+        team_id: options.teamId,
+      }),
+    })
+    return this.unwrap(res)
+  }
+
   /** Poll an asynchronous repository-index job. */
   async getIndexJob(taskId: string): Promise<IndexJob> {
     const res = await this.request<IndexJob>(this.apiUrl(`/ask/jobs/${encodeURIComponent(taskId)}`), {
+      method: 'GET',
+      headers: this.headers(),
+    })
+    return this.unwrap(res)
+  }
+
+  /** Poll a graph-context repository-index job created by a batch build. */
+  async getRepositoryIndexJob(taskId: string): Promise<IndexJob> {
+    const res = await this.request<IndexJob>(this.apiUrl(`/repos/index/jobs/${encodeURIComponent(taskId)}`), {
       method: 'GET',
       headers: this.headers(),
     })
@@ -534,6 +575,33 @@ export class OnrampClient {
       { method: 'GET', headers: this.headers() },
     )
     return this.unwrap(res)
+  }
+
+  private async mcpRequest<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+    const res = await this.request<{ result?: T; error?: { message?: string } }>(this.apiUrl('/mcp'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
+    })
+    if (res.error) {
+      throw new OnrampApiError(res.error.message || 'MCP request failed', 400, 'MCP_ERROR')
+    }
+    return (res.result ?? {}) as T
+  }
+
+  /** List tools exposed by the tenant-scoped read-only MCP server. */
+  async listMcpTools(): Promise<McpTool[]> {
+    const result = await this.mcpRequest<{ tools: McpTool[] }>('tools/list')
+    return result.tools ?? []
+  }
+
+  /** Call one read-only MCP tool. */
+  async callMcpTool(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const result = await this.mcpRequest<{ structuredContent?: Record<string, unknown> }>('tools/call', {
+      name,
+      arguments: args,
+    })
+    return result.structuredContent ?? {}
   }
 
   // ── AIaaS agent endpoints ───────────────────────────────────────────

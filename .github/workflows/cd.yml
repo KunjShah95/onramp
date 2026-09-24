@@ -33,11 +33,9 @@ jobs:
             fi
           done
           if [ -n "$MISSING" ]; then
-            echo "⚠️  Missing GitHub secrets:$MISSING"
-            echo "Add them in your repo: Settings → Secrets and variables → Actions"
-            echo ""
-            echo "Frontend deploy will be skipped (VERCEL_TOKEN/ORG_ID/PROJECT_ID)."
-            echo "Backend deploy will be skipped (RENDER_DEPLOY_HOOK_URL)."
+            echo "❌ Missing GitHub secrets:$MISSING"
+            echo "Production deployment is blocked until all required secrets are configured."
+            exit 1
           else
             echo "✅ All required secrets configured."
           fi
@@ -80,7 +78,8 @@ jobs:
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
             echo "✅ Frontend smoke test passed (HTTP $HTTP_CODE)"
           else
-            echo "⚠️  Smoke test returned HTTP $HTTP_CODE — verify deployment manually."
+            echo "❌ Smoke test returned HTTP $HTTP_CODE"
+            exit 1
           fi
 
   backend:
@@ -108,9 +107,8 @@ jobs:
           # The actual service URL should be configured as a secret.
           DEPLOYED_API_URL="${{ secrets.RENDER_SERVICE_URL }}"
           if [ -z "$DEPLOYED_API_URL" ]; then
-            echo "⚠️  RENDER_SERVICE_URL not configured — skipping smoke test."
-            echo "Add it as a GitHub secret (e.g. https://onramp-backend.onrender.com)."
-            exit 0
+            echo "❌ RENDER_SERVICE_URL not configured; refusing to skip production smoke test."
+            exit 1
           fi
           DEPLOYED_API_URL="${DEPLOYED_API_URL}/health"
           echo "Checking $DEPLOYED_API_URL..."
@@ -118,5 +116,6 @@ jobs:
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Backend smoke test passed (HTTP $HTTP_CODE)"
           else
-            echo "⚠️  Smoke test returned HTTP $HTTP_CODE — verify deployment manually."
+            echo "❌ Smoke test returned HTTP $HTTP_CODE"
+            exit 1
           fi

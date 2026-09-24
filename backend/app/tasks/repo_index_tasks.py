@@ -156,7 +156,13 @@ def build_ask_index(
         path = await GitHubService().clone_repo(repo_url, branch)
         try:
             index_id = index_id_for(repo_url, branch)
-            await RepoQA(None).index_repo(path, index_id=index_id)
+            await RepoQA(None).index_repo(
+                path,
+                index_id=index_id,
+                team_id=team_id,
+                repo_url=repo_url,
+                branch=branch,
+            )
             if team_id:
                 await grant_index_access(index_id, team_id, repo_url, branch)
             return {

@@ -22,11 +22,11 @@ const TEAM_FEATURES = [
   'Priority support',
 ]
 const ENTERPRISE_FEATURES = [
-  'SSO / SAML & SCIM',
-  'Self-hosted or private cloud',
-  'Audit logs & SOC 2 Type II (in progress)',
-  'Dedicated success engineer',
-  '99.9% uptime SLA',
+  'SSO / SAML & SCIM (roadmap)',
+  'Self-hosted or private cloud (roadmap)',
+  'Audit logs; SOC 2 Type II in progress',
+  'Dedicated success engineer (planned)',
+  'Uptime commitment: to be finalized',
 ]
 
 const SIDE_CARD = 'h-full rounded-md border border-seam bg-panel'
@@ -81,7 +81,7 @@ function buildPricingFAQSchema() {
         name: 'Can I self-host Onramp?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Self-hosting via Docker Compose is available on the Enterprise plan. You can run Onramp in your own VPC or on-premise with full data sovereignty.',
+          text: 'Docker-based deployment artifacts are available for controlled environments. Production self-hosting, private-cloud operations, upgrades, backups, and support are an Enterprise roadmap item; contact us for the current scope.',
         },
       },
       {

@@ -57,7 +57,13 @@ def repo_dir(tmp_path):
 class TestIndexAndSearch:
     async def test_index_stores_vectors_and_search_ranks(self, repo_dir):
         svc = EmbeddingsService(embeddings_router=FakeEmbeddingRouter())
-        index_id = await svc.index_documents("idx1", repo_dir)
+        index_id = await svc.index_documents(
+            "idx1", repo_dir, team_id="team-a", repo_url="https://github.com/acme/app", branch="main"
+        )
+
+        metadata = await svc.storage.get_document("onramp_embeddings", index_id)
+        assert metadata["team_id"] == "team-a"
+        assert metadata["repo_url"] == "https://github.com/acme/app"
 
         rows = await svc.storage.list_embedding_chunks(index_id)
         assert rows, "expected vector chunks to be persisted"

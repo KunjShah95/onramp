@@ -10,7 +10,7 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
         # Ops endpoints (/health, /ready, /metrics) stay unwrapped so probes,
         # load balancers and Prometheus scrapes get the canonical body shape.
         if request.url.path.startswith((
-            "/api/v1/ask/", "/api/v1/explore/", "/v1/",
+            "/api/v1/ask/", "/api/v1/explore/", "/api/v1/mcp", "/v1/",
             "/health", "/ready", "/metrics",
         )):
             return await call_next(request)

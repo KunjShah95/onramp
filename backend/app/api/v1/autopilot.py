@@ -22,6 +22,7 @@ from app.api.v1.auth import get_current_user
 from app.services.quota import enforce_quota
 from app.services.autopilot_service import AutopilotService
 from app.api.v1.llm_route import attach_served_route_header
+from app.api.v1.index_access import authorize_registered_repo
 
 router = APIRouter(prefix="/autopilot", tags=["autopilot"])
 
@@ -107,6 +108,7 @@ async def autopilot_analyze(
     llm = getattr(req.app.state, "llm", None)
     before_route = getattr(llm, "last_route", None)
     try:
+        await authorize_registered_repo(user, request.repo_url, request.team_id)
         team_id = await _resolve_team(user, request.team_id) if request.create_tasks else None
         result = await service.analyze(
             repo_url=request.repo_url,
@@ -139,6 +141,7 @@ async def autopilot_run(
     llm = getattr(req.app.state, "llm", None)
     before_route = getattr(llm, "last_route", None)
     try:
+        await authorize_registered_repo(user, request.repo_url, request.team_id)
         team_id = await _resolve_team(user, request.team_id) if request.create_tasks else None
         result = await service.run(
             repo_url=request.repo_url,

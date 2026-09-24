@@ -5,6 +5,7 @@ import type {
   IssueGuide,
   QAResult,
   IndexResult,
+  IndexJob,
   HistoryTurn,
   ResolveIssueRequest,
   ResolveIssueResult,
@@ -35,31 +36,33 @@ function getApiBaseUrl(): string {
       console.warn('[api] VITE_API_URL must be https:// or /api in production, falling back to /api/v1')
       return '/api/v1'
     }
-    // Validate against known origins allow-list (relative is always ok)
-    if (!isRelative) {
-      try {
-        const parsed = new URL(raw)
-        if (parsed.protocol !== 'https:') {
-          console.warn('[api] VITE_API_URL must be https in prod, falling back')
-          return '/api/v1'
-        }
-        // Allow-list: same host as page or explicitly trusted API hosts
-        const allowedHosts = new Set([
-          window.location.hostname,
-          'api.onramp.dev',
-          'api.onramp.sh',
-        ])
-        // If hostname is not in allow-list and not a subdomain of allow-list, fallback
-        const hostOk = [...allowedHosts].some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))
-        // Also allow localhost for preview builds on same host — but we already require https, so localhost won't match; allow relative fallback instead
-        if (!hostOk) {
-          // For unknown hosts, still allow https but warn — don't hard-reject to avoid breaking custom deployments;
-          // the evil.com check above is the hard block.
-        }
-      } catch {
-        console.warn('[api] VITE_API_URL invalid URL in prod, falling back')
+    // Validate against an exact trusted-host allow-list. Unknown HTTPS hosts
+    // are not safe defaults: VITE_API_URL is bundled at build time and a
+    // typo or compromised build variable could exfiltrate credentials/tokens.
+    try {
+      const parsed = new URL(raw)
+      if (parsed.protocol !== 'https:') {
+        console.warn('[api] VITE_API_URL must be https in prod, falling back')
         return '/api/v1'
       }
+      const configuredHosts = (import.meta.env.VITE_ALLOWED_API_HOSTS || '')
+        .split(',')
+        .map((host: string) => host.trim().toLowerCase())
+        .filter(Boolean)
+      const allowedHosts = new Set([
+        window.location.hostname.toLowerCase(),
+        'onramp.app',
+        'www.onramp.app',
+        'onramp-tlfo.onrender.com',
+        ...configuredHosts,
+      ])
+      if (!allowedHosts.has(parsed.hostname.toLowerCase())) {
+        console.warn('[api] VITE_API_URL host is not allow-listed, falling back')
+        return '/api/v1'
+      }
+    } catch {
+      console.warn('[api] VITE_API_URL invalid URL in prod, falling back')
+      return '/api/v1'
     }
   }
   let url = raw.replace(/\/+$/, '')
@@ -197,7 +200,7 @@ async function trySilentRefresh(): Promise<boolean> {
   return _refreshPromise
 }
 
-async function request<T>(url: string, body?: unknown, method?: string, retried = false): Promise<T> {
+export async function request<T>(url: string, body?: unknown, method?: string, retried = false): Promise<T> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
   let res: Response
@@ -421,6 +424,14 @@ export async function indexRepo(repoUrl: string, branch = 'main'): Promise<Index
     repo_url: repoUrl,
     branch,
   })
+}
+
+export async function getIndexJob(taskId: string): Promise<IndexJob> {
+  return request<IndexJob>(`${API_BASE}/ask/jobs/${encodeURIComponent(taskId)}`)
+}
+
+export async function getRepositoryIndexJob(taskId: string): Promise<IndexJob> {
+  return request<IndexJob>(`${API_BASE}/repos/index/jobs/${encodeURIComponent(taskId)}`)
 }
 
 export async function askQuestion(
@@ -1627,8 +1638,10 @@ export async function createTeam(
   })
 }
 
-export async function listTeams(user: string): Promise<TeamsResponse> {
-  return get<TeamsResponse>(`${API_BASE}/teams?user=${user}`)
+export async function listTeams(_user?: string): Promise<TeamsResponse> {
+  // The server derives the subject from the authenticated session. Never send
+  // a caller-controlled user id that could broaden tenant scope.
+  return get<TeamsResponse>(`${API_BASE}/teams`)
 }
 
 export async function getTeam(teamId: string): Promise<Team> {
@@ -2204,25 +2217,18 @@ export async function executeAgent(
   } else {
     Object.assign(headers, authHeaders())
   }
+  if (!apiKey) {
+    return request<{ agent: string; result: any; credits_used: number; tier: string }>(
+      `${API_BASE}/ai/agents/${agentName}`,
+      params,
+      'POST',
+    )
+  }
   const res = await fetch(`${API_BASE}/ai/agents/${agentName}`, {
     method: 'POST',
-    ...CREDS,
-    headers,
+    headers: { ...headers, 'X-API-Key': apiKey },
     body: JSON.stringify(params),
   })
-  if (res.status === 401) {
-    const text = await res.text()
-    let message = 'Authentication required. Provide a valid API key or JWT.'
-    if (text) {
-      try {
-        const err = JSON.parse(text)
-        if (err.detail) message = err.detail
-      } catch {
-        if (text.length < 200) message = text
-      }
-    }
-    throw new Error(message)
-  }
   if (!res.ok) {
     const text = await res.text()
     let message = `API error ${res.status}`
@@ -2231,9 +2237,7 @@ export async function executeAgent(
       if (err.detail) message = err.detail
       else if (err.message) message = err.message
     } catch {
-      if (text && text.length < 500) {
-        message = `${message}: ${text}`
-      }
+      if (text && text.length < 500) message = `${message}: ${text}`
     }
     throw new Error(message)
   }

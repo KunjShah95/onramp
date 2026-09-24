@@ -10,20 +10,23 @@ The heavy endpoint (POST) is quota-gated like the explore pipeline; reads
 are cheap cache hits and only require an authenticated user.
 """
 
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.v1.auth import get_current_user
 from app.services.quota import enforce_quota
-from app.services.repo_context import RepoContextService
+from app.services.repo_context import RepoContextService, index_id_for
 from app.services.repo_index_access import (
     find_registered_repository,
+    get_index_job,
     grant_index_access,
     list_index_grants,
     parse_github_repo,
+    record_index_job,
 )
 
 router = APIRouter(prefix="/repos/index", tags=["repo-context"])
@@ -37,6 +40,15 @@ class BuildIndexRequest(BaseModel):
     max_files: int = 1000
     force: bool = False
     async_build: bool = False
+    team_id: Optional[str] = None
+
+
+class BatchIndexRequest(BaseModel):
+    repo_urls: list[str] = Field(..., min_length=1, max_length=20)
+    branch: str = "main"
+    max_files: int = 1000
+    force: bool = False
+    async_build: bool = True
     team_id: Optional[str] = None
 
 
@@ -129,11 +141,21 @@ async def build_index(
             )
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Failed to enqueue index build: {exc}")
+        task_id = str(getattr(result, "id", ""))
+        if not task_id:
+            raise HTTPException(status_code=502, detail="Index task did not return an id")
+        await record_index_job(
+            task_id=task_id,
+            requested_by=user.get("uid", ""),
+            team_id=team_id,
+            index_id=index_id_for(request.repo_url, request.branch),
+            repo_url=request.repo_url,
+        )
         return JSONResponse(
             status_code=202,
             content={
                 "queued": True,
-                "task_id": str(getattr(result, "id", "")),
+                "task_id": task_id,
                 "repo_url": request.repo_url,
                 "branch": request.branch,
             },
@@ -151,6 +173,92 @@ async def build_index(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Index build failed: {exc}")
     return doc
+
+
+@router.post("/batch")
+async def build_index_batch(
+    request: BatchIndexRequest,
+    user: dict = Depends(get_current_user),
+    _q=enforce_quota("explore"),
+):
+    """Queue several registered repositories without blocking the request."""
+    if not request.async_build:
+        raise HTTPException(status_code=400, detail="Batch indexing must be asynchronous")
+
+    from app.tasks.repo_index_tasks import build_repo_index
+
+    jobs = []
+    seen: set[str] = set()
+    for repo_url in request.repo_urls:
+        normalized = repo_url.strip()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        team_id = await _repository_team(user, normalized, request.team_id)
+        try:
+            task = build_repo_index.delay(
+                normalized,
+                branch=request.branch,
+                max_files=request.max_files,
+                force=request.force,
+                team_id=team_id,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="Failed to enqueue repository index batch")
+        task_id = str(getattr(task, "id", ""))
+        if not task_id:
+            raise HTTPException(status_code=502, detail="Index task did not return an id")
+        await record_index_job(
+            task_id=task_id,
+            requested_by=user.get("uid", ""),
+            team_id=team_id,
+            index_id=index_id_for(normalized, request.branch),
+            repo_url=normalized,
+        )
+        jobs.append(
+            {
+                "task_id": task_id,
+                "index_id": index_id_for(normalized, request.branch),
+                "repo_url": normalized,
+                "team_id": team_id,
+                "status": "queued",
+            }
+        )
+
+    return JSONResponse(status_code=202, content={"queued": True, "count": len(jobs), "jobs": jobs})
+
+
+@router.get("/jobs/{task_id}")
+async def get_index_job_status(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Return a redacted status for an async repository-index task."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", task_id):
+        raise HTTPException(status_code=400, detail="Invalid task id")
+    job = await get_index_job(task_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Index job not found")
+    if job.get("requested_by") != user.get("uid"):
+        accessible = await _accessible_team_ids(user)
+        if not job.get("team_id") or str(job.get("team_id")) not in accessible:
+            raise HTTPException(status_code=403, detail="Index job belongs to another team")
+
+    from celery.result import AsyncResult
+    from app.tasks.celery_app import celery_app
+
+    result = AsyncResult(task_id, app=celery_app)
+    response = {"task_id": task_id, "status": result.state}
+    if result.state == "SUCCESS" and isinstance(result.result, dict):
+        payload = result.result
+        response["result"] = {
+            key: payload.get(key)
+            for key in ("index_id", "repo_url", "branch", "team_id")
+            if key in payload
+        }
+    elif result.state == "FAILURE":
+        response["error"] = "Indexing failed"
+    return response
 
 
 @router.get("/{index_id}",
@@ -195,10 +303,17 @@ async def select_index(
 async def evict_index(
     index_id: str,
     user: dict = Depends(get_current_user),
+    purge_derived: bool = False,
 ):
-    """Evict the cached index so the next build re-parses the repo."""
+    """Evict the cached index; optionally purge derived embeddings/documents."""
     await _authorize_index(user, index_id)
     removed = await _service.evict(index_id)
+    if purge_derived:
+        from app.services.embeddings_service import EmbeddingsService
+        await EmbeddingsService().delete_index(index_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Index not found")
-    return {"evicted": index_id}
+    result = {"evicted": index_id}
+    if purge_derived:
+        result["purged_derived"] = True
+    return result

@@ -128,6 +128,38 @@ class TestBuildIndex:
         assert data["task_id"] == "task-abc123"
         assert data["repo_url"] == "https://github.com/acme/app"
         assert dispatched["branch"] == "dev"
+    def test_build_batch_dispatches_unique_repositories(self, monkeypatch):
+        from types import SimpleNamespace
+        from app.tasks import repo_index_tasks
+
+        dispatched = []
+
+        class _FakeTask:
+            def delay(self, repo_url, branch="main", max_files=1000, force=False, team_id=None):
+                dispatched.append((repo_url, branch, team_id))
+                return SimpleNamespace(id=f"task-{len(dispatched)}")
+
+        monkeypatch.setattr(repo_index_tasks, "build_repo_index", _FakeTask())
+        client = TestClient(_make_app(monkeypatch, _FakeService()))
+
+        resp = client.post(
+            "/repos/index/batch",
+            json={
+                "repo_urls": [
+                    "https://github.com/acme/app",
+                    "https://github.com/acme/app",
+                    "https://github.com/acme/api",
+                ],
+            },
+        )
+
+        assert resp.status_code == 202
+        assert resp.json()["count"] == 2
+        assert [job["repo_url"] for job in resp.json()["jobs"]] == [
+            "https://github.com/acme/app",
+            "https://github.com/acme/api",
+        ]
+        assert dispatched[0][2] == "team-test"
 
 
 class TestGetIndex:

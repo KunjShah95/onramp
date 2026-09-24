@@ -189,34 +189,39 @@ async def check_module_access(
 
 
 @router.post("")
-async def create_team(request: CreateTeamRequest):
+async def create_team(
+    request: CreateTeamRequest,
+    user: dict = Depends(get_current_user),
+):
+    # The authenticated identity, never a client-supplied owner, controls the
+    # new team membership. Paid tiers are provisioned by checkout, not here.
+    if request.tier != "free":
+        raise HTTPException(status_code=400, detail="Paid tiers must be selected through checkout")
     team = await team_service.create_team(
         name=request.name,
-        owner=request.owner,
-        tier=request.tier,
+        owner=user.get("uid", ""),
+        tier="free",
     )
-    sub = await billing.create_subscription(team["team_id"], request.tier)
+    sub = await billing.create_subscription(team["team_id"], "free")
     await invalidate_prefix("teams")
     return {**team, "subscription": sub}
 
 
 @router.get("")
 @cached("teams", ttl=120)
-async def list_teams(request: Request, user: Optional[str] = None):
-    # Resolve the authenticated user's UID — always fall back to request.state.user
-    # so that GET /teams (no query param) returns the caller's own teams.
-    auth_user = getattr(request.state, "user", None)
-    if user == "current-user" or user is None:
-        resolved_user = (auth_user or {}).get("uid", "") if auth_user else (user or "")
-    else:
-        resolved_user = user
-    teams = await team_service.list_teams(resolved_user or "")
+async def list_teams(request: Request, user: dict = Depends(get_current_user)):
+    # A query parameter must never select another user's tenant scope.
+    teams = await team_service.list_teams(user.get("uid", ""))
     return {"teams": teams, "count": len(teams)}
 
 
 @router.get("/{team_id}", responses={404: {"description": "Team not found"}})
 @cached("teams", ttl=120)
-async def get_team(request: Request, team_id: str):
+async def get_team(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+    _: None = require_team_membership(),
+):
     team = await team_service.get_team(team_id)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
@@ -225,7 +230,11 @@ async def get_team(request: Request, team_id: str):
 
 
 @router.get("/{team_id}/members")
-async def list_members(team_id: str):
+async def list_members(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+    _: None = require_team_membership(),
+):
     """List all members of a team with their roles."""
     from app.services.team_service import get_team_members as _get_members
     members = await _get_members(team_id)
@@ -242,6 +251,8 @@ async def list_members(team_id: str):
 
 @router.post("/{team_id}/members")
 async def add_member(team_id: str, request: AddMemberRequest, user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
+    if request.role not in {"member", "junior_dev", "developer", "tester", "hr", "senior", "senior_dev"}:
+        raise HTTPException(status_code=400, detail="Unsupported team role")
     result = await team_service.add_member(team_id, request.user, request.role)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -257,13 +268,24 @@ async def remove_member(team_id: str, user: str, _user: dict = Depends(get_curre
 
 
 @router.get("/{team_id}/invites")
-async def list_invites(team_id: str):
+async def list_invites(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
+):
     invites = await team_service.get_invites(team_id)
     return {"invites": invites, "count": len(invites)}
 
 
 @router.post("/{team_id}/tier")
-async def change_tier(team_id: str, request: ChangeTierRequest):
+async def change_tier(
+    team_id: str,
+    request: ChangeTierRequest,
+    user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("admin"),
+):
+    if request.tier != "free":
+        raise HTTPException(status_code=400, detail="Paid tiers must be selected through checkout")
     team_result = await team_service.change_tier(team_id, request.tier)
     if "error" in team_result:
         raise HTTPException(status_code=400, detail=team_result["error"])
@@ -272,7 +294,11 @@ async def change_tier(team_id: str, request: ChangeTierRequest):
 
 
 @router.get("/{team_id}/subscription", responses={404: {"description": "No active subscription"}})
-async def get_subscription(team_id: str):
+async def get_subscription(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+    _: None = require_team_membership(),
+):
     sub = await billing.get_subscription(team_id)
     if not sub:
         raise HTTPException(status_code=404, detail="No active subscription")

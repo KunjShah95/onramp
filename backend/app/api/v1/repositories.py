@@ -93,6 +93,13 @@ async def create_repo(
     unique constraint (uq_repositories_owner_name) would otherwise surface
     as a 500 on re-allocation.
     """
+    if url:
+        from app.services.repo_index_access import parse_github_repo
+        if not parse_github_repo(url):
+            raise HTTPException(status_code=400, detail="Only strict GitHub HTTPS repository URLs are supported")
+    if not owner.strip() or not name.strip() or any(part in {".", ".."} for part in (owner, name)):
+        raise HTTPException(status_code=400, detail="Invalid repository owner or name")
+
     existing = await _storage.query_documents(
         "repositories",
         [("owner", "==", owner), ("name", "==", name)],

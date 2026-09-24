@@ -105,6 +105,15 @@ export interface IndexResult {
   repo_url?: string
   branch?: string
   team_id?: string
+  queued?: boolean
+  task_id?: string
+}
+
+export interface IndexJob {
+  task_id: string
+  status: string
+  result?: IndexResult
+  error?: string
 }
 
 export interface HistoryTurn {

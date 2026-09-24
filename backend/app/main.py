@@ -31,6 +31,7 @@ from app.api.v1 import (
     auth, billing, contributor, dashboard, digest as digest_router,
     autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router, integrations_n8n as n8n_router,
+    mcp as mcp_router,
     invites as invites_router, learn, marketplace as marketplace_router,
     notifications as notifications_router,
     dora as dora_router,     onboarding_plans as onboarding_plans_router, openai_gateway, ops as ops_router,
@@ -465,6 +466,7 @@ app.include_router(ramp.router, prefix="/api/v1")
 app.include_router(review_ops.router, prefix="/api/v1")
 app.include_router(agent_sessions_router.router, prefix="/api/v1")
 app.include_router(agent_sessions_router.bus_router, prefix="/api/v1")
+app.include_router(mcp_router.router, prefix="/api/v1")
 app.include_router(telegram_router.router, prefix="/api/v1")
 app.include_router(n8n_router.router, prefix="/api/v1")
 app.include_router(n8n_router.inbound_router, prefix="/api/v1")

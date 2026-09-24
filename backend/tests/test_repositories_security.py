@@ -98,6 +98,22 @@ async def test_create_repo_duplicate_returns_409(seeded_storage):
 
 
 @pytest.mark.asyncio
+async def test_create_repo_rejects_team_spoof(seeded_storage):
+    from app.api.v1.repositories import create_repo
+
+    mock_user = {"uid": "user_a"}
+    with patch("app.api.v1.repositories._storage", seeded_storage), \
+         patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
+             {"team_id": "team_a", "role": "member"}
+         ])):
+        with pytest.raises(HTTPException) as exc:
+            await create_repo(
+                name="repo-new", owner="org", team_id="team_b", user=mock_user,
+            )
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_create_repo_allows_new_owner_name(seeded_storage):
     """A brand-new (owner, name) still creates successfully."""
     from app.api.v1.repositories import create_repo
@@ -112,6 +128,46 @@ async def test_create_repo_allows_new_owner_name(seeded_storage):
         )
     assert repo["name"] == "repo-new"
     assert repo["team_id"] == "team_a"
+
+
+@pytest.mark.asyncio
+async def test_delete_repo_cleans_derived_index_data(seeded_storage, monkeypatch):
+    from app.api.v1 import repositories as module
+
+    calls = []
+
+    async def fake_delete_index(self, index_id):
+        calls.append(("embeddings", index_id))
+
+    async def fake_evict(self, index_id):
+        calls.append(("context", index_id))
+        return True
+
+    async def fake_revoke(index_id, team_id=None):
+        calls.append(("grant", index_id, team_id))
+
+    monkeypatch.setattr("app.services.embeddings_service.EmbeddingsService.delete_index", fake_delete_index)
+    monkeypatch.setattr("app.services.repo_context.RepoContextService.evict", fake_evict)
+    monkeypatch.setattr("app.services.repo_index_access.revoke_index_access", fake_revoke)
+
+    mock_user = {"uid": "user_a"}
+    with patch("app.api.v1.repositories._storage", seeded_storage), \
+         patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
+             {"team_id": "team_a", "role": "member"}
+         ])):
+        result = await module.delete_repo(
+            next(
+                row["id"]
+                for row in await seeded_storage.list_documents("repositories")
+                if row.get("name") == "repo-a"
+            ),
+            mock_user,
+        )
+
+    assert result == {"ok": True}
+    assert any(kind == "embeddings" for kind, *_ in calls)
+    assert any(kind == "context" for kind, *_ in calls)
+    assert any(kind == "grant" for kind, *_ in calls)
 
 
 @pytest.mark.asyncio

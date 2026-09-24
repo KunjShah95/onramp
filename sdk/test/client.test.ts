@@ -89,6 +89,33 @@ describe('OnrampClient', () => {
     })
   })
 
+  it('queues a repository index batch', async () => {
+    const fetchMock = mockFetch(() =>
+      jsonResponse({ queued: true, count: 1, jobs: [{ task_id: 'task-1', index_id: 'idx-1' }] }),
+    )
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+
+    const result = await client.buildRepositoryIndexBatch(['https://github.com/acme/app'])
+
+    expect(result.count).toBe(1)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.example.com/api/v1/repos/index/batch')
+    expect(JSON.parse(init.body as string).async_build).toBe(true)
+  })
+
+  it('calls the read-only MCP tool surface', async () => {
+    const fetchMock = mockFetch(() =>
+      jsonResponse({ result: { tools: [{ name: 'repo_context' }] } }),
+    )
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+
+    const tools = await client.listMcpTools()
+
+    expect(tools).toEqual([{ name: 'repo_context' }])
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string).method).toBe('tools/list')
+  })
+
   it('fetches ramp summary and unwraps the response envelope', async () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ success: true, data: { team_id: 'team-1', totals: { trainees: 2 } } }),

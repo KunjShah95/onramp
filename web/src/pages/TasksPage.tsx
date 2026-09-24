@@ -341,8 +341,9 @@ export default function TasksPage() {
         unlock_modules: formUnlockModules.trim() ? formUnlockModules.split(',').map((s) => s.trim()) : undefined,
         estimated_hours: formEstHours ? parseFloat(formEstHours) : undefined,
       })
+      // Do not persist task drafts in global storage: shared browsers and
+      // account switches can otherwise expose repository/work-planning data.
       setShowCreate(false); resetForm()
-      try { localStorage.removeItem('tasks.createDraft.v1') } catch { /* private mode */ }
       await fetchTasks(); await fetchProgress()
       toast.success('Task created', formTitle.trim())
     } catch (e: any) { setError(e.message || 'Failed to create task'); toast.error('Failed to create task', 'Your draft is preserved.') }
@@ -354,36 +355,8 @@ export default function TasksPage() {
     setFormAssignee(''); setFormRepoUrl(''); setFormBranch(''); setFormUnlockModules(''); setFormEstHours('')
   }
 
-  // Draft autosave — never lose a 7-field create on Cancel / refresh.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('tasks.createDraft.v1')
-      if (!raw) return
-      const d = JSON.parse(raw)
-      if (d.title) setFormTitle(d.title)
-      if (d.desc) setFormDesc(d.desc)
-      if (d.module) setFormModule(d.module)
-      if (d.priority) setFormPriority(d.priority)
-      if (d.assignee) setFormAssignee(d.assignee)
-      if (d.repoUrl) setFormRepoUrl(d.repoUrl)
-      if (d.unlockModules) setFormUnlockModules(d.unlockModules)
-      if (d.estHours) setFormEstHours(d.estHours)
-    } catch { /* corrupt draft — start fresh */ }
-  }, [])
-
-  useEffect(() => {
-    const dirty = formTitle || formDesc || formModule || formAssignee || formRepoUrl || formBranch || formUnlockModules || formEstHours
-    if (!dirty) return
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem('tasks.createDraft.v1', JSON.stringify({
-          title: formTitle, desc: formDesc, module: formModule, priority: formPriority,
-          assignee: formAssignee, repoUrl: formRepoUrl, unlockModules: formUnlockModules, estHours: formEstHours,
-        }))
-      } catch { /* quota / private mode */ }
-    }, 400)
-    return () => clearTimeout(t)
-  }, [formTitle, formDesc, formModule, formPriority, formAssignee, formRepoUrl, formBranch, formUnlockModules, formEstHours])
+  // Drafts intentionally remain in memory only; persisting them in a global
+  // localStorage key leaks task/repository data across users on shared devices.
 
   function handleCancelCreate() {
     const dirty = formTitle.trim() || formDesc.trim() || formModule.trim() || formAssignee.trim() || formRepoUrl.trim() || formUnlockModules.trim() || formEstHours.trim()

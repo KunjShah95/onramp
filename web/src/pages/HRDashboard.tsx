@@ -7,7 +7,7 @@ import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
-import { API_BASE, authHeaders } from '../lib/api'
+import { API_BASE, request } from '../lib/api'
 
 // ── Types mirroring hr_metrics_service.cohort_summary ──────────────────────
 interface RampMember { user_id: string; name: string; ramp_days: number | null }
@@ -45,10 +45,8 @@ export default function HRDashboard() {
     async function load() {
       setLoading(true); setError('')
       try {
-        const res = await fetch(`${API_BASE}/hr/cohort/${teamId}`, { headers: authHeaders() })
-        if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`)
-        const json = unwrap<CohortSummary>(await res.json())
-        if (!cancelled) setData(json)
+        const json = await request<{ success?: boolean; data?: CohortSummary } | CohortSummary>(`${API_BASE}/hr/cohort/${teamId}`)
+        if (!cancelled) setData(unwrap<CohortSummary>(json))
       } catch (err: any) {
         if (!cancelled) setError(err.message || 'Failed to load cohort metrics.')
       } finally {

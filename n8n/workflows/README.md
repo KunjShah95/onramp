@@ -22,8 +22,7 @@ Regenerate after editing the generator: `python scripts/generate_n8n_workflows.p
      - `SLACK_WEBHOOK_ONBOARDING` = first URL
      - `SLACK_WEBHOOK_ALERTS` = second URL
    - **Telegram** (optional): Open **Send Telegram** → create/select a **Telegram Bot** credential
-     (talk to `@BotFather` → `/newbot` → paste token). Change `@your_channel` in
-     **Format Telegram Message** to your channel/chat id.
+     (talk to `@BotFather` → `/newbot` → paste token). Set `TEAM_TELEGRAM_CHAT_IDS` to a JSON object mapping each `team_id` to its own chat id, for example `{"team-a":"-1001234567890"}`. Events without a team-specific target are not delivered to a global channel.
    - Toggle **Active** (top-right). Copy the **Production URL**
      (`https://<n8n-host>/webhook/onramp` — never the `/webhook-test/` URL).
 4. Inbound workflow:
@@ -45,5 +44,6 @@ Regenerate after editing the generator: `python scripts/generate_n8n_workflows.p
    and `N8N_INBOUND_SECRET` = backend's value, then redeploy.
 2. Import the `.json` files, recreate Slack OAuth2 with redirect
    `https://<your-n8n>.onrender.com/rest/oauth2-credential/callback`, Activate.
-3. Inbound workflow: POST to `https://<onramp-api>.onrender.com/api/v1/webhooks/n8n`.
-4. Verify: `GET /integrations/n8n/status` → `env_configured:true, inbound_configured:true`.
+3. Set `N8N_ALLOWED_TEAM_IDS` in the backend environment to a comma-separated allow-list of team IDs that this automation may modify. Leave it unset only in a trusted single-tenant development environment.
+4. Inbound workflow: POST to `https://<onramp-api>.onrender.com/api/v1/webhooks/n8n`.
+5. Verify: `GET /integrations/n8n/status` → `env_configured:true, inbound_configured:true`.

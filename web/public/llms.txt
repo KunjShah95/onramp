@@ -8,11 +8,11 @@
 - [Pricing](https://onramp.app/#pricing) — Transparent, flat pricing
 - [Documentation](https://onramp.app/docs) — Guides, API reference, self-hosting
 - [Blog](https://onramp.app/blog) — Engineering insights and product updates
-- [Security](https://onramp.app/security) — SOC 2 Type II, compliance, policies
+- [Security](https://onramp.app/security) — current security controls, audit status, and policies
 
 ## What We Do
 
-Onramp solves the developer onboarding problem by automatically turning any GitHub repository into an interactive knowledge map. Instead of new hires spending 3-6 months piecing together tribal knowledge from senior engineers, Onramp parses the actual source code, builds a live dependency graph, and creates guided onboarding paths with an AI mentor that answers questions with file and line references.
+Onramp solves the developer onboarding problem by turning registered GitHub repositories into interactive knowledge maps. Instead of new hires spending 3-6 months piecing together tribal knowledge from senior engineers, Onramp parses the actual source code, builds a live dependency graph, and creates guided onboarding paths with an AI mentor that answers questions with file and line references.
 
 **Core capabilities:**
 - **Live Architecture Map**: Visual, searchable dependency graph updated on every push
@@ -32,9 +32,9 @@ Onramp solves the developer onboarding problem by automatically turning any GitH
 - **Flat pricing, not per-seat**: $99/month per workspace for unlimited engineers — no per-dev token burn or seat math
 - **Free-first LLM routing**: Multi-provider router with OpenRouter, Gemini, Groq, NVIDIA free tiers before paid fallbacks
 - **Grounded answers**: Every AI response cites specific files and line numbers from the actual codebase
-- **Privacy-first**: Raw source code is discarded after analysis; only the indexed graph representation is stored
-- **SOC 2 Type II certified**: Enterprise-grade security, availability, and confidentiality controls
-- **Self-hostable**: Docker Compose deployment for air-gapped or compliance-required environments
+- **Tenant-scoped derived context**: Temporary clones are removed after indexing; derived documents, embeddings, and graph symbols remain scoped to authorized workspace members
+- **SOC 2 Type II audit in progress**: Onramp is not yet certified
+- **Controlled deployment roadmap**: Docker artifacts are available; production self-hosting and private-cloud operations are roadmap items
 
 ## Supported Languages
 Python, JavaScript, TypeScript, Go, Rust, Java — with AST-level parsing for each
@@ -42,4 +42,4 @@ Python, JavaScript, TypeScript, Go, Rust, Java — with AST-level parsing for ea
 ## Pricing Summary
 - **Free**: 1 repository, 100 AI questions/month, live architecture map
 - **Team**: $99/mo (or $82/mo annual) per workspace — unlimited repos, unlimited questions, guided paths, GitHub/Slack/Linear sync
-- **Enterprise**: Custom — SSO/SAML, self-hosted, audit logs, dedicated success engineer, 99.9% SLA
+- **Enterprise**: Custom — SSO/SAML, controlled self-hosting, audit logs, dedicated support, and contractual commitments are being defined

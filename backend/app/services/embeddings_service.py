@@ -60,17 +60,28 @@ class EmbeddingsService:
 
         self.embeddings = embeddings_router or EmbeddingRouter()
 
-    async def index_documents(self, index_id: str, repo_path: str) -> str:
+    async def index_documents(
+        self,
+        index_id: str,
+        repo_path: str,
+        team_id: Optional[str] = None,
+        repo_url: Optional[str] = None,
+        branch: Optional[str] = None,
+    ) -> str:
         """Walk repo_path, parse files, and persist each file as a stored document."""
         documents = []
+        repo_root = os.path.realpath(repo_path)
 
-        for root, dirs, files in os.walk(repo_path):
+        for root, dirs, files in os.walk(repo_path, followlinks=False):
             dirs[:] = [d for d in dirs if d not in self.IGNORE_DIRS]
             for fname in files:
                 ext = Path(fname).suffix.lower()
                 if ext not in self.SUPPORTED_EXTS:
                     continue
                 fpath = os.path.join(root, fname)
+                if os.path.islink(fpath) or not os.path.realpath(fpath).startswith(repo_root + os.sep):
+                    logger.warning("Skipping symlink or out-of-tree path: %s", fpath)
+                    continue
                 try:
                     with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
@@ -92,6 +103,9 @@ class EmbeddingsService:
             index_id,
             {
                 "index_id": index_id,
+                "team_id": str(team_id) if team_id else None,
+                "repo_url": repo_url,
+                "branch": branch,
                 "doc_count": len(documents),
                 "created_at": None,  # will be set with real timestamp in production
             },
@@ -108,6 +122,9 @@ class EmbeddingsService:
                     "filename": doc.filename,
                     "content": doc.content,
                     "type": doc.doc_type,
+                    "team_id": str(team_id) if team_id else None,
+                    "repo_url": repo_url,
+                    "branch": branch,
                 },
             )
 

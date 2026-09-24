@@ -34,6 +34,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import httpx
+from app.services.outbound_url import OutboundURLError, validate_outbound_url
 
 logger = logging.getLogger("onramp.n8n")
 
@@ -226,6 +227,11 @@ async def resolve_webhook_urls(
 # ── Outbound POST ─────────────────────────────────────────────
 
 async def _post(url: str, event: str, payload: Dict[str, Any]) -> bool:
+    try:
+        validate_outbound_url(url)
+    except OutboundURLError as exc:
+        logger.warning("Blocked unsafe n8n webhook %s: %s", url, exc)
+        return False
     body = build_envelope(event, payload)
     headers = {"Content-Type": "application/json", **_sign(body)}
     # n8n Webhook nodes expect the event name too — also send as header

@@ -68,7 +68,13 @@ if (index.queued) {
   console.log(job.status)
 }
 const ramp = await onramp.getRampSummary('team-123')
-```
+
+// Optional read-only MCP tools (tenant authorization is enforced server-side)
+const tools = await onramp.listMcpTools()
+const context = await onramp.callMcpTool('repo_context', {
+  index_id: index.index_id,
+  requirement: 'authentication flow',
+})
 
 ## Client options
 

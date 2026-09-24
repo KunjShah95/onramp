@@ -65,6 +65,22 @@ def test_github_url_parser_rejects_non_https_and_local_paths():
 
 
 @pytest.mark.asyncio
+async def test_registered_repository_authorizer_rejects_wrong_team(monkeypatch, storage):
+    from app.api.v1.index_access import authorize_registered_repo
+    await storage.create_document(
+        "repositories",
+        "repo-a",
+        {"owner": "acme", "name": "app", "url": "https://github.com/acme/app", "team_id": "team-a"},
+    )
+    monkeypatch.setattr("app.services.team_service.get_user_teams", AsyncMock(return_value=[{"id": "team-b"}]))
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_registered_repo({"uid": "user-b"}, "https://github.com/acme/app")
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_ask_authorize_index_requires_matching_grant(monkeypatch):
     from app.api.v1 import ask
 
