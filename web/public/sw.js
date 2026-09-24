@@ -10,7 +10,7 @@
  *
  * The version below is bumped on each deploy so users pick up new builds.
  */
-const VERSION = 'onramp-v1.0.1';
+const VERSION = 'onramp-v2.0.0';
 const APP_SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -65,16 +65,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation: network-first, fall back to cached app shell.
+  // Navigation: serve the cached shell immediately, then refresh it in the
+  // background. This avoids making every SPA route change wait on a full
+  // document network request while still getting the next deploy promptly.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(APP_SHELL_CACHE).then((cache) => cache.put('./index.html', copy));
+      caches.match('./index.html').then((cached) => {
+        const network = fetch(request).then((response) => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            event.waitUntil(caches.open(APP_SHELL_CACHE).then((cache) => cache.put('./index.html', copy)));
+          }
           return response;
-        })
-        .catch(() => caches.match('./index.html'))
+        }).catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }

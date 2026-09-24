@@ -60,13 +60,16 @@ export default function NotificationsPage() {
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
+  const MAX_NOTIFICATIONS = 500
 
   const toast = useToast()
 
   async function fetchNotifications() {
     setLoading(true); setError('')
     try {
-      const data = await listNotifications(filter === 'unread' ? { unread_only: true } : {})
+      const data = await listNotifications(filter === 'unread'
+        ? { unread_only: true, limit: MAX_NOTIFICATIONS }
+        : { limit: MAX_NOTIFICATIONS })
       setNotifications(data.notifications ?? [])
     } catch (err: any) {
       setError(err.message || 'Failed to load notifications.')
@@ -80,7 +83,9 @@ export default function NotificationsPage() {
     async function load() {
       setLoading(true); setError('')
       try {
-        const data = await listNotifications(filter === 'unread' ? { unread_only: true } : {})
+        const data = await listNotifications(filter === 'unread'
+         ? { unread_only: true, limit: MAX_NOTIFICATIONS }
+         : { limit: MAX_NOTIFICATIONS })
         if (!cancelled) setNotifications(data.notifications ?? [])
       } catch (err: any) {
         if (!cancelled) setError(err.message || 'Failed to load notifications.')
@@ -113,7 +118,7 @@ export default function NotificationsPage() {
           read_at: null,
           created_at: incoming.created_at,
         }
-        return [mapped, ...prev]
+        return [mapped, ...prev].slice(0, MAX_NOTIFICATIONS)
       })
     })
     return unsub

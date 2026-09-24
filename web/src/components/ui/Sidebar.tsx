@@ -97,7 +97,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ open = false, onClose }: SidebarProps) {
-  const { role } = useAuth()
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem(SIDEBAR_KEY) === '1'
@@ -126,9 +125,6 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
       document.body.style.overflow = prev
     }
   }, [open])
-
-  const showManage =
-    role === 'senior' || role === 'senior_dev' || role === 'admin' || role === 'ceo' || role === 'cto'
 
   return (
     <>
@@ -192,11 +188,9 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <div className={cn('flex-1 overflow-y-auto', collapsed ? 'px-1.5 space-y-1' : 'px-2 space-y-1')}>
-          {navSections
-            .filter((s) => s.title !== 'Manage' || showManage)
-            .map((s, i) => (
-              <NavGroup key={s.title} index={i + 1} title={s.title} items={s.items} collapsed={collapsed} />
-            ))}
+          {navSections.map((s, i) => (
+            <NavGroup key={s.title} index={i + 1} title={s.title} items={s.items} collapsed={collapsed} />
+          ))}
         </div>
 
         {/* Bottom section */}

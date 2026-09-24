@@ -27,12 +27,10 @@ const RealTimeContext = createContext<RealTimeContextValue>({
   reconnect: () => {},
 })
 
-export function RealTimeProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+function ConnectedRealTimeProvider({ children }: { children: ReactNode }) {
   const { connected, subscribe, lastEvent } = useWebSocket()
   const handlersRef = useRef<Set<(event: WsEvent) => void>>(new Set())
 
-  // Only subscribe to the global WebSocket when user is logged in
   const onEvent = useCallback(
     (handler: (event: WsEvent) => void): (() => void) => {
       handlersRef.current.add(handler)
@@ -45,16 +43,18 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
     [subscribe],
   )
 
-  // If user changes (login/logout), the useWebSocket hook handles reconnection
-  // via its internal token check
-
   return (
     <RealTimeContext.Provider
       value={{ connected, onEvent, lastEvent, reconnect: () => {} }}
     >
-      {user ? children : children}
+      {children}
     </RealTimeContext.Provider>
   )
+}
+
+export function RealTimeProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  return user ? <ConnectedRealTimeProvider>{children}</ConnectedRealTimeProvider> : children
 }
 
 export function useRealTime(): RealTimeContextValue {

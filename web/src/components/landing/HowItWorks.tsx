@@ -78,7 +78,7 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="scroll-mt-20 border-t border-seam bg-room">
+    <section id="how-it-works" className="landing-section scroll-mt-20 border-t border-seam bg-room">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="How it works"

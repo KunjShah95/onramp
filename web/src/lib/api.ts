@@ -110,6 +110,70 @@ export function authHeaders(): Record<string, string> {
  *   false) so callers propagate a network error and the user STAYS logged in.
  */
 let _refreshPromise: Promise<boolean> | null = null
+let _csrfPromise: Promise<string> | null = null
+let _csrfTokenCache: string = ''
+
+/** Fetch the double-submit CSRF token used by browser mutation requests. */
+async function getCsrfToken(): Promise<string> {
+  // Same-origin: cookie readable directly from JS
+  const existing = document.cookie
+    .split('; ')
+    .find((part) => part.startsWith('onramp_csrf='))
+    ?.split('=')[1]
+  if (existing) {
+    _csrfTokenCache = decodeURIComponent(existing)
+    return _csrfTokenCache
+  }
+  if (import.meta.env.MODE === 'test') return ''
+  // Cross-origin dev (e.g. :5173 → :8000): JS cannot read the cookie set by
+  // the backend, so we cache the token value returned from the response body.
+  if (_csrfTokenCache) return _csrfTokenCache
+  if (_csrfPromise) return _csrfPromise
+
+  // Mutation helpers are also used by non-browser callers and tests. If a
+  // caller has not established a browser session yet, let the server return
+  // its normal auth/CSRF response rather than issuing an unrelated bootstrap
+  // request that can mask the original failure.
+  if (typeof document === 'undefined') return ''
+
+  _csrfPromise = fetch(`${API_BASE}/auth/csrf-token`, { credentials: 'include' })
+    .then(async (res) => {
+      if (!res.ok) throw new Error('Could not initialize CSRF protection')
+      const payload = await res.json()
+      const token = payload?.csrf_token ?? payload?.data?.csrf_token
+      if (!token) throw new Error('Could not initialize CSRF protection')
+      _csrfTokenCache = token as string
+      return _csrfTokenCache
+    })
+    .finally(() => { _csrfPromise = null })
+  return _csrfPromise
+}
+
+/** Clear cached CSRF token (call on logout so the next session re-fetches). */
+export function clearCsrfToken(): void {
+  _csrfTokenCache = ''
+}
+
+async function mutationHeaders(method?: string): Promise<Record<string, string>> {
+  const headers = authHeaders()
+  if (!method || ['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) return headers
+  const csrf = await getCsrfToken()
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  return headers
+}
+
+/** Thrown for an HTTP error response with structured status metadata. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly statusCode: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.statusCode = status
+  }
+}
 
 /** Thrown when the refresh endpoint is unreachable — callers must NOT treat this as a logout. */
 export class NetworkError extends Error {
@@ -208,7 +272,7 @@ export async function request<T>(url: string, body?: unknown, method?: string, r
     res = await fetch(url, {
       method: method || 'POST',
       ...CREDS,
-      headers: authHeaders(),
+      headers: await mutationHeaders(method),
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
@@ -232,7 +296,7 @@ export async function request<T>(url: string, body?: unknown, method?: string, r
         if (text.length < 200) message = text
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   if (!res.ok) {
     const text = await res.text()
@@ -246,26 +310,29 @@ export async function request<T>(url: string, body?: unknown, method?: string, r
         message = `${message}: ${text}`
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   return unwrap<T>(await res.json())
 }
 
-async function get<T>(url: string, retried = false): Promise<T> {
+async function get<T>(url: string, retried = false, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
   let res: Response
   try {
-    res = await fetch(url, { ...CREDS, headers: authHeaders(), signal: controller.signal })
+    res = await fetch(url, { ...CREDS, headers: authHeaders(), signal: signal ?? controller.signal })
   } catch (err: any) {
-    if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+    if (err?.name === 'AbortError') {
+      if (signal?.aborted) throw err
+      throw new Error('Request timed out after 30s')
+    }
     throw err
   } finally {
     clearTimeout(timeout)
   }
   if (res.status === 401 && !retried) {
     if (await trySilentRefresh()) {
-      return get<T>(url, true)
+      return get<T>(url, true, signal)
     }
     const text = await res.text()
     let message = 'Authentication required. Please sign in again.'
@@ -277,7 +344,7 @@ async function get<T>(url: string, retried = false): Promise<T> {
         if (text.length < 200) message = text
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   if (!res.ok) {
     const text = await res.text()
@@ -291,7 +358,7 @@ async function get<T>(url: string, retried = false): Promise<T> {
         message = `${message}: ${text}`
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   return unwrap<T>(await res.json())
 }
@@ -318,7 +385,13 @@ export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retr
     res = await fetch(url, {
       ...CREDS,
       ...init,
-      headers: { ...authHeaders(), ...(init.headers as Record<string, string> | undefined) },
+      headers: {
+        ...authHeaders(),
+        ...(init.method && !['GET', 'HEAD', 'OPTIONS'].includes(init.method.toUpperCase())
+          ? (await getCsrfToken() ? { 'X-CSRF-Token': await getCsrfToken() } : {})
+          : {}),
+        ...(init.headers as Record<string, string> | undefined),
+      },
       signal: init.signal ?? controller.signal,
     })
   } catch (err: any) {
@@ -341,7 +414,7 @@ export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retr
         if (text.length < 200) message = text
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   if (!res.ok) {
     const text = await res.text()
@@ -355,7 +428,7 @@ export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retr
         message = `${message}: ${text}`
       }
     }
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
   return unwrap<T>(await res.json())
 }
@@ -473,7 +546,7 @@ export async function askQuestionStream(
   let res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
     ...CREDS,
-    headers: authHeaders(),
+    headers: await mutationHeaders('POST'),
     body: JSON.stringify({
       index_id: indexId,
       question,
@@ -489,7 +562,7 @@ export async function askQuestionStream(
       res = await fetch(`${API_BASE}/ask/query/stream`, {
         method: 'POST',
         ...CREDS,
-        headers: authHeaders(),
+        headers: await mutationHeaders('POST'),
         body: JSON.stringify({
           index_id: indexId,
           question,
@@ -1298,6 +1371,11 @@ export interface RepoGraphSnapshot {
   circular_dependencies: string[][]
   architecture_diagram?: string
   is_collapsed?: boolean
+  graph?: {
+    modules?: string[]
+    dependencies?: Record<string, string[]>
+    node_files?: Record<string, string[]>
+  }
   stats?: {
     file_count?: number
     class_count?: number
@@ -2848,13 +2926,13 @@ export async function adminListAuditEvents(params?: {
   event_type?: string
   actor_id?: string
   limit?: number
-}): Promise<AdminAuditResponse> {
+}, signal?: AbortSignal): Promise<AdminAuditResponse> {
   const query = new URLSearchParams()
   if (params?.event_type) query.set('event_type', params.event_type)
   if (params?.actor_id) query.set('actor_id', params.actor_id)
   if (params?.limit) query.set('limit', String(params.limit))
   const qs = query.toString()
-  return get<AdminAuditResponse>(`${API_BASE}/admin/audit${qs ? '?' + qs : ''}`)
+  return get<AdminAuditResponse>(`${API_BASE}/admin/audit${qs ? '?' + qs : ''}`, false, signal)
 }
 
 export async function exportAuditEvents(params?: {
@@ -4096,8 +4174,27 @@ export async function authRegister(
   })
 }
 
-export async function authMe(): Promise<AuthMeResponse> {
-  return get<AuthMeResponse>(`${API_BASE}/auth/me`)
+export async function authMe(): Promise<AuthMeResponse | null> {
+  // Session bootstrap must not turn an anonymous visit into a refresh-token
+  // request. A missing cookie is a normal logged-out state; only protected API
+  // calls should use the generic 401 refresh path.
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      ...CREDS,
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+    })
+    if (res.status === 401 || res.status === 403) return null
+    if (!res.ok) throw new Error(`API error ${res.status}`)
+    return unwrap<AuthMeResponse>(await res.json())
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Request timed out after 15s')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export interface UpdateProfileRequest {

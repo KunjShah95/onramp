@@ -37,10 +37,13 @@ export default function PRDescriptionPage() {
   const toast = useToast()
 
   const handleGenerate = async () => {
+    if (generating) return
     if (!repoUrl.trim() || !prNumber.trim()) { setError('Enter a repo URL and PR number.'); return }
     const num = parseInt(prNumber, 10)
     if (isNaN(num)) { setError('PR number must be numeric.'); return }
-    setGenerating(true); setError(''); setDescription('')
+    setGenerating(true)
+    setError('')
+    setDescription('')
     try {
       const res = await describePR(repoUrl.trim(), num)
       setDescription(res.description || '')

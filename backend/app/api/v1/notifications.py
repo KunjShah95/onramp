@@ -193,7 +193,7 @@ async def get_notification_endpoint(
         raise HTTPException(status_code=404, detail="Notification not found")
     uid = user.get("uid", "")
     if notif.get("user_id") != uid:
-        raise HTTPException(status_code=403, detail="Not your notification")
+        raise HTTPException(status_code=404, detail="Notification not found")
     return notif
 
 

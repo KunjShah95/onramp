@@ -4,11 +4,13 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react'
+import { useLocation } from 'react-router-dom'
 import { setWsToken, clearTokens, getWsToken } from '../lib/neon-auth'
-import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken } from '../lib/api'
-import { prefetchRoutes } from '../lib/prefetch'
+import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken, clearCsrfToken } from '../lib/api'
+import { prefetchRoute, prefetchWorkspaceShell } from '../lib/prefetch'
 
 interface User {
   id: string
@@ -33,6 +35,8 @@ interface User {
 interface AuthState {
   user: User | null
   loading: boolean
+  /** True after the first session check has completed, even when no user exists. */
+  initialized: boolean
   error: string | null
   authMethod: 'password' | null
   role: 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr' | null
@@ -93,27 +97,32 @@ function mapUser(raw: Record<string, unknown> | null | undefined): User | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation()
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
+    initialized: false,
     error: null,
     authMethod: null,
     role: null,
     activeTeamId: null,
   })
 
-  const syncRoleFromTeams = useCallback(async (uid?: string) => {
+  const syncRoleFromTeams = useCallback(async (uid?: string, currentRole?: AuthState['role']): Promise<Exclude<AuthState['role'], null>> => {
     try {
       const teamsData = await listTeams(uid || 'current-user')
       if (teamsData?.teams?.length > 0) {
         const activeTeam = teamsData.teams[0]
+        const role = ((activeTeam as any).role as AuthState['role']) || 'junior_dev'
         setState((prev) => ({
           ...prev,
           activeTeamId: (activeTeam as any).team_id || null,
-             role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
+          role,
         }))
+        return role
       } else {
         setState((prev) => ({ ...prev, role: null, activeTeamId: null }))
+        return 'junior_dev'
       }
     } catch {
       // On failure, keep the current role rather than silently downgrading.
@@ -121,18 +130,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // navigation or retry will attempt to sync again.
       console.warn('[Auth] Failed to sync role from teams — keeping current role')
     }
+    return currentRole ?? 'junior_dev'
   }, [])
 
+  const publicOnly = import.meta.env.MODE !== 'test' && /^\/(?:$|why-onramp|compare|changelog|docs|support|about|blog|contact|customers|security|dpa|soc-2|trust|privacy|terms|pricing|login|register|forgot-password|verify-email|reset-password|set-password|auth\/callback|join)/.test(pathname)
+
+  // A session check is deliberately session-scoped, not route-scoped. Previously
+  // every protected navigation re-ran /auth/me and then /teams, which replaced
+  // the outlet with a loading skeleton and could leave multiple auth requests in
+  // flight while the user moved quickly between pages.
+  const authInitStartedRef = useRef(false)
+  const authCompletedRef = useRef(false)
+  const mountedRef = useRef(false)
+
   useEffect(() => {
-    let active = true
+    mountedRef.current = true
+
+    if (publicOnly) {
+      // Public pages do not need a session request. Keep `initialized` false so
+      // the first transition to a protected route shows the auth skeleton while
+      // the one session check starts, rather than redirecting prematurely.
+      setState((prev) => prev.loading ? { ...prev, loading: false } : prev)
+      return () => { mountedRef.current = false }
+    }
+
+    if (authInitStartedRef.current) return () => { mountedRef.current = false }
+    authInitStartedRef.current = true
+
     const initAuth = async () => {
-      // With cookie-based auth, we don't check for a stored token.
-      // Instead, call /auth/me — the browser sends the HttpOnly cookie
-      // automatically.  If the cookie is missing/expired, /me returns 401
-      // and we fall through to the logged-out state.
+      // With cookie-based auth, we don't check for a stored token. The browser
+      // sends the HttpOnly cookie automatically. A missing/expired cookie makes
+      // /auth/me return 401, which is handled as a normal logged-out session.
       try {
         const me = await authMe()
-        if (!active) return
+        if (!mountedRef.current) return
 
         setState((prev) => ({
           ...prev,
@@ -141,30 +172,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loading: true,
         }))
 
-        if (me) await syncRoleFromTeams((me as { uid?: string })?.uid)
+        if (me) {
+          prefetchWorkspaceShell()
+          await syncRoleFromTeams((me as { uid?: string })?.uid)
+        }
 
-        if (active) {
-          setState((prev) => ({ ...prev, loading: false }))
+        if (mountedRef.current) {
+          setState((prev) => ({ ...prev, loading: false, initialized: true }))
         }
       } catch {
         // No valid session cookie — user is logged out.
         clearTokens()
-        if (active) {
+        if (mountedRef.current) {
           setState({
             user: null,
             loading: false,
+            initialized: true,
             error: null,
             authMethod: null,
             role: null,
             activeTeamId: null,
           })
         }
+      } finally {
+        authCompletedRef.current = true
       }
     }
 
-    initAuth()
-    return () => { active = false }
-  }, [syncRoleFromTeams])
+    void initAuth()
+    return () => {
+      mountedRef.current = false
+      // If unmount races with in-flight auth init, reset the guard so a
+      // remounted provider (e.g. after a redirect) can start a fresh check.
+      if (!authCompletedRef.current) {
+        authInitStartedRef.current = false
+      }
+    }
+  }, [publicOnly, syncRoleFromTeams])
 
   const login = useCallback(async (email: string, password: string, rememberMe = false) => {
     setState((prev) => ({ ...prev, error: null, loading: true }))
@@ -177,10 +221,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
         authMethod: 'password',
         loading: true,
+        initialized: true,
       }))
-      // Warm the cache for the pages the redirect is about to land on.
-      prefetchRoutes(['/dashboard', '/my-progress', '/hr/people', '/explore', '/ask', '/tasks'])
-      await syncRoleFromTeams(resp.uid)
+      prefetchWorkspaceShell()
+      const role = await syncRoleFromTeams(resp.uid)
+      // Warm only the user's actual redirect target. Pre-downloading every role
+      // page competed with the redirect and delayed the first useful render.
+      prefetchRoute(homeForRole(role))
       setState((prev) => ({ ...prev, loading: false }))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed'
@@ -237,10 +284,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user: mapUser({ uid: resp.uid, email: resp.email, name: resp.name }),
           authMethod: 'password',
           loading: true,
+          initialized: true,
         }))
-        // Warm the cache for the pages the redirect is about to land on.
-        prefetchRoutes(['/dashboard', '/my-progress', '/hr/people', '/explore', '/ask', '/tasks'])
-        await syncRoleFromTeams(resp.uid)
+        prefetchWorkspaceShell()
+        const role = await syncRoleFromTeams(resp.uid)
+        prefetchRoute(homeForRole(role))
         setState((prev) => ({ ...prev, loading: false }))
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Registration failed'
@@ -252,6 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(async () => {
+    clearCsrfToken()
     try {
       await clearTokens()
     } catch {
@@ -260,6 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({
       user: null,
       loading: false,
+      initialized: true,
       error: null,
       authMethod: null,
       role: null,

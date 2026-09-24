@@ -71,6 +71,7 @@ export default function TraineeDashboard() {
   const toast = useToast()
   const navigate = useNavigate()
   const mountedRef = useRef(true)
+  const pollInFlightRef = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -78,11 +79,14 @@ export default function TraineeDashboard() {
   }, [])
 
   async function fetchDashboard(background = false) {
+    if (background && pollInFlightRef.current) return
     if (!activeTeamId) {
       if (mountedRef.current) { setLoading(false); setRefreshing(false); setError('Join a team to view your onboarding progress.') }
       return
     }
+    if (background) pollInFlightRef.current = true
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (background) pollInFlightRef.current = false
       if (mountedRef.current) {
         if (!background) setLoading(false)
         setRefreshing(false)
@@ -100,14 +104,23 @@ export default function TraineeDashboard() {
     } catch (err: any) {
       if (mountedRef.current && !background) setError(err.message || 'Failed to load dashboard.')
     } finally {
+      if (background) pollInFlightRef.current = false
       if (mountedRef.current) { setLoading(false); setRefreshing(false) }
     }
   }
 
   useEffect(() => {
-    fetchDashboard(false)
-    const interval = setInterval(() => fetchDashboard(true), 30000)
-    return () => clearInterval(interval)
+    void fetchDashboard(false)
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') void fetchDashboard(true)
+    }
+    const interval = setInterval(refreshIfVisible, 30_000)
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+    }
   }, [activeTeamId])
 
   if (loading) return <TraineeDashboardSkeleton />

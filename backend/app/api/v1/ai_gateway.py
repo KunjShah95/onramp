@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from fastapi import APIRouter, HTTPException, Depends, Header, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, AnyHttpUrl
 from typing import Optional, Dict, Any
 from app.services.api_key_service import APIKeyService, TIER_LIMITS, CREDIT_COSTS
 from app.services.usage_tracker import UsageTracker
@@ -112,13 +112,13 @@ class CreateKeyRequest(BaseModel):
     credit_limit: Optional[int] = None
     daily_credit_cap: Optional[int] = None
     expires_in_days: Optional[int] = None
-    webhook_url: Optional[str] = None
+    webhook_url: Optional[AnyHttpUrl] = None
     # NOTE: created_by is intentionally NOT accepted from the client.
 
 
 class RotateKeyRequest(BaseModel):
     key_id: str
-    webhook_url: Optional[str] = None
+    webhook_url: Optional[AnyHttpUrl] = None
 
 
 class AuditLogEntry(BaseModel):
@@ -679,11 +679,16 @@ async def check_quota(
 
 @router.get("/tiers")
 async def list_tiers():
-    return {"tiers": TIER_LIMITS, "credit_costs": CREDIT_COSTS}
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content={"tiers": TIER_LIMITS, "credit_costs": CREDIT_COSTS},
+        headers={"Cache-Control": "public, max-age=300, stale-while-revalidate=3600"},
+    )
 
 
 @router.get("/models")
-async def list_llm_models(req: Request):
+async def list_llm_models(req: Request, _user: dict = Depends(get_current_user)):
     """List the LLM router's model catalog (OpenRouter-style).
 
     Returns the available providers (and whether each is configured) plus
@@ -821,7 +826,7 @@ def _query_type_model(llm: Any, query_type: Optional[str]) -> Optional[str]:
 
 
 @router.get("/agents")
-async def list_agents(req: Request):
+async def list_agents(req: Request, _user: dict = Depends(get_current_user)):
     """List all available AI agents and their metadata.
 
     Each agent reports the query type it routes through (code, reasoning,
@@ -943,9 +948,25 @@ async def execute_agent(
         # Build kwargs from body (strip out auth-related keys)
         kwargs = {k: v for k, v in body.items() if k not in ("github_token",)}
 
-        # ===== BILLING: Reserve credits BEFORE execution (API key auth only) =====
+        # ===== BILLING: Reserve credits BEFORE execution =====
         reserved = False
         key_id = auth.get("key_id") if auth.get("auth_method") == "api_key" else None
+
+        # JWT users: enforce quota via the same team-scoped path as other AI endpoints.
+        if not key_id:
+            uid = auth.get("uid", "")
+            jwt_scope = uid
+            if uid:
+                try:
+                    jwt_teams = await get_user_teams(uid)
+                    if jwt_teams:
+                        jwt_scope = jwt_teams[0].get("id") or jwt_teams[0].get("team_id") or uid
+                except Exception:
+                    pass
+            if jwt_scope:
+                from app.services.quota import check_quota as _check_quota
+                await _check_quota(jwt_scope, agent_info["credit_action"])
+
         if key_id:
             reserve_result = await key_service.reserve_credits(key_id, cost)
             outcome = reserve_result.get("outcome")
@@ -985,7 +1006,7 @@ async def execute_agent(
             # Use team_id (UUID) as the canonical billing scope; fall back to org_name for JWT auth.
             try:
                 uid = auth.get("uid", "unknown")
-                billing_scope = auth.get("team_id") or auth.get("org_name") or uid
+                billing_scope = auth.get("org_name") or (jwt_scope if not key_id else uid)
                 await usage.record_usage(
                     org_name=billing_scope,
                     endpoint=agent_name,

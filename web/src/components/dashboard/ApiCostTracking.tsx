@@ -7,10 +7,10 @@
  * Developer Portal key sections (listApiKeys + getUsageSummary).
  */
 import { useEffect, useState } from 'react'
-import { Key, Spinner, Warning } from '@phosphor-icons/react'
+import { Spinner } from '@phosphor-icons/react'
 import { useAuth } from '../../context/AuthContext'
-import { listApiKeys, getUsageSummary, getProviderUsage, type ApiKey, type UsageSummary, type ProviderUsage } from '../../lib/api'
-import { cn, formatKeyDate } from '../../lib/utils'
+import { getUsageSummary, getProviderUsage, type UsageSummary, type ProviderUsage } from '../../lib/api'
+import { cn } from '../../lib/utils'
 import { EmptyRow } from '../ui/empty-state'
 
 /** Compact USD formatting — matches the Admin dashboard's cost figures. */
@@ -20,7 +20,6 @@ function fmtUsd(n: number): string {
 
 export default function ApiCostTracking({ className }: { className?: string }) {
   const { activeTeamId } = useAuth()
-  const [keys, setKeys] = useState<ApiKey[]>([])
   const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [providerUsage, setProviderUsage] = useState<ProviderUsage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,18 +35,13 @@ export default function ApiCostTracking({ className }: { className?: string }) {
       setLoading(true); setError('')
       // allSettled: a failure in one source (e.g. provider attribution) must
       // never take down the per-key budgets — each loads independently.
-      const [keyResult, usageResult, providerResult] = await Promise.allSettled([
-        listApiKeys(activeTeamId),
+      const [usageResult, providerResult] = await Promise.allSettled([
         getUsageSummary(activeTeamId),
         getProviderUsage(activeTeamId, 'month'),
       ])
       if (cancelled) return
-      if (keyResult.status === 'fulfilled') {
-        setKeys(keyResult.value.keys ?? [])
-      } else {
-        setError((keyResult.reason as Error)?.message || 'Failed to load API keys')
-      }
       if (usageResult.status === 'fulfilled') setUsage(usageResult.value)
+      else setError((usageResult.reason as Error)?.message || 'Failed to load usage')
       if (providerResult.status === 'fulfilled') setProviderUsage(providerResult.value)
     }
     load()
@@ -55,12 +49,6 @@ export default function ApiCostTracking({ className }: { className?: string }) {
   }, [activeTeamId])
 
   const totalCredits = usage?.total_credits ?? 0
-  const activeCount = keys.filter((k) => k.is_active).length
-  const overBudget = keys.filter((k) => {
-    const limit = k.credit_limit ?? 0
-    const used = k.credits_used ?? k.usage_count ?? 0
-    return k.is_active && limit > 0 && used >= limit
-  }).length
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -76,21 +64,10 @@ export default function ApiCostTracking({ className }: { className?: string }) {
       ) : (
         <>
           {/* Monthly summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-panel border border-seam rounded-lg p-3">
-              <p className="text-[10px] text-ink-tertiary uppercase tracking-wider font-medium mb-1">Credits Used</p>
-              <p className="text-xl font-bold text-go tabular-nums leading-none">{totalCredits.toLocaleString()}</p>
-              <p className="text-[10px] text-ink-tertiary mt-1">this month · across all keys</p>
-            </div>
-            <div className="bg-panel border border-seam rounded-lg p-3">
-              <p className="text-[10px] text-ink-tertiary uppercase tracking-wider font-medium mb-1">API Keys</p>
-              <p className="text-xl font-bold text-ink tabular-nums leading-none">
-                {activeCount}<span className="text-sm text-ink-tertiary">/{keys.length}</span>
-              </p>
-              <p className="text-[10px] text-ink-tertiary mt-1">
-                active{overBudget > 0 && <span className="text-abort"> · {overBudget} over budget</span>}
-              </p>
-            </div>
+          <div className="bg-panel border border-seam rounded-lg p-3">
+            <p className="text-[10px] text-ink-tertiary uppercase tracking-wider font-medium mb-1">Credits Used</p>
+            <p className="text-xl font-bold text-go tabular-nums leading-none">{totalCredits.toLocaleString()}</p>
+            <p className="text-[10px] text-ink-tertiary mt-1">this month</p>
           </div>
 
           {/* Provider attribution — free-first routing savings */}
@@ -153,63 +130,6 @@ export default function ApiCostTracking({ className }: { className?: string }) {
             </div>
           )}
 
-          {/* Per-key budget state */}
-          {keys.length === 0 ? (
-            <EmptyRow label="No API keys yet — create one in Settings or the Developer Portal." />
-          ) : (
-            <div className="space-y-2">
-              {keys.map((key) => {
-                const limit = key.credit_limit ?? 0
-                const used = key.credits_used ?? key.usage_count ?? 0
-                const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-                const exhausted = limit > 0 && used >= limit
-                return (
-                  <div
-                    key={key.key_id}
-                    className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-panel border border-seam"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <Key className={cn('w-3.5 h-3.5 shrink-0', exhausted ? 'text-abort' : 'text-ink-tertiary')} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-body-xs text-ink font-medium truncate">{key.name || 'Unnamed Key'}</p>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase bg-go/10 text-go border border-go/20">
-                            {key.tier}
-                          </span>
-                          {!key.is_active && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-well text-ink-tertiary border border-seam">
-                              revoked
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="h-1.5 flex-1 max-w-[160px] rounded-full bg-well overflow-hidden">
-                            <div
-                              className={cn('h-full rounded-full transition-all', exhausted ? 'bg-error' : 'bg-go')}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className={cn('text-caption font-mono tabular-nums', exhausted ? 'text-abort' : 'text-ink-tertiary')}>
-                            {key.credit_limit != null ? `${used}/${key.credit_limit} credits` : `${used} credits`}
-                          </span>
-                        </div>
-                        <p className="font-mono text-[10px] text-ink-tertiary/60 mt-1">
-                          Created {formatKeyDate(key.created_at)}
-                          {key.last_used_at && <> · last used {formatKeyDate(key.last_used_at)}</>}
-                          {key.expires_at && <> · expires {formatKeyDate(key.expires_at)}</>}
-                        </p>
-                      </div>
-                    </div>
-                    {exhausted && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-abort/10 text-abort border border-abort/20 shrink-0 flex items-center gap-1">
-                        <Warning size={10} weight="fill" /> Limit reached
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </>
       )}
     </div>

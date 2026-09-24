@@ -405,7 +405,7 @@ class BillingService:
         # 4. Finalize idempotency (update status to done if we claimed via PK)
         if dedupe_key and claimed:
             try:
-                await self.storage.update_document(IDEMPOTENCY_COLLECTION, dedupe_key, {"status": "done", "processed_at": _utcnow()})
+                await self.storage.update_document(IDEMPOTENCY_COLLECTION, idempotency_document_id(dedupe_key), {"status": "done", "processed_at": _utcnow()})
             except Exception:
                 pass
         elif dedupe_key:
@@ -632,9 +632,13 @@ class BillingService:
         if not orders:
             return {"error": "Unknown order"}
         order_owner = orders[0].get("team_id")
-        if caller_id and order_owner and order_owner != caller_id:
-            logger.warning(f"Credit order {order_id} owned by {order_owner} — denied for caller {caller_id}")
-            return {"error": "Not authorized for this order"}
+        if caller_id and order_owner:
+            from app.services.team_service import get_user_teams
+            caller_teams = await get_user_teams(caller_id)
+            caller_team_ids = {str(t.get("team_id") or t.get("id")) for t in caller_teams}
+            if str(order_owner) not in caller_team_ids:
+                logger.warning(f"Credit order {order_id} owned by team {order_owner} — denied for caller {caller_id}")
+                return {"error": "Not authorized for this order"}
 
         params = {
             "razorpay_order_id": order_id,

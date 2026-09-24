@@ -1093,6 +1093,29 @@ async def forgot_password(body: ForgotPasswordRequest):
     if not body.email:
         raise HTTPException(status_code=400, detail="Email is required")
 
+    # Per-email rate limit (3 per 15 min) — prevents inbox flooding via the
+    # primary endpoint, which the /resend guard does not cover.
+    _rl_key = f"forgot_primary:{email_hash(body.email)}"
+    _rl_window = 900
+    _rl_max = 3
+    try:
+        _rl_storage = get_storage()
+        _rl_now = datetime.now(timezone.utc)
+        _rl_records = await _rl_storage.query_documents("rate_limits", [("key", "==", _rl_key)])
+        _rl_recent = [
+            r for r in _rl_records
+            if (_rl_now - datetime.fromisoformat(r.get("created_at", _rl_now.isoformat())).replace(tzinfo=timezone.utc)).total_seconds() < _rl_window
+        ]
+        if len(_rl_recent) >= _rl_max:
+            return {"ok": True, "message": "If an account exists, a reset link has been sent."}
+        from app.services.postgres_db import generate_id as _gen_id
+        await _rl_storage.create_document("rate_limits", _gen_id(), {
+            "key": _rl_key,
+            "created_at": _rl_now.isoformat(),
+        })
+    except Exception:
+        pass  # fail open — rate limit is protective, not a hard auth gate
+
     # Look up user by email hash
     await db_config.ensure_engine()
     factory = db_config.get_session_factory()
@@ -1112,7 +1135,9 @@ async def forgot_password(body: ForgotPasswordRequest):
 
     # Generate a short-lived reset JWT
     nonce = _secrets.token_urlsafe(16)
-    # Store nonce as jti-like denylist: single-use token
+    # Store nonce as jti-like denylist: single-use token.
+    # Must succeed before the JWT is issued — a swallowed failure here would
+    # issue an infinitely-reusable token.
     try:
         storage_n = get_storage()
         await storage_n.create_document("onramp_reset_tokens", nonce, {
@@ -1123,6 +1148,7 @@ async def forgot_password(body: ForgotPasswordRequest):
         })
     except Exception:
         logger.exception("Failed to store reset nonce")
+        raise HTTPException(status_code=500, detail="Could not generate reset token. Please try again.")
     reset_payload = {
         "purpose": "password_reset",
         "uid": user_row.id,
@@ -1264,6 +1290,9 @@ async def reset_password(body: ResetPasswordRequest):
     jti = payload.get("jti") or payload.get("nonce")
     if not uid:
         raise HTTPException(status_code=400, detail="Invalid reset token")
+    # jti is required — a token without one would bypass single-use enforcement
+    if not jti:
+        raise HTTPException(status_code=400, detail="Invalid reset token")
     # Atomically claim the single-use nonce before changing the password.
     # The storage method uses SELECT ... FOR UPDATE in Postgres (and a lock
     # in the memory backend), so concurrent resets cannot both succeed.
@@ -1279,6 +1308,12 @@ async def reset_password(body: ResetPasswordRequest):
             )
             if not claimed:
                 raise HTTPException(status_code=400, detail="Reset token has already been used")
+            # Verify the claimed nonce's uid matches the token's uid — prevents
+            # a nonce from one user being used (via crafted JWT) to reset another
+            # user's password.
+            claimed_doc = await storage_j.get_document("onramp_reset_tokens", jti)
+            if not claimed_doc or claimed_doc.get("uid") != uid:
+                raise HTTPException(status_code=400, detail="Invalid reset token")
         except HTTPException:
             raise
         except Exception:
@@ -1353,6 +1388,12 @@ async def set_password(
 
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
+
+        if not user_row.password_reset_required:
+            raise HTTPException(
+                status_code=403,
+                detail="Use the change-password flow to update an existing password",
+            )
 
         user_row.password_hash = password_hash
         user_row.password_reset_required = False

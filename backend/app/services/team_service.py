@@ -65,13 +65,20 @@ async def delete_team(team_id: str) -> None:
 async def add_member(team_id: str, user_id: str, role: str = "junior_dev") -> dict:
     """Add a user to a team"""
     storage = get_storage()
-    
+
+    existing = await storage.query_documents(
+        "team_members",
+        [("team_id", "==", team_id), ("user_id", "==", user_id)]
+    )
+    if existing:
+        return existing[0]
+
     member_data = {
         "user_id": user_id,
         "team_id": team_id,
         "role": role,
     }
-    
+
     member = await storage.create_document("team_members", generate_id(), member_data)
     return member
 

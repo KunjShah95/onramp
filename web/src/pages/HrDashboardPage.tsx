@@ -143,7 +143,7 @@ function CohortFunnelCard({ members }: { members: HrCompletionMember[] | undefin
     <ConsolePanel rail="Cohort Funnel" designator="FIDO" status="standby">
       <div className="flex items-center gap-4">
         <div className="w-36 h-36 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
             <PieChart>
               <Pie data={funnelData} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={3} dataKey="value" stroke="none">
                 {funnelData.map((d) => <Cell key={d.name} fill={d.color} />)}

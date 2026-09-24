@@ -3,6 +3,7 @@ import * as d3Force from 'd3-force'
 import { drag as d3Drag, type D3DragEvent } from 'd3-drag'
 import { select as d3Select } from 'd3-selection'
 import { zoom as d3Zoom, zoomIdentity } from 'd3-zoom'
+import { GRAPH_PALETTE as PALETTE } from './graph-theme'
 
 export interface GraphNode {
   id: string
@@ -33,11 +34,7 @@ interface Props {
   activeGroups?: Set<string> | null
 }
 
-export const PALETTE = [
-  '#FF8C00', '#4DA8DA', '#E16A6A', '#6BCB77',
-  '#A78BFA', '#F472B6', '#34D399', '#FBBF24',
-  '#60A5FA', '#FB923C',
-]
+export { PALETTE } from './graph-theme'
 
 function getColor(_group: string, index: number): string {
   return PALETTE[index % PALETTE.length]

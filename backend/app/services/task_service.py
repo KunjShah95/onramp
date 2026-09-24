@@ -530,6 +530,11 @@ async def peer_review_task(
     task = await storage.get_document(COLLECTION, task_id)
     if not task:
         raise ValueError(f"Task {task_id} not found")
+    if task.get("state") != "peer_review":
+        raise ValueError(
+            f"Task must be in 'peer_review' state to submit a peer review verdict "
+            f"(current state: '{task.get('state')}')"
+        )
     _assert_not_own_task(task, reviewer_id)
 
     # Route to the outcome state first — only record the reviewer on success.
@@ -876,10 +881,11 @@ async def complete_task(task_id: str, user_id: str) -> dict:
 
     result = await transition_task(task_id, "completed", user_id)
 
-    # Auto-grant module access to the assignee
-    assignee = task.get("assigned_to")
-    unlock_modules = task.get("unlock_modules", [])
-    team_id = task.get("team_id")
+    # Use the post-transition snapshot so concurrent assignment changes are captured.
+    post = result or task
+    assignee = post.get("assigned_to")
+    unlock_modules = post.get("unlock_modules", [])
+    team_id = post.get("team_id")
 
     if assignee and unlock_modules and team_id:
         from app.services.access_control_service import grant_module_access

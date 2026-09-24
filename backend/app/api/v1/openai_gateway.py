@@ -130,7 +130,7 @@ async def _track_usage(
     """
     try:
         uid = auth.get("uid", "unknown")
-        org = auth.get("org_name") or uid
+        org = await _billing_scope(auth) or uid
         model = (route or {}).get("model") or ""
         # Prefer the per-request price snapshot persisted in the route record
         # (self-consistent even if the pricing table changes later); fall back
@@ -163,9 +163,32 @@ async def _track_usage(
         logger.debug("Usage tracking failed", exc_info=True)  # non-critical
 
 
+async def _billing_scope(auth: dict) -> str:
+    """Resolve the quota/billing scope for the caller.
+
+    API-key callers carry org_name already. JWT users are scoped to their
+    primary team_id so the gateway shares the same quota counter as every
+    other AI endpoint (which use enforce_quota → team_id).
+    """
+    org = auth.get("org_name")
+    if org:
+        return org
+    uid = auth.get("uid", "")
+    if not uid:
+        return ""
+    try:
+        from app.services.team_service import get_user_teams
+        teams = await get_user_teams(uid)
+        if teams:
+            return teams[0].get("id") or teams[0].get("team_id") or uid
+    except Exception:
+        logger.warning("Failed to resolve team scope for %s, falling back to uid", uid)
+    return uid
+
+
 async def _charge_usage_based(auth: dict, action: str) -> None:
     """Best-effort wallet charge for usage_based callers (no-op otherwise)."""
-    scope = auth.get("org_name") or auth.get("uid")
+    scope = await _billing_scope(auth)
     if not scope:
         return
     await charge_wallet(scope, action)
@@ -178,7 +201,7 @@ async def _enforce_quota(auth: dict, action: str) -> None:
     so failed requests never consume quota. Best-effort: a quota infra error
     fails open so the gateway stays available.
     """
-    scope = auth.get("org_name") or auth.get("uid")
+    scope = await _billing_scope(auth)
     if not scope:
         return
     try:

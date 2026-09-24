@@ -7,11 +7,11 @@
  *   renders as a real table. No chart swarm, no decorative metric grid.
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { cn } from '../lib/utils'
-import { fetchCTODashboard, fetchHealthScore, fetchRepos } from '../lib/api'
+import { fetchCTODashboard, fetchRepos } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
 import { statusLabel } from '../components/ui/status-badge'
@@ -20,7 +20,7 @@ import { EmptyRow } from '../components/ui/empty-state'
 import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
-import DoraMetricsPanel from '../components/dashboard/DoraMetricsPanel'
+const DoraMetricsPanel = lazy(() => import('../components/dashboard/DoraMetricsPanel'))
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import FirstRunDashboard from '../components/dashboard/FirstRunDashboard'
 import RampPanel, { isLeaderRole } from '../components/dashboard/RampPanel'
@@ -69,18 +69,7 @@ export default function DashboardPage() {
     staleTime: 60_000,
   })
 
-  const { data: healthData } = useQuery({
-    queryKey: ['healthScore', reposData?.repos?.[0]?.owner, reposData?.repos?.[0]?.name],
-    queryFn: () => {
-      const repo = reposData?.repos?.[0]
-      if (!repo) return null
-      return fetchHealthScore(repo.owner, repo.name, {})
-    },
-    enabled: !!reposData?.repos?.length,
-    staleTime: 60_000,
-  })
-
-  const codeHealth = healthData?.overall_score ?? null
+  const codeHealth = null
 
   const defaultDash = {
     total_tasks: 0, completed_tasks: 0, in_progress_tasks: 0, pending_review_tasks: 0,
@@ -285,7 +274,7 @@ export default function DashboardPage() {
                 <EmptyRow label="No trajectory yet — complete tasks to chart velocity." />
               ) : (
                 <div className="h-52">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0}>
                     <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                       <CartesianGrid stroke={sig.grid} vertical={false} />
                       <XAxis dataKey="date" tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dy={6} />
@@ -448,7 +437,9 @@ export default function DashboardPage() {
       {activeTab === 'dora' && (
         <div>
           <Panel callsign="DORA metrics" designator="DEVOPS RESEARCH & ASSESSMENT">
-            <DoraMetricsPanel />
+            <Suspense fallback={<div className="h-48 flex items-center justify-center text-xs text-ink-tertiary">Loading DORA metrics…</div>}>
+               <DoraMetricsPanel />
+             </Suspense>
           </Panel>
         </div>
       )}

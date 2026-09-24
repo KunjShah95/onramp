@@ -165,8 +165,8 @@ def _validate_webhook_url(url: str) -> None:
     """Validate a webhook URL. Raises ValueError on failure."""
     if not isinstance(url, str) or not url.strip():
         raise ValueError("Webhook URL is required")
-    if not url.strip().startswith(("http://", "https://")):
-        raise ValueError("Webhook URL must start with http:// or https://")
+    if not url.strip().startswith("https://"):
+        raise ValueError("Webhook URL must use HTTPS")
 
 
 def _validate_webhook_events(events) -> None:
@@ -262,15 +262,22 @@ async def delete_webhook(webhook_id: str, user_id: str) -> bool:
 
 
 async def rotate_secret(webhook_id: str, user_id: str) -> Optional[dict]:
-    """Rotate the signing secret for a webhook."""
+    """Rotate the signing secret for a webhook.
+
+    Returns a one-time dict containing the new plaintext secret. The stored
+    document is updated but the secret is not returned on subsequent reads.
+    """
     storage = get_storage()
     webhook = await storage.get_document(COLLECTION, webhook_id)
     if not webhook or webhook.get("user_id") != user_id:
         return None
-    return await storage.update_document(COLLECTION, webhook_id, {
-        "secret": _generate_secret(),
-        "updated_at": _utcnow(),
+    new_secret = _generate_secret()
+    rotated_at = _utcnow()
+    await storage.update_document(COLLECTION, webhook_id, {
+        "secret": new_secret,
+        "updated_at": rotated_at,
     })
+    return {"webhook_id": webhook_id, "secret": new_secret, "rotated_at": rotated_at}
 
 
 async def test_webhook(webhook_id: str, user_id: str) -> dict:

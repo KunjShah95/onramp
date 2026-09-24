@@ -28,13 +28,13 @@ router = APIRouter(prefix="/review-ops", tags=["review-ops"])
 
 
 async def _resolve_team(user: dict, team_id: Optional[str]) -> str:
-    """Explicit team_id wins; otherwise the user's primary team (or uid)."""
+    """Explicit team_id wins; otherwise the user's primary team."""
     if team_id:
         return team_id
     teams = await get_user_teams(user.get("uid", ""))
     if teams:
-        return teams[0].get("team_id") or teams[0].get("id") or user.get("uid", "")
-    return user.get("uid", "")
+        return teams[0].get("team_id") or teams[0].get("id") or ""
+    raise HTTPException(status_code=403, detail="No team membership found")
 
 
 async def _require_member(user: dict, team_id: str) -> None:

@@ -557,6 +557,7 @@ async def get_history(
     user: dict = Depends(get_current_user),
 ):
     """Get conversation history for an index."""
+    await _authorize_index(user, index_id)
     user_id = user.get("uid")
     turns = await _conversation.get_history(user_id, index_id, limit)
     return {"history": turns}
@@ -568,6 +569,7 @@ async def clear_history(
     user: dict = Depends(get_current_user),
 ):
     """Clear conversation history for an index."""
+    await _authorize_index(user, index_id)
     user_id = user.get("uid")
     count = await _conversation.clear(user_id, index_id)
     return {"cleared": count}

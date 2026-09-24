@@ -90,7 +90,7 @@ export default function HeadcountFlowPanel({ teamId }: { teamId?: string }) {
             </p>
           </div>
           <div className="h-40 bg-plot-grid rounded-tile">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
               <ComposedChart data={months} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
                 <XAxis dataKey="label" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false}

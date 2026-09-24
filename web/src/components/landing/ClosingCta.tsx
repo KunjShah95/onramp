@@ -6,7 +6,7 @@ import { ArrowRight } from '@phosphor-icons/react'
  * magnetic wrapper, scroll rise, glow shadows. */
 export default function ClosingCta() {
   return (
-    <section id="the-open-door" className="scroll-mt-20 border-t border-seam bg-base py-16 lg:py-20">
+    <section id="the-open-door" className="landing-section scroll-mt-20 border-t border-seam bg-base py-16 lg:py-20">
       <div className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="rounded-md border border-seam bg-panel px-6 py-14 text-center sm:px-12">
           <p className="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Get started</p>

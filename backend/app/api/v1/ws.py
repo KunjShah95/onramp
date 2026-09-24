@@ -83,6 +83,12 @@ async def websocket_endpoint(
     avoids logging in URLs), query param fallback, or first JSON message
     ``{type:"auth", token:"..."}``. Query param is deprecated due to log leakage.
     """
+    # Browser WebSockets include same-site cookies automatically. Reuse the
+    # HttpOnly session cookie when the in-memory token is unavailable after a
+    # page reload; the first-message auth path remains supported for clients
+    # that do not expose cookies.
+    if not token:
+        token = websocket.cookies.get("onramp_access_token")
     # Prefer header to avoid logging token in access logs
     if not token:
         proto = websocket.headers.get("sec-websocket-protocol", "")

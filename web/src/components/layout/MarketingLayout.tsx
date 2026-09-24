@@ -35,11 +35,8 @@ export default function MarketingLayout({
       <div data-theme="landing" className={`landing-premium${lightClass} min-h-screen bg-room text-ink antialiased font-body flex flex-col`}>
         {seo && <Seo {...seo} />}
         <a href="#main-content" className="skip-link">Skip to content</a>
-        {/* subtle ambient — quiet radial pools behind the content */}
-        <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute -top-32 left-1/4 h-[420px] w-[560px] -translate-x-1/2 rounded-full bg-accent-primary/[0.05] blur-[110px]" />
-          <div className="absolute right-0 top-[18%] h-[320px] w-[380px] rounded-full bg-accent-via/[0.04] blur-[100px]" />
-        </div>
+        {/* Static color fields avoid large fixed blur layers that are expensive
+            to repaint on mobile GPUs. */}
         <header>
           <MarketingNav links={navLinks} fixed={navFixed} />
         </header>

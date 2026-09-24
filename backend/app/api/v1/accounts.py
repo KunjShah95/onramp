@@ -278,10 +278,21 @@ async def create_accounts_bulk(
     created = []
     skipped = []
 
+    creator_uid = user.get("uid", "")
+    creator_team_ids: set[str] | None = None
+
     for row in body.rows:
         if not _can_create_role(creator_level, row.role):
             skipped.append({"email": row.email, "reason": f"Cannot create role '{row.role}'"})
             continue
+
+        if row.team_id:
+            if creator_team_ids is None:
+                creator_teams = await get_user_teams(creator_uid)
+                creator_team_ids = {t.get("team_id") or t.get("id") for t in creator_teams}
+            if row.team_id not in creator_team_ids:
+                skipped.append({"email": row.email, "reason": "Not a member of the specified team"})
+                continue
 
         exists = await check_email_exists(row.email)
         if exists:

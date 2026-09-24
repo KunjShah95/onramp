@@ -13,6 +13,7 @@ a hung process). ``/metrics`` is scraped by Prometheus / Grafana.
 import os
 import time
 import logging
+import asyncio
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse, Response
@@ -87,10 +88,10 @@ async def _check_redis() -> CheckDetail:
 @router.get("/ready", tags=["ops"])
 async def readiness():
     """Readiness probe — 200 only when all required dependencies are up."""
-    checks = {
-        "database": await _check_database(),
-        "redis": await _check_redis(),
-    }
+    checks = dict(zip(
+        ("database", "redis"),
+        await asyncio.gather(_check_database(), _check_redis()),
+    ))
     all_ok = all(check.status == "ok" for check in checks.values())
     body = ReadinessResponse(
         status="ready" if all_ok else "not_ready",

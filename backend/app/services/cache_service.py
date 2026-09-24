@@ -125,11 +125,18 @@ async def invalidate_pattern(pattern: str) -> int:
     if not client:
         return 0
     try:
-        keys = await client.keys(pattern)
+        # SCAN avoids Redis's blocking KEYS command, which stalls the shared
+        # cache/rate-limit/broker instance as the keyspace grows.
+        keys = []
+        deleted = 0
+        async for key in client.scan_iter(match=pattern, count=200):
+            keys.append(key)
+            if len(keys) >= 200:
+                deleted += await client.unlink(*keys)
+                keys.clear()
         if keys:
-            await client.delete(*keys)
-            return len(keys)
-        return 0
+            deleted += await client.unlink(*keys)
+        return deleted
     except Exception:
         logger.debug("Cache invalidation failed for pattern %s", pattern, exc_info=True)
         return 0

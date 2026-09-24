@@ -34,7 +34,7 @@ async def require_team_admin(team_id: str, user: dict) -> None:
     members = await get_team_members(team_id)
     uid = user.get("uid")
     roles = {m.get("role", "member") for m in members if (m.get("user_id") or m.get("uid") or m.get("id")) == uid}
-    if not roles.intersection({"admin", "ceo", "cto", "senior", "senior_dev"}):
+    if not roles.intersection({"admin", "ceo", "cto"}):
         raise HTTPException(status_code=403, detail="Team billing administrator required")
 
 
@@ -157,13 +157,23 @@ async def razorpay_webhook(request: Request):
     sig = request.headers.get("X-Razorpay-Signature")
     result = await billing.handle_webhook(payload, sig)
     if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
+        err = result["error"]
+        # Signature and config errors are permanent — return 400 so Razorpay
+        # does not retry. Processing/storage errors are transient — return 500
+        # so Razorpay retries delivery.
+        permanent = any(w in err.lower() for w in ("signature", "not configured"))
+        raise HTTPException(status_code=400 if permanent else 500, detail=err)
     return result
 
 
 @router.get("/pricing")
 async def get_pricing():
-    return {"tiers": BillingService.get_pricing()}
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content={"tiers": BillingService.get_pricing()},
+        headers={"Cache-Control": "public, max-age=300, stale-while-revalidate=3600"},
+    )
 
 
 # ── Usage-based billing: prepaid credit wallet ───────────────────────────────

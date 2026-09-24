@@ -22,6 +22,7 @@ from app.api.v1.auth import get_current_user
 from app.agents.prompts import all_prompts, get_system_prompt, is_known_agent
 from app.services.agent_context import agent_context
 from app.services.agent_bus import agent_bus
+from app.services.quota import enforce_quota
 
 router = APIRouter(prefix="/agent-sessions", tags=["agent-sessions"])
 bus_router = APIRouter(prefix="/agent-bus", tags=["agent-bus"])
@@ -144,7 +145,7 @@ async def _primary_team_id(user: dict) -> Optional[str]:
 # ── Session endpoints ────────────────────────────────────────────────
 
 @router.post("")
-async def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)):
+async def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user), _q=enforce_quota("analyze")):
     if not is_known_agent(body.agent_type):
         raise HTTPException(status_code=400, detail=f"Unknown agent_type '{body.agent_type}'. Known: {sorted(all_prompts().keys())}")
 

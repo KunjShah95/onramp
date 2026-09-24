@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   Compass, ChatCircleDots, GitPullRequest, Heartbeat,
-  Key, Eye, ListChecks, ShieldCheck, Clock,
+  Eye, ListChecks, ShieldCheck, Clock,
   GitFork, Users, ArrowRight,
 } from '@phosphor-icons/react'
 import PageTransition from '../components/ui/page-transition'
@@ -42,7 +42,6 @@ const quickLinks: QuickLink[] = [
   { to: '/ask', title: 'Ask Codebase', description: 'Ask questions about your codebase', icon: ChatCircleDots },
   { to: '/pr-describe', title: 'Describe PR', description: 'Generate PR descriptions automatically', icon: GitPullRequest },
   { to: '/code-health', title: 'Code Health', description: 'Monitor code quality metrics', icon: Heartbeat },
-  { to: '/api-keys', title: 'API Keys', description: 'Manage your API keys and tokens', icon: Key },
   { to: '/reviews', title: 'Review Queue', description: 'Review pending pull requests', icon: Eye },
   { to: '/tasks', title: 'Tasks', description: 'View and manage your tasks', icon: ListChecks },
   { to: '/admin', title: 'Admin Panel', description: 'System administration and settings', icon: ShieldCheck },

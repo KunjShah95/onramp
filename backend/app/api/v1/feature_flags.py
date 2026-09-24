@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.services.feature_flag_service import FeatureFlagService
 from app.api.v1.auth import get_current_user
 from app.services.team_service import get_team_members
+from app.middleware.access_guard import ROLE_HIERARCHY
 
 router = APIRouter(prefix="/feature-flags", tags=["feature-flags"])
 flag_service = FeatureFlagService()
@@ -14,6 +15,20 @@ async def _ensure_team_access(team_id: str, user: dict) -> None:
     member_ids = {m.get("id") or m.get("user_id") for m in members}
     if user["uid"] not in member_ids:
         raise HTTPException(status_code=403, detail="Not a member of this team")
+
+
+async def _ensure_team_admin(team_id: str, user: dict) -> None:
+    members = await get_team_members(team_id)
+    uid = user["uid"]
+    member_ids = {m.get("id") or m.get("user_id") for m in members}
+    if uid not in member_ids:
+        raise HTTPException(status_code=403, detail="Not a member of this team")
+    caller_role = next(
+        (m.get("role", "member") for m in members if (m.get("id") or m.get("user_id")) == uid),
+        "member",
+    )
+    if ROLE_HIERARCHY.get(caller_role, 0) < ROLE_HIERARCHY.get("senior", 5):
+        raise HTTPException(status_code=403, detail="Senior role required to modify feature flags")
 
 
 class SetFlagRequest(BaseModel):
@@ -66,7 +81,7 @@ async def set_flag(
     request: SetFlagRequest,
     user: dict = Depends(get_current_user),
 ):
-    await _ensure_team_access(team_id, user)
+    await _ensure_team_admin(team_id, user)
     result = await flag_service.set_flag(team_id, flag_name, request.enabled, user["uid"])
     return FlagResponse(**result)
 
@@ -78,7 +93,7 @@ async def delete_flag(
     flag_name: str,
     user: dict = Depends(get_current_user),
 ):
-    await _ensure_team_access(team_id, user)
+    await _ensure_team_admin(team_id, user)
     deleted = await flag_service.delete_flag(team_id, flag_name)
     if not deleted:
         raise HTTPException(status_code=404, detail="Feature flag not found")

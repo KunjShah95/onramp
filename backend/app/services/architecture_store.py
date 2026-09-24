@@ -108,6 +108,14 @@ def _result_to_snapshot(
     if isinstance(result.get("stats"), dict):
         stats.update({k: v for k, v in result["stats"].items() if v is not None})
 
+    # Live analysis wraps the graph under ``graph`` while webhook/index saves
+    # pass the graph object directly. Preserve the canonical graph in either
+    # shape so a persisted snapshot renders the same nodes and edges as the
+    # live response.
+    graph = result.get("graph")
+    if not isinstance(graph, dict) or not graph:
+        graph = result
+
     return {
         "repo_url": repo_url,
         "owner": owner,
@@ -119,9 +127,14 @@ def _result_to_snapshot(
         "commit": commit,
         "architecture_pattern": result.get("architecture_pattern") or "unknown",
         "services": result.get("services") or [],
-        "dependencies": result.get("dependencies") or {},
-        "circular_dependencies": result.get("circular_dependencies") or [],
-        "architecture_diagram": result.get("architecture_diagram") or "",
+        "dependencies": graph.get("dependencies") or result.get("dependencies") or {},
+        "circular_dependencies": graph.get("circular_dependencies") or result.get("circular_dependencies") or [],
+        "architecture_diagram": graph.get("architecture_diagram") or result.get("architecture_diagram") or "",
+        "graph": {
+            "modules": graph.get("modules") or result.get("modules") or [],
+            "dependencies": graph.get("dependencies") or result.get("dependencies") or {},
+            "node_files": graph.get("node_files") or result.get("node_files") or {},
+        },
         "is_collapsed": bool(result.get("is_collapsed")),
         "analysis": result.get("analysis") or {},
         "stats": stats,

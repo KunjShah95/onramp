@@ -22,6 +22,7 @@ import Pagination from '../components/ui/Pagination'
 import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
 import { useToast } from '../context/ToastContext'
 import { useRealTime } from '../context/RealTimeContext'
+import { useAuth } from '../context/AuthContext'
 import type { WsEvent } from '../hooks/useWebSocket'
 import { TasksPageSkeleton } from '../components/ui/Skeleton'
 import {
@@ -100,9 +101,10 @@ function memberName(members: TeamMember[], uid: string | null | undefined): stri
 
 export default function TasksPage() {
   const toast = useToast()
+  const { activeTeamId } = useAuth()
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [teams, setTeams] = useState<any[]>([])
-  const [selectedTeam, setSelectedTeam] = useState('')
+  const [selectedTeam, setSelectedTeam] = useState(activeTeamId ?? '')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
@@ -204,30 +206,18 @@ export default function TasksPage() {
     async function load() {
       try {
         const data = await listTeams('current-user')
-        if (!cancelled) {
-          setTeams(data.teams || [])
-          if (data.teams?.length > 0 && !selectedTeam) setSelectedTeam(data.teams[0].team_id)
-        }
+        if (cancelled) return
+        const availableTeams = data.teams || []
+        setTeams(availableTeams)
+        const preferred = activeTeamId && availableTeams.some((team: any) => team.team_id === activeTeamId)
+          ? activeTeamId
+          : availableTeams[0]?.team_id
+        if (preferred) setSelectedTeam((current) => activeTeamId ? preferred : current || preferred)
       } catch { /* ignore */ }
     }
-    load()
+    void load()
     return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      if (!selectedTeam) return
-      setLoading(true); setError('')
-      try {
-        const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
-        if (!cancelled) setTasks(tasks)
-      } catch (e: any) { if (!cancelled) setError(e.message || 'Failed to load tasks') }
-      if (!cancelled) setLoading(false)
-    }
-    load()
-    return () => { cancelled = true }
-  }, [selectedTeam])
+  }, [activeTeamId])
 
   // Live updates: merge WS task_update events for this team into the list so
   // assignment/state changes appear without a refetch. Deletes are applied
@@ -260,13 +250,21 @@ export default function TasksPage() {
     let cancelled = false
     async function load() {
       if (!selectedTeam) return
+      setLoading(true); setError('')
       try {
-        const [prog, perms, stats] = await Promise.allSettled([
+        // Fetch the task payload once and derive quiz gates from that same
+        // response. The previous effect fetched the full list twice.
+        const [taskResult, prog, perms, stats] = await Promise.allSettled([
+          listTasks({ team_id: selectedTeam }) as Promise<{ tasks: WorkflowTask[] }>,
           getTeamProgress(selectedTeam),
           getTeamModulePermissions(selectedTeam),
           getTeamTimeStats(selectedTeam),
         ])
         if (cancelled) return
+
+        const loadedTasks = taskResult.status === 'fulfilled' ? (taskResult.value.tasks ?? []) : []
+        if (taskResult.status === 'fulfilled') setTasks(loadedTasks)
+        else setError('Failed to load tasks')
         if (prog.status === 'fulfilled') setProgress(prog.value)
         if (perms.status === 'fulfilled') {
           const map: Record<string, Set<string>> = {}
@@ -278,18 +276,15 @@ export default function TasksPage() {
         }
         if (stats.status === 'fulfilled') setTimeStats(stats.value)
 
-        // Load quiz gate statuses for assigned tasks
-        try {
-          const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }
-          const gates: Record<string, QuizGateStatus> = {}
-          await Promise.all(tasks.filter((t) => t.quiz_required && t.state === 'assigned').map(async (t) => {
-            try { gates[t.task_id] = await getQuizGateStatus(t.task_id) } catch { /* ignore */ }
-          }))
-          if (!cancelled) setQuizGateMap(gates)
-        } catch { /* ignore */ }
+        const gates: Record<string, QuizGateStatus> = {}
+        await Promise.all(loadedTasks.filter((t) => t.quiz_required && t.state === 'assigned').map(async (t) => {
+          try { gates[t.task_id] = await getQuizGateStatus(t.task_id) } catch { /* ignore */ }
+        }))
+        if (!cancelled) setQuizGateMap(gates)
       } catch { /* ignore */ }
+      if (!cancelled) setLoading(false)
     }
-    load()
+    void load()
     return () => { cancelled = true }
   }, [selectedTeam])
 

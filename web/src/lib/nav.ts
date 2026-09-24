@@ -2,7 +2,7 @@ import {
   House, Compass, ChatCircleDots, GraduationCap,
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
-  Star, Key, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
+  Star, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
   Users, TrendUp, CreditCard, ClipboardText, Scroll,
   type Icon,
 } from '@phosphor-icons/react'
@@ -65,7 +65,6 @@ export const manageItems: NavItem[] = [
   { to: '/reports',          label: 'Reports',         Icon: Scroll,      roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/billing',          label: 'Billing',         Icon: CreditCard,  roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/developer-portal', label: 'Developer Portal', Icon: Code,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/api-keys',         label: 'API Keys',        Icon: Key,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/admin',            label: 'Admin',           Icon: ShieldCheck, roles: ['admin', 'ceo', 'cto'] },
   { to: '/admin/audit',      label: 'Audit Log',       Icon: FileCode,    roles: ['admin', 'ceo', 'cto'] },
   { to: '/admin/create-account', label: 'Create Account', Icon: Users,    roles: ['admin', 'ceo', 'cto'] },

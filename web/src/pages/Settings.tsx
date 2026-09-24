@@ -11,17 +11,14 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 
-import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
 import { getToken } from '../lib/neon-auth'
 import { PageHeader } from '../components/ui/page-header'
 import { InlineLoading } from '../components/ui/Skeleton'
-import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
+import { cn } from '../lib/utils'
 import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
 import {
   API_BASE,
-  listApiKeys,
-  createApiKey,
-  revokeApiKey,
   getNotificationPreferences,
   updateNotificationPreferences,
   listWebhooks,
@@ -44,7 +41,6 @@ import {
   getSsoConfig,
   testSsoConnection,
   updateProfile,
-  type ApiKey,
   type NotificationPreferences,
   type Webhook,
   type GithubTestResult,
@@ -55,7 +51,7 @@ import ConsolePanel from '../components/ui/console-panel'
 
 import { useToast } from '../context/ToastContext'
 import {
-  User, At, Key, Bell, Palette, ShareNetwork,
+  User, At, Bell, Palette, ShareNetwork,
   ChatCircle, GithubLogo, GitlabLogo, GitFork, Check, X, Spinner, Info, Lock,
   EnvelopeSimple, Eye, Code, Trash, CheckCircle, XCircle,
   Plugs, Fire, CaretDown,
@@ -108,7 +104,7 @@ function Toggle({ on, onChange, disabled, danger, label, describedBy }: {
 }
 
 export default function Settings() {
-  const { user, role, activeTeamId, updateUser } = useAuth()
+  const { user, role, updateUser } = useAuth()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState('account')
 
@@ -120,28 +116,6 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [avatarError, setAvatarError] = useState('')
-
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [newKey, setNewKey] = useState<string | null>(null)
-  const [keyError, setKeyError] = useState('')
-  const [showCreateKey, setShowCreateKey] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKeyTier, setNewKeyTier] = useState('pro')
-  const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
-  const [newKeyExpiry, setNewKeyExpiry] = useState('')
-  const [creatingKey, setCreatingKey] = useState(false)
-
-  // Earliest selectable expiry date (today) — past dates mean "no expiry".
-  const today = new Date().toISOString().split('T')[0]
-
-  // Only engineering + exec seats may issue credentials. Everyone else sees
-  // the key roster read-only (no create/revoke controls).
-  const canManageKeys = !!role && KEY_MANAGER_ROLES.includes(role)
-
-  // API keys are scoped to the active team on the backend (same identifier the
-  // Developer Portal and cost-tracking panels use). Using the user's email here
-  // queried a different namespace and made existing keys invisible.
-  const orgName = activeTeamId || ''
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null)
   const [notifPrefsLoading, setNotifPrefsLoading] = useState(false)
@@ -197,28 +171,31 @@ export default function Settings() {
   }, [])
 
   const fetchIntegrations = useCallback(async () => {
-    try {
-      const slack = await getIntegration('slack')
-      if (slack.configured) {
-        setSlackConnected(true); setSlackWebhook(slack.config?.webhook_url || ''); setSlackChannel(slack.config?.channel || '#general')
-      }
-    } catch { /* ignore */ }
-    try {
-      const github = await getIntegration('github')
-      if (github.configured) { setGithubConnected(true); setGithubToken('••••••••') }
-    } catch { /* ignore */ }
-    try {
-      const gitlab = await getIntegration('gitlab')
-      if (gitlab.configured) { setGitlabConnected(true); setGitlabToken('••••••••') }
-    } catch { /* ignore */ }
-    try {
-      const bitbucket = await getIntegration('bitbucket')
-      if (bitbucket.configured) {
-        setBitbucketConnected(true)
-        setBitbucketUsername(bitbucket.config?.username || '')
-        setBitbucketAppPassword('••••••••')
-      }
-    } catch { /* ignore */ }
+    const [slack, github, gitlab, bitbucket] = await Promise.allSettled([
+      getIntegration('slack'),
+      getIntegration('github'),
+      getIntegration('gitlab'),
+      getIntegration('bitbucket'),
+    ])
+
+    if (slack.status === 'fulfilled' && slack.value.configured) {
+      setSlackConnected(true)
+      setSlackWebhook(slack.value.config?.webhook_url || '')
+      setSlackChannel(slack.value.config?.channel || '#general')
+    }
+    if (github.status === 'fulfilled' && github.value.configured) {
+      setGithubConnected(true)
+      setGithubToken('••••••••')
+    }
+    if (gitlab.status === 'fulfilled' && gitlab.value.configured) {
+      setGitlabConnected(true)
+      setGitlabToken('••••••••')
+    }
+    if (bitbucket.status === 'fulfilled' && bitbucket.value.configured) {
+      setBitbucketConnected(true)
+      setBitbucketUsername(bitbucket.value.config?.username || '')
+      setBitbucketAppPassword('••••••••')
+    }
   }, [])
 
   const notificationTypes: Record<string, string> = {
@@ -246,13 +223,6 @@ export default function Settings() {
     setEmail(user?.email || '')
   }, [user])
 
-  const fetchKeys = useCallback(async () => {
-    if (!orgName) return
-    try { const data = await listApiKeys(orgName); setKeys(data.keys || []) } catch (e) {
-      setKeyError(e instanceof Error ? e.message : 'Failed to load API keys') }
-  }, [orgName])
-
-  useEffect(() => { fetchKeys() }, [fetchKeys])
   useEffect(() => { fetchNotifPrefs() }, [fetchNotifPrefs])
   useEffect(() => {
     if (activeTab === 'integrations') { fetchWebhooks(); fetchIntegrations() }
@@ -449,28 +419,6 @@ export default function Settings() {
     setNotifPrefsSaving(false)
   }
 
-  async function handleCreateKey() {
-    if (!orgName) return
-    setKeyError(''); setNewKey(null); setCreatingKey(true)
-    // 0/empty = no limit (matches backend semantics where a 0 budget is free).
-    const raw = Number(newKeyCostLimit.trim() || '')
-    const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
-    const expiresInDays = daysUntilExpiry(newKeyExpiry)
-    try {
-      const data = await createApiKey(orgName, newKeyTier, newKeyName.trim() || undefined, costLimit, expiresInDays)
-      setNewKey(data.raw_key)
-      setShowCreateKey(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyExpiry('')
-      await fetchKeys()
-    } catch (e) {
-      setKeyError(e instanceof Error ? e.message : 'Failed to create key')
-    } finally { setCreatingKey(false) }
-  }
-
-  async function handleRevoke(keyId: string) {
-    if (!confirm('Revoke this API key?')) return
-    try { await revokeApiKey(keyId); await fetchKeys(); toast.success('API key revoked') }
-    catch (e) { setKeyError(e instanceof Error ? e.message : 'Failed to revoke key'); toast.error('Failed to revoke key') }
-  }
 
   const initial = (name || email || 'U').charAt(0).toUpperCase()
 
@@ -624,149 +572,6 @@ export default function Settings() {
             </ConsolePanel>
           </div>
 
-          {/* API Keys */}
-          <div>
-            <ConsolePanel
-              rail="API Keys"
-              designator="CREDENTIALS"
-              status="standby"
-              action={canManageKeys ? (
-                <button onClick={() => { setNewKey(null); setShowCreateKey(!showCreateKey) }} disabled={!orgName} className="btn btn-secondary px-3 py-1.5 text-caption">
-                  {showCreateKey ? 'Cancel' : '+ Create Key'}
-                </button>
-              ) : undefined}
-            >
-              <p className="text-caption text-ink-muted mb-4">
-                Secret keys for programmatic access to the gateway.
-                {!canManageKeys && (
-                  <span className="mt-1 flex items-center gap-1.5">
-                    <Lock size={13} /> Key creation is restricted to engineering & executive seats.
-                  </span>
-                )}
-                {!orgName && (
-                  <span className="mt-1 flex items-center gap-1.5">
-                    <Info size={13} /> Join or select a team to manage API keys.
-                  </span>
-                )}
-              </p>
-
-              {keyError && <div className="mb-4 text-caption text-abort bg-abort/10 border border-abort/20 rounded-btn px-3 py-2">{keyError}</div>}
-
-              {showCreateKey && canManageKeys && (
-                <div className="mb-5 p-5 bg-well border border-seam rounded-card space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className="overline text-ink-muted/70">New Credential</span>
-                    <span className="designator">ISSUE</span>
-                  </div>
-                  <div>
-                    <label className="overline text-ink-muted mb-1.5 block">Key Name</label>
-                    <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)}
-                      placeholder="e.g., CI pipeline, staging, prod"
-                      className="input" />
-                  </div>
-                  <div>
-                    <label className="overline text-ink-muted mb-1.5 block">Tier</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['free', 'pro', 'team', 'enterprise'].map((t) => (
-                        <button key={t} onClick={() => setNewKeyTier(t)}
-                          className={cn('px-3 py-1.5 rounded-tile text-caption font-semibold transition-all border capitalize',
-                            newKeyTier === t
-                              ? 'bg-go/15 text-go border-go/30'
-                              : 'bg-panel-raised text-ink-muted border-seam hover:text-ink')}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="overline text-ink-muted mb-1.5 block">Cost Limit <span className="text-ink-muted/60 normal-case">(credits / month)</span></label>
-                    <input value={newKeyCostLimit} onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
-                      type="number" min={0} placeholder="e.g., 5000 · leave blank for no limit"
-                      className="input" />
-                    <p className="text-caption text-ink-muted mt-1.5">The key stops working once its usage reaches this budget.</p>
-                  </div>
-                  <div>
-                    <label className="overline text-ink-muted mb-1.5 block">Expires On <span className="text-ink-muted/60 normal-case">(optional)</span></label>
-                    <input value={newKeyExpiry} onChange={(e) => setNewKeyExpiry(e.target.value)}
-                      type="date" min={today} className="input" />
-                    <p className="text-caption text-ink-muted mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button onClick={() => setShowCreateKey(false)} className="btn btn-ghost text-caption">Cancel</button>
-                    <button onClick={handleCreateKey} disabled={creatingKey} className="btn text-caption">
-                      {creatingKey ? 'Creating…' : 'Create Key'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {newKey && (
-                <div className="mb-4 bg-caution/10 border border-caution/25 rounded-card p-4">
-                  <p className="text-caption font-semibold mb-1 flex items-center gap-1.5 text-caution">
-                    <Key size={14} weight="fill" />
-                    Save this key · it won't be shown again:
-                  </p>
-                  <code className="text-caption bg-panel-raised px-3 py-2 rounded-sm block font-code break-all select-all border border-seam">{newKey}</code>
-                </div>
-              )}
-
-              {keys.length === 0 ? (
-                <p className="text-caption text-ink-muted italic">No API keys yet.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {keys.map(k => {
-                    const limit = k.credit_limit ?? 0
-                    const used = k.credits_used ?? k.usage_count ?? 0
-                    const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-                    const exhausted = limit > 0 && used >= limit
-                    return (
-                      <div key={k.key_id} className="bg-well border border-seam rounded-tile px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Key size={16} className={cn('shrink-0', exhausted ? 'text-abort' : 'text-ink-muted')} />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-body-sm text-ink-secondary font-medium truncate">{k.name || k.key_id}</span>
-                                <span className="capitalize text-caption font-code text-go bg-go/10 border border-go/20 px-1.5 py-0.5 rounded-sm">{k.tier}</span>
-                              </div>
-                              <p className="text-caption text-ink-muted mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                <span className="readout">{used} credits</span>
-                                {k.credit_limit != null && (
-                                  <span className={cn('font-medium', exhausted ? 'text-abort' : 'text-ink-muted')}>
-                                    / {k.credit_limit} budget {exhausted && '· limit reached'}
-                                  </span>
-                                )}
-                                {!k.is_active && <span className="text-abort">revoked</span>}
-                              </p>
-                              <p className="text-caption text-ink-muted/70 mt-1 font-code">
-                                Created {formatKeyDate(k.created_at)}
-                                {k.last_used_at && <> · last used {formatKeyDate(k.last_used_at)}</>}
-                                {k.expires_at && <> · expires {formatKeyDate(k.expires_at)}</>}
-                              </p>
-                              {limit > 0 && k.is_active && (
-                                <div className="mt-2 h-1.5 w-full max-w-[280px] rounded-pill bg-panel-raised border border-seam overflow-hidden">
-                                  <div
-                                    className={cn('h-full rounded-pill transition-all', exhausted ? 'bg-abort' : 'bg-go')}
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {k.is_active && canManageKeys && (
-                            <button onClick={() => handleRevoke(k.key_id)}
-                              className="p-1.5 text-abort/60 hover:text-abort transition-colors shrink-0" title="Revoke" aria-label="Revoke key">
-                              <Trash size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </ConsolePanel>
-          </div>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { lazy, Suspense, useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -8,7 +8,9 @@ import {
   rebuildRepoGraph,
   type RepoGraphSnapshot,
 } from '../lib/api'
-import ForceGraph, { PALETTE, type GraphNode, type GraphEdge } from '../components/ForceGraph'
+import { GRAPH_PALETTE as PALETTE } from '../components/graph-theme'
+import type { GraphNode, GraphEdge } from '../components/ForceGraph'
+const ForceGraph = lazy(() => import('../components/ForceGraph'))
 import type { ArchitectureResult } from '../lib/types'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
@@ -41,6 +43,9 @@ interface GraphViewModel {
   dependencies: Record<string, string[]>
   circularDependencies: string[][]
   architecturePattern: string
+  graphNodes?: string[]
+  graphEdges?: { source: string; target: string }[]
+  graph?: ArchitectureResult['graph']
   fileCount: number
   classCount: number
   functionCount: number
@@ -57,6 +62,11 @@ function fromLive(result: ArchitectureResult): GraphViewModel {
     dependencies: result.dependencies ?? {},
     circularDependencies: result.circular_dependencies ?? [],
     architecturePattern: result.architecture_pattern,
+    graph: result.graph,
+    graphNodes: result.graph?.modules ?? [],
+    graphEdges: Object.entries(result.graph?.dependencies ?? {}).flatMap(([target, sources]) =>
+      (sources ?? []).map((source) => ({ source, target })),
+    ),
     fileCount: result.entities?.files?.length ?? 0,
     classCount: result.entities?.classes?.length ?? 0,
     functionCount: result.entities?.functions?.length ?? 0,
@@ -70,6 +80,11 @@ function fromSnapshot(snap: RepoGraphSnapshot): GraphViewModel {
     dependencies: snap.dependencies ?? {},
     circularDependencies: snap.circular_dependencies ?? [],
     architecturePattern: snap.architecture_pattern,
+    graph: snap.graph,
+    graphNodes: snap.graph?.modules ?? [],
+    graphEdges: Object.entries(snap.graph?.dependencies ?? {}).flatMap(([target, sources]) =>
+      (sources ?? []).map((source) => ({ source, target })),
+    ),
     fileCount: snap.stats?.file_count ?? 0,
     classCount: snap.stats?.class_count ?? 0,
     functionCount: snap.stats?.function_count ?? 0,
@@ -233,35 +248,58 @@ export default function ExplorePage() {
   // ── Build graph data from view model ─────────────────────────────────────
   const allNodes: GraphNode[] = useMemo(() => {
     if (!vm) return []
-    return vm.services.map((s) => ({
-      id: s.name,
-      group: layerForFiles(s.files ?? []),
-      files: s.files,
-      description: s.description,
-    }))
+    const nodeIds = vm.graphNodes?.length ? vm.graphNodes : vm.services.map((service) => service.name)
+    return nodeIds.map((id) => {
+      const service = vm.services.find((item) => item.name === id)
+        ?? vm.services.find((item) => item.files.includes(id))
+      const isModuleNode = Boolean(vm.graph?.modules?.includes(id))
+      const files = vm.graph?.node_files?.[id]
+        ?? (isModuleNode ? [id] : service?.files ?? [id])
+      return {
+        id,
+        group: layerForFiles(files),
+        files,
+        description: service?.description ?? (files.length ? `${files.length} file${files.length === 1 ? '' : 's'}` : undefined),
+      }
+    }).filter((node) => node.id && node.id !== '__entry__')
   }, [vm])
 
   const allEdges: GraphEdge[] = useMemo(() => {
     if (!vm) return []
-    // Build file → service lookup so we can map file-level deps to service-level edges
-    const fileToService = new Map<string, string>()
-    for (const svc of vm.services) {
-      for (const f of (svc.files ?? [])) fileToService.set(f, svc.name)
-    }
+    const nodeIds = new Set(allNodes.map((node) => node.id))
     const seen = new Set<string>()
     const edges: GraphEdge[] = []
-    for (const [srcFile, tgtFiles] of Object.entries(vm.dependencies ?? {})) {
-      const srcSvc = fileToService.get(srcFile)
-      if (!srcSvc) continue
-      for (const tgtFile of tgtFiles) {
-        const tgtSvc = fileToService.get(tgtFile)
-        if (!tgtSvc || tgtSvc === srcSvc) continue
-        const key = `${srcSvc}→${tgtSvc}`
-        if (!seen.has(key)) { seen.add(key); edges.push({ source: srcSvc, target: tgtSvc }) }
+    for (const edge of vm.graphEdges ?? []) {
+      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) continue
+      const key = `${edge.source}→${edge.target}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        edges.push({ source: edge.source, target: edge.target })
+      }
+    }
+    if (edges.length > 0) return edges
+
+    // Compatibility fallback for snapshots created before the canonical graph
+    // payload was persisted: map file-level dependencies to service nodes.
+    const fileToService = new Map<string, string>()
+    for (const service of vm.services) {
+      for (const file of service.files ?? []) fileToService.set(file, service.name)
+    }
+    for (const [targetFile, sourceFiles] of Object.entries(vm.dependencies ?? {})) {
+      const targetService = fileToService.get(targetFile)
+      if (!targetService) continue
+      for (const sourceFile of sourceFiles ?? []) {
+        const sourceService = fileToService.get(sourceFile)
+        if (!sourceService || sourceService === targetService) continue
+        const key = `${sourceService}→${targetService}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          edges.push({ source: sourceService, target: targetService })
+        }
       }
     }
     return edges
-  }, [vm])
+  }, [vm, allNodes])
 
   // ── Active groups for filtering ─────────────────────────────────────────
   const allGroups = useMemo(() => new Set(allNodes.map((n) => n.group)), [allNodes])
@@ -312,11 +350,19 @@ export default function ExplorePage() {
   // ── Node details for selected node ──────────────────────────────────────
   const selectedDetails = useMemo(() => {
     if (!selectedNode || !vm) return null
-    const srv = vm.services.find((s) => s.name === selectedNode.id)
-    if (!srv) return null
-
-    const edgesIn = allEdges.filter((e) => e.target === selectedNode.id)
-    const edgesOut = allEdges.filter((e) => e.source === selectedNode.id)
+    const srv = vm.services.find((s) => s.name === selectedNode.id) ?? {
+      name: selectedNode.id,
+      files: selectedNode.files ?? [],
+      description: selectedNode.description,
+    }
+    const edgesIn = allEdges.filter((e) => {
+      const target = typeof e.target === 'string' ? e.target : e.target.id
+      return target === selectedNode.id
+    })
+    const edgesOut = allEdges.filter((e) => {
+      const source = typeof e.source === 'string' ? e.source : e.source.id
+      return source === selectedNode.id
+    })
 
     return { service: srv, edgesIn, edgesOut }
   }, [selectedNode, vm, allEdges])
@@ -628,16 +674,23 @@ export default function ExplorePage() {
 
               {vm && allNodes.length > 0 && (
                 <div className="absolute inset-0 z-20">
-                  <ForceGraph
-                    nodes={displayNodes}
-                    edges={displayEdges}
-                    onNodeClick={(node) => {
-                      setSelectedNode(node)
-                    }}
-                    selectedNodeId={selectedNode?.id ?? null}
-                    searchQuery={searchQuery}
-                    activeGroups={activeGroups}
-                  />
+                  <Suspense fallback={
+                    <div className="absolute inset-0 flex items-center justify-center" role="status">
+                      <Spinner size={24} aria-hidden className="animate-spin text-go" />
+                      <span className="sr-only">Loading graph</span>
+                    </div>
+                  }>
+                    <ForceGraph
+                      nodes={displayNodes}
+                      edges={displayEdges}
+                      onNodeClick={(node) => {
+                        setSelectedNode(node)
+                      }}
+                      selectedNodeId={selectedNode?.id ?? null}
+                      searchQuery={searchQuery}
+                      activeGroups={activeGroups}
+                    />
+                  </Suspense>
                 </div>
               )}
             </div>

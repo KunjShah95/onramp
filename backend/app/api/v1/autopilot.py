@@ -108,8 +108,8 @@ async def autopilot_analyze(
     llm = getattr(req.app.state, "llm", None)
     before_route = getattr(llm, "last_route", None)
     try:
-        await authorize_registered_repo(user, request.repo_url, request.team_id)
-        team_id = await _resolve_team(user, request.team_id) if request.create_tasks else None
+        repo_team_id = await authorize_registered_repo(user, request.repo_url, request.team_id)
+        team_id = repo_team_id if request.create_tasks else None
         result = await service.analyze(
             repo_url=request.repo_url,
             branch=request.branch,
@@ -141,8 +141,8 @@ async def autopilot_run(
     llm = getattr(req.app.state, "llm", None)
     before_route = getattr(llm, "last_route", None)
     try:
-        await authorize_registered_repo(user, request.repo_url, request.team_id)
-        team_id = await _resolve_team(user, request.team_id) if request.create_tasks else None
+        repo_team_id = await authorize_registered_repo(user, request.repo_url, request.team_id)
+        team_id = repo_team_id if request.create_tasks else None
         result = await service.run(
             repo_url=request.repo_url,
             branch=request.branch,

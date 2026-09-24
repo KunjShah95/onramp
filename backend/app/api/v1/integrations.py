@@ -31,6 +31,16 @@ from app.services.webhook_service import (
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
+_ALLOWED_INTEGRATION_TYPES = frozenset({
+    "slack", "github", "gitlab", "bitbucket", "jira", "linear", "n8n",
+    "discord", "teams", "pagerduty", "datadog", "sentry",
+})
+
+
+def _validate_integration_type(integration_type: str) -> None:
+    if integration_type not in _ALLOWED_INTEGRATION_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported integration type: {integration_type!r}")
+
 
 # ── Schemas ──────────────────────────────────────────────────
 
@@ -453,6 +463,7 @@ async def get_integration(
     user: dict = Depends(get_current_user),
 ):
     """Get configuration for a specific integration (slack, github, etc.)."""
+    _validate_integration_type(integration_type)
     config = await get_integration_config(user.get("uid", ""), integration_type)
     if not config:
         return {"configured": False, "integration": integration_type}
@@ -476,6 +487,7 @@ async def save_integration(
     user: dict = Depends(get_current_user),
 ):
     """Save or update integration configuration."""
+    _validate_integration_type(integration_type)
     cfg = dict(request.config or {})
     # Preserve existing secret when the client sends back a masked placeholder.
     if any(cfg.get(k) in MASKED or (isinstance(cfg.get(k), str) and "••" in cfg.get(k, "")) for k in ("token", "api_token", "api_key", "app_password", "webhook_url")):
@@ -490,8 +502,11 @@ async def save_integration(
         url = (cfg.get("webhook_url", "") or "").strip()
         if not url:
             raise HTTPException(status_code=400, detail="webhook_url is required")
-        if not url.startswith("https://"):
-            raise HTTPException(status_code=400, detail="Slack webhook URL must start with https://")
+        try:
+            from app.services.outbound_url import validate_outbound_url
+            validate_outbound_url(url)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     result = await save_integration_config(
         user.get("uid", ""), integration_type, cfg
     )
@@ -504,6 +519,7 @@ async def delete_integration(
     user: dict = Depends(get_current_user),
 ):
     """Disconnect an integration."""
+    _validate_integration_type(integration_type)
     success = await delete_integration_config(user.get("uid", ""), integration_type)
     return {"deleted": success}
 

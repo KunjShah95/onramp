@@ -361,6 +361,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/oauth/google/callback", # Google OAuth callback
     "/api/v1/auth/oauth/github/login",    # GitHub OAuth initiation
     "/api/v1/auth/oauth/github/callback",  # GitHub OAuth callback
+    "/api/v1/auth/csrf-token",            # CSRF token fetch — unauthenticated browsers need this
     "/api/v1/auth/forgot-password",       # password reset request
     "/api/v1/auth/reset-password",        # password reset submission
     "/api/v1/auth/refresh",               # refresh token exchange (auth via refresh token body)

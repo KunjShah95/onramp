@@ -32,7 +32,12 @@ async def _require_owner(user: dict = Depends(get_current_user)) -> str:
     development retains the legacy team-admin behavior for local tooling.
     """
     uid = user.get("uid", "")
-    if os.getenv("ENV", "development").lower() == "production":
+    env = os.getenv("ENV", "development").lower().strip()
+    if env != "development":
+        # Any non-development environment (production, staging, etc.) requires
+        # an explicit platform admin email. Checking only for "production" would
+        # allow staging/preview environments to fall through to the weak
+        # team-admin path and grant cross-tenant access.
         allowed = {
             value.strip().lower()
             for value in os.getenv("PLATFORM_ADMIN_EMAILS", "").split(",")

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 
 interface AppShellProps {
   /** Sidebar element (real or skeleton) */
@@ -18,6 +19,16 @@ interface AppShellProps {
  * behaviour) are reflected everywhere automatically.
  */
 export default function AppShell({ sidebar, topbar, children }: AppShellProps) {
+  const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Routes are client-side transitions, so reset the persistent shell's scroll
+  // container only when the pathname changes. Hash links still work because
+  // the browser can scroll the new destination after the route commits.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [pathname])
+
   return (
     <div className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-transparent">
       {/* Sidebar */}

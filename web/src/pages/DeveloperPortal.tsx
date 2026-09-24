@@ -1,15 +1,14 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
+import { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { copyText } from '../lib/clipboard'
-import { listApiKeys, createApiKey, revokeApiKey, getUsageSummary, listTiers, listAgents, executeAgent, listProviderKeys, setProviderKey, deleteProviderKey, addProviderKey, fetchModelCatalog, fetchRoutingMode, setRoutingMode, type ApiKey, type RateLimitInfo, type AgentInfo, type ProviderKeyInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
-import { daysUntilExpiry, formatKeyDate } from '../lib/utils'
-import { Code, Key, Copy, Check, Trash, Spinner, ArrowRight, ShieldCheck, Play, Robot, Terminal, PencilSimple, CheckCircle, Circle, BookOpen, Gauge } from '@phosphor-icons/react'
+import { getUsageSummary, listTiers, listAgents, executeAgent, fetchModelCatalog, fetchRoutingMode, setRoutingMode, type RateLimitInfo, type AgentInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
+import { Code, Copy, Check, Spinner, ShieldCheck, Play, Robot, Terminal, Gauge } from '@phosphor-icons/react'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyRow } from '../components/ui/empty-state'
-import CodeEditor from '../components/ui/monaco-editor'
-import { PROVIDER_OPTIONS } from '../lib/providers'
 import { cn } from '../lib/utils'
+
+const CodeEditor = lazy(() => import('../components/ui/monaco-editor'))
 
 /* ------------------------------------------------------------------
  * Developer Portal — PayPal-grade redesign.
@@ -18,20 +17,13 @@ import { cn } from '../lib/utils'
  * abort-safe runs, safe result rendering, 44px targets, aria.
  * ------------------------------------------------------------------ */
 
-type TabId = 'overview' | 'keys' | 'models' | 'usage' | 'playground'
+type TabId = 'models' | 'usage' | 'playground'
 
 const TABS: { id: TabId; label: string; hint: string }[] = [
-  { id: 'overview', label: 'Get started', hint: '3 steps to first call' },
-  { id: 'keys', label: 'API keys', hint: 'Credentials' },
   { id: 'models', label: 'Models & routing', hint: 'Providers + catalog' },
   { id: 'usage', label: 'Usage & limits', hint: 'Spend + quotas' },
   { id: 'playground', label: 'Playground', hint: 'Try it live' },
 ]
-
-const QUICKSTART_CALL = `curl https://onramp.app/api/v1/ask \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{"question": "Where is auth verified?"}'`
 
 /** Prefill params so the selected agent's required keys always exist. */
 function templateParams(agent: AgentInfo | undefined): string {
@@ -47,31 +39,13 @@ function templateParams(agent: AgentInfo | undefined): string {
 }
 
 export default function DeveloperPortal() {
-  const { activeTeamId, role } = useAuth()
+  const { activeTeamId } = useAuth()
   const toast = useToast()
-  const [tab, setTab] = useState<TabId>('overview')
+  const [tab, setTab] = useState<TabId>('models')
 
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [newKey, setNewKey] = useState<string | null>(null)
-  const [keyError, setKeyError] = useState('')
-  const [loading, setLoading] = useState(false)
   const [usage, setUsage] = useState<any>(null)
   const [tierInfo, setTierInfo] = useState<RateLimitInfo | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKeyTier, setNewKeyTier] = useState('pro')
-  const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
-  const [newKeyDailyCap, setNewKeyDailyCap] = useState('')
-  const [newKeyExpiry, setNewKeyExpiry] = useState('')
-  const [creatingKey, setCreatingKey] = useState(false)
-  const [providerKeys, setProviderKeys] = useState<Record<string, ProviderKeyInfo>>({})
-  const [providerKeyCounts, setProviderKeyCounts] = useState<Record<string, number>>({})
-  const [editingProvider, setEditingProvider] = useState<string | null>(null)
-  const [addingPoolKey, setAddingPoolKey] = useState(false)
-  const [providerKeyInput, setProviderKeyInput] = useState('')
-  const [savingProviderKey, setSavingProviderKey] = useState(false)
-  const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -79,12 +53,9 @@ export default function DeveloperPortal() {
   const [routingModeLoading, setRoutingModeLoading] = useState(false)
   const [savingRoutingMode, setSavingRoutingMode] = useState(false)
 
-  const today = new Date().toISOString().split('T')[0]
-  const canManageKeys = !!role && KEY_MANAGER_ROLES.includes(role)
-
   useEffect(() => {
     if (!activeTeamId) return
-    fetchKeys(); fetchUsage(); fetchTiers(); fetchProviderKeys(); fetchCatalog(); fetchRoutingModePref()
+    fetchUsage(); fetchTiers(); fetchCatalog(); fetchRoutingModePref()
   }, [activeTeamId])
 
   async function fetchCatalog() {
@@ -92,32 +63,12 @@ export default function DeveloperPortal() {
     try { setCatalog(await fetchModelCatalog()) } catch { setCatalog(null) }
     setCatalogLoading(false)
   }
-  async function fetchKeys() {
-    if (!activeTeamId) return
-    setLoading(true)
-    try { setKeys((await listApiKeys(activeTeamId)).keys || []) }
-    catch (err: any) { setKeyError(err.message || 'Failed to load API keys') }
-    setLoading(false)
-  }
   async function fetchUsage() {
     if (!activeTeamId) return
     try { setUsage(await getUsageSummary(activeTeamId)) } catch { setUsage(null) }
   }
   async function fetchTiers() {
     try { setTierInfo(await listTiers()) } catch { /* empty */ }
-  }
-  async function fetchProviderKeys() {
-    if (!activeTeamId) return
-    try {
-      const data = await listProviderKeys(activeTeamId)
-      const map: Record<string, ProviderKeyInfo> = {}
-      const counts: Record<string, number> = {}
-      ;(data.providers || []).forEach((p) => {
-        counts[p.provider] = (counts[p.provider] || 0) + 1
-        if (!map[p.provider] || p.is_primary) map[p.provider] = p
-      })
-      setProviderKeys(map); setProviderKeyCounts(counts)
-    } catch { /* silent */ }
   }
   async function fetchRoutingModePref() {
     if (!activeTeamId) return
@@ -135,69 +86,16 @@ export default function DeveloperPortal() {
     } catch (err: any) { toast.error('Failed to update routing mode', err.message) }
     setSavingRoutingMode(false)
   }
-  async function handleSaveProviderKey() {
-    if (!activeTeamId || !editingProvider) return
-    setSavingProviderKey(true)
-    try {
-      if (addingPoolKey) await addProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
-      else await setProviderKey(activeTeamId, editingProvider, providerKeyInput.trim())
-      setEditingProvider(null); setAddingPoolKey(false); setProviderKeyInput('')
-      await fetchProviderKeys()
-      toast.success('Saved', `${editingProvider} key updated`)
-    } catch (err: any) { toast.error('Failed', err.message || 'Failed to save provider key') }
-    setSavingProviderKey(false)
-  }
-  async function handleDeleteProviderKey(provider: string) {
-    if (!activeTeamId) return
-    try {
-      await deleteProviderKey(activeTeamId, provider)
-      await fetchProviderKeys(); setConfirmDeleteProvider(null)
-      toast.success('Removed', `${provider} key removed · platform default will be used`)
-    } catch (err: any) { toast.error('Failed', err.message || 'Failed to remove provider key') }
-  }
-  async function handleCreateKey() {
-    if (!activeTeamId) return
-    setCreatingKey(true); setKeyError('')
-    const raw = Number(newKeyCostLimit.trim() || '')
-    const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
-    const dailyCapRaw = Number(newKeyDailyCap.trim() || '')
-    const dailyCap = Number.isFinite(dailyCapRaw) && dailyCapRaw > 0 ? dailyCapRaw : undefined
-    const expiresInDays = daysUntilExpiry(newKeyExpiry)
-    try {
-      const data = await createApiKey(activeTeamId, newKeyTier, newKeyName.trim() || undefined, costLimit, expiresInDays, dailyCap)
-      setNewKey(data.raw_key)
-      setShowCreateForm(false); setNewKeyName(''); setNewKeyTier('pro'); setNewKeyCostLimit(''); setNewKeyDailyCap(''); setNewKeyExpiry('')
-      await fetchKeys()
-      toast.success('Created', 'API key created · copy it now')
-      setTab('overview')
-    } catch (err: any) { setKeyError(err.message || 'Failed to create API key') }
-    setCreatingKey(false)
-  }
-  async function handleRevokeKey(keyId: string) {
-    if (!activeTeamId) return
-    setLoading(true)
-    try { await revokeApiKey(keyId); await fetchKeys(); toast.success('Revoked', 'API key revoked') }
-    catch (err: any) { toast.error('Failed', err.message || 'Failed to revoke key') }
-    setLoading(false)
-  }
   async function handleCopy(id: string, content: string) {
     try {
       if (await copyText(content)) { setCopiedId(id); setTimeout(() => setCopiedId(null), 2000) }
     } catch { /* clipboard unavailable — helper never throws */ }
   }
 
-  const activeKeys = useMemo(() => keys.filter((k) => k.is_active), [keys])
-  const steps = useMemo(() => ([
-    { done: activeKeys.length > 0, title: 'Create an API key', sub: activeKeys.length ? `${activeKeys.length} active` : 'Takes 10 seconds' },
-    { done: (usage?.total_credits ?? 0) > 0, title: 'Make your first call', sub: 'Copy the curl below or press Run in Playground' },
-    { done: Object.keys(providerKeys).length > 0, title: 'Connect a provider (optional)', sub: 'Use your own LLM key or stay on platform' },
-  ]), [activeKeys.length, usage, providerKeys])
-  const doneCount = steps.filter((s) => s.done).length
-
   if (!activeTeamId) {
     return (
       <div className="max-w-3xl mx-auto">
-        <PageHeader eyebrow="Developer portal" title="Developer portal" subtitle="API keys, models, and usage — in one calm place." />
+        <PageHeader eyebrow="Developer portal" title="Developer portal" subtitle="Models, routing, usage, and playground tools in one place." />
         <div className="card p-8 text-center text-ink-tertiary text-sm">Select a team to access developer settings.</div>
       </div>
     )
@@ -208,11 +106,10 @@ export default function DeveloperPortal() {
       <PageHeader
         eyebrow="Developer portal"
         title="Developer portal"
-        subtitle="Ship your first API call in under a minute. Keys, models, spend — one task at a time."
+        subtitle="Models, routing, usage, and playground tools in one place."
         pills={[
-          { label: 'active keys', value: activeKeys.length },
           { label: 'credits used', value: usage?.total_credits ?? '—', color: 'text-go' },
-          { label: 'providers', value: Object.keys(providerKeys).length },
+          { label: 'models', value: catalog?.openrouter_catalog?.length ?? '—' },
         ]}
       />
 
@@ -237,32 +134,9 @@ export default function DeveloperPortal() {
         </div>
       </div>
 
-      {tab === 'overview' && (
-        <OverviewTab steps={steps} doneCount={doneCount} newKey={newKey} copiedId={copiedId}
-          onCopy={handleCopy} onCreate={() => { setShowCreateForm(true); setTab('keys') }}
-          hasKeys={activeKeys.length > 0} onGoPlayground={() => setTab('playground')} />
-      )}
-      {tab === 'keys' && (
-        <KeysTab
-          keys={keys} loading={loading} keyError={keyError} newKey={newKey} copiedId={copiedId}
-          showCreateForm={showCreateForm} setShowCreateForm={setShowCreateForm}
-          newKeyName={newKeyName} setNewKeyName={setNewKeyName} newKeyTier={newKeyTier} setNewKeyTier={setNewKeyTier}
-          newKeyCostLimit={newKeyCostLimit} setNewKeyCostLimit={setNewKeyCostLimit}
-          newKeyDailyCap={newKeyDailyCap} setNewKeyDailyCap={setNewKeyDailyCap}
-          newKeyExpiry={newKeyExpiry} setNewKeyExpiry={setNewKeyExpiry} today={today}
-          creatingKey={creatingKey} canManageKeys={canManageKeys}
-          onCreate={handleCreateKey} onRevoke={handleRevokeKey} onCopy={handleCopy} />
-      )}
       {tab === 'models' && (
         <ModelsTab
-          providerKeys={providerKeys} providerKeyCounts={providerKeyCounts}
-          editingProvider={editingProvider} setEditingProvider={setEditingProvider}
-          addingPoolKey={addingPoolKey} setAddingPoolKey={setAddingPoolKey}
-          providerKeyInput={providerKeyInput} setProviderKeyInput={setProviderKeyInput}
-          savingProviderKey={savingProviderKey} confirmDeleteProvider={confirmDeleteProvider}
-          setConfirmDeleteProvider={setConfirmDeleteProvider}
-          onSave={handleSaveProviderKey} onDelete={handleDeleteProviderKey}
-          canManageKeys={canManageKeys} catalog={catalog} catalogLoading={catalogLoading}
+          catalog={catalog} catalogLoading={catalogLoading}
           catalogSearch={catalogSearch} setCatalogSearch={setCatalogSearch}
           copiedId={copiedId} onCopy={handleCopy}
           routingMode={routingMode} routingModeLoading={routingModeLoading}
@@ -274,204 +148,13 @@ export default function DeveloperPortal() {
   )
 }
 
-/* ================= Overview ================= */
-
-function OverviewTab({ steps, doneCount, newKey, copiedId, onCopy, onCreate, hasKeys, onGoPlayground }: {
-  steps: { done: boolean; title: string; sub: string }[]
-  doneCount: number; newKey: string | null; copiedId: string | null
-  onCopy: (id: string, c: string) => void; onCreate: () => void; hasKeys: boolean; onGoPlayground: () => void
-}) {
-  return (
-    <div className="space-y-5">
-      {newKey && <NewKeyBanner value={newKey} copied={copiedId === 'new-key'} onCopy={() => onCopy('new-key', newKey)} />}
-      <section className="card p-6" aria-label="Setup progress">
-        <div className="flex items-center justify-between gap-3 mb-1">
-          <h2 className="font-display text-[15px] font-semibold text-ink">Get to your first call</h2>
-          <span className="font-mono text-xs text-go">{doneCount}/3 done</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-well overflow-hidden mb-4" role="progressbar" aria-valuenow={doneCount} aria-valuemin={0} aria-valuemax={3}>
-          <div className="h-full bg-go rounded-full transition-all" style={{ width: `${(doneCount / 3) * 100}%` }} />
-        </div>
-        <ol className="space-y-2.5">
-          {steps.map((s, i) => (
-            <li key={s.title} className="flex items-start gap-3 p-3 rounded-card bg-panel border border-seam">
-              {s.done
-                ? <CheckCircle size={20} weight="fill" className="text-go shrink-0 mt-0.5" aria-label="done" />
-                : <Circle size={20} className="text-ink-tertiary shrink-0 mt-0.5" aria-hidden />}
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-ink"><span className="font-mono text-[11px] text-ink-tertiary mr-2">{i + 1}</span>{s.title}</p>
-                <p className="text-xs text-ink-tertiary">{s.sub}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <div className="flex flex-wrap gap-2.5 mt-4">
-          {!hasKeys && (
-            <button type="button" onClick={onCreate} className="btn btn-primary min-h-[44px] px-5 text-[13px] font-semibold inline-flex items-center gap-2">
-              <Key size={15} /> Create API key
-            </button>
-          )}
-          <button type="button" onClick={onGoPlayground} className="min-h-[44px] px-5 rounded-btn border border-seam text-[13px] font-semibold text-ink hover:border-go/40 hover:text-go transition-all inline-flex items-center gap-2">
-            <Play size={14} weight="fill" /> Try playground
-          </button>
-        </div>
-      </section>
-
-      <section className="card p-6" aria-label="Quickstart">
-        <h2 className="font-display text-[15px] font-semibold text-ink mb-1">Make a call</h2>
-        <p className="text-xs text-ink-tertiary mb-3">Replace <code className="font-mono bg-well px-1 rounded">YOUR_API_KEY</code> and paste into your terminal.</p>
-        <CodeBlock label="curl · first request" code={QUICKSTART_CALL} copied={copiedId === 'quickstart'} onCopy={() => onCopy('quickstart', QUICKSTART_CALL)} />
-        <a href="/docs#api" className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium text-go hover:text-go/80">
-          <BookOpen size={14} /> Full API reference <ArrowRight size={13} />
-        </a>
-      </section>
-    </div>
-  )
-}
-
-/* ================= Keys ================= */
-
-function KeysTab(props: {
-  keys: ApiKey[]; loading: boolean; keyError: string; newKey: string | null; copiedId: string | null
-  showCreateForm: boolean; setShowCreateForm: (v: boolean) => void
-  newKeyName: string; setNewKeyName: (v: string) => void; newKeyTier: string; setNewKeyTier: (v: string) => void
-  newKeyCostLimit: string; setNewKeyCostLimit: (v: string) => void
-  newKeyDailyCap: string; setNewKeyDailyCap: (v: string) => void
-  newKeyExpiry: string; setNewKeyExpiry: (v: string) => void; today: string
-  creatingKey: boolean; canManageKeys: boolean
-  onCreate: () => void; onRevoke: (id: string) => void; onCopy: (id: string, c: string) => void
-}) {
-  const { keys, loading } = props
-  const active = keys.filter((k) => k.is_active)
-  return (
-    <div className="space-y-5">
-      {props.newKey && <NewKeyBanner value={props.newKey} copied={props.copiedId === 'new-key'} onCopy={() => props.onCopy('new-key', props.newKey!)} />}
-      <section className="card p-6">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 className="font-display text-[15px] font-semibold text-ink">API keys</h2>
-            <p className="text-xs text-ink-tertiary mt-0.5">{active.length} active · revoked keys stay listed for audit</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => props.setShowCreateForm(!props.showCreateForm)}
-            disabled={!props.canManageKeys}
-            className="btn btn-primary min-h-[44px] px-4 text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40 shrink-0"
-          >
-            <Key size={14} /> {props.showCreateForm ? 'Close' : 'New key'}
-          </button>
-        </div>
-
-        {props.showCreateForm && props.canManageKeys && (
-          <div className="mb-5 p-5 rounded-card bg-panel border border-go/20 space-y-4">
-            <Field label="Name">
-              <input value={props.newKeyName} onChange={(e) => props.setNewKeyName(e.target.value)} placeholder="e.g. CI pipeline, staging, prod" className="input w-full" />
-            </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <span className="field-label">Tier</span>
-                <div className="flex flex-wrap gap-2 mt-1.5" role="radiogroup" aria-label="Key tier">
-                  {['free', 'pro', 'team', 'enterprise'].map((t) => (
-                    <button key={t} type="button" role="radio" aria-checked={props.newKeyTier === t} onClick={() => props.setNewKeyTier(t)}
-                      className={cn('min-h-[44px] px-4 rounded-btn text-[13px] font-medium capitalize border transition-all',
-                        props.newKeyTier === t ? 'bg-go/15 text-go border-go/30' : 'bg-well text-ink-tertiary border-seam')}>{t}</button>
-                  ))}
-                </div>
-              </div>
-              <Field label="Expires on (optional)">
-                <input value={props.newKeyExpiry} onChange={(e) => props.setNewKeyExpiry(e.target.value)} type="date" min={props.today} className="input w-full" />
-              </Field>
-            </div>
-            <Field label="Monthly credit cap (optional)" hint="Blank = no limit. The key stops working at this budget.">
-              <input value={props.newKeyCostLimit} onChange={(e) => props.setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
-                inputMode="numeric" placeholder="e.g. 5000" className="input w-full" />
-            </Field>
-            <Field label="Daily credit cap (optional)" hint="Blank = no daily limit. Resets each UTC day.">
-              <input value={props.newKeyDailyCap} onChange={(e) => props.setNewKeyDailyCap(e.target.value.replace(/[^0-9]/g, ''))}
-                inputMode="numeric" placeholder="e.g. 500" className="input w-full" />
-            </Field>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => props.setShowCreateForm(false)} className="min-h-[44px] px-4 text-[13px] text-ink-tertiary">Cancel</button>
-              <button type="button" onClick={props.onCreate} disabled={props.creatingKey} className="btn btn-primary min-h-[44px] px-5 text-[13px] font-semibold inline-flex items-center gap-2">
-                {props.creatingKey && <Spinner className="w-4 h-4 animate-spin" />}{props.creatingKey ? 'Creating…' : 'Create key'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {props.keyError && <div className="mb-4 px-4 py-3 rounded-card bg-abort/8 border border-abort/20 text-abort text-sm" role="alert">{props.keyError}</div>}
-
-        {loading && !keys.length
-          ? <div className="flex justify-center py-10"><Spinner className="w-6 h-6 text-go animate-spin" aria-label="Loading keys" /></div>
-          : keys.length ? (
-            <ul className="space-y-2.5">
-              {keys.map((key) => {
-                const limit = key.credit_limit ?? 0
-                const used = key.credits_used ?? key.usage_count ?? 0
-                const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
-                const exhausted = limit > 0 && used >= limit
-                return (
-                  <li key={key.key_id} className={cn('p-4 rounded-card bg-panel border', key.is_active ? 'border-seam' : 'border-seam opacity-60')}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={cn('w-2 h-2 rounded-full shrink-0', key.is_active ? 'bg-go' : 'bg-ink-tertiary')} aria-hidden />
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-ink truncate">{key.name || 'Unnamed key'}</p>
-                          <p className="font-mono text-[11px] text-ink-tertiary truncate">{key.key_id} · {key.tier} · {key.is_active ? 'Active' : 'Revoked'}</p>
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => props.onRevoke(key.key_id)} disabled={!key.is_active || loading || !props.canManageKeys}
-                        aria-label={`Revoke ${key.name || key.key_id}`}
-                        className="min-h-[44px] min-w-[44px] rounded-btn flex items-center justify-center text-ink-muted hover:text-abort hover:bg-abort/10 disabled:opacity-30">
-                        <Trash size={16} />
-                      </button>
-                    </div>
-                    <p className="font-mono text-[11px] text-ink-tertiary mt-1.5">
-                      Created {formatKeyDate(key.created_at)}
-                      {key.last_used_at && <> · used {formatKeyDate(key.last_used_at)}</>}
-                      {key.expires_at && <> · expires {formatKeyDate(key.expires_at)}</>}
-                    </p>
-                    {key.credit_limit != null && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="h-1.5 flex-1 max-w-40 rounded-full bg-well overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                          <div className={cn('h-full rounded-full', exhausted ? 'bg-abort' : 'bg-go')} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className={cn('font-mono text-[11px]', exhausted ? 'text-abort' : 'text-ink-tertiary')}>{used}/{key.credit_limit}{exhausted ? ' · capped' : ''}</span>
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <EmptyRow label="No keys yet — create one to make your first call." />
-          )}
-      </section>
-    </div>
-  )
-}
-
 /* ================= Models & routing ================= */
 
 function ModelsTab(props: {
-  providerKeys: Record<string, ProviderKeyInfo>; providerKeyCounts: Record<string, number>
-  editingProvider: string | null; setEditingProvider: (v: string | null) => void
-  addingPoolKey: boolean; setAddingPoolKey: (v: boolean) => void
-  providerKeyInput: string; setProviderKeyInput: (v: string) => void
-  savingProviderKey: boolean; confirmDeleteProvider: string | null; setConfirmDeleteProvider: (v: string | null) => void
-  onSave: () => void; onDelete: (p: string) => void; canManageKeys: boolean
   catalog: ModelCatalog | null; catalogLoading: boolean; catalogSearch: string; setCatalogSearch: (v: string) => void
   copiedId: string | null; onCopy: (id: string, c: string) => void
   routingMode: number | null; routingModeLoading: boolean; savingRoutingMode: boolean; onRouting: (m: number) => void
 }) {
-  const [showAll, setShowAll] = useState(false)
-  const [providerFilter, setProviderFilter] = useState('')
-  const configured = PROVIDER_OPTIONS.filter((p) => props.providerKeys[p.id]?.configured)
-  const popular = PROVIDER_OPTIONS.filter((p) => ['openrouter', 'openai', 'anthropic', 'gemini', 'groq'].includes(p.id) && !props.providerKeys[p.id]?.configured)
-  const rest = PROVIDER_OPTIONS.filter((p) => ![...configured, ...popular].some((x) => x.id === p.id))
-    .filter((p) => p.label.toLowerCase().includes(providerFilter.toLowerCase()))
-  const visible = showAll ? [...configured, ...popular, ...rest] : [...configured, ...popular]
-
   return (
     <div className="space-y-5">
       <section className="card p-6">
@@ -487,7 +170,7 @@ function ModelsTab(props: {
               { v: 8, label: 'Best', sub: 'Smartest' },
             ] as const).map((o) => (
               <button key={o.label} type="button" role="radio" aria-checked={props.routingMode === o.v}
-                disabled={props.savingRoutingMode || !props.canManageKeys}
+                disabled={props.savingRoutingMode}
                 onClick={() => props.onRouting(o.v)}
                 className={cn('min-h-[52px] rounded-btn px-2 py-2 text-center transition-all disabled:opacity-50',
                   props.routingMode === o.v ? 'bg-panel-raised text-ink shadow border border-go/30' : 'text-ink-tertiary hover:text-ink')}>
@@ -497,72 +180,6 @@ function ModelsTab(props: {
             ))}
           </div>
         )}
-      </section>
-
-      <section className="card p-6">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <div>
-            <h2 className="font-display text-[15px] font-semibold text-ink">Your model keys</h2>
-            <p className="text-xs text-ink-tertiary mt-0.5">{configured.length} connected · leave the rest on platform defaults</p>
-          </div>
-        </div>
-        <ul className="divide-y divide-seam">
-          {visible.map((p) => {
-            const info = props.providerKeys[p.id]
-            const on = !!info?.configured
-            const editing = props.editingProvider === p.id
-            return (
-              <li key={p.id} className="py-3.5">
-                <div className="flex items-center justify-between gap-3 min-h-[44px]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={cn('w-2 h-2 rounded-full shrink-0', on ? 'bg-go' : 'bg-ink-tertiary/40')} aria-hidden />
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-ink truncate">{p.label}</p>
-                      <p className="font-mono text-[11px] text-ink-tertiary">{on ? `Connected${(props.providerKeyCounts[p.id] || 1) > 1 ? ` · ${props.providerKeyCounts[p.id]} keys rotate` : ''}` : 'Using platform key'}</p>
-                    </div>
-                  </div>
-                  {props.canManageKeys && (
-                    <button type="button" onClick={() => { props.setAddingPoolKey(false); props.setEditingProvider(editing ? null : p.id); props.setProviderKeyInput('') }}
-                      className="min-h-[44px] px-3.5 rounded-btn border border-seam text-[12px] font-semibold text-ink hover:border-go/40 hover:text-go shrink-0 inline-flex items-center gap-1.5">
-                      <PencilSimple size={13} />{on ? 'Update' : 'Connect'}
-                    </button>
-                  )}
-                </div>
-                {editing && (
-                  <div className="mt-2.5 flex flex-col sm:flex-row gap-2">
-                    <input type="password" value={props.providerKeyInput} onChange={(e) => props.setProviderKeyInput(e.target.value)}
-                      placeholder="Paste key…" autoFocus className="input flex-1 font-mono" aria-label={`${p.label} key`} />
-                    <div className="flex gap-2">
-                      <button type="button" onClick={props.onSave} disabled={props.savingProviderKey || !props.providerKeyInput.trim()}
-                        className="btn btn-primary min-h-[44px] px-4 text-[13px] font-semibold disabled:opacity-40">
-                        {props.savingProviderKey ? 'Saving…' : 'Save'}
-                      </button>
-                      {on && (
-                        <button type="button" onClick={() => props.confirmDeleteProvider === p.id ? props.onDelete(p.id) : props.setConfirmDeleteProvider(p.id)}
-                          className="min-h-[44px] px-3 rounded-btn text-[12px] text-ink-muted hover:text-abort">
-                          {props.confirmDeleteProvider === p.id ? 'Confirm remove?' : 'Remove'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-        <div className="flex flex-col sm:flex-row gap-2 mt-3">
-          {showAll && (
-            <input value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)} placeholder="Filter providers…"
-              className="input sm:max-w-56" aria-label="Filter providers" />
-          )}
-          <button type="button" onClick={() => setShowAll(!showAll)} className="min-h-[44px] text-[13px] font-medium text-go text-left">
-            {showAll ? 'Show fewer' : `Show all ${PROVIDER_OPTIONS.length} providers`}
-          </button>
-        </div>
-        <details className="mt-4 text-xs text-ink-tertiary">
-          <summary className="cursor-pointer text-[13px] font-medium text-ink min-h-[44px] inline-flex items-center">How does this work?</summary>
-          <p className="mt-1 leading-relaxed">Requests made with this team's API key use your keys instead of platform defaults, for <code className="font-mono bg-well px-1 rounded">/v1/chat/completions</code> and <code className="font-mono bg-well px-1 rounded">/v1/embeddings</code>. Keys are encrypted at rest.</p>
-        </details>
       </section>
 
       <section className="card p-6">
@@ -620,7 +237,7 @@ function UsageTab({ usage, tierInfo }: { usage: any; tierInfo: RateLimitInfo | n
 
       <section className="card p-6">
         <h2 className="font-display text-[15px] font-semibold text-ink mb-1 flex items-center gap-2"><Gauge size={16} className="text-go" /> Rate limits</h2>
-        <p className="text-xs text-ink-tertiary mb-4">What each tier can do. Your key's tier is shown on the Keys tab.</p>
+        <p className="text-xs text-ink-tertiary mb-4">What each tier can do for workspace usage.</p>
         {tierInfo ? (
           <div className="overflow-x-auto -mx-6 px-6 overscroll-x-contain">
             <table className="w-full min-w-[560px] text-[13px]">
@@ -671,7 +288,6 @@ function PlaygroundTab() {
   const [agentsLoading, setAgentsLoading] = useState(true) // FIX: was no loading state (blank chips)
   const [agentsError, setAgentsError] = useState('') // FIX: was mixed into run-error line
   const [selectedAgent, setSelectedAgent] = useState('')
-  const [apiKeyInput, setApiKeyInput] = useState('')
   const [paramsInput, setParamsInput] = useState('{\n  "repo_url": "https://github.com/facebook/react"\n}')
   const [result, setResult] = useState<{ result?: unknown; credits_used?: number; tier?: string } | null>(null)
   const [error, setError] = useState('')
@@ -731,7 +347,7 @@ function PlaygroundTab() {
     const myRun = ++runId.current // FIX: stale late responses can't overwrite a newer run
     setError(''); setResult(null); setTesting(true)
     try {
-      const res = await executeAgent(selectedAgent, params, apiKeyInput.trim() || undefined)
+      const res = await executeAgent(selectedAgent, params)
       if (mounted.current && myRun === runId.current) {
         setResult(res)
         toast.success(`"${selectedAgent}" ran`)
@@ -795,7 +411,9 @@ function PlaygroundTab() {
         <div className="mt-4">
           <label className="field-label" htmlFor="pg-params">Input (JSON object)</label>
           <div className="mt-1.5 rounded-card overflow-hidden border border-seam">
-            <CodeEditor value={paramsInput} onChange={setParamsInput} language="json" height={160} />
+            <Suspense fallback={<div className="h-40 flex items-center justify-center text-xs text-ink-tertiary">Loading editor…</div>}>
+              <CodeEditor value={paramsInput} onChange={setParamsInput} language="json" height={160} />
+            </Suspense>
           </div>
         </div>
 
@@ -813,11 +431,7 @@ function PlaygroundTab() {
               </button>
             )}
           </div>
-          <input value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} placeholder="Optional key override (cf_…)"
-            className="input sm:max-w-64 font-mono" aria-label="API key override" autoComplete="off" spellCheck={false} />
         </div>
-        <p className="text-[11px] text-ink-tertiary mt-2">Empty key field = your signed-in session. Paste a <code className="font-mono bg-well px-1 rounded">cf_…</code> key to test exactly what your app sends (header <code className="font-mono bg-well px-1 rounded">X-API-Key</code>).</p>
-
         {error && <p className="text-[13px] text-abort mt-2.5" role="alert">{error}</p>}
 
         {result && (
@@ -864,31 +478,6 @@ function PlaygroundTab() {
 }
 
 /* ================= Shared bits ================= */
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="field-label">{label}</label>
-      <div className="mt-1.5">{children}</div>
-      {hint && <p className="text-[11px] text-ink-tertiary mt-1">{hint}</p>}
-    </div>
-  )
-}
-
-function NewKeyBanner({ value, copied, onCopy }: { value: string; copied: boolean; onCopy: () => void }) {
-  return (
-    <div className="p-4 rounded-card bg-caution/10 border border-caution/25" role="alert">
-      <p className="font-mono text-[11px] font-bold text-caution uppercase tracking-wider mb-2">Copy this now — shown once</p>
-      <div className="flex items-center gap-2">
-        <code className="flex-1 min-w-0 font-mono text-xs text-caution bg-caution/10 px-2.5 py-2 rounded truncate">{value}</code>
-        <button type="button" onClick={onCopy} aria-label="Copy new API key"
-          className="min-h-[44px] min-w-[44px] rounded-btn flex items-center justify-center text-caution hover:bg-caution/15 shrink-0">
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-        </button>
-      </div>
-    </div>
-  )
-}
 
 function CodeBlock({ label, code, copied, onCopy }: { label: string; code: string; copied?: boolean; onCopy?: () => void }) {
   return (

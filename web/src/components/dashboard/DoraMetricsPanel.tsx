@@ -122,7 +122,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
       {velocityData.length > 0 && (
         <Panel callsign="Velocity" designator="12 weeks">
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
               <AreaChart data={velocityData}>
                 <defs><linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--go)" stopOpacity={0.2} /><stop offset="100%" stopColor="var(--go)" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-rgb) / 0.10)" />
@@ -140,7 +140,7 @@ export default function DoraMetricsPanel({ teamId }: { teamId?: string }) {
       {hasThroughput && throughputMembers && (
         <Panel callsign="Throughput" designator="30 days">
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={220} minWidth={0} minHeight={0}>
               <BarChart data={throughputMembers.map(member => ({ name: member.name.length > 10 ? member.name.slice(0, 10) + '…' : member.name, completed: member.completed, inProgress: member.in_progress })).reverse()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-rgb) / 0.10)" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fontFamily: 'IBM Plex Mono' }} stroke="rgb(var(--text-tertiary) / 0.75)" />

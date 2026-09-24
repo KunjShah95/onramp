@@ -127,7 +127,7 @@ export default function ExecutivePage() {
                   <span className="text-caption text-ink-muted">· {d?.active_subscriptions ?? 0} active subs</span>
                 </div>
                 <div className="h-48 bg-plot-grid rounded-tile">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                     <AreaChart data={trajectory} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="mrrFill" x1="0" y1="0" x2="0" y2="1">

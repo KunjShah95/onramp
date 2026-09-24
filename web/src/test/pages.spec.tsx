@@ -30,8 +30,9 @@ vi.mock(import('../lib/api'), async (importOriginal) => {
     getPlaybook: { id: 'p1', name: 'Playbook', steps: [] },
     listPricing: { tiers: [] },
     createCheckoutSession: { url: 'https://rzp.io/test', subscription_id: 'sub_test' },
-    createApiKey: { key: { id: 'k1', label: 'Key' }, raw_key: 'sk-test' },
-    listApiKeys: { keys: [] },
+    listProviderKeys: { org_name: 'default', providers: [], count: 0 },
+    setProviderKey: { provider: 'openai', configured: true, key_id: 'k1', is_primary: false, env_var: null, updated_at: null, updated_by: null },
+    deleteProviderKey: {},
     validateApiKey: { valid: true },
     getUsage: { usage: [] },
     getUsageSummary: { total: 0, by_endpoint: [] },
@@ -114,7 +115,6 @@ import FirstIssuePage from '../pages/FirstIssuePage'
 import LearnPage from '../pages/LearnPage'
 import AskPage from '../pages/AskPage'
 import NotificationsPage from '../pages/NotificationsPage'
-import ApiKeysPage from '../pages/ApiKeysPage'
 import PlaybooksPage from '../pages/PlaybooksPage'
 import OnboardingReportPage from '../pages/OnboardingReportPage'
 import TraineeDashboard from '../pages/TraineeDashboard'
@@ -158,7 +158,6 @@ describe('Feature pages (recently wired)', () => {
   it('renders LearnPage', () => expect(() => render(<LearnPage />)).not.toThrow())
   it('renders AskPage', () => expect(() => render(<AskPage />)).not.toThrow())
   it('renders NotificationsPage', () => expect(() => render(<NotificationsPage />)).not.toThrow())
-  it('renders ApiKeysPage', () => expect(() => render(<ApiKeysPage />)).not.toThrow())
   it('renders PlaybooksPage', () => expect(() => render(<PlaybooksPage />)).not.toThrow())
   it('renders OnboardingReportPage', () => expect(() => render(<OnboardingReportPage />)).not.toThrow())
   it('renders TraineeDashboard', () => expect(() => render(<TraineeDashboard />)).not.toThrow())

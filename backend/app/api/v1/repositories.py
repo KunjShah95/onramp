@@ -64,7 +64,7 @@ async def list_repos(
         query_team_ids = user_team_ids
 
     if not query_team_ids:
-        return {"repos": []}
+        raise HTTPException(status_code=403, detail="No team membership found")
 
     repos = []
     for tid in query_team_ids:
@@ -153,12 +153,22 @@ async def delete_repo(
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
     from app.services.team_service import get_user_teams
+    from app.middleware.access_guard import ROLE_HIERARCHY
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
     team_ids = {t.get("team_id") or t.get("id") for t in teams}
     repo_team = repo.get("team_id")
     if repo_team and str(repo_team) not in {str(tid) for tid in team_ids}:
         raise HTTPException(status_code=403, detail="Access denied")
+    # Deletion requires admin/senior role — a junior member must not be able to
+    # destroy shared team resources.
+    user_role = next(
+        (t.get("role", "member") for t in teams
+         if str(t.get("team_id") or t.get("id")) == str(repo_team)),
+        "member",
+    )
+    if ROLE_HIERARCHY.get(user_role, 0) < ROLE_HIERARCHY.get("admin", 6):
+        raise HTTPException(status_code=403, detail="Admin role required to delete a repository")
     await _storage.delete_document("repositories", repo_id)
     try:
         from app.services.embeddings_service import EmbeddingsService
@@ -401,8 +411,16 @@ async def resolve_repo_issue(
     llm = getattr(req.app.state, "llm", None) or LLMRouter()
     orchestrator = IssueOrchestrator(llm_client=llm)
 
+    # Derive repo_url from the verified DB record — never trust the request body
+    # for this, as it would allow a team member to redirect the orchestrator at
+    # an arbitrary external repository (SSRF-adjacent).
+    verified_url = (
+        repo_data.get("url")
+        or f"https://github.com/{owner}/{repo}"
+    ).strip()
+
     result = await orchestrator.resolve_issue(
-        repo_url=request.repo_url,
+        repo_url=verified_url,
         issue_description=request.issue_description,
         branch=request.branch
     )

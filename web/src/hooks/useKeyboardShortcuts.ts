@@ -27,7 +27,6 @@ const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[
   { key: 'i', path: '/admin', label: 'Admin', roles: ['admin', 'ceo', 'cto'] },
   { key: 'c', path: '/code-health', label: 'Code Health', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 'm', path: '/team', label: 'Team', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'k', path: '/api-keys', label: 'API Keys', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 'y', path: '/playbooks', label: 'Playbooks', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer'] },
   { key: 'o', path: '/developer-portal', label: 'Developer Portal', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 'w', path: '/wiki', label: 'Wiki' },

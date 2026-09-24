@@ -45,6 +45,17 @@ def _is_entry_point(fpath: str) -> bool:
     return any(kw in name for kw in ["main", "index", "app", "cli", "server", "run", "entry"])
 
 
+def _is_meta_node(node: str) -> bool:
+    """Internal routing markers must not appear in the user-facing graph."""
+    return node == "__entry__"
+
+
+def _layer_for_path(path: str) -> str:
+    """Return a stable top-level layer label for a repository path."""
+    parts = [part for part in path.replace("\\", "/").split("/") if part]
+    return parts[0] if len(parts) > 1 else "(root)"
+
+
 def build_dependency_graph(entities: Dict) -> "DependencyGraph":
     """Build a :class:`DependencyGraph` from parsed entities.
 
@@ -96,17 +107,23 @@ class DependencyGraph:
         self.graph.add_edge(source, target, relationship=relationship)
 
     def get_topology(self) -> List[str]:
-        """Return modules in topological order."""
+        """Return user-facing modules in topological order."""
+        graph = self.graph.subgraph(
+            node for node in self.graph.nodes if not _is_meta_node(node)
+        ).copy()
         try:
-            return list(nx.topological_sort(self.graph))
+            return list(nx.topological_sort(graph))
         except nx.NetworkXException:
             # Cycle detected - return all nodes as fallback
-            return list(self.graph.nodes())
+            return list(graph.nodes())
 
     def get_circular_dependencies(self) -> List[List[str]]:
-        """Detect circular imports."""
+        """Detect circular imports without exposing internal entry markers."""
+        graph = self.graph.subgraph(
+            node for node in self.graph.nodes if not _is_meta_node(node)
+        ).copy()
         try:
-            cycles = list(nx.simple_cycles(self.graph))
+            cycles = list(nx.simple_cycles(graph))
             return [list(cycle) for cycle in cycles]
         except Exception as exc:
             logger.debug("Failed to detect circular dependencies: %s", exc)
@@ -116,20 +133,28 @@ class DependencyGraph:
         communities = nx.community.greedy_modularity_communities(self.graph.to_undirected())
         services = []
         for i, community in enumerate(communities):
-            nodes = sorted(community)
+            nodes = sorted(node for node in community if not _is_meta_node(node))
+            if not nodes:
+                continue
             services.append({
                 "name": f"service_{i + 1}",
                 "files": nodes,
                 "description": f"Module cluster with {len(nodes)} files",
+                "layer": _layer_for_path(nodes[0]),
             })
         return services
 
     def get_dependency_dict(self) -> Dict[str, List[str]]:
         deps = {}
         for node in self.graph.nodes():
-            predecessors = list(self.graph.predecessors(node))
+            if _is_meta_node(node):
+                continue
+            predecessors = [
+                predecessor for predecessor in self.graph.predecessors(node)
+                if not _is_meta_node(predecessor)
+            ]
             if predecessors:
-                deps[node] = predecessors
+                deps[node] = sorted(set(predecessors))
         return deps
 
     def detect_architecture_pattern(self) -> str:
@@ -137,7 +162,9 @@ class DependencyGraph:
         if cycles:
             return "modular"
 
-        undirected = self.graph.to_undirected()
+        undirected = self.graph.subgraph(
+            node for node in self.graph.nodes if not _is_meta_node(node)
+        ).to_undirected()
         if nx.number_connected_components(undirected) > 3:
             return "microservices"
 
@@ -146,12 +173,14 @@ class DependencyGraph:
     def generate_mermaid_diagram(self) -> str:
         lines = ["graph TD"]
         for source, target in self.graph.edges():
+            if _is_meta_node(source) or _is_meta_node(target):
+                continue
             lines.append(f"    {source} --> {target}")
         return "\n".join(lines)
 
     def collapse_graph(self, max_nodes: int = 150) -> Dict[str, Any]:
         """Group module nodes by directory path hierarchy when size exceeds max_nodes."""
-        nodes = list(self.graph.nodes())
+        nodes = [node for node in self.graph.nodes() if not _is_meta_node(node)]
         if len(nodes) <= max_nodes:
             # Under threshold, return default serialization
             return {
@@ -216,6 +245,8 @@ class DependencyGraph:
 
         # Map edges to collapsed prefix nodes
         for source, target in self.graph.edges():
+            if _is_meta_node(source) or _is_meta_node(target):
+                continue
             src_prefix = get_prefix(source, target_depth)
             tgt_prefix = get_prefix(target, target_depth)
             if src_prefix != tgt_prefix:
@@ -239,11 +270,14 @@ class DependencyGraph:
         try:
             communities = nx.community.greedy_modularity_communities(collapsed_graph.to_undirected())
             for i, community in enumerate(communities):
-                nodes_list = sorted(community)
+                nodes_list = sorted(node for node in community if not _is_meta_node(node))
+                if not nodes_list:
+                    continue
                 services.append({
                     "name": f"service_{i + 1}",
                     "files": nodes_list,
                     "description": f"Module cluster with {len(nodes_list)} files",
+                    "layer": _layer_for_path(nodes_list[0]),
                 })
         except Exception as exc:
             logger.debug("Failed to detect communities on collapsed graph: %s", exc)

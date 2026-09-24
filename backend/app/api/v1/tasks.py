@@ -103,11 +103,12 @@ async def _verify_task_access(task_id: str, uid: str) -> dict:
         raise HTTPException(status_code=404, detail="Task not found")
 
     task_team = task.get("team_id")
-    if task_team:
-        teams = await get_user_teams(uid)
-        team_ids = {t.get("team_id") or t.get("id") for t in teams}
-        if task_team not in team_ids:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if not task_team:
+        raise HTTPException(status_code=403, detail="Access denied")
+    teams = await get_user_teams(uid)
+    team_ids = {t.get("team_id") or t.get("id") for t in teams}
+    if task_team not in team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return task
 
@@ -393,7 +394,12 @@ async def update_template_endpoint(
     request: UpdateTemplateRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Update a task template."""
+    """Update a task template. Requires senior role in the template's team."""
+    uid = user.get("uid", "")
+    existing = await task_template_service.get_template(template_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Template not found")
+    await _require_team_role(uid, existing.get("team_id", ""), "senior")
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -408,7 +414,12 @@ async def delete_template_endpoint(
     template_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Delete a task template."""
+    """Delete a task template. Requires senior role in the template's team."""
+    uid = user.get("uid", "")
+    existing = await task_template_service.get_template(template_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Template not found")
+    await _require_team_role(uid, existing.get("team_id", ""), "senior")
     ok = await task_template_service.delete_template(template_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -506,6 +517,8 @@ async def transition_task_endpoint(
     user: dict = Depends(get_current_user),
 ):
     """Transition a task to a new state (generic endpoint). Requires team membership."""
+    if request.new_state == "assigned":
+        raise HTTPException(status_code=400, detail="Use POST /{task_id}/assign to assign tasks")
     uid = user.get("uid", "")
     existing_task = await _verify_task_access(task_id, uid)
     await _require_team_role(uid, existing_task.get("team_id", ""), "senior")

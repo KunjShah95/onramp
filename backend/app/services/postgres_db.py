@@ -195,6 +195,23 @@ class PostgresStorage:
         factory = db_config.get_session_factory()
         return factory()
 
+    async def _run_read(self, operation: Callable[[AsyncSession], Any]) -> Any:
+        """Execute a read-only operation without issuing a COMMIT.
+
+        SELECT-only requests do not need a database round trip just to commit
+        an empty transaction. Closing the session releases the connection and
+        rolls back any implicit read transaction.
+        """
+        session = await self._session()
+        try:
+            return await operation(session)
+        except Exception as exc:
+            if not isinstance(exc, RuntimeError):
+                raise RuntimeError(f"Database operation failed: {exc}") from exc
+            raise
+        finally:
+            await session.close()
+
     async def _run(self, operation: Callable[[AsyncSession], Any]) -> Any:
         """Execute *operation* inside a session, then commit and close.
 
@@ -297,7 +314,12 @@ class PostgresStorage:
                 if op == "==":
                     query = query.where(col == value)
                 elif op == "in":
-                    query = query.where(col.in_(value or []))
+                    if not value:
+                        # Empty IN list is a PostgreSQL syntax error; return no rows.
+                        import sqlalchemy
+                        query = query.where(sqlalchemy.false())
+                    else:
+                        query = query.where(col.in_(value))
                 elif op in (">=", "<=", ">", "<"):
                     # Service code (DynamicDocument era) passes ISO-8601 strings
                     # for datetime columns. Bind those as real datetime values —
@@ -547,7 +569,7 @@ class PostgresStorage:
 
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
         """Get a document by ID."""
-        return await self._run(
+        return await self._run_read(
             lambda s: self._get_in_session(s, collection, doc_id)
         )
 
@@ -683,7 +705,7 @@ class PostgresStorage:
 
     async def list_documents(self, collection: str) -> List[dict]:
         """List all documents in a collection."""
-        return await self._run(
+        return await self._run_read(
             lambda s: self._list_in_session(s, collection)
         )
 
@@ -691,7 +713,7 @@ class PostgresStorage:
         self, collection: str, filters: List[Tuple[str, str, Any]] = None
     ) -> List[dict]:
         """Query documents with filters."""
-        return await self._run(
+        return await self._run_read(
             lambda s: self._query_in_session(s, collection, filters)
         )
 

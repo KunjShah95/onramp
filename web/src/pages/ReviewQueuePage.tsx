@@ -74,22 +74,27 @@ function prDescribeLink(task: WorkflowTask): string | null {
 }
 
 export default function ReviewQueuePage() {
-  const [teamId, setTeamId] = useState('')
+  const { activeTeamId } = useAuth()
+  const [teamId, setTeamId] = useState(activeTeamId ?? '')
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [members, setMembers] = useState<{ user_id: string; name: string; role: string }[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const { activeTeamId } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (activeTeamId) {
+      setTeamId(activeTeamId)
+      return
+    }
+
     let cancelled = false
     listTeams('current-user')
       .then((data: TeamsResponse) => {
         if (cancelled) return
-        const tid = activeTeamId || data.teams?.[0]?.team_id || ''
+        const tid = data.teams?.[0]?.team_id || ''
         if (tid) setTeamId(tid)
         else { setLoading(false); setError('Join a team to view the review queue.') }
       })

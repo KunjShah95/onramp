@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from 'react'
 
-import { ShieldCheck, Users, Key, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
+import { ShieldCheck, Users, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
@@ -15,7 +15,7 @@ import { PageHeader } from '../components/ui/page-header'
 import { AdminDashboardSkeleton } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
 import {
-  adminGetUsage, adminGetTeamUsage, adminListApiKeys, adminListAuditEvents,
+  adminGetUsage, adminGetTeamUsage, adminListAuditEvents,
   adminListProviderKeys, adminSetProviderKey, adminDeleteProviderKey,
 } from '../lib/api'
 import type {
@@ -68,7 +68,6 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState('')
   const [usage, setUsage] = useState<number | null>(null)
   const [usageDetail, setUsageDetail] = useState<AdminUsageResponse | null>(null)
-  const [keys, setKeys] = useState<number | null>(null)
   const [teams, setTeams] = useState<number | null>(null)
   const [members, setMembers] = useState<number | null>(null)
   const [audit, setAudit] = useState<AdminAuditEvent[]>([])
@@ -86,7 +85,6 @@ export default function AdminDashboardPage() {
     try {
       await Promise.all([
         adminGetUsage(undefined, 14).then((u) => { if (!isCancelled()) { setUsage(u.total_requests); setUsageDetail(u) } }).catch(() => {}),
-        adminListApiKeys().then((k) => { if (!isCancelled()) setKeys(k.count) }).catch(() => {}),
         adminGetTeamUsage().then((t) => {
           if (!isCancelled()) {
             setTeams(t.count)
@@ -150,7 +148,6 @@ export default function AdminDashboardPage() {
     { label: 'API Calls · 24h', value: usage ?? 'N/A', color: 'text-go' },
     { label: 'Active Teams', value: teams ?? 'N/A', color: 'text-mission' },
     { label: 'Active Members', value: members ?? 'N/A', color: 'text-ink' },
-    { label: 'Active API Keys', value: keys ?? 'N/A', color: 'text-mission' },
   ]
 
   return (
@@ -220,7 +217,7 @@ export default function AdminDashboardPage() {
                     ))}
                   </div>
                   <div className="h-52 bg-plot-grid rounded-tile">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                       <AreaChart data={series} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="freeGrad" x1="0" y1="0" x2="0" y2="1">
@@ -349,7 +346,6 @@ export default function AdminDashboardPage() {
                   {[
                     { label: 'Teams', value: teams ?? 0 },
                     { label: 'Members', value: members ?? 0 },
-                    { label: 'API Keys', value: keys ?? 0 },
                     { label: 'Requests · 24h', value: usage ?? 0 },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between py-1.5 border-b border-seam last:border-0">
@@ -392,7 +388,6 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Manage Users', icon: Users },
-              { label: 'View API Keys', icon: Key },
               { label: 'View Audit Log', icon: ShieldCheck },
               { label: 'System Health', icon: Heartbeat },
             ].map((action) => (

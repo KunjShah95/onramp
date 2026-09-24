@@ -63,8 +63,8 @@ interface UseWebSocketReturn {
   lastEvent: WsEvent | null
 }
 
-const RECONNECT_DELAY = 5000
-const TOKEN_POLL_MS = 2000
+const RECONNECT_BASE_DELAY = 1000
+const RECONNECT_MAX_DELAY = 30_000
 
 /**
  * Module-level singleton state — ONE WebSocket shared across every caller.
@@ -76,9 +76,9 @@ const TOKEN_POLL_MS = 2000
  * established." — the console error this rewrite eliminates.
  *
  * A subscriber count gates the connection: the socket is created when the
- * first subscriber appears and torn down when the last one leaves. A light
- * token poll keeps the connection in sync with login/logout (the token can
- * change without any hook re-running).
+ * first subscriber appears and torn down when the last one leaves. Token
+ * changes (login/logout) are detected when the socket closes and reconnects —
+ * connect() compares the current token against socketToken on each attempt.
  */
 
 let socket: WebSocket | null = null
@@ -86,7 +86,7 @@ let socketToken: string | null = null
 let subscribers = 0
 let connectedFlag = false
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-let tokenPollTimer: ReturnType<typeof setInterval> | null = null
+let reconnectAttempt = 0
 let globalListeners = new Set<WsHandler>()
 let lastGlobalEvent: WsEvent | null = null
 
@@ -103,7 +103,7 @@ function emitState(): void {
   }
 }
 
-function buildWsUrl(_token: string): string {
+function buildWsUrl(_token: string | null): string {
   // In production always use wss:// even if page is http (behind TLS-terminating proxy)
   const isProd = (import.meta as any).env?.PROD === true
   const protocol = isProd ? 'wss:' : window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -131,14 +131,11 @@ function clearTimers(): void {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
-  if (tokenPollTimer) {
-    clearInterval(tokenPollTimer)
-    tokenPollTimer = null
-  }
 }
 
 function teardownSocket(): void {
   clearTimers()
+  reconnectAttempt = 0
   const ws = socket
   socket = null
   socketToken = null
@@ -173,11 +170,6 @@ function connect(): void {
     if (socketToken !== token) teardownSocket()
     else return
   }
-  if (!token) {
-    startTokenPolling()
-    return
-  }
-
   const url = buildWsUrl(token)
   // Auth via JSON message only — never send token in sub-protocol to avoid
   // leaking it in logs/CDN; wss:// in prod is enforced by buildWsUrl.
@@ -187,6 +179,7 @@ function connect(): void {
 
   ws.onopen = () => {
     if (socket !== ws) return
+    reconnectAttempt = 0
     // Send auth as first message (preferred, avoids URL logging)
     try { ws.send(JSON.stringify({ type: 'auth', token })) } catch {}
     connectedFlag = true
@@ -209,7 +202,12 @@ function connect(): void {
     connectedFlag = false
     emitState()
     if (subscribers > 0) {
-      reconnectTimer = setTimeout(() => connect(), RECONNECT_DELAY)
+      const delay = Math.min(
+        RECONNECT_MAX_DELAY,
+        RECONNECT_BASE_DELAY * 2 ** reconnectAttempt,
+      )
+      reconnectAttempt += 1
+      reconnectTimer = setTimeout(() => connect(), delay)
     }
   }
 
@@ -218,28 +216,8 @@ function connect(): void {
   }
 }
 
-function startTokenPolling(): void {
-  if (tokenPollTimer) return
-  tokenPollTimer = setInterval(() => {
-    if (subscribers <= 0) {
-      clearTimers()
-      return
-    }
-    const token = getToken()
-    if (!token) {
-      if (socket) teardownSocket()
-      return
-    }
-    if (!socket || socketToken !== token) connect()
-  }, TOKEN_POLL_MS)
-}
-
 function ensureConnected(): void {
   if (socket || subscribers <= 0) return
-  if (!getToken()) {
-    startTokenPolling()
-    return
-  }
   connect()
 }
 

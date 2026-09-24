@@ -50,6 +50,7 @@ async def verify_session_token(token: str) -> dict | None:
             "email": payload.get("email", ""),
             "name": payload.get("name", ""),
             "provider": payload.get("provider", "password"),
+            "_record": record,
         }
 
     neon_user = await verify_neon_session(token)
@@ -63,7 +64,7 @@ async def verify_session_token(token: str) -> dict | None:
             logger.warning("Neon Auth user account is deactivated: %s", uid)
             return None
 
-        return neon_user
+        return {**neon_user, "_record": record}
 
     return None
 
@@ -151,6 +152,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "name": decoded.get("name", ""),
             "provider": decoded.get("provider", "unknown"),
         }
+        # Keep the verified database record for /auth/me and other handlers
+        # that need profile fields without issuing a second user query.
+        request.state.user_record = decoded.get("_record")
 
         response = await call_next(request)
         return response

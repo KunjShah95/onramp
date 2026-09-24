@@ -23,7 +23,6 @@ billing = BillingService()
 
 class CreateTeamRequest(BaseModel):
     name: str
-    owner: str
     tier: str = "free"
 
 
@@ -159,6 +158,7 @@ async def revoke_all_modules(
     team_id: str,
     request: RevokeAllRequest,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """Revoke ALL module access for a user."""
     teams = await team_service.list_teams(user.get("uid", ""))
@@ -183,7 +183,18 @@ async def check_module_access(
     module: str,
     user: dict = Depends(get_current_user),
 ):
-    """Check if a user has access to a specific module."""
+    """Check if a user has access to a specific module. Own permissions are always visible; checking others requires senior+."""
+    uid = user.get("uid", "")
+    if user_id != uid:
+        teams = await team_service.list_teams(uid)
+        from app.middleware.access_guard import ROLE_HIERARCHY
+        caller_level = max(
+            (ROLE_HIERARCHY.get(t.get("role", ""), 0) for t in teams
+             if str(t.get("team_id")) == str(team_id)),
+            default=0,
+        )
+        if caller_level < ROLE_HIERARCHY.get("senior", 5):
+            raise HTTPException(status_code=403, detail="Senior role required to check another user's permissions")
     permitted = await has_module_access(team_id, user_id, module)
     return {"permitted": permitted}
 

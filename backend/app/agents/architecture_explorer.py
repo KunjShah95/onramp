@@ -71,14 +71,20 @@ class ArchitectureExplorer(BaseAgent):
     5. Returns comprehensive architecture analysis
     """
 
-    def __init__(self, llm_client, github_token: Optional[str] = None):
+    def __init__(
+        self,
+        llm_client,
+        github_token: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ):
         """Initialize ArchitectureExplorer with GitHub and Parser services.
 
         Args:
             llm_client: LLM client for Claude API calls (passed from main.py)
             github_token: Optional per-user GitHub token for authenticated requests
+            session_id: Optional agent session used for prompt/history context
         """
-        super().__init__(llm_client)
+        super().__init__(llm_client, session_id=session_id)
         self.github = GitHubService(token=github_token)
         self.parser = ParserService()
 
@@ -141,6 +147,9 @@ class ArchitectureExplorer(BaseAgent):
             result = graph.to_dict(max_nodes=max_nodes)
 
         # Step 4: Use Claude to analyze structure and identify services
+        # The graph-derived services are the visualization source of truth.
+        # LLM output may provide useful descriptions, but it must not replace
+        # the deterministic file-to-service mapping used by the graph API.
         services = result.get("services", [])
         analysis = {}
 
@@ -198,9 +207,18 @@ class ArchitectureExplorer(BaseAgent):
                 llm_result = await self._call_claude(prompt)
                 analysis = self._parse_llm_analysis(llm_result)
 
-                # Update services from Claude analysis if available
-                if analysis.get("services"):
-                    services = analysis["services"]
+                # Enrich deterministic service descriptions when the model
+                # returns a matching service name, without changing topology.
+                llm_services = analysis.get("services") or []
+                llm_by_name = {
+                    str(item.get("name")): item
+                    for item in llm_services
+                    if isinstance(item, dict) and item.get("name")
+                }
+                services = [
+                    {**service, "description": llm_by_name.get(service["name"], {}).get("description", service.get("description", "Module cluster"))}
+                    for service in services
+                ]
 
             except Exception:
                 # If Claude analysis fails, use graph-based services as fallback

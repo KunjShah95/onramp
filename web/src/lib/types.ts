@@ -36,6 +36,11 @@ export interface ArchitectureResult {
   circular_dependencies: string[][]
   architecture_pattern: string
   architecture_diagram: string
+  graph?: {
+    modules?: string[]
+    dependencies?: Record<string, string[]>
+    node_files?: Record<string, string[]>
+  }
 }
 
 export interface ServiceInfo {

@@ -98,15 +98,20 @@ async def accept_invite(token: str, user_id: str) -> dict:
         await storage.update_document(COLLECTION, invite["id"], {"status": "expired"})
         raise ValueError("Invite has expired")
 
+    # Atomically claim the invite before adding the member — prevents a
+    # TOCTOU race where two concurrent requests both pass the status check
+    # and both call add_member.
+    claimed = await storage.claim_dynamic_document(
+        COLLECTION, invite["id"], "status", "pending",
+        {"status": "accepted", "updated_at": _utcnow()},
+    )
+    if not claimed:
+        raise ValueError("Invite has already been accepted or cancelled")
+
     # Add user to team
     team_id = invite["team_id"]
     role = invite.get("role", "member")
     await add_member(team_id, user_id, role=role)
-
-    # Mark invite as accepted
-    await storage.update_document(
-        COLLECTION, invite["id"], {"status": "accepted", "updated_at": _utcnow()}
-    )
 
     # Fetch team name for response
     team = await storage.get_document("teams", team_id)

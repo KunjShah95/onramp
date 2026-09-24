@@ -1,7 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
-import { TransitionProvider } from './context/TransitionContext'
+import { installRoutePrefetch } from './lib/prefetch'
 import { ToastProvider } from './context/ToastContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { RoastModeProvider } from './context/RoastModeContext'
@@ -20,7 +20,6 @@ import {
   SettingsSkeleton,
   ProfileSkeleton,
   BillingSkeleton,
-  ApiKeysSkeleton,
   PlaybooksSkeleton,
   PRDescriptionSkeleton,
   NotificationsSkeleton,
@@ -31,8 +30,9 @@ import {
   ExploreResultSkeleton,
   ChatAreaSkeleton,
 } from './components/ui/Skeleton'
-import ProtectedRoute from './components/auth/ProtectedRoute'
-import Layout from './components/layout/Layout'
+import ProtectedRoute, { AuthenticatedLayoutFallback } from './components/auth/ProtectedRoute'
+const Layout = lazy(() => import('./components/layout/Layout'))
+const WorkspaceProviders = lazy(() => import('./components/providers/WorkspaceProviders'))
 import GlobalBackground from './components/ui/GlobalBackground'
 import RoleGuard from './components/auth/RoleGuard'
 
@@ -60,7 +60,6 @@ const TeamPage = lazy(() => import('./pages/TeamPage'))
 const PlaybooksPage = lazy(() => import('./pages/PlaybooksPage'))
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
-const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
 const WhyOnrampPage = lazy(() => import('./pages/WhyOnrampPage'))
 const PRDescriptionPage = lazy(() => import('./pages/PRDescriptionPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
@@ -111,13 +110,14 @@ const AutonomousCodingPage = lazy(() => import('./pages/AutonomousCodingPage'))
 const RampPage = lazy(() => import('./pages/RampPage'))
 
 export default function App() {
+  useEffect(() => installRoutePrefetch(), [])
+
   return (
     <BrowserRouter>
       <AuthProvider>
         <RealTimeProvider>
         <RoastModeProvider>
         <FeatureFlagProvider>
-        <TransitionProvider>
           <ToastProvider>
           <ThemeProvider>
           <GlobalBackground>
@@ -252,7 +252,13 @@ export default function App() {
 
               {/* ── Protected routes (authed + layout) ──────────── */}
               <Route element={<ProtectedRoute />}>
-                <Route element={<Layout />}>
+                <Route element={
+                  <Suspense fallback={<AuthenticatedLayoutFallback />}>
+                    <WorkspaceProviders>
+                      <Layout />
+                    </WorkspaceProviders>
+                  </Suspense>
+                }>
                   {/* Common Workspace Pages */}
                   <Route path="/explore" element={
                     <Suspense fallback={<ExploreResultSkeleton />}>
@@ -382,11 +388,6 @@ export default function App() {
                         <ErrorBoundary><BillingPage /></ErrorBoundary>
                       </Suspense>
                     } />
-                    <Route path="/api-keys" element={
-                      <Suspense fallback={<ApiKeysSkeleton />}>
-                        <ErrorBoundary><ApiKeysPage /></ErrorBoundary>
-                      </Suspense>
-                    } />
                     <Route path="/reports" element={
                       <Suspense fallback={<ReportSkeleton />}>
                         <ErrorBoundary><OnboardingReportPage /></ErrorBoundary>
@@ -416,13 +417,6 @@ export default function App() {
 
                     {/* Autonomous Coding Agent — moved to shared section below */}
 
-                    {/* Ramp Visibility — v1.4 wedge */}
-                    <Route path="/ramp" element={
-                      <Suspense fallback={<DashboardSkeleton />}>
-                        <ErrorBoundary><RampPage /></ErrorBoundary>
-                      </Suspense>
-                    } />
-
                     {/* Phase 5: Drill-Down Views */}
                     <Route path="/member/:userId" element={
                       <Suspense fallback={<PageLoadingFallback />}>
@@ -432,6 +426,15 @@ export default function App() {
                     <Route path="/module/:moduleName" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><ModuleHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+                  </Route>
+
+                  {/* Ramp — senior roles + HR */}
+                  <Route element={<RoleGuard allowedRoles={['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr']} />}>
+                    <Route path="/ramp" element={
+                      <Suspense fallback={<DashboardSkeleton />}>
+                        <ErrorBoundary><RampPage /></ErrorBoundary>
                       </Suspense>
                     } />
                   </Route>
@@ -505,7 +508,6 @@ export default function App() {
           </GlobalBackground>
           </ThemeProvider>
           </ToastProvider>
-        </TransitionProvider>
         </FeatureFlagProvider>
         </RoastModeProvider>
         </RealTimeProvider>

@@ -1,7 +1,7 @@
 import os
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 
 from app.api.v1.auth import get_current_user
@@ -21,10 +21,23 @@ logger = logging.getLogger("onramp.invites")
 router = APIRouter(prefix="/invites", tags=["team-invites"])
 
 
+_ALLOWED_INVITE_ROLES = {
+    "member", "junior_dev", "developer", "tester", "hr",
+    "senior", "senior_dev",
+}
+
+
 class CreateInviteRequest(BaseModel):
     email: str
     role: str = "member"
     message: Optional[str] = None
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        if v not in _ALLOWED_INVITE_ROLES:
+            raise ValueError(f"Invalid invite role '{v}'")
+        return v
 
 
 @router.post("/teams/{team_id}")
@@ -60,7 +73,6 @@ async def create_team_invite(
             metadata={
                 "team_id": team_id,
                 "invite_id": invite.get("id"),
-                "token": invite.get("token"),
             },
             team_id=team_id,
         )
@@ -86,6 +98,7 @@ async def list_team_invites(
     request: Request,
     team_id: str,
     user: dict = Depends(get_current_user),
+    _: None = require_minimum_role("senior"),
 ):
     """List all invites for a team. Senior+ only."""
     invites = await get_team_invites(team_id)
@@ -101,6 +114,10 @@ async def cancel_team_invite(
     _: None = require_minimum_role("senior"),
 ):
     """Cancel a pending invite."""
+    from app.services.postgres_db import get_storage as _gs
+    invite = await _gs().get_document("team_invites", invite_id)
+    if not invite or invite.get("team_id") != team_id:
+        raise HTTPException(status_code=404, detail="Invite not found or already resolved")
     success = await cancel_invite(invite_id)
     if not success:
         raise HTTPException(status_code=404, detail="Invite not found or already resolved")
@@ -120,7 +137,9 @@ async def accept_team_invite(
     if invite:
         user_email = (user.get("email") or "").lower()
         invite_email = (invite.get("email") or "").lower()
-        if user_email and invite_email and user_email != invite_email:
+        if not user_email or not invite_email:
+            raise HTTPException(status_code=403, detail="Cannot verify invite ownership")
+        if user_email != invite_email:
             raise HTTPException(
                 status_code=403,
                 detail="This invite was sent to a different email address",

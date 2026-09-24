@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '../ui/Sidebar'
 import TopBar from '../ui/TopBar'
 import Seo from '../seo/Seo'
-import TransitionOverlay from '../ui/TransitionOverlay'
 import PageTransition from '../ui/page-transition'
 import KeyboardShortcutHelp from '../ui/KeyboardShortcutHelp'
 import CommandPalette from '../ui/command-palette'
@@ -27,7 +26,6 @@ export default function Layout() {
     >
       {/* App shell is behind auth — keep it out of search indexes. */}
       <Seo title="Onramp" noindex />
-      <TransitionOverlay />
       <PageTransition>
         <Outlet />
       </PageTransition>

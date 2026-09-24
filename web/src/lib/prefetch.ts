@@ -13,10 +13,13 @@
 
 type Loader = () => Promise<unknown>
 
+let listenerCleanup: (() => void) | null = null
+
 const loaders: Record<string, Loader> = {
   // ── Public / marketing ──────────────────────────────
   '/': () => import('../pages/LandingPage'),
   '/why-onramp': () => import('../pages/WhyOnrampPage'),
+  '/compare': () => import('../pages/ComparisonPage'),
   '/changelog': () => import('../pages/ChangelogPage'),
   '/docs': () => import('../pages/DocsPage'),
   '/support': () => import('../pages/SupportPage'),
@@ -65,7 +68,6 @@ const loaders: Record<string, Loader> = {
   '/playbooks': () => import('../pages/PlaybooksPage'),
   '/marketplace': () => import('../pages/MarketplacePage'),
   '/billing': () => import('../pages/BillingPage'),
-  '/api-keys': () => import('../pages/ApiKeysPage'),
   '/reports': () => import('../pages/OnboardingReportPage'),
   '/reviews': () => import('../pages/ReviewQueuePage'),
   '/code-health': () => import('../pages/CodeHealthPage'),
@@ -99,14 +101,16 @@ const fired = new Set<Loader>()
 export function prefetchRoute(pathname: string): void {
   if (!pathname) return
 
-  let loader: Loader | undefined = loaders[pathname]
+  // Hashes stay on the current document; queries identify data, not a page chunk.
+  const routePath = pathname.split(/[?#]/, 1)[0] || '/'
+  let loader: Loader | undefined = loaders[routePath]
 
   // Dynamic routes — match the longest registered prefix, e.g. `/member/…`.
   if (!loader) {
     let best: Loader | undefined
     let bestLen = -1
     for (const [key, l] of Object.entries(loaders)) {
-      if (key.endsWith('/') && pathname.startsWith(key) && key.length > bestLen) {
+      if (key.endsWith('/') && routePath.startsWith(key) && key.length > bestLen) {
         best = l
         bestLen = key.length
       }
@@ -122,6 +126,12 @@ export function prefetchRoute(pathname: string): void {
   }
 }
 
+/** Prefetch the persistent authenticated shell before the first protected page. */
+export function prefetchWorkspaceShell(): void {
+  void import('../components/providers/WorkspaceProviders').catch(() => {})
+  void import('../components/layout/Layout').catch(() => {})
+}
+
 /** Prefetch several routes at once (e.g. warm-up after login). */
 export function prefetchRoutes(paths: string[]): void {
   for (const p of paths) prefetchRoute(p)
@@ -133,4 +143,31 @@ export function prefetchProps(to: string) {
     onMouseEnter: () => prefetchRoute(to),
     onFocus: () => prefetchRoute(to),
   }
+}
+
+/**
+ * Catch internal links that don't use prefetchProps (cards, inline text links,
+ * command-palette results, and links added later). Pointer-down is the last
+ * moment before React Router starts rendering, so its import promise is shared
+ * with the route's lazy loader instead of starting after it.
+ */
+export function installRoutePrefetch(): () => void {
+  if (listenerCleanup || typeof window === 'undefined') return listenerCleanup ?? (() => {})
+
+  const prefetchLink = (event: Event) => {
+    const mouse = event as MouseEvent
+    if (mouse.button !== undefined && mouse.button !== 0) return
+
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const link = target.closest('a[href]')
+    if (!(link instanceof HTMLAnchorElement)) return
+    if (link.origin !== window.location.origin || link.target === '_blank' || link.hasAttribute('download')) return
+
+    prefetchRoute(link.pathname)
+  }
+
+  document.addEventListener('pointerdown', prefetchLink, { passive: true })
+  listenerCleanup = () => document.removeEventListener('pointerdown', prefetchLink)
+  return listenerCleanup
 }

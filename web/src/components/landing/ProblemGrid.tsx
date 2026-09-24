@@ -123,7 +123,7 @@ const TILES: Tile[] = [
 
 export default function ProblemGrid() {
   return (
-    <section id="the-gap" className="scroll-mt-20 border-t border-seam bg-base">
+    <section id="the-gap" className="landing-section scroll-mt-20 border-t border-seam bg-base">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="The problem"

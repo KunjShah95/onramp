@@ -105,7 +105,7 @@ export default function RetentionCurvesPanel({ teamId }: { teamId?: string }) {
                 </p>
               </div>
               <div className="h-44 bg-plot-grid rounded-tile">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                   <LineChart data={chartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="2 4" stroke={SIG.grid} />
                     <XAxis dataKey="day" tick={{ fill: SIG.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} />

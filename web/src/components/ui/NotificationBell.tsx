@@ -94,15 +94,31 @@ export default function NotificationBell() {
     return unsub
   }, [onEvent])
 
-  // Poll for unread count (default 2 min, configurable via VITE_NOTIFICATION_POLL_INTERVAL)
+  // Poll for unread count (default 2 min, configurable via VITE_NOTIFICATION_POLL_INTERVAL).
+  // WebSocket events are the primary source; polling is only a recovery path and
+  // is paused while the tab is hidden.
   useEffect(() => {
     const raw = import.meta.env.VITE_NOTIFICATION_POLL_INTERVAL
     const parsed = raw != null && raw !== '' ? Number(raw) : 120_000
     const intervalMs = Number.isFinite(parsed) ? parsed : 120_000
-    if (intervalMs <= 0) { fetchUnreadCount(); return }
-    fetchUnreadCount()
-    const interval = setInterval(fetchUnreadCount, intervalMs)
-    return () => clearInterval(interval)
+
+    const pollIfVisible = () => {
+      if (document.visibilityState === 'visible') void fetchUnreadCount()
+    }
+
+    if (intervalMs <= 0) {
+      void fetchUnreadCount()
+      document.addEventListener('visibilitychange', pollIfVisible)
+      return () => document.removeEventListener('visibilitychange', pollIfVisible)
+    }
+
+    void fetchUnreadCount()
+    const interval = setInterval(pollIfVisible, intervalMs)
+    document.addEventListener('visibilitychange', pollIfVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', pollIfVisible)
+    }
   }, [fetchUnreadCount])
 
   // Fetch full list when dropdown opens

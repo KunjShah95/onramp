@@ -71,7 +71,7 @@ export default function AuditLogPage() {
         event_type: filterType || undefined,
         actor_id: filterActor || undefined,
         limit: PAGE_SIZE * (page + 1),
-      })
+      }, ctrl.signal)
       if (!ctrl.signal.aborted) {
         setEvents(result.events)
         setTotalCount(result.count)

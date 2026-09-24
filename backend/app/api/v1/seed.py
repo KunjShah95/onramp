@@ -129,10 +129,12 @@ async def _repo_health_scores(storage) -> list:
     return scores
 
 
-async def _billing_rollup(storage) -> dict:
-    """Real subscription rollup: MRR and status counts across all teams."""
+async def _billing_rollup(storage, team_ids: list) -> dict:
+    """Subscription rollup scoped to the caller's own teams."""
     try:
-        subs = await storage.list_documents(BillingService.COLLECTION)
+        all_subs = await storage.list_documents(BillingService.COLLECTION)
+        team_id_set = set(str(t) for t in team_ids)
+        subs = [s for s in all_subs if str(s.get("team_id", "")) in team_id_set]
     except Exception:
         subs = []
     mrr = 0
@@ -264,7 +266,7 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         portal = "dev"
 
     elif role in ("admin", "ceo", "cto"):
-        billing = await _billing_rollup(storage)
+        billing = await _billing_rollup(storage, team_ids)
         data = {
             **base_data,
             **billing,

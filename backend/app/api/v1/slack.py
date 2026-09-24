@@ -2,8 +2,9 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from app.api.v1.auth import get_current_user
 from app.services.slack_service import SlackService, format_daily_update, post_to_slack
 from app.slack_bot import SlackBot
 from app.agents import FirstPRAccelerator
@@ -35,7 +36,7 @@ class SlackCommandRequest(BaseModel):
 
 
 @router.post("/digest")
-async def send_digest(request: SlackDigestRequest, req: Request):
+async def send_digest(request: SlackDigestRequest, req: Request, _user: dict = Depends(get_current_user)):
     llm = getattr(req.app.state, "llm", None)
     slack = SlackService(request.webhook_url)
 
@@ -54,14 +55,15 @@ async def send_digest(request: SlackDigestRequest, req: Request):
 
 
 @router.post("/command")
-async def handle_slash_command(request: SlackCommandRequest):
+async def handle_slash_command(request: SlackCommandRequest, _user: dict = Depends(get_current_user)):
+    safe_text = request.text.replace("\n", " ").replace("\r", " ")[:200]
     return {
         "response_type": "in_channel",
-        "text": f"Onramp analysis for: {request.text}",
+        "text": "Onramp analysis queued.",
         "attachments": [
             {
                 "text": "Use the Onramp API to analyze this repository.\n"
-                f"POST /api/v1/explore/analyze with repo_url: {request.text}",
+                f"POST /api/v1/explore/analyze with repo_url: {safe_text}",
                 "color": "#4361ee",
             }
         ],

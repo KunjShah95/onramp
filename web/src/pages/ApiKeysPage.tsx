@@ -1,389 +1,301 @@
 import { useState, useEffect, useCallback } from 'react'
-
 import {
-  Key,
   Plus,
   Trash,
-  Copy,
   Check,
   X,
-  Clock,
   Spinner,
-  Terminal,
   ShieldCheck,
-  ArrowsClockwise,
+  Eye,
+  EyeSlash,
+  PencilSimple,
+  CheckCircle,
+  Circle,
   Warning,
 } from '@phosphor-icons/react'
-import ConsolePanel from '../components/ui/console-panel'
 import { PageHeader } from '../components/ui/page-header'
-import { EmptyState } from '../components/ui/empty-state'
-import { ApiKeysSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
-import { listApiKeys, createApiKey, revokeApiKey, rotateApiKey } from '../lib/api'
-import type { ApiKey } from '../lib/api'
-import { cn, daysUntilExpiry, formatKeyDate } from '../lib/utils'
+import {
+  listProviderKeys,
+  setProviderKey,
+  deleteProviderKey,
+  type ProviderKeyInfo,
+} from '../lib/api'
+import { PROVIDER_OPTIONS } from '../lib/providers'
+import { cn } from '../lib/utils'
 
+const PROVIDER_COLORS: Record<string, string> = {
+  openai:      'bg-[#10a37f]/10 text-[#10a37f] border-[#10a37f]/20',
+  anthropic:   'bg-[#c96a47]/10 text-[#c96a47] border-[#c96a47]/20',
+  gemini:      'bg-[#4285f4]/10 text-[#4285f4] border-[#4285f4]/20',
+  groq:        'bg-[#f55036]/10 text-[#f55036] border-[#f55036]/20',
+  openrouter:  'bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20',
+  mistral:     'bg-[#ff7000]/10 text-[#ff7000] border-[#ff7000]/20',
+  deepseek:    'bg-[#0ea5e9]/10 text-[#0ea5e9] border-[#0ea5e9]/20',
+  nvidia:      'bg-[#76b900]/10 text-[#76b900] border-[#76b900]/20',
+  cohere:      'bg-[#39594d]/10 text-[#39594d] border-[#39594d]/20',
+  together:    'bg-[#6366f1]/10 text-[#6366f1] border-[#6366f1]/20',
+  fireworks:   'bg-[#ef4444]/10 text-[#ef4444] border-[#ef4444]/20',
+  perplexity:  'bg-[#20b2aa]/10 text-[#20b2aa] border-[#20b2aa]/20',
+  azure:       'bg-[#0078d4]/10 text-[#0078d4] border-[#0078d4]/20',
+}
 
-const TIERS = ['free', 'pro', 'team', 'enterprise']
+const DEFAULT_COLOR = 'bg-ink/5 text-ink-muted border-seam'
+
+function providerColor(id: string) {
+  return PROVIDER_COLORS[id] ?? DEFAULT_COLOR
+}
+
+interface EditState {
+  providerId: string
+  value: string
+  saving: boolean
+  show: boolean
+}
 
 export default function ApiKeysPage() {
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [newTier, setNewTier] = useState('free')
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKeyCostLimit, setNewKeyCostLimit] = useState('')
-  const [newKeyExpiry, setNewKeyExpiry] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [revealedRaw, setRevealedRaw] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [rotating, setRotating] = useState<string | null>(null)
-  const [revealedRotatedRaw, setRevealedRotatedRaw] = useState<string | null>(null)
-
-  // Earliest selectable expiry date (today) — past dates mean "no expiry".
-  const today = new Date().toISOString().split('T')[0]
-
-  const toast = useToast()
   const { activeTeamId, role } = useAuth()
+  const toast = useToast()
   const orgName = activeTeamId || 'default'
 
-  // Button-level guard (mirrors DeveloperPortal canManageKeys): the route
-  // guard only requires minRole="senior", so junior key-holders inside that
-  // band would otherwise reach create/revoke. Backend enforces too — this
-  // keeps the UI honest.
-  const canManageKeys = !!role && KEY_MANAGER_ROLES.includes(role)
-  const noKeyPermission = 'Only key managers can do this — ask your admin'
+  const canManage = !!role && KEY_MANAGER_ROLES.includes(role)
+  const noPermMsg = 'Only key managers can modify provider keys'
 
-  const fetchKeys = useCallback(async () => {
-    setLoading(true); setError('')
+  const [providerMap, setProviderMap] = useState<Record<string, ProviderKeyInfo>>({})
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState('')
+  const [edit, setEdit] = useState<EditState | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true); setFetchError('')
     try {
-      const data = await listApiKeys(orgName)
-      setKeys(data.keys ?? [])
+      const res = await listProviderKeys(orgName)
+      const map: Record<string, ProviderKeyInfo> = {}
+      for (const p of res.providers) map[p.provider] = p
+      setProviderMap(map)
     } catch (err: any) {
-      setError(err.message || 'Failed to load API keys.')
+      setFetchError(err.message || 'Failed to load provider keys.')
     } finally {
       setLoading(false)
     }
   }, [orgName])
 
-  useEffect(() => {
-    fetchKeys()
-  }, [fetchKeys])
+  useEffect(() => { load() }, [load])
 
-  const handleCreate = async () => {
-    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
-    setCreating(true)
-    const raw = Number(newKeyCostLimit.trim() || '')
-    const costLimit = Number.isFinite(raw) && raw > 0 ? raw : undefined
+  const openEdit = (providerId: string) => {
+    if (!canManage) { toast.error('Not permitted', noPermMsg); return }
+    setEdit({ providerId, value: '', saving: false, show: false })
+  }
+
+  const saveEdit = async () => {
+    if (!edit || !edit.value.trim()) return
+    setEdit((e) => e && { ...e, saving: true })
     try {
-      const res = await createApiKey(orgName, newTier, newKeyName.trim() || undefined, costLimit, daysUntilExpiry(newKeyExpiry))
-      setRevealedRaw(res.raw_key)
-      await fetchKeys()
-      toast.success('API key created', 'Copy it now · it will not be shown again.')
+      const info = await setProviderKey(orgName, edit.providerId, edit.value.trim())
+      setProviderMap((m) => ({ ...m, [edit.providerId]: info }))
+      toast.success('Key saved', `${PROVIDER_OPTIONS.find((p) => p.id === edit.providerId)?.label} key configured.`)
+      setEdit(null)
     } catch (err: any) {
-      toast.error('Could not create key', err.message)
+      toast.error('Could not save key', err.message)
+      setEdit((e) => e && { ...e, saving: false })
+    }
+  }
+
+  const handleDelete = async (providerId: string) => {
+    if (!canManage) { toast.error('Not permitted', noPermMsg); return }
+    setDeleting(providerId)
+    try {
+      await deleteProviderKey(orgName, providerId)
+      setProviderMap((m) => {
+        const next = { ...m }
+        delete next[providerId]
+        return next
+      })
+      toast.success('Key removed', `${PROVIDER_OPTIONS.find((p) => p.id === providerId)?.label} key deleted.`)
+    } catch (err: any) {
+      toast.error('Could not delete', err.message)
     } finally {
-      setCreating(false)
+      setDeleting(null)
     }
   }
 
-  const handleRotate = async (keyId: string) => {
-    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
-    setRotating(keyId)
-    try {
-      const res = await rotateApiKey(keyId)
-      setRevealedRotatedRaw(res.raw_key)
-      await fetchKeys()
-      toast.success('API key rotated', 'Copy the new key · the old key has been revoked.')
-    } catch (err: any) {
-      toast.error('Could not rotate key', err.message)
-    } finally {
-      setRotating(null)
-    }
-  }
-
-  const handleRevoke = async (keyId: string) => {
-    if (!canManageKeys) { toast.error('Not permitted', noKeyPermission); return }
-    const prev = keys
-    setKeys((cur) => cur.filter((k) => k.key_id !== keyId))
-    try {
-      await revokeApiKey(keyId)
-      toast.success('API key revoked')
-    } catch (err: any) {
-      setKeys(prev)
-      toast.error('Could not revoke', err.message)
-    }
-  }
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const configuredCount = Object.values(providerMap).filter((p) => p.configured).length
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 relative">
-      {/* ── Mission header ── */}
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header */}
       <div className="flex items-start justify-between gap-6">
         <PageHeader
-          eyebrow="Folio · API keys"
-          title="API Keys"
-          subtitle="Programmatic access · keep keys secure, treat them like passwords."
+          eyebrow="Manage · AI Providers"
+          title="Provider settings"
+          subtitle={
+            loading
+              ? 'Loading...'
+              : `${configuredCount} of ${PROVIDER_OPTIONS.length} providers configured — these keys power the LLM router.`
+          }
           flush
         />
-        <button onClick={() => { setRevealedRaw(null); setShowCreate(true) }} disabled={!canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary flex items-center gap-2 shrink-0 disabled:opacity-40">
-          <Plus className="w-4 h-4" weight="bold" />
-          Create Key
-        </button>
       </div>
 
-      {error && (
+      {fetchError && (
         <div className="px-4 py-3 rounded-tile bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchKeys} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
+          <span>{fetchError}</span>
+          <button onClick={load} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </div>
       )}
 
-      {loading && <div><ApiKeysSkeleton /></div>}
-
-      {!loading && keys.length === 0 && (
-        <div>
-          <EmptyState
-            icon={<Key className="w-10 h-10 text-ink-disabled/40" weight="duotone" />}
-            title="No API keys"
-            description="Create your first key to get started with API access."
-            action={
-              <button onClick={() => setShowCreate(true)} disabled={!canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary text-caption px-4 py-1.5 disabled:opacity-40">
-                Create Key
-              </button>
-            }
-          />
+      {!canManage && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-tile bg-warning-muted border border-warning/25 text-warning text-caption">
+          <Warning className="w-4 h-4 shrink-0" weight="fill" />
+          Read-only view — key managers (admin / CTO / CEO) can add or remove keys.
         </div>
       )}
 
-      {!loading && keys.length > 0 && (
-        <div className="space-y-3">
-          {keys.map((apiKey) => (
-            <div key={apiKey.key_id} className="rounded-card border border-seam bg-panel p-5 hover:border-go/25 transition-colors">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-body font-medium text-ink font-code">
-                      {apiKey.org_name}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-tile text-[10px] font-medium uppercase tracking-wider bg-mission/15 text-mission">
-                      {apiKey.tier}
-                    </span>
-                    {!apiKey.is_active && (
-                      <span className="px-2 py-0.5 rounded-tile text-[10px] font-medium bg-well text-ink-muted">revoked</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-caption text-ink-muted flex-wrap">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      Created {formatKeyDate(apiKey.created_at)}
-                    </span>
-                    <span>{apiKey.usage_count} credits used</span>
-                    {apiKey.last_used_at && (
-                      <span>· last used {formatKeyDate(apiKey.last_used_at)}</span>
-                    )}
-                    {apiKey.expires_at && (
-                      <span>· expires {formatKeyDate(apiKey.expires_at)}</span>
-                    )}
-                  </div>
-                  {/* Expiry warning banner */}
-                  {apiKey.is_active && apiKey.approaching_expiry && apiKey.days_until_expiry != null && (
-                    <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-tile bg-warning-muted border border-warning/25 text-warning">
-                      <Warning className="w-3.5 h-3.5 shrink-0" weight="fill" />
-                      <span className="text-caption font-medium">
-                        Expires in {apiKey.days_until_expiry} day{apiKey.days_until_expiry !== 1 ? 's' : ''} — rotate to avoid disruption
-                      </span>
-                    </div>
-                  )}
-                  {apiKey.is_active && apiKey.is_expired && (
-                    <div className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-tile bg-abort/10 border border-abort/25 text-abort">
-                      <Warning className="w-3.5 h-3.5 shrink-0" weight="fill" />
-                      <span className="text-caption font-medium">
-                        This key has expired and will no longer authenticate
-                      </span>
-                    </div>
-                  )}
+      {/* Provider grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {PROVIDER_OPTIONS.map((provider) => {
+          const info = providerMap[provider.id]
+          const configured = !!info?.configured
+          const isEditing = edit?.providerId === provider.id
+          const isDeleting = deleting === provider.id
+
+          return (
+            <div
+              key={provider.id}
+              className={cn(
+                'rounded-card border bg-panel p-4 transition-colors',
+                isEditing ? 'border-go/40' : 'border-seam hover:border-seam-strong'
+              )}
+            >
+              {/* Provider header */}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0', providerColor(provider.id))}>
+                    {provider.id.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="text-body-sm font-medium text-ink truncate">{provider.label}</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => handleRotate(apiKey.key_id)} disabled={!apiKey.is_active || rotating === apiKey.key_id || !canManageKeys} className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-go transition-colors disabled:opacity-30 disabled:hover:text-ink-muted" title={!canManageKeys ? noKeyPermission : 'Rotate (revoke + create new)'}>
-                    {rotating === apiKey.key_id ? (
-                      <Spinner className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <ArrowsClockwise className="w-4 h-4" />
-                    )}
-                  </button>
-                  <button onClick={() => handleRevoke(apiKey.key_id)} disabled={!apiKey.is_active || !canManageKeys} className="w-9 h-9 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30 disabled:hover:text-ink-muted" title={!canManageKeys ? noKeyPermission : 'Revoke'}>
-                    <Trash className="w-4 h-4" />
-                  </button>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {configured ? (
+                    <CheckCircle className="w-4 h-4 text-go" weight="fill" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-ink-disabled/40" />
+                  )}
+                  <span className={cn('text-caption', configured ? 'text-go' : 'text-ink-muted/50')}>
+                    {configured ? 'Active' : 'Not set'}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {/* Create Modal */}
-      
-        {showCreate && (
-          <>
-            <div className="fixed inset-0 bg-ink/50 z-40" onClick={() => !revealedRaw && setShowCreate(false)} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <ConsolePanel rail="Credentials" designator="CREATE KEY" status="go" className="w-full max-w-md p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-display-xs font-display font-medium text-ink">
-                    {revealedRaw ? 'Save your key' : 'Create API Key'}
-                  </h2>
-                  {!revealedRaw && (
+              {/* env var hint */}
+              <p className="text-caption text-ink-muted/50 font-code mb-3">{provider.envVar}</p>
+
+              {/* Last updated */}
+              {configured && info?.updated_at && (
+                <p className="text-caption text-ink-muted/60 mb-3">
+                  Updated {new Date(info.updated_at).toLocaleDateString()}
+                  {info.updated_by && ` · ${info.updated_by}`}
+                </p>
+              )}
+
+              {/* Edit form */}
+              {isEditing ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input
+                      autoFocus
+                      type={edit.show ? 'text' : 'password'}
+                      value={edit.value}
+                      onChange={(e) => setEdit((s) => s && { ...s, value: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Escape') setEdit(null)
+                      }}
+                      placeholder={`Paste ${provider.label} API key…`}
+                      className="input pr-9 font-code text-xs"
+                    />
                     <button
-                      onClick={() => setShowCreate(false)}
-                      className="w-8 h-8 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+                      type="button"
+                      onClick={() => setEdit((s) => s && { ...s, show: !s.show })}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
                     >
-                      <X className="w-4 h-4" />
+                      {edit.show ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEdit}
+                      disabled={edit.saving || !edit.value.trim()}
+                      className="btn btn-primary flex-1 flex items-center justify-center gap-1.5 text-caption py-1.5 disabled:opacity-40"
+                    >
+                      {edit.saving ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" weight="bold" />}
+                      {edit.saving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setEdit(null)}
+                      className="w-8 h-8 rounded-btn bg-well flex items-center justify-center text-ink-muted hover:text-ink shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEdit(provider.id)}
+                    disabled={!canManage}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-caption py-1.5 rounded-btn border border-seam bg-well text-ink-muted hover:text-ink hover:border-seam-strong transition-colors disabled:opacity-30"
+                    title={!canManage ? noPermMsg : configured ? `Update ${provider.label} key` : `Add ${provider.label} key`}
+                  >
+                    {configured
+                      ? <><PencilSimple className="w-3.5 h-3.5" /> Update</>
+                      : <><Plus className="w-3.5 h-3.5" weight="bold" /> Add key</>
+                    }
+                  </button>
+                  {configured && (
+                    <button
+                      onClick={() => handleDelete(provider.id)}
+                      disabled={!canManage || isDeleting}
+                      className="w-8 h-8 rounded-btn bg-well flex items-center justify-center text-ink-muted hover:text-abort transition-colors disabled:opacity-30"
+                      title={!canManage ? noPermMsg : `Remove ${provider.label} key`}
+                    >
+                      {isDeleting
+                        ? <Spinner className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash className="w-3.5 h-3.5" />
+                      }
                     </button>
                   )}
                 </div>
-
-                {revealedRaw ? (
-                  <div className="space-y-4">
-                    <p className="text-caption text-ink-muted">
-                      Copy this key now. For security, it will not be shown again.
-                    </p>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-tile bg-well border border-seam font-code text-xs text-ink-secondary break-all">
-                      <Terminal className="w-3.5 h-3.5 text-ink-muted shrink-0" />
-                      <code className="flex-1">{revealedRaw}</code>
-                      <button onClick={() => handleCopy(revealedRaw)} className="shrink-0 text-ink-muted hover:text-ink">
-                        {copied ? <Check className="w-4 h-4 text-go" weight="bold" /> : <Copy className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <button onClick={() => { setRevealedRaw(null); setShowCreate(false) }} className="btn btn-primary w-full">
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block overline text-ink-muted mb-2">Key Name</label>
-                      <input
-                        value={newKeyName}
-                        onChange={(e) => setNewKeyName(e.target.value)}
-                        placeholder="e.g., CI pipeline, staging, prod"
-                        className="input"
-                      />
-                    </div>
-                    <div>
-                      <label className="block overline text-ink-muted mb-2">
-                        Tier
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {TIERS.map((tier) => (
-                          <button
-                            key={tier}
-                            onClick={() => setNewTier(tier)}
-                            className={cn(
-                              'px-3 py-1.5 rounded-tile text-xs font-medium transition-all border',
-                              newTier === tier
-                                ? 'bg-go/15 text-go border-go/30'
-                                : 'bg-well text-ink-muted border-seam hover:border-seam-strong'
-                            )}
-                          >
-                            {tier}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block overline text-ink-muted mb-2">Cost Limit <span className="text-ink-muted/60 normal-case">(credits / month, optional)</span></label>
-                      <input
-                        value={newKeyCostLimit}
-                        onChange={(e) => setNewKeyCostLimit(e.target.value.replace(/[^0-9]/g, ''))}
-                        type="number" min={0}
-                        placeholder="e.g., 5000 · blank for no limit"
-                        className="input"
-                      />
-                    </div>
-                    <div>
-                      <label className="block overline text-ink-muted mb-2">Expires On <span className="text-ink-muted/60 normal-case">(optional)</span></label>
-                      <input
-                        value={newKeyExpiry}
-                        onChange={(e) => setNewKeyExpiry(e.target.value)}
-                        type="date" min={today}
-                        className="input"
-                      />
-                      <p className="text-caption text-ink-muted mt-1.5">The key stops working after this date. Leave blank for no expiry.</p>
-                    </div>
-                    <button onClick={handleCreate} disabled={creating || !canManageKeys} title={!canManageKeys ? noKeyPermission : ''} className="btn btn-primary w-full flex items-center justify-center gap-2">
-                      {creating ? <Spinner className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" weight="bold" />}
-                      {creating ? 'Creating...' : 'Create Key'}
-                    </button>
-                  </div>
-                )}
-              </ConsolePanel>
+              )}
             </div>
-          </>
-        )}
-      
+          )
+        })}
+      </div>
 
-      {/* Rotated Key Modal */}
-      
-        {revealedRotatedRaw && (
-          <>
-            <div className="fixed inset-0 bg-ink/50 z-40" onClick={() => setRevealedRotatedRaw(null)} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <ConsolePanel rail="Credentials" designator="ROTATED KEY" status="go" className="w-full max-w-md p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-display-xs font-display font-medium text-ink">
-                    New key (old key revoked)
-                  </h2>
-                  <button
-                    onClick={() => setRevealedRotatedRaw(null)}
-                    className="w-8 h-8 rounded-tile bg-well flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <p className="text-caption text-ink-muted">
-                    Copy this key now. The old key has been revoked and the new key will not be shown again.
-                  </p>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-tile bg-well border border-seam font-code text-xs text-ink-secondary break-all">
-                    <Terminal className="w-3.5 h-3.5 text-ink-muted shrink-0" />
-                    <code className="flex-1">{revealedRotatedRaw}</code>
-                    <button onClick={() => handleCopy(revealedRotatedRaw)} className="shrink-0 text-ink-muted hover:text-ink">
-                      {copied ? <Check className="w-4 h-4 text-go" weight="bold" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <button onClick={() => setRevealedRotatedRaw(null)} className="btn btn-primary w-full">
-                    Done
-                  </button>
-                </div>
-              </ConsolePanel>
-            </div>
-          </>
-        )}
-      
+      {/* Loading overlay */}
+      {loading && (
+        <div className="flex items-center justify-center py-12 text-ink-muted gap-3">
+          <Spinner className="w-5 h-5 animate-spin" />
+          <span className="text-body-sm">Loading provider keys…</span>
+        </div>
+      )}
 
-      {/* Security Note */}
+      {/* Security note */}
       <div className="rounded-card border border-mission/20 bg-panel p-5">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-tile bg-mission/10 flex items-center justify-center shrink-0 mt-0.5">
             <ShieldCheck className="w-4 h-4 text-mission" weight="fill" />
           </div>
           <div>
-            <h3 className="text-body-sm font-medium text-ink mb-1">
-              Security Best Practices
-            </h3>
+            <h3 className="text-body-sm font-medium text-ink mb-1">Security</h3>
             <ul className="text-caption text-ink-muted space-y-1">
-              <li>• Use specific tiers · grant only the permissions needed</li>
-              <li>• Rotate keys regularly, especially for production use</li>
-              <li>• Never share keys in client-side code or version control</li>
-              <li>• Revoke unused or compromised keys immediately</li>
+              <li>• Keys are stored encrypted — never exposed in API responses</li>
+              <li>• The LLM router uses these keys for your team only (BYOK)</li>
+              <li>• Configure OpenRouter as a single fallback to cover all providers</li>
+              <li>• Revoke and replace any key you believe has been compromised</li>
             </ul>
           </div>
         </div>

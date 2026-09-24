@@ -11,7 +11,7 @@ const CARD = 'rounded-md border border-seam bg-panel p-6'
 
 export default function MetricsBoard() {
   return (
-    <section id="metrics" className="scroll-mt-20 border-t border-seam bg-base">
+    <section id="metrics" className="landing-section scroll-mt-20 border-t border-seam bg-base">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="Results"

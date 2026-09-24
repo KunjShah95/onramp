@@ -1229,6 +1229,14 @@
     color: var(--ink);
   }
 
+  /* Let below-the-fold marketing sections skip layout/paint until they near
+     the viewport. Intrinsic sizes prevent scrollbar jumps while preserving
+     normal document flow and anchor navigation. */
+  .landing-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 720px;
+  }
+
   .landing-premium .font-display {
     font-family: 'Space Mono', ui-monospace, monospace;
     letter-spacing: -0.02em;

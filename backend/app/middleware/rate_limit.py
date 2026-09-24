@@ -11,11 +11,12 @@ In-memory fallback per-process is accurate only within a single worker.
 Production deployments MUST set REDIS_URL to enforce global limits.
 """
 
+import asyncio
 import os
 import time
 import math
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -71,6 +72,10 @@ def _resolve_rule(group: str) -> RateLimitRule:
     base = DEFAULT_RULES[group]
     env_key = f"RATE_LIMIT_{group.upper()}"
     override = os.getenv(env_key)
+    # Keep the central legacy setting effective for the default API bucket.
+    # Group-specific RATE_LIMIT_API still takes precedence when present.
+    if group == "api" and not override:
+        override = os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE")
     if override:
         try:
             parts = override.split(",")
@@ -159,17 +164,19 @@ class RedisTokenBucket:
 
         if tokens >= cost then
             tokens = tokens - cost
-            redis.call("HSET", key, "tokens", tokens, "last_refill", now)
+            redis.call("HSET", key, "tokens", tokens)
+            redis.call("HSET", key, "last_refill", now)
             redis.call("EXPIRE", key, math.ceil(capacity / refill_rate) * 2)
             return 1
         end
         return 0
         """
-        try:
-            return bool(await redis.eval(script, 1, key, rule.limit, rule.effective_refill, time.time()))
-        except Exception as e:
-            logger.warning("Redis token-bucket error: %s", e)
-            return False  # fail closed — deny on Redis error (secure default)
+        # Let Redis failures propagate to the middleware. The middleware owns
+        # the fallback policy; returning False here would turn a backend outage
+        # into a misleading 429 response for every endpoint.
+        return bool(await redis.eval(
+            script, 1, key, rule.limit, rule.effective_refill, time.time()
+        ))
 
 
 # ── Redis sliding window log (sorted set) ─────────────────────────────────
@@ -206,15 +213,14 @@ class RedisSlidingWindowLog:
         now = time.time()
         # Unique member so concurrent requests in the same tick don't collide.
         member = f"{now}:{os.urandom(6).hex()}"
-        try:
-            allowed = await redis.eval(
-                RedisSlidingWindowLog._SCRIPT, 1, key,
-                now, rule.window, rule.limit, member,
-            )
-            return bool(allowed)
-        except Exception as e:
-            logger.warning("Redis sliding-window error: %s", e)
-            return False  # fail closed — deny on Redis error (secure default)
+        # Let Redis failures propagate to the middleware. The middleware owns
+        # the fallback policy; returning False here would turn a backend outage
+        # into a misleading 429 response for every endpoint.
+        allowed = await redis.eval(
+            RedisSlidingWindowLog._SCRIPT, 1, key,
+            now, rule.window, rule.limit, member,
+        )
+        return bool(allowed)
 
 
 # ── Middleware ──────────────────────────────────────────────────────────────
@@ -247,6 +253,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     SKIP_PATHS = frozenset({
         "/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json",
+        "/api/v1/explore/health",
     })
 
     def __init__(self, app, requests_per_minute: int = 200):
@@ -258,7 +265,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.trust_proxy = os.getenv("TRUST_PROXY", "false").lower() == "true"
         self.redis_url = os.getenv("REDIS_URL") or None
         self._redis = None
-        self._redis_init = False
+        self._redis_retry_at = 0.0
+        self._redis_lock = asyncio.Lock()
+        self.is_production = os.getenv("ENV", "development").strip().lower() == "production"
+        # In production, a dead Redis must not silently switch to a per-process
+        # limiter: that would allow a multi-worker deployment to bypass the
+        # configured global limit. Development keeps the fail-open fallback for
+        # a usable local environment.
+        self.redis_fail_closed = self.is_production and os.getenv(
+            "RATE_LIMIT_REDIS_FAIL_OPEN", "false"
+        ).strip().lower() not in {"1", "true", "yes", "on"}
 
         # In-memory state stores
         self._tb_buckets: dict[str, InMemoryTokenBucket] = {}      # ip -> bucket
@@ -267,7 +283,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._last_tb_sweep: float = 0
         self._last_sw_sweep: int = 0
 
-        if os.getenv("ENV") == "production" and not self.redis_url:
+        if self.is_production and not self.redis_url:
             raise RuntimeError(
                 "REDIS_URL required when ENV=production — in-memory rate "
                 "limiting is per-worker and does not enforce global limits."
@@ -276,21 +292,67 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     # ── Redis lazy init ────────────────────────────────────────────────────
 
     async def _get_redis(self):
-        if self._redis_init:
+        if self._redis is not None:
             return self._redis
-        self._redis_init = True
-        if not self.redis_url:
+        if not self.redis_url or time.monotonic() < self._redis_retry_at:
             return None
+
+        # Multiple requests can arrive together after startup or a Redis
+        # restart. Serialize connection attempts so they do not create a burst
+        # of clients and so a successful connection is shared by all requests.
+        async with self._redis_lock:
+            if self._redis is not None:
+                return self._redis
+            if not self.redis_url or time.monotonic() < self._redis_retry_at:
+                return None
+
+            client = None
+            try:
+                import redis.asyncio as aioredis
+                # Use RESP2 for compatibility with older Redis-compatible
+                # servers. redis-py defaults to RESP3 and sends HELLO, which
+                # fails on Redis 3.x even though basic commands work.
+                client = aioredis.from_url(
+                    self.redis_url,
+                    encoding="utf-8",
+                    decode_responses=True,
+                    protocol=2,
+                )
+                await client.ping()
+                self._redis = client
+                self._redis_retry_at = 0.0
+                logger.info("Rate limiter using Redis backend.")
+            except Exception as exc:
+                self._redis = None
+                self._redis_retry_at = time.monotonic() + 5.0
+                logger.warning(
+                    "Redis unavailable (%s): %s",
+                    "production requests will fail closed" if self.redis_fail_closed else "using in-memory fallback",
+                    exc,
+                )
+                if client is not None:
+                    try:
+                        close = getattr(client, "aclose", None) or client.close
+                        result = close()
+                        if result is not None and hasattr(result, "__await__"):
+                            await result
+                    except Exception:
+                        logger.debug("Failed to close unusable Redis client", exc_info=True)
+            return self._redis
+
+    async def _invalidate_redis(self, client) -> None:
+        """Drop a broken client and allow a later request to reconnect."""
+        if self._redis is not client:
+            return
+        self._redis = None
+        self._redis_retry_at = time.monotonic() + 5.0
         try:
-            import redis.asyncio as aioredis
-            client = aioredis.from_url(self.redis_url, encoding="utf-8", decode_responses=True)
-            await client.ping()
-            self._redis = client
-            logger.info("Rate limiter using Redis backend.")
-        except Exception as exc:
-            logger.warning("Redis unavailable, in-memory fallback: %s", exc)
-            self._redis = None
-        return self._redis
+            close = getattr(client, "aclose", None) or client.close
+            result = close()
+            if result is not None and hasattr(result, "__await__"):
+                await result
+        except Exception:
+            logger.debug("Failed to close broken Redis client", exc_info=True)
 
     # ── IP extraction ───────────────────────────────────────────────────────
 
@@ -307,8 +369,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Evict stale buckets every ~60s to prevent unbounded growth
         now = time.time()
         if now - self._last_tb_sweep > 60:
-            ttl = rule.window * 2
-            stale_keys = [k for k, b in self._tb_buckets.items() if now - b.last_refill > ttl]
+            # Use each bucket's own window (capacity/refill_rate) so a fast
+            # group (llm, window=60) sweep never evicts slow-group buckets
+            # (auth_reset, window=900) that are still within their TTL.
+            stale_keys = [
+                k for k, b in self._tb_buckets.items()
+                if now - b.last_refill > (b.capacity / b.refill_rate) * 2
+            ]
             for k in stale_keys:
                 del self._tb_buckets[k]
             self._last_tb_sweep = now
@@ -357,10 +424,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         state.current_count += 1
         return True
 
+    def _redis_unavailable_response(self) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "success": False,
+                "error": "Rate-limit service temporarily unavailable. Please retry.",
+                "code": "RATE_LIMIT_BACKEND_UNAVAILABLE",
+                "retry_after": 1,
+            },
+            headers={"Retry-After": "1"},
+        )
+
     # ── Dispatch ────────────────────────────────────────────────────────────
 
     async def dispatch(self, request: Request, call_next):
-        if os.getenv("ENV") == "test":
+        if os.getenv("ENV", "development").strip().lower() == "test":
             return await call_next(request)
         if request.url.path in self.SKIP_PATHS:
             return await call_next(request)
@@ -379,9 +458,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 else:
                     allowed = await RedisSlidingWindowLog.allows(redis, client_ip, rule, group)
             except Exception as exc:
+                await self._invalidate_redis(redis)
+                if self.redis_fail_closed:
+                    logger.error("Redis rate-limit backend unavailable: %s", exc)
+                    return self._redis_unavailable_response()
                 logger.warning("Redis rate-limit error, in-memory fallback: %s", exc)
                 allowed = self._inmem_allows(client_ip, rule, group)
         else:
+            # A configured Redis that cannot connect is an outage, not a
+            # successful rate-limit decision. Keep production fail-closed so
+            # multiple workers cannot bypass the global limit.
+            if self.redis_fail_closed and self.redis_url:
+                logger.error("Redis rate-limit backend unavailable during initialization")
+                return self._redis_unavailable_response()
             allowed = self._inmem_allows(client_ip, rule, group)
 
         if not allowed:

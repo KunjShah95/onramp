@@ -14,7 +14,7 @@ const POINTS = [
 
 export default function Solution() {
   return (
-    <section id="the-map" className="scroll-mt-20 border-t border-seam bg-room">
+    <section id="the-map" className="landing-section scroll-mt-20 border-t border-seam bg-room">
       <div className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <SectionHeading
           eyebrow="The product"

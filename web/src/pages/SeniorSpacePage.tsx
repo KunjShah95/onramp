@@ -57,19 +57,19 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
 
   function loadPRs() {
     setLoading(true)
-    listTasks({ team_id: teamId, state: 'submitted' })
-      .then((r) => {
-        const submitted = (r.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        // also load under_review
-        return listTasks({ team_id: teamId, state: 'under_review' }).then((r2) => {
-          const underReview = (r2.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-          const seen = new Set<string>()
-          const merged: WorkflowTask[] = []
-          for (const t of [...submitted, ...underReview]) {
-            if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
-          }
-          setPRs(merged)
-        })
+    Promise.all([
+      listTasks({ team_id: teamId, state: 'submitted' }),
+      listTasks({ team_id: teamId, state: 'under_review' }),
+    ])
+      .then(([submittedResult, underReviewResult]) => {
+        const submitted = (submittedResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        const underReview = (underReviewResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        const seen = new Set<string>()
+        const merged: WorkflowTask[] = []
+        for (const t of [...submitted, ...underReview]) {
+          if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
+        }
+        setPRs(merged)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -78,20 +78,20 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    listTasks({ team_id: teamId, state: 'submitted' })
-      .then((r) => {
+    Promise.all([
+      listTasks({ team_id: teamId, state: 'submitted' }),
+      listTasks({ team_id: teamId, state: 'under_review' }),
+    ])
+      .then(([submittedResult, underReviewResult]) => {
         if (cancelled) return
-        const submitted = (r.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        return listTasks({ team_id: teamId, state: 'under_review' }).then((r2) => {
-          if (cancelled) return
-          const underReview = (r2.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-          const seen = new Set<string>()
-          const merged: WorkflowTask[] = []
-          for (const t of [...submitted, ...underReview]) {
-            if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
-          }
-          setPRs(merged)
-        })
+        const submitted = (submittedResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        const underReview = (underReviewResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+        const seen = new Set<string>()
+        const merged: WorkflowTask[] = []
+        for (const t of [...submitted, ...underReview]) {
+          if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
+        }
+        setPRs(merged)
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })

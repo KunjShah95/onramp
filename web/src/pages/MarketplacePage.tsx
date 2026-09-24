@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 import {
   Storefront,
@@ -62,6 +62,7 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   const [showPublish, setShowPublish] = useState(false)
   const [myPlaybooks, setMyPlaybooks] = useState<Playbook[]>([])
@@ -71,14 +72,15 @@ export default function MarketplacePage() {
   const { activeTeamId } = useAuth()
 
   const fetchListings = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     setLoading(true); setError('')
     try {
-      const data = await listMarketplacePlaybooks({ search, sort })
-      setListings(data.listings ?? [])
+      const data = await listMarketplacePlaybooks({ search, sort, limit: 100 })
+      if (requestId === requestIdRef.current) setListings(data.listings ?? [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load the marketplace.')
+      if (requestId === requestIdRef.current) setError(err.message || 'Failed to load the marketplace.')
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [search, sort])
 

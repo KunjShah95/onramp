@@ -61,8 +61,12 @@ def _extract_issue_refs(payload: dict) -> set:
 
 
 def _repo_url_from_payload(payload: dict) -> str:
+    from app.services.repo_index_access import parse_github_repo
     repo = payload.get("repository", {})
-    return (repo.get("html_url") or repo.get("clone_url") or "").strip().rstrip("/").lower()
+    url = (repo.get("html_url") or repo.get("clone_url") or "").strip().rstrip("/").lower()
+    if not parse_github_repo(url):
+        raise ValueError(f"Payload contains invalid repository URL: {url!r}")
+    return url
 
 
 def _pr_author_login(payload: dict) -> str:
@@ -505,7 +509,7 @@ async def _handle_issue_comment_event(payload: dict) -> dict:
         "handled": True,
         "action": action,
         "pr_number": issue.get("number"),
-        "comment_body": comment.get("body", "")[:200],
+        "comment_body": comment.get("body", "")[:200].replace("\n", " ").replace("\r", " "),
     }
 
 
