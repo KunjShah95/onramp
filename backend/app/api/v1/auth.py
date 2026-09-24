@@ -543,7 +543,7 @@ async def register(body: RegisterRequest):
     # teamless "no access" accounts). Best-effort: a failure here must never
     # block registration.
     try:
-        await create_personal_team(uid, body.name)
+        await create_personal_team(uid, body.name, role="admin")
     except Exception:
         logger.exception("Failed to auto-create personal team for new user %s", uid)
 
@@ -762,10 +762,10 @@ async def refresh_token(body: RefreshRequest, request: Request):
 
 @router.get("/me", response_model=MeResponse,
     responses={404: {"description": "User not found"}})
-async def me(user: dict = Depends(get_current_user)):
+async def me(request: Request, user: dict = Depends(get_current_user)):
     """Return the current user's profile from the backend."""
     uid = user.get("uid", "")
-    record = await get_user_by_uid(uid)
+    record = getattr(request.state, "user_record", None) or await get_user_by_uid(uid)
     if record is None:
         raise HTTPException(status_code=404, detail="User not found in backend")
 
@@ -898,10 +898,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if request.headers.get("X-API-Key"):
             return await call_next(request)
 
-        # Bearer token requests without cookies are API clients, skip CSRF
+        # Bearer token requests without cookies are API clients, skip CSRF.
+        # Must also check that the request carries no auth cookie — an attacker
+        # can send both Bearer + auth cookie to bypass CSRF without this guard.
         auth_header = request.headers.get("Authorization", "")
         has_cookie = _CSRF_COOKIE in request.cookies
-        if auth_header.startswith("Bearer ") and not has_cookie:
+        if (auth_header.startswith("Bearer ")
+                and not has_cookie
+                and not request.cookies.get(_COOKIE_ACCESS)):
             return await call_next(request)
 
         # Browser requests with cookies must pass CSRF check
