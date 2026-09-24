@@ -140,6 +140,9 @@ class EmbeddingsService:
                             "filename": doc.filename,
                             "content": chunk_text,
                             "doc_type": doc.doc_type,
+                            "team_id": str(team_id) if team_id else None,
+                            "repo_url": repo_url,
+                            "branch": branch,
                         })
                 vectors, provider, _route = await self.embeddings.embed_batch(
                     [c["content"] for c in chunks]
@@ -169,13 +172,15 @@ class EmbeddingsService:
 
         return index_id
 
-    async def search(self, index_id: str, query: str, top_k: int = 5) -> List[Document]:
+    async def search(
+        self, index_id: str, query: str, top_k: int = 5, team_id: Optional[str] = None
+    ) -> List[Document]:
         """Search indexed documents — vector cosine first, keyword fallback."""
         # Vector tier: embed the query and ANN-search if the router is available.
         if getattr(self.embeddings, "is_available", False):
             try:
                 query_vector, _provider, _route = await self.embeddings.embed(query)
-                rows = await self.storage.vector_search(index_id, query_vector, top_k)
+                rows = await self.storage.vector_search(index_id, query_vector, top_k, team_id=team_id)
                 threshold = float(os.getenv("EMBEDDINGS_MIN_SIMILARITY", "0.0"))
                 docs = []
                 for row in rows:

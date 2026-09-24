@@ -460,6 +460,7 @@ async def query_repo(
             mode=request.mode, model=request.model,
             routing_mode=routing_mode, provider_keys=team["provider_keys"],
             key_pools=team["key_pools"], key_pool_ids=team["key_pool_ids"],
+            team_id=index_team_id,
         )
         await _conversation.add_turn(user_id, request.index_id, request.question, answer)
         # Mirror to agent session history + bus
@@ -512,6 +513,7 @@ async def query_repo_stream(
                 mode=request.mode, model=request.model,
                 routing_mode=routing_mode, provider_keys=team["provider_keys"],
                 key_pools=team["key_pools"], key_pool_ids=team["key_pool_ids"],
+                team_id=index_team_id,
             ):
                 full_answer += token
                 yield f"data: {json.dumps({'token': token})}\n\n"

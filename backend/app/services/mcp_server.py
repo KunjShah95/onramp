@@ -96,7 +96,7 @@ class ReadOnlyMCPServer:
         from app.agents.repo_qa import RepoQA
 
         team_id = await authorize_repo_index(user, index_id)
-        documents = await RepoQA(None).embeddings.search(index_id, question, top_k=top_k)
+        documents = await RepoQA(None).embeddings.search(index_id, question, top_k=top_k, team_id=team_id)
         return {
             "index_id": index_id,
             "team_id": team_id,

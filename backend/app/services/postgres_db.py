@@ -679,8 +679,9 @@ class PostgresStorage:
         """Upsert embedding chunks for an index.
 
         ``chunks`` is a list of dicts with keys ``chunk_id``, ``filename``,
-        ``content``, ``doc_type``, ``vector`` (list of floats), ``embedding_model``,
-        ``embedding_dims``. ``vector`` may be ``None`` (keyword-only chunks).
+        ``content``, ``doc_type``, ``team_id``, ``vector`` (list of floats),
+        ``embedding_model``, ``embedding_dims``. ``vector`` may be ``None``
+        (keyword-only chunks).
         """
         from app.database.models import EmbeddingChunk
 
@@ -698,6 +699,8 @@ class PostgresStorage:
                     "embedding_model": chunk.get("embedding_model"),
                     "embedding_dims": chunk.get("embedding_dims"),
                 }
+                if chunk.get("team_id") is not None:
+                    data["team_id"] = chunk["team_id"]
                 existing = await session.get(EmbeddingChunk, chunk["chunk_id"])
                 if existing is None:
                     session.add(EmbeddingChunk(chunk_id=chunk["chunk_id"], **data))
@@ -710,7 +713,7 @@ class PostgresStorage:
         return await self._run(_save)
 
     async def vector_search(
-        self, index_id: str, query_vector: List[float], top_k: int = 5
+        self, index_id: str, query_vector: List[float], top_k: int = 5, team_id: Optional[str] = None
     ) -> List[dict]:
         """ANN cosine search over an index's chunks. Returns dicts with a
         ``similarity`` (0..1) field; empty list when the index has no vectors.
@@ -727,6 +730,7 @@ class PostgresStorage:
                     select(EmbeddingChunk)
                     .where(EmbeddingChunk.index_id == index_id)
                     .where(EmbeddingChunk.vector.isnot(None))
+                    .where(EmbeddingChunk.team_id == team_id if team_id else EmbeddingChunk.team_id.is_(None))
                     .order_by(EmbeddingChunk.vector.cosine_distance(query_vector))
                     .limit(top_k)
                 )
@@ -981,10 +985,12 @@ class InMemoryStorage:
         return len(chunks)
 
     async def vector_search(
-        self, index_id: str, query_vector: List[float], top_k: int = 5
+        self, index_id: str, query_vector: List[float], top_k: int = 5, team_id: Optional[str] = None
     ) -> List[dict]:
         rows = []
         for chunk in self._embedding_chunks.get(index_id, {}).values():
+            if team_id is not None and chunk.get("team_id") != team_id:
+                continue
             vec = chunk.get("vector")
             if not vec:
                 continue

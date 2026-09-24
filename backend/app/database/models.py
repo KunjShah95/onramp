@@ -1729,6 +1729,9 @@ class EmbeddingChunk(Base):
 
     chunk_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     index_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    team_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     filename: Mapped[str] = mapped_column(String(1000), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     doc_type: Mapped[str] = mapped_column(String(20), nullable=False, default="code")
@@ -1749,6 +1752,7 @@ class EmbeddingChunk(Base):
 
     __table_args__ = (
         Index("ix_embedding_chunks_index_id", "index_id"),
+        Index("ix_embedding_chunks_team_id", "team_id"),
         {"extend_existing": True},
     )
 
@@ -1756,6 +1760,7 @@ class EmbeddingChunk(Base):
         return {
             "chunk_id": self.chunk_id,
             "index_id": self.index_id,
+            "team_id": self.team_id,
             "filename": self.filename,
             "content": self.content,
             "doc_type": self.doc_type,

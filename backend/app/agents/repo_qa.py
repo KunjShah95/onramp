@@ -122,6 +122,7 @@ class RepoQA(BaseAgent):
         provider_keys: Optional[Dict[str, str]] = None,
         key_pools: Optional[Dict[str, List[str]]] = None,
         key_pool_ids: Optional[Dict[str, List[str]]] = None,
+        team_id: Optional[str] = None,
     ) -> str:
         """Answer a question about an indexed repo.
 
@@ -130,7 +131,7 @@ class RepoQA(BaseAgent):
         ``routing_mode`` / ``provider_keys`` / ``key_pools`` / ``key_pool_ids``
         bias routing for this request (team routing dial + BYOK keys).
         """
-        documents = await self.embeddings.search(index_id, question)
+        documents = await self.embeddings.search(index_id, question, team_id=team_id)
 
         if not documents:
             return "No relevant documents found in the indexed codebase."
@@ -167,6 +168,7 @@ class RepoQA(BaseAgent):
         provider_keys: Optional[Dict[str, str]] = None,
         key_pools: Optional[Dict[str, List[str]]] = None,
         key_pool_ids: Optional[Dict[str, List[str]]] = None,
+        team_id: Optional[str] = None,
     ):
         """Stream an answer token-by-token (async generator).
 
@@ -175,7 +177,7 @@ class RepoQA(BaseAgent):
         LLMRouter.chat_stream. ``routing_mode`` / ``provider_keys`` /
         ``key_pools`` / ``key_pool_ids`` bias routing for this request.
         """
-        documents = await self.embeddings.search(index_id, question)
+        documents = await self.embeddings.search(index_id, question, team_id=team_id)
 
         if not documents:
             yield "No relevant documents found in the indexed codebase."
