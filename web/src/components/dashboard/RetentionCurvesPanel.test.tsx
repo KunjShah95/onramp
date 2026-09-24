@@ -106,7 +106,7 @@ describe('RetentionCurvesPanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/No cohorts yet/)).toBeInTheDocument()
     })
-    expect(mockCohortRetention).toHaveBeenCalledWith('t2')
+    await waitFor(() => expect(mockCohortRetention).toHaveBeenCalledWith('t2'))
   })
 
   it('stays hidden (and skips the fetch) for non-leader roles', async () => {

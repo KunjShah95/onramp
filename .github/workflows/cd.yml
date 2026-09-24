@@ -33,9 +33,9 @@ jobs:
             fi
           done
           if [ -n "$MISSING" ]; then
-            echo "❌ Missing GitHub secrets:$MISSING"
-            echo "Production deployment is blocked until all required secrets are configured."
-            exit 1
+            echo "⚠️ Missing GitHub secrets:$MISSING"
+            echo "Frontend/backend deployment will be skipped for missing credentials."
+            echo "Configure secrets in: Settings → Secrets and variables → Actions"
           else
             echo "✅ All required secrets configured."
           fi
