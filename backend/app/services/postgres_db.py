@@ -6,6 +6,7 @@ backed by PostgreSQL. The InMemoryStorage class is available for tests.
 
 import os
 import uuid
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -523,6 +524,27 @@ class PostgresStorage:
             lambda s: self._create_in_session(s, collection, doc_id, data)
         )
 
+    async def claim_dynamic_document(
+        self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
+    ) -> bool:
+        """Atomically claim a JSON document field for single-use operations."""
+        async def _claim(session: AsyncSession) -> bool:
+            stmt = select(db_models.DynamicDocument).where(
+                db_models.DynamicDocument.id == doc_id,
+                db_models.DynamicDocument.collection == collection,
+            ).with_for_update()
+            result = await session.execute(stmt)
+            doc = result.scalar_one_or_none()
+            if doc is None or doc.data.get(field) != expected:
+                return False
+            data = dict(doc.data)
+            data.update(updates)
+            doc.data = data
+            doc.updated_at = datetime.now(timezone.utc)
+            await session.flush()
+            return True
+        return bool(await self.run_in_transaction(_claim))
+
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
         """Get a document by ID."""
         return await self._run(
@@ -819,6 +841,7 @@ class InMemoryStorage:
     def __init__(self):
         self._data: Dict[str, Dict[str, dict]] = {}
         self._embedding_chunks: Dict[str, Dict[str, dict]] = {}
+        self._claim_lock = asyncio.Lock()
 
     @staticmethod
     def _serialize(record: dict) -> dict:
@@ -875,6 +898,18 @@ class InMemoryStorage:
         record = self._serialize(record)
         self._coll(collection)[doc_id] = record
         return dict(record)
+
+    async def claim_dynamic_document(
+        self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
+    ) -> bool:
+        """Claim a JSON field in the local test/dev backend."""
+        async with self._claim_lock:
+            record = self._coll(collection).get(doc_id)
+            if not record or record.get(field) != expected:
+                return False
+            record.update(updates)
+            record["updated_at"] = datetime.now(timezone.utc).isoformat()
+            return True
 
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
         rec = self._coll(collection).get(doc_id)
@@ -1036,6 +1071,20 @@ def get_storage():
 def generate_id() -> str:
     """Generate a UUID"""
     return str(uuid.uuid4())
+
+
+def idempotency_document_id(key: str) -> str:
+    """Return a stable UUID primary key for a webhook idempotency key.
+
+    The typed ``onramp_webhook_idempotency`` table uses a UUID primary key,
+    while callers naturally provide arbitrary provider keys. Mapping the key
+    to a deterministic UUID keeps the document-store API valid in PostgreSQL
+    and preserves atomic primary-key uniqueness across workers.
+    """
+    normalized = (key or "").strip()
+    if not normalized:
+        raise ValueError("idempotency key is required")
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"onramp:webhook-idempotency:{normalized}"))
 
 
 async def initialize_db() -> None:

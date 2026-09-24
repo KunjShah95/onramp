@@ -40,6 +40,10 @@ envVarGroups:
         sync: false
       - key: API_KEY_HMAC_SECRET
         sync: false
+      - key: PLATFORM_ADMIN_EMAILS
+        sync: false
+      - key: N8N_ALLOWED_TEAM_IDS
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: BACKEND_URL

@@ -384,26 +384,44 @@ async def n8n_inbound(
         idem = (payload.get("idempotency_key") or "").strip()
         if not idem and os.getenv("ENV", "development").lower() == "production":
             raise HTTPException(status_code=400, detail="idempotency_key is required")
+        claim_id = ""
+        if idem:
+            from app.services.postgres_db import idempotency_document_id
+            claim_id = idempotency_document_id(idem)
         if idem:
             try:
                 from app.services.postgres_db import get_storage
                 storage = get_storage()
                 async with _N8N_CLAIM_LOCK:
-                    claim = await storage.get_document("onramp_webhook_idempotency", idem)
+                    claim = await storage.get_document("onramp_webhook_idempotency", claim_id)
+                    if claim is None:
+                        legacy = await storage.query_documents(
+                            "onramp_webhook_idempotency",
+                            [("idempotency_key", "==", idem)],
+                        )
+                        claim = legacy[0] if legacy else None
                     if claim:
                         return {"success": True, "action": "create_task", "task_id": claim.get("event_id"), "deduplicated": True}
                     try:
                         await storage.create_document(
                             "onramp_webhook_idempotency",
-                            idem,
+                            claim_id,
                             {"idempotency_key": idem, "event_id": "", "event_type": "n8n.create_task"},
                         )
                     except Exception:
                         # A concurrent Postgres worker won the unique claim.
-                        claim = await storage.get_document("onramp_webhook_idempotency", idem)
+                        claim = await storage.get_document("onramp_webhook_idempotency", claim_id)
+                        if claim is None:
+                            legacy = await storage.query_documents(
+                                "onramp_webhook_idempotency",
+                                [("idempotency_key", "==", idem)],
+                            )
+                            claim = legacy[0] if legacy else None
                         return {"success": True, "action": "create_task", "task_id": (claim or {}).get("event_id"), "deduplicated": True}
             except Exception:
                 logger.exception("n8n idempotency claim failed")
+                if os.getenv("ENV", "development").lower() == "production":
+                    raise HTTPException(status_code=503, detail="Idempotency store unavailable")
 
         try:
             from app.services import task_service
@@ -422,7 +440,7 @@ async def n8n_inbound(
                     from app.services.postgres_db import get_storage
                     await get_storage().update_document(
                         "onramp_webhook_idempotency",
-                        idem,
+                        claim_id,
                         {"event_id": task["task_id"], "processed_at": datetime.now(timezone.utc).isoformat()},
                     )
                 except Exception:
@@ -439,7 +457,7 @@ async def n8n_inbound(
             if idem:
                 try:
                     from app.services.postgres_db import get_storage
-                    await get_storage().delete_document("onramp_webhook_idempotency", idem)
+                    await get_storage().delete_document("onramp_webhook_idempotency", claim_id)
                 except Exception:
                     logger.exception("Failed to release n8n idempotency claim")
             logger.exception("n8n create_task failed")

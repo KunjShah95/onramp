@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
-from app.services.postgres_db import get_storage, generate_id
+from app.services.postgres_db import get_storage, generate_id, idempotency_document_id
 
 logger = logging.getLogger("onramp.billing")
 
@@ -191,9 +191,12 @@ class BillingService:
         """Return True if this idempotency key has been processed before."""
         if not idempotency_key:
             return False
-        # Prefer PK lookup (atomic) if key was used as doc id
+        # Prefer the deterministic PK lookup (atomic and valid for the typed
+        # UUID primary key), then fall back to the unique key for legacy rows.
         try:
-            rec = await self.storage.get_document(IDEMPOTENCY_COLLECTION, idempotency_key)
+            rec = await self.storage.get_document(
+                IDEMPOTENCY_COLLECTION, idempotency_document_id(idempotency_key)
+            )
             if rec is not None:
                 return True
         except Exception:
@@ -206,14 +209,16 @@ class BillingService:
 
     async def _claim_idempotency(self, idempotency_key: str, event_id: str, event_type: str) -> bool:
         """Atomically claim idempotency key. Returns True if we are the first, False if duplicate."""
-        # Try to create with key as doc id to leverage PK uniqueness
+        # Try to create with a deterministic UUID to leverage primary-key
+        # uniqueness without passing an arbitrary provider key to a UUID column.
         try:
-            existing = await self.storage.get_document(IDEMPOTENCY_COLLECTION, idempotency_key)
+            document_id = idempotency_document_id(idempotency_key)
+            existing = await self.storage.get_document(IDEMPOTENCY_COLLECTION, document_id)
             if existing is not None:
                 return False
             await self.storage.create_document(
                 IDEMPOTENCY_COLLECTION,
-                idempotency_key,
+                document_id,
                 {
                     "idempotency_key": idempotency_key,
                     "event_id": event_id,
@@ -232,7 +237,7 @@ class BillingService:
         try:
             await self.storage.create_document(
                 IDEMPOTENCY_COLLECTION,
-                generate_id(),
+                idempotency_document_id(idempotency_key),
                 {
                     "idempotency_key": idempotency_key,
                     "event_id": event_id,

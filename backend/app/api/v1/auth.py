@@ -1260,32 +1260,26 @@ async def reset_password(body: ResetPasswordRequest):
     jti = payload.get("jti") or payload.get("nonce")
     if not uid:
         raise HTTPException(status_code=400, detail="Invalid reset token")
-    # Single-use check: nonce/jti must not have been used (atomic optimistic lock)
+    # Atomically claim the single-use nonce before changing the password.
+    # The storage method uses SELECT ... FOR UPDATE in Postgres (and a lock
+    # in the memory backend), so concurrent resets cannot both succeed.
     if jti:
         try:
             storage_j = get_storage()
-            rec = await storage_j.get_document("onramp_reset_tokens", jti)
-            if rec is None or rec.get("used"):
-                raise HTTPException(status_code=400, detail="Reset token has already been used")
-            # Optimistic lock: re-fetch to catch concurrent use before update
-            rec_check = await storage_j.get_document("onramp_reset_tokens", jti)
-            if rec_check is None or rec_check.get("used"):
-                raise HTTPException(status_code=400, detail="Reset token has already been used")
-            # Conditional update — only succeed if still unused (database-level check)
-            candidates = await storage_j.query_documents("onramp_reset_tokens", [("id", "==", jti), ("used", "==", False)])
-            if not candidates:
-                raise HTTPException(status_code=400, detail="Reset token has already been used")
-            updated = await storage_j.update_document("onramp_reset_tokens", jti, {"used": True, "used_at": datetime.now(timezone.utc).isoformat()})
-            if updated is None or not updated.get("used"):
-                # Concurrent winner already flipped the flag — treat as used
+            claimed = await storage_j.claim_dynamic_document(
+                "onramp_reset_tokens",
+                jti,
+                "used",
+                False,
+                {"used": True, "used_at": datetime.now(timezone.utc).isoformat()},
+            )
+            if not claimed:
                 raise HTTPException(status_code=400, detail="Reset token has already been used")
         except HTTPException:
             raise
-        except Exception as exc:
-            # If it's already an HTTPException wrapped in RuntimeError, re-raise
-            if isinstance(exc, HTTPException):
-                raise
-            logger.exception("Failed to check reset nonce denylist")
+        except Exception:
+            logger.exception("Failed to atomically claim reset nonce")
+            raise HTTPException(status_code=500, detail="Could not verify reset token")
     # Update password in database
     password_hash = _core_security.hash_password(body.password)
     now = datetime.now(timezone.utc)
