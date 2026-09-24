@@ -5,7 +5,7 @@ Two directly-importable workflows for the faculty. No manual node building neede
 | File | Direction | Trigger | What it does |
 |---|---|---|---|
 | `onramp-complete-bus.json` | Onramp → n8n | Webhook `POST /webhook/onramp` | Routes every Onramp event: `onboarding.*` → Telegram, `task.*` → Slack `#onboarding`, `ramp.*`/`pr.merged` → Slack `#onboarding-alerts`, `test.ping` → `ok` |
-| `onramp-inbound-task-seeding.json` | n8n → Onramp | Schedule daily 08:00 | Builds a `create_task` payload, HMAC-signs it with `N8N_INBOUND_SECRET`, `POST`s to `/api/v1/webhooks/n8n` |
+| `onramp-inbound-task-seeding.json` | n8n → Onramp | Schedule daily 08:00 | Builds a `create_task` payload, signs `timestamp.raw_body` with `N8N_INBOUND_SECRET`, `POST`s to `/api/v1/webhooks/n8n`; replay window is five minutes |
 
 Regenerate after editing the generator: `python scripts/generate_n8n_workflows.py`
 

@@ -110,12 +110,23 @@ def _sign(payload: bytes) -> Dict[str, str]:
     }
 
 
-def verify_inbound_signature(body: bytes, signature_header: str) -> bool:
-    """Verify an inbound n8n -> Onramp webhook call (fail-closed)."""
+def verify_inbound_signature(body: bytes, signature_header: str, timestamp: str) -> bool:
+    """Verify an inbound n8n -> Onramp webhook call (fail-closed).
+
+    The timestamp is part of the signed material and must be within five
+    minutes. This prevents old captured requests from being replayed forever.
+    """
     secret = get_inbound_secret()
-    if not secret or not signature_header:
+    if not secret or not signature_header or not timestamp:
         return False
-    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    try:
+        request_ts = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    if abs(int(time.time()) - request_ts) > 300:
+        return False
+    signed = timestamp.encode() + b"." + body
+    expected = "sha256=" + hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature_header)
 
 

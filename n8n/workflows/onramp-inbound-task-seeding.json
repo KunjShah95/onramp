@@ -38,7 +38,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// HMAC-SHA256 over the EXACT raw bytes the HTTP node will send.\n// The HTTP node below sends JSON.stringify($json.body) \u2014 keep them in sync.\nconst crypto = require('crypto');\nconst secret = $env.N8N_INBOUND_SECRET || 'REPLACE_WITH_N8N_INBOUND_SECRET';\nconst body = $input.first().json.body;\nconst raw = JSON.stringify(body);\nconst signature = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');\nreturn [{ json: { body, signature } }];"
+        "jsCode": "// HMAC-SHA256 over timestamp.raw bytes the HTTP node sends. The timestamp is short-lived and signed.\nconst crypto = require('crypto');\nconst secret = $env.N8N_INBOUND_SECRET || 'REPLACE_WITH_N8N_INBOUND_SECRET';\nconst body = $input.first().json.body;\nconst raw = JSON.stringify(body);\nconst timestamp = String(Math.floor(Date.now() / 1000));\nconst signature = 'sha256=' + crypto.createHmac('sha256', secret).update(timestamp + '.' + raw).digest('hex');\nreturn [{ json: { body, signature, timestamp } }];"
       },
       "id": "d199a23e-25d0-440a-abd7-27d005668e44",
       "name": "Sign Request",
@@ -59,6 +59,10 @@
             {
               "name": "X-N8N-Signature",
               "value": "={{ $json.signature }}"
+            },
+            {
+              "name": "X-N8N-Timestamp",
+              "value": "={{ $json.timestamp }}"
             },
             {
               "name": "Content-Type",

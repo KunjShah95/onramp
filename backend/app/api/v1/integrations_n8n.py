@@ -22,6 +22,8 @@ Management (authenticated):
 
 import hashlib
 import hmac
+import asyncio
+from datetime import datetime, timezone
 import json
 import os
 import logging
@@ -43,6 +45,7 @@ logger = logging.getLogger("onramp.integrations.n8n")
 
 router = APIRouter(prefix="/integrations/n8n", tags=["integrations-n8n"])
 inbound_router = APIRouter(tags=["webhooks-n8n"])
+_N8N_CLAIM_LOCK = asyncio.Lock()
 
 
 # ── Schemas ───────────────────────────────────────────────────
@@ -304,16 +307,17 @@ class InboundCreateTask(BaseModel):
     idempotency_key: Optional[str] = None
 
 
-def _verify_inbound(body: bytes, signature: str) -> bool:
+def _verify_inbound(body: bytes, signature: str, timestamp: str) -> bool:
     from app.services import n8n_service as n8n
 
-    return n8n.verify_inbound_signature(body, signature)
+    return n8n.verify_inbound_signature(body, signature, timestamp)
 
 
 @inbound_router.post("/webhooks/n8n")
 async def n8n_inbound(
     request: Request,
     x_n8n_signature: str = Header("", alias="X-N8N-Signature"),
+    x_n8n_timestamp: str = Header("", alias="X-N8N-Timestamp"),
 ):
     """Receive automation calls from n8n workflows.
 
@@ -322,7 +326,7 @@ async def n8n_inbound(
     the secret is unset or the signature is wrong.
     """
     body = await request.body()
-    if not _verify_inbound(body, x_n8n_signature):
+    if not _verify_inbound(body, x_n8n_signature, x_n8n_timestamp):
         secret_set = bool(os.getenv("N8N_INBOUND_SECRET"))
         raise HTTPException(
             status_code=401,
@@ -374,23 +378,32 @@ async def n8n_inbound(
         if priority not in ("low", "medium", "high", "urgent"):
             priority = "medium"
 
-        # Idempotency: skip when a task with the same key already exists
+        # Idempotency: claim the key before creating the task. The typed
+        # webhook idempotency collection has a unique key in Postgres; the
+        # lock also prevents duplicate claims in the in-memory/dev backend.
         idem = (payload.get("idempotency_key") or "").strip()
+        if not idem and os.getenv("ENV", "development").lower() == "production":
+            raise HTTPException(status_code=400, detail="idempotency_key is required")
         if idem:
             try:
                 from app.services.postgres_db import get_storage
-
-                existing = await get_storage().query_documents(
-                    "onramp_tasks",
-                    [("team_id", "==", team_id)],
-                )
-                for t in existing:
-                    meta = t.get("metadata") or {}
-                    src = t.get("source_issue") or {}
-                    if meta.get("n8n_idempotency_key") == idem or src.get("n8n_idempotency_key") == idem:
-                        return {"success": True, "action": "create_task", "task_id": t.get("task_id"), "deduplicated": True}
+                storage = get_storage()
+                async with _N8N_CLAIM_LOCK:
+                    claim = await storage.get_document("onramp_webhook_idempotency", idem)
+                    if claim:
+                        return {"success": True, "action": "create_task", "task_id": claim.get("event_id"), "deduplicated": True}
+                    try:
+                        await storage.create_document(
+                            "onramp_webhook_idempotency",
+                            idem,
+                            {"idempotency_key": idem, "event_id": "", "event_type": "n8n.create_task"},
+                        )
+                    except Exception:
+                        # A concurrent Postgres worker won the unique claim.
+                        claim = await storage.get_document("onramp_webhook_idempotency", idem)
+                        return {"success": True, "action": "create_task", "task_id": (claim or {}).get("event_id"), "deduplicated": True}
             except Exception:
-                logger.exception("n8n idempotency check failed")
+                logger.exception("n8n idempotency claim failed")
 
         try:
             from app.services import task_service
@@ -407,12 +420,13 @@ async def n8n_inbound(
             if idem:
                 try:
                     from app.services.postgres_db import get_storage
-
                     await get_storage().update_document(
-                        "onramp_tasks", task["task_id"], {"metadata": {"n8n_idempotency_key": idem}}
+                        "onramp_webhook_idempotency",
+                        idem,
+                        {"event_id": task["task_id"], "processed_at": datetime.now(timezone.utc).isoformat()},
                     )
                 except Exception:
-                    logger.exception("Failed to stamp n8n idempotency key")
+                    logger.exception("Failed to complete n8n idempotency claim")
             # Fan the creation back out to n8n so workflows can chain
             try:
                 from app.services import n8n_service as n8n
@@ -422,6 +436,12 @@ async def n8n_inbound(
                 pass
             return {"success": True, "action": "create_task", "task_id": task.get("task_id")}
         except Exception as exc:
+            if idem:
+                try:
+                    from app.services.postgres_db import get_storage
+                    await get_storage().delete_document("onramp_webhook_idempotency", idem)
+                except Exception:
+                    logger.exception("Failed to release n8n idempotency claim")
             logger.exception("n8n create_task failed")
             raise HTTPException(status_code=500, detail=f"create_task failed: {exc}")
 

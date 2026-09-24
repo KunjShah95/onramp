@@ -35,10 +35,12 @@ def test_inbound_signature_verify(monkeypatch):
 
     importlib.reload(n8n)
     body = b'{"action":"ping"}'
-    good = "sha256=" + hmac.new(b"inbound-secret", body, hashlib.sha256).hexdigest()
-    assert n8n.verify_inbound_signature(body, good) is True
-    assert n8n.verify_inbound_signature(body, "sha256=wrong") is False
-    assert n8n.verify_inbound_signature(body, "") is False
+    import time
+    timestamp = str(int(time.time()))
+    good = "sha256=" + hmac.new(b"inbound-secret", timestamp.encode() + b"." + body, hashlib.sha256).hexdigest()
+    assert n8n.verify_inbound_signature(body, good, timestamp) is True
+    assert n8n.verify_inbound_signature(body, "sha256=wrong", timestamp) is False
+    assert n8n.verify_inbound_signature(body, "", timestamp) is False
 
 
 def test_inbound_requires_secret(monkeypatch):
@@ -47,7 +49,7 @@ def test_inbound_requires_secret(monkeypatch):
     import importlib
 
     importlib.reload(n8n)
-    assert n8n.verify_inbound_signature(b"{}", "sha256=anything") is False
+    assert n8n.verify_inbound_signature(b"{}", "sha256=anything", "0") is False
 
 
 @pytest.mark.asyncio

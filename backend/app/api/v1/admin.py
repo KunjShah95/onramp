@@ -25,21 +25,28 @@ from app.services import platform_provider_keys
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 async def _require_owner(user: dict = Depends(get_current_user)) -> str:
-    """Require the user to be an owner of at least one team."""
+    """Require a platform administrator for cross-team routes.
+
+    A team-admin role is intentionally insufficient: these endpoints query
+    global collections. Production requires an explicit platform allow-list;
+    development retains the legacy team-admin behavior for local tooling.
+    """
     uid = user.get("uid", "")
+    if os.getenv("ENV", "development").lower() == "production":
+        allowed = {
+            value.strip().lower()
+            for value in os.getenv("PLATFORM_ADMIN_EMAILS", "").split(",")
+            if value.strip()
+        }
+        email = str(user.get("email", "")).lower()
+        if email not in allowed:
+            raise HTTPException(status_code=403, detail="Platform administrator access required")
+        return uid
     teams = await get_user_teams(uid)
-    # Check for admin, ceo, or cto — all have full admin privileges.
-    # Use hierarchy comparison: any role >= admin (level 6) qualifies.
     from app.middleware.access_guard import ROLE_HIERARCHY
-    is_admin = any(
-        ROLE_HIERARCHY.get(t.get("role", ""), 0) >= ROLE_HIERARCHY["admin"]
-        for t in teams
-    )
+    is_admin = any(ROLE_HIERARCHY.get(t.get("role", ""), 0) >= ROLE_HIERARCHY["admin"] for t in teams)
     if not is_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access requires the 'admin' role (or higher) in at least one team",
-        )
+        raise HTTPException(status_code=403, detail="Admin access requires the 'admin' role (or higher) in at least one team")
     return uid
 
 
