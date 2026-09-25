@@ -504,7 +504,13 @@ export default function AutonomousCodingPage() {
                   {taskSubmitted ? 'Linked task submitted for review' : 'Linked task — the PR auto-submits it'}
                 </div>
               )}
-              <p className="text-caption text-ink-secondary">Write the brief in <button className="font-code text-mission" onClick={() => setActive(BRIEF)}>ISSUE.md</button>, then:</p>
+              <label className="block space-y-1">
+                <span className="overline text-ink-muted/70">Brief <button type="button" className="font-code normal-case text-mission" onClick={() => setActive(BRIEF)}>(ISSUE.md)</button></span>
+                <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={5} aria-label="Agent brief"
+                  placeholder="What should change? e.g. Fix the typo in the greeting returned by greet()"
+                  onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') proposeChanges() }}
+                  className="input w-full resize-y text-body-xs font-code" />
+              </label>
               <button onClick={proposeChanges} disabled={!workspace || !brief.trim() || busy} className="btn w-full justify-center !py-1.5 disabled:opacity-40">
                 {agentBusy === 'propose' ? <Spinner size={14} className="animate-spin" /> : <GitDiff size={14} weight="bold" />}
                 Propose changes (review diffs)
