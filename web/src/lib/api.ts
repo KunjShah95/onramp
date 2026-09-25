@@ -1193,6 +1193,8 @@ export interface CTODashboardResponse {
   member_progress: CTODashboardMemberProgress[]
   pending_reviews: CTODashboardPendingReview[]
   recent_activity: CTODashboardRecentActivity[]
+  /** Every task change in the last 8 days (UTC ISO timestamps) — feeds the velocity chart. */
+  velocity_events?: { state: string; updated_at: string }[]
   actions: CTODashboardAction[]
 }
 
@@ -1457,6 +1459,11 @@ export interface HealthScoreResult {
   maintainability: number
   complexity: string
   recommendations: string[]
+  documentation?: number
+  dependency_freshness?: number
+  circular_dependencies?: number
+  total_files?: number
+  test_files?: number
 }
 
 export async function fetchHealthScore(
@@ -1468,6 +1475,56 @@ export async function fetchHealthScore(
     `${API_BASE}/repos/${owner}/${repo}/health`,
     { owner, repo, repo_structure: repoStructure }
   )
+}
+
+// ─── Work Graph (architecture ↔ developers) ────────────────────────────────
+
+export type WorkTier = 'senior' | 'junior' | 'unknown'
+
+export interface WorkGraphModule {
+  id: string
+  label: string
+  layer: 'backend' | 'frontend' | 'sdk'
+  files: number
+  loc: number
+  senior_lines: number
+  junior_lines: number
+  owner_tier: WorkTier | null
+}
+
+export interface WorkGraphDeveloper {
+  login: string
+  name: string
+  role: string | null
+  tier: WorkTier
+  commits: number
+  lines: number
+  first_commit: string | null
+  last_commit: string | null
+}
+
+export interface WorkGraphTierSummary {
+  developers: number
+  commits: number
+  lines: number
+  modules: number
+  top_modules: { module: string; label: string; lines: number }[]
+}
+
+export interface WorkGraph {
+  owner: string
+  repo: string
+  generated_at: string
+  commit: string
+  modules: WorkGraphModule[]
+  module_edges: { source: string; target: string; weight: number }[]
+  developers: WorkGraphDeveloper[]
+  contributions: { dev: string; module: string; commits: number; lines: number }[]
+  summary: Record<WorkTier, WorkGraphTierSummary>
+}
+
+export async function fetchWorkGraph(owner: string, repo: string): Promise<WorkGraph> {
+  return get<WorkGraph>(`${API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/work-graph`)
 }
 
 // ─── Pattern Recognition ──────────────────────────────────────────────────

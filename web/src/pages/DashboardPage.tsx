@@ -11,7 +11,7 @@ import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { cn } from '../lib/utils'
-import { fetchCTODashboard, fetchRepos } from '../lib/api'
+import { fetchCTODashboard, fetchRepos, fetchHealthScore } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
 import { statusLabel } from '../components/ui/status-badge'
@@ -69,7 +69,14 @@ export default function DashboardPage() {
     staleTime: 60_000,
   })
 
-  const codeHealth = null
+  const firstRepo = reposData?.repos?.[0]
+  const { data: repoHealth } = useQuery({
+    queryKey: ['repo-health', firstRepo?.owner, firstRepo?.name],
+    queryFn: () => fetchHealthScore(firstRepo!.owner, firstRepo!.name, null),
+    enabled: Boolean(firstRepo?.owner && firstRepo?.name),
+    staleTime: 60_000,
+  })
+  const codeHealth = repoHealth?.overall_score ?? null
 
   const defaultDash = {
     total_tasks: 0, completed_tasks: 0, in_progress_tasks: 0, pending_review_tasks: 0,
@@ -101,16 +108,43 @@ export default function DashboardPage() {
     { name: 'Blocked', value: blocked_tasks, color: sig.red },
   ].filter(d => d.value > 0), [completed_tasks, in_progress_tasks, pending_review_tasks, blocked_tasks, sig])
 
+  // Fixed 7-day window, oldest → newest, zero-filled so the line never
+  // collapses to a single point or skips days.
   const activityTrendData = useMemo(() => {
-    const grouped: Record<string, { date: string; completed: number; submitted: number }> = {}
-    for (const act of recent_activity) {
-      const day = act.updated_at ? `${new Date(act.updated_at).getMonth()}-${new Date(act.updated_at).getDate()}` : 'Today'
-      if (!grouped[day]) grouped[day] = { date: day, completed: 0, submitted: 0 }
-      if (act.state === 'completed') grouped[day].completed++
-      else if (act.state === 'submitted' || act.state === 'under_review') grouped[day].submitted++
+    const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    const buckets: { key: string; date: string; completed: number; submitted: number }[] = []
+    const today = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
+      buckets.push({
+        key: dayKey(d),
+        date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        completed: 0,
+        submitted: 0,
+      })
     }
-    return Object.values(grouped).reverse()
-  }, [recent_activity])
+    buckets[buckets.length - 1].date = 'Today'
+    const byKey = new Map(buckets.map((b) => [b.key, b]))
+    // Prefer the full 8-day timeline; recent_activity is capped at 10 rows,
+    // which silently drops older days once the team gets busy.
+    const events: { state?: string | null; updated_at?: string | null }[] =
+      dashboard?.velocity_events ?? recent_activity
+    for (const act of events) {
+      // Backend timestamps may be naive UTC — without a zone JS would read
+      // them as local time and shift events onto the wrong day.
+      const raw = act.updated_at
+      const ts = raw
+        ? new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(raw) ? raw : `${raw}Z`)
+        : today
+      if (Number.isNaN(ts.getTime())) continue
+      const bucket = byKey.get(dayKey(ts))
+      if (!bucket) continue
+      if (act.state === 'completed') bucket.completed++
+      else if (act.state === 'submitted' || act.state === 'under_review') bucket.submitted++
+    }
+    return buckets
+  }, [recent_activity, dashboard?.velocity_events])
+  const hasTrend = activityTrendData.some((d) => d.completed > 0 || d.submitted > 0)
 
   if (isLoading) {
     return <DashboardSkeleton />
@@ -270,21 +304,31 @@ export default function DashboardPage() {
               designator="TRAJECTORY · 7 DAYS"
               className="lg:col-span-8"
             >
-              {activityTrendData.length === 0 ? (
+              {!hasTrend ? (
                 <EmptyRow label="No trajectory yet — complete tasks to chart velocity." />
               ) : (
-                <div className="h-52">
-                  <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0}>
-                    <AreaChart data={activityTrendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                      <CartesianGrid stroke={sig.grid} vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dy={6} />
-                      <YAxis tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dx={-6} />
-                      <Tooltip contentStyle={TOOLTIP} cursor={{ stroke: sig.grid }} />
-                      <Area type="monotone" dataKey="completed" stroke={sig.go} strokeWidth={1.5} fill={sig.go} fillOpacity={0.06} />
-                      <Area type="monotone" dataKey="submitted" stroke={sig.amber} strokeWidth={1.5} fill={sig.amber} fillOpacity={0.06} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <>
+                  <div className="flex items-center gap-4 mb-3 font-code text-[11px] text-ink-tertiary">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-0.5 rounded-full" style={{ backgroundColor: sig.go }} /> Completed
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-0.5 rounded-full" style={{ backgroundColor: sig.amber }} /> Submitted
+                    </span>
+                  </div>
+                  <div className="h-56 w-full min-w-0">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <AreaChart data={activityTrendData} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
+                        <CartesianGrid stroke={sig.grid} vertical={false} />
+                        <XAxis dataKey="date" interval={0} tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dy={6} height={28} padding={{ left: 12, right: 12 }} />
+                        <YAxis allowDecimals={false} width={36} tick={{ fill: sig.axis, fontSize: 10, fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} dx={-6} />
+                        <Tooltip contentStyle={TOOLTIP} cursor={{ stroke: sig.grid }} />
+                        <Area type="monotone" name="Completed" dataKey="completed" stroke={sig.go} strokeWidth={1.5} fill={sig.go} fillOpacity={0.08} />
+                        <Area type="monotone" name="Submitted" dataKey="submitted" stroke={sig.amber} strokeWidth={1.5} fill={sig.amber} fillOpacity={0.08} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
               )}
             </ConsoleCard>
 

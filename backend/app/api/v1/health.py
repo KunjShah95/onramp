@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import HealthScorer
 from app.api.v1.auth import get_current_user
-from app.api.v1.index_access import authorize_repo_index
+from app.api.v1.index_access import authorize_registered_repo, authorize_repo_index
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
 router = APIRouter(prefix="/repos", tags=["health"])
@@ -65,3 +65,25 @@ async def get_health(
     except Exception as e:
         await fail_session(sid, "health_scorer")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{owner}/{repo}/work-graph")
+async def get_work_graph(
+    owner: str,
+    repo: str,
+    user: dict = Depends(get_current_user),
+):
+    """Return the stored architecture ↔ developer work graph for a repo.
+
+    Generated offline by ``scripts/generate_work_graph.py --store``.
+    """
+    from app.services.postgres_db import get_storage
+
+    await authorize_registered_repo(user, f"https://github.com/{owner}/{repo}")
+    doc = await get_storage().get_document("repo_work_graphs", f"{owner}/{repo}")
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="No work graph stored for this repository yet. Run scripts/generate_work_graph.py --store.",
+        )
+    return doc

@@ -71,6 +71,7 @@ const loaders: Record<string, Loader> = {
   '/reports': () => import('../pages/OnboardingReportPage'),
   '/reviews': () => import('../pages/ReviewQueuePage'),
   '/code-health': () => import('../pages/CodeHealthPage'),
+  '/work-graph': () => import('../pages/WorkGraphPage'),
   '/drift': () => import('../pages/DriftDetectionPage'),
   '/autonomous': () => import('../pages/AutonomousCodingPage'),
   '/ramp': () => import('../pages/RampPage'),

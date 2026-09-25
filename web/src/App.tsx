@@ -86,6 +86,7 @@ const ComparisonPage = lazy(() => import('./pages/ComparisonPage'))
 const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
 const CodeHealthPage = lazy(() => import('./pages/CodeHealthPage'))
+const WorkGraphPage = lazy(() => import('./pages/WorkGraphPage'))
 const MemberDetailPage = lazy(() => import('./pages/MemberDetailPage'))
 const ModuleHealthPage = lazy(() => import('./pages/ModuleHealthPage'))
 
@@ -405,6 +406,12 @@ export default function App() {
                     <Route path="/code-health" element={
                       <Suspense fallback={<PageLoadingFallback />}>
                         <ErrorBoundary><CodeHealthPage /></ErrorBoundary>
+                      </Suspense>
+                    } />
+
+                    <Route path="/work-graph" element={
+                      <Suspense fallback={<PageLoadingFallback />}>
+                        <ErrorBoundary><WorkGraphPage /></ErrorBoundary>
                       </Suspense>
                     } />
 

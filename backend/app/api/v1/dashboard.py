@@ -41,6 +41,20 @@ async def _get_user_team(user: dict, requested_team_id: Optional[str] = None) ->
     return str(user.get("uid"))
 
 
+def _as_utc(value) -> Optional[datetime]:
+    """Parse a datetime or ISO string; naive values are treated as UTC."""
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 @router.get("/dashboard/cto")
 @cached("dashboard", ttl=120)
 async def cto_dashboard(
@@ -70,6 +84,16 @@ async def cto_dashboard(
             "module": t.get("module"),
             "updated_at": t.get("updated_at"),
         })
+
+    # Velocity timeline: every task change in the last 8 days (not just the
+    # 10 most recent), timestamps normalized to UTC ISO-8601 so the client
+    # buckets them into its local days correctly.
+    velocity_cutoff = datetime.now(timezone.utc) - timedelta(days=8)
+    velocity_events = []
+    for t in all_tasks:
+        ts = _as_utc(t.get("updated_at"))
+        if ts and ts >= velocity_cutoff:
+            velocity_events.append({"state": t.get("state"), "updated_at": ts.isoformat()})
 
     # ── Milestones from ContributorTracker ───────────────────
     milestone_summary = await _tracker.get_milestone_summary()
@@ -154,6 +178,7 @@ async def cto_dashboard(
             for t in pending_review_tasks[:10]
         ],
         "recent_activity": recent_activity,
+        "velocity_events": velocity_events,
         "actions": actions[:8],
     }
 
