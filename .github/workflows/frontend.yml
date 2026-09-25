@@ -13,9 +13,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
 
     steps:
       # Actions pinned to commit SHA (supply-chain hardening); the tag is in a comment.

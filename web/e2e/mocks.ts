@@ -96,8 +96,24 @@ export async function mockBackendAPIs(page: Page) {
   let authenticated = false
 
   // ── Auth routes ──────────────────────────────────────────────────
+  // The API client obtains a CSRF token before every mutation. The dev server
+  // has no backend, so provide the token locally for authenticated E2E flows.
+  await page.route('**/api/v1/auth/csrf-token', async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ csrf_token: 'e2e-csrf-token' }),
+    })
+  })
+
   await page.route('**/api/v1/auth/login', async (route) => {
     authenticated = true
+    await page.context().addCookies([{
+      name: 'onramp_access_token',
+      value: FAKE_SESSION_TOKEN,
+      domain: 'localhost',
+      path: '/',
+    }])
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -127,6 +143,10 @@ export async function mockBackendAPIs(page: Page) {
   })
 
   await page.route('**/api/v1/auth/me', async (route) => {
+    const cookies = await page.context().cookies()
+    if (cookies.some((cookie) => cookie.name === 'onramp_access_token' && cookie.value === FAKE_SESSION_TOKEN)) {
+      authenticated = true
+    }
     if (!authenticated) {
       return route.fulfill({
         status: 401,
@@ -372,7 +392,7 @@ export async function mockReviewQueueAPI(page: Page) {
 /* ------------------------------------------------------------------ */
 
 export async function mockExploreAPI(page: Page) {
-  await page.route('**/api/v1/explore/analyze', async (route) => {
+  await page.route(/\/api\/v1\/explore\/analyze(?:\?|$)/, async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',

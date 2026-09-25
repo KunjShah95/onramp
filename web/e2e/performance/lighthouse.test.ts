@@ -53,6 +53,17 @@ async function collectMetrics(page: Page) {
 }
 
 async function setupAuthMocks(page: Page) {
+  // The performance suite runs the frontend without a backend. Register this
+  // catch-all first; the specific routes below are registered afterwards and
+  // therefore take precedence in Playwright's reverse-order route matching.
+  await page.route('**/api/v1/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: {} }),
+    })
+  })
+
   // Mock auth/me endpoint
   await page.route('**/api/v1/auth/me', async (route) => {
     await route.fulfill({

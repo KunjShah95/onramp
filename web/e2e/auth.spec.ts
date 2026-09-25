@@ -92,7 +92,7 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await expect(page.getByRole('heading', { name: 'Mission Control' })).toBeVisible({ timeout: 15_000 })
   })
 
-  test('login page redirects to dashboard when already authenticated', async ({ page }) => {
+  test('login page remains public when a session already exists', async ({ page }) => {
     // First log in
     await mockNeonAuth(page)
     await mockBackendAPIs(page)
@@ -108,9 +108,11 @@ test.describe('Login Flow — End-to-End Auth', () => {
     await page.waitForURL('**/dashboard', { timeout: 15_000 })
     await page.waitForTimeout(500)
 
-    // Navigate back to login — should be redirected away
+    // The login route is intentionally public; it must not perform a session
+    // bootstrap or redirect away from a user who opens it directly.
     await page.goto('/login')
-    await page.waitForURL('**/dashboard', { timeout: 15_000 })
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.locator('input#email')).toBeVisible()
   })
 
   test('hydrates a session from an HttpOnly cookie', async ({ page }) => {

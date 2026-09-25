@@ -54,10 +54,11 @@ test.describe('New Dev → Allocated Repo Access', () => {
   test('new dev can analyze the allocated repo on the Code Health page', async ({ page }) => {
     await signInAsNewDev(page)
     await page.goto('/code-health')
-    await page.waitForSelector('input[placeholder="github.com/owner/repo"]', { timeout: 10_000 })
+    const repoInput = page.getByLabel('Repository')
+    await expect(repoInput).toBeVisible({ timeout: 10_000 })
 
     // The dev analyzes the repo allocated to their team
-    await page.fill('input[placeholder="github.com/owner/repo"]', 'octocat/Hello-World')
+    await repoInput.fill('octocat/Hello-World')
     await page.getByRole('button', { name: /analyze/i }).click()
 
     // Results render from the mocked health endpoint

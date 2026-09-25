@@ -33,6 +33,16 @@ test.describe('Frontend — Concurrent Load', () => {
     const results = await Promise.all(
       pages.map(async (page, i) => {
         const errors: string[] = []
+        // The load test runs the frontend alone, without the API service. Keep
+        // public-page network requests deterministic so an unavailable local
+        // backend is not reported as a frontend console failure.
+        await page.route('**/api/**', async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({}),
+          })
+        })
         page.on('console', (msg) => {
           if (msg.type() === 'error') errors.push(msg.text().slice(0, 150))
         })

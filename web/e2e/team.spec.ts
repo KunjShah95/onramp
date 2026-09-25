@@ -31,9 +31,8 @@ test.describe('Team Page', () => {
   test('displays team member list from mock data', async ({ page }) => {
     // The team page shows a list of teams. We need to click "Manage" to see members
     await expect(page.getByText('Onramp Engineering').first()).toBeVisible({ timeout: 10_000 })
-    // Click "Manage" to select the team and navigate to Module Access section
-    await page.getByRole('button', { name: /manage/i }).first().click()
-    // After clicking Manage, the module permissions section loads with "Module Permissions" heading
+    // The team page exposes module permissions as a dedicated tab.
+    await page.getByRole('button', { name: 'Module Access', exact: true }).click()
     await expect(page.getByText('Module Permissions').first()).toBeVisible({ timeout: 10_000 })
     // Permission entries from mock data appear (react-basics, testing)
     await expect(page.getByText('react-basics').first()).toBeVisible({ timeout: 5_000 })
@@ -41,8 +40,8 @@ test.describe('Team Page', () => {
 
   test('shows member roles', async ({ page }) => {
     await expect(page.getByText('Onramp Engineering').first()).toBeVisible({ timeout: 10_000 })
-    // Click Manage to see members
-    await page.getByRole('button', { name: /manage/i }).first().click()
+    // Open the module access tab before checking the role-specific grants.
+    await page.getByRole('button', { name: 'Module Access', exact: true }).click()
     await page.waitForTimeout(1000)
     // Role badges appear in Module Access section
     await expect(page.getByText(/senior/i).first()).toBeVisible({ timeout: 10_000 })
