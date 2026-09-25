@@ -4,14 +4,38 @@ from dotenv import load_dotenv
 # Load environment variables BEFORE importing any modules that read them.
 load_dotenv()
 
+
+def _normalize_runtime_environment() -> str:
+    """Keep the legacy ENVIRONMENT alias synchronized with canonical ENV.
+
+    Some deployment providers inject one spelling while older application code
+    reads the other.  Allowing both to retain different values makes production
+    security checks (and telemetry) disagree with the rest of the process, so
+    reject that configuration explicitly and make both names identical.
+    """
+    env = os.getenv("ENV", "").strip()
+    environment = os.getenv("ENVIRONMENT", "").strip()
+    if env and environment and env != environment:
+        raise RuntimeError(
+            "ENV and ENVIRONMENT must match when both are set "
+            f"(got ENV={env!r}, ENVIRONMENT={environment!r})"
+        )
+    normalized = env or environment or "development"
+    os.environ["ENV"] = normalized
+    os.environ["ENVIRONMENT"] = normalized
+    return normalized
+
+
+_RUNTIME_ENV = _normalize_runtime_environment()
+
 # Sentry error monitoring (initializes only if SENTRY_DSN is set)
 import sentry_sdk
 _sentry_dsn = os.getenv("SENTRY_DSN")
 if _sentry_dsn:
     sentry_sdk.init(
         dsn=_sentry_dsn,
-        environment=os.getenv("ENV", "development"),
-        traces_sample_rate=0.1 if os.getenv("ENV") == "production" else 0.0,
+        environment=_RUNTIME_ENV,
+        traces_sample_rate=0.1 if _RUNTIME_ENV == "production" else 0.0,
         send_default_pii=False,
     )
 
@@ -94,7 +118,7 @@ def _validate_production_env() -> None:
     token encryption, rate limiter), but discovering that on the first
     request is worse than refusing to start.
     """
-    if os.getenv("ENV") != "production":
+    if os.getenv("ENV", _RUNTIME_ENV) != "production":
         return
     
     errors = []
@@ -278,7 +302,7 @@ async def lifespan(app: FastAPI):
     await close_cache()
 
 
-_is_production = os.getenv("ENV") == "production"
+_is_production = os.getenv("ENV", _RUNTIME_ENV) == "production"
 
 # Dev-only surface (Swagger docs) is OFF in production by default but can be
 # opted back in explicitly (staging, ops debugging) via ENABLE_API_DOCS=true.
@@ -368,6 +392,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/logout",                # logout (auth via refresh token cookie/body; revokes it)
     "/api/v1/auth/verify-email",          # email verification
     "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
+    "/api/v1/track/webhook",              # contributor webhook (raw-body HMAC verified)
     "/api/v1/webhooks",                   # generic webhook deliveries
     "/api/v1/billing/webhook",   # Razorpay calls this unauthenticated (signature-verified)
     "/api/v1/billing/pricing",   # public pricing config

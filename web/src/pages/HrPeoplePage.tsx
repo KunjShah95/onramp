@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
@@ -13,6 +13,7 @@ import {
   ChartBar, Hash, CaretCircleRight, User, TrendUp,
 } from '@phosphor-icons/react'
 import type { HrDeveloperOverview, HrDayBucket } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; glow: string; icon: any }> = {
   onboarding: { label: 'Onboarding', color: 'text-mission', glow: 'shadow-mission/10', icon: UserSwitch },
@@ -225,7 +226,8 @@ function DevDetailCard({ dev }: { dev: HrDeveloperOverview }) {
 type StageFilter = 'all' | 'onboarding' | 'ramping' | 'contributing' | 'independent'
 
 export default function HrPeoplePage() {
-  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const { activeTeamId } = useAuth()
+  const [selectedTeamId, setSelectedTeamId] = useState(activeTeamId ?? '')
   const [selectedDevId, setSelectedDevId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState<StageFilter>('all')
@@ -239,12 +241,16 @@ export default function HrPeoplePage() {
     staleTime: 60_000,
   })
 
+  useEffect(() => {
+    if (activeTeamId) setSelectedTeamId(activeTeamId)
+  }, [activeTeamId])
+
   const teams = useMemo(() => {
     const raw = (teamsList as any)?.teams || teamsList || []
     return Array.isArray(raw) ? raw.map((t: any) => ({ ...t, id: t.team_id || t.id })) : []
   }, [teamsList])
 
-  const teamId = selectedTeamId || (teams[0]?.team_id || teams[0]?.id || '')
+  const teamId = selectedTeamId || activeTeamId || (teams[0]?.team_id || teams[0]?.id || '')
 
   const { data: devData, isLoading: devLoading } = useQuery({
     queryKey: ['hrDevelopers', teamId],
@@ -343,7 +349,7 @@ export default function HrPeoplePage() {
               <div className="flex items-center gap-2 bg-panel border border-seam rounded-xl px-3 py-1.5">
                 <Hash size={14} className="text-ink-muted/30" />
                 <select
-                  value={selectedTeamId}
+                  value={teamId}
                   onChange={(e) => { setSelectedTeamId(e.target.value); setSelectedDevId(null) }}
                   className="bg-transparent text-body-xs text-ink font-medium py-1 outline-none cursor-pointer appearance-none"
                 >
@@ -355,9 +361,9 @@ export default function HrPeoplePage() {
                 </select>
               </div>
             )}
-            {selectedTeamId && (
+            {teamId && (
               <Link
-                to={`/hr/cohort/${selectedTeamId}`}
+                to={`/hr/cohort/${teamId}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-mission/25 bg-mission/10 px-3.5 py-2 text-body-xs font-medium text-mission transition-all hover:bg-mission/20 active:scale-[0.98]"
               >
                 <ChartBar size={15} weight="fill" />

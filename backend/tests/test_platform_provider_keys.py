@@ -216,6 +216,8 @@ ADMIN_UID = "u-admin-owner"
 def _mock_owner(monkeypatch):
     from app.api.v1 import admin
 
+    monkeypatch.setenv("PLATFORM_ADMIN_EMAILS", "owner@test.com")
+
     async def _teams_for_user(uid):
         return [{"id": "acme", "team_id": "acme", "role": "admin"}]
 
@@ -286,6 +288,8 @@ class TestAdminProviderKeyEndpoints:
 
     def test_non_owner_403(self, client, monkeypatch):
         from app.api.v1 import admin
+
+        monkeypatch.setenv("PLATFORM_ADMIN_EMAILS", "different-owner@example.com")
 
         async def _member_teams(uid):
             return [{"id": "acme", "team_id": "acme", "role": "member"}]

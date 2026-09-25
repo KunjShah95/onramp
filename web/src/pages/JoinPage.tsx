@@ -7,15 +7,18 @@ import PageTransition from '../components/ui/page-transition'
 import Seo from '../components/seo/Seo'
 import { acceptInvite } from '../lib/api'
 import { useToast } from '../context/ToastContext'
+import { homeForRole, useAuth, type TeamRole } from '../context/AuthContext'
 
 export default function JoinPage() {
   const toast = useToast()
+  const { switchTeam } = useAuth()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [teamName, setTeamName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [authRequired, setAuthRequired] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -24,19 +27,40 @@ export default function JoinPage() {
       return
     }
 
-    acceptInvite(token)
-      .then(res => {
+    let cancelled = false
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null
+    setStatus('loading')
+    setErrorMsg('')
+    setAuthRequired(false)
+
+    void acceptInvite(token)
+      .then(async (res) => {
+        if (cancelled) return
+        // A user may belong to several teams. The team accepted by this invite
+        // must become the active workspace, not whichever team happened to be
+        // returned first by /teams.
+        await switchTeam(res.team_id)
+        if (cancelled) return
         setTeamName(res.team_name)
         setStatus('success')
         toast.success('Joined team', `You've joined ${res.team_name}`)
-        setTimeout(() => navigate('/my-progress', { replace: true }), 3000)
+        redirectTimer = setTimeout(() => {
+          if (!cancelled) navigate(homeForRole(res.role as TeamRole), { replace: true })
+        }, 3000)
       })
-      .catch(err => {
+      .catch((err: any) => {
+        if (cancelled) return
+        setAuthRequired(err?.status === 401 || err?.statusCode === 401 || err?.status === 403 || err?.statusCode === 403)
         setStatus('error')
-        setErrorMsg(err.message || 'Failed to accept invite')
-        toast.error('Invite failed', err.message || 'Failed to accept invite')
+        setErrorMsg(err?.message || 'Failed to accept invite')
+        toast.error('Invite failed', err?.message || 'Failed to accept invite')
       })
-  }, [token, navigate])
+
+    return () => {
+      cancelled = true
+      if (redirectTimer) clearTimeout(redirectTimer)
+    }
+  }, [token, navigate, switchTeam])
 
   const statusMeta = {
     loading: { rail: 'Team Invite', designator: 'JOINING', status: 'standby' as const },
@@ -87,14 +111,18 @@ export default function JoinPage() {
                   <div>
                     <h2 className="font-heading text-display-xs font-semibold text-ink mb-2">Invite Error</h2>
                     <p className="text-caption text-abort mb-2">{errorMsg}</p>
-                    <p className="text-caption text-ink-muted">Try asking your team lead to send a new invitation.</p>
+                    <p className="text-caption text-ink-muted">
+                      {authRequired ? 'Sign in to preserve this invitation, then return here to accept it.' : 'Try asking your team lead to send a new invitation.'}
+                    </p>
                   </div>
                   <Link
-                    to="/login"
+                    to={authRequired && token
+                      ? `/login?returnTo=${encodeURIComponent(`/join?token=${token}`)}`
+                      : '/login'}
                     className="flex items-center gap-2 text-caption text-go hover:underline mt-2"
                   >
                     <ArrowLeft size={16} />
-                    Back to login
+                    {authRequired ? 'Sign in to accept invite' : 'Back to login'}
                   </Link>
                 </div>
               )}

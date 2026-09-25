@@ -170,6 +170,9 @@ async def _billing_scope(auth: dict) -> str:
     primary team_id so the gateway shares the same quota counter as every
     other AI endpoint (which use enforce_quota → team_id).
     """
+    team_id = auth.get("team_id")
+    if team_id:
+        return str(team_id)
     org = auth.get("org_name")
     if org:
         return org
@@ -180,7 +183,14 @@ async def _billing_scope(auth: dict) -> str:
         from app.services.team_service import get_user_teams
         teams = await get_user_teams(uid)
         if teams:
-            return teams[0].get("id") or teams[0].get("team_id") or uid
+            team = min(
+                teams,
+                key=lambda item: (
+                    str(item.get("joined_at") or "9999"),
+                    str(item.get("team_id") or item.get("id") or ""),
+                ),
+            )
+            return team.get("id") or team.get("team_id") or uid
     except Exception:
         logger.warning("Failed to resolve team scope for %s, falling back to uid", uid)
     return uid
@@ -219,7 +229,7 @@ async def _team_provider_keys(auth: dict) -> Optional[Dict[str, str]]:
     platform env keys are used for everything else. Shared implementation:
     :func:`app.api.v1.llm_route.team_provider_keys`.
     """
-    return await llm_route.team_provider_keys(auth.get("org_name"))
+    return await llm_route.team_provider_keys(await _billing_scope(auth))
 
 
 async def _team_key_pools(auth: dict) -> Optional[Dict[str, List[str]]]:
@@ -227,7 +237,7 @@ async def _team_key_pools(auth: dict) -> Optional[Dict[str, List[str]]]:
     org (or None when no pool keys exist). Shared implementation:
     :func:`app.api.v1.llm_route.team_key_pools`.
     """
-    return await llm_route.team_key_pools(auth.get("org_name"))
+    return await llm_route.team_key_pools(await _billing_scope(auth))
 
 
 async def _team_key_pool_ids(auth: dict) -> Optional[Dict[str, List[str]]]:
@@ -236,7 +246,7 @@ async def _team_key_pool_ids(auth: dict) -> Optional[Dict[str, List[str]]]:
     which exact key served a call in the route metadata. Shared
     implementation: :func:`app.api.v1.llm_route.team_key_pool_ids`.
     """
-    return await llm_route.team_key_pool_ids(auth.get("org_name"))
+    return await llm_route.team_key_pool_ids(await _billing_scope(auth))
 
 
 async def _resolve_routing_mode(auth: dict, requested: Optional[Union[int, str]]) -> Union[int, str]:
@@ -245,7 +255,7 @@ async def _resolve_routing_mode(auth: dict, requested: Optional[Union[int, str]]
     setting), then RoutingMode.BALANCED. Shared implementation:
     :func:`app.api.v1.llm_route.resolve_team_routing_mode`.
     """
-    return await llm_route.resolve_team_routing_mode(auth.get("org_name"), requested)
+    return await llm_route.resolve_team_routing_mode(await _billing_scope(auth), requested)
 
 
 def _route_header_for(
@@ -432,7 +442,7 @@ async def chat_completions(
     try:
         # cache_scope isolates the response cache per tenant (org) so one
         # customer's cached answers are never served to another.
-        cache_scope = auth.get("org_name") or auth.get("uid") or "global"
+        cache_scope = auth.get("team_id") or auth.get("org_name") or auth.get("uid") or "global"
         chat_kwargs: Dict[str, Any] = {
             "system": system,
             "max_tokens": max_tokens,

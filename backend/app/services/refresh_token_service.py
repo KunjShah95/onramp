@@ -405,13 +405,18 @@ async def find_revoked_record(token: str) -> Optional[dict]:
         return None
 
 
-async def revoke_all_user_tokens(user_id: str) -> int:
-    """Revoke every live refresh token for a user in both stores.
+async def revoke_all_user_tokens(
+    user_id: str,
+    reason: str = "reuse_detected",
+    *,
+    strict: bool = False,
+) -> int:
+    """Revoke every live refresh token in both stores.
 
-    Theft response for refresh-token reuse: when a revoked token is replayed,
-    the whole family is burned. Returns the number of tokens revoked.
+    ``strict=True`` makes storage failures fatal for password changes/resets.
     """
     count = 0
+    errors: list[Exception] = []
     try:
         from app.database.config import db_config
         from app.database.models import RefreshToken
@@ -426,11 +431,12 @@ async def revoke_all_user_tokens(user_id: str) -> int:
                     RefreshToken.user_id == user_id,
                     RefreshToken.revoked_at.is_(None),
                 )
-                .values(revoked_at=datetime.now(timezone.utc), replaced_by="reuse_detected")
+                .values(revoked_at=datetime.now(timezone.utc), replaced_by=reason)
             )
             await session.commit()
             count += result.rowcount or 0
-    except Exception:
+    except Exception as exc:
+        errors.append(exc)
         logger.debug("family wipe (table) failed — legacy sweep continues", exc_info=True)
     try:
         from app.services.postgres_db import get_storage
@@ -447,12 +453,15 @@ async def revoke_all_user_tokens(user_id: str) -> int:
                     {
                         "revoked": True,
                         "revoked_at": datetime.now(timezone.utc).isoformat(),
-                        "revoked_reason": "reuse_detected",
+                        "revoked_reason": reason,
                     },
                 )
                 count += 1
-    except Exception:
+    except Exception as exc:
+        errors.append(exc)
         logger.debug("family wipe (legacy) failed", exc_info=True)
+    if strict and errors:
+        raise RuntimeError("refresh-token revocation failed") from errors[-1]
     return count
 
 

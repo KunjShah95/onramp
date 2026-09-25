@@ -4,7 +4,8 @@ REM Quick Start Script for Local Development (Windows)
 REM Sets up backend + frontend to run locally, connecting to the remote NeonDB database.
 REM
 REM Requirements: Python 3.12+, Node.js 20+
-REM No Docker needed — PostgreSQL is hosted on NeonDB, Redis features use in-memory fallback.
+REM No Docker needed — PostgreSQL is hosted on NeonDB; Redis is optional for the API
+REM and required when running Celery workers.
 
 cls
 echo.
@@ -60,12 +61,19 @@ if not exist ".env" (
 REM ── Alembic Migrations ──────────────────────────────────────────────────────
 echo.
 echo   Running Alembic migrations against DATABASE_URL...
-alembic upgrade head >nul 2>&1
+REM The example .env uses localhost until NeonDB credentials are supplied.
+REM Do not hide that expected deferral, and fail on real migration errors.
+findstr /I /B /C:"DATABASE_URL=" .env | findstr /I /C:"@localhost" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    echo   Migrations applied successfully.
+    echo   ⚠️  Skipping migrations: backend\.env still uses the example localhost DATABASE_URL.
+    echo      Set DATABASE_URL to NeonDB, then run: cd backend ^&^& alembic upgrade head
 ) else (
-    echo   ⚠️  Migrations failed — is DATABASE_URL set correctly in backend\.env?
-    echo      Once configured, run: cd backend ^&^& alembic upgrade head
+    alembic upgrade head
+    if errorlevel 1 (
+        echo   ❌ Alembic migrations failed. Fix the error above before starting the backend.
+        exit /b 1
+    )
+    echo   Migrations applied successfully.
 )
 
 cd ..
@@ -119,6 +127,7 @@ echo   • DATABASE_URL  — your NeonDB connection string (required)
 echo   • JWT_SECRET    — already auto-generated
 echo   • LLM keys      — optional, configure from Admin Console or .env
 echo.
-echo Note: Redis features (caching, Celery tasks) use in-memory fallback locally.
+echo Note: Redis is optional for the API when REDIS_URL is unset (cache uses its in-memory fallback).
+echo       Celery workers require Redis; start Redis separately or use docker compose --profile worker.
 echo.
 pause

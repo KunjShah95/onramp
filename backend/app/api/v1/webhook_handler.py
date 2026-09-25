@@ -6,18 +6,106 @@ and processes PR events (opened, synchronize) by triggering automated code
 reviews.
 """
 
+import asyncio
 import hashlib
 import hmac
 import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_DELIVERY_LEASE_SECONDS = 5 * 60
+_DELIVERY_TTL_SECONDS = 24 * 60 * 60
+# delivery_id -> (state, timestamp). Redis is preferred; this is a safe
+# single-process fallback when Redis is unavailable.
+_processed_deliveries: dict[str, tuple[str, float]] = {}
+_delivery_lock = asyncio.Lock()
+
+
+async def _claim_delivery(delivery_id: str) -> bool:
+    """Claim a delivery with a short processing lease.
+
+    A failed handler must be allowed to retry. Previously the claim lived for
+    the full 24-hour deduplication window, so one transient handler failure
+    permanently swallowed every GitHub retry.
+    """
+    if not delivery_id:
+        return False
+    try:
+        from app.services.cache_service import get_client
+
+        client = await get_client()
+        if client is not None:
+            key = f"github:delivery:{delivery_id}"
+            claimed = await client.set(
+                key, "processing", ex=_DELIVERY_LEASE_SECONDS, nx=True
+            )
+            return bool(claimed)
+    except Exception:
+        logger.warning("GitHub delivery idempotency store unavailable", exc_info=True)
+
+    now = datetime.now(timezone.utc).timestamp()
+    async with _delivery_lock:
+        expired = [
+            key for key, (state, seen_at) in _processed_deliveries.items()
+            if now - seen_at > (_DELIVERY_TTL_SECONDS if state == "done" else _DELIVERY_LEASE_SECONDS)
+        ]
+        for key in expired:
+            _processed_deliveries.pop(key, None)
+        current = _processed_deliveries.get(delivery_id)
+        if current:
+            state, seen_at = current
+            if state == "done" or now - seen_at <= _DELIVERY_LEASE_SECONDS:
+                return False
+        _processed_deliveries[delivery_id] = ("processing", now)
+        return True
+
+
+async def _complete_delivery(delivery_id: str) -> None:
+    """Mark a successfully handled delivery as terminal."""
+    if not delivery_id:
+        return
+    try:
+        from app.services.cache_service import get_client
+
+        client = await get_client()
+        if client is not None:
+            await client.set(
+                f"github:delivery:{delivery_id}",
+                "done",
+                ex=_DELIVERY_TTL_SECONDS,
+            )
+            return
+    except Exception:
+        logger.warning("GitHub delivery completion store unavailable", exc_info=True)
+    async with _delivery_lock:
+        _processed_deliveries[delivery_id] = (
+            "done", datetime.now(timezone.utc).timestamp()
+        )
+
+
+async def _release_delivery(delivery_id: str) -> None:
+    """Release a processing lease after a handler failure."""
+    if not delivery_id:
+        return
+    try:
+        from app.services.cache_service import get_client
+
+        client = await get_client()
+        if client is not None:
+            await client.delete(f"github:delivery:{delivery_id}")
+            return
+    except Exception:
+        logger.warning("GitHub delivery release store unavailable", exc_info=True)
+    async with _delivery_lock:
+        _processed_deliveries.pop(delivery_id, None)
 
 
 def _verify_signature(payload_body: bytes, signature_header: str, secret: str) -> bool:
@@ -62,8 +150,17 @@ def _extract_issue_refs(payload: dict) -> set:
 
 def _repo_url_from_payload(payload: dict) -> str:
     from app.services.repo_index_access import parse_github_repo
-    repo = payload.get("repository", {})
+    repo = payload.get("repository", {}) or {}
     url = (repo.get("html_url") or repo.get("clone_url") or "").strip().rstrip("/").lower()
+    if not url and repo.get("full_name"):
+        full_name = str(repo["full_name"]).strip().strip("/")
+        if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", full_name):
+            url = f"https://github.com/{full_name}".lower()
+    if not url:
+        pr_url = str((payload.get("pull_request") or {}).get("html_url") or "")
+        match = re.match(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/\d+", pr_url)
+        if match:
+            url = f"https://github.com/{match.group(1)}".lower()
     if not parse_github_repo(url):
         raise ValueError(f"Payload contains invalid repository URL: {url!r}")
     return url
@@ -518,6 +615,7 @@ async def github_webhook(
     request: Request,
     x_github_event: str = Header(""),
     x_hub_signature_256: str = Header(""),
+    x_github_delivery: str = Header(""),
 ):
     """Receive and process GitHub webhook events.
 
@@ -540,14 +638,26 @@ async def github_webhook(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    # Route by event type
-    if x_github_event == "pull_request":
-        result = await _handle_pr_event(payload, x_github_event)
-    elif x_github_event == "push":
-        result = await _handle_push_event(payload)
-    elif x_github_event == "issue_comment":
-        result = await _handle_issue_comment_event(payload)
-    else:
-        result = {"handled": False, "event": x_github_event, "reason": "Unsupported event type"}
+    if not x_github_delivery:
+        raise HTTPException(status_code=400, detail="Missing X-GitHub-Delivery")
+    if not await _claim_delivery(x_github_delivery):
+        return {"success": True, "event": x_github_event, "duplicate": True}
 
+    # Route by event type. A handler exception must release the lease so the
+    # provider's next delivery is processed instead of being acknowledged as a
+    # duplicate forever.
+    try:
+        if x_github_event == "pull_request":
+            result = await _handle_pr_event(payload, x_github_event)
+        elif x_github_event == "push":
+            result = await _handle_push_event(payload)
+        elif x_github_event == "issue_comment":
+            result = await _handle_issue_comment_event(payload)
+        else:
+            result = {"handled": False, "event": x_github_event, "reason": "Unsupported event type"}
+    except Exception:
+        await _release_delivery(x_github_delivery)
+        raise
+
+    await _complete_delivery(x_github_delivery)
     return {"success": True, "event": x_github_event, "result": result}

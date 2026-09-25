@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from app.api.v1.auth import get_current_user
 from app.services.team_service import get_user_teams
 
-from app.services.audit_service import query_events
+from app.services.audit_service import query_events, query_events_page
 from app.services.audit_log_service import log_key_action
 from app.services.webhook_service import get_webhook as _get_webhook
 from app.services import platform_provider_keys
@@ -269,18 +269,23 @@ async def list_all_audit_events(
     event_type: Optional[str] = Query(None),
     actor_id: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     uid: str = Depends(_require_owner),
 ):
-    """List all audit events across all teams (global audit log).
-
-    Only accessible to team owners (admin).
-    """
-    events = await query_events(
+    """List one page of audit events across all teams (global audit log)."""
+    events, total = await query_events_page(
         actor_id=actor_id,
         event_type=event_type,
         limit=limit,
+        offset=offset,
     )
-    return {"events": events, "count": len(events)}
+    return {
+        "events": events,
+        "count": len(events),
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 # ── Admin Webhook Endpoints ─────────────────────────────────

@@ -11,6 +11,17 @@ import { getGoogleLoginUrl, getGithubLoginUrl } from '../lib/api'
 import InputField from '../components/ui/first-principles/InputField'
 import PasswordField from '../components/ui/PasswordField'
 
+const AUTH_RETURN_STORAGE_KEY = 'onramp.authReturnTo'
+
+function safeInternalReturn(value: string | null): string | null {
+  return value && value.startsWith('/') && !value.startsWith('//') && !value.includes(':') ? value : null
+}
+
+function rememberAuthReturn(value: string | null) {
+  if (!value) return
+  try { sessionStorage.setItem(AUTH_RETURN_STORAGE_KEY, value) } catch { /* storage optional */ }
+}
+
 export default function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -29,10 +40,17 @@ export default function Register() {
   // in the billing funnel (Razorpay checkout) instead of the default home.
   const planIntent = getPlanIntent(searchParams)
   const postAuthDest = planIntent ? billingUrlWithPlan(planIntent) : null
+  const returnTo = safeInternalReturn(searchParams.get('returnTo'))
 
   useEffect(() => {
-    if (user && !loading) navigate(postAuthDest || homeForRole(role), { replace: true })
-  }, [user, loading, navigate, postAuthDest, role])
+    rememberAuthReturn(returnTo)
+  }, [returnTo])
+
+  useEffect(() => {
+    if (!user || loading) return
+    try { sessionStorage.removeItem(AUTH_RETURN_STORAGE_KEY) } catch { /* storage optional */ }
+    navigate(postAuthDest || returnTo || homeForRole(role), { replace: true })
+  }, [user, loading, navigate, postAuthDest, returnTo, role])
 
   useEffect(() => {
     if (!loading) nameRef.current?.focus()
@@ -82,7 +100,10 @@ export default function Register() {
           footer={
             <>
               <span>Already have an account?</span>
-              <Link to={planIntent ? `/login?plan=${planIntent}` : '/login'} className="text-go font-semibold hover:text-go-lit transition-colors ml-2">
+              <Link
+                to={`/login${planIntent ? `?plan=${planIntent}` : '?'}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`}
+                className="text-go font-semibold hover:text-go-lit transition-colors ml-2"
+              >
                 Sign in
               </Link>
             </>
@@ -99,6 +120,7 @@ export default function Register() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             <a
               href={getGoogleLoginUrl()}
+              onClick={() => rememberAuthReturn(returnTo)}
               aria-label="Sign up with Google"
               className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >
@@ -107,6 +129,7 @@ export default function Register() {
             </a>
             <a
               href={getGithubLoginUrl()}
+              onClick={() => rememberAuthReturn(returnTo)}
               aria-label="Sign up with GitHub"
               className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >

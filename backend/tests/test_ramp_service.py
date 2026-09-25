@@ -254,7 +254,9 @@ async def _seed_subscription(storage, team_id: str, tier: str = "startup") -> No
     """Seed an active billing subscription (INR price from TIER_PRICING)."""
     from app.services.billing_service import BillingService
 
-    sub = await BillingService().create_subscription(team_id, tier, "monthly")
+    sub = await BillingService().create_subscription(
+        team_id, tier, "monthly", verified_checkout=True
+    )
     await storage.create_document("onramp_subscriptions", sub["subscription_id"], sub)
 
 

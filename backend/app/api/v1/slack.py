@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 from datetime import datetime, timezone
 
@@ -51,7 +51,7 @@ async def send_digest(request: SlackDigestRequest, req: Request, _user: dict = D
         success = await slack.post_message(message, request.channel)
         return {"sent": success, "issue_count": len(issues)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/command")
@@ -160,7 +160,9 @@ async def slack_standup(request: Request):
     auto-digest, and returns a Slack-style ephemeral response with Block Kit
     blocks.
 
-    The Slack `user_id` is mapped to the seeded junior (Dev Shah) for the demo.
+    The Slack `user_id` must be linked through the user's Slack integration
+    configuration; unmapped Slack identities are rejected rather than being
+    attributed to a demo employee.
 
     Security: Verifies Slack's HMAC-SHA256 signing secret before processing
     any slash command. Unverified requests are rejected with 401.
@@ -186,9 +188,47 @@ async def slack_standup(request: Request):
         text = form_data.get("text", [""])[0]
     except Exception:
         slack_user_id, text = "", ""
-    _ = slack_user_id  # mapped to the seeded junior below (demo)
+    if not slack_user_id:
+        raise HTTPException(status_code=400, detail="Slack user_id is required")
 
     storage = get_storage()
+    configs = await storage.list_documents("onramp_integrations")
+    identity = next(
+        (
+            row for row in configs
+            if row.get("integration") == "slack"
+            and str((row.get("config") or {}).get("slack_user_id", "")) == slack_user_id
+        ),
+        None,
+    )
+    if not identity:
+        raise HTTPException(status_code=403, detail="Slack identity is not linked to an Onramp user")
+    junior_id = str(identity.get("user_id") or identity.get("id") or "")
+    profile = await storage.get_document("users", junior_id)
+    if not profile:
+        raise HTTPException(status_code=403, detail="Linked Onramp user no longer exists")
+
+    from app.services.team_service import get_team_members, get_user_teams
+
+    memberships = await get_user_teams(junior_id)
+    membership = next(iter(memberships or []), None)
+    team_id = str((membership or {}).get("team_id") or (membership or {}).get("id") or "")
+    if not team_id:
+        raise HTTPException(status_code=403, detail="Linked user is not assigned to a team")
+    team_members = await get_team_members(team_id)
+    senior = next(
+        (
+            member for member in team_members
+            if str(member.get("user_id") or member.get("uid") or member.get("id")) != junior_id
+            and member.get("role") in {"senior", "senior_dev", "admin", "cto", "ceo"}
+        ),
+        None,
+    )
+    if not senior:
+        raise HTTPException(status_code=403, detail="No team senior is configured for standups")
+    senior_id = str(senior.get("user_id") or senior.get("uid") or senior.get("id"))
+    junior_name = profile.get("name") or profile.get("email") or "Teammate"
+
     today = datetime.now(timezone.utc).date().isoformat()
     message = (text or "").strip()
 
@@ -196,14 +236,14 @@ async def slack_standup(request: Request):
         # One update per day: overwrite today's note if it already exists.
         prior = await storage.query_documents(
             _DAILY_UPDATES_COLLECTION,
-            [("user_id", "==", _JUNIOR_ID), ("date", "==", today)],
+            [("user_id", "==", junior_id), ("date", "==", today)],
         )
         update_id = prior[0]["id"] if prior else generate_id()
         record = {
             "update_id": update_id,
-            "user_id": _JUNIOR_ID,
-            "team_id": _TEAM_ID,
-            "submitted_to": _SENIOR_ID,
+            "user_id": junior_id,
+            "team_id": team_id,
+            "submitted_to": senior_id,
             "date": today,
             "message": message,
             "created_at": datetime.now(timezone.utc),
@@ -216,23 +256,23 @@ async def slack_standup(request: Request):
         # Notify the senior (only meaningful when there is a note).
         if message:
             await notification_service.create_notification(
-                user_id=_SENIOR_ID,
+                user_id=senior_id,
                 type="system_alert",
-                title=f"Daily update from {_JUNIOR_NAME} ({today})",
+                title=f"Daily update from {junior_name} ({today})",
                 message=message,
-                team_id=_TEAM_ID,
-                metadata={"update_id": update_id, "from": _JUNIOR_ID, "source": "slack"},
+                team_id=team_id,
+                metadata={"update_id": update_id, "from": junior_id, "source": "slack"},
             )
 
-        sections = await digest_service.build_digest_sections(_JUNIOR_ID, "daily", _TEAM_ID)
-        blocks = format_daily_update(_JUNIOR_NAME, today, message, sections)
+        sections = await digest_service.build_digest_sections(junior_id, "daily", team_id)
+        blocks = format_daily_update(junior_name, today, message, sections)
 
         # Best-effort broadcast to a configured channel webhook (graceful no-op
         # if SLACK_WEBHOOK_URL is unset — never raises).
         # Also broadcast to the standup channel via the Slack bot if configured.
         bot = SlackBot()
         await bot.broadcast_standup(
-            junior_name=_JUNIOR_NAME,
+            junior_name=junior_name,
             date=today,
             message=message,
             sections=sections,
@@ -243,4 +283,4 @@ async def slack_standup(request: Request):
         return {"response_type": "ephemeral", "blocks": blocks}
     except Exception as e:  # noqa: BLE001
         logger.exception("Slack standup handler failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

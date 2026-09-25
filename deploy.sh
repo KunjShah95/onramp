@@ -1,5 +1,6 @@
 #!/bin/bash
 # Deployment Setup Script for Vercel + Render
+set -euo pipefail
 
 echo "=================================================="
 echo "Onramp Deployment Setup"
@@ -25,20 +26,32 @@ echo "What is your Vercel project name?"
 read VERCEL_PROJECT
 
 echo "What is your Render backend URL?"
-echo "(Should be: https://ahs-2026.onrender.com)"
-read BACKEND_URL
+echo "(Use the current HTTPS service origin, for example your Render API URL)"
+read -r BACKEND_URL
+if [[ -z "$BACKEND_URL" || "$BACKEND_URL" != https://* ]]; then
+    echo "BACKEND_URL must be a non-empty https:// URL" >&2
+    exit 1
+fi
 
 echo ""
 echo -e "${BLUE}Step 4: Set Environment Variables in Vercel${NC}"
-echo "Adding VITE_API_URL=$BACKEND_URL"
-
-vercel env add VITE_API_URL
-# User will be prompted to enter the value
+# Vercel does not interpolate environment variables inside vercel.json.  Set
+# the build-time VITE_API_URL explicitly; the app accepts either an API origin
+# or an origin ending in /api/v1.
+if [[ "$BACKEND_URL" == */api/v1 ]]; then
+    VITE_API_URL="$BACKEND_URL"
+else
+    VITE_API_URL="${BACKEND_URL%/}/api/v1"
+fi
+echo "Adding VITE_API_URL=$VITE_API_URL"
+cd web
+printf '%s\n' "$VITE_API_URL" | vercel env add VITE_API_URL production
+cd ..
 
 echo ""
 echo -e "${YELLOW}Step 5: Environment Variables${NC}"
 echo "No Firebase vars needed — auth is handled via neon_auth tables in PostgreSQL."
-echo "Optional: vercel env add VITE_NEON_AUTH_URL (for custom auth endpoint)"
+echo "Optional: set VITE_NEON_AUTH_URL in Vercel for a custom auth endpoint."
 
 echo ""
 echo -e "${BLUE}Step 6: Deploy Frontend${NC}"
@@ -55,7 +68,7 @@ vercel ls
 
 echo ""
 echo "Next steps:"
-echo "1. Verify Render backend has FRONTEND_URL_PROD set"
+echo "1. Verify Render backend has BACKEND_URL and FRONTEND_URL set"
 echo "2. Test: Open https://your-vercel-domain.vercel.app"
 echo "3. Sign in with Google OAuth"
 echo "4. Try the Analysis page"

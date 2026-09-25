@@ -22,9 +22,10 @@ class AwardXpRequest(BaseModel):
 # ── Award XP ──────────────────────────────────────────────────
 
 
-_CLIENT_ALLOWED_SOURCES = frozenset({
-    "daily_login", "profile_complete", "first_pr_merged",
-})
+# XP is a server-verified side effect. The generic client endpoint is retained
+# only to return a stable authorization error; trusted events are awarded by the
+# workflow that verifies them (or by /login with its service-enforced daily cap).
+_CLIENT_ALLOWED_SOURCES = frozenset()
 
 
 @router.post("/xp")
@@ -32,19 +33,10 @@ async def award_xp(
     request: AwardXpRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Award XP to the current user. Only client-initiated sources allowed; amount ignored."""
+    """Reject all client-requested XP awards."""
     if request.source not in _CLIENT_ALLOWED_SOURCES:
-        raise HTTPException(status_code=403, detail=f"Source '{request.source}' cannot be self-awarded")
-    uid = user.get("uid", "")
-    result = await gs.award_xp(
-        user_id=uid,
-        source=request.source,
-        amount=None,
-        team_id=request.team_id,
-        metadata=request.metadata,
-    )
-    await invalidate_prefix("gamification")
-    return result
+        raise HTTPException(status_code=403, detail="XP cannot be self-awarded")
+    raise HTTPException(status_code=403, detail="XP cannot be self-awarded")
 
 
 # ── Gamification Summary ──────────────────────────────────────

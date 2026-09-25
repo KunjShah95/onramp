@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import {
   Bug,
@@ -55,61 +55,84 @@ export default function FirstIssuePage() {
   const [walkError, setWalkError] = useState('')
 
   const toast = useToast()
+  const searchRunRef = useRef(0)
+  const guideRunRef = useRef(0)
+  const walkRunRef = useRef(0)
 
   const activeLevel = TABS.find((t) => t.key === tab)!.level
 
   async function handleSearch() {
-    if (!repoUrl.trim()) return
+    const requestedRepo = repoUrl.trim()
+    if (!requestedRepo) return
+    const run = ++searchRunRef.current
     setLoading(true); setError(''); setHasSearched(true)
     try {
-      const data = await findIssues(repoUrl, activeLevel)
+      const data = await findIssues(requestedRepo, activeLevel)
+      if (run !== searchRunRef.current) return
       setIssues(data.issues ?? [])
-      toast.success('Issues found', `${data.issues?.length ?? 0} beginner-friendly issues for ${repoUrl.split('/').pop()}`)
+      toast.success('Issues found', `${data.issues?.length ?? 0} beginner-friendly issues for ${requestedRepo.split('/').pop()}`)
     } catch (err: any) {
+      if (run !== searchRunRef.current) return
       setError(err.message || 'Failed to fetch issues.')
       toast.error('Search failed', err.message)
     } finally {
-      setLoading(false)
+      if (run === searchRunRef.current) setLoading(false)
     }
   }
 
   async function handleTabChange(next: 'all' | Level) {
     setTab(next)
     if (hasSearched && repoUrl.trim()) {
+      const run = ++searchRunRef.current
+      const requestedRepo = repoUrl.trim()
       setLoading(true); setError('')
       try {
-        const data = await findIssues(repoUrl, TABS.find((t) => t.key === next)!.level)
-        setIssues(data.issues ?? [])
+        const data = await findIssues(requestedRepo, TABS.find((t) => t.key === next)!.level)
+        if (run === searchRunRef.current) setIssues(data.issues ?? [])
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch issues.')
+        if (run === searchRunRef.current) setError(err.message || 'Failed to fetch issues.')
       } finally {
-        setLoading(false)
+        if (run === searchRunRef.current) setLoading(false)
       }
     }
   }
 
   async function openGuide(issue: ScoredIssue) {
+    const run = ++guideRunRef.current
     setGuideIssue(issue); setGuide(null); setGuideError(''); setGuideLoading(true)
     try {
       const data = await generateGuide(issue.id, {})
-      setGuide(data)
+      if (run === guideRunRef.current) setGuide(data)
     } catch (err: any) {
-      setGuideError(err.message || 'Failed to generate guide.')
+      if (run === guideRunRef.current) setGuideError(err.message || 'Failed to generate guide.')
     } finally {
-      setGuideLoading(false)
+      if (run === guideRunRef.current) setGuideLoading(false)
     }
   }
 
   async function openWalkthrough(issue: ScoredIssue) {
+    const run = ++walkRunRef.current
     setWalkIssue(issue); setWalk(null); setWalkError(''); setWalkLoading(true)
     try {
       const data = await fetchPairWalkthrough(issue.title, issue.body, {})
-      setWalk(data)
+      if (run === walkRunRef.current) setWalk(data)
     } catch (err: any) {
-      setWalkError(err.message || 'Failed to generate walkthrough.')
+      if (run === walkRunRef.current) setWalkError(err.message || 'Failed to generate walkthrough.')
     } finally {
-      setWalkLoading(false)
+      if (run === walkRunRef.current) setWalkLoading(false)
     }
+  }
+
+  const closeGuide = () => {
+    guideRunRef.current++
+    setGuideIssue(null)
+    setGuideLoading(false)
+  }
+
+  const closeWalkthrough = () => {
+    walkRunRef.current++
+    setWalkIssue(null)
+    setWalkLoading(false)
   }
 
   return (
@@ -127,7 +150,11 @@ export default function FirstIssuePage() {
           <Bug size={16} className="absolute left-3.5 text-ink-tertiary/40 pointer-events-none" />
           <input
             value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
+            onChange={(e) => {
+              searchRunRef.current++
+              setRepoUrl(e.target.value)
+              setLoading(false)
+            }}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="github.com/owner/repo"
             className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] pl-9 pr-28 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/40 transition-colors placeholder:text-ink-tertiary/40"
@@ -296,7 +323,7 @@ export default function FirstIssuePage() {
       {/* Guide Modal */}
       <Modal
         open={guideIssue !== null}
-        onClose={() => setGuideIssue(null)}
+        onClose={closeGuide}
         title={guideIssue ? `Guide · ${guideIssue.title}` : 'Guide'}
       >
         {guideLoading && <InlineLoading label="Generating step-by-step guide…" />}
@@ -347,7 +374,7 @@ export default function FirstIssuePage() {
       {/* Walkthrough Modal */}
       <Modal
         open={walkIssue !== null}
-        onClose={() => setWalkIssue(null)}
+        onClose={closeWalkthrough}
         title={walkIssue ? `Walkthrough · ${walkIssue.title}` : 'Walkthrough'}
         maxWidth="max-w-3xl"
       >

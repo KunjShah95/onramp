@@ -1,8 +1,10 @@
-import logging
-from fastapi import APIRouter, HTTPException, Request
+﻿import logging
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from app.agents import FirstPRAccelerator
+from app.api.v1.auth import get_current_user
+from app.api.v1.index_access import authorize_registered_repo
 from app.services.quota import enforce_quota
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
@@ -44,10 +46,11 @@ def extract_github_token(request_body: BaseModel, req: Request) -> Optional[str]
 
 
 @router.post("/issues")
-async def find_issues(request: IssuesRequest, req: Request, _q=enforce_quota("generate")):
+async def find_issues(request: IssuesRequest, req: Request, user: dict = Depends(get_current_user), _q=enforce_quota("generate")):
+    await authorize_registered_repo(user, request.repo_url)
     llm = getattr(req.app.state, "llm", None)
     github_token = extract_github_token(request, req)
-    sid = await get_session("first_pr_accelerator", scratchpad={"repo_url": request.repo_url, "user_level": request.user_level})
+    sid = await get_session("first_pr_accelerator", user_id=user.get("uid"), scratchpad={"repo_url": request.repo_url, "user_level": request.user_level})
     agent = FirstPRAccelerator(llm, github_token=github_token, session_id=sid) if sid else FirstPRAccelerator(llm, github_token=github_token)
     try:
         result = await agent.find_issues(
@@ -60,11 +63,11 @@ async def find_issues(request: IssuesRequest, req: Request, _q=enforce_quota("ge
         return result
     except Exception as e:
         await fail_session(sid, "first_pr_accelerator")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/guide")
-async def generate_guide(request: GuideRequest, req: Request, _q=enforce_quota("generate")):
+async def generate_guide(request: GuideRequest, req: Request, user: dict = Depends(get_current_user), _q=enforce_quota("generate")):
     llm = getattr(req.app.state, "llm", None)
     github_token = extract_github_token(request, req)
     agent = FirstPRAccelerator(llm, github_token=github_token)
@@ -75,4 +78,4 @@ async def generate_guide(request: GuideRequest, req: Request, _q=enforce_quota("
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

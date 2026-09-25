@@ -149,6 +149,7 @@ export default function ExplorePage() {
   )
   const [loading, setLoading] = useState(false)
   const [liveResult, setLiveResult] = useState<ArchitectureResult | null>(null)
+  const [liveResultRepo, setLiveResultRepo] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
@@ -208,6 +209,7 @@ export default function ExplorePage() {
     try {
       const data = await analyzeArchitecture(repoUrl)
       setLiveResult(data)
+      setLiveResultRepo(`${parsed.owner}/${parsed.repo}`)
       // Persist into the URL so the graph is restored from the durable
       // snapshot on reload instead of vanishing.
       setSearchParams({ owner: parsed.owner, repo: parsed.repo }, { replace: true })
@@ -219,6 +221,22 @@ export default function ExplorePage() {
       setLoading(false)
     }
   }
+
+  // A durable result is scoped to its owner/repo pair. When navigation changes
+  // that pair (deep link, browser history, dashboard link), never render the
+  // previous repository's live graph while its snapshot is loading.
+  useEffect(() => {
+    if (!isRepoMode) {
+      setLiveResult(null)
+      setLiveResultRepo(null)
+      return
+    }
+    const currentRepo = `${paramOwner}/${paramRepo}`.toLowerCase()
+    if (liveResultRepo && liveResultRepo.toLowerCase() !== currentRepo) {
+      setLiveResult(null)
+      setLiveResultRepo(null)
+    }
+  }, [isRepoMode, paramOwner, paramRepo, liveResultRepo])
 
   // ── Resolve snapshot → view model ───────────────────────────────────────
   const snapshot: RepoGraphSnapshot | null = graphQuery.data?.snapshot ?? null
@@ -400,7 +418,11 @@ export default function ExplorePage() {
               <MagnifyingGlass size={16} className="absolute left-3 text-ink-muted/40 pointer-events-none" />
               <input
                 value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
+                onChange={(e) => {
+                  setRepoUrl(e.target.value)
+                  setLiveResult(null)
+                  setLiveResultRepo(null)
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                 placeholder="github.com/owner/repo"
                 className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] pl-9 pr-24 py-2.5 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40"

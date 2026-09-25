@@ -115,12 +115,11 @@ async def _resolve_names(events: List[dict]) -> List[dict]:
     return events
 
 
-async def query_events(
+async def _filtered_events(
     team_id: Optional[str] = None,
     actor_id: Optional[str] = None,
     target_id: Optional[str] = None,
     event_type: Optional[str] = None,
-    limit: int = 50,
 ) -> List[dict]:
     storage = get_storage()
     if team_id:
@@ -135,9 +134,35 @@ async def query_events(
         events = [e for e in events if e.get("target_id") == target_id]
     if event_type:
         events = [e for e in events if e.get("event_type") == event_type]
-
     events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
+    return events
+
+
+async def query_events(
+    team_id: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    target_id: Optional[str] = None,
+    event_type: Optional[str] = None,
+    limit: int = 50,
+) -> List[dict]:
+    events = await _filtered_events(team_id, actor_id, target_id, event_type)
     return await _resolve_names(events[:limit])
+
+
+async def query_events_page(
+    team_id: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    target_id: Optional[str] = None,
+    event_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[List[dict], int]:
+    """Return one audit-event page plus the pre-pagination total."""
+    events = await _filtered_events(team_id, actor_id, target_id, event_type)
+    total = len(events)
+    start = max(0, offset)
+    end = start + max(1, limit)
+    return await _resolve_names(events[start:end]), total
 
 
 async def log_code_access(

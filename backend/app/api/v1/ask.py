@@ -1,9 +1,9 @@
-import json
+﻿import json
 import logging
 import re
 from typing import Any, Dict, Optional, Union
 
-from fastapi import APIRouter, HTTPException, Request, Depends, Response
+from fastapi import APIRouter, HTTPException, Request, Depends, Response, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from app.agents import RepoQA
@@ -476,7 +476,7 @@ async def query_repo(
         attach_served_route_header(llm, before_route, response)
         return {"answer": answer, "session_id": ask_session_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/query/stream")
@@ -553,7 +553,7 @@ async def query_repo_stream(
 @router.get("/history/{index_id}")
 async def get_history(
     index_id: str,
-    limit: int = 10,
+    limit: int = Query(10, ge=1, le=100),
     user: dict = Depends(get_current_user),
 ):
     """Get conversation history for an index."""

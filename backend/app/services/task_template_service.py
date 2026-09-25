@@ -62,13 +62,32 @@ async def get_template(template_id: str) -> Optional[dict]:
     return await storage.get_document(COLLECTION, template_id)
 
 
-async def list_templates(team_id: Optional[str] = None, module: Optional[str] = None) -> List[dict]:
-    """List templates, optionally filtered by team and/or module."""
+async def list_templates(
+    team_id: Optional[str] = None,
+    module: Optional[str] = None,
+    team_ids: Optional[set[str]] = None,
+) -> List[dict]:
+    """List templates within an explicit tenant scope.
+
+    ``team_ids`` is the safe unscoped form used by API callers that belong to
+    multiple teams. An empty set returns no templates rather than every tenant.
+    """
     storage = get_storage()
+    if team_id is not None:
+        allowed_team_ids = {str(team_id)}
+    elif team_ids is not None:
+        allowed_team_ids = {str(team_id) for team_id in team_ids}
+    else:
+        # Preserve the service's historical unscoped behavior for trusted
+        # internal callers; user-facing routers must always pass team_ids.
+        allowed_team_ids = None
+
     filters = []
-    if team_id:
+    if team_id is not None:
         filters.append(("team_id", "==", team_id))
     templates = await storage.query_documents(COLLECTION, filters)
+    if allowed_team_ids is not None:
+        templates = [t for t in templates if str(t.get("team_id")) in allowed_team_ids]
     if module:
         templates = [t for t in templates if t.get("module", "") == module]
     templates.sort(key=lambda t: t.get("created_at", ""), reverse=True)
@@ -103,6 +122,8 @@ async def instantiate_template(
     """
     from app.services.task_service import create_task
 
+    if str(template.get("team_id") or "") != str(team_id or ""):
+        raise PermissionError("Task template belongs to another team")
     task = await create_task(
         team_id=team_id,
         created_by=created_by,
@@ -133,11 +154,19 @@ async def bulk_assign_templates(
     created: List[dict] = []
     missing: List[str] = []
 
+    # Preflight every requested template before creating any task. This avoids
+    # a partial assignment and makes cross-tenant copying fail closed.
+    resolved: List[tuple[str, dict]] = []
     for tid in template_ids:
         template = await storage.get_document(COLLECTION, tid)
         if not template:
             missing.append(tid)
             continue
+        if str(template.get("team_id") or "") != str(team_id or ""):
+            raise PermissionError("Task template belongs to another team")
+        resolved.append((tid, template))
+
+    for tid, template in resolved:
         try:
             task = await instantiate_template(template, team_id, assignee_id, created_by)
             created.append(task)

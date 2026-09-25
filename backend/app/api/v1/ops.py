@@ -65,8 +65,9 @@ async def _check_database() -> CheckDetail:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return CheckDetail(status="ok", detail="postgres")
-    except Exception as exc:  # pragma: no cover - depends on live infra
-        return CheckDetail(status="error", detail=str(exc)[:200])
+    except Exception:  # pragma: no cover - depends on live infra
+        logger.exception("Readiness database check failed")
+        return CheckDetail(status="error", detail="database unavailable")
 
 
 async def _check_redis() -> CheckDetail:
@@ -81,8 +82,9 @@ async def _check_redis() -> CheckDetail:
             return CheckDetail(status="error", detail="redis unavailable")
         await client.ping()
         return CheckDetail(status="ok", detail="redis")
-    except Exception as exc:  # pragma: no cover - depends on live infra
-        return CheckDetail(status="error", detail=str(exc)[:200])
+    except Exception:  # pragma: no cover - depends on live infra
+        logger.exception("Readiness database check failed")
+        return CheckDetail(status="error", detail="database unavailable")
 
 
 @router.get("/ready", tags=["ops"])

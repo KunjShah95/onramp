@@ -268,11 +268,12 @@ export async function request<T>(url: string, body?: unknown, method?: string, r
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
   let res: Response
+  const effectiveMethod = method || 'POST'
   try {
     res = await fetch(url, {
-      method: method || 'POST',
+      method: effectiveMethod,
       ...CREDS,
-      headers: await mutationHeaders(method),
+      headers: await mutationHeaders(effectiveMethod),
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
@@ -381,17 +382,20 @@ export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retr
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
   let res: Response
+  const method = init.method?.toUpperCase()
+  const csrfToken = method && !['GET', 'HEAD', 'OPTIONS'].includes(method)
+    ? await getCsrfToken()
+    : null
+  const headers: Record<string, string> = {
+    ...authHeaders(),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  }
   try {
     res = await fetch(url, {
       ...CREDS,
       ...init,
-      headers: {
-        ...authHeaders(),
-        ...(init.method && !['GET', 'HEAD', 'OPTIONS'].includes(init.method.toUpperCase())
-          ? (await getCsrfToken() ? { 'X-CSRF-Token': await getCsrfToken() } : {})
-          : {}),
-        ...(init.headers as Record<string, string> | undefined),
-      },
+      headers,
       signal: init.signal ?? controller.signal,
     })
   } catch (err: any) {
@@ -500,11 +504,11 @@ export async function indexRepo(repoUrl: string, branch = 'main'): Promise<Index
 }
 
 export async function getIndexJob(taskId: string): Promise<IndexJob> {
-  return request<IndexJob>(`${API_BASE}/ask/jobs/${encodeURIComponent(taskId)}`)
+  return get<IndexJob>(`${API_BASE}/ask/jobs/${encodeURIComponent(taskId)}`)
 }
 
 export async function getRepositoryIndexJob(taskId: string): Promise<IndexJob> {
-  return request<IndexJob>(`${API_BASE}/repos/index/jobs/${encodeURIComponent(taskId)}`)
+  return get<IndexJob>(`${API_BASE}/repos/index/jobs/${encodeURIComponent(taskId)}`)
 }
 
 export async function askQuestion(
@@ -1420,7 +1424,7 @@ export async function rebuildRepoGraph(
 ): Promise<RepoGraphResponse> {
   return request<RepoGraphResponse>(
     `${API_BASE}/repos/${owner}/${repo}/graph/rebuild?branch=${encodeURIComponent(branch)}`,
-    undefined
+    {}
   )
 }
 
@@ -1440,8 +1444,9 @@ export interface SeedRoleData {
   data: Record<string, any>
 }
 
-export async function fetchSeedRoleData(): Promise<SeedRoleData> {
-  return get<SeedRoleData>(`${API_BASE}/seed/role-data`)
+export async function fetchSeedRoleData(teamId?: string): Promise<SeedRoleData> {
+  const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<SeedRoleData>(`${API_BASE}/seed/role-data${query}`)
 }
 
 // ─── Health Score ─────────────────────────────────────────────────────────
@@ -1904,6 +1909,7 @@ export async function createCheckoutSession(data: {
 
 export async function createCreditOrder(data: {
   amount_inr: number
+  team_id?: string
 }): Promise<{
   order_id: string
   amount: number
@@ -2727,7 +2733,23 @@ export async function fetchReviewAnalytics(teamId: string): Promise<ReviewAnalyt
 // ─── Task CSV Export ─────────────────────────────────────────
 
 async function downloadCsv(url: string, filename: string): Promise<void> {
-  const res = await fetch(url, { ...CREDS, headers: authHeaders() })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  let res: Response
+  try {
+    res = await fetch(url, { ...CREDS, headers: authHeaders(), signal: controller.signal })
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
+  if (res.status === 401) {
+    if (await trySilentRefresh()) {
+      return downloadCsv(url, filename)
+    }
+    throw new ApiError('Authentication required. Please sign in again.', 401)
+  }
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Export error ${res.status}: ${text}`)
@@ -2825,6 +2847,9 @@ export interface AdminAuditEvent {
 export interface AdminAuditResponse {
   events: AdminAuditEvent[]
   count: number
+  total: number
+  offset: number
+  limit: number
 }
 
 export async function adminListApiKeys(includeRevoked = false): Promise<AdminApiKeysResponse> {
@@ -2926,11 +2951,13 @@ export async function adminListAuditEvents(params?: {
   event_type?: string
   actor_id?: string
   limit?: number
+  offset?: number
 }, signal?: AbortSignal): Promise<AdminAuditResponse> {
   const query = new URLSearchParams()
   if (params?.event_type) query.set('event_type', params.event_type)
   if (params?.actor_id) query.set('actor_id', params.actor_id)
   if (params?.limit) query.set('limit', String(params.limit))
+  if (params?.offset) query.set('offset', String(params.offset))
   const qs = query.toString()
   return get<AdminAuditResponse>(`${API_BASE}/admin/audit${qs ? '?' + qs : ''}`, false, signal)
 }
@@ -2946,10 +2973,29 @@ export async function exportAuditEvents(params?: {
   if (params?.event_type) query.set('event_type', params.event_type)
   if (params?.actor_id) query.set('actor_id', params.actor_id)
   if (params?.limit) query.set('limit', String(params.limit))
-  const res = await fetch(`${API_BASE}/admin/audit/export?${query.toString()}`, {
-    ...CREDS,
-    headers: authHeaders(),
-  })
+
+  const fetchExport = async (retried = false): Promise<Response> => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30000)
+    try {
+      const res = await fetch(`${API_BASE}/admin/audit/export?${query.toString()}`, {
+        ...CREDS,
+        headers: authHeaders(),
+        signal: controller.signal,
+      })
+      if (res.status === 401 && !retried && await trySilentRefresh()) {
+        return fetchExport(true)
+      }
+      return res
+    } catch (err: any) {
+      if (err?.name === 'AbortError') throw new Error('Request timed out after 30s')
+      throw err
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  const res = await fetchExport()
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Export error ${res.status}: ${text}`)
@@ -3524,6 +3570,7 @@ export async function listTaskTemplates(teamId?: string, module?: string): Promi
 }
 
 export async function createTaskTemplate(data: {
+  team_id: string
   name: string
   description?: string
   module?: string
@@ -3943,16 +3990,19 @@ export interface LedgerEntry {
   created_at: string
 }
 
-export async function getCreditWallet(): Promise<CreditWallet> {
-  return get<CreditWallet>(`${API_BASE}/billing/credits`)
+export async function getCreditWallet(teamId?: string): Promise<CreditWallet> {
+  const query = teamId ? `?team_id=${encodeURIComponent(teamId)}` : ''
+  return get<CreditWallet>(`${API_BASE}/billing/credits${query}`)
 }
 
-export async function topUpCredits(amount: number): Promise<CreditWallet> {
-  return request<CreditWallet>(`${API_BASE}/billing/credits/topup`, { amount })
+export async function topUpCredits(amount: number, teamId?: string): Promise<CreditWallet> {
+  return request<CreditWallet>(`${API_BASE}/billing/credits/topup`, { amount, team_id: teamId })
 }
 
-export async function getCreditLedger(limit = 50): Promise<{ entries: LedgerEntry[]; count: number }> {
-  return get<{ entries: LedgerEntry[]; count: number }>(`${API_BASE}/billing/credits/ledger?limit=${limit}`)
+export async function getCreditLedger(limit = 50, teamId?: string): Promise<{ entries: LedgerEntry[]; count: number }> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (teamId) params.set('team_id', teamId)
+  return get<{ entries: LedgerEntry[]; count: number }>(`${API_BASE}/billing/credits/ledger?${params}`)
 }
 
 export interface CreditCostInfo {
@@ -4201,7 +4251,6 @@ export interface UpdateProfileRequest {
   name?: string
   position?: string | null
   avatar_url?: string | null
-  github_username?: string | null
 }
 
 export async function updateProfile(payload: UpdateProfileRequest): Promise<AuthMeResponse> {
@@ -4441,7 +4490,8 @@ export function cancelTeamInvite(teamId: string, inviteId: string) {
 
 export function acceptInvite(token: string) {
   return request<{ success: boolean; team_id: string; team_name: string; role: string }>(
-    `${API_BASE}/invites/accept?token=${encodeURIComponent(token)}`
+    `${API_BASE}/invites/accept?token=${encodeURIComponent(token)}`,
+    {}
   )
 }
 

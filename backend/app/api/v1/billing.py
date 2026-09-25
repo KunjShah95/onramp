@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from pydantic import BaseModel, Field
 from app.services.billing_service import BillingService
 from app.services.credit_service import CreditService
@@ -66,11 +66,14 @@ async def create_subscription(
     user: dict = Depends(get_current_user),
 ):
     await require_team_admin(request.team_id, user)
-    return await billing.create_subscription(
-        team_id=request.team_id,
-        tier=request.tier,
-        billing_cycle=request.billing_cycle,
-    )
+    try:
+        return await billing.create_subscription(
+            team_id=request.team_id,
+            tier=request.tier,
+            billing_cycle=request.billing_cycle,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/subscriptions/{team_id}",
@@ -94,7 +97,10 @@ async def update_subscription(
     user: dict = Depends(get_current_user),
 ):
     await require_team_admin(team_id, user)
-    result = await billing.update_subscription(team_id, request.tier)
+    try:
+        result = await billing.update_subscription(team_id, request.tier)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not result:
         raise HTTPException(status_code=404, detail="No active subscription")
     return result
@@ -181,10 +187,26 @@ async def get_pricing():
 
 class TopUpRequest(BaseModel):
     amount: int = Field(..., gt=0, le=1_000_000, description="Credits to add")
+    team_id: str | None = None
 
 
 class CreateOrderRequest(BaseModel):
     amount_inr: int = Field(..., gt=0, le=100000, description="Amount in rupees (INR)")
+    team_id: str | None = None
+
+
+async def _credit_scope(user: dict, requested_team_id: str | None = None) -> str:
+    from app.services.team_service import get_user_teams
+
+    memberships = await get_user_teams(user.get("uid", ""))
+    allowed = {str(t.get("team_id") or t.get("id")): t for t in memberships or []}
+    if requested_team_id:
+        if str(requested_team_id) not in allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+        return str(requested_team_id)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Team membership required")
+    return sorted(allowed)[0]
 
 
 class VerifyPaymentRequest(BaseModel):
@@ -194,9 +216,13 @@ class VerifyPaymentRequest(BaseModel):
 
 
 @router.get("/credits")
-async def get_credit_wallet(user: dict = Depends(get_current_user)):
-    """Return the caller's prepaid credit wallet (balance + lifetime totals)."""
-    return await credits.get_wallet(user.get("uid", ""))
+async def get_credit_wallet(
+    team_id: str | None = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """Return the caller's team prepaid-credit wallet."""
+    scope = await _credit_scope(user, team_id)
+    return await credits.get_wallet(scope)
 
 
 @router.post("/credits/topup")
@@ -213,7 +239,8 @@ async def top_up_credits(
     """
     if os.getenv("ENV", "development").lower() == "production":
         raise HTTPException(status_code=403, detail="Manual credit top-ups are disabled; use verified payment")
-    return await credits.add_credits(user.get("uid", ""), request.amount, reason="topup")
+    scope = await _credit_scope(user, request.team_id)
+    return await credits.add_credits(scope, request.amount, reason="topup")
 
 
 @router.post("/credits/order")
@@ -224,7 +251,8 @@ async def create_credit_order(
     """Create a Razorpay order for a credit wallet top-up. Amount is in rupees (INR)."""
     if not billing.is_razorpay_enabled():
         raise HTTPException(status_code=400, detail="Razorpay is not configured")
-    order = await billing.create_payment_order(user.get("uid", ""), request.amount_inr)
+    scope = await _credit_scope(user, request.team_id)
+    order = await billing.create_payment_order(scope, request.amount_inr, owner_id=user.get("uid", ""))
     if "error" in order:
         raise HTTPException(status_code=400, detail=order["error"])
     return order
@@ -249,9 +277,11 @@ async def verify_credit_order(
 
 @router.get("/credits/ledger")
 async def get_credit_ledger(
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
+    team_id: str | None = Query(None),
     user: dict = Depends(get_current_user),
 ):
-    """Append-only history of credit top-ups and per-query charges."""
-    entries = await credits.get_ledger(user.get("uid", ""), limit=limit)
+    """Append-only history of team credit top-ups and per-query charges."""
+    scope = await _credit_scope(user, team_id)
+    entries = await credits.get_ledger(scope, limit=limit)
     return {"entries": entries, "count": len(entries)}

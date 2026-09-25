@@ -3,7 +3,8 @@
 # Sets up backend + frontend to run locally, connecting to the remote NeonDB database.
 #
 # Requirements: Python 3.12+, Node.js 20+
-# No Docker needed — PostgreSQL is hosted on NeonDB, Redis features use in-memory fallback.
+# No Docker needed — PostgreSQL is hosted on NeonDB; Redis is optional for the API
+# and required when running Celery workers.
 
 set -e
 
@@ -71,11 +72,18 @@ fi
 # ── Alembic Migrations ────────────────────────────────────────────────────────
 echo ""
 echo "  Running Alembic migrations against DATABASE_URL..."
-if alembic upgrade head 2>/dev/null; then
-    echo "  Migrations applied successfully."
+# The generated .env intentionally keeps the example localhost URL until the
+# developer supplies NeonDB credentials.  Do not hide that expected failure or
+# claim the setup succeeded; any real migration failure is actionable and stops
+# the script.
+if grep -Eq '^DATABASE_URL=.*localhost' .env; then
+    echo -e "${YELLOW}  ⚠️  Skipping migrations: backend/.env still uses the example localhost DATABASE_URL.${NC}"
+    echo -e "${YELLOW}     Set DATABASE_URL to NeonDB, then run: cd backend && alembic upgrade head${NC}"
+elif ! alembic upgrade head; then
+    echo -e "${RED}❌ Alembic migrations failed. Fix the error above before starting the backend.${NC}"
+    exit 1
 else
-    echo -e "${YELLOW}  ⚠️  Migrations failed — is DATABASE_URL set correctly in backend/.env?${NC}"
-    echo -e "${YELLOW}     Once configured, run: cd backend && alembic upgrade head${NC}"
+    echo "  Migrations applied successfully."
 fi
 
 cd ..
@@ -130,5 +138,6 @@ echo "  • DATABASE_URL  — your NeonDB connection string (required)"
 echo "  • JWT_SECRET    — already auto-generated"
 echo "  • LLM keys      — optional, configure from Admin Console or .env"
 echo ""
-echo -e "${BLUE}Note: Redis features (caching, Celery tasks) use in-memory fallback locally.${NC}"
+echo -e "${BLUE}Note: Redis is optional for the API when REDIS_URL is unset (cache uses its in-memory fallback).${NC}"
+echo -e "${BLUE}      Celery workers require Redis; start Redis separately or use docker compose --profile worker.${NC}"
 echo ""

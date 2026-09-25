@@ -199,10 +199,23 @@ async def list_plans(team_id: str | None = None, user_id: str | None = None) -> 
         return []
 
 
+_PLAN_MUTABLE_FIELDS = frozenset({"start_date", "buddy_id", "status", "notes"})
+_PLAN_IMMUTABLE_FIELDS = frozenset({"id", "team_id", "user_id", "created_by", "created_at"})
+
+
 async def update_plan(plan_id: str, updates: dict) -> dict | None:
     storage = get_storage()
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await storage.update_document("onboarding_plans", plan_id, updates)
+    forbidden = _PLAN_IMMUTABLE_FIELDS.intersection(updates)
+    if forbidden:
+        raise PermissionError(
+            f"Onboarding plan ownership fields are immutable: {', '.join(sorted(forbidden))}"
+        )
+    unknown = set(updates) - _PLAN_MUTABLE_FIELDS
+    if unknown:
+        raise ValueError(f"Unsupported onboarding plan fields: {', '.join(sorted(unknown))}")
+    safe_updates = dict(updates)
+    safe_updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await storage.update_document("onboarding_plans", plan_id, safe_updates)
     full = await get_plan(plan_id)
     try:
         from app.services.n8n_service import notify_plan_updated
@@ -257,7 +270,12 @@ async def get_pulse_trends(plan_id: str) -> dict:
     return {"pulses": pulses, "trends": trend}
 
 
-async def submit_pulse(plan_id: str, data: dict) -> dict:
+async def submit_pulse(plan_id: str, data: dict, user_id: str = "") -> dict:
+    plan = await get_plan(plan_id)
+    if not plan:
+        raise ValueError("Plan not found")
+    if not user_id or str(plan.get("user_id") or "") != str(user_id):
+        raise PermissionError("Only the onboarding plan owner may submit a pulse")
     week = data.get("week_number", 1)
     pulse = await upsert_pulse(plan_id, week, data)
     try:

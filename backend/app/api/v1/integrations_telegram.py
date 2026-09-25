@@ -10,6 +10,7 @@ All onboarding lifecycle events already call n8n_service.notify_onboarding
 fire-and-forget, so this router is purely management / test.
 """
 import logging
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -28,6 +29,23 @@ class TelegramConfigRequest(BaseModel):
     telegram_chat_id: str | None = None  # e.g. @your_channel or -100123456789
 
 
+async def _require_team_admin(user: dict, team_id: str) -> None:
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    teams = await get_user_teams(user.get("uid", ""))
+    role = next(
+        (
+            membership.get("role", "member")
+            for membership in teams or []
+            if str(membership.get("team_id") or membership.get("id")) == str(team_id)
+        ),
+        None,
+    )
+    if role is None or ROLE_HIERARCHY.get(role, 0) < ROLE_HIERARCHY["admin"]:
+        raise HTTPException(status_code=403, detail="Team admin access required")
+
+
 @router.get("/status")
 async def status(user: dict = Depends(get_current_user)):
     import os
@@ -42,48 +60,43 @@ async def status(user: dict = Depends(get_current_user)):
 
 @router.put("/config")
 async def put_config(body: TelegramConfigRequest, user: dict = Depends(get_current_user)):
-    from app.services.team_service import get_user_teams
-    teams = await get_user_teams(user.get("uid", ""))
-    if body.team_id not in {(t.get("id") or t.get("team_id")) for t in (teams or [])}:
-        raise HTTPException(status_code=403, detail="Not a member of this team")
+    await _require_team_admin(user, body.team_id)
     try:
         validate_outbound_url(body.webhook_url)
     except OutboundURLError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     storage = get_storage()
-    # Upsert into onramp_integrations with team-scoped key: integration='n8n'
+    # Team webhooks use a dynamic collection because IntegrationConfig is
+    # user-owned and its user_id foreign key cannot represent a team UUID.
     doc_id = f"team:{body.team_id}:n8n"
-    existing = await storage.get_document("onramp_integrations", doc_id)
-    payload = {
-        "user_id": body.team_id,
-        "integration": "n8n",
+    document = {
         "team_id": body.team_id,
+        "integration": "n8n",
         "webhook_url": body.webhook_url,
         "telegram_chat_id": body.telegram_chat_id,
         "updated_by": user.get("uid"),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
+    existing = await storage.get_document("team_n8n_configs", doc_id)
     if existing:
-        await storage.update_document("onramp_integrations", doc_id, {"config": payload})
+        await storage.update_document("team_n8n_configs", doc_id, document)
     else:
-        await storage.create_document("onramp_integrations", doc_id, {"id": doc_id, "user_id": body.team_id, "integration": "n8n", "config": payload})
+        await storage.create_document("team_n8n_configs", doc_id, document)
     masked = body.webhook_url[:28] + "…" if len(body.webhook_url) > 28 else body.webhook_url
     return {"ok": True, "team_id": body.team_id, "webhook_url": masked}
 
 
 @router.get("/config/{team_id}")
 async def get_config(team_id: str, user: dict = Depends(get_current_user)):
-    from app.services.team_service import get_user_teams
-    teams = await get_user_teams(user.get("uid", ""))
-    if team_id not in {(t.get("id") or t.get("team_id")) for t in (teams or [])}:
-        raise HTTPException(status_code=403, detail="Not a member of this team")
+    await _require_team_admin(user, team_id)
     storage = get_storage()
-    doc = await storage.get_document("onramp_integrations", f"team:{team_id}:n8n")
+    doc = await storage.get_document("team_n8n_configs", f"team:{team_id}:n8n")
     if not doc:
         # also check env
         import os
         env_url = (os.getenv("N8N_ONBOARDING_WEBHOOK_URL") or os.getenv("N8N_WEBHOOK_URL") or "").strip()
         return {"team_id": team_id, "configured": bool(env_url), "source": "env", "webhook_url": (env_url[:28] + "…" if len(env_url) > 28 else env_url)}
-    config = dict(doc.get("config") or {})
+    config = dict(doc)
     if config.get("webhook_url"):
         config["webhook_url"] = config["webhook_url"][:28] + "…" if len(config["webhook_url"]) > 28 else config["webhook_url"]
     return {"team_id": team_id, "configured": True, "source": "team", "config": config}
@@ -98,10 +111,7 @@ async def test_delivery(body: dict, user: dict = Depends(get_current_user)):
     team_id = body.get("team_id")
     if not team_id:
         raise HTTPException(status_code=400, detail="team_id is required")
-    from app.services.team_service import get_user_teams
-    teams = await get_user_teams(user.get("uid", ""))
-    if team_id not in {(t.get("id") or t.get("team_id")) for t in (teams or [])}:
-        raise HTTPException(status_code=403, detail="Not a member of this team")
+    await _require_team_admin(user, team_id)
     msg = body.get("message") or "Onramp ↔ n8n ↔ Telegram test — onboarding sessions are wired."
     from app.services.n8n_service import notify_onboarding
     payload = {

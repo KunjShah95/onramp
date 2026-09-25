@@ -153,7 +153,10 @@ async def update_user_webhook(
     result = await update_webhook(webhook_id, user.get("uid", ""), updates)
     if not result:
         raise HTTPException(status_code=404, detail="Webhook not found")
-    return result
+    safe = dict(result)
+    if safe.get("secret"):
+        safe["secret"] = "••••••••"
+    return safe
 
 
 @router.delete("/webhooks/{webhook_id}",

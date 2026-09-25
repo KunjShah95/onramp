@@ -19,6 +19,20 @@ logger = logging.getLogger("onramp.marketplace")
 LISTINGS = "marketplace_playbooks"
 RATINGS = "marketplace_ratings"
 
+
+async def _require_team_manager(user_id: str, team_id: str) -> None:
+    """Defense-in-depth tenant/role check for source and destination copies."""
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    roles = [
+        team.get("role", "member")
+        for team in await get_user_teams(user_id)
+        if str(team.get("team_id") or team.get("id")) == str(team_id)
+    ]
+    if not roles or max(ROLE_HIERARCHY.get(role, 0) for role in roles) < ROLE_HIERARCHY.get("senior", 5):
+        raise PermissionError("Senior/admin role required")
+
 _SORTS = {"popular", "top_rated", "newest"}
 
 
@@ -46,6 +60,7 @@ class MarketplaceService:
         pb = await self.playbooks.get_playbook(source_playbook_id)
         if not pb:
             raise ValueError("Playbook not found")
+        await _require_team_manager(publisher_id, str(pb.get("team_id") or ""))
 
         existing = await self._listing_for_source(source_playbook_id)
         now = _now_iso()
@@ -76,11 +91,12 @@ class MarketplaceService:
             **snapshot,
         }
         await self.storage.create_document(LISTINGS, listing_id, listing)
-        return listing
+        return self._public_listing(listing)
 
     async def unpublish(self, listing_id: str, requester_id: str) -> bool:
         """Remove a listing. Only the original publisher may unpublish."""
-        listing = await self.get_listing(listing_id)
+        row = await self.storage.get_document(LISTINGS, listing_id)
+        listing = self._flatten(row) if row else None
         if not listing:
             return False
         if listing.get("publisher_id") != requester_id:
@@ -98,7 +114,7 @@ class MarketplaceService:
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         rows = await self.storage.query_documents(LISTINGS, [("is_public", "==", True)])
-        listings = [self._flatten(r) for r in rows]
+        listings = [self._public_listing(r) for r in rows]
 
         if search:
             q = search.lower()
@@ -122,7 +138,7 @@ class MarketplaceService:
 
     async def get_listing(self, listing_id: str) -> Optional[Dict[str, Any]]:
         row = await self.storage.get_document(LISTINGS, listing_id)
-        return self._flatten(row) if row else None
+        return self._public_listing(row) if row else None
 
     # ── Import ──────────────────────────────────────────────────────────────
 
@@ -133,6 +149,7 @@ class MarketplaceService:
         listing = await self.get_listing(listing_id)
         if not listing:
             raise ValueError("Listing not found")
+        await _require_team_manager(user_id, str(team_id))
 
         steps = listing.get("steps", [])
         tags = list(listing.get("tags", []))
@@ -227,6 +244,14 @@ class MarketplaceService:
             base.pop(wrapper_key, None)
         base.update(changes)
         await self.storage.update_document(collection, doc_id, base)
+
+    @classmethod
+    def _public_listing(cls, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove internal tenant/source identifiers from marketplace responses."""
+        listing = cls._flatten(row)
+        for field in ("origin_team_id", "source_playbook_id", "publisher_id"):
+            listing.pop(field, None)
+        return listing
 
     @staticmethod
     def _flatten(row: Dict[str, Any]) -> Dict[str, Any]:

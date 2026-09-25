@@ -7,6 +7,7 @@ that would serve it, so frontends can show the routing map.
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.llm import QueryType
 from app.api.v1.ai_gateway import _agent_query_type, _query_type_model
@@ -41,6 +42,13 @@ def _app(llm=None):
 
     application = FastAPI()
     application.state.llm = llm
+
+    class _AuthUser(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            request.state.user = {"uid": "test-user", "email": "test@example.com"}
+            return await call_next(request)
+
+    application.add_middleware(_AuthUser)
     application.include_router(ai_gateway.router, prefix="/api/v1")
     return application
 

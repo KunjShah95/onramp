@@ -3,6 +3,7 @@
 import csv
 import io
 import os
+from html import escape
 import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
@@ -92,10 +93,15 @@ class CsvPreviewResponse(BaseModel):
     total_errors: int
 
 
-async def _get_creator_role(user: dict) -> tuple[str, int]:
-    """Get the creator's highest role level across all teams."""
+async def _get_creator_role(user: dict, team_id: str | None = None) -> tuple[str, int]:
+    """Get the creator's role in the target team, never a global maximum."""
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
+    if team_id:
+        teams = [
+            t for t in teams
+            if str(t.get("team_id") or t.get("id")) == str(team_id)
+        ]
     max_role = "member"
     max_level = 0
     for t in teams:
@@ -131,9 +137,9 @@ async def create_account(
 ):
     """Create a single provisioned developer account.
 
-    Requires the creator to have ceo/cto/senior_dev/hr role.
+    Requires the creator to have ceo/cto/senior_dev/hr role in the target team.
     """
-    creator_role, creator_level = await _get_creator_role(user)
+    creator_role, creator_level = await _get_creator_role(user, body.team_id)
 
     if creator_role not in CREATOR_ROLES:
         raise HTTPException(
@@ -182,8 +188,8 @@ async def create_account(
 Your account has been created by your team lead.
 </p>
 <p style="color:rgba(253,251,248,0.8);font-size:14px;line-height:1.6">
-<strong>Email:</strong> {body.email}<br>
-<strong>Temporary password:</strong> <code style="background:#0D0906;padding:2px 6px;border-radius:4px;font-size:13px">{result['temp_password']}</code>
+<strong>Email:</strong> {escape(body.email)}<br>
+<strong>Temporary password:</strong> <code style="background:#0D0906;padding:2px 6px;border-radius:4px;font-size:13px">{escape(result['temp_password'])}</code>
 </p>
 <p style="color:rgba(253,251,248,0.5);font-size:12px;line-height:1.6">
 You'll be asked to set a new password on first login.
@@ -191,7 +197,7 @@ You'll be asked to set a new password on first login.
 <div style="text-align:center;margin-top:24px">
 <a href="{login_url}" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Sign In</a>
 </div>
-{body.message and f'<p style="color:rgba(253,251,248,0.4);font-size:12px;margin-top:20px;font-style:italic">"{body.message}"</p>' or ''}
+{body.message and f'<p style="color:rgba(253,251,248,0.4);font-size:12px;margin-top:20px;font-style:italic">"{escape(body.message)}"</p>' or ''}
 </div></body></html>"""
 
     try:
@@ -268,8 +274,8 @@ async def create_accounts_bulk(
     user: dict = Depends(get_current_user),
 ):
     """Create multiple provisioned accounts from a list of rows."""
-    creator_role, creator_level = await _get_creator_role(user)
-    if creator_role not in CREATOR_ROLES:
+    any_role, _ = await _get_creator_role(user)
+    if any_role not in CREATOR_ROLES:
         raise HTTPException(status_code=403, detail="Only ceo/cto/senior_dev/hr can create accounts")
 
     if len(body.rows) > 50:
@@ -282,7 +288,8 @@ async def create_accounts_bulk(
     creator_team_ids: set[str] | None = None
 
     for row in body.rows:
-        if not _can_create_role(creator_level, row.role):
+        row_creator_role, row_creator_level = await _get_creator_role(user, row.team_id)
+        if row_creator_role not in CREATOR_ROLES or not _can_create_role(row_creator_level, row.role):
             skipped.append({"email": row.email, "reason": f"Cannot create role '{row.role}'"})
             continue
 

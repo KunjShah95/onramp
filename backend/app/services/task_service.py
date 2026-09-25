@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.services.postgres_db import get_storage, generate_id
 
+logger = logging.getLogger("onramp.tasks")
+
 
 async def _broadcast_task_update(task: dict, event_type: str = "updated") -> None:
     """Broadcast a task update via WebSocket to relevant users."""
@@ -198,6 +200,14 @@ def _can_transition(current: str, target: str) -> bool:
 # ── CRUD Operations ──────────────────────────────────────────
 
 
+async def _invalidate_task_cache() -> None:
+    try:
+        from app.services.cache_service import invalidate_prefix
+        await invalidate_prefix("tasks")
+    except Exception:
+        logger.debug("Failed to invalidate task cache", exc_info=True)
+
+
 async def create_task(
     team_id: str,
     created_by: str,
@@ -213,6 +223,7 @@ async def create_task(
     quiz_required: bool = False,
     source_issue: Optional[Dict[str, Any]] = None,
     depends_on: Optional[List[str]] = None,
+    task_id: Optional[str] = None,
 ) -> dict:
     """Create a new task in pending state.
 
@@ -222,7 +233,7 @@ async def create_task(
     storage = get_storage()
 
     now = _utcnow()
-    task_id = generate_id()
+    task_id = task_id or generate_id()
     task = {
         "task_id": task_id,
         "team_id": team_id,
@@ -257,6 +268,7 @@ async def create_task(
     }
 
     await storage.create_document(COLLECTION, task_id, task)
+    await _invalidate_task_cache()
     await _broadcast_task_update(task, "created")
     # Fire-and-forget sync to Jira/Linear (do not block task creation)
     asyncio.ensure_future(_sync_task_to_jira(task))
@@ -284,7 +296,7 @@ async def list_tasks(
             COLLECTION, [("team_id", "==", team_id)]
         )
     else:
-        tasks = []
+        tasks = await storage.list_documents(COLLECTION)
 
     # Client-side filtering for additional filters
     if assigned_to:
@@ -314,6 +326,8 @@ async def update_task(task_id: str, updates: dict) -> Optional[dict]:
 
     updates["updated_at"] = _utcnow()
     result = await storage.update_document(COLLECTION, task_id, updates)
+    if result:
+        await _invalidate_task_cache()
     return result
 
 
@@ -392,9 +406,16 @@ async def transition_task(
     elif new_state == "assigned":
         updates["assigned_to"] = user_id
 
-    # Broadcast the state transition
-    result = await storage.update_document(COLLECTION, task_id, updates)
+    # Atomically compare-and-set the previous state so concurrent reviewers
+    # cannot overwrite each other's decisions.
+    claimed = await storage.claim_document(
+        COLLECTION, task_id, "state", current, updates
+    )
+    if not claimed:
+        raise ValueError("Task changed concurrently; reload and try again")
+    result = await storage.get_document(COLLECTION, task_id)
     if result:
+        await _invalidate_task_cache()
         result["state"] = new_state
         await _broadcast_task_update(result, "updated")
         # Fire-and-forget sync to Jira/Linear (do not block the transition)
@@ -404,11 +425,8 @@ async def transition_task(
 
 
 async def assign_task(task_id: str, assignee_id: str, assigned_by: str) -> dict:
-    """Assign a task to a trainee.
-
-    The "assigned" transition sets ``assigned_to`` to the actor it receives, so
-    the assignee (not the assigner) must be passed through.
-    """
+    """Assign a task to a trainee. ``assigned_by`` is retained in the API
+    signature for compatibility; audit attribution is handled by the route."""
     return await transition_task(task_id, "assigned", assignee_id)
 
 
@@ -497,9 +515,9 @@ async def review_task(
     needs_product: bool = False,
 ) -> dict:
     """Review a submitted task — approve, request changes, or route to product."""
+    if needs_product:
+        return await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
     if approve:
-        if needs_product:
-            return await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
         return await transition_task(task_id, "approved", reviewer_id, feedback=feedback)
     return await transition_task(task_id, "needs_changes", reviewer_id, feedback=feedback)
 
@@ -538,11 +556,10 @@ async def peer_review_task(
     _assert_not_own_task(task, reviewer_id)
 
     # Route to the outcome state first — only record the reviewer on success.
-    if approve:
-        if needs_product:
-            result = await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
-        else:
-            result = await transition_task(task_id, "approved", reviewer_id, feedback=feedback)
+    if needs_product:
+        result = await transition_task(task_id, "product_review", reviewer_id, feedback=feedback)
+    elif approve:
+        result = await transition_task(task_id, "approved", reviewer_id, feedback=feedback)
     else:
         result = await transition_task(task_id, "needs_changes", reviewer_id, feedback=feedback)
 
@@ -590,6 +607,7 @@ async def log_actual_hours(task_id: str, hours: float, user_id: str) -> dict:
     result = await storage.update_document(
         COLLECTION, task_id, {"actual_hours": float(hours)}
     )
+    await _invalidate_task_cache()
     await _broadcast_task_update(result or task, "updated")
 
     # Time-overrun alert — actual hours exceeded the estimate.
@@ -673,6 +691,7 @@ async def find_tasks_by_source_issue(repo_url: str, issue_number: int) -> List[d
         from app.database.config import db_config
         from app.database.models import Task
         from sqlalchemy import select
+        await db_config.ensure_engine()
         async with db_config.get_session_factory()() as session:
             result = await session.execute(select(Task).where(Task.source_issue.isnot(None)))
             rows = result.scalars().all()
@@ -903,6 +922,10 @@ async def complete_task(task_id: str, user_id: str) -> dict:
                 except ValueError:
                     # User already has this module — skip silently
                     pass
+                except Exception:
+                    # Completion is already committed; make grants retryable
+                    # best-effort instead of returning a false 500 to the client.
+                    logger.exception("Failed to grant module %s after task completion", module)
 
     return result
 
@@ -919,6 +942,7 @@ async def delete_task(task_id: str) -> bool:
     if not task:
         return False
     await storage.delete_document(COLLECTION, task_id)
+    await _invalidate_task_cache()
     return True
 
 
@@ -957,7 +981,7 @@ async def get_user_progress(user_id: str, team_id: Optional[str] = None) -> Dict
             COLLECTION, [("team_id", "==", team_id)]
         )
     else:
-        all_tasks = []
+        all_tasks = await storage.list_documents(COLLECTION)
 
     user_tasks = [t for t in all_tasks if t.get("assigned_to") == user_id]
 

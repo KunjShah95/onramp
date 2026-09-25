@@ -93,6 +93,12 @@ export default function CommandPalette() {
     )
   }, [entries, query])
 
+  // A narrower query can remove the previously selected result. Always keep
+  // the highlight inside the current result set.
+  useEffect(() => {
+    setActive((current) => Math.min(current, Math.max(0, results.length - 1)))
+  }, [query, entries, results.length])
+
   const go = (to: string) => {
     setOpen(false)
     navigate(to)
@@ -101,7 +107,7 @@ export default function CommandPalette() {
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActive((a) => Math.min(a + 1, results.length - 1))
+      if (results.length > 0) setActive((a) => Math.min(a + 1, results.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive((a) => Math.max(a - 1, 0))
@@ -135,7 +141,7 @@ export default function CommandPalette() {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setActive(0) }}
             onKeyDown={onKeyDown}
             placeholder="Jump to a page…"
             aria-label="Search pages"

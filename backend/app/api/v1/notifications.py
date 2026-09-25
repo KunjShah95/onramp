@@ -6,7 +6,7 @@ Supports: list, unread count, mark read, mark all read, delete, clear read.
 
 import re
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from app.api.v1.auth import get_current_user
@@ -129,7 +129,9 @@ async def update_notification_preferences(
     if request.roast_mode_enabled is not None:
         updates["roast_mode_enabled"] = request.roast_mode_enabled
 
-    return await update_preferences(uid, updates)
+    updated = await update_preferences(uid, updates)
+    await invalidate_prefix("notifications")
+    return updated
 
 
 @router.get("/preferences/defaults")
@@ -155,7 +157,7 @@ async def get_default_preferences(
 async def list_user_notifications(
     request: Request,
     unread_only: bool = False,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     type_filter: Optional[str] = None,
     user: dict = Depends(get_current_user),
 ):
@@ -232,6 +234,7 @@ async def delete_notification_endpoint(
     success = await delete_notification(notification_id, user.get("uid", ""))
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found or unauthorized")
+    await invalidate_prefix("notifications")
     return {"deleted": True}
 
 

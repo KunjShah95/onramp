@@ -16,7 +16,7 @@ export type ShortcutEvent = {
 const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[] }[] = [
   { key: 'd', path: '/dashboard', label: 'Dashboard', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
   { key: 'p', path: '/my-progress', label: 'My Progress', roles: ['member', 'junior_dev'] },
-  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'r', path: '/reviews', label: 'Review Queue', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev'] },
   { key: 't', path: '/tasks', label: 'Tasks' },
   { key: 'e', path: '/explore', label: 'Explore' },
   { key: 'a', path: '/ask', label: 'Ask Codebase' },
@@ -25,14 +25,15 @@ const NAV_SHORTCUTS: { key: string; path: string; label: string; roles?: string[
   { key: 'n', path: '/notifications', label: 'Notifications' },
   { key: 's', path: '/settings', label: 'Settings' },
   { key: 'i', path: '/admin', label: 'Admin', roles: ['admin', 'ceo', 'cto'] },
-  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'm', path: '/team', label: 'Team', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
-  { key: 'y', path: '/playbooks', label: 'Playbooks', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer'] },
-  { key: 'o', path: '/developer-portal', label: 'Developer Portal', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev', 'developer', 'tester'] },
+  { key: 'b', path: '/billing', label: 'Billing', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev'] },
+  { key: 'c', path: '/code-health', label: 'Code Health', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev'] },
+  { key: 'm', path: '/team', label: 'Team', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev'] },
+  { key: 'y', path: '/playbooks', label: 'Playbooks', roles: ['admin', 'senior', 'ceo', 'cto', 'senior_dev'] },
+  { key: 'o', path: '/developer-portal', label: 'Developer Portal' },
   { key: 'w', path: '/wiki', label: 'Wiki' },
   { key: 'u', path: '/executive', label: 'Executive', roles: ['admin', 'ceo', 'cto'] },
   { key: 'v', path: '/dev-space', label: 'Dev Space', roles: ['developer', 'admin', 'ceo', 'cto', 'senior_dev', 'tester'] },
-  { key: 'z', path: '/senior-space', label: 'Senior Space', roles: ['senior', 'senior_dev', 'developer', 'admin', 'ceo', 'cto'] },
+  { key: 'z', path: '/senior-space', label: 'Senior Space', roles: ['senior', 'senior_dev', 'admin', 'ceo', 'cto'] },
 ]
 
 export function useKeyboardShortcuts() {
@@ -60,7 +61,6 @@ export function useKeyboardShortcuts() {
       { key: 'Escape', description: 'Close help / dismiss', action: () => setShowHelp(false) },
       { key: '?', description: 'Toggle this help panel', action: () => setShowHelp(prev => !prev) },
       { key: 'h', description: 'Go to landing page', action: () => navigate('/') },
-      { key: 'b', description: 'Go to billing', action: () => navigate('/billing') },
       ...navShortcuts,
     ]
   }, [navigate, filtered])

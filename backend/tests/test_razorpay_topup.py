@@ -30,6 +30,12 @@ class TestCreatePaymentOrder:
         assert result["key_id"] == "rzp_test_dummy"
         mock_client.order.create.assert_called_once()
         assert mock_client.order.create.call_args[0][0]["amount"] == 50000
+        notes = mock_client.order.create.call_args[0][0]["notes"]
+        assert notes["wallet_scope"] == "user_1"
+        assert notes["owner_id"] == "user_1"
+        order = await service.storage.get_document("credit_topup_orders", "order_test")
+        assert order["wallet_scope"] == "user_1"
+        assert order["owner_id"] == "user_1"
 
     async def test_rejects_nonpositive_amount(self, service):
         result = await service.create_payment_order("user_1", 0)
@@ -79,6 +85,26 @@ class TestVerifyPaymentOrder:
         assert result == {"error": "Not authorized for this order"}
         mock_client.utility.verify_payment_signature.assert_not_called()
 
+    async def test_explicit_wallet_scope_owner_can_verify(self, service):
+        await service.storage.create_document("credit_topup_orders", "order_scope", {
+            "order_id": "order_scope",
+            "team_id": "legacy-name-but-user-scope",
+            "owner_id": "wallet_owner",
+            "wallet_scope": "wallet_owner",
+            "amount_inr": 250,
+            "amount_paise": 25000,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {
+            "id": "pay_scope", "amount": 25000, "status": "captured"
+        }
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order(
+                "order_scope", "pay_scope", "sig_scope", caller_id="wallet_owner"
+            )
+        assert result == {"credited": True, "credits": 250}
+
     async def test_owner_can_verify(self, service):
         await service.storage.create_document("credit_topup_orders", "order_own", {
             "order_id": "order_own", "team_id": "user_own", "amount_inr": 250,
@@ -121,6 +147,19 @@ class TestVerifyPaymentOrder:
         from app.services.credit_service import CreditService
         wallet = await CreditService().get_wallet("user_mm")
         assert wallet["balance"] == 0
+
+    async def test_legacy_order_underpayment_is_rejected(self, service):
+        await service.storage.create_document("credit_topup_orders", "order_legacy_underpay", {
+            "order_id": "order_legacy_underpay", "team_id": "user_legacy_underpay", "amount_inr": 200,
+        })
+        mock_client = MagicMock()
+        mock_client.utility.verify_payment_signature.return_value = True
+        mock_client.payment.fetch.return_value = {"id": "pay_legacy_underpay", "amount": 100, "status": "captured"}
+        with patch.object(service, "_razorpay", return_value=mock_client):
+            result = await service.verify_payment_order("order_legacy_underpay", "pay_legacy_underpay", "sig")
+        assert result == {"error": "Could not credit wallet"}
+        from app.services.credit_service import CreditService
+        assert (await CreditService().get_wallet("user_legacy_underpay"))["balance"] == 0
 
     async def test_payment_fetch_failure_is_fail_closed(self, service):
         await service.storage.create_document("credit_topup_orders", "order_fetch", {

@@ -39,7 +39,7 @@ services:
     ports:
       - "8001:8000"   # host:8001 → container:8000 (avoids conflict with local server)
     environment:
-      - ENVIRONMENT=development
+      - ENV=development
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-test-project}
       - GOOGLE_CLOUD_LOCATION=us-central1
       - REDIS_HOST=redis
@@ -52,7 +52,6 @@ services:
       - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET:-test-hmac-secret-32-chars-min}
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080,http://localhost:3000,http://localhost:80
       - LOG_LEVEL=DEBUG
-      - ENV=${ENV:-development}
       - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       - N8N_ONBOARDING_WEBHOOK_URL=${N8N_ONBOARDING_WEBHOOK_URL:-}
       - N8N_HMAC_SECRET=${N8N_HMAC_SECRET:-}
@@ -100,7 +99,7 @@ services:
       dockerfile: Dockerfile
       target: development
     environment: &celery_env
-      - ENVIRONMENT=development
+      - ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
@@ -126,7 +125,7 @@ services:
       dockerfile: Dockerfile
       target: development
     environment:
-      - ENVIRONMENT=development
+      - ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}

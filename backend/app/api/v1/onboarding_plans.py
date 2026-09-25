@@ -70,6 +70,8 @@ async def list_plans(team_id: str | None = None, user_id: str | None = None,
         raise HTTPException(status_code=403, detail="Not your onboarding plans")
     from app.services.team_service import get_user_teams
     teams = await get_user_teams(uid)
+    if user_id:
+        return await ops.list_plans(user_id=uid)
     if teams:
         visible: dict[str, dict] = {}
         for team in teams:
@@ -112,18 +114,37 @@ async def get_plan_roadmap(plan_id: str, user: dict = Depends(get_current_user))
 @router.patch("/{plan_id}",
     responses={404: {"description": "Plan not found"}})
 async def update_plan(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
-    await _get_authorized_plan(plan_id, user)
-    plan = await ops.update_plan(plan_id, payload)
-    if not plan:
+    plan = await _get_authorized_plan(plan_id, user)
+    immutable = {"id", "team_id", "user_id", "created_by", "created_at"}
+    supplied_ownership = immutable.intersection(payload)
+    if supplied_ownership:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Onboarding plan ownership fields are immutable: {', '.join(sorted(supplied_ownership))}",
+        )
+    buddy_id = payload.get("buddy_id")
+    if buddy_id:
+        await _require_team_member({"uid": buddy_id}, str(plan.get("team_id") or ""))
+    try:
+        updated = await ops.update_plan(plan_id, payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not updated:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return plan
+    return updated
 
 
 @router.post("/{plan_id}/pulse")
 async def submit_pulse(plan_id: str, payload: dict, user: dict = Depends(get_current_user)):
-    await _get_authorized_plan(plan_id, user)
-    pulse = await ops.submit_pulse(plan_id, payload)
-    return pulse
+    plan = await _get_authorized_plan(plan_id, user)
+    if str(plan.get("user_id") or "") != str(user.get("uid") or ""):
+        raise HTTPException(status_code=403, detail="Only the onboarding plan owner may submit a pulse")
+    try:
+        return await ops.submit_pulse(plan_id, payload, user_id=user.get("uid", ""))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 
 @router.get("/{plan_id}/pulse-trends")

@@ -45,6 +45,7 @@ export default function NotificationBell() {
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const notificationIdsRef = useRef<Set<string>>(new Set())
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -59,6 +60,7 @@ export default function NotificationBell() {
     setLoading(true)
     try {
       const data = await listNotifications({ limit: 10 })
+      notificationIdsRef.current = new Set(data.notifications.map((n) => n.notification_id))
       setNotifications(data.notifications)
     } catch {
       // silently fail
@@ -73,6 +75,8 @@ export default function NotificationBell() {
     const unsub = onEvent((event: WsEvent) => {
       if (event.type !== 'notification' || event.event !== 'new') return
       const incoming = event.notification
+      if (notificationIdsRef.current.has(incoming.notification_id)) return
+      notificationIdsRef.current.add(incoming.notification_id)
       setNotifications((prev) => {
         if (prev.some((n) => n.notification_id === incoming.notification_id)) return prev
         const mapped: OnrampNotification = {
@@ -149,29 +153,38 @@ export default function NotificationBell() {
   }, [open])
 
   async function handleMarkAllRead() {
+    const previousUnread = notifications.filter((n) => !n.read)
+    if (previousUnread.length === 0) return
+    const readAt = new Date().toISOString()
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true, read_at: readAt })))
+    setUnreadCount(0)
     try {
       await markAllNotificationsRead()
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, read_at: new Date().toISOString() })))
-      setUnreadCount(0)
     } catch {
-      // silently fail
+      // Preserve notifications that arrived while the request was in flight;
+      // only roll back the entries this action optimistically changed.
+      const byId = new Map(previousUnread.map((n) => [n.notification_id, n]))
+      setNotifications((prev) => prev.map((n) => byId.get(n.notification_id) ?? n))
+      setUnreadCount((count) => count + previousUnread.length)
     }
   }
 
   async function handleMarkRead(n: OnrampNotification) {
     if (n.read) return
+    const previous = n
+    setNotifications((prev) =>
+      prev.map((notif) =>
+        notif.notification_id === n.notification_id
+          ? { ...notif, read: true, read_at: new Date().toISOString() }
+          : notif
+      )
+    )
+    setUnreadCount((prev) => Math.max(0, prev - 1))
     try {
       await markNotificationsRead([n.notification_id])
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.notification_id === n.notification_id
-            ? { ...notif, read: true, read_at: new Date().toISOString() }
-            : notif
-        )
-      )
-      setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch {
-      // silently fail
+      setNotifications((prev) => prev.map((notif) => notif.notification_id === previous.notification_id ? previous : notif))
+      setUnreadCount((count) => count + 1)
     }
   }
 

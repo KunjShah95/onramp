@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
@@ -13,6 +14,8 @@ import type { ModulePermission } from '../lib/api'
 
 
 export default function ModuleHealthPage() {
+  const { moduleName } = useParams<{ moduleName: string }>()
+  const focusedModule = moduleName || null
   const [permissions, setPermissions] = useState<ModulePermission[]>([])
   const [modules, setModules] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,9 +54,10 @@ export default function ModuleHealthPage() {
     return () => { cancelled = true }
   }, [activeTeamId])
 
+  const uniqueModules = Array.from(new Set(modules))
   const grantedModules = new Set(permissions.map((p) => p.module))
-  const granted = permissions.length
-  const total = modules.length
+  const total = uniqueModules.length
+  const granted = uniqueModules.filter((module) => grantedModules.has(module)).length
   const grantedAll = total > 0 && granted === total
 
   return (
@@ -64,8 +68,10 @@ export default function ModuleHealthPage() {
         <header className="mb-8">
           <PageHeader
             eyebrow="Folio · Module health"
-            title="Module Health"
-            subtitle="Module-level permissions your team holds · each module unlocks as trainees complete onboarding tasks."
+            title={focusedModule ? `Module · ${focusedModule}` : 'Module Health'}
+            subtitle={focusedModule
+              ? `Access and grant history for ${focusedModule}.`
+              : 'Module-level permissions your team holds · each module unlocks as trainees complete onboarding tasks.'}
           />
         </header>
 
@@ -122,15 +128,16 @@ export default function ModuleHealthPage() {
             </div>
 
             {/* Module grid */}
-            {modules.length > 0 && (
+            {uniqueModules.length > 0 && (
               <div>
                 <ConsolePanel rail="Modules" designator={`${total} TOTAL`}>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {modules.map((mod) => {
+                    {uniqueModules.map((mod) => {
                       const isGranted = grantedModules.has(mod)
                       return (
                         <div key={mod} className={cn(
                             'flex items-center justify-between px-3 py-2.5 rounded-[3px] border transition-colors',
+                            focusedModule === mod && 'ring-1 ring-go/50',
                             isGranted
                               ? 'bg-go/5 border-go/20'
                               : 'bg-base border-seam',

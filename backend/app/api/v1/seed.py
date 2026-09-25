@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.v1.auth import get_current_user
 from app.services.postgres_db import get_storage
@@ -45,30 +45,47 @@ def _rel_time(value) -> str:
         return ""
 
 
-async def _global_stats(storage) -> dict:
-    """Real counts from the database. No fabricated numbers."""
+async def _global_stats(storage, team_ids: list) -> dict:
+    """Counts scoped to teams the caller belongs to."""
+    allowed = {str(team_id) for team_id in team_ids if team_id}
     try:
-        repos = await storage.list_documents("repositories")
+        repos = [
+            repo for repo in await storage.list_documents("repositories")
+            if str(repo.get("team_id") or "") in allowed
+        ]
     except Exception as exc:
         logger.warning("Failed to list repositories for stats: %s", exc)
         repos = []
     try:
-        teams = await storage.list_documents("teams")
+        teams = [
+            team for team in await storage.list_documents("teams")
+            if str(team.get("team_id") or team.get("id") or "") in allowed
+        ]
     except Exception as exc:
         logger.warning("Failed to list teams for stats: %s", exc)
         teams = []
     try:
-        users = await storage.list_documents("users")
+        memberships = [
+            row for row in await storage.list_documents("team_members")
+            if str(row.get("team_id") or "") in allowed
+        ]
+        user_ids = {str(row.get("user_id") or row.get("uid") or row.get("id")) for row in memberships}
+        users = [
+            user for user in await storage.list_documents("users")
+            if str(user.get("id") or user.get("uid") or "") in user_ids
+        ]
     except Exception as exc:
         logger.warning("Failed to list users for stats: %s", exc)
         users = []
-    # api_calls_24h: count real usage rows in the last 24h if the collection exists.
     api_calls = 0
     try:
-        usage = await storage.list_documents("onramp_usage")
+        usage = [
+            row for row in await storage.list_documents("usage_records")
+            if str(row.get("team_id") or "") in allowed
+        ]
         cutoff = datetime.now(timezone.utc).timestamp() - 86400
-        for u in usage:
-            ts = u.get("created_at") or u.get("timestamp")
+        for item in usage:
+            ts = item.get("created_at") or item.get("timestamp")
             try:
                 dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
                 if dt.timestamp() >= cutoff:
@@ -77,7 +94,6 @@ async def _global_stats(storage) -> dict:
                 continue
     except Exception as exc:
         logger.warning("Failed to count API calls: %s", exc)
-        api_calls = 0
     return {
         "repos_analyzed": len(repos),
         "active_teams": len(teams),
@@ -103,10 +119,14 @@ async def _recent_activity(uid: str) -> list:
     return activity
 
 
-async def _repo_health_scores(storage) -> list:
-    """Real per-repo stats from the GitHub API for tracked repositories."""
+async def _repo_health_scores(storage, team_ids: list) -> list:
+    """Real per-repo stats for repositories in the caller's teams."""
+    allowed = {str(team_id) for team_id in team_ids if team_id}
     try:
-        repos = await storage.list_documents("repositories")
+        repos = [
+            repo for repo in await storage.list_documents("repositories")
+            if str(repo.get("team_id") or "") in allowed
+        ]
     except Exception:
         repos = []
     gh = GitHubService()
@@ -158,10 +178,14 @@ async def _billing_rollup(storage, team_ids: list) -> dict:
     }
 
 
-async def _top_teams(storage) -> list:
-    """Real team roster with member counts and task completion rates."""
+async def _top_teams(storage, team_ids: list) -> list:
+    """Team roster and completion rates limited to the caller's teams."""
+    allowed = {str(team_id) for team_id in team_ids if team_id}
     try:
-        teams = await storage.list_documents("teams")
+        teams = [
+            team for team in await storage.list_documents("teams")
+            if str(team.get("team_id") or team.get("id") or "") in allowed
+        ]
     except Exception:
         teams = []
     result = []
@@ -225,10 +249,11 @@ async def _review_items(storage, team_ids: list) -> list:
 
 
 @router.get("/role-data")
-async def get_seed_role_data(user=Depends(get_current_user)):
-    """Return real, role-appropriate dashboard data sourced from the database
-    and the GitHub API. No mock constants — empty/zero states reflect an empty
-    workspace truthfully."""
+async def get_seed_role_data(
+    team_id: str | None = Query(None),
+    user=Depends(get_current_user),
+):
+    """Return role-appropriate data scoped to one verified team membership."""
     storage = get_storage()
     uid = user["uid"]
 
@@ -237,22 +262,21 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         teams = await team_service.get_user_teams(uid)
     except Exception:
         logger.exception("Failed to load teams for user %s", uid)
-    team_ids = [t.get("team_id") or t.get("id") for t in teams if (t.get("team_id") or t.get("id"))]
-    primary_team = team_ids[0] if team_ids else None
+    all_team_ids = [str(t.get("team_id") or t.get("id")) for t in teams if (t.get("team_id") or t.get("id"))]
+    if team_id and str(team_id) not in all_team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
+    primary_team = str(team_id) if team_id else (all_team_ids[0] if all_team_ids else None)
+    scoped_team_ids = [primary_team] if primary_team else []
 
-    # Resolve role as highest-privilege membership (admin/ceo > senior > member)
     role = "member"
-    try:
-        from app.middleware.access_guard import ROLE_HIERARCHY
-        memberships = await storage.query_documents(
-            "team_members", [("user_id", "==", uid)]
+    if primary_team:
+        membership = next(
+            (t for t in teams if str(t.get("team_id") or t.get("id")) == primary_team),
+            None,
         )
-        if memberships:
-            role = max(memberships, key=lambda m: ROLE_HIERARCHY.get(m.get("role", "member"), 0)).get("role", "member")
-    except Exception:
-        logger.exception("Failed to resolve role for user %s", uid)
+        role = (membership or {}).get("role", "member")
 
-    stats = await _global_stats(storage)
+    stats = await _global_stats(storage, scoped_team_ids)
     base_data = {"stats": stats}
 
     if role in ("developer", "tester", "senior_dev"):
@@ -260,17 +284,17 @@ async def get_seed_role_data(user=Depends(get_current_user)):
             **base_data,
             "recent_activity": await _recent_activity(uid),
             "system_health": await _system_health(storage),
-            "pending_reviews": await _sum_team_progress(team_ids, "pending_review"),
+            "pending_reviews": await _sum_team_progress(scoped_team_ids, "pending_review"),
             "open_incidents": 0,
         }
         portal = "dev"
 
     elif role in ("admin", "ceo", "cto"):
-        billing = await _billing_rollup(storage, team_ids)
+        billing = await _billing_rollup(storage, scoped_team_ids)
         data = {
             **base_data,
             **billing,
-            "top_teams": await _top_teams(storage),
+            "top_teams": await _top_teams(storage, scoped_team_ids),
             "recent_audit_events": await _recent_activity(uid),
         }
         portal = "executive"
@@ -281,16 +305,16 @@ async def get_seed_role_data(user=Depends(get_current_user)):
         data = {
             **base_data,
             "hr_cohort": hr_data,
-            "team_count": len(teams),
+            "team_count": len(scoped_team_ids),
             "active_members": hr_data.get("member_count", 0),
             "at_risk_count": hr_data.get("attrition_risk", {}).get("at_risk_count", 0),
         }
         portal = "hr"
 
     elif role in ("senior",):
-        review_items = await _review_items(storage, team_ids)
+        review_items = await _review_items(storage, scoped_team_ids)
         team_progress = []
-        for tid in team_ids:
+        for tid in scoped_team_ids:
             try:
                 members = await team_service.get_team_members(tid)
                 for m in members:
@@ -306,10 +330,10 @@ async def get_seed_role_data(user=Depends(get_current_user)):
             **base_data,
             "pending_reviews": len(review_items),
             "review_items": review_items,
-            "repo_health_scores": await _repo_health_scores(storage),
+            "repo_health_scores": await _repo_health_scores(storage, scoped_team_ids),
             "team_progress": team_progress,
             "active_mentees": len(team_progress),
-            "open_tasks": await _sum_team_progress(team_ids, "in_progress"),
+            "open_tasks": await _sum_team_progress(scoped_team_ids, "in_progress"),
         }
         portal = "senior"
 
@@ -376,11 +400,15 @@ async def _system_health(storage) -> list:
     except Exception:
         health.append({"service": "PostgreSQL", "status": "down"})
 
-    # Redis cache: probe via the cache service if configured.
+    # Redis cache: probe the real client only when Redis is configured.
     try:
-        from app.services.cache_service import cache_service  # type: ignore
-        ok = await cache_service.ping()
-        health.append({"service": "Redis Cache", "status": "healthy" if ok else "degraded"})
+        from app.services.cache_service import get_client, is_redis_available
+        if not is_redis_available():
+            health.append({"service": "Redis Cache", "status": "degraded"})
+        else:
+            client = await get_client()
+            ok = client is not None and await client.ping()
+            health.append({"service": "Redis Cache", "status": "healthy" if ok else "unavailable"})
     except Exception:
         health.append({"service": "Redis Cache", "status": "unavailable"})
 

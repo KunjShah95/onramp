@@ -10,8 +10,24 @@ playbook_service = PlaybookService()
 
 
 async def _require_playbook_access(user: dict, playbook: dict) -> None:
-    if not playbook or str(playbook.get("team_id")) not in await _team_ids(user):
+    if not playbook:
+        raise HTTPException(status_code=404, detail="Playbook not found")
+    if str(playbook.get("team_id")) not in await _team_ids(user):
         raise HTTPException(status_code=403, detail="Playbook belongs to another team")
+
+
+async def _require_playbook_manager(user: dict, team_id: str) -> None:
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    roles = [
+        team.get("role", "member")
+        for team in await get_user_teams(uid)
+        if str(team.get("team_id") or team.get("id")) == str(team_id)
+    ]
+    if not roles or max(ROLE_HIERARCHY.get(role, 0) for role in roles) < ROLE_HIERARCHY.get("senior", 5):
+        raise HTTPException(status_code=403, detail="Senior/admin role required")
 
 
 class CreatePlaybookRequest(BaseModel):
@@ -37,6 +53,7 @@ async def create_playbook(
 ):
     if str(request.team_id) not in await _team_ids(user):
         raise HTTPException(status_code=403, detail="Not a member of this team")
+    await _require_playbook_manager(user, request.team_id)
     return await playbook_service.create_playbook(
         team_id=request.team_id,
         title=request.title,
@@ -73,6 +90,7 @@ async def update_playbook(
 ):
     existing = await playbook_service.get_playbook(playbook_id)
     await _require_playbook_access(user, existing)
+    await _require_playbook_manager(user, str(existing.get("team_id") or ""))
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -86,6 +104,7 @@ async def update_playbook(
 async def archive_playbook(playbook_id: str, user: dict = Depends(get_current_user)):
     existing = await playbook_service.get_playbook(playbook_id)
     await _require_playbook_access(user, existing)
+    await _require_playbook_manager(user, str(existing.get("team_id") or ""))
     success = await playbook_service.archive_playbook(playbook_id)
     if not success:
         raise HTTPException(status_code=404, detail="Playbook not found")

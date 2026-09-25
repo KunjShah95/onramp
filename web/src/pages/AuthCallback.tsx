@@ -5,6 +5,12 @@ import { ArrowRight, CircleNotch, CheckCircle, XCircle } from '@phosphor-icons/r
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
 
+const AUTH_RETURN_STORAGE_KEY = 'onramp.authReturnTo'
+
+function safeInternalReturn(value: string | null | undefined): string | null {
+  return value && value.startsWith('/') && !value.startsWith('//') && !value.includes(':') ? value : null
+}
+
 export default function AuthCallback() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -13,91 +19,95 @@ export default function AuthCallback() {
   const [isLinkFlow, setIsLinkFlow] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null
+
     const token = searchParams.get('token')
     const error = searchParams.get('error')
-    // True when this callback completes a GitHub *account-link* flow started
-    // from the Profile page (flagged in sessionStorage before the redirect),
-    // as opposed to a fresh sign-in. After a successful link the user should
-    // land back on their profile, not the dashboard. The flag carries a
-    // timestamp so a stale flag left over from an aborted flow (closed tab,
-    // backend error, back button) is ignored rather than hijacking a later
-    // OAuth sign-in in the same tab.
     const rawLinkFlow = sessionStorage.getItem('ghLinkFlow')
     const linkFlow = rawLinkFlow !== null && Date.now() - Number(rawLinkFlow) < 15 * 60 * 1000
     if (rawLinkFlow !== null) sessionStorage.removeItem('ghLinkFlow')
     setIsLinkFlow(linkFlow)
 
+    let storedReturn: string | null = null
+    try { storedReturn = safeInternalReturn(sessionStorage.getItem(AUTH_RETURN_STORAGE_KEY)) } catch { /* optional */ }
+    const destination = linkFlow ? '/profile' : (storedReturn || '/dashboard')
+
+    const scheduleRedirect = () => {
+      if (cancelled) return
+      setStatus('success')
+      try { sessionStorage.removeItem(AUTH_RETURN_STORAGE_KEY) } catch { /* optional */ }
+      redirectTimer = setTimeout(() => {
+        if (!cancelled) navigate(destination, { replace: true })
+      }, 500)
+    }
+
     if (error) {
       setStatus('error')
       setErrorMsg(decodeURIComponent(error))
-      return
+      return () => { cancelled = true }
     }
 
-    // Backward compat: if token is in query (old backend), store it and
-    // immediately clear via history.replaceState to avoid leak.
+    // Legacy callback token: capture it before stripping the query string.
     if (token) {
-      // Immediately strip token from URL before any other work so it never
-      // persists in history, Referer, or clipboard longer than one tick.
       window.history.replaceState(null, '', window.location.pathname)
       try {
         setWsToken(token)
-        setStatus('success')
-        const timer = setTimeout(() => {
-          navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
-        }, 500)
-        return () => clearTimeout(timer)
-      } catch (err) {
+        scheduleRedirect()
+      } catch {
         setStatus('error')
         setErrorMsg('Failed to process authentication. Please try again.')
-        return
+      }
+      return () => {
+        cancelled = true
+        if (redirectTimer) clearTimeout(redirectTimer)
       }
     }
 
-    // No token in query — secure cookie-based flow (HttpOnly cookie set by
-    // backend redirect). History already clean; verify session via credentials.
-    // Strip any residual query string then treat as success.
     if (window.location.search) {
       window.history.replaceState(null, '', window.location.pathname)
     }
 
-    // Verify the HttpOnly cookie session is valid before declaring success.
-    // If the cookie is missing/invalid, /auth/me will 401 and we show error.
     const verify = async () => {
       try {
         const rawBase = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1').trim()
         let url = rawBase.replace(/\/+$/, '')
-        // Same normalization as api.ts: bare host gets /api/v1 appended.
         if (!url.endsWith('/api/v1')) {
           if (url.endsWith('/api')) url = `${url}/v1`
           else if (!url.includes('/api')) url = `${url}/api/v1`
         }
         const res = await fetch(`${url}/auth/me`, { credentials: 'include' })
-        if (res.ok) {
-          const json = await res.json().catch(() => null)
-          // Optionally capture token if backend still returns it in body for WS
-          const data = json?.data || json
-          if (data?.token) setWsToken(data.token)
-          setStatus('success')
-          const timer = setTimeout(() => {
-            navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
-          }, 500)
-          return () => clearTimeout(timer)
+        if (!res.ok) {
+          if (!cancelled) {
+            setStatus('error')
+            setErrorMsg(res.status === 401 || res.status === 403
+              ? 'The provider did not establish a valid session.'
+              : 'Authentication could not be verified. Please try again.')
+          }
+          return
         }
-        // Cookie present but me failed — still consider OAuth success (cookie
-        // may be valid but me requires extra header); fallback to success
-        // to avoid trapping users, as dashboard will re-verify.
-        setStatus('success')
-        const timer = setTimeout(() => {
-          navigate(linkFlow ? '/profile' : '/dashboard', { replace: true })
-        }, 500)
-        return () => clearTimeout(timer)
+        const json = await res.json().catch(() => null)
+        const data = json?.data || json
+        if (data?.token) setWsToken(data.token)
+        scheduleRedirect()
       } catch {
-        setStatus('error')
-        setErrorMsg('No authentication token received from the provider.')
+        if (!cancelled) {
+          setStatus('error')
+          setErrorMsg('Authentication could not be verified. Check your connection and try again.')
+        }
       }
     }
-    verify()
+    void verify()
+
+    return () => {
+      cancelled = true
+      if (redirectTimer) clearTimeout(redirectTimer)
+    }
   }, [searchParams, navigate])
+
+  const retryReturn = (() => {
+    try { return safeInternalReturn(sessionStorage.getItem(AUTH_RETURN_STORAGE_KEY)) } catch { return null }
+  })()
 
   const meta = {
     processing: { designator: 'PROCESSING', status: 'standby' as const, heading: 'Signing in' },
@@ -149,7 +159,10 @@ export default function AuthCallback() {
               </p>
               <p className="text-caption text-ink-tertiary mb-2">{errorMsg}</p>
               <button
-                onClick={() => navigate(isLinkFlow ? '/profile' : '/login', { replace: true })}
+                onClick={() => navigate(
+                  isLinkFlow ? '/profile' : `/login${retryReturn ? `?returnTo=${encodeURIComponent(retryReturn)}` : ''}`,
+                  { replace: true },
+                )}
                 className="btn btn-primary"
               >
                 {isLinkFlow ? 'Back to Profile' : 'Back to Sign In'}

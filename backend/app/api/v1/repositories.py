@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from typing import Optional, List
 from pydantic import BaseModel
 from app.services.postgres_db import get_storage, generate_id
@@ -85,6 +85,7 @@ async def create_repo(
     language: Optional[str] = None,
     description: Optional[str] = None,
     team_id: Optional[str] = None,
+    x_github_token: Optional[str] = Header(None, alias="X-GitHub-Token"),
     user: dict = Depends(get_current_user),
 ):
     """Register a new repository for tracking.
@@ -95,8 +96,11 @@ async def create_repo(
     """
     if url:
         from app.services.repo_index_access import parse_github_repo
-        if not parse_github_repo(url):
+        parsed_url = parse_github_repo(url)
+        if not parsed_url:
             raise HTTPException(status_code=400, detail="Only strict GitHub HTTPS repository URLs are supported")
+        if parsed_url[0].lower() != owner.strip().lower() or parsed_url[1].lower() != name.strip().lower():
+            raise HTTPException(status_code=400, detail="Repository URL does not match owner/name")
     if not owner.strip() or not name.strip() or any(part in {".", ".."} for part in (owner, name)):
         raise HTTPException(status_code=400, detail="Invalid repository owner or name")
 
@@ -116,6 +120,23 @@ async def create_repo(
         raise HTTPException(status_code=403, detail="A team membership is required")
     if str(resolved_team_id) not in {str(tid) for tid in team_ids}:
         raise HTTPException(status_code=403, detail="Not a member of this team")
+
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    membership = next(
+        (t for t in teams if str(t.get("team_id") or t.get("id")) == str(resolved_team_id)),
+        None,
+    )
+    if ROLE_HIERARCHY.get((membership or {}).get("role", "member"), 0) < ROLE_HIERARCHY["senior"]:
+        raise HTTPException(status_code=403, detail="Senior team role required to register a repository")
+
+    # A server-wide GITHUB_TOKEN must not be used to prove that an arbitrary
+    # member can see a private repository. Public repositories work without a
+    # user token; private repositories require the caller's own GitHub token.
+    from app.services.github_service import GitHubService
+    gh = GitHubService(x_github_token, allow_env_fallback=False)
+    stats = await gh.get_repo_stats(owner, name)
+    if not stats.get("available"):
+        raise HTTPException(status_code=403, detail="Repository is unavailable or inaccessible")
 
     doc_id = generate_id()
     repo = await _storage.create_document("repositories", doc_id, {
@@ -365,8 +386,9 @@ async def rebuild_repo_graph(
             team_id=repo_data.get("team_id"),
             repo_id=repo_data.get("id"),
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Rebuild failed: {exc}")
+    except Exception:
+        logger.exception("Repository graph rebuild failed for %s/%s", owner, repo)
+        raise HTTPException(status_code=502, detail="Repository rebuild failed")
     finally:
         await architecture_store.clear_building(index_id)
 
@@ -380,17 +402,35 @@ async def rebuild_repo_graph(
 
 
 @router.get("/roadmap")
-async def list_roadmap(user: dict = Depends(get_current_user)):
-    """Return project roadmap milestones."""
+async def list_roadmap(
+    team_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """Return project roadmap milestones for a verified team context."""
     from app.services.team_service import get_user_teams
 
     uid = user.get("uid", "")
     teams = await get_user_teams(uid)
-    team_id = teams[0].get("team_id") if teams else uid
+    allowed = {str(t.get("team_id") or t.get("id")) for t in teams or []}
+    if team_id:
+        if str(team_id) not in allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+        selected_team_id = str(team_id)
+    elif teams:
+        selected = min(
+            teams,
+            key=lambda item: (
+                str(item.get("joined_at") or "9999"),
+                str(item.get("team_id") or item.get("id") or ""),
+            ),
+        )
+        selected_team_id = str(selected.get("team_id") or selected.get("id"))
+    else:
+        selected_team_id = None
 
     milestones = await _storage.query_documents(
         "milestones",
-        [("team_id", "==", team_id)] if team_id else [],
+        [("team_id", "==", selected_team_id)] if selected_team_id else [],
     )
     # Real milestones only — empty list when none exist, no fabricated roadmap.
     return {"milestones": milestones}
@@ -403,6 +443,7 @@ async def resolve_repo_issue(
     request: ResolveIssueRequest,
     req: Request,
     user: dict = Depends(get_current_user),
+    _q=enforce_quota("analyze"),
 ):
     """Trigger an autonomous loop to analyze and resolve a specific codebase issue."""
     repo_data = await _verify_repo_access(owner, repo, user)
@@ -426,7 +467,8 @@ async def resolve_repo_issue(
     )
 
     if "error" in result:
-        raise HTTPException(status_code=500, detail=result["error"])
+        logger.error("Issue resolution failed for %s/%s: %s", owner, repo, result["error"])
+        raise HTTPException(status_code=502, detail="Issue resolution failed")
 
     return result
 

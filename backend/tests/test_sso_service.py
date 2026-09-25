@@ -176,8 +176,7 @@ class TestBuildSamlSettings:
 
 
 class TestParseMetadataXml:
-    async def test_parse_valid_xml(self):
-        """Parsing a metadata XML string returns extracted fields."""
+    async def test_metadata_import_fails_closed_without_parser(self):
         xml = """<?xml version="1.0"?>
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata">
   <IDPSSODescriptor>
@@ -185,8 +184,8 @@ class TestParseMetadataXml:
                          Location="https://idp.example.com/saml/sso"/>
   </IDPSSODescriptor>
 </EntityDescriptor>"""
-        result = await sso.parse_metadata_xml(xml)
-        assert result.get("metadata_provided") is True
+        with pytest.raises(ValueError, match="metadata import is not enabled"):
+            await sso.parse_metadata_xml(xml)
 
     async def test_parse_empty_xml(self):
         """Parsing empty metadata XML returns empty dict."""
@@ -195,13 +194,12 @@ class TestParseMetadataXml:
 
 
 class TestHandleSsoCallback:
-    async def test_valid_response(self):
-        """Handling a valid SAML response returns success with attributes."""
+    async def test_callback_fails_closed_without_verifier(self):
         result = await sso.handle_sso_callback("valid-saml-response")
-        assert result["success"] is True
-        assert "email" in result["attributes"]
-        assert "name" in result["attributes"]
-        assert result["token"] is not None
+        assert result == {
+            "success": False,
+            "error": "SAML authentication is not configured",
+        }
 
     async def test_empty_response(self):
         """Handling an empty SAML response returns failure."""

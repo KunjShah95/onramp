@@ -53,7 +53,7 @@ const TIER_LABELS: Record<string, string> = {
 
 export default function TeamPage() {
   const toast = useToast()
-  const { refreshRole } = useAuth()
+  const { activeTeamId, refreshRole, switchTeam } = useAuth()
   const [teamName, setTeamName] = useState('')
   const [teamId, setTeamId] = useState<string | null>(null)
   const [teams, setTeams] = useState<any[]>([])
@@ -84,10 +84,19 @@ export default function TeamPage() {
     try { const data = await listTeamInvites(tid); setInvites(data.invites || []) } catch { /* ignore */ }
   }, [])
 
-  const fetchTeams = useCallback(async () => {
-    try { const data = await listTeams('current-user'); setTeams(data.teams || []) } catch { /* ignore */ }
+  const fetchTeams = useCallback(async (preferredTeamId = activeTeamId) => {
+    try {
+      const data = await listTeams('current-user')
+      const nextTeams = data.teams || []
+      setTeams(nextTeams)
+      const preferred = nextTeams.find((team: any) => team.team_id === preferredTeamId) ?? nextTeams[0]
+      if (preferred) {
+        setTeamId(preferred.team_id)
+        setTier(preferred.tier || 'free')
+      }
+    } catch { /* ignore */ }
     finally { setTeamsLoading(false) }
-  }, [])
+  }, [activeTeamId])
 
   const fetchPermissions = useCallback(async () => {
     if (!teamId) return
@@ -103,10 +112,17 @@ export default function TeamPage() {
     if (!teamName.trim()) return
     setLoading(true); setError('')
     try {
-      const data = await createTeam(teamName.trim(), 'current-user', tier)
-      setTeamId(data.team_id); setTeamName(''); await fetchTeams()
-      await refreshRole() // make role/activeTeamId reflect the new team immediately
-      toast.success('Team created', teamName.trim())
+      const createdName = teamName.trim()
+      const data = await createTeam(createdName, 'current-user', tier)
+      setTeamId(data.team_id); setTeamName('')
+      await fetchTeams(data.team_id)
+      try {
+        await switchTeam(data.team_id)
+        await refreshRole() // ensure any backend-derived role fields are refreshed
+      } catch {
+        toast.warning('Team created', 'Refresh or select the new team to finish switching workspaces.')
+      }
+      toast.success('Team created', createdName)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create team'); toast.error('Failed to create team') }
     setLoading(false)
   }
@@ -114,8 +130,11 @@ export default function TeamPage() {
   async function handleAddMember() {
     if (!teamId || !memberEmail.trim()) return
     try {
-      await addTeamMember(teamId, memberEmail.trim(), 'member'); setMemberEmail(''); await fetchTeams()
-      toast.success('Member added', memberEmail.trim())
+      const addedEmail = memberEmail.trim()
+      await addTeamMember(teamId, addedEmail, 'member')
+      setMemberEmail('')
+      await Promise.all([fetchTeams(), fetchTeamMembers()])
+      toast.success('Member added', addedEmail)
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to add member'); toast.error('Failed to add member') }
   }
 
@@ -340,7 +359,10 @@ export default function TeamPage() {
                           </p>
                         </div>
                       </div>
-                      <button onClick={() => { setTeamId(t.team_id); setTier(t.tier || 'free'); setActiveSection('modules') }}
+                      <button onClick={() => {
+                        setTeamId(t.team_id); setTier(t.tier || 'free'); setActiveSection('modules')
+                        void switchTeam(t.team_id).catch((err) => toast.error('Failed to switch team', err.message))
+                      }}
                         className="text-xs text-go hover:text-go/80 transition-colors font-medium flex items-center gap-1">
                         Manage
                         <ArrowRight className="w-3 h-3" weight="bold" />

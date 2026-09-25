@@ -121,8 +121,9 @@ async def test_create_repo_allows_new_owner_name(seeded_storage):
     mock_user = {"uid": "user_a"}
     with patch("app.api.v1.repositories._storage", seeded_storage), \
          patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
-             {"team_id": "team_a", "role": "member"}
-         ])):
+             {"team_id": "team_a", "role": "admin"}
+         ])), \
+         patch("app.services.github_service.GitHubService.get_repo_stats", new=AsyncMock(return_value={"available": True})):
         repo = await create_repo(
             name="repo-new", owner="org", user=mock_user,
         )
@@ -153,7 +154,7 @@ async def test_delete_repo_cleans_derived_index_data(seeded_storage, monkeypatch
     mock_user = {"uid": "user_a"}
     with patch("app.api.v1.repositories._storage", seeded_storage), \
          patch("app.services.team_service.get_user_teams", new=AsyncMock(return_value=[
-             {"team_id": "team_a", "role": "member"}
+             {"team_id": "team_a", "role": "admin"}
          ])):
         result = await module.delete_repo(
             next(

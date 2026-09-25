@@ -21,7 +21,7 @@ def _utcnow() -> datetime:
 
 
 def _today_str() -> str:
-    return date.today().isoformat()
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 # ── XP Sources & Amounts ──────────────────────────────────────

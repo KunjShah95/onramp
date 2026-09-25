@@ -181,21 +181,23 @@ function RampStatusBadge({ profile }: { profile: RampTraineeProfile }) {
 
 export default function RampPage() {
   const queryClient = useQueryClient()
-  const { role } = useAuth()
+  const { role, activeTeamId } = useAuth()
   const canRunCheck = isLeaderRole(role)
   const [checkResult, setCheckResult] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery<RampSummary>({
-    queryKey: ['ramp-summary'],
-    queryFn: () => fetchRampSummary(),
+    queryKey: ['ramp-summary', activeTeamId],
+    queryFn: () => fetchRampSummary(activeTeamId ?? undefined),
+    enabled: !!activeTeamId,
   })
   const { data: health } = useQuery<RampHealth>({
-    queryKey: ['ramp-health'],
-    queryFn: () => fetchRampHealth(),
+    queryKey: ['ramp-health', activeTeamId],
+    queryFn: () => fetchRampHealth(activeTeamId ?? undefined),
+    enabled: !!activeTeamId,
   })
 
   const checkMutation = useMutation({
-    mutationFn: () => runRampCheck(),
+    mutationFn: () => runRampCheck(activeTeamId ?? undefined),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['ramp-summary'] })
       setCheckResult(

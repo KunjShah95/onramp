@@ -14,7 +14,7 @@ vi.mock(import('../lib/api'), async (importOriginal) => {
   return {
     ...actual,
     authLogin: mockAuthLogin,
-    authMe: vi.fn().mockRejectedValue(new Error('No session')),
+    authMe: vi.fn().mockResolvedValue(null),
     listTeams: vi.fn().mockResolvedValue({ teams: [] }),
   }
 })
@@ -49,5 +49,16 @@ describe('Login', () => {
   it('navigates to register page link', () => {
     render(<Login />)
     expect(screen.getByRole('link', { name: /create free account/i })).toHaveAttribute('href', '/register')
+  })
+
+  it('preserves a sanitized invitation return path, including its token query', () => {
+    window.history.pushState({}, '', '/login?returnTo=%2Fjoin%3Ftoken%3Dinvite-123%23accept')
+    render(<Login />)
+
+    expect(screen.getByRole('link', { name: /create free account/i })).toHaveAttribute(
+      'href',
+      '/register?returnTo=%2Fjoin%3Ftoken%3Dinvite-123%23accept',
+    )
+    window.history.pushState({}, '', '/')
   })
 })

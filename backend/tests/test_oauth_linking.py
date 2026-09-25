@@ -113,11 +113,20 @@ class _FakeRedis:
         return self.store.pop(key, None)
 
 
-def _fake_github_client(post_response, get_response):
-    """Return an AsyncClient mock whose .post/.get return the given responses."""
+def _fake_github_client(post_response, get_response, email_response=None):
+    """Return an AsyncClient mock for /user plus verified /user/emails."""
     client = AsyncMock()
     client.post.return_value = post_response
-    client.get.return_value = get_response
+    if email_response is None:
+        email_response = [{
+            "email": get_response._json.get("email"),
+            "primary": True,
+            "verified": True,
+        }]
+    client.get.side_effect = [
+        get_response,
+        _FakeResponse(200, email_response),
+    ]
     client.__aenter__.return_value = client
     client.__aexit__.return_value = False
     return client

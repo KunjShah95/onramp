@@ -218,6 +218,11 @@ async def create_notification(
     }
 
     await storage.create_document(COLLECTION, notif_id, notification)
+    try:
+        from app.services.cache_service import invalidate_prefix
+        await invalidate_prefix("notifications")
+    except Exception:
+        logger.debug("Failed to invalidate notification cache", exc_info=True)
 
     # Broadcast the new notification via WebSocket
     try:

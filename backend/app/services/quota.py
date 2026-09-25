@@ -149,7 +149,14 @@ def enforce_quota(action: str):
         try:
             teams = await get_user_teams(uid)
             if teams:
-                return teams[0].get("id") or teams[0].get("team_id") or uid
+                team = min(
+                    teams,
+                    key=lambda item: (
+                        str(item.get("joined_at") or "9999"),
+                        str(item.get("team_id") or item.get("id") or ""),
+                    ),
+                )
+                return team.get("id") or team.get("team_id") or uid
         except Exception:
             logger.warning("Failed to resolve team scope for %s, using uid", uid)
         return uid

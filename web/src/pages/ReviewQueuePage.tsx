@@ -125,6 +125,10 @@ export default function ReviewQueuePage() {
     getTeamMembers(teamId).then(setMembers).catch(() => setMembers([]))
   }, [teamId])
 
+  const openTask = (task: WorkflowTask) => {
+    navigate(prDescribeLink(task) || '/tasks')
+  }
+
   const memberName = (uid: string | null | undefined) => {
     if (!uid) return 'N/A'
     const m = members.find((x) => x.user_id === uid)
@@ -256,7 +260,7 @@ export default function ReviewQueuePage() {
                 { label: task.state, tone: 'idle' as const }
               const priorityBar = PRIORITY_BAR[(task.priority as keyof typeof PRIORITY_BAR) ?? 'low']
               return (
-                <div key={task.task_id} className={cn(
+                <div key={task.task_id} onClick={() => openTask(task)} className={cn(
                     'group flex items-start gap-3 rounded-[3px] bg-panel border border-seam px-4 py-3',
                     'hover:border-seam-strong transition-colors cursor-pointer'
                   )}>
@@ -308,14 +312,19 @@ export default function ReviewQueuePage() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     {status === 'pending' && prDescribeLink(task) && (
                       <button
-                        onClick={() => { const to = prDescribeLink(task); if (to) navigate(to) }}
+                        onClick={(event) => { event.stopPropagation(); openTask(task) }}
                         className="inline-flex items-center gap-1 rounded-[3px] bg-go text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-go-lit transition-colors"
                       >
                         <Eye size={11} weight="bold" />
                         Review
                       </button>
                     )}
-                    <button className="w-7 h-7 rounded-[3px] border border-seam-strong bg-base text-ink-tertiary hover:text-ink hover:border-seam-strong transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100" aria-label="Open">
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); openTask(task) }}
+                      className="w-7 h-7 rounded-[3px] border border-seam-strong bg-base text-ink-tertiary hover:text-ink hover:border-seam-strong transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                      aria-label={`Open ${task.title}`}
+                    >
                       <ArrowRight size={11} weight="bold" className="mx-auto" />
                     </button>
                   </div>

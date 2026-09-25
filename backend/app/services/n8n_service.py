@@ -145,38 +145,25 @@ def build_envelope(event: str, payload: Dict[str, Any]) -> bytes:
 # ── Config resolution ─────────────────────────────────────────
 
 async def _resolve_team_webhook(team_id: Optional[str]) -> Optional[str]:
-    """Per-team n8n webhook URL (doc id "team:<id>:n8n", fallback to queries)."""
+    """Resolve a team-scoped n8n webhook from the dynamic config collection."""
     if not team_id:
         return None
     try:
         from app.services.postgres_db import get_storage
 
         storage = get_storage()
-        # Primary: deterministic team doc id written by integrations_telegram PUT /config
-        try:
-            doc = await storage.get_document("onramp_integrations", f"team:{team_id}:n8n")
-            if doc:
-                cfg = doc.get("config") or {}
-                if cfg.get("webhook_url"):
-                    return cfg["webhook_url"]
-                # legacy shape: payload stored at top level
-                if doc.get("webhook_url"):
-                    return doc["webhook_url"]
-        except Exception:
-            pass
-        # Fallback: query rows with integration='n8n' matching this team
-        try:
-            rows = await storage.query_documents(
-                "onramp_integrations", [("integration", "==", "n8n")]
-            )
-        except Exception:
-            return None
-        for r in rows:
-            cfg = r.get("config") or {}
-            if cfg.get("team_id") == team_id and cfg.get("webhook_url"):
-                return cfg["webhook_url"]
-            if r.get("user_id") == team_id and cfg.get("webhook_url"):
-                return cfg["webhook_url"]
+        doc = await storage.get_document("team_n8n_configs", f"team:{team_id}:n8n")
+        if doc and doc.get("webhook_url"):
+            return str(doc["webhook_url"])
+
+        # Backward compatibility for installations that wrote the old
+        # user-oriented IntegrationConfig row before team-scoped configs were
+        # introduced. Do not use its user_id as a team scope; require an
+        # explicit team_id in the JSON config.
+        for row in await storage.list_documents("onramp_integrations"):
+            cfg = row.get("config") or {}
+            if str(cfg.get("team_id") or "") == str(team_id) and cfg.get("webhook_url"):
+                return str(cfg["webhook_url"])
     except Exception:
         logger.debug("team webhook lookup failed for %s", team_id, exc_info=True)
     return None

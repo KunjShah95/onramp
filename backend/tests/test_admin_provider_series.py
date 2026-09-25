@@ -49,6 +49,7 @@ async def _seed_record(org: str, meta: dict, cost_usd: float = 0.0, created: str
 def app(monkeypatch):
     from app.api.v1 import admin as admin_module
 
+    monkeypatch.setenv("PLATFORM_ADMIN_EMAILS", "admin@test.com")
     application = FastAPI()
 
     class _SetUser(BaseHTTPMiddleware):
@@ -177,7 +178,8 @@ class TestAdminUsageSeries:
         assert _client(app).get("/api/v1/admin/usage?days=91").status_code == 422
         assert _client(app).get("/api/v1/admin/usage?days=90").status_code == 200
 
-    async def test_requires_owner_role(self, app):
-        # No team membership → adminuser is not an owner → 403.
+    async def test_requires_owner_role(self, app, monkeypatch):
+        # Fixture user is no longer present in the platform-admin allow-list.
+        monkeypatch.setenv("PLATFORM_ADMIN_EMAILS", "someone-else@example.com")
         resp = _client(app).get("/api/v1/admin/usage")
         assert resp.status_code == 403

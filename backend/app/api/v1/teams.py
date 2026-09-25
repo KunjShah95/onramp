@@ -21,6 +21,47 @@ team_service = TeamService()
 billing = BillingService()
 
 
+async def _team_role(user: dict, team_id: str) -> str | None:
+    teams = await team_service.list_teams(user.get("uid", ""))
+    return next(
+        (
+            team.get("role")
+            for team in teams
+            if str(team.get("team_id") or team.get("id")) == str(team_id)
+        ),
+        None,
+    )
+
+
+async def _require_team_role(user: dict, team_id: str, minimum: str) -> str:
+    role = await _team_role(user, team_id)
+    levels = {
+        "ceo": 6, "cto": 6, "admin": 6,
+        "senior_dev": 5, "senior": 5,
+        "developer": 4, "hr": 4,
+        "tester": 3, "junior_dev": 2, "member": 2,
+    }
+    if role is None or levels.get(role, 0) < levels.get(minimum, 0):
+        raise HTTPException(status_code=403, detail=f"Requires role >= '{minimum}'")
+    return role
+
+
+async def _require_member(team_id: str, user_id: str) -> dict:
+    from app.services.team_service import get_team_members
+
+    members = await get_team_members(team_id)
+    member = next(
+        (
+            item for item in members
+            if str(item.get("user_id") or item.get("id")) == str(user_id)
+        ),
+        None,
+    )
+    if not member:
+        raise HTTPException(status_code=400, detail="Target user is not a member of this team")
+    return member
+
+
 class CreateTeamRequest(BaseModel):
     name: str
     tier: str = "free"
@@ -87,6 +128,8 @@ async def get_user_module_permissions(
     _: None = require_team_membership(),
 ):
     """Get all module permissions for a specific user in a team."""
+    if str(user_id) != str(user.get("uid") or ""):
+        await _require_member(team_id, user_id)
     records = await get_user_modules(team_id, user_id)
     modules = [r["module"] for r in records]
     return {"user_id": user_id, "modules": modules, "count": len(modules)}
@@ -103,17 +146,9 @@ async def grant_module(
 
     Only team owners/admins can grant module access.
     """
-    # Verify the granter is an owner of the team
-    teams = await team_service.list_teams(user.get("uid", ""))
-    is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "admin"
-        for t in teams
-    )
-    if not is_owner:
-        raise HTTPException(
-            status_code=403,
-            detail="Only team owners can grant module access",
-        )
+    # Module grants are owner-level mutations and the target must be a member.
+    await _require_team_role(user, team_id, "admin")
+    await _require_member(team_id, request.user_id)
 
     try:
         result = await grant_module_access(
@@ -136,16 +171,8 @@ async def revoke_module(
     _: None = require_minimum_role("senior"),
 ):
     """Revoke a user's access to a specific module."""
-    teams = await team_service.list_teams(user.get("uid", ""))
-    is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "admin"
-        for t in teams
-    )
-    if not is_owner:
-        raise HTTPException(
-            status_code=403,
-            detail="Only team owners can revoke module access",
-        )
+    await _require_team_role(user, team_id, "admin")
+    await _require_member(team_id, request.user_id)
 
     success = await revoke_module_access(team_id, request.user_id, request.module)
     if not success:
@@ -161,16 +188,8 @@ async def revoke_all_modules(
     _: None = require_minimum_role("senior"),
 ):
     """Revoke ALL module access for a user."""
-    teams = await team_service.list_teams(user.get("uid", ""))
-    is_owner = any(
-        t.get("team_id") == team_id and t.get("role") == "admin"
-        for t in teams
-    )
-    if not is_owner:
-        raise HTTPException(
-            status_code=403,
-            detail="Only team owners can revoke module access",
-        )
+    await _require_team_role(user, team_id, "admin")
+    await _require_member(team_id, request.user_id)
 
     count = await revoke_all_module_access(team_id, request.user_id)
     return {"revoked": count, "user_id": request.user_id}
@@ -272,7 +291,12 @@ async def add_member(team_id: str, request: AddMemberRequest, user: dict = Depen
 
 
 @router.delete("/{team_id}/members/{user}")
-async def remove_member(team_id: str, user: str, _user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
+async def remove_member(team_id: str, user: str, actor: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
+    actor_role = await _require_team_role(actor, team_id, "senior")
+    target = await _require_member(team_id, user)
+    protected_roles = {"admin", "ceo", "cto"}
+    if target.get("role") in protected_roles and actor_role not in protected_roles:
+        raise HTTPException(status_code=403, detail="Only an admin/CEO/CTO can remove a team administrator")
     result = await team_service.remove_member(team_id, user)
     await invalidate_prefix("teams")
     return result

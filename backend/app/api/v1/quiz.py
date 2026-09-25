@@ -1,3 +1,4 @@
+﻿import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from app.api.v1.index_access import authorize_repo_index
 from app.services.postgres_db import get_storage, generate_id
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -21,6 +23,7 @@ class GenerateQuizRequest(BaseModel):
     module_name: Optional[str] = None
     repo_structure: Optional[dict] = None
     index_id: Optional[str] = None  # reuse a cached repo-context index (parse-once)
+    team_id: Optional[str] = None
     num_questions: int = 5
     difficulty: str = "mixed"
 
@@ -41,6 +44,12 @@ async def generate_quiz(
     """Generate a knowledge-check quiz for a module or the full codebase."""
     llm = getattr(req.app.state, "llm", None)
     team_id = await authorize_repo_index(user, request.index_id) if request.index_id else None
+    if team_id is None and request.team_id:
+        from app.services.team_service import get_user_teams
+        memberships = await get_user_teams(user.get("uid", ""))
+        if request.team_id not in {str(t.get("team_id") or t.get("id")) for t in memberships or []}:
+            raise HTTPException(status_code=403, detail="Access denied")
+        team_id = request.team_id
     sid = await get_session(
         "quiz_generator",
         user_id=user.get("uid"),
@@ -64,7 +73,7 @@ async def generate_quiz(
         await complete_session(sid, "quiz_generator", success=True, payload={"mode": request.mode, "module": request.module_name, "index_id": request.index_id})
     except Exception as e:
         await fail_session(sid, "quiz_generator")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
     uid = user.get("uid", "anonymous")
     quiz_id = generate_id()
@@ -74,6 +83,7 @@ async def generate_quiz(
         "quiz_id": quiz_id,
         "user_id": uid,
         "mode": request.mode,
+        "team_id": team_id,
         "module": request.module_name or "full_codebase",
         "difficulty": request.difficulty,
         "total_questions": len(result.get("questions", [])),
@@ -81,12 +91,18 @@ async def generate_quiz(
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
+    public_questions = []
+    for question in result.get("questions", []):
+        item = dict(question)
+        item.pop("correct_answer", None)
+        item.pop("explanation", None)
+        public_questions.append(item)
     return {
         "quiz_id": quiz_id,
         "mode": request.mode,
         "module": request.module_name or "full_codebase",
-        "total_questions": len(result.get("questions", [])),
-        "questions": result.get("questions", []),
+        "total_questions": len(public_questions),
+        "questions": public_questions,
     }
 
 
@@ -139,8 +155,25 @@ async def get_quiz_with_answers(
     doc = await storage.get_document(QUIZZES_COLLECTION, quiz_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Quiz not found")
-    if doc.get("user_id") and doc.get("user_id") != user.get("uid"):
-        raise HTTPException(status_code=403, detail="Quiz belongs to another user")
+    uid = user.get("uid", "")
+    if doc.get("user_id") == uid:
+        raise HTTPException(status_code=403, detail="Answer keys are not available to quiz participants")
+    quiz_team_id = str(doc.get("team_id") or "")
+    if not quiz_team_id:
+        raise HTTPException(status_code=403, detail="Quiz is not attached to a team")
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+    memberships = await get_user_teams(uid)
+    role = next(
+        (
+            membership.get("role", "member")
+            for membership in memberships or []
+            if str(membership.get("team_id") or membership.get("id")) == quiz_team_id
+        ),
+        "member",
+    )
+    if ROLE_HIERARCHY.get(role, 0) < ROLE_HIERARCHY["senior"]:
+        raise HTTPException(status_code=403, detail="Senior reviewer access required")
 
     return {
         "quiz_id": quiz_id,
@@ -180,7 +213,7 @@ async def submit_quiz_answers(
             answers=request.answers,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
     # Store result
     result_id = generate_id()
@@ -205,9 +238,9 @@ async def submit_quiz_answers(
             await quiz_graded(
                 user_id=uid,
                 quiz_id=quiz_id,
-                score=result.get("score"),
-                total=result.get("total"),
-                percentage=result.get("percentage"),
+                score=result.get("score") or 0,
+                total=result.get("total") or 0,
+                percentage=result.get("percentage") or 0,
                 passed=True,
             )
         except Exception:

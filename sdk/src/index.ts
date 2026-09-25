@@ -8,9 +8,10 @@
  *   - AIaaS agent endpoints (/api/v1/ai): list agents, execute agents,
  *     API-key management, usage + quota.
  *
- * The client authenticates with an Onramp API key (``cf_...``) sent as
- * ``Authorization: Bearer``, or a JWT access token — same header, so the
- * client is agnostic.
+ * The client keeps two credentials intentionally separate:
+ *   - ``apiKey`` authenticates the OpenAI-compatible gateway and agent routes.
+ *   - ``sessionToken`` authenticates JWT-only workspace and key-management
+ *     routes. API keys are never sent to those routes.
  */
 
 export const SDK_VERSION = '0.1.0'
@@ -211,8 +212,10 @@ export class OnrampApiError extends Error {
 export interface OnrampClientOptions {
   /** Base URL, e.g. https://api.onramp.dev — defaults to local dev. */
   baseUrl?: string
-  /** Onramp API key (cf_...) or JWT access token. */
+  /** Gateway API key (`cf_...`). Used only for gateway/agent authentication. */
   apiKey?: string
+  /** JWT access token used for workspace and API-key management routes. */
+  sessionToken?: string
   /** Default gateway model when none is passed per-call. */
   defaultModel?: string
   /** Extra headers appended to every request. */
@@ -230,6 +233,7 @@ export class OnrampClient {
   readonly baseUrl: string
   readonly gatewayUrl: string
   private apiKey?: string
+  private sessionToken?: string
   private defaultModel?: string
   private extraHeaders: Record<string, string>
   private fetchFn: typeof fetch
@@ -247,6 +251,9 @@ export class OnrampClient {
     this.apiKey =
       options.apiKey ||
       (typeof process !== 'undefined' ? process.env.ONRAMP_API_KEY : undefined)
+    this.sessionToken =
+      options.sessionToken ||
+      (typeof process !== 'undefined' ? process.env.ONRAMP_SESSION_TOKEN : undefined)
     this.defaultModel = options.defaultModel || 'chat'
     this.extraHeaders = options.headers || {}
     this.fetchFn = options.fetch || globalThis.fetch.bind(globalThis)
@@ -255,14 +262,39 @@ export class OnrampClient {
 
   // ── Low-level helpers ───────────────────────────────────────────────
 
-  private headers(extra: Record<string, string> = {}): Record<string, string> {
+  private commonHeaders(extra: Record<string, string> = {}): Record<string, string> {
     return {
       'Content-Type': 'application/json',
       'User-Agent': `onramp-sdk/${SDK_VERSION}`,
-      ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
       ...this.extraHeaders,
       ...extra,
     }
+  }
+
+  /** Authenticate an OpenAI-compatible gateway request with an API key. */
+  private gatewayHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    return this.commonHeaders({
+      ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+      ...extra,
+    })
+  }
+
+  /** Authenticate JWT-only workspace/key-management requests. */
+  private sessionHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    if (!this.sessionToken) {
+      throw new OnrampApiError(
+        'A JWT sessionToken is required for workspace and key-management methods',
+        401,
+        'SESSION_REQUIRED',
+      )
+    }
+    return this.commonHeaders({ Authorization: `Bearer ${this.sessionToken}`, ...extra })
+  }
+
+  /** Agent execution accepts either gateway API-key or JWT session auth. */
+  private eitherAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    if (this.apiKey) return this.gatewayHeaders(extra)
+    return this.sessionHeaders(extra)
   }
 
   private async request<T>(url: string, init: RequestInit): Promise<T> {
@@ -311,7 +343,7 @@ export class OnrampClient {
   async listModels(): Promise<ModelInfo[]> {
     const res = await this.request<{ object: string; data: ModelInfo[] }>(
       `${this.gatewayUrl}/models`,
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.gatewayHeaders() },
     )
     return res.data
   }
@@ -323,7 +355,7 @@ export class OnrampClient {
   ): Promise<ChatCompletion> {
     const res = await this.request<ChatCompletion>(`${this.gatewayUrl}/chat/completions`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.gatewayHeaders(),
       body: JSON.stringify({
         model: options.model ?? this.defaultModel,
         messages,
@@ -352,7 +384,7 @@ export class OnrampClient {
 
     const res = await this.fetchFn(`${this.gatewayUrl}/chat/completions`, {
       method: 'POST',
-      headers: this.headers({ Accept: 'text/event-stream' }),
+      headers: this.gatewayHeaders({ Accept: 'text/event-stream' }),
       body: JSON.stringify({
         model: options.model ?? this.defaultModel,
         messages,
@@ -420,7 +452,7 @@ export class OnrampClient {
   ): Promise<EmbeddingResult> {
     return this.request<EmbeddingResult>(`${this.gatewayUrl}/embeddings`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.gatewayHeaders(),
       body: JSON.stringify({
         model: options.model,
         input,
@@ -448,7 +480,7 @@ export class OnrampClient {
   async listRepositories(teamId?: string): Promise<RepositoryRecord[]> {
     const res = await this.request<{ repos: RepositoryRecord[] }>(
       this.withQuery('/repos', { team_id: teamId }),
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.sessionHeaders() },
     )
     return this.unwrap(res).repos
   }
@@ -464,7 +496,7 @@ export class OnrampClient {
   }): Promise<RepositoryRecord> {
     const res = await this.request<RepositoryRecord>(this.apiUrl('/repos'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
       body: JSON.stringify({
         name: input.name,
         owner: input.owner,
@@ -484,7 +516,7 @@ export class OnrampClient {
   ): Promise<RepositoryIndexResult> {
     const res = await this.request<RepositoryIndexResult>(this.apiUrl('/repos/index'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
       body: JSON.stringify({
         repo_url: repoUrl,
         branch: options.branch ?? 'main',
@@ -504,7 +536,7 @@ export class OnrampClient {
   ): Promise<RepositoryIndexBatchResult> {
     const res = await this.request<RepositoryIndexBatchResult>(this.apiUrl('/repos/index/batch'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
       body: JSON.stringify({
         repo_urls: repoUrls,
         branch: options.branch ?? 'main',
@@ -521,7 +553,7 @@ export class OnrampClient {
   async getIndexJob(taskId: string): Promise<IndexJob> {
     const res = await this.request<IndexJob>(this.apiUrl(`/ask/jobs/${encodeURIComponent(taskId)}`), {
       method: 'GET',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
     })
     return this.unwrap(res)
   }
@@ -530,7 +562,7 @@ export class OnrampClient {
   async getRepositoryIndexJob(taskId: string): Promise<IndexJob> {
     const res = await this.request<IndexJob>(this.apiUrl(`/repos/index/jobs/${encodeURIComponent(taskId)}`), {
       method: 'GET',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
     })
     return this.unwrap(res)
   }
@@ -539,7 +571,7 @@ export class OnrampClient {
   async getRampSummary(teamId?: string): Promise<RampSummary> {
     const res = await this.request<RampSummary>(
       this.withQuery('/ramp/summary', { team_id: teamId }),
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.sessionHeaders() },
     )
     return this.unwrap(res)
   }
@@ -548,7 +580,7 @@ export class OnrampClient {
   async getRampStuck(teamId?: string): Promise<Record<string, unknown>> {
     const res = await this.request<Record<string, unknown>>(
       this.withQuery('/ramp/stuck', { team_id: teamId }),
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.sessionHeaders() },
     )
     return this.unwrap(res)
   }
@@ -562,7 +594,7 @@ export class OnrampClient {
       this.withQuery('/ramp/cost-model', { team_id: teamId }),
       {
         method: 'PUT',
-        headers: this.headers(),
+        headers: this.sessionHeaders(),
         body: JSON.stringify(model),
       },
     )
@@ -572,7 +604,7 @@ export class OnrampClient {
   async getOnboardingProgress(planId: string): Promise<OnboardingProgress> {
     const res = await this.request<OnboardingProgress>(
       this.apiUrl(`/onboarding-plans/${encodeURIComponent(planId)}/progress`),
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.sessionHeaders() },
     )
     return this.unwrap(res)
   }
@@ -580,7 +612,7 @@ export class OnrampClient {
   private async mcpRequest<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     const res = await this.request<{ result?: T; error?: { message?: string } }>(this.apiUrl('/mcp'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
       body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }),
     })
     if (res.error) {
@@ -609,7 +641,7 @@ export class OnrampClient {
   async listAgents(): Promise<AgentInfo[]> {
     const res = await this.request<{ agents: AgentInfo[] }>(`${this.baseUrl}/api/v1/ai/agents`, {
       method: 'GET',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
     })
     return this.unwrap(res).agents
   }
@@ -622,20 +654,24 @@ export class OnrampClient {
       `${this.baseUrl}/api/v1/ai/agents/${name}`,
       {
         method: 'POST',
-        headers: this.headers(),
+        headers: this.eitherAuthHeaders(),
         body: JSON.stringify(params),
       },
     )
     return this.unwrap(res)
   }
 
-  /** Validate an API key (send the raw key in the body, never the URL). */
+  /**
+   * Validate an API key using the caller's JWT session. The raw key is sent in
+   * the request body (never the URL), and an invalid/expired key is returned by
+   * the API as an HTTP 401/OnrampApiError rather than a misleading `valid:false`.
+   */
   async validateApiKey(rawKey: string): Promise<{ valid: boolean; org_name: string; tier: string }> {
     const res = await this.request<{ valid: boolean; org_name: string; tier: string }>(
       `${this.baseUrl}/api/v1/ai/keys/validate`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.sessionHeaders(),
         body: JSON.stringify({ raw_key: rawKey }),
       },
     )
@@ -655,9 +691,41 @@ export class OnrampClient {
   ): Promise<ApiKeyResult> {
     const res = await this.request<ApiKeyResult>(`${this.baseUrl}/api/v1/ai/keys`, {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.sessionHeaders(),
       body: JSON.stringify({ org_name: orgName, tier, ...opts }),
     })
+    return this.unwrap(res)
+  }
+
+  /** List API keys visible to the current JWT session. */
+  async listApiKeys(orgName?: string): Promise<ApiKeyResult[]> {
+    const query = orgName ? `?org_name=${encodeURIComponent(orgName)}` : ''
+    const res = await this.request<{ keys: ApiKeyResult[] }>(
+      `${this.baseUrl}/api/v1/ai/keys${query}`,
+      { method: 'GET', headers: this.sessionHeaders() },
+    )
+    return this.unwrap(res).keys
+  }
+
+  /** Revoke an API key using the current JWT session. */
+  async revokeApiKey(keyId: string): Promise<{ revoked: boolean; key_id: string }> {
+    const res = await this.request<{ revoked: boolean; key_id: string }>(
+      `${this.baseUrl}/api/v1/ai/keys/${encodeURIComponent(keyId)}`,
+      { method: 'DELETE', headers: this.sessionHeaders() },
+    )
+    return this.unwrap(res)
+  }
+
+  /** Rotate an API key using the current JWT session. */
+  async rotateApiKey(keyId: string, opts: { webhook_url?: string } = {}): Promise<ApiKeyResult> {
+    const res = await this.request<ApiKeyResult>(
+      `${this.baseUrl}/api/v1/ai/keys/${encodeURIComponent(keyId)}/rotate`,
+      {
+        method: 'POST',
+        headers: this.sessionHeaders(),
+        body: JSON.stringify(opts),
+      },
+    )
     return this.unwrap(res)
   }
 
@@ -665,7 +733,7 @@ export class OnrampClient {
   async getUsage(orgName: string): Promise<UsageRecord> {
     const res = await this.request<UsageRecord>(
       `${this.baseUrl}/api/v1/ai/usage/${orgName}`,
-      { method: 'GET', headers: this.headers() },
+      { method: 'GET', headers: this.sessionHeaders() },
     )
     return this.unwrap(res)
   }
@@ -674,7 +742,7 @@ export class OnrampClient {
   async listTiers(): Promise<TierLimitsInfo> {
     const res = await this.request<unknown>(`${this.baseUrl}/api/v1/ai/tiers`, {
       method: 'GET',
-      headers: this.headers(),
+      headers: this.commonHeaders(),
     })
     return this.unwrap(res) as TierLimitsInfo
   }

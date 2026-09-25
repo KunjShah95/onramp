@@ -229,6 +229,8 @@ class TestStreaming:
 
     async def test_stream_all_providers_exhausted(self, router, monkeypatch):
         async def fake_stream(self_, provider, prompt, system, max_tokens, provider_keys=None, model_override=None):
+            if False:  # make this an async generator
+                yield ""
             raise Exception(f"{provider.value} stream down")
         monkeypatch.setattr(LLMRouter, "_stream_provider", fake_stream)
         with pytest.raises(RuntimeError, match="All LLM providers exhausted"):

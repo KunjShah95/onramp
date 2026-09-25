@@ -13,6 +13,19 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _as_datetime(value) -> Optional[datetime]:
+    """Normalize ORM datetimes and memory-backend ISO strings."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
 def _generate_token() -> str:
     return secrets.token_urlsafe(24)  # 32 chars
 
@@ -73,7 +86,8 @@ async def get_user_pending_invites(email: str) -> List[dict]:
     now = _utcnow()
     valid = []
     for inv in results:
-        if inv.get("expires_at", "") > now:
+        expires_at = _as_datetime(inv.get("expires_at"))
+        if expires_at is not None and expires_at > now:
             valid.append(inv)
         else:
             # Auto-expire stale invites
@@ -94,14 +108,15 @@ async def accept_invite(token: str, user_id: str) -> dict:
     if invite["status"] != "pending":
         raise ValueError(f"Invite is already {invite['status']}")
 
-    if invite.get("expires_at", "") < _utcnow():
+    expires_at = _as_datetime(invite.get("expires_at"))
+    if expires_at is None or expires_at <= _utcnow():
         await storage.update_document(COLLECTION, invite["id"], {"status": "expired"})
         raise ValueError("Invite has expired")
 
     # Atomically claim the invite before adding the member — prevents a
     # TOCTOU race where two concurrent requests both pass the status check
     # and both call add_member.
-    claimed = await storage.claim_dynamic_document(
+    claimed = await storage.claim_document(
         COLLECTION, invite["id"], "status", "pending",
         {"status": "accepted", "updated_at": _utcnow()},
     )

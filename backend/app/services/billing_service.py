@@ -5,7 +5,7 @@ import hmac
 import json
 import logging
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.services.postgres_db import get_storage, generate_id, idempotency_document_id
 
 logger = logging.getLogger("onramp.billing")
@@ -26,6 +26,7 @@ TIER_PRICING = {
     "usage_based": {"price_monthly": 499, "price_yearly": 4999, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
+SELF_SERVICE_TIERS = {"free", "startup", "professional", "usage_based"}
 
 
 # Razorpay subscription event → local subscription status mapping.
@@ -47,6 +48,17 @@ SUBSCRIPTION_STATUS_MAP = {
 # ── Idempotency ───────────────────────────────────────────────────────────────
 IDEMPOTENCY_COLLECTION = "onramp_webhook_idempotency"
 EVENT_LOG_COLLECTION = "onramp_webhook_events"
+# A worker that dies mid-processing must not strand an event forever. A fresh
+# processing claim remains in flight; an older one may be atomically reclaimed.
+IDEMPOTENCY_CLAIM_TIMEOUT_SECONDS = 300
+
+
+def _validate_subscription_tier(tier: str, *, internal: bool = False) -> dict:
+    if tier not in TIER_PRICING:
+        raise ValueError(f"Unknown subscription tier: {tier}")
+    if not internal and tier not in SELF_SERVICE_TIERS:
+        raise ValueError("Enterprise subscriptions require internal provisioning")
+    return TIER_PRICING[tier]
 
 
 def _utcnow() -> datetime:
@@ -68,10 +80,26 @@ class BillingService:
     def __init__(self):
         self.storage = get_storage()
 
-    async def create_subscription(self, team_id: str, tier: str, billing_cycle: str = "monthly") -> Dict[str, Any]:
+    async def create_subscription(
+        self,
+        team_id: str,
+        tier: str,
+        billing_cycle: str = "monthly",
+        *,
+        verified_checkout: bool = False,
+        internal: bool = False,
+    ) -> Dict[str, Any]:
+        """Create a local subscription record.
+
+        Paid tiers start pending unless activation comes from a verified
+        checkout webhook or an explicitly internal provisioning path. This
+        keeps authenticated API callers from granting themselves paid access.
+        """
         sub_id = generate_id()
-        pricing = TIER_PRICING.get(tier, TIER_PRICING["free"])
+        pricing = _validate_subscription_tier(tier, internal=internal)
         price = pricing["price_monthly"] if billing_cycle == "monthly" else pricing["price_yearly"]
+        is_paid = any(int(value) > 0 for value in pricing.values() if isinstance(value, int))
+        status = "active" if tier == "free" or internal or verified_checkout or not is_paid else "pending"
 
         sub = {
             "subscription_id": sub_id,
@@ -79,7 +107,7 @@ class BillingService:
             "tier": tier,
             "billing_cycle": billing_cycle,
             "price": price,
-            "status": "active",
+            "status": status,
             "current_period_start": _utcnow(),
             "current_period_end": None,
             "razorpay_customer_id": None,
@@ -109,24 +137,40 @@ class BillingService:
         subs = await self.storage.query_documents(self.COLLECTION, [("team_id", "==", team_id), ("status", "==", "active")])
         return subs[0] if subs else None
 
-    async def update_subscription(self, team_id: str, tier: str) -> Optional[Dict[str, Any]]:
-        """Update tier/price; returns the updated subscription dict (same shape
-        as :meth:`get_subscription`), or None when no active subscription
-        exists (callers translate None → HTTP 404). Never raises for a
-        missing subscription."""
+    async def update_subscription(
+        self,
+        team_id: str,
+        tier: str,
+        *,
+        verified_checkout: bool = False,
+        internal: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """Update tier/price without bypassing paid checkout activation.
+
+        Returns ``None`` when no active subscription exists. A transition to a
+        paid tier becomes pending unless it is an internal or verified-checkout
+        operation.
+        """
         sub = await self.get_subscription(team_id)
         if not sub:
             return None
         sub_id = sub.get("subscription_id", sub.get("id", ""))
-        pricing = TIER_PRICING.get(tier, TIER_PRICING["free"])
+        pricing = _validate_subscription_tier(tier, internal=internal)
         billing_cycle = sub.get("billing_cycle", "monthly")
         price = pricing["price_monthly"] if billing_cycle == "monthly" else pricing["price_yearly"]
+        is_paid = any(int(value) > 0 for value in pricing.values() if isinstance(value, int))
+        status = (
+            "active"
+            if tier == "free" or internal or verified_checkout or not is_paid
+            else "pending"
+        )
 
         await self.storage.update_document(self.COLLECTION, sub_id, {
             "tier": tier,
             "price": price,
+            "status": status,
         })
-        return {**sub, "tier": tier, "price": price}
+        return {**sub, "tier": tier, "price": price, "status": status}
 
     async def cancel_subscription(self, team_id: str) -> bool:
         sub = await self.get_subscription(team_id)
@@ -165,6 +209,8 @@ class BillingService:
         self, team_id: str, tier: str, success_url: str, cancel_url: str
     ) -> Dict[str, Any]:
         """Create a Razorpay subscription for a paid tier. Returns {url, subscription_id}."""
+        if tier not in SELF_SERVICE_TIERS:
+            return {"error": "Tier is not available for self-service checkout"}
         if not self.is_razorpay_enabled():
             return {"error": "Razorpay is not configured", "stub": True}
         plan_id = RAZORPAY_PLAN_IDS.get(tier)
@@ -182,91 +228,162 @@ class BillingService:
                 "notes": {"team_id": team_id, "tier": tier, "success_url": success_url, "cancel_url": cancel_url},
             })
 
-        sub = await asyncio.to_thread(_create)
+        try:
+            sub = await asyncio.to_thread(_create)
+        except Exception as exc:
+            logger.error("Razorpay checkout creation failed: %s", exc)
+            _sentry_report(exc, {"team_id": team_id, "tier": tier})
+            return {"error": "Checkout creation failed"}
         return {"url": sub.get("short_url"), "subscription_id": sub.get("id")}
 
     # ── Webhook processing ──────────────────────────────────────────────────
 
     async def _check_idempotency(self, idempotency_key: Optional[str]) -> bool:
-        """Return True if this idempotency key has been processed before."""
+        """Return True only when the key reached the terminal ``done`` state."""
         if not idempotency_key:
             return False
-        # Prefer the deterministic PK lookup (atomic and valid for the typed
-        # UUID primary key), then fall back to the unique key for legacy rows.
-        try:
-            rec = await self.storage.get_document(
-                IDEMPOTENCY_COLLECTION, idempotency_document_id(idempotency_key)
-            )
-            if rec is not None:
-                return True
-        except Exception:
-            pass
+        rec = await self.storage.get_document(
+            IDEMPOTENCY_COLLECTION, idempotency_document_id(idempotency_key)
+        )
+        if rec is not None:
+            # Rows created before the status migration were all completed.
+            return rec.get("status", "done") == "done"
         result = await self.storage.query_documents(
             IDEMPOTENCY_COLLECTION,
             [("idempotency_key", "==", idempotency_key)],
         )
-        return len(result) > 0
+        return bool(result and result[0].get("status", "done") == "done")
 
-    async def _claim_idempotency(self, idempotency_key: str, event_id: str, event_type: str) -> bool:
-        """Atomically claim idempotency key. Returns True if we are the first, False if duplicate."""
-        # Try to create with a deterministic UUID to leverage primary-key
-        # uniqueness without passing an arbitrary provider key to a UUID column.
+    @staticmethod
+    def _idempotency_claim_is_stale(record: dict) -> bool:
+        raw = record.get("processed_at")
         try:
-            document_id = idempotency_document_id(idempotency_key)
-            existing = await self.storage.get_document(IDEMPOTENCY_COLLECTION, document_id)
-            if existing is not None:
-                return False
-            await self.storage.create_document(
-                IDEMPOTENCY_COLLECTION,
-                document_id,
-                {
-                    "idempotency_key": idempotency_key,
-                    "event_id": event_id,
-                    "event_type": event_type,
-                    "processed_at": _utcnow(),
-                    "status": "processing",
-                },
-            )
+            claimed_at = raw if isinstance(raw, datetime) else datetime.fromisoformat(str(raw))
+            if claimed_at.tzinfo is None:
+                claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
             return True
-        except Exception:
-            # Duplicate PK or other race -> treat as duplicate
-            return False
+        return _utcnow() - claimed_at >= timedelta(
+            seconds=IDEMPOTENCY_CLAIM_TIMEOUT_SECONDS
+        )
 
-    async def _record_idempotency(self, idempotency_key: str, event_id: str, event_type: str) -> None:
-        """Record a processed idempotency key to prevent duplicates (fallback, non-atomic)."""
-        try:
-            await self.storage.create_document(
-                IDEMPOTENCY_COLLECTION,
-                idempotency_document_id(idempotency_key),
-                {
-                    "idempotency_key": idempotency_key,
-                    "event_id": event_id,
-                    "event_type": event_type,
-                    "processed_at": _utcnow(),
-                },
-            )
-        except Exception:
-            pass
-
-    async def _log_event(self, event_id: str, event_type: str, status: str, details: Optional[dict] = None) -> None:
-        """Persist a webhook event record for audit trail.
-
-        Known event ids key the log row (one row per Razorpay event). Events
-        without an id fall back to a generated key so distinct id-less events
-        never collide on the ``evt_unknown`` fallback (PostgreSQL duplicate-key).
-        """
-        doc_id = event_id if (event_id and event_id != "evt_unknown") else generate_id()
-        await self.storage.create_document(
-            EVENT_LOG_COLLECTION,
-            doc_id,
+    async def _claim_idempotency(
+        self,
+        idempotency_key: str,
+        event_id: str,
+        event_type: str,
+        claim_token: Optional[str] = None,
+    ) -> bool:
+        """Atomically acquire a retryable webhook-processing claim."""
+        document_id = idempotency_document_id(idempotency_key)
+        claim_token = claim_token or generate_id()
+        now = _utcnow()
+        created = await self.storage.create_document_if_absent(
+            IDEMPOTENCY_COLLECTION,
+            document_id,
             {
+                "idempotency_key": idempotency_key,
                 "event_id": event_id,
                 "event_type": event_type,
-                "status": status,
-                "details": details or {},
-                "received_at": _utcnow(),
+                "processed_at": now,
+                "status": "processing",
+                "claim_token": claim_token,
             },
         )
+        if created:
+            return True
+        existing = await self.storage.get_document(
+            IDEMPOTENCY_COLLECTION, document_id
+        )
+
+        if existing is None:
+            result = await self.storage.query_documents(
+                IDEMPOTENCY_COLLECTION,
+                [("idempotency_key", "==", idempotency_key)],
+            )
+            existing = result[0] if result else None
+        if existing is None:
+            raise RuntimeError("Unable to create or recover webhook idempotency claim")
+
+        status = existing.get("status", "done")
+        if status == "done":
+            return False
+        if status == "failed":
+            return await self.storage.claim_document(
+                IDEMPOTENCY_COLLECTION,
+                document_id,
+                "status",
+                "failed",
+                {
+                    "status": "processing",
+                    "claim_token": claim_token,
+                    "processed_at": now,
+                },
+            )
+        if status == "processing":
+            if not self._idempotency_claim_is_stale(existing):
+                return False
+            # Compare the lease token, not just status, so two simultaneous
+            # stale-claim retries cannot both acquire the event.
+            return await self.storage.claim_document(
+                IDEMPOTENCY_COLLECTION,
+                document_id,
+                "claim_token",
+                existing.get("claim_token"),
+                {
+                    "status": "processing",
+                    "claim_token": claim_token,
+                    "processed_at": now,
+                },
+            )
+        return False
+
+    async def _release_idempotency(
+        self, dedupe_key: str, claim_token: str
+    ) -> None:
+        """Release only the claim token owned by this processing attempt."""
+        try:
+            await self.storage.claim_document(
+                IDEMPOTENCY_COLLECTION,
+                idempotency_document_id(dedupe_key),
+                "claim_token",
+                claim_token,
+                {"status": "failed", "claim_token": None, "processed_at": _utcnow()},
+            )
+        except Exception:
+            logger.exception("Failed to release webhook idempotency claim %s", dedupe_key)
+
+    async def _record_idempotency(
+        self, dedupe_key: str, claim_token: str
+    ) -> None:
+        """Mark the owned claim as terminal."""
+        finalized = await self.storage.claim_document(
+            IDEMPOTENCY_COLLECTION,
+            idempotency_document_id(dedupe_key),
+            "claim_token",
+            claim_token,
+            {"status": "done", "claim_token": None, "processed_at": _utcnow()},
+        )
+        if not finalized:
+            raise RuntimeError("Webhook idempotency claim ownership was lost")
+
+    async def _log_event(
+        self, event_id: str, event_type: str, status: str, details: Optional[dict] = None
+    ) -> None:
+        """Persist or update the audit row for a provider event."""
+        doc_id = event_id if (event_id and event_id != "evt_unknown") else generate_id()
+        values = {
+            "event_id": event_id,
+            "event_type": event_type,
+            "status": status,
+            "details": details or {},
+            "received_at": _utcnow(),
+        }
+        existing = await self.storage.get_document(EVENT_LOG_COLLECTION, doc_id)
+        if existing is not None:
+            await self.storage.update_document(EVENT_LOG_COLLECTION, doc_id, values)
+            return
+        await self.storage.create_document(EVENT_LOG_COLLECTION, doc_id, values)
 
     @staticmethod
     def verify_razorpay_webhook_signature(payload: bytes, sig_header: str, secret: str) -> bool:
@@ -386,8 +503,12 @@ class BillingService:
         #    retries in production).
         dedupe_key = idempotency_key or (event_id if event_id != "evt_unknown" else None)
         claimed = False
+        claim_token: Optional[str] = None
         if dedupe_key:
-            claimed = await self._claim_idempotency(dedupe_key, event_id, event_type)
+            claim_token = generate_id()
+            claimed = await self._claim_idempotency(
+                dedupe_key, event_id, event_type, claim_token=claim_token
+            )
             if not claimed:
                 logger.info(f"Duplicate webhook event {event_id} ({event_type}) — skipping (idempotency key {dedupe_key[:12]}...)")
                 return {"received": True, "type": event_type, "duplicate": True}
@@ -398,21 +519,28 @@ class BillingService:
         except Exception as exc:
             logger.error(f"Failed to process webhook event {event_id} ({event_type}): {exc}")
             _sentry_report(exc, {"event_id": event_id, "event_type": event_type})
-            await self._log_event(event_id, event_type, "failed", {"error": str(exc)})
-            # Release claim so retry can succeed after transient failure? keep as duplicate to avoid double-charge; log only
-            return {"error": f"Failed to process event: {exc}"}
-
-        # 4. Finalize idempotency (update status to done if we claimed via PK)
-        if dedupe_key and claimed:
+            if dedupe_key and claimed and claim_token:
+                await self._release_idempotency(dedupe_key, claim_token)
             try:
-                await self.storage.update_document(IDEMPOTENCY_COLLECTION, idempotency_document_id(dedupe_key), {"status": "done", "processed_at": _utcnow()})
+                await self._log_event(event_id, event_type, "failed", {"error": str(exc)})
             except Exception:
-                pass
-        elif dedupe_key:
-            await self._record_idempotency(dedupe_key, event_id, event_type)
+                logger.exception("Failed to log failed webhook event %s", event_id)
+            return {"error": "Failed to process payment event"}
 
-        # 5. Log event for audit trail
-        await self._log_event(event_id, event_type, "processed", result)
+        # 4. Finalize the claim before acknowledging the provider delivery.
+        if dedupe_key and claimed and claim_token:
+            try:
+                await self._record_idempotency(dedupe_key, claim_token)
+            except Exception as exc:
+                logger.error("Webhook %s processed but its claim could not be finalized: %s", event_id, exc)
+                return {"error": "Failed to finalize webhook processing"}
+
+        # 5. Log event for audit trail. A completed/duplicate delivery must still
+        # be acknowledged if the non-authoritative audit write is unavailable.
+        try:
+            await self._log_event(event_id, event_type, "processed", result)
+        except Exception:
+            logger.exception("Failed to log processed webhook event %s", event_id)
 
         return {"received": True, "type": event_type}
 
@@ -435,17 +563,40 @@ class BillingService:
                 logger.warning("subscription.activated missing team_id in notes")
                 return {"warning": "missing team_id"}
             # Checkout creates the Razorpay subscription directly, so a local
-            # subscription may not exist yet — upsert one from the plan.
-            if not await self.get_subscription(team_id):
-                plan_id = data_obj.get("plan_id")
-                tier = next((t for t, pid in RAZORPAY_PLAN_IDS.items() if pid == plan_id), "startup")
-                await self.create_subscription(team_id, tier, "monthly")
-            await self.attach_razorpay(
-                team_id,
-                data_obj.get("customer_id"),
-                subscription_id,
+            # record may not exist. A direct API-created paid record may instead
+            # exist as ``pending`` and must be activated by this verified event.
+            local = await self.storage.query_documents(
+                self.COLLECTION, [("team_id", "==", team_id)]
             )
-            await self._update_subscription_by_razorpay_id(subscription_id, {"status": "active"})
+            if local:
+                local_id = local[0].get("subscription_id", local[0].get("id", ""))
+                await self.storage.update_document(
+                    self.COLLECTION,
+                    local_id,
+                    {
+                        "status": "active",
+                        "razorpay_customer_id": data_obj.get("customer_id"),
+                        "razorpay_subscription_id": subscription_id,
+                        "updated_at": _utcnow(),
+                    },
+                )
+            else:
+                plan_id = data_obj.get("plan_id")
+                tier = next(
+                    (t for t, pid in RAZORPAY_PLAN_IDS.items() if pid == plan_id),
+                    "startup",
+                )
+                sub = await self.create_subscription(
+                    team_id, tier, "monthly", verified_checkout=True
+                )
+                await self.storage.update_document(
+                    self.COLLECTION,
+                    sub["subscription_id"],
+                    {
+                        "razorpay_customer_id": data_obj.get("customer_id"),
+                        "razorpay_subscription_id": subscription_id,
+                    },
+                )
             return {"team_id": team_id, "subscription_id": subscription_id}
 
         elif event_type == "subscription.charged":
@@ -548,35 +699,89 @@ class BillingService:
             [("payment_id", "==", payment_id)],
         )
         if existing:
-            return True
+            # Legacy rows have no status field and are already terminal. New
+            # rows are not successful until their wallet credit is committed.
+            marker = await self.storage.get_document(
+                "credit_topup_payments", f"payment:{payment_id}"
+            )
+            return bool(marker and marker.get("status") == "done") if marker else True
+
+        # Claim the payment before touching the wallet. The previous check-then-
+        # credit-then-record sequence allowed two concurrent webhook/verify
+        # requests to credit the same payment twice.
+        marker_id = f"payment:{payment_id}"
+        claimed = await self.storage.create_document_if_absent(
+            "credit_topup_payments",
+            marker_id,
+            {
+                "payment_id": payment_id,
+                "order_id": order_id,
+                "status": "processing",
+                "created_at": _utcnow(),
+            },
+        )
+        if not claimed:
+            marker = await self.storage.get_document("credit_topup_payments", marker_id)
+            return bool(marker and marker.get("status") == "done")
+
+        async def _fail(reason: str) -> bool:
+            await self.storage.update_document(
+                "credit_topup_payments", marker_id,
+                {"status": "failed", "error": reason, "failed_at": _utcnow()},
+            )
+            return False
+
         orders = await self.storage.query_documents(
             "credit_topup_orders", [("order_id", "==", order_id)]
         )
         if not orders:
             logger.warning(f"No top-up order {order_id} for payment {payment_id}")
-            return False
+            return await _fail("order not found")
         order = orders[0]
-        team_id = order.get("team_id")
+        wallet_scope = (
+            order.get("wallet_scope")
+            or order.get("owner_id")
+            or order.get("team_id")
+        )
         amount_inr = order.get("amount_inr") or 0
-        if not team_id or amount_inr <= 0:
-            logger.warning(f"Top-up order {order_id} is missing team_id/amount")
-            return False
-        stored_paise = order.get("amount_paise") or 0
-        if stored_paise and amount_paise and stored_paise != amount_paise:
+        if not wallet_scope or amount_inr <= 0:
+            logger.warning(f"Top-up order {order_id} is missing wallet scope/amount")
+            return await _fail("invalid order")
+        stored_paise = order.get("amount_paise") or (int(amount_inr) * 100)
+        if stored_paise != amount_paise:
             logger.warning(
                 f"Payment {payment_id} amount {amount_paise} does not match order {order_id} amount {stored_paise} — refusing credit"
             )
-            return False
-        await CreditService().add_credits(team_id, amount_inr, reason="razorpay_topup")
-        await self.storage.create_document(
-            "credit_topup_payments", generate_id(),
-            {"order_id": order_id, "payment_id": payment_id, "credits": amount_inr, "processed_at": _utcnow()},
+            return await _fail("payment amount mismatch")
+        try:
+            await CreditService().add_credits(wallet_scope, amount_inr, reason="razorpay_topup")
+        except Exception:
+            # Leave a failed marker for reconciliation rather than allowing an
+            # automatic retry to double-credit an already-credited wallet.
+            await self.storage.update_document(
+                "credit_topup_payments", marker_id,
+                {"status": "failed", "error": "wallet credit failed", "failed_at": _utcnow()},
+            )
+            raise
+        await self.storage.update_document(
+            "credit_topup_payments", marker_id,
+            {
+                "status": "done",
+                "credits": amount_inr,
+                "wallet_scope": wallet_scope,
+                "processed_at": _utcnow(),
+            },
         )
         return True
 
     # ── Credit top-ups: Razorpay orders + signature verification ─────────────
 
-    async def create_payment_order(self, team_id: str, amount_inr: int) -> Dict[str, Any]:
+    async def create_payment_order(
+        self,
+        wallet_scope: str,
+        amount_inr: int,
+        owner_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create a Razorpay order for a credit wallet top-up.
 
         Razorpay order amounts are in paise (amount_inr * 100). Returns the
@@ -593,20 +798,24 @@ class BillingService:
             return client.order.create({
                 "amount": amount_paise,
                 "currency": "INR",
-                "notes": {"team_id": team_id, "topup": "1"},
+                "notes": {"wallet_scope": wallet_scope, "owner_id": owner_id or wallet_scope, "topup": "1"},
             })
 
         try:
             order = await asyncio.to_thread(_create)
         except Exception as exc:
-            logger.error(f"Razorpay order creation failed: {exc}")
-            _sentry_report(exc, {"team_id": team_id, "amount_inr": amount_inr})
-            return {"error": f"Razorpay order creation failed: {exc}"}
+            logger.error("Razorpay order creation failed: %s", exc)
+            _sentry_report(exc, {"wallet_scope": wallet_scope, "amount_inr": amount_inr})
+            return {"error": "Payment order creation failed"}
         await self.storage.create_document(
             "credit_topup_orders", order.get("id"),
             {
                 "order_id": order.get("id"),
-                "team_id": team_id,
+                # Keep the historical field for compatibility, but explicit
+                # ownership/wallet fields prevent user-vs-team scope confusion.
+                "team_id": wallet_scope,
+                "owner_id": owner_id or wallet_scope,
+                "wallet_scope": wallet_scope,
                 "amount_inr": amount_inr,
                 "amount_paise": amount_paise,
                 "currency": "INR",
@@ -631,13 +840,29 @@ class BillingService:
         orders = await self.storage.query_documents("credit_topup_orders", [("order_id", "==", order_id)])
         if not orders:
             return {"error": "Unknown order"}
-        order_owner = orders[0].get("team_id")
-        if caller_id and order_owner:
-            from app.services.team_service import get_user_teams
-            caller_teams = await get_user_teams(caller_id)
-            caller_team_ids = {str(t.get("team_id") or t.get("id")) for t in caller_teams}
-            if str(order_owner) not in caller_team_ids:
-                logger.warning(f"Credit order {order_id} owned by team {order_owner} — denied for caller {caller_id}")
+        order = orders[0]
+        wallet_scope = (
+            order.get("wallet_scope")
+            or order.get("owner_id")
+            or order.get("team_id")
+        )
+        if caller_id and wallet_scope:
+            owner_id = order.get("owner_id")
+            authorized = str(caller_id) == str(owner_id or wallet_scope)
+            if not authorized:
+                from app.services.team_service import get_user_teams
+                caller_teams = await get_user_teams(caller_id)
+                caller_team_ids = {
+                    str(t.get("team_id") or t.get("id")) for t in caller_teams or []
+                }
+                authorized = str(wallet_scope) in caller_team_ids
+            if not authorized:
+                logger.warning(
+                    "Credit order %s owned by scope %s — denied for caller %s",
+                    order_id,
+                    wallet_scope,
+                    caller_id,
+                )
                 return {"error": "Not authorized for this order"}
 
         params = {

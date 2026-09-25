@@ -19,7 +19,7 @@ import {
 import { LearningPathSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { generateLearningPath, createTask, generateQuiz, submitQuizAnswers } from '../lib/api'
+import { generateLearningPath, createTask, listTasks, generateQuiz, submitQuizAnswers } from '../lib/api'
 import type { LearningPathResult, LearningPathModule } from '../lib/types'
 import type { QuizQuestion, SubmitQuizResponse } from '../lib/api'
 import { cn } from '../lib/utils'
@@ -41,6 +41,7 @@ export default function LearnPage() {
   const [path, setPath] = useState<LearningPathResult | null>(null)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createdTaskCount, setCreatedTaskCount] = useState(0)
 
   // Quiz state
   const [quizModule, setQuizModule] = useState<string | null>(null)
@@ -58,7 +59,7 @@ export default function LearnPage() {
 
   async function handleGenerate() {
     if (!repoUrl.trim()) return
-    setLoading(true); setError(''); setPath(null)
+    setLoading(true); setError(''); setPath(null); setCreatedTaskCount(0)
     try {
       const data = await generateLearningPath({}, userLevel, repoUrl)
       setPath(data)
@@ -72,11 +73,27 @@ export default function LearnPage() {
   }
 
   async function handleStartLearning() {
-    if (!path || !activeTeamId) return
+    if (!path || !activeTeamId || creating || createdTaskCount > 0) return
     setCreating(true)
     try {
+      const seenTitles = new Set<string>()
+      try {
+        const existing = await listTasks({ team_id: activeTeamId })
+        for (const task of existing.tasks ?? []) seenTitles.add(task.title.trim().toLowerCase())
+      } catch {
+        // Existing-task lookup is best-effort; still avoid duplicates within
+        // this generated path below.
+      }
+
       let created = 0
+      let duplicates = 0
+      const failures: string[] = []
       for (const mod of path.path) {
+        const titleKey = mod.name.trim().toLowerCase()
+        if (!titleKey || seenTitles.has(titleKey)) {
+          duplicates++
+          continue
+        }
         try {
           await createTask({
             team_id: activeTeamId,
@@ -88,12 +105,26 @@ export default function LearnPage() {
             repo_url: repoUrl.trim() || undefined,
             assigned_to: user?.id,
           })
+          seenTitles.add(titleKey)
           created++
-        } catch { /* continue */ }
+        } catch (err: any) {
+          failures.push(`${mod.name}: ${err?.message || 'unknown error'}`)
+        }
       }
-      toast.success('Tasks created', `${created} learning tasks added to /tasks`)
+
+      setCreatedTaskCount(created)
+      if (failures.length === 0 && created > 0) {
+        const duplicateNote = duplicates > 0 ? ` · ${duplicates} already tracked` : ''
+        toast.success('Tasks created', `${created} learning task${created === 1 ? '' : 's'} added${duplicateNote}`)
+      } else if (failures.length === 0) {
+        toast.info('Already tracked', 'Every module in this path already has a task.')
+      } else if (created > 0) {
+        toast.warning('Some tasks were not created', `${created} created; ${failures.length} failed. Open Tasks to retry the rest.`)
+      } else {
+        toast.error('Could not create tasks', failures[0] || 'All task creations failed.')
+      }
     } catch (err: any) {
-      toast.error('Could not create tasks', err.message)
+      toast.error('Could not create tasks', err?.message || 'Unexpected error')
     } finally {
       setCreating(false)
     }
@@ -291,8 +322,8 @@ export default function LearnPage() {
                 action={
                   <button
                     onClick={handleStartLearning}
-                    disabled={creating || !activeTeamId}
-                    title={activeTeamId ? 'Create a task per module' : 'Join a team first'}
+                    disabled={creating || createdTaskCount > 0 || !activeTeamId}
+                    title={createdTaskCount > 0 ? 'Tasks already created for this path' : activeTeamId ? 'Create a task per module' : 'Join a team first'}
                     className={cn(
                       'inline-flex items-center gap-1.5 rounded-[3px] bg-go px-3.5 py-1.5',
                       'text-[12px] font-semibold text-white shadow-seam transition-colors',
@@ -300,7 +331,7 @@ export default function LearnPage() {
                     )}
                   >
                     <Target size={12} weight="fill" />
-                    {creating ? 'Creating tasks…' : 'Start Learning'}
+                    {creating ? 'Creating tasks…' : createdTaskCount > 0 ? 'Tasks Created' : 'Start Learning'}
                   </button>
                 }
               >

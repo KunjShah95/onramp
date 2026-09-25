@@ -55,47 +55,30 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
 
-  function loadPRs() {
+  async function loadPRs(): Promise<void> {
     setLoading(true)
-    Promise.all([
-      listTasks({ team_id: teamId, state: 'submitted' }),
-      listTasks({ team_id: teamId, state: 'under_review' }),
-    ])
-      .then(([submittedResult, underReviewResult]) => {
-        const submitted = (submittedResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        const underReview = (underReviewResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        const seen = new Set<string>()
-        const merged: WorkflowTask[] = []
-        for (const t of [...submitted, ...underReview]) {
-          if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
-        }
-        setPRs(merged)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    try {
+      const [submittedResult, underReviewResult] = await Promise.all([
+        listTasks({ team_id: teamId, state: 'submitted' }),
+        listTasks({ team_id: teamId, state: 'under_review' }),
+      ])
+      const submitted = (submittedResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+      const underReview = (underReviewResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
+      const seen = new Set<string>()
+      const merged: WorkflowTask[] = []
+      for (const t of [...submitted, ...underReview]) {
+        if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
+      }
+      setPRs(merged)
+    } catch {
+      // Keep the last known-good queue; individual actions surface their errors.
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all([
-      listTasks({ team_id: teamId, state: 'submitted' }),
-      listTasks({ team_id: teamId, state: 'under_review' }),
-    ])
-      .then(([submittedResult, underReviewResult]) => {
-        if (cancelled) return
-        const submitted = (submittedResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        const underReview = (underReviewResult.tasks ?? []).filter((t: WorkflowTask) => t.pr_url)
-        const seen = new Set<string>()
-        const merged: WorkflowTask[] = []
-        for (const t of [...submitted, ...underReview]) {
-          if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
-        }
-        setPRs(merged)
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+    void loadPRs()
   }, [teamId])
 
   async function handleApprove(task: WorkflowTask) {
@@ -103,9 +86,10 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
     try {
       await approveTask(task.task_id)
       toast.success('PR approved', `"${task.title}" approved — ready to merge.`)
-      loadPRs()
+      await loadPRs()
     } catch (err: unknown) {
       toast.error('Approve failed', err instanceof Error ? err.message : 'Unknown error')
+      await loadPRs()
     } finally {
       setActionId(null)
     }
@@ -116,9 +100,10 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
     try {
       await mergePR(task.task_id, { merge_method: 'squash' })
       toast.success('PR merged!', `"${task.title}" merged and task completed.`)
-      loadPRs()
+      await loadPRs()
     } catch (err: unknown) {
       toast.error('Merge failed', err instanceof Error ? err.message : 'Unknown error')
+      await loadPRs()
     } finally {
       setActionId(null)
     }

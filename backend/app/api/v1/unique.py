@@ -1,3 +1,4 @@
+﻿import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from app.agents import (
@@ -11,6 +12,8 @@ from app.api.v1.auth import get_current_user
 from app.api.v1.index_access import authorize_repo_index
 from app.services.quota import enforce_quota
 from app.services.agent_session_helper import get_session, complete_session, fail_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["unique"])
 
@@ -70,7 +73,7 @@ async def generate_walkthrough(
         return result
     except Exception as e:
         await fail_session(sid, "silent_pair_programming")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/patterns/find-similar")
@@ -103,7 +106,7 @@ async def find_patterns(
         return result
     except Exception as e:
         await fail_session(sid, "pattern_recognition")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/test-checklist/generate")
@@ -131,7 +134,7 @@ async def generate_test_checklist(
         return result
     except Exception as e:
         await fail_session(sid, "regression_test_generator")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/trailer")
@@ -160,7 +163,7 @@ async def generate_trailer(
         return result
     except Exception as e:
         await fail_session(sid, "codebase_trailer")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/drift/detect")
@@ -194,4 +197,4 @@ async def detect_drift(
         return result
     except Exception as e:
         await fail_session(sid, "drift_detector")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

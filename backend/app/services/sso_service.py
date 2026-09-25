@@ -11,7 +11,7 @@ from dataclasses import dataclass, asdict
 from typing import Optional
 from datetime import datetime, timezone
 
-from app.services.postgres_db import get_storage, generate_id
+from app.services.postgres_db import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,9 @@ async def save_config(config: IdpConfig) -> IdpConfig:
     """Create or update an IdP configuration."""
     storage = get_storage()
     now = _now()
-    config_id = config.config_id or generate_id()
+    # Dynamic document ids are strings. A deterministic team key prevents two
+    # concurrent first-time configuration writes from creating duplicate IdPs.
+    config_id = config.config_id or f"team:{config.team_id}"
     config.config_id = config_id
     config.created_at = config.created_at or now
     config.updated_at = now
@@ -133,48 +135,30 @@ async def build_saml_settings(config: IdpConfig) -> dict:
 
 
 async def parse_metadata_xml(metadata_xml: str) -> dict:
-    """Parse IdP metadata XML and extract entity_id, sso_url, and x509_cert.
+    """Reject metadata-only SSO configuration until a real XML parser is enabled.
 
-    In production this would parse actual SAML metadata XML. For now,
-    returns a placeholder dict indicating metadata was provided.
+    Returning synthetic entity IDs/certificates would make a configuration look
+    valid while no usable IdP settings exist. Callers must provide explicit
+    entity ID, SSO URL, and certificate fields instead.
     """
-    if not metadata_xml.strip():
-        return {}
-    return {
-        "entity_id": "parsed-from-metadata",
-        "sso_url": "parsed-from-metadata",
-        "x509_cert": "parsed-from-metadata",
-        "metadata_provided": True,
-    }
+    if metadata_xml.strip():
+        raise ValueError(
+            "SAML metadata import is not enabled; provide entity_id, sso_url, and x509_cert explicitly"
+        )
+    return {}
 
 
 async def handle_sso_callback(saml_response: str, relay_state: str = "") -> dict:
-    """Handle a SAML SSO callback response.
+    """Fail closed until a signed SAML verifier is configured.
 
-    In production this would:
-    1. Instantiate OneLogin_Saml2_Response with the SAML response
-    2. Validate the response signature
-    3. Extract attributes (email, name)
-    4. Find or create the user
-    5. Generate a JWT
-
-    For now, returns a structured result suitable for testing.
+    This function previously returned a mock JWT and identity. Keeping a fake
+    success path in an authentication service is unsafe if a route starts
+    calling it accidentally, so authentication is explicitly unavailable.
     """
-    if not saml_response:
-        return {"success": False, "error": "Empty SAML response"}
-
-    # Placeholder: simulate attribute extraction
-    attributes = {
-        "email": "user@company.com",
-        "name": "SSO User",
-    }
-
+    logger.warning("SAML callback rejected because SAML verification is not configured")
     return {
-        "success": True,
-        "attributes": attributes,
-        "relay_state": relay_state,
-        "token": "mock-sso-jwt-token",
-        "user_id": "mock-sso-user-id",
+        "success": False,
+        "error": "SAML authentication is not configured",
     }
 
 

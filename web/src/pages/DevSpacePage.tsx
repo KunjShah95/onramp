@@ -19,6 +19,7 @@ import StatusTile from '../components/ui/status-tile'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { fetchSeedRoleData } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 
 
 interface QuickLink {
@@ -59,17 +60,18 @@ const stateLabel: Record<string, string> = {
 }
 
 export default function DevSpacePage() {
+  const { activeTeamId } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [seedData, setSeedData] = useState<any>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetchSeedRoleData()
+    fetchSeedRoleData(activeTeamId || undefined)
       .then((res) => { if (!cancelled) { setSeedData(res.data); setLoading(false) } })
       .catch((err) => { if (!cancelled) { setError(err.message); setLoading(false) } })
     return () => { cancelled = true }
-  }, [])
+  }, [activeTeamId])
 
   const d = seedData
   const repos = d?.stats?.repos_analyzed ?? d?.stats?.total_users ?? 0

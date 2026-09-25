@@ -92,7 +92,7 @@ def _make_app(monkeypatch, fake_service=None, with_auth=True):
     monkeypatch.setattr(autopilot, "AutopilotService", lambda llm=None, github_token=None: fake_service)
 
     from unittest.mock import AsyncMock
-    monkeypatch.setattr(autopilot, "authorize_registered_repo", AsyncMock(return_value="team-test"))
+    monkeypatch.setattr(autopilot, "authorize_registered_repo", AsyncMock(return_value="team-1"))
 
     application = FastAPI()
     application.state.llm = None
@@ -125,6 +125,7 @@ class TestAnalyzeEndpoint:
         resp = client.post("/api/v1/autopilot/analyze", json={
             "repo_url": "https://github.com/acme/app",
             "max_issues": 3,
+            "create_tasks": False,
         })
 
         assert resp.status_code == 200
@@ -157,7 +158,7 @@ class TestAnalyzeEndpoint:
         assert resp.json()["tasks"][0]["team_role"] == "junior_dev"
 
     @staticmethod
-    def _seed_user_team():
+    def _seed_user_team(role="senior_dev"):
         import asyncio
         from datetime import datetime, timezone
         from app.services.postgres_db import get_storage
@@ -174,11 +175,21 @@ class TestAnalyzeEndpoint:
                 "created_at": now, "updated_at": now,
             })
             await storage.create_document("team_members", "m1", {
-                "user_id": "test-user", "team_id": "team-1", "role": "junior_dev",
+                "user_id": "test-user", "team_id": "team-1", "role": role,
                 "joined_at": now,
             })
 
         asyncio.run(_seed())
+
+    def test_analyze_task_creation_requires_senior_role(self, monkeypatch):
+        self._seed_user_team(role="member")
+        fake = _FakeAutopilotService()
+        client = _client(monkeypatch, fake)
+        resp = client.post("/api/v1/autopilot/analyze", json={
+            "repo_url": "https://github.com/acme/app",
+        })
+        assert resp.status_code == 403
+        assert fake.analyze_calls == []
 
     def test_analyze_can_disable_task_creation(self, monkeypatch):
         fake = _FakeAutopilotService()
@@ -208,6 +219,7 @@ class TestAnalyzeEndpoint:
 
         resp = client.post("/api/v1/autopilot/analyze", json={
             "repo_url": "not-a-github-url",
+            "create_tasks": False,
         })
         assert resp.status_code == 400
         assert "Invalid repository URL" in resp.json()["detail"]
@@ -222,6 +234,7 @@ class TestAnalyzeEndpoint:
 
 class TestRunEndpoint:
     def test_run_returns_prs_and_review(self, monkeypatch):
+        TestAnalyzeEndpoint._seed_user_team()
         fake = _FakeAutopilotService()
         client = _client(monkeypatch, fake)
 

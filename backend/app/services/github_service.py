@@ -239,8 +239,12 @@ class Issue:
 class GitHubService:
     """Handles GitHub repo operations."""
 
-    def __init__(self, token: Optional[str] = None):
-        self.github_token = token or os.getenv("GITHUB_TOKEN")
+    def __init__(self, token: Optional[str] = None, *, allow_env_fallback: bool = True):
+        self.github_token = (
+            token
+            if token is not None
+            else (os.getenv("GITHUB_TOKEN") if allow_env_fallback else None)
+        )
 
     async def clone_repo(self, repo_url: str, branch: str = "main") -> str:
         """
@@ -337,6 +341,8 @@ class GitHubService:
                 resp = await client.post(url, headers=headers, json=json_body or {})
             elif method == "PATCH":
                 resp = await client.patch(url, headers=headers, json=json_body or {})
+            elif method == "PUT":
+                resp = await client.put(url, headers=headers, json=json_body or {})
             else:
                 raise ValueError(f"Unsupported method: {method}")
             resp.raise_for_status()

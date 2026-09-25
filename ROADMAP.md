@@ -49,6 +49,7 @@ These are targets from `PROBLEM.md`, not claims about current customer results:
 
 | Area | Current state |
 | --- | --- |
+| --- | --- |
 | Core product | Architecture Explorer, First-PR Accelerator, Learning Path Generator, Repo Q&A, onboarding reports, task workflow, dashboards, notifications, integrations, and billing surfaces are implemented. |
 | Wedge | Ramp profiles, senior-time cost model, stuck detection, org health, retention curves, headcount flows, review load/suggestion/consistency, ROI and efficiency benchmark harnesses are built. |
 | Repository intelligence | Team-owned repository registration, durable grants, single and batch indexing, job status APIs, revocation, deletion cleanup, derived embeddings, and graph context are implemented. |

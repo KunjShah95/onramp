@@ -89,6 +89,7 @@ class User(Base):
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
         UniqueConstraint("email_hash", name="uq_users_email_hash"),
+        UniqueConstraint("github_id", name="uq_users_github_id"),
         CheckConstraint(
             "provider IN ('google.com', 'password', 'github.com', 'neon')",
             name="ck_users_provider"
@@ -409,6 +410,9 @@ class Task(Base):
     # task to an opened PR (github_pr_author + github_pr_number).
     github_pr_author: Mapped[str | None] = mapped_column(String(255), nullable=True)
     github_pr_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pr_merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    jira_issue_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    linear_issue_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Task dependency DAG — prerequisite task_ids that must be completed before
     # this task can be started (start_task blocks until they are)
     depends_on: Mapped[list | None] = mapped_column(JSONB, nullable=True)
@@ -456,6 +460,9 @@ class Task(Base):
             "source_issue": self.source_issue,
             "github_pr_author": self.github_pr_author,
             "github_pr_number": self.github_pr_number,
+            "pr_merged_at": self.pr_merged_at.isoformat() if self.pr_merged_at else None,
+            "jira_issue_key": self.jira_issue_key,
+            "linear_issue_id": self.linear_issue_id,
             "depends_on": self.depends_on,
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
@@ -1167,9 +1174,16 @@ class WebhookIdempotency(Base):
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     event_id: Mapped[str] = mapped_column(String(255), nullable=False)
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    # ``processing`` is a leased in-flight claim; ``done`` is terminal. Failed
+    # attempts become ``failed`` so provider retries can atomically reclaim.
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="done")
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        Index("ix_webhook_idempotency_status", "status"),
+        {"extend_existing": True},
+    )
 
     def to_dict(self) -> dict:
         return {
@@ -1177,6 +1191,8 @@ class WebhookIdempotency(Base):
             "idempotency_key": self.idempotency_key,
             "event_id": self.event_id,
             "event_type": self.event_type,
+            "status": self.status,
+            "claim_token": self.claim_token,
             "processed_at": self.processed_at.isoformat(),
         }
 

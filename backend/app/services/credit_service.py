@@ -22,10 +22,9 @@ logger = logging.getLogger("onramp.credits")
 WALLETS = "credit_wallets"
 LEDGER = "credit_ledger"
 
-# Per-scope locks serializing wallet read-modify-write cycles in-process.
-# Without this, concurrent deducts both read the same balance and both
-# succeed (double-spend). Multi-worker atomicity still needs a DB-level
-# constraint — see the deduct() docstring.
+# Per-scope locks reduce duplicate work in one process. PostgreSQL performs
+# the actual balance mutation with SELECT ... FOR UPDATE, so the no-double-spend
+# invariant also holds across multiple API workers.
 _scope_locks: Dict[str, asyncio.Lock] = {}
 _scope_locks_guard = asyncio.Lock()
 
@@ -74,10 +73,32 @@ class CreditService:
         if amount <= 0:
             raise ValueError("Top-up amount must be positive")
         async with await _scope_lock(scope):
-            wallet = await self._get_wallet(scope)
-            wallet["balance"] = int(wallet.get("balance", 0)) + amount
-            wallet["lifetime_purchased"] = int(wallet.get("lifetime_purchased", 0)) + amount
-            await self._save_wallet(scope, wallet)
+            if not await self.storage.get_document(WALLETS, scope):
+                try:
+                    await self.storage.create_document_if_absent(
+                        WALLETS,
+                        scope,
+                        {
+                            "scope": scope,
+                            "balance": 0,
+                            "lifetime_purchased": 0,
+                            "lifetime_spent": 0,
+                            "created_at": _now_iso(),
+                        },
+                    )
+                except AttributeError:
+                    await self._save_wallet(scope, await self._get_wallet(scope))
+            updated = await self.storage.decrement_json_field_if(
+                WALLETS,
+                scope,
+                "balance",
+                -amount,
+                minimum_balance=0,
+                increment_fields={"lifetime_purchased": amount},
+            )
+            if updated is None:
+                raise RuntimeError("Credit wallet update failed")
+            wallet = self._flatten(updated)
             await self._ledger_entry(scope, amount, wallet["balance"], reason, action="topup")
             return wallet
 
@@ -85,10 +106,9 @@ class CreditService:
         """Charge a wallet for a query. Raises InsufficientCreditsError if the
         balance can't cover the charge (leaving the balance untouched).
 
-        The read-check-write-ledger cycle holds a per-scope lock so
-        concurrent deducts in this process serialize. NOTE: this does not
-        guard across workers — a DB-level atomic decrement (or a UNIQUE
-        ledger constraint) is still needed for multi-worker deploys.
+        A per-scope lock avoids duplicate work locally, while the storage
+        layer performs an atomic row-locked decrement so concurrent requests
+        cannot overdraw the wallet across workers.
         """
         if amount < 0:
             raise ValueError("Deduction amount cannot be negative")
@@ -97,9 +117,20 @@ class CreditService:
             balance = int(wallet.get("balance", 0))
             if balance < amount:
                 raise InsufficientCreditsError(scope, balance, amount)
-            wallet["balance"] = balance - amount
-            wallet["lifetime_spent"] = int(wallet.get("lifetime_spent", 0)) + amount
-            await self._save_wallet(scope, wallet)
+            if balance == 0 and amount == 0 and not await self.storage.get_document(WALLETS, scope):
+                return wallet
+            updated = await self.storage.decrement_json_field_if(
+                WALLETS,
+                scope,
+                "balance",
+                amount,
+                minimum_balance=0,
+                increment_fields={"lifetime_spent": amount},
+            )
+            if updated is None:
+                latest = await self._get_wallet(scope)
+                raise InsufficientCreditsError(scope, int(latest.get("balance", 0)), amount)
+            wallet = self._flatten(updated)
             await self._ledger_entry(scope, -amount, wallet["balance"], f"charge:{action}", action=action)
             return wallet
 

@@ -180,7 +180,7 @@ export default function TasksPage() {
     setLoading(true); setError('')
     try { const { tasks = [] } = await listTasks({ team_id: selectedTeam }) as { tasks: WorkflowTask[] }; setTasks(tasks) }
     catch (e: any) { setError(e.message || 'Failed to load tasks') }
-    setLoading(false)
+    finally { setLoading(false) }
   }, [selectedTeam])
 
   const fetchProgress = useCallback(async () => {
@@ -342,7 +342,7 @@ export default function TasksPage() {
       await fetchTasks(); await fetchProgress()
       toast.success('Task created', formTitle.trim())
     } catch (e: any) { setError(e.message || 'Failed to create task'); toast.error('Failed to create task', 'Your draft is preserved.') }
-    setCreating(false)
+    finally { setCreating(false) }
   }
 
   function resetForm() {
@@ -439,6 +439,7 @@ export default function TasksPage() {
     setTplCreating(true); setError('')
     try {
       await createTaskTemplate({
+        team_id: selectedTeam,
         name: tplName.trim(),
         module: tplModule.trim() || undefined,
         priority: tplPriority as any,
@@ -507,7 +508,7 @@ export default function TasksPage() {
       await approveTask(taskId, reviewFeedback.trim() ? { message: reviewFeedback.trim() } : undefined)
       setReviewFeedback(''); setSelectedTask(null); await fetchTasks(); await fetchProgress()
       toast.success('Task approved')
-    } catch (e: any) { setError(e.message); toast.error('Failed to approve task') }
+    } catch (e: any) { setError(e.message); toast.error('Failed to approve task'); await fetchTasks(); await fetchProgress() }
   }
   async function handleComplete(taskId: string) {
     try { await completeTask(taskId); await fetchTasks(); await fetchProgress(); toast.success('Task completed') }
@@ -780,7 +781,7 @@ export default function TasksPage() {
                                 <div className="text-[10px] text-ink-tertiary font-mono">{tpl.module || 'general'} · ~{tpl.estimated_hours ?? 'N/A'}h</div>
                               </div>
                               <button
-                                onClick={(e) => { e.preventDefault(); if (confirm('Delete this template?')) deleteTaskTemplate(tpl.template_id).then(() => { setSelectedTemplates(prev => { const n = new Set(prev); n.delete(tpl.template_id); return n }); fetchTemplates() }) }}
+                                onClick={async (e) => { e.preventDefault(); if (!confirm('Delete this template?')) return; try { await deleteTaskTemplate(tpl.template_id); setSelectedTemplates(prev => { const n = new Set(prev); n.delete(tpl.template_id); return n }); await fetchTemplates() } catch (err: any) { toast.error('Failed to delete template', err?.message) } }}
                                 className="text-ink-tertiary/40 hover:text-abort transition-colors"
                                 title="Delete template"
                               >

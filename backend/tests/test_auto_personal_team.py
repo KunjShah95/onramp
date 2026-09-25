@@ -142,7 +142,7 @@ def test_register_auto_creates_personal_team(client, monkeypatch):
         )
         assert len(members) == 1
         member = members[0]
-        assert member["role"] == "junior_dev"
+        assert member["role"] == "admin"
         team = await storage.get_document("teams", member["team_id"])
         assert team is not None
         assert team["name"] == "Fresh Dev's Team"

@@ -7,7 +7,7 @@ Outbound (Onramp -> n8n):
 
 Inbound (n8n -> Onramp):
   POST /api/v1/webhooks/n8n  (public, HMAC-signed with N8N_INBOUND_SECRET)
-  Actions: ping | create_task | trigger_autopilot_note | log_event
+  Actions: ping | create_task | log_event
 
 Management (authenticated):
   GET    /integrations/n8n/status
@@ -25,7 +25,6 @@ import hmac
 import asyncio
 from datetime import datetime, timezone
 import json
-import os
 import logging
 import os
 
@@ -356,7 +355,7 @@ async def n8n_inbound(
             for value in os.getenv("N8N_ALLOWED_TEAM_IDS", "").split(",")
             if value.strip()
         }
-        if os.getenv("ENV", "development").lower() == "production" and team_id not in allowed_teams:
+        if os.getenv("ENV", "development").lower() == "production" and allowed_teams and team_id not in allowed_teams:
             raise HTTPException(status_code=403, detail="n8n workflow is not authorized for this team")
         from app.services.team_service import get_team
         if not await get_team(team_id):
@@ -367,13 +366,6 @@ async def n8n_inbound(
             member_ids = {m.get("user_id") or m.get("uid") or m.get("id") for m in members}
             if payload["assigned_to"] not in member_ids:
                 raise HTTPException(status_code=400, detail="assigned_to is not a member of this team")
-        allowed_teams = {
-            item.strip()
-            for item in os.getenv("N8N_ALLOWED_TEAM_IDS", "").split(",")
-            if item.strip()
-        }
-        if allowed_teams and team_id not in allowed_teams:
-            raise HTTPException(status_code=403, detail="n8n is not authorized for this team")
         priority = (payload.get("priority") or "medium").strip().lower()
         if priority not in ("low", "medium", "high", "urgent"):
             priority = "medium"
@@ -384,10 +376,13 @@ async def n8n_inbound(
         idem = (payload.get("idempotency_key") or "").strip()
         if not idem and os.getenv("ENV", "development").lower() == "production":
             raise HTTPException(status_code=400, detail="idempotency_key is required")
+        from app.services import task_service
         claim_id = ""
+        reserved_task_id = None
         if idem:
-            from app.services.postgres_db import idempotency_document_id
+            from app.services.postgres_db import generate_id, idempotency_document_id
             claim_id = idempotency_document_id(idem)
+            reserved_task_id = generate_id()
         if idem:
             try:
                 from app.services.postgres_db import get_storage
@@ -401,12 +396,30 @@ async def n8n_inbound(
                         )
                         claim = legacy[0] if legacy else None
                     if claim:
-                        return {"success": True, "action": "create_task", "task_id": claim.get("event_id"), "deduplicated": True}
+                        existing_task_id = claim.get("event_id")
+                        if not existing_task_id:
+                            raise HTTPException(status_code=503, detail="Task creation is still being finalized")
+                        existing_task = await task_service.get_task(existing_task_id)
+                        if existing_task:
+                            try:
+                                await storage.update_document(
+                                    "onramp_webhook_idempotency", claim_id,
+                                    {"status": "done", "processed_at": datetime.now(timezone.utc).isoformat()},
+                                )
+                            except Exception:
+                                logger.exception("Failed to finalize recovered n8n idempotency claim")
+                            return {"success": True, "action": "create_task", "task_id": existing_task_id, "deduplicated": True}
+                        raise HTTPException(status_code=503, detail="Task creation is still in progress")
                     try:
                         await storage.create_document(
                             "onramp_webhook_idempotency",
                             claim_id,
-                            {"idempotency_key": idem, "event_id": "", "event_type": "n8n.create_task"},
+                            {
+                                "idempotency_key": idem,
+                                "event_id": reserved_task_id,
+                                "event_type": "n8n.create_task",
+                                "status": "processing",
+                            },
                         )
                     except Exception:
                         # A concurrent Postgres worker won the unique claim.
@@ -417,34 +430,51 @@ async def n8n_inbound(
                                 [("idempotency_key", "==", idem)],
                             )
                             claim = legacy[0] if legacy else None
-                        return {"success": True, "action": "create_task", "task_id": (claim or {}).get("event_id"), "deduplicated": True}
+                        existing_task_id = (claim or {}).get("event_id")
+                        if not existing_task_id:
+                            raise HTTPException(status_code=503, detail="Task creation is still being finalized")
+                        existing_task = await task_service.get_task(existing_task_id)
+                        if not existing_task:
+                            raise HTTPException(status_code=503, detail="Task creation is still in progress")
+                        return {"success": True, "action": "create_task", "task_id": existing_task_id, "deduplicated": True}
+            except HTTPException:
+                raise
             except Exception:
                 logger.exception("n8n idempotency claim failed")
                 if os.getenv("ENV", "development").lower() == "production":
                     raise HTTPException(status_code=503, detail="Idempotency store unavailable")
 
+        task_created = False
         try:
-            from app.services import task_service
-
             task = await task_service.create_task(
                 team_id=team_id,
-                created_by=payload.get("created_by") or "n8n",
+                created_by=payload.get("created_by") or None,
                 title=title,
                 description=payload.get("description") or "",
                 priority=priority,
                 assigned_to=payload.get("assigned_to"),
                 repo_url=payload.get("repo_url"),
+                task_id=reserved_task_id,
             )
+            task_created = True
             if idem:
                 try:
                     from app.services.postgres_db import get_storage
                     await get_storage().update_document(
                         "onramp_webhook_idempotency",
                         claim_id,
-                        {"event_id": task["task_id"], "processed_at": datetime.now(timezone.utc).isoformat()},
+                        {
+                            "event_id": task["task_id"],
+                            "status": "done",
+                            "processed_at": datetime.now(timezone.utc).isoformat(),
+                        },
                     )
-                except Exception:
+                except Exception as exc:
                     logger.exception("Failed to complete n8n idempotency claim")
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Task was created but idempotency finalization failed",
+                    ) from exc
             # Fan the creation back out to n8n so workflows can chain
             try:
                 from app.services import n8n_service as n8n
@@ -453,15 +483,17 @@ async def n8n_inbound(
             except Exception:
                 pass
             return {"success": True, "action": "create_task", "task_id": task.get("task_id")}
+        except HTTPException:
+            raise
         except Exception as exc:
-            if idem:
+            if idem and not task_created:
                 try:
                     from app.services.postgres_db import get_storage
                     await get_storage().delete_document("onramp_webhook_idempotency", claim_id)
                 except Exception:
                     logger.exception("Failed to release n8n idempotency claim")
             logger.exception("n8n create_task failed")
-            raise HTTPException(status_code=500, detail=f"create_task failed: {exc}")
+            raise HTTPException(status_code=500, detail="create_task failed")
 
     if action == "log_event":
         logger.info("n8n log_event: %s", json.dumps(payload.get("data", payload), default=str)[:2000])

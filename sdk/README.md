@@ -17,7 +17,8 @@ import { OnrampClient } from '@onramp/sdk'
 
 const onramp = new OnrampClient({
   baseUrl: process.env.ONRAMP_API_URL ?? 'https://api.onramp.dev',
-  apiKey: process.env.ONRAMP_API_KEY, // cf_... key or JWT
+  apiKey: process.env.ONRAMP_API_KEY, // cf_... key for gateway calls
+  sessionToken: process.env.ONRAMP_SESSION_TOKEN, // JWT for workspace calls
 })
 
 // Non-streaming chat (routed free-first by query type)
@@ -50,12 +51,19 @@ const result = await onramp.executeAgent('health', {
 })
 console.log(result.credits_used, result.tier)
 
-// Usage + keys
-await onramp.validateApiKey('cf_...')
-const created = await onramp.createApiKey('my-org', 'free')
-const budgeted = await onramp.createApiKey('my-org', 'pro', { credit_limit: 5000, expires_in_days: 90 })
-await onramp.getUsage('my-org')
-await onramp.listTiers()
+// API-key validation and key management use a JWT session, not the gateway key.
+const session = new OnrampClient({
+  baseUrl: 'https://api.onramp.dev',
+  apiKey: process.env.ONRAMP_API_KEY,       // cf_... gateway authentication
+  sessionToken: process.env.ONRAMP_SESSION_TOKEN, // JWT workspace auth
+})
+const validation = await session.validateApiKey('cf_...')
+const created = await session.createApiKey('my-org', 'free')
+const budgeted = await session.createApiKey('my-org', 'pro', { credit_limit: 5000, expires_in_days: 90 })
+const keys = await session.listApiKeys('my-org')
+await session.revokeApiKey(created.key_id)
+await session.getUsage('my-org')
+await session.listTiers()
 
 // Repository + onboarding APIs (use a JWT/session token for user-scoped routes)
 const repos = await onramp.listRepositories('team-123')
@@ -81,7 +89,8 @@ const context = await onramp.callMcpTool('repo_context', {
 | Option | Default | Description |
 |----------|---------|-------------|
 | `baseUrl` | `ONRAMP_API_URL` or `http://localhost:8000` | API base URL (trailing slashes trimmed) |
-| `apiKey` | `ONRAMP_API_KEY` | Onramp API key (`cf_...`) or JWT access token |
+| `apiKey` | `ONRAMP_API_KEY` | Onramp gateway API key (`cf_...`); never used for JWT-only management routes |
+| `sessionToken` | `ONRAMP_SESSION_TOKEN` | JWT access token for workspace and API-key management routes |
 | `defaultModel` | `chat` | Default gateway model when none passed per-call |
 | `headers` | — | Extra headers appended to every request |
 | `fetch` | `globalThis.fetch` | Custom fetch implementation (test mocks, polyfills) |
@@ -111,17 +120,23 @@ const client = new OpenAI({
 
 ### AIaaS agents (`/api/v1/ai`)
 
+| Method | Auth | Endpoint | Purpose |
+|--------|------|----------|---------|
+| `listAgents()` | JWT session | `GET /api/v1/ai/agents` | List available agents + required params |
+| `executeAgent(agent, params)` | API key or JWT session | `POST /api/v1/ai/agents/{agent}/execute` | Run an agent, returns result + credits used |
+
+### Keys & usage (JWT session only)
+
+These endpoints are workspace management operations. Supply `sessionToken` (or
+`ONRAMP_SESSION_TOKEN`); the gateway `apiKey` is not a substitute for a JWT.
+
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `listAgents()` | `GET /api/v1/ai/agents` | List available agents + required params |
-| `executeAgent(agent, params)` | `POST /api/v1/ai/agents/{agent}/execute` | Run an agent, returns result + credits used |
-
-### Keys & usage
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `validateApiKey(rawKey)` | `POST /api/v1/ai/keys/validate` | Validate a key, returns org + tier |
+| `validateApiKey(rawKey)` | `POST /api/v1/ai/keys/validate` | Validate a key, returns org + tier; invalid keys throw `OnrampApiError` |
 | `createApiKey(orgName, tier, opts?)` | `POST /api/v1/ai/keys` | Create a new API key; `opts` accepts `credit_limit` (monthly credit budget), `daily_credit_cap` (daily cap, resets each UTC day), and `expires_in_days` |
+| `listApiKeys(orgName?)` | `GET /api/v1/ai/keys` | List keys visible to the session |
+| `revokeApiKey(keyId)` | `DELETE /api/v1/ai/keys/{keyId}` | Revoke a key |
+| `rotateApiKey(keyId, opts?)` | `POST /api/v1/ai/keys/{keyId}/rotate` | Revoke and replace a key |
 | `getUsage(orgName)` | `GET /api/v1/ai/usage/{orgName}` | Credit + request usage with endpoint breakdown |
 | `listTiers()` | `GET /api/v1/ai/tiers` | Tier limits + credit costs |
 
@@ -136,7 +151,8 @@ with status `408`.
 | Variable | Purpose |
 |----------|---------|
 | `ONRAMP_API_URL` | API base URL (default `http://localhost:8000`) |
-| `ONRAMP_API_KEY` | API key (`cf_...`) or JWT access token |
+| `ONRAMP_API_KEY` | Gateway API key (`cf_...`) |
+| `ONRAMP_SESSION_TOKEN` | JWT access token for workspace/key management |
 
 ## Development
 

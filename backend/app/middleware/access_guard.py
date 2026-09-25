@@ -187,7 +187,12 @@ def require_team_role(
         # higher-privilege roles (admin, ceo, cto) satisfy lower requirements.
         req_level = ROLE_HIERARCHY.get(required_role, 0)
         user_level = ROLE_HIERARCHY.get(user_role or "", 0)
-        if user_level < req_level:
+        role_allowed = (
+            user_role == required_role or user_level >= ROLE_HIERARCHY["admin"]
+            if required_role == "hr"
+            else user_level >= req_level
+        )
+        if not role_allowed:
             raise HTTPException(
                 status_code=403,
                 detail={

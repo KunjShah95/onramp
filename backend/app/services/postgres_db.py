@@ -546,10 +546,62 @@ class PostgresStorage:
             lambda s: self._create_in_session(s, collection, doc_id, data)
         )
 
+    async def create_document_if_absent(
+        self, collection: str, doc_id: str, data: dict
+    ) -> bool:
+        """Create a document once, returning False for an existing primary key."""
+        try:
+            await self.create_document(collection, doc_id, data)
+            return True
+        except Exception:
+            # Distinguish a uniqueness race from an unavailable database.
+            existing = await self.get_document(collection, doc_id)
+            if existing is None:
+                raise
+            return False
+
+    async def claim_document(
+        self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
+    ) -> bool:
+        """Atomically compare-and-set a field on a registered typed document.
+
+        Collections without a typed model continue to use the JSON-document
+        implementation. Registered models must not be treated as dynamic rows:
+        the service layer already writes those collections to their real tables.
+        """
+        entry = _get_model(collection)
+        if entry is None:
+            return await self.claim_dynamic_document(
+                collection, doc_id, field, expected, updates
+            )
+
+        model_cls, pk_field, _, _ = entry
+        column = getattr(model_cls, field, None)
+        if column is None:
+            raise ValueError(f"Unknown claim field '{field}' on {model_cls.__name__}")
+
+        async def _claim(session: AsyncSession) -> bool:
+            values = dict(updates)
+            if hasattr(model_cls, "updated_at") and "updated_at" not in values:
+                values["updated_at"] = datetime.now(timezone.utc)
+            pk_value = self._get_pk_value(model_cls, pk_field, doc_id)
+            stmt = (
+                update(model_cls)
+                .where(
+                    getattr(model_cls, self._pk_attr(pk_field)) == pk_value,
+                    column == expected,
+                )
+                .values(**values)
+            )
+            result = await session.execute(stmt)
+            return bool(result.rowcount == 1)
+
+        return await self.run_in_transaction(_claim)
+
     async def claim_dynamic_document(
         self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
     ) -> bool:
-        """Atomically claim a JSON document field for single-use operations."""
+        """Atomically claim a field in a legacy JSON document."""
         async def _claim(session: AsyncSession) -> bool:
             stmt = select(db_models.DynamicDocument).where(
                 db_models.DynamicDocument.id == doc_id,
@@ -572,6 +624,39 @@ class PostgresStorage:
         return await self._run_read(
             lambda s: self._get_in_session(s, collection, doc_id)
         )
+
+    async def decrement_json_field_if(
+        self,
+        collection: str,
+        doc_id: str,
+        field: str,
+        amount: int,
+        minimum_balance: int = 0,
+        extra_updates: Optional[dict] = None,
+        increment_fields: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """Atomically decrement a JSON number when its balance is sufficient."""
+        async def _decrement(session: AsyncSession) -> Optional[dict]:
+            stmt = select(db_models.DynamicDocument).where(
+                db_models.DynamicDocument.id == doc_id,
+                db_models.DynamicDocument.collection == collection,
+            ).with_for_update()
+            doc = (await session.execute(stmt)).scalar_one_or_none()
+            if doc is None:
+                return None
+            data = dict(doc.data)
+            balance = int(data.get(field, 0))
+            if balance < minimum_balance + amount:
+                return None
+            data[field] = balance - amount
+            for key, delta in (increment_fields or {}).items():
+                data[key] = int(data.get(key, 0)) + int(delta)
+            data.update(extra_updates or {})
+            doc.data = data
+            doc.updated_at = datetime.now(timezone.utc)
+            await session.flush()
+            return data
+        return await self.run_in_transaction(_decrement)
 
     async def increment_json_field(
         self, collection: str, doc_id: str, json_col: str, field: str, delta: int
@@ -921,6 +1006,36 @@ class InMemoryStorage:
         self._coll(collection)[doc_id] = record
         return dict(record)
 
+    async def create_document_if_absent(
+        self, collection: str, doc_id: str, data: dict
+    ) -> bool:
+        async with self._claim_lock:
+            records = self._coll(collection)
+            if doc_id in records:
+                return False
+            now = datetime.now(timezone.utc).isoformat()
+            record = {**data, "id": doc_id}
+            record.setdefault("created_at", now)
+            record.setdefault("updated_at", now)
+            records[doc_id] = self._serialize(record)
+            return True
+
+    async def claim_document(
+        self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
+    ) -> bool:
+        """Atomic compare-and-set for typed or dynamic memory documents."""
+        if collection in _MODEL_REGISTRY:
+            async with self._claim_lock:
+                record = self._coll(collection).get(doc_id)
+                if not record or record.get(field) != expected:
+                    return False
+                record.update(updates)
+                record["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return True
+        return await self.claim_dynamic_document(
+            collection, doc_id, field, expected, updates
+        )
+
     async def claim_dynamic_document(
         self, collection: str, doc_id: str, field: str, expected: Any, updates: dict
     ) -> bool:
@@ -936,6 +1051,30 @@ class InMemoryStorage:
     async def get_document(self, collection: str, doc_id: str) -> Optional[dict]:
         rec = self._coll(collection).get(doc_id)
         return self._serialize(dict(rec)) if rec else None
+
+    async def decrement_json_field_if(
+        self,
+        collection: str,
+        doc_id: str,
+        field: str,
+        amount: int,
+        minimum_balance: int = 0,
+        extra_updates: Optional[dict] = None,
+        increment_fields: Optional[dict] = None,
+    ) -> Optional[dict]:
+        async with self._claim_lock:
+            record = self._coll(collection).get(doc_id)
+            if not record:
+                return None
+            balance = int(record.get(field, 0))
+            if balance < minimum_balance + amount:
+                return None
+            record[field] = balance - amount
+            for key, delta in (increment_fields or {}).items():
+                record[key] = int(record.get(key, 0)) + int(delta)
+            record.update(extra_updates or {})
+            record["updated_at"] = datetime.now(timezone.utc).isoformat()
+            return self._serialize(dict(record))
 
     async def update_document(self, collection: str, doc_id: str, data: dict) -> Optional[dict]:
         rec = self._coll(collection).get(doc_id)

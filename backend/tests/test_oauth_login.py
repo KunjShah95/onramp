@@ -73,10 +73,19 @@ class _FakeResponse:
         return self._json
 
 
-def _fake_github_client(post_response, get_response):
+def _fake_github_client(post_response, get_response, email_response=None):
     client = AsyncMock()
     client.post.return_value = post_response
-    client.get.return_value = get_response
+    if email_response is None:
+        email_response = [{
+            "email": get_response._json.get("email"),
+            "primary": True,
+            "verified": True,
+        }]
+    client.get.side_effect = [
+        get_response,
+        _FakeResponse(200, email_response),
+    ]
     client.__aenter__.return_value = client
     client.__aexit__.return_value = False
     return client
@@ -100,7 +109,14 @@ class _FakeSession:
     def __init__(self, existing_row=None):
         self._existing_row = existing_row
 
-    async def execute(self, *args, **kwargs):
+    async def execute(self, statement, *args, **kwargs):
+        rendered = str(statement)
+        if "WHERE users.github_id" in rendered:
+            row = self._existing_row
+            params = statement.compile().params
+            expected = str(next(iter(params.values()))) if params else ""
+            if row is None or str(getattr(row, "github_id", "")) != expected:
+                return _FakeScalarResult(None)
         return _FakeScalarResult(self._existing_row)
 
     def add(self, obj):
@@ -177,7 +193,7 @@ class TestGithubLoginMode:
             email="octocat@example.com",
             name="Old Name",
             github_username="oldlogin",
-            github_id="999",
+            github_id="4242",
             updated_at=None,
         )
         _stub_db_config(existing_row=existing, monkeypatch=monkeypatch)
@@ -189,13 +205,16 @@ class TestGithubLoginMode:
         monkeypatch.setattr(oauth_service, "create_personal_team", _spy_team)
         mock_client_cls.return_value = _fake_github_client(
             _FakeResponse(200, {"access_token": "gho_login_token"}),
-            _FakeResponse(200, _github_user()),
+            _FakeResponse(200, _github_user(email="changed@example.com")),
         )
 
         url = await get_github_login_url()
         result = await handle_github_callback(code="test-code", state=_state_from_url(url))
 
         assert result["uid"] == existing.id
+        # Immutable github_id wins before the changed verified-email fallback;
+        # the account's stored email is not overwritten.
+        assert result["email"] == existing.email
         assert result["token"]
         assert result.get("refresh_token")
         # No second account, no second team — identity is re-synced in place.
@@ -224,6 +243,48 @@ class TestGithubLoginMode:
         url = await get_github_login_url()
         with pytest.raises(ValueError, match="already registered with password"):
             await handle_github_callback(code="test-code", state=_state_from_url(url))
+
+    @patch("app.services.oauth_service.httpx.AsyncClient")
+    async def test_unverified_user_email_is_never_used(self, mock_client_cls, monkeypatch):
+        _stub_db_config(monkeypatch=monkeypatch)
+        mock_client_cls.return_value = _fake_github_client(
+            _FakeResponse(200, {"access_token": "gho_login_token"}),
+            _FakeResponse(200, _github_user(email="unverified@example.com")),
+            email_response=[{
+                "email": "unverified@example.com",
+                "primary": True,
+                "verified": False,
+            }],
+        )
+
+        url = await get_github_login_url()
+        with pytest.raises(ValueError, match="verified email"):
+            await handle_github_callback(code="test-code", state=_state_from_url(url))
+
+    @patch("app.services.oauth_service.httpx.AsyncClient")
+    async def test_email_match_cannot_overwrite_different_github_id(
+        self, mock_client_cls, monkeypatch
+    ):
+        existing = SimpleNamespace(
+            provider="github.com",
+            is_active=True,
+            id="f0000000-0000-4000-a000-0000000000f3",
+            email="octocat@example.com",
+            name="Octocat",
+            github_username="octocat",
+            github_id="999",
+            updated_at=None,
+        )
+        _stub_db_config(existing_row=existing, monkeypatch=monkeypatch)
+        mock_client_cls.return_value = _fake_github_client(
+            _FakeResponse(200, {"access_token": "gho_login_token"}),
+            _FakeResponse(200, _github_user()),
+        )
+
+        url = await get_github_login_url()
+        with pytest.raises(ValueError, match="different GitHub identity"):
+            await handle_github_callback(code="test-code", state=_state_from_url(url))
+        assert existing.github_id == "999"
 
     @patch("app.services.oauth_service.httpx.AsyncClient")
     async def test_email_fallback_uses_primary_verified_email(self, mock_client_cls, monkeypatch):

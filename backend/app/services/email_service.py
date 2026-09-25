@@ -2,6 +2,7 @@
 
 import os
 import logging
+from html import escape as _escape
 from typing import Optional
 
 logger = logging.getLogger("onramp.email")
@@ -58,20 +59,20 @@ async def send_invite_email(email: str, invite_link: str, team_name: str, invite
 <div style="max-width:480px;margin:0 auto;background:#1A110D;border-radius:12px;padding:32px;border:1px solid rgba(253,251,248,0.08)">
 <div style="text-align:center;margin-bottom:24px">
 <div style="font-size:40px;margin-bottom:8px"></div>
-<h1 style="color:#FDFBF8;font-size:20px;margin:0">You're invited to <span style="color:#FF8C00">{team_name}</span></h1>
+<h1 style="color:#FDFBF8;font-size:20px;margin:0">You're invited to <span style="color:#FF8C00">{_escape(team_name)}</span></h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6;margin-bottom:24px">
-{invited_by_name} has invited you to join <strong style="color:#FDFBF8">{team_name}</strong> on Onramp.
+{_escape(invited_by_name)} has invited you to join <strong style="color:#FDFBF8">{_escape(team_name)}</strong> on Onramp.
 Click below to accept the invitation and start contributing.
 </p>
 <div style="text-align:center;margin-bottom:24px">
-<a href="{invite_link}" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Accept Invitation</a>
+<a href="{_escape(invite_link)}" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Accept Invitation</a>
 </div>
 <p style="color:rgba(253,251,248,0.3);font-size:11px;text-align:center;margin:0">
 This link expires in 48 hours. If you weren't expecting this, ignore this email.
 </p>
 </div></body></html>"""
-    return await send_email(email, f"You're invited to join {team_name}", html)
+    return await send_email(email, f"You're invited to join {_escape(team_name)}", html)
 
 
 async def send_task_assigned_email(email: str, task_title: str, team_name: str, assigned_by: str) -> bool:
@@ -85,14 +86,14 @@ async def send_task_assigned_email(email: str, task_title: str, team_name: str, 
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">New Task Assigned</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
-<strong style="color:#FDFBF8">{assigned_by}</strong> assigned you a task in <strong style="color:#FF8C00">{team_name}</strong>:
+<strong style="color:#FDFBF8">{_escape(assigned_by)}</strong> assigned you a task in <strong style="color:#FF8C00">{_escape(team_name)}</strong>:
 </p>
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
-<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{_escape(task_title)}</p>
 </div>
 <p style="color:rgba(253,251,248,0.3);font-size:11px;margin:0">Check your dashboard to start working on it.</p>
 </div></body></html>"""
-    return await send_email(email, f"New task assigned: {task_title}", html)
+    return await send_email(email, f"New task assigned: {_escape(task_title)}", html)
 
 
 async def send_task_completed_email(email: str, task_title: str, team_name: str) -> bool:
@@ -106,14 +107,14 @@ async def send_task_completed_email(email: str, task_title: str, team_name: str)
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Completed</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
-A task in <strong style="color:#FF8C00">{team_name}</strong> has been completed:
+A task in <strong style="color:#FF8C00">{_escape(team_name)}</strong> has been completed:
 </p>
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
-<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{_escape(task_title)}</p>
 </div>
 <p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Well done!</p>
 </div></body></html>"""
-    return await send_email(email, f"Task completed: {task_title}", html)
+    return await send_email(email, f"Task completed: {_escape(task_title)}", html)
 
 
 async def send_task_approved_email(email: str, task_title: str, team_name: str, approver_name: str) -> bool:
@@ -127,14 +128,14 @@ async def send_task_approved_email(email: str, task_title: str, team_name: str, 
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Approved</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
-<strong style="color:#FDFBF8">{approver_name}</strong> approved a task in <strong style="color:#FF8C00">{team_name}</strong>:
+<strong style="color:#FDFBF8">{_escape(approver_name)}</strong> approved a task in <strong style="color:#FF8C00">{_escape(team_name)}</strong>:
 </p>
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
-<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{_escape(task_title)}</p>
 </div>
 <p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Great work — your task has been approved! Modules will be unlocked upon completion.</p>
 </div></body></html>"""
-    return await send_email(email, f"Task approved: {task_title}", html)
+    return await send_email(email, f"Task approved: {_escape(task_title)}", html)
 
 
 async def send_task_reviewed_email(email: str, task_title: str, team_name: str, reviewer_name: str, action: str) -> bool:
@@ -164,14 +165,14 @@ async def send_task_reviewed_email(email: str, task_title: str, team_name: str, 
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">{heading}</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
-<strong style="color:#FDFBF8">{reviewer_name}</strong> reviewed a task in <strong style="color:#FF8C00">{team_name}</strong>:
+<strong style="color:#FDFBF8">{_escape(reviewer_name)}</strong> reviewed a task in <strong style="color:#FF8C00">{_escape(team_name)}</strong>:
 </p>
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
-<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{_escape(task_title)}</p>
 </div>
 <p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">{subtext}</p>
 </div></body></html>"""
-    return await send_email(email, f"{heading}: {task_title}", html)
+    return await send_email(email, f"{heading}: {_escape(task_title)}", html)
 
 
 async def send_digest_email(
@@ -197,21 +198,21 @@ async def send_digest_email(
         for item in section.get("items", [])[:8]:
             items_html += f"""
 <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(253,251,248,0.05)">
-<div style="font-size:18px;width:24px;text-align:center;line-height:1.4">{item.get('emoji', '•')}</div>
+<div style="font-size:18px;width:24px;text-align:center;line-height:1.4">{_escape(item.get('emoji', '•'))}</div>
 <div style="flex:1">
-<div style="color:#FDFBF8;font-size:13px;font-weight:500">{item.get('text', '')}</div>
-{item.get('subtitle', '') and f'<div style="color:rgba(253,251,248,0.4);font-size:11px;margin-top:2px">{item["subtitle"]}</div>' or ''}
+<div style="color:#FDFBF8;font-size:13px;font-weight:500">{_escape(item.get('text', ''))}</div>
+{item.get('subtitle', '') and f'<div style="color:rgba(253,251,248,0.4);font-size:11px;margin-top:2px">{_escape(item["subtitle"])}</div>' or ''}
 </div>
 </div>"""
 
         cta_html = ""
         cta = section.get("cta")
         if cta and cta.get("text") and cta.get("url"):
-            cta_html = f'<div style="text-align:center;margin-top:12px"><a href="{cta["url"]}" style="display:inline-block;background:rgba(255,140,0,0.12);color:#FF8C00;text-decoration:none;padding:8px 20px;border-radius:6px;font-size:12px;font-weight:600">{cta["text"]} →</a></div>'
+            cta_html = f'<div style="text-align:center;margin-top:12px"><a href="{_escape(cta["url"])}" style="display:inline-block;background:rgba(255,140,0,0.12);color:#FF8C00;text-decoration:none;padding:8px 20px;border-radius:6px;font-size:12px;font-weight:600">{_escape(cta["text"])} →</a></div>'
 
         sections_html += f"""
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid rgba(253,251,248,0.06)">
-<h2 style="color:#FF8C00;font-size:13px;font-weight:700;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:0.5px">{section.get('title', '')}</h2>
+<h2 style="color:#FF8C00;font-size:13px;font-weight:700;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:0.5px">{_escape(section.get('title', ''))}</h2>
 {items_html}
 {cta_html}
 </div>"""
@@ -223,7 +224,7 @@ async def send_digest_email(
 <div style="text-align:center;margin-bottom:24px">
 <div style="font-size:36px;margin-bottom:8px">{'' if period == 'daily' else ''}</div>
 <h1 style="color:#FDFBF8;font-size:22px;margin:0">{period_label} Digest</h1>
-<p style="color:rgba(253,251,248,0.4);font-size:13px;margin:6px 0 0">Hey {user_name}, here's your {period_label.lower()} summary</p>
+<p style="color:rgba(253,251,248,0.4);font-size:13px;margin:6px 0 0">Hey {_escape(user_name)}, here's your {period_label.lower()} summary</p>
 </div>
 {sections_html}
 <div style="text-align:center;margin-top:24px">
@@ -249,11 +250,11 @@ async def send_task_submitted_email(email: str, task_title: str, team_name: str,
 <h1 style="color:#FDFBF8;font-size:20px;margin:0">Task Submitted for Review</h1>
 </div>
 <p style="color:rgba(253,251,248,0.6);font-size:14px;line-height:1.6">
-<strong style="color:#FDFBF8">{submitter_name}</strong> submitted a task in <strong style="color:#FF8C00">{team_name}</strong> for your review:
+<strong style="color:#FDFBF8">{_escape(submitter_name)}</strong> submitted a task in <strong style="color:#FF8C00">{_escape(team_name)}</strong> for your review:
 </p>
 <div style="background:#0D0906;border-radius:8px;padding:16px;margin:16px 0;border:1px solid rgba(253,251,248,0.08)">
-<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{task_title}</p>
+<p style="color:#FDFBF8;font-size:14px;margin:0;font-weight:600">{_escape(task_title)}</p>
 </div>
 <p style="color:rgba(253,251,248,0.5);font-size:12px;margin:0">Log in to Onramp to review the submission.</p>
 </div></body></html>"""
-    return await send_email(email, f"Task submitted for review: {task_title}", html)
+    return await send_email(email, f"Task submitted for review: {_escape(task_title)}", html)

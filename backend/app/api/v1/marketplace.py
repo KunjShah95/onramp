@@ -16,6 +16,19 @@ router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 service = MarketplaceService()
 
 
+async def _require_team_manager(user: dict, team_id: str) -> None:
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    roles = [
+        team.get("role", "member")
+        for team in await get_user_teams(user.get("uid", ""))
+        if str(team.get("team_id") or team.get("id")) == str(team_id)
+    ]
+    if not roles or max(ROLE_HIERARCHY.get(role, 0) for role in roles) < ROLE_HIERARCHY.get("senior", 5):
+        raise HTTPException(status_code=403, detail="Senior/admin role required")
+
+
 class PublishRequest(BaseModel):
     source_playbook_id: str
 
@@ -55,12 +68,18 @@ async def get_listing(listing_id: str, _user: dict = Depends(get_current_user)):
 @router.post("/publish")
 async def publish(request: PublishRequest, user: dict = Depends(get_current_user)):
     """Publish one of your team's playbooks to the marketplace."""
+    source = await service.playbooks.get_playbook(request.source_playbook_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Playbook not found")
+    await _require_team_manager(user, str(source.get("team_id") or ""))
     try:
         return await service.publish(
             source_playbook_id=request.source_playbook_id,
             publisher_id=user.get("uid", ""),
             publisher_name=decrypt_field(user.get("name") or user.get("email", "")),
         )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -82,10 +101,13 @@ async def import_listing(
     listing_id: str, request: ImportRequest, user: dict = Depends(get_current_user)
 ):
     """Import a marketplace listing into a team as a new playbook."""
+    await _require_team_manager(user, request.team_id)
     try:
         return await service.import_listing(
             listing_id=listing_id, team_id=request.team_id, user_id=user.get("uid", "")
         )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -30,6 +30,35 @@ describe('OnrampClient', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer cf_test')
   })
 
+  it('keeps gateway API-key auth separate from JWT management auth', async () => {
+    const fetchMock = mockFetch((url) => {
+      if (url.endsWith('/v1/models')) return jsonResponse({ object: 'list', data: [] })
+      return jsonResponse({ valid: true, org_name: 'acme', tier: 'free' })
+    })
+    const client = new OnrampClient({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'cf_gateway',
+      sessionToken: 'jwt-session',
+    })
+
+    await client.listModels()
+    await client.validateApiKey('cf_other')
+
+    const gatewayHeaders = fetchMock.mock.calls[0][1].headers as Record<string, string>
+    const managementHeaders = fetchMock.mock.calls[1][1].headers as Record<string, string>
+    expect(gatewayHeaders.Authorization).toBe('Bearer cf_gateway')
+    expect(managementHeaders.Authorization).toBe('Bearer jwt-session')
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body as string)).toEqual({ raw_key: 'cf_other' })
+  })
+
+  it('fails clearly when a management method has no JWT session token', async () => {
+    const client = new OnrampClient({ apiKey: 'cf_gateway' })
+    await expect(client.validateApiKey('cf_other')).rejects.toMatchObject({
+      status: 401,
+      code: 'SESSION_REQUIRED',
+    })
+  })
+
   it('chat posts messages and returns completion', async () => {
     const completion = {
       id: 'chatcmpl-x',
@@ -40,7 +69,7 @@ describe('OnrampClient', () => {
       usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 },
     }
     mockFetch(() => jsonResponse(completion))
-    const client = new OnrampClient({ apiKey: 'k' })
+    const client = new OnrampClient({ apiKey: 'k', sessionToken: 'jwt' })
 
     const result = await client.chat([{ role: 'user', content: 'hello' }], { model: 'reasoning' })
     expect(result.choices[0].message.content).toBe('hi')
@@ -50,7 +79,7 @@ describe('OnrampClient', () => {
     mockFetch(() =>
       jsonResponse({ success: true, data: { agents: [{ name: 'health' }], count: 1 } }),
     )
-    const client = new OnrampClient({ apiKey: 'k' })
+    const client = new OnrampClient({ apiKey: 'k', sessionToken: 'jwt' })
     const agents = await client.listAgents()
     expect(agents).toEqual([{ name: 'health' }])
   })
@@ -70,7 +99,7 @@ describe('OnrampClient', () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ queued: true, task_id: 'task-1', index_id: 'idx-1' }),
     )
-    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k', sessionToken: 'jwt' })
 
     const result = await client.buildRepositoryIndex('https://github.com/acme/app', {
       branch: 'main',
@@ -93,7 +122,7 @@ describe('OnrampClient', () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ queued: true, count: 1, jobs: [{ task_id: 'task-1', index_id: 'idx-1' }] }),
     )
-    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k', sessionToken: 'jwt' })
 
     const result = await client.buildRepositoryIndexBatch(['https://github.com/acme/app'])
 
@@ -107,7 +136,7 @@ describe('OnrampClient', () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ result: { tools: [{ name: 'repo_context' }] } }),
     )
-    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k', sessionToken: 'jwt' })
 
     const tools = await client.listMcpTools()
 
@@ -120,7 +149,7 @@ describe('OnrampClient', () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ success: true, data: { team_id: 'team-1', totals: { trainees: 2 } } }),
     )
-    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k' })
+    const client = new OnrampClient({ baseUrl: 'https://api.example.com', apiKey: 'k', sessionToken: 'jwt' })
 
     const summary = await client.getRampSummary('team-1')
 
@@ -132,7 +161,7 @@ describe('OnrampClient', () => {
     const fetchMock = mockFetch(() =>
       jsonResponse({ object: 'list', data: [], model: 'gemini/x', usage: { prompt_tokens: 3, total_tokens: 3 } }),
     )
-    const client = new OnrampClient({ apiKey: 'k' })
+    const client = new OnrampClient({ apiKey: 'k', sessionToken: 'jwt' })
     await client.embeddings(['a', 'b'], { model: 'gemini' })
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     const body = JSON.parse(init.body as string)
@@ -158,7 +187,7 @@ describe('OnrampClient', () => {
         }),
       )) as typeof fetch
 
-    const client = new OnrampClient({ apiKey: 'k', timeoutMs: 5000 })
+    const client = new OnrampClient({ apiKey: 'k', sessionToken: 'jwt', timeoutMs: 5000 })
     const tokens: string[] = []
     for await (const token of await client.chatStream([{ role: 'user', content: 'hi' }])) {
       tokens.push(token)

@@ -314,6 +314,26 @@ GITHUB_USERINFO_URL = "https://api.github.com/user"
 GITHUB_SCOPES = "read:user user:email"
 
 
+def _verified_github_email(emails: object) -> str:
+    """Return a verified GitHub email, preferring the primary address.
+
+    The value from GitHub's ``/user`` response is intentionally not trusted:
+    that field does not carry a verification flag and may be attacker-controlled
+    stale data. Only ``/user/emails`` entries explicitly marked verified are
+    eligible for account matching.
+    """
+    if not isinstance(emails, list):
+        return ""
+    candidates = [
+        item for item in emails
+        if isinstance(item, dict) and item.get("verified") and item.get("email")
+    ]
+    if not candidates:
+        return ""
+    primary = next((item for item in candidates if item.get("primary")), None)
+    return str((primary or candidates[0])["email"]).strip().lower()
+
+
 async def get_github_login_url(mode: str = "login", uid: Optional[str] = None) -> str:
     """Build the GitHub OAuth consent screen URL.
 
@@ -393,38 +413,25 @@ async def handle_github_callback(code: str, state: str) -> dict:
 
         user_info = user_resp.json()
 
-    # Try to get primary email
-    email = user_info.get("email", "")
+        # Fetch the authoritative email list. ``/user.email`` has no verified
+        # flag, so it must never be used for login matching or account linking.
+        emails_resp = await client.get(
+            f"{GITHUB_USERINFO_URL}/emails",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Onramp-2.0",
+            },
+        )
+        email = _verified_github_email(
+            emails_resp.json() if emails_resp.status_code == 200 else None
+        )
+
     name = user_info.get("name", "") or user_info.get("login", "")
 
-    # GitHub doesn't always expose email in user endpoint
-    if not email:
-        # Try emails endpoint
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            emails_resp = await client.get(
-                f"{GITHUB_USERINFO_URL}/emails",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Accept": "application/vnd.github.v3+json",
-                    "User-Agent": "Onramp-2.0",
-                },
-            )
-            if emails_resp.status_code == 200:
-                emails = emails_resp.json()
-                if isinstance(emails, list):
-                    for e in emails:
-                        if isinstance(e, dict) and e.get("primary") and e.get("verified"):
-                            email = e["email"]
-                            break
-                    if not email and emails:
-                        first = emails[0]
-                        if isinstance(first, dict):
-                            email = first.get("email", "")
-
-    if not email:
-        raise ValueError("GitHub did not provide an email address. Make sure your GitHub email is public or grant email permission.")
-
-    github_id = str(user_info.get("id", ""))
+    github_id = str(user_info.get("id", "") or "")
+    if not github_id:
+        raise ValueError("GitHub did not provide a stable account id.")
     github_username = user_info.get("login", "") or None
 
     # Account linking: attach the GitHub identity to the authenticated user
@@ -452,6 +459,11 @@ async def handle_github_callback(code: str, state: str) -> dict:
             "refresh_token": tokens.get("refresh_token"),
         }
 
+    if not email:
+        raise ValueError(
+            "GitHub did not provide a verified email address. Verify an email "
+            "in GitHub and grant email permission."
+        )
     return await _find_or_create_oauth_user(
         email, name, "github.com", github_id, github_username=github_username
     )
@@ -487,6 +499,10 @@ async def link_github_identity(
         raise ValueError("Account not found — please sign in again.")
     if not user.get("is_active", True):
         raise ValueError("Account is deactivated.")
+    if not github_id:
+        raise ValueError("GitHub did not provide a stable account id to link.")
+    if user.get("github_id") and str(user["github_id"]) != str(github_id):
+        raise ValueError("This account is already linked to a different GitHub identity.")
 
     # A GitHub account (``github_id``) is globally unique — it must not already
     # be claimed by a *different* account, regardless of whether GitHub exposes
@@ -545,13 +561,27 @@ async def _find_or_create_oauth_user(
     created_new_user = False
 
     async with factory() as session:
-        result = await session.execute(
-            select(UserModel).where(UserModel.email_hash.in_(email_hash_candidates(email)))
-        )
-        user_row = result.scalar_one_or_none()
+        user_row = None
+        # GitHub's numeric id is the immutable identity. Resolve it before
+        # considering a verified email so a changed/unclaimed email cannot
+        # select a different account or overwrite an existing github_id.
+        if provider == "github.com" and provider_id:
+            result = await session.execute(
+                select(UserModel).where(UserModel.github_id == str(provider_id))
+            )
+            user_row = result.scalar_one_or_none()
+
+        # Verified email is only a migration/fallback path for legacy GitHub
+        # accounts that have not recorded github_id yet.
+        if user_row is None:
+            result = await session.execute(
+                select(UserModel).where(
+                    UserModel.email_hash.in_(email_hash_candidates(email))
+                )
+            )
+            user_row = result.scalar_one_or_none()
 
         if user_row:
-            # User exists — verify provider matches
             if user_row.provider != provider:
                 raise ValueError(
                     f"This email is already registered with {user_row.provider}. "
@@ -559,26 +589,33 @@ async def _find_or_create_oauth_user(
                 )
             if not user_row.is_active:
                 raise ValueError("Account is deactivated")
+            if (
+                provider == "github.com"
+                and user_row.github_id
+                and str(user_row.github_id) != str(provider_id)
+            ):
+                raise ValueError(
+                    "This account is already linked to a different GitHub identity."
+                )
 
             uid = user_row.id
             raw_email = user_row.email
             raw_name = user_row.name
             if raw_email.startswith("gAAAAA"):
                 raw_email = decrypt_field(raw_email)
-                raw_name = decrypt_field(raw_name)
+                if raw_name:
+                    raw_name = decrypt_field(raw_name)
 
-            # Sync GitHub identity on every GitHub sign-in so username changes
-            # propagate and the column is backfilled for existing accounts.
-            if github_username:
-                changed = False
-                if user_row.github_username != github_username:
+            changed = False
+            if provider == "github.com":
+                if github_username and user_row.github_username != github_username:
                     user_row.github_username = github_username
-                    user_row.updated_at = datetime.now(timezone.utc)
                     changed = True
-                if provider_id and user_row.github_id != provider_id:
-                    user_row.github_id = provider_id
+                if not user_row.github_id and provider_id:
+                    user_row.github_id = str(provider_id)
                     changed = True
                 if changed:
+                    user_row.updated_at = datetime.now(timezone.utc)
                     session.add(user_row)
         else:
             # Create new user
@@ -594,6 +631,7 @@ async def _find_or_create_oauth_user(
                 email_hash=email_hash(email),
                 name=hashed_name,
                 provider=provider,
+                email_verified=True,
                 is_active=True,
                 is_admin=False,
                 created_at=now,

@@ -21,26 +21,29 @@ Write-Host ""
 # Step 3: Get Info
 Write-Host "Step 3: Project Information" -ForegroundColor Blue
 $vercelProject = Read-Host "What is your Vercel project name?"
-$backendUrl = Read-Host "What is your Render backend URL? (https://ahs-2026.onrender.com)"
+$backendUrl = Read-Host "What is your Render backend URL? (HTTPS origin)"
 
 Write-Host ""
 
 # Step 4: Set Environment Variables
 Write-Host "Step 4: Setting Environment Variables in Vercel" -ForegroundColor Blue
-Write-Host "Adding VITE_API_URL = $backendUrl" -ForegroundColor Green
+if ([string]::IsNullOrWhiteSpace($backendUrl) -or -not $backendUrl.StartsWith('https://')) {
+    throw 'BACKEND_URL must be a non-empty https:// URL.'
+}
+$apiUrl = $backendUrl.TrimEnd('/')
+if (-not $apiUrl.EndsWith('/api/v1')) { $apiUrl = "$apiUrl/api/v1" }
+Write-Host "Adding VITE_API_URL = $apiUrl" -ForegroundColor Green
+Push-Location "web"
+try {
+    $apiUrl | vercel env add VITE_API_URL production
+} finally {
+    Pop-Location
+}
 
 Write-Host ""
-Write-Host "Run the following commands in Vercel dashboard or CLI:" -ForegroundColor Yellow
-Write-Host "vercel env add VITE_API_URL" -ForegroundColor Cyan
-Write-Host "(Then paste the backend URL when prompted)" -ForegroundColor Gray
-
-
-Write-Host ""
-
-# Step 5: Neon Auth env vars (optional)
 Write-Host "Step 5: Neon Auth Environment Variables" -ForegroundColor Yellow
 Write-Host "No Firebase vars needed — auth is handled via neon_auth tables in PostgreSQL." -ForegroundColor Green
-Write-Host "Optional: set VITE_NEON_AUTH_URL in Vercel if using a custom auth endpoint." -ForegroundColor Cyan
+Write-Host "Optional: set VITE_NEON_AUTH_URL in Vercel for a custom auth endpoint." -ForegroundColor Cyan
 
 # Step 6: Deploy
 Write-Host "Step 6: Deploy Frontend" -ForegroundColor Blue
@@ -61,14 +64,14 @@ vercel ls
 
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Yellow
-Write-Host "1. ✓ Verify Render backend has FRONTEND_URL_PROD environment variable set" -ForegroundColor Gray
+Write-Host "1. ✓ Verify Render backend has BACKEND_URL and FRONTEND_URL set" -ForegroundColor Gray
 Write-Host "2. ✓ Navigate to your Vercel domain in browser" -ForegroundColor Gray
 Write-Host "3. ✓ Sign in with Google OAuth" -ForegroundColor Gray
 Write-Host "4. ✓ Test the Analysis page with a GitHub repo URL" -ForegroundColor Gray
 
 Write-Host ""
 Write-Host "Backend Status:" -ForegroundColor Cyan
-Write-Host "  API URL: https://ahs-2026.onrender.com" -ForegroundColor Green
+Write-Host "  API URL: $backendUrl" -ForegroundColor Green
 Write-Host "  Check backend logs: https://dashboard.render.com" -ForegroundColor Gray
 
 Write-Host ""

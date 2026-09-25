@@ -11,6 +11,18 @@ import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import InputField from '../components/ui/first-principles/InputField'
 import PasswordField from '../components/ui/PasswordField'
 
+const AUTH_RETURN_STORAGE_KEY = 'onramp.authReturnTo'
+
+function safeInternalReturn(value: string | null | undefined): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes(':')) return null
+  return value
+}
+
+function rememberAuthReturn(value: string | null | undefined) {
+  if (!value) return
+  try { sessionStorage.setItem(AUTH_RETURN_STORAGE_KEY, value) } catch { /* storage optional */ }
+}
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,21 +34,31 @@ export default function Login() {
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
-  const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname
-  const isSafe = typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.includes(':')
-  const from = isSafe ? rawFrom : undefined
+  const fromLocation = (location.state as { from?: { pathname?: string; search?: string; hash?: string } })?.from
+  const stateReturn = fromLocation
+    ? safeInternalReturn(`${fromLocation.pathname || ''}${fromLocation.search || ''}${fromLocation.hash || ''}`)
+    : null
+  const queryReturn = safeInternalReturn(searchParams.get('returnTo'))
+  const from = stateReturn || queryReturn || undefined
 
   // Plan intent carried from landing #pricing via /register — after sign-in the user
   // lands directly in the billing funnel (Razorpay checkout).
-  const [searchParams] = useSearchParams()
   const planIntent = getPlanIntent(searchParams)
   const postAuthDest = planIntent ? billingUrlWithPlan(planIntent) : null
 
   useEffect(() => {
-    if (user && !loading) navigate(postAuthDest || from || homeForRole(role), { replace: true })
+    rememberAuthReturn(from)
+  }, [from])
+
+  useEffect(() => {
+    if (!user || loading) return
+    const destination = postAuthDest || from || homeForRole(role)
+    try { sessionStorage.removeItem(AUTH_RETURN_STORAGE_KEY) } catch { /* storage optional */ }
+    navigate(destination, { replace: true })
   }, [user, loading, navigate, postAuthDest, from, role])
 
   useEffect(() => {
@@ -101,7 +123,10 @@ export default function Login() {
           footer={
             <>
               <span>New to Onramp?</span>
-              <Link to={planIntent ? `/register?plan=${planIntent}` : '/register'} className="text-go font-semibold hover:text-go-lit transition-colors inline-flex items-center gap-1.5 ml-2">
+              <Link
+                to={`/register${planIntent ? `?plan=${planIntent}` : ''}${from ? `${planIntent ? '&' : '?'}returnTo=${encodeURIComponent(from)}` : ''}`}
+                className="text-go font-semibold hover:text-go-lit transition-colors inline-flex items-center gap-1.5 ml-2"
+              >
                 Create free account <ArrowUpRight size={14} weight="bold" />
               </Link>
             </>
@@ -118,6 +143,7 @@ export default function Login() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
             <a
               href={getGoogleLoginUrl()}
+              onClick={() => rememberAuthReturn(from)}
               aria-label="Continue with Google"
               className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >
@@ -126,6 +152,7 @@ export default function Login() {
             </a>
             <a
               href={getGithubLoginUrl()}
+              onClick={() => rememberAuthReturn(from)}
               aria-label="Continue with GitHub"
               className="inline-flex items-center justify-center gap-2 rounded-[5px] border border-seam bg-panel px-4 py-2.5 text-[13.5px] font-medium text-ink shadow-seam transition-colors hover:border-seam-strong hover:bg-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50"
             >

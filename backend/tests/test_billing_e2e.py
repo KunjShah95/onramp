@@ -4,9 +4,11 @@ Covers subscription CRUD, Razorpay subscription creation, webhook event
 processing (activated/charged/cancelled), idempotency, and audit logging.
 """
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 import pytest
 from app.services.billing_service import BillingService
+from app.services.postgres_db import idempotency_document_id
 
 
 @pytest.fixture
@@ -25,7 +27,9 @@ def service(monkeypatch):
 
 @pytest.fixture
 async def seeded_sub(service):
-    await service.create_subscription("team_e2e", "startup", "monthly")
+    await service.create_subscription(
+        "team_e2e", "startup", "monthly", verified_checkout=True
+    )
     await service.attach_razorpay("team_e2e", "cus_e2e", "sub_e2e")
     return "team_e2e"
 
@@ -42,7 +46,9 @@ def _make_webhook_event(event_type: str, entity: dict, **overrides: dict) -> byt
 
 class TestSubscriptionCRUD:
     async def test_create_and_get_subscription(self, service):
-        sub = await service.create_subscription("team_1", "startup", "monthly")
+        sub = await service.create_subscription(
+            "team_1", "startup", "monthly", verified_checkout=True
+        )
         assert sub["team_id"] == "team_1"
         assert sub["tier"] == "startup"
         assert sub["status"] == "active"
@@ -52,17 +58,28 @@ class TestSubscriptionCRUD:
         assert fetched is not None
         assert fetched["subscription_id"] == sub["subscription_id"]
 
+    async def test_direct_paid_subscription_stays_pending(self, service):
+        sub = await service.create_subscription("team_pending", "startup", "monthly")
+        assert sub["status"] == "pending"
+        assert await service.get_subscription("team_pending") is None
+
     async def test_get_nonexistent_subscription(self, service):
         assert await service.get_subscription("nonexistent") is None
 
     async def test_update_subscription_tier(self, service):
-        await service.create_subscription("team_1", "startup", "monthly")
+        await service.create_subscription(
+            "team_1", "startup", "monthly", verified_checkout=True
+        )
         updated = await service.update_subscription("team_1", "professional")
         assert updated["tier"] == "professional"
         assert updated["price"] == 2999
+        assert updated["status"] == "pending"
+        assert await service.get_subscription("team_1") is None
 
     async def test_cancel_subscription_hides_it(self, service):
-        await service.create_subscription("team_1", "startup", "monthly")
+        await service.create_subscription(
+            "team_1", "startup", "monthly", verified_checkout=True
+        )
         assert await service.cancel_subscription("team_1") is True
         assert await service.get_subscription("team_1") is None
 
@@ -70,7 +87,9 @@ class TestSubscriptionCRUD:
         assert await service.cancel_subscription("nonexistent") is False
 
     async def test_attach_razorpay_ids(self, service):
-        await service.create_subscription("team_1", "startup", "monthly")
+        await service.create_subscription(
+            "team_1", "startup", "monthly", verified_checkout=True
+        )
         assert await service.attach_razorpay("team_1", "cus_abc", "sub_xyz") is True
         sub = await service.get_subscription("team_1")
         assert sub["razorpay_customer_id"] == "cus_abc"
@@ -173,6 +192,75 @@ class TestWebhookEvents:
         r2 = await service.handle_webhook(payload, sig_header=None, idempotency_key="idem_1")
         assert r2["duplicate"] is True
 
+    async def test_stale_processing_claim_is_recovered(self, service):
+        payload = _make_webhook_event(
+            "payment.failed", {"id": "pay_stale"}, id="evt_stale"
+        )
+        key = idempotency_document_id("evt_stale")
+        await service.storage.create_document(
+            "onramp_webhook_idempotency",
+            key,
+            {
+                "idempotency_key": "evt_stale",
+                "event_id": "evt_stale",
+                "event_type": "payment.failed",
+                "status": "processing",
+                "claim_token": "abandoned-token",
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+        in_flight = await service.handle_webhook(payload, sig_header=None)
+        assert in_flight["duplicate"] is True
+
+        await service.storage.update_document(
+            "onramp_webhook_idempotency",
+            key,
+            {"processed_at": (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()},
+        )
+        recovered = await service.handle_webhook(payload, sig_header=None)
+        assert recovered == {"received": True, "type": "payment.failed"}
+        claim = await service.storage.get_document(
+            "onramp_webhook_idempotency", key
+        )
+        assert claim["status"] == "done"
+        assert claim["claim_token"] is None
+
+    async def test_failed_processing_releases_claim_for_retry(self, service, monkeypatch):
+        payload = _make_webhook_event(
+            "payment.failed", {"id": "pay_retry"},
+        )
+        calls = 0
+        original = service._process_event
+
+        async def _fail_once(event_type, data_obj):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("transient database failure")
+            return await original(event_type, data_obj)
+
+        monkeypatch.setattr(service, "_process_event", _fail_once)
+        first = await service.handle_webhook(
+            payload, sig_header=None, idempotency_key="retry-after-failure"
+        )
+        assert "error" in first
+        claim_id = idempotency_document_id("retry-after-failure")
+        failed_claim = await service.storage.get_document(
+            "onramp_webhook_idempotency", claim_id
+        )
+        assert failed_claim["status"] == "failed"
+
+        second = await service.handle_webhook(
+            payload, sig_header=None, idempotency_key="retry-after-failure"
+        )
+        assert second == {"received": True, "type": "payment.failed"}
+        done_claim = await service.storage.get_document(
+            "onramp_webhook_idempotency", claim_id
+        )
+        assert done_claim["status"] == "done"
+        assert calls == 2
+
     async def test_unhandled_event_types_are_logged(self, service, seeded_sub):
         payload = _make_webhook_event("subscription.halted", {"id": "sub_e2e"})
         result = await service.handle_webhook(payload, sig_header=None)
@@ -203,3 +291,13 @@ class TestPricingTiers:
 
     def test_professional_price_is_inr(self):
         assert BillingService.get_pricing()["professional"]["price_monthly"] == 2999
+
+    @pytest.mark.asyncio
+    async def test_enterprise_requires_internal_provisioning(self, service):
+        with pytest.raises(ValueError, match="internal provisioning"):
+            await service.create_subscription("team-enterprise", "enterprise")
+
+    @pytest.mark.asyncio
+    async def test_unknown_tier_is_rejected(self, service):
+        with pytest.raises(ValueError, match="Unknown subscription tier"):
+            await service.create_subscription("team-unknown", "not-a-tier")

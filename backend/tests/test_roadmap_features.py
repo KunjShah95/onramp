@@ -141,6 +141,7 @@ class TestPeerReview:
         from app.services import task_service as ts
         task = await ts.create_task(**_task_kwargs())
         await _to_submitted(task)
+        await ts.start_peer_review(task["task_id"], TUID_USER_JUNIOR2)
         updated = await ts.peer_review_task(
             task["task_id"], TUID_USER_JUNIOR2,
             {"comment": "Fix this"}, approve=False,

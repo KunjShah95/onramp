@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 import type { TeamRole } from '../../context/AuthContext'
@@ -45,6 +45,7 @@ export function resolveGuardAccess(opts: {
 
 export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGuardProps) {
   const { role, loading, user } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -56,6 +57,13 @@ export default function RoleGuard({ allowedRoles, minRole, allowNoTeam }: RoleGu
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  // Team creation is the recovery path for a teamless account. Without this
+  // exception, /team is denied for role=null and immediately redirects back to
+  // the first-run dashboard, creating a loop that makes team creation impossible.
+  if (!role && location.pathname === '/team') {
+    return <Outlet />
   }
 
   if (!resolveGuardAccess({ role, allowedRoles, minRole, allowNoTeam })) {

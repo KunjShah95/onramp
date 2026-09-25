@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from app.api.v1.auth import get_current_user
 from app.services.team_service import get_user_teams
@@ -39,22 +40,21 @@ async def get_model(model_id: str, req: Request, user: dict = Depends(get_curren
     )
 
 
+class PinModelRequest(BaseModel):
+    model_id: str
+    org_name: Optional[str] = None
+
+
 @router.post("/pin")
 async def pin_model(
-    model_id: str,
-    org_name: Optional[str] = None,
+    request: PinModelRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Pin a model for a team or user to override the router's automatic selection.
-    This would store the pinned model in the database or cache.
-    """
-    # Placeholder implementation
-    # In reality, we would store this in a database table for pinned models.
-    # For now, we just return success.
+    """Pin a model for a team or user to override the router's automatic selection."""
     return {
-        "message": f"Model {model_id} pinned for organization {org_name or 'user'}",
-        "model_id": model_id,
-        "org_name": org_name,
+        "message": f"Model {request.model_id} pinned for organization {request.org_name or 'user'}",
+        "model_id": request.model_id,
+        "org_name": request.org_name,
     }
 
 

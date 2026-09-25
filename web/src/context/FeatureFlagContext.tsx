@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
@@ -27,8 +28,10 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
   const { activeTeamId } = useAuth()
   const [flags, setFlags] = useState<FeatureFlag[]>([])
   const [loading, setLoading] = useState(true)
+  const requestIdRef = useRef(0)
 
   const fetch = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     if (!activeTeamId) {
       setFlags([])
       setLoading(false)
@@ -37,16 +40,23 @@ export function FeatureFlagProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const data = await listFeatureFlags(activeTeamId)
-      setFlags(data.flags ?? [])
+      if (requestId === requestIdRef.current) setFlags(data.flags ?? [])
     } catch (e) {
+      if (requestId !== requestIdRef.current) return
       console.warn('[FeatureFlags] fetch failed', e)
       setFlags([])
+    } finally {
+      if (requestId === requestIdRef.current) setLoading(false)
     }
-    setLoading(false)
   }, [activeTeamId])
 
   useEffect(() => {
-    fetch()
+    void fetch()
+    return () => {
+      // Invalidate any in-flight response when the provider unmounts or the
+      // active team changes before the request settles.
+      requestIdRef.current++
+    }
   }, [fetch])
 
   const isEnabled = useCallback(

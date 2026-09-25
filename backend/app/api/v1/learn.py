@@ -1,3 +1,4 @@
+﻿import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
@@ -7,6 +8,8 @@ from app.api.v1.index_access import authorize_repo_index
 from app.services.postgres_db import get_storage, generate_id
 from app.services.quota import enforce_quota
 from app.services.agent_session_helper import get_session, complete_session, fail_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/learn", tags=["learning"])
 
@@ -48,7 +51,7 @@ async def generate_path(
         await complete_session(sid, "learning_path_generator", success=True, payload={"user_level": request.user_level, "index_id": request.index_id})
     except Exception as e:
         await fail_session(sid, "learning_path_generator")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
     uid = user.get("uid", "anonymous")
     path_id = generate_id()

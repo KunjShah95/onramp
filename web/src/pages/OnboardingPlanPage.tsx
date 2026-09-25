@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '../lib/utils'
 import { PageHeader } from '../components/ui/page-header'
-import { createOnboardingPlan, getOnboardingPlan, getOnboardingPlanProgress, listOnboardingPlans, completeMilestone, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
+import { createOnboardingPlan, getOnboardingPlan, getOnboardingPlanProgress, listOnboardingPlans, completeMilestone, completePreBoardingTask, submitPulse, getPulseTrends, fetchPlanRoadmap } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import StatusTile from '../components/ui/status-tile'
 import { Modal } from '../components/ui/modal'
 import {
@@ -253,12 +254,13 @@ function PhaseColumn({ label, data, icon: Icon, hue }: { label: string; data: an
 
 export default function OnboardingPlanPage() {
   const { user, activeTeamId } = useAuth()
+  const toast = useToast()
   const [planId, setPlanId] = useState<string | null>(null)
   const [showPulse, setShowPulse] = useState(false)
 
   const { data: plans, isLoading: plansLoading, isError: plansError, refetch: refetchPlans } = useQuery({
     queryKey: ['onboardingPlans', activeTeamId],
-    queryFn: () => listOnboardingPlans({ team_id: activeTeamId || undefined }),
+    queryFn: () => listOnboardingPlans({ team_id: activeTeamId || undefined, user_id: user?.id || undefined }),
     enabled: !!activeTeamId, staleTime: 30_000,
   })
 
@@ -288,6 +290,25 @@ export default function OnboardingPlanPage() {
     onSuccess: (data) => { setPlanId(data.id); qc.invalidateQueries({ queryKey: ['onboardingPlans'] }) },
   })
 
+  const [completedPreBoardingIds, setCompletedPreBoardingIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setPlanId(null)
+    setCompletedPreBoardingIds(new Set())
+  }, [activeTeamId, user?.id])
+
+  const completePreBoardingMutation = useMutation({
+    mutationFn: (taskId: string) => completePreBoardingTask(taskId),
+    onSuccess: (task) => {
+      setCompletedPreBoardingIds((prev) => new Set(prev).add(task.id))
+      void qc.invalidateQueries({ queryKey: ['plan'] })
+      void qc.invalidateQueries({ queryKey: ['planProgress'] })
+      void qc.invalidateQueries({ queryKey: ['onboardingPlans'] })
+      toast.success('Task completed', task.title)
+    },
+    onError: (err: Error) => toast.error('Could not complete task', err.message),
+  })
+
   const plansLoadingAny = plansLoading || ( !!planId && planLoading )
   const planToShow = plan || (plans && plans[0])
 
@@ -307,7 +328,7 @@ export default function OnboardingPlanPage() {
   const allTotal = [...milestones30, ...milestones60, ...milestones90].length
   const fallbackProgressPct = allTotal > 0 ? Math.round((allDone / allTotal) * 100) : 0
   const progressPct = planProgress?.completion_percent ?? fallbackProgressPct
-  const preDone = preBoard.filter((t: any) => t.is_completed).length
+  const preDone = preBoard.filter((t: any) => t.is_completed || completedPreBoardingIds.has(t.id)).length
 
   if (plansLoadingAny) {
     return (
@@ -477,21 +498,33 @@ export default function OnboardingPlanPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                   {preBoard.map((t: any) => {
-                    const done = t.is_completed
+                    const done = t.is_completed || completedPreBoardingIds.has(t.id)
+                    const canComplete = t.assignee === 'developer'
+                    const isCompleting = completePreBoardingMutation.isPending && completePreBoardingMutation.variables === t.id
                     return (
                       <div key={t.id} className={cn(
-                          'p-3 rounded-xl border transition-all',
+                          'p-3 rounded-xl border transition-all flex flex-col',
                           done ? 'bg-well/30 border-[rgb(var(--border-rgb)/0.3)]' : 'bg-panel border-seam hover:border-seam-strong'
                         )}>
                         <div className={cn(
-                          'text-[10px] font-code px-1.5 py-0.5 rounded-md border inline-block mb-2',
+                          'text-[10px] font-code px-1.5 py-0.5 rounded-md border inline-block mb-2 self-start',
                           ASSIGNEE_COLORS[t.assignee] || 'text-ink-muted/40 border-seam bg-well'
                         )}>
                           {ASSIGNEE[t.assignee] || t.assignee}
                         </div>
-                        <p className={cn('text-body-xs leading-relaxed', done ? 'text-ink-muted/40 line-through' : 'text-ink')}>
+                        <p className={cn('text-body-xs leading-relaxed flex-1', done ? 'text-ink-muted/40 line-through' : 'text-ink')}>
                           {t.title}
                         </p>
+                        {canComplete && !done && (
+                          <button
+                            type="button"
+                            onClick={() => completePreBoardingMutation.mutate(t.id)}
+                            disabled={completePreBoardingMutation.isPending}
+                            className="mt-3 text-[11px] font-semibold text-go hover:text-go-lit disabled:opacity-40 self-start"
+                          >
+                            {isCompleting ? 'Completing…' : 'Mark complete'}
+                          </button>
+                        )}
                       </div>
                     )
                   })}

@@ -50,7 +50,6 @@ services:
       retries: 3
       start_period: 40s
     environment:
-      - ENVIRONMENT=production
       - ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -142,7 +141,6 @@ services:
       target: celery-worker
     restart: unless-stopped
     environment:
-      - ENVIRONMENT=production
       - ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -199,7 +197,6 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat -l info
     environment:
-      - ENVIRONMENT=production
       - ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -225,20 +222,19 @@ services:
           memory: 512M
 
   # ── n8n automation bus (self-host parity with Render onramp-n8n) ─────
-  # UI: http://localhost:5678 | webhooks: ${N8N_PUBLIC_URL:-http://localhost:5678/}/webhook/...
-  # Import n8n/workflows/*.json, set Slack/Telegram creds, Activate, then paste
-  # the production URL into Onramp Settings → Integrations → n8n (or N8N_WEBHOOK_URL).
+  # Set N8N_HOST to the public hostname and N8N_PUBLIC_URL to its HTTPS base
+  # URL. Production must never generate localhost webhook/OAuth callbacks.
   n8n:
     image: n8nio/n8n:2.41.0
     restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
-      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_HOST=${N8N_HOST:?N8N_HOST must be set to the public n8n hostname}
       - N8N_PORT=5678
-      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
-      - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-me-to-a-random-32-char-string}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-https}
+      - WEBHOOK_URL=${N8N_PUBLIC_URL:?N8N_PUBLIC_URL must be set to the public HTTPS n8n URL}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY must be set in production}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
       - N8N_INBOUND_SECRET=${N8N_INBOUND_SECRET:-}
       - N8N_DIAGNOSTICS_ENABLED=false

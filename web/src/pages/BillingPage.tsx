@@ -135,7 +135,7 @@ export default function BillingPage() {
   async function fetchWallet() {
     setWalletLoading(true)
     try {
-      const [w, l] = await Promise.all([getCreditWallet(), getCreditLedger(20)])
+      const [w, l] = await Promise.all([getCreditWallet(teamId || undefined), getCreditLedger(20, teamId || undefined)])
       setWallet(w)
       setLedger(l.entries || [])
     } catch { /* wallet may not exist yet */ }
@@ -193,7 +193,7 @@ export default function BillingPage() {
     try {
       const ok = await loadRazorpayScript()
       if (!ok) { toast.error('Could not load payment gateway', 'Check your connection and retry from the wallet section.'); return }
-      const order = await createCreditOrder({ amount_inr: topUpAmount })
+      const order = await createCreditOrder({ amount_inr: topUpAmount, team_id: teamId || undefined })
       const rzp = new (window as any).Razorpay({
         key: order.key_id,
         amount: order.amount,

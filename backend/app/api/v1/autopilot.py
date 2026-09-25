@@ -70,6 +70,23 @@ def _routing_mode(value: str) -> Any:
     return value.strip().lower()
 
 
+async def _require_team_role(user: dict, team_id: str, minimum: str = "senior") -> None:
+    """Fail closed unless the caller holds the required role in the repo tenant."""
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    roles = [
+        team.get("role", "member")
+        for team in teams or []
+        if str(team.get("team_id") or team.get("id")) == str(team_id)
+    ]
+    required = ROLE_HIERARCHY.get(minimum, 0)
+    if not roles or max(ROLE_HIERARCHY.get(role, 0) for role in roles) < required:
+        raise HTTPException(status_code=403, detail="Insufficient team role")
+
+
 async def _resolve_team(user: dict, requested_team_id: Optional[str]) -> Optional[str]:
     """Pick the team for task creation from the caller's session.
 
@@ -109,6 +126,8 @@ async def autopilot_analyze(
     before_route = getattr(llm, "last_route", None)
     try:
         repo_team_id = await authorize_registered_repo(user, request.repo_url, request.team_id)
+        if request.create_tasks:
+            await _require_team_role(user, repo_team_id, "senior")
         team_id = repo_team_id if request.create_tasks else None
         result = await service.analyze(
             repo_url=request.repo_url,
@@ -123,6 +142,8 @@ async def autopilot_analyze(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Autopilot analysis failed: {e}")
 
@@ -142,6 +163,9 @@ async def autopilot_run(
     before_route = getattr(llm, "last_route", None)
     try:
         repo_team_id = await authorize_registered_repo(user, request.repo_url, request.team_id)
+        # The solve path creates branches/PRs with the platform GitHub token and
+        # is always a senior/admin operation, even when task creation is off.
+        await _require_team_role(user, repo_team_id, "senior")
         team_id = repo_team_id if request.create_tasks else None
         result = await service.run(
             repo_url=request.repo_url,
@@ -159,5 +183,7 @@ async def autopilot_run(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Autopilot run failed: {e}")

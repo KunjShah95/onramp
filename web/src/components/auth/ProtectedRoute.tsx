@@ -40,11 +40,25 @@ export function AuthenticatedLayoutFallback() {
 }
 
 export default function ProtectedRoute() {
-  const { user, loading, initialized } = useAuth()
+  const { user, loading, initialized, error } = useAuth()
   const location = useLocation()
 
   if (loading || !initialized) {
     return <AuthenticatedLayoutFallback />
+  }
+
+  if (!user && error) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+        <div className="card max-w-md p-6 text-center" role="alert">
+          <h1 className="font-heading text-lg font-semibold text-ink mb-2">Connection interrupted</h1>
+          <p className="text-body-sm text-ink-muted mb-5">{error}</p>
+          <button type="button" onClick={() => window.location.reload()} className="btn btn-primary">
+            Retry
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {

@@ -42,10 +42,6 @@
   ],
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://onramp-tlfo.onrender.com/api/:path*"
-    },
-    {
       "source": "/",
       "destination": "/seo/index.html"
     },

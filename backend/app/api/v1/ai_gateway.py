@@ -21,6 +21,41 @@ key_service = APIKeyService()
 usage = UsageTracker()
 
 
+def _same_github_repo(left: str, right: str) -> bool:
+    from app.services.repo_index_access import parse_github_repo
+
+    a = parse_github_repo(left or "")
+    b = parse_github_repo(right or "")
+    return bool(a and b and a[0].lower() == b[0].lower() and a[1].lower() == b[1].lower())
+
+
+async def _authorize_agent_repository(
+    auth: dict,
+    body: Dict[str, Any],
+    index_id: str = "",
+    index_team_id: Optional[str] = None,
+) -> None:
+    """Authorize repository-backed agents before any GitHub token is supplied."""
+    repo_url = str(body.get("repo_url") or "").strip()
+    if not repo_url:
+        return
+    from app.api.v1.index_access import authorize_registered_repo
+
+    requested_team_id = index_team_id or auth.get("team_id")
+    if index_id:
+        await authorize_registered_repo(auth, repo_url, requested_team_id)
+        if body.get("repo_url"):
+            from app.services.repo_context import RepoContextService
+
+            index = await RepoContextService().get(index_id)
+            if not index:
+                raise HTTPException(status_code=404, detail="Index not found")
+            if not _same_github_repo(repo_url, str(index.get("repo_url") or "")):
+                raise HTTPException(status_code=400, detail="index_id does not match repo_url")
+    else:
+        await authorize_registered_repo(auth, repo_url, requested_team_id)
+
+
 async def resolve_org_team_id(org_name: str, user: dict) -> str:
     """Resolve an org identifier to a team UUID for storage scoping.
 
@@ -881,7 +916,8 @@ async def execute_agent(
 
     # Validate required params. ``index_id`` may substitute for ``repo_structure``
     # (agents resolve the requirement-slice from the repo-context index instead).
-    has_index = "index_id" in body
+    index_id = str(body.get("index_id") or "").strip()
+    has_index = bool(index_id)
     for param in agent_info["required_params"]:
         if param not in body and not (has_index and param == "repo_structure"):
             raise HTTPException(
@@ -892,15 +928,21 @@ async def execute_agent(
     # Index IDs are tenant-scoped resources, not arbitrary cache keys. API
     # keys carry their canonical team scope; JWT callers go through the shared
     # membership-aware helper.
-    if body.get("index_id"):
+    index_team_id = None
+    if has_index:
         if auth.get("auth_method") == "api_key":
             from app.services.repo_index_access import has_index_access
             team_id = auth.get("team_id")
-            if not team_id or not await has_index_access(str(body["index_id"]), str(team_id)):
+            if not team_id or not await has_index_access(index_id, str(team_id)):
                 raise HTTPException(status_code=403, detail="Index is not available to this API key")
+            index_team_id = str(team_id)
         else:
             from app.api.v1.index_access import authorize_repo_index
-            await authorize_repo_index(auth, str(body["index_id"]))
+            index_team_id = await authorize_repo_index(auth, index_id)
+
+    # Every agent that can use GitHub must be tied to a repository registered
+    # to the caller's tenant. This runs before selecting the platform token.
+    await _authorize_agent_repository(auth, body, index_id=index_id, index_team_id=index_team_id)
 
     # Check credits
     cost = APIKeyService.get_credit_cost(agent_info["credit_action"])
@@ -960,7 +1002,14 @@ async def execute_agent(
                 try:
                     jwt_teams = await get_user_teams(uid)
                     if jwt_teams:
-                        jwt_scope = jwt_teams[0].get("id") or jwt_teams[0].get("team_id") or uid
+                        team = min(
+                            jwt_teams,
+                            key=lambda item: (
+                                str(item.get("joined_at") or "9999"),
+                                str(item.get("team_id") or item.get("id") or ""),
+                            ),
+                        )
+                        jwt_scope = team.get("id") or team.get("team_id") or uid
                 except Exception:
                     pass
             if jwt_scope:
@@ -1006,7 +1055,7 @@ async def execute_agent(
             # Use team_id (UUID) as the canonical billing scope; fall back to org_name for JWT auth.
             try:
                 uid = auth.get("uid", "unknown")
-                billing_scope = auth.get("org_name") or (jwt_scope if not key_id else uid)
+                billing_scope = auth.get("team_id") or (jwt_scope if not key_id else uid)
                 await usage.record_usage(
                     org_name=billing_scope,
                     endpoint=agent_name,

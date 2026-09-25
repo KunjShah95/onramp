@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, HttpUrl
@@ -7,6 +8,8 @@ from app.api.v1.llm_route import attach_served_route_header
 from app.api.v1.auth import get_current_user
 from app.api.v1.index_access import authorize_registered_repository, authorize_repo_index
 from app.services.agent_session_helper import get_session, complete_session, fail_session
+
+logger = logging.getLogger("onramp.explore")
 
 router = APIRouter(prefix="/explore", tags=["architecture"])
 
@@ -31,6 +34,30 @@ def _extract_github_token(request: ExploreRequest, req: Request) -> Optional[str
     return None
 
 
+def _same_github_repo(left: str, right: str) -> bool:
+    from app.services.repo_index_access import parse_github_repo
+
+    a = parse_github_repo(left or "")
+    b = parse_github_repo(right or "")
+    return bool(a and b and a[0].lower() == b[0].lower() and a[1].lower() == b[1].lower())
+
+
+async def _authorize_explore_target(user: dict, request: ExploreRequest) -> str:
+    """Bind an optional index to the exact registered repository being analyzed."""
+    if request.index_id:
+        team_id = await authorize_repo_index(user, request.index_id)
+        from app.services.repo_context import RepoContextService
+
+        index = await RepoContextService().get(request.index_id)
+        if not index:
+            raise HTTPException(status_code=404, detail="Index not found")
+        if not _same_github_repo(str(request.repo_url), str(index.get("repo_url") or "")):
+            raise HTTPException(status_code=400, detail="index_id does not match repo_url")
+        # Re-check the explicit repository against the selected index tenant.
+        return await authorize_registered_repository(user, str(request.repo_url), team_id)
+    return await authorize_registered_repository(user, str(request.repo_url))
+
+
 @router.post("/analyze")
 async def analyze_repo(
     request: ExploreRequest,
@@ -39,12 +66,11 @@ async def analyze_repo(
     user: dict = Depends(get_current_user),
     _q=enforce_quota("explore"),
 ):
+    # Authorization is completed before a client or server GitHub token can
+    # reach ArchitectureExplorer/GitHubService.
+    team_id = await _authorize_explore_target(user, request)
     llm = getattr(req.app.state, "llm", None)
     github_token = _extract_github_token(request, req)
-    if request.index_id:
-        team_id = await authorize_repo_index(user, request.index_id)
-    else:
-        team_id = await authorize_registered_repository(user, str(request.repo_url))
     sid = await get_session(
         "architecture_explorer",
         user_id=user.get("uid"),
@@ -89,7 +115,7 @@ async def analyze_repo(
         raise
     except Exception as e:
         await fail_session(sid, "architecture_explorer")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.get("/health")

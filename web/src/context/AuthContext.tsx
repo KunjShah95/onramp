@@ -78,6 +78,28 @@ function isSafeAvatarUrl(url: string): boolean {
   }
 }
 
+const ACTIVE_TEAM_STORAGE_PREFIX = 'onramp.activeTeamId.'
+
+function activeTeamStorageKey(uid?: string | null): string {
+  return `${ACTIVE_TEAM_STORAGE_PREFIX}${uid || 'current-user'}`
+}
+
+function readPersistedActiveTeamId(uid?: string | null): string | null {
+  try {
+    return window.localStorage.getItem(activeTeamStorageKey(uid))
+  } catch {
+    return null
+  }
+}
+
+function persistActiveTeamId(uid: string | null | undefined, teamId: string): void {
+  try {
+    window.localStorage.setItem(activeTeamStorageKey(uid), teamId)
+  } catch {
+    // Storage may be unavailable in privacy mode; selection still works in memory.
+  }
+}
+
 function mapUser(raw: Record<string, unknown> | null | undefined): User | null {
   if (!raw || typeof raw !== 'object') return null
   const rawAvatar = (raw.avatar_url as string) || ''
@@ -109,28 +131,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const syncRoleFromTeams = useCallback(async (uid?: string, currentRole?: AuthState['role']): Promise<Exclude<AuthState['role'], null>> => {
-    try {
-      const teamsData = await listTeams(uid || 'current-user')
-      if (teamsData?.teams?.length > 0) {
-        const activeTeam = teamsData.teams[0]
-        const role = ((activeTeam as any).role as AuthState['role']) || 'junior_dev'
-        setState((prev) => ({
-          ...prev,
-          activeTeamId: (activeTeam as any).team_id || null,
-          role,
-        }))
-        return role
-      } else {
-        setState((prev) => ({ ...prev, role: null, activeTeamId: null }))
-        return 'junior_dev'
+    let teamsData: Awaited<ReturnType<typeof listTeams>> | null = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        teamsData = await listTeams(uid || 'current-user')
+        break
+      } catch (err) {
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 250))
       }
-    } catch {
-      // On failure, keep the current role rather than silently downgrading.
-      // The user will retain whatever role was previously set; the next
-      // navigation or retry will attempt to sync again.
-      console.warn('[Auth] Failed to sync role from teams — keeping current role')
     }
-    return currentRole ?? 'junior_dev'
+
+    if (!teamsData) {
+      // A team-list outage must not downgrade or clear an already-known role.
+      // The authenticated user stays signed in and a later refresh retries.
+      console.warn('[Auth] Failed to sync role from teams — keeping current role')
+      return currentRole ?? 'junior_dev'
+    }
+
+    const teams = teamsData?.teams ?? []
+    if (teams.length === 0) {
+      setState((prev) => ({ ...prev, role: 'junior_dev', activeTeamId: null }))
+      return 'junior_dev'
+    }
+
+    const persistedTeamId = readPersistedActiveTeamId(uid)
+    const activeTeam = teams.find((team: any) => (team.team_id || team.id) === persistedTeamId) ?? teams[0]
+    const activeTeamId = (activeTeam as any).team_id || (activeTeam as any).id || null
+    const role = ((activeTeam as any).role as AuthState['role']) || 'junior_dev'
+    if (activeTeamId) persistActiveTeamId(uid, activeTeamId)
+    setState((prev) => ({ ...prev, activeTeamId, role }))
+    return role
   }, [])
 
   const publicOnly = import.meta.env.MODE !== 'test' && /^\/(?:$|why-onramp|compare|changelog|docs|support|about|blog|contact|customers|security|dpa|soc-2|trust|privacy|terms|pricing|login|register|forgot-password|verify-email|reset-password|set-password|auth\/callback|join)/.test(pathname)
@@ -180,19 +210,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mountedRef.current) {
           setState((prev) => ({ ...prev, loading: false, initialized: true }))
         }
-      } catch {
-        // No valid session cookie — user is logged out.
-        clearTokens()
+      } catch (err) {
+        // authMe returns null for an actual 401/403. A thrown error therefore
+        // means the session could not be verified (offline, timeout, 5xx), not
+        // that the cookie is invalid. Keep the HttpOnly cookie and show a
+        // retryable connection state instead of destroying the session.
+        console.warn('[Auth] Session verification failed', err)
         if (mountedRef.current) {
-          setState({
+          setState((prev) => ({
+            ...prev,
             user: null,
             loading: false,
             initialized: true,
-            error: null,
+            error: 'Unable to verify your session. Check your connection and retry.',
             authMethod: null,
-            role: null,
-            activeTeamId: null,
-          })
+          }))
         }
       } finally {
         authCompletedRef.current = true
@@ -318,54 +350,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const switchTeam = useCallback(async (teamId: string) => {
-    setState((prev) => ({ ...prev, loading: true }))
+    setState((prev) => ({ ...prev, loading: true, error: null }))
     try {
       const teamsData = await listTeams('current-user')
       const targetTeam = teamsData.teams.find(
-        (t: any) => t.team_id === teamId
+        (t: any) => (t.team_id || t.id) === teamId
       )
-      if (targetTeam) {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          activeTeamId: teamId,
-               role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
-        }))
-      } else {
-        setState((prev) => ({ ...prev, loading: false }))
-      }
+      if (!targetTeam) throw new Error('You do not belong to that team')
+      persistActiveTeamId(state.user?.id, teamId)
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        activeTeamId: teamId,
+        role: ((targetTeam as any).role as TeamRole) || 'junior_dev',
+      }))
     } catch (err: any) {
       setState((prev) => ({ ...prev, loading: false, error: err.message || 'Failed to switch team' }))
+      throw err instanceof Error ? err : new Error(err.message || 'Failed to switch team')
     }
-  }, [])
+  }, [state.user?.id])
 
   const refreshRole = useCallback(async () => {
     try {
       const teamsData = await listTeams('current-user')
+      const teams = teamsData?.teams ?? []
       setState((prev) => {
         if (prev.activeTeamId) {
-          const targetTeam = teamsData.teams.find(
-            (t: any) => t.team_id === prev.activeTeamId
-          )
-          if (targetTeam) {
-            return {
-              ...prev,           role: ((targetTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
-            }
-          }
+          const targetTeam = teams.find((t: any) => (t.team_id || t.id) === prev.activeTeamId)
+          if (targetTeam) return { ...prev, role: ((targetTeam as any).role as TeamRole) || 'junior_dev' }
         }
-        if (teamsData?.teams?.length > 0) {
-          const activeTeam = teamsData.teams[0]
-          return {
-            ...prev,
-            activeTeamId: activeTeam.team_id,           role: ((activeTeam as any).role as 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr') || 'junior_dev',
-          }
+        const persistedTeamId = readPersistedActiveTeamId(state.user?.id)
+        const activeTeam = teams.find((t: any) => (t.team_id || t.id) === persistedTeamId) ?? teams[0]
+        const activeTeamId = activeTeam ? ((activeTeam as any).team_id || (activeTeam as any).id || null) : null
+        if (activeTeamId) persistActiveTeamId(state.user?.id, activeTeamId)
+        return {
+          ...prev,
+          activeTeamId,
+          role: activeTeam ? (((activeTeam as any).role as TeamRole) || 'junior_dev') : null,
         }
-        return { ...prev, role: null, activeTeamId: null }
       })
     } catch {
-      // Ignore
+      // Keep the last known role/team on a transient refresh failure.
     }
-  }, [])
+  }, [state.user?.id])
 
   const updateUser = useCallback((patch: Partial<User>) => {
     setState((prev) => (prev.user ? { ...prev, user: { ...prev.user, ...patch } } : prev))

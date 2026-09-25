@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 import secrets as _secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -12,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
 
 from app.database.config import db_config
@@ -126,6 +127,126 @@ async def get_current_user(request: Request) -> dict:
     if user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+
+class SSOConfigureRequest(BaseModel):
+    team_id: str
+    idp_type: str = Field(max_length=50)
+    domain: str = Field(max_length=255)
+    entity_id: str = Field(default="", max_length=2048)
+    sso_url: str = Field(default="", max_length=2048)
+    x509_cert: str = Field(default="", max_length=100_000)
+    metadata_xml: str = Field(default="", max_length=1_000_000)
+    model_config = ConfigDict(extra="forbid")
+
+
+class SSOTestRequest(BaseModel):
+    team_id: str
+    model_config = ConfigDict(extra="forbid")
+
+
+async def _require_sso_team_admin(user: dict, team_id: str) -> None:
+    from app.middleware.access_guard import ROLE_HIERARCHY
+    from app.services.team_service import get_user_teams
+
+    teams = await get_user_teams(user.get("uid", ""))
+    role = next(
+        (
+            membership.get("role", "member")
+            for membership in teams or []
+            if str(membership.get("team_id") or membership.get("id")) == str(team_id)
+        ),
+        None,
+    )
+    if role is None or ROLE_HIERARCHY.get(role, 0) < ROLE_HIERARCHY["admin"]:
+        raise HTTPException(status_code=403, detail="Team admin access required")
+
+
+@router.get("/sso/providers")
+async def list_sso_providers(user: dict = Depends(get_current_user)):
+    return {
+        "providers": [
+            {"idp_type": "okta", "name": "Okta", "description": "Okta SAML 2.0"},
+            {"idp_type": "azure_ad", "name": "Microsoft Entra ID", "description": "Microsoft Entra SAML 2.0"},
+            {"idp_type": "google_workspace", "name": "Google Workspace", "description": "Google Workspace SAML 2.0"},
+            {"idp_type": "onelogin", "name": "OneLogin", "description": "OneLogin SAML 2.0"},
+            {"idp_type": "custom", "name": "Custom SAML", "description": "Custom SAML 2.0 identity provider"},
+        ]
+    }
+
+
+@router.post("/sso/configure")
+async def configure_sso_endpoint(
+    body: SSOConfigureRequest,
+    user: dict = Depends(get_current_user),
+):
+    from dataclasses import asdict
+    from app.services.outbound_url import OutboundURLError, validate_outbound_url
+    from app.services.sso_service import IdpConfig, get_config, save_config
+
+    await _require_sso_team_admin(user, body.team_id)
+    allowed_types = {"okta", "azure_ad", "google_workspace", "onelogin", "custom"}
+    if body.idp_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Unsupported SSO provider")
+    domain = body.domain.strip().lower()
+    if not re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", domain):
+        raise HTTPException(status_code=400, detail="Invalid SSO domain")
+    if not body.entity_id.strip() or not body.sso_url.strip() or not body.x509_cert.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="entity_id, sso_url, and x509_cert are required; metadata import is not enabled",
+        )
+    try:
+        validate_outbound_url(body.sso_url.strip())
+    except OutboundURLError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    existing = await get_config(body.team_id)
+    config = IdpConfig(
+        team_id=body.team_id,
+        idp_type=body.idp_type,
+        entity_id=body.entity_id,
+        sso_url=body.sso_url,
+        x509_cert=body.x509_cert,
+        domain=domain,
+        metadata_xml=body.metadata_xml,
+        active=True,
+        config_id=existing.config_id if existing else "",
+        created_at=existing.created_at if existing else "",
+    )
+    saved = await save_config(config)
+    return asdict(saved)
+
+
+@router.get("/sso/config/{team_id}")
+async def get_sso_config_endpoint(team_id: str, user: dict = Depends(get_current_user)):
+    from dataclasses import asdict
+    from app.services.sso_service import get_config
+
+    await _require_sso_team_admin(user, team_id)
+    config = await get_config(team_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="SSO configuration not found")
+    return asdict(config)
+
+
+@router.delete("/sso/config/{team_id}")
+async def delete_sso_config_endpoint(team_id: str, user: dict = Depends(get_current_user)):
+    from app.services.sso_service import delete_config
+
+    await _require_sso_team_admin(user, team_id)
+    return {"deleted": await delete_config(team_id)}
+
+
+@router.post("/sso/test")
+async def test_sso_connection_endpoint(
+    body: SSOTestRequest,
+    user: dict = Depends(get_current_user),
+):
+    from app.services.sso_service import test_connection
+
+    await _require_sso_team_admin(user, body.team_id)
+    return await test_connection(body.team_id)
 
 
 async def get_user_or_api_key(request: Request) -> dict:
@@ -533,7 +654,8 @@ async def register(body: RegisterRequest):
             )
         else:
             logger.info("=" * 60)
-            logger.info("EMAIL VERIFICATION LINK (dev mode): %s", verification_link)
+            if os.getenv("ENV", "development").lower() in ("development", "test"):
+                logger.info("EMAIL VERIFICATION LINK (dev mode): %s", verification_link)
             logger.info("=" * 60)
     except Exception:
         logger.exception("Failed to send verification email to %s", body.email)
@@ -933,7 +1055,6 @@ class UpdateProfileRequest(BaseModel):
     name: str | None = None
     position: str | None = None
     avatar_url: str | None = None
-    github_username: str | None = None
     email: str | None = None  # accepted in schema but rejected in the handler
 
 
@@ -969,15 +1090,6 @@ async def update_me(
         if len(body.avatar_url) > 2048:
             raise HTTPException(status_code=400, detail="Avatar URL must be 2048 characters or fewer")
         data["avatar_url"] = body.avatar_url
-    if body.github_username is not None:
-        if len(body.github_username) > 39:
-            raise HTTPException(status_code=400, detail="GitHub username must be 39 characters or fewer")
-        # Basic username sanity: alphanum + hyphen, not starting/ending with hyphen
-        import re
-        if body.github_username and not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$", body.github_username):
-            raise HTTPException(status_code=400, detail="Invalid GitHub username format")
-        data["github_username"] = body.github_username
-
     try:
         updated = await update_user_profile(uid, data)
     except ValueError as exc:
@@ -1181,7 +1293,8 @@ async def forgot_password(body: ForgotPasswordRequest):
     if not email_sent:
         # Dev mode: log the reset link
         logger.info("=" * 60)
-        logger.info("PASSWORD RESET LINK (dev mode): %s", reset_link)
+        if os.getenv("ENV", "development").lower() in ("development", "test"):
+            logger.info("PASSWORD RESET LINK (dev mode): %s", reset_link)
         logger.info("=" * 60)
 
     return {"ok": True, "message": "If an account exists, a reset link has been sent."}
@@ -1319,6 +1432,16 @@ async def reset_password(body: ResetPasswordRequest):
         except Exception:
             logger.exception("Failed to atomically claim reset nonce")
             raise HTTPException(status_code=500, detail="Could not verify reset token")
+    # Revoke every refresh-token family before changing the password. If this
+    # fails, do not commit a reset that could leave stolen sessions usable.
+    try:
+        from app.services.refresh_token_service import revoke_all_user_tokens
+
+        await revoke_all_user_tokens(uid, reason="password_reset", strict=True)
+    except Exception:
+        logger.exception("Failed to revoke refresh tokens after password reset for %s", uid)
+        raise HTTPException(status_code=500, detail="Could not revoke existing sessions")
+
     # Update password in database
     password_hash = _core_security.hash_password(body.password)
     now = datetime.now(timezone.utc)
@@ -1341,22 +1464,6 @@ async def reset_password(body: ResetPasswordRequest):
         user_row.updated_at = now
         session.add(user_row)
         await session.commit()
-
-    # Security: invalidate ALL refresh tokens for this user after password
-    # reset so any stolen/leaked tokens are immediately useless.
-    try:
-        storage = get_storage()
-        existing = await storage.query_documents(
-            REFRESH_TOKEN_COLLECTION, [("user_id", "==", uid)]
-        )
-        for e in existing:
-            await storage.update_document(
-                REFRESH_TOKEN_COLLECTION, e["id"],
-                {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat(),
-                 "revoked_reason": "password_reset"}
-            )
-    except Exception:
-        logger.exception("Failed to revoke refresh tokens after password reset for %s", uid)
 
     logger.info("Password reset successful for user: %s", uid[:12])
     return {"ok": True, "message": "Password has been reset successfully."}

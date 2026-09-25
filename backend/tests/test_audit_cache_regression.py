@@ -52,7 +52,7 @@ class TestLogEventTeamId:
 
 
 class FakeRedis:
-    """Minimal async Redis surface used by cache_service (get/setex/keys/delete)."""
+    """Minimal async Redis surface used by cache_service."""
 
     def __init__(self):
         self.store = {}
@@ -64,16 +64,18 @@ class FakeRedis:
         self.store[key] = value
         return True
 
-    async def keys(self, pattern):
+    async def scan_iter(self, match=None, count=None):
         import fnmatch
 
-        return [k for k in self.store if fnmatch.fnmatch(k, pattern)]
+        for key in list(self.store):
+            if match is None or fnmatch.fnmatch(key, match):
+                yield key
 
-    async def delete(self, *keys):
+    async def unlink(self, *keys):
         removed = 0
-        for k in keys:
-            if k in self.store:
-                del self.store[k]
+        for key in keys:
+            if key in self.store:
+                del self.store[key]
                 removed += 1
         return removed
 

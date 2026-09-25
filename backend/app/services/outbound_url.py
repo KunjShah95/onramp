@@ -30,15 +30,22 @@ def validate_outbound_url(url: str, *, allow_http: bool = False) -> str:
 
     Raises ``OutboundURLError`` for malformed URLs, private/local destinations,
     URL credentials, and non-HTTPS production schemes.
+
+    In non-production environments (ENV != production), HTTP and private/local
+    destinations are permitted to support local n8n and other dev integrations.
     """
+    dev_mode = os.getenv("ENV", "development").lower() != "production"
     raw = (url or "").strip()
     parsed = urlparse(raw)
-    if parsed.scheme not in ({"https", "http"} if allow_http else {"https"}):
+    if parsed.scheme not in ({"https", "http"} if (allow_http or dev_mode) else {"https"}):
         raise OutboundURLError("Outbound integrations must use HTTPS")
     if not parsed.hostname or parsed.username or parsed.password:
         raise OutboundURLError("Outbound URL must contain a host and no credentials")
     if parsed.fragment:
         raise OutboundURLError("Outbound URL fragments are not allowed")
+
+    if dev_mode:
+        return raw
 
     host = parsed.hostname.rstrip(".").lower()
     if host in {"localhost", "localhost.localdomain"} or host.endswith(".localhost"):

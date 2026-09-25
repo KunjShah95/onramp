@@ -19,6 +19,7 @@ import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import { useThemeSignals } from '../hooks/useThemeSignals'
 import ApiCostTracking from '../components/dashboard/ApiCostTracking'
 import RampPanel from '../components/dashboard/RampPanel'
@@ -41,6 +42,7 @@ const TOOLTIP = {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function ExecutivePage() {
+  const { activeTeamId } = useAuth()
   const SIG = useThemeSignals()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -48,11 +50,11 @@ export default function ExecutivePage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchSeedRoleData()
+    fetchSeedRoleData(activeTeamId || undefined)
       .then((res) => { if (!cancelled) { setSeedData(res.data); setLoading(false) } })
       .catch((err) => { if (!cancelled) { setError(err.message); setLoading(false) } })
     return () => { cancelled = true }
-  }, [])
+  }, [activeTeamId])
 
   const d = seedData
   const mrr = d?.mrr ?? 0

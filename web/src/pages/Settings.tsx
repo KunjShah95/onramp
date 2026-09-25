@@ -12,7 +12,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
 import { useAuth } from '../context/AuthContext'
-import { getToken } from '../lib/neon-auth'
 import { PageHeader } from '../components/ui/page-header'
 import { InlineLoading } from '../components/ui/Skeleton'
 import { cn } from '../lib/utils'
@@ -36,7 +35,6 @@ import {
   listJiraProjects,
   testLinearConnection,
   listLinearTeams,
-  listTeams,
   configureSso,
   getSsoConfig,
   testSsoConnection,
@@ -111,7 +109,7 @@ export default function Settings() {
   const [name, setName] = useState('')
   const [position, setPosition] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
-  const [githubUsername, setGithubUsername] = useState('')
+  const githubUsername = user?.githubUsername || ''
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
@@ -219,7 +217,6 @@ export default function Settings() {
     setName(user?.name || user?.displayName || '')
     setPosition(user?.position || '')
     setAvatarUrl(user?.photoURL || '')
-    setGithubUsername(user?.githubUsername || '')
     setEmail(user?.email || '')
   }, [user])
 
@@ -357,15 +354,12 @@ export default function Settings() {
       return
     }
     setAvatarError('')
-    const token = getToken()
-    if (!token) return
     setSaving(true); setSavedMsg('')
     try {
       const updated = await updateProfile({
         name: name.trim(),
         position: position.trim() || null,
         avatar_url: trimmedAvatar || null,
-        github_username: githubUsername.trim() || null,
       })
       updateUser({ name: updated.name, displayName: updated.name, position: updated.position || undefined, photoURL: updated.avatar_url || undefined, githubUsername: updated.github_username || undefined })
       setSavedMsg('Profile saved'); toast.success('Profile saved')
@@ -519,15 +513,14 @@ export default function Settings() {
                       <input
                         type="text"
                         value={githubUsername}
-                        onChange={e => setGithubUsername(e.target.value)}
+                        readOnly
                         className="input pl-10"
-                        placeholder="octocat"
-                        maxLength={39}
+                        placeholder="Not linked"
                       />
                     </div>
                     <p className="text-caption text-ink-muted mt-1.5">
-                      Used to connect your account to GitHub issues and PRs so your work is
-                      auto-linked and recognized.
+                      GitHub identity is verified through the OAuth linking flow and cannot be
+                      edited here.
                     </p>
                   </div>
                   <div>
@@ -1307,32 +1300,33 @@ function SsoConfigSection() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState('')
-  const { user } = useAuth()
+  const { activeTeamId } = useAuth()
   const toast = useToast()
 
   useEffect(() => {
-    async function load() {
-      if (!user?.id) return
-      setLoading(true)
-      try {
-        const teamsData = await listTeams(user.id)
-        if (teamsData.teams?.length > 0) {
-          const tid = teamsData.teams[0].team_id
-          setTeamId(tid)
-          try {
-            const existing = await getSsoConfig(tid)
-            setExistingConfig(existing)
-            setIdpType(existing.idp_type)
-            setEntityId(existing.entity_id)
-            setSsoUrl(existing.sso_url)
-            setDomain(existing.domain)
-          } catch { /* no existing config */ }
-        }
-      } catch { /* ignore */ }
+    let cancelled = false
+    setTeamId(activeTeamId ?? '')
+    setExistingConfig(null)
+    if (!activeTeamId) {
       setLoading(false)
+      return () => { cancelled = true }
     }
-    load()
-  }, [user?.id])
+
+    setLoading(true)
+    void getSsoConfig(activeTeamId)
+      .then((existing) => {
+        if (cancelled) return
+        setExistingConfig(existing)
+        setIdpType(existing.idp_type)
+        setEntityId(existing.entity_id)
+        setSsoUrl(existing.sso_url)
+        setDomain(existing.domain)
+      })
+      .catch(() => { /* no existing config */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+
+    return () => { cancelled = true }
+  }, [activeTeamId])
 
   async function handleSave() {
     if (!teamId) { setMessage('No team selected'); return }

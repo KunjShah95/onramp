@@ -6,6 +6,7 @@ import json
 import pytest
 
 from app.services.billing_service import BillingService
+from app.services.postgres_db import idempotency_document_id
 
 
 @pytest.fixture
@@ -61,6 +62,34 @@ async def test_secret_and_header_present_but_invalid_signature_is_rejected(servi
 
     event = await service._verify_and_parse_event(payload, sig_header="not-a-real-signature")
     assert event is None
+
+
+async def test_signed_razorpay_event_processes_and_claim_is_done(service, monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("RAZORPAY_WEBHOOK_SECRET", "whsec_test")
+    payload = json.dumps({
+        "event": "subscription.activated",
+        "payload": {"subscription": {"entity": {
+            "id": "sub_signed",
+            "customer_id": "cus_signed",
+            "plan_id": "plan_signed",
+            "notes": {"team_id": "team_signed"},
+        }}},
+    }).encode()
+    import hashlib
+    import hmac
+
+    signature = hmac.new(b"whsec_test", payload, hashlib.sha256).hexdigest()
+
+    result = await service.handle_webhook(payload, signature, "signed-event")
+
+    assert result["received"] is True
+    claim = await service.storage.get_document(
+        "onramp_webhook_idempotency",
+        idempotency_document_id("signed-event"),
+    )
+    assert claim["status"] == "done"
+    assert claim["claim_token"] is None
 
 
 async def test_handle_webhook_returns_error_on_invalid_signature(service, monkeypatch):

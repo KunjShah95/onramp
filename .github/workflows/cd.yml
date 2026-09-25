@@ -19,6 +19,7 @@ jobs:
       # Actions pinned to commit SHA (supply-chain hardening); the tag is in a comment.
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Check required secrets are configured
+        id: credentials
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -26,6 +27,7 @@ jobs:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
           RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
         run: |
+          set -u
           MISSING=""
           for var in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID RENDER_DEPLOY_HOOK_URL RENDER_SERVICE_URL; do
             if [ -z "${!var}" ]; then
@@ -34,11 +36,21 @@ jobs:
           done
           if [ -n "$MISSING" ]; then
             echo "⚠️ Missing GitHub secrets:$MISSING"
-            echo "Frontend/backend deployment will be skipped for missing credentials."
+            echo "Affected deployment will be skipped explicitly; no deploy step will run with partial credentials."
             echo "Configure secrets in: Settings → Secrets and variables → Actions"
           else
             echo "✅ All required secrets configured."
           fi
+          vercel_ready=true
+          for var in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!var}" ]; then vercel_ready=false; fi
+          done
+          render_ready=true
+          for var in RENDER_DEPLOY_HOOK_URL RENDER_SERVICE_URL; do
+            if [ -z "${!var}" ]; then render_ready=false; fi
+          done
+          echo "vercel_ready=$vercel_ready" >> "$GITHUB_OUTPUT"
+          echo "render_ready=$render_ready" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Deploy frontend → Vercel
@@ -46,16 +58,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_READY: ${{ needs.pre-deploy-check.outputs.vercel_ready }}
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Skip notice
-        if: env.VERCEL_TOKEN == ''
-        run: echo "VERCEL_TOKEN not configured — skipping Vercel deploy. Add VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets to enable."
+        if: env.VERCEL_READY != 'true'
+        run: echo "Vercel credentials incomplete — skipping frontend deploy. Add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID."
 
       - uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25.2.0
-        if: env.VERCEL_TOKEN != ''
+        if: env.VERCEL_READY == 'true'
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -65,14 +80,17 @@ jobs:
           working-directory: web
 
       - name: Smoke test — frontend
-        if: env.VERCEL_TOKEN != ''
+        if: env.VERCEL_READY == 'true'
         run: |
           # Fetch the production deployment URL from Vercel API
           DEPLOYED_URL=$(curl -fsSL \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}/domains" \
-            | python3 -c "import sys,json; data=json.load(sys.stdin); print(next((d['name'] for d in data.get('domains',[]) if d.get('verified')), 'unknown'))" 2>/dev/null || echo "https://onramp.vercel.app")
-          FULL_URL="https://${DEPLOYED_URL}"
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print(next((d['name'] for d in data.get('domains',[]) if d.get('verified')), 'unknown'))" 2>/dev/null || echo "onramp.vercel.app")
+          case "$DEPLOYED_URL" in
+            http://*|https://*) FULL_URL="$DEPLOYED_URL" ;;
+            *) FULL_URL="https://${DEPLOYED_URL}" ;;
+          esac
           echo "Checking $FULL_URL..."
           HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" "$FULL_URL" 2>/dev/null || echo "000")
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
@@ -88,24 +106,26 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      RENDER_SERVICE_URL: ${{ secrets.RENDER_SERVICE_URL }}
+      RENDER_READY: ${{ needs.pre-deploy-check.outputs.render_ready }}
 
     steps:
       - name: Trigger Render deploy hook
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        if: env.RENDER_READY == 'true'
         run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"
 
       - name: Skip notice
-        if: env.RENDER_DEPLOY_HOOK_URL == ''
-        run: echo "RENDER_DEPLOY_HOOK_URL not configured — skipping backend deploy. Add the RENDER_DEPLOY_HOOK_URL secret to enable."
+        if: env.RENDER_READY != 'true'
+        run: echo "Render credentials incomplete — skipping backend deploy. Add RENDER_DEPLOY_HOOK_URL and RENDER_SERVICE_URL."
 
       - name: Smoke test — backend
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        if: env.RENDER_READY == 'true'
         run: |
           sleep 30
           # Use RENDER_DEPLOY_HOOK_URL to derive the service URL
           # Render hooks follow: https://api.render.com/deploy/srv-<id>?key=<key>
           # The actual service URL should be configured as a secret.
-          DEPLOYED_API_URL="${{ secrets.RENDER_SERVICE_URL }}"
+          DEPLOYED_API_URL="$RENDER_SERVICE_URL"
           if [ -z "$DEPLOYED_API_URL" ]; then
             echo "❌ RENDER_SERVICE_URL not configured; refusing to skip production smoke test."
             exit 1

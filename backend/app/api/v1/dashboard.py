@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.services.usage_tracker import UsageTracker
@@ -21,19 +21,35 @@ _billing = BillingService()
 _tracker = ContributorTracker()
 
 
-async def _get_user_team(user: dict) -> str:
-    """Get the first team the user belongs to, or use their user_id as org scope."""
+async def _get_user_team(user: dict, requested_team_id: Optional[str] = None) -> str:
+    """Resolve a requested team or a deterministic primary membership."""
     teams = await get_user_teams(user.get("uid", ""))
+    if requested_team_id:
+        allowed = {str(t.get("team_id") or t.get("id")) for t in teams or []}
+        if str(requested_team_id) not in allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+        return str(requested_team_id)
     if teams:
-        return teams[0].get("team_id") or teams[0].get("id") or user.get("uid")
-    return user.get("uid")
+        team = min(
+            teams,
+            key=lambda item: (
+                str(item.get("joined_at") or "9999"),
+                str(item.get("team_id") or item.get("id") or ""),
+            ),
+        )
+        return str(team.get("team_id") or team.get("id") or user.get("uid"))
+    return str(user.get("uid"))
 
 
 @router.get("/dashboard/cto")
 @cached("dashboard", ttl=120)
-async def cto_dashboard(request: Request, user: dict = Depends(get_current_user)):
+async def cto_dashboard(
+    request: Request,
+    team_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
     """Return aggregated senior/team-lead dashboard metrics from real data."""
-    team_id = await _get_user_team(user)
+    team_id = await _get_user_team(user, team_id)
 
     # ── Task progress ────────────────────────────────────────
     team_progress = await get_team_progress(team_id)
@@ -144,9 +160,13 @@ async def cto_dashboard(request: Request, user: dict = Depends(get_current_user)
 
 @router.get("/dashboard/team")
 @cached("dashboard", ttl=120)
-async def team_analytics(request: Request, user: dict = Depends(get_current_user)):
+async def team_analytics(
+    request: Request,
+    team_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
     """Return team analytics with per-user task completion data."""
-    team_id = await _get_user_team(user)
+    team_id = await _get_user_team(user, team_id)
     members = await get_team_members(team_id)
 
     member_list = []
@@ -181,9 +201,7 @@ async def trainee_dashboard(
     user: dict = Depends(get_current_user),
 ):
     uid = user.get("uid", "")
-    if not team_id:
-        teams = await get_user_teams(uid)
-        team_id = teams[0].get("team_id") if teams else uid
+    team_id = await _get_user_team(user, team_id)
 
     progress = await get_user_progress(uid, team_id=team_id)
     my_tasks = await list_tasks(team_id=team_id, assigned_to=uid)
@@ -219,9 +237,12 @@ async def trainee_dashboard(
 
 
 @router.get("/usage/dashboard")
-async def usage_dashboard(user: dict = Depends(get_current_user)):
+async def usage_dashboard(
+    team_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
     """Return comprehensive usage dashboard for the user's team/org."""
-    org_name = await _get_user_team(user)
+    org_name = await _get_user_team(user, team_id)
 
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

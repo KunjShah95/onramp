@@ -18,7 +18,7 @@ interface ChecklistItem {
 }
 
 export default function OnboardingHubPage() {
-  const { user } = useAuth()
+  const { user, activeTeamId } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [seedData, setSeedData] = useState<any>(null)
@@ -26,13 +26,17 @@ export default function OnboardingHubPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchSeedRoleData()
+    fetchSeedRoleData(activeTeamId || undefined)
       .then((res) => {
         if (cancelled) return
         const d = res.data
         setSeedData(d)
         if (d?.checklist) {
-          setChecklist(d.checklist.map((c: any) => ({ label: c.label, done: c.done })))
+          const key = `onramp:onboarding-checklist:${user?.id || 'user'}:${activeTeamId || 'none'}`
+          let savedDone: string[] = []
+          try { savedDone = JSON.parse(localStorage.getItem(key) || '[]') } catch { /* ignore invalid local state */ }
+          const done = new Set<string>(savedDone)
+          setChecklist(d.checklist.map((c: any) => ({ label: c.label, done: c.done || done.has(c.label) })))
         }
         setLoading(false)
       })
@@ -40,7 +44,7 @@ export default function OnboardingHubPage() {
         if (!cancelled) { setError(err.message); setLoading(false) }
       })
     return () => { cancelled = true }
-  }, [])
+  }, [activeTeamId, user?.id])
 
   const completedCount = checklist.filter((c) => c.done).length
   const totalCount = checklist.length
@@ -101,11 +105,13 @@ export default function OnboardingHubPage() {
                     <div
                       key={item.label}
                       onClick={() => {
-                        if (!item.done) {
-                          setChecklist((prev) =>
-                            prev.map((c) => (c.label === item.label ? { ...c, done: true } : c))
-                          )
-                        }
+                        if (item.done) return
+                        setChecklist((prev) => {
+                          const next = prev.map((c) => (c.label === item.label ? { ...c, done: true } : c))
+                          const key = `onramp:onboarding-checklist:${user?.id || 'user'}:${activeTeamId || 'none'}`
+                          localStorage.setItem(key, JSON.stringify(next.filter((c) => c.done).map((c) => c.label)))
+                          return next
+                        })
                       }}
                       className={cn(
                         'flex items-center gap-3 p-2.5 rounded-tile transition-colors cursor-pointer',
