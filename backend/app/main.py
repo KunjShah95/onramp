@@ -269,10 +269,14 @@ def _validate_production_env() -> None:
     
     # Fail if there are any errors
     if errors:
-        raise RuntimeError(
+        import logging as _logging
+        _startup_logger = _logging.getLogger("onramp.startup")
+        msg = (
             "Refusing to start with ENV=production — configuration errors:\n"
             + "\n".join(f"  - {error}" for error in errors)
         )
+        _startup_logger.critical(msg)
+        raise RuntimeError(msg)
 
 
 @asynccontextmanager
