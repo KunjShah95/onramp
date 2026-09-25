@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useMemo, useEffect } from 'react'
+import { lazy, Suspense, useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -157,6 +157,11 @@ export default function ExplorePage() {
   const [showFilters, setShowFilters] = useState(false)
   const [activeGroups, setActiveGroups] = useState<Set<string> | null>(null)
 
+  // setSearchParams and the analysis result are committed in the same React
+  // batch. Guard the transition so the result is not cleared by the effect
+  // that observes the pre-update (non-repo) URL.
+  const pendingLiveRepoRef = useRef<string | null>(null)
+
   const toast = useToast()
   const queryClient = useQueryClient()
   const { onEvent } = useRealTime()
@@ -206,6 +211,7 @@ export default function ExplorePage() {
       return
     }
     setLoading(true); setError(''); setSearchQuery(''); setSelectedNode(null); setDrillNodeId(null); setActiveGroups(null)
+    pendingLiveRepoRef.current = `${parsed.owner}/${parsed.repo}`.toLowerCase()
     try {
       const data = await analyzeArchitecture(repoUrl)
       setLiveResult(data)
@@ -215,6 +221,7 @@ export default function ExplorePage() {
       setSearchParams({ owner: parsed.owner, repo: parsed.repo }, { replace: true })
       toast.success('Analysis complete', `${parsed.repo} · ${data.entities.files.length} files mapped`)
     } catch (err: any) {
+      pendingLiveRepoRef.current = null
       setError(err.message || 'Failed to analyze repository.')
       toast.error('Analysis failed', err.message)
     } finally {
@@ -227,6 +234,9 @@ export default function ExplorePage() {
   // previous repository's live graph while its snapshot is loading.
   useEffect(() => {
     if (!isRepoMode) {
+      // The URL update triggered by handleAnalyze can be observed for one
+      // render before the query parameters arrive. Preserve that live result.
+      if (pendingLiveRepoRef.current && liveResultRepo?.toLowerCase() === pendingLiveRepoRef.current) return
       setLiveResult(null)
       setLiveResultRepo(null)
       return
@@ -236,6 +246,7 @@ export default function ExplorePage() {
       setLiveResult(null)
       setLiveResultRepo(null)
     }
+    pendingLiveRepoRef.current = null
   }, [isRepoMode, paramOwner, paramRepo, liveResultRepo])
 
   // ── Resolve snapshot → view model ───────────────────────────────────────
