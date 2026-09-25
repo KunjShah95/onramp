@@ -307,3 +307,29 @@ async def usage_dashboard(
         },
         "quota": await _usage.check_quota(org_name, {"credits_per_month": 5000}),
     }
+
+
+@router.get("/dashboard/work-graphs")
+async def list_work_graphs(user: dict = Depends(get_current_user)):
+    """Stored work graphs for repositories registered to the caller's teams."""
+    from app.api.v1.index_access import authorize_registered_repo
+    from app.services.postgres_db import get_storage
+
+    docs = await get_storage().list_documents("repo_work_graphs") or []
+    graphs = []
+    for doc in docs:
+        owner, repo = doc.get("owner"), doc.get("repo")
+        if not owner or not repo:
+            continue
+        try:
+            await authorize_registered_repo(user, f"https://github.com/{owner}/{repo}")
+        except HTTPException:
+            continue
+        graphs.append({
+            "owner": owner,
+            "repo": repo,
+            "generated_at": doc.get("generated_at"),
+            "commit": doc.get("commit"),
+        })
+    graphs.sort(key=lambda g: g.get("generated_at") or "", reverse=True)
+    return {"graphs": graphs}

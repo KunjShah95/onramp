@@ -1523,6 +1523,18 @@ export interface WorkGraph {
   summary: Record<WorkTier, WorkGraphTierSummary>
 }
 
+export interface WorkGraphListItem {
+  owner: string
+  repo: string
+  generated_at: string | null
+  commit: string | null
+}
+
+/** Stored work graphs for repos registered to the caller's teams. */
+export async function fetchWorkGraphList(): Promise<{ graphs: WorkGraphListItem[] }> {
+  return get<{ graphs: WorkGraphListItem[] }>(`${API_BASE}/dashboard/work-graphs`)
+}
+
 export async function fetchWorkGraph(owner: string, repo: string): Promise<WorkGraph> {
   return get<WorkGraph>(`${API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/work-graph`)
 }

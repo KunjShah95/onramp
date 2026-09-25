@@ -18,7 +18,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 import { useThemeSignals } from '../hooks/useThemeSignals'
-import { fetchRepos, fetchWorkGraph } from '../lib/api'
+import { fetchWorkGraph, fetchWorkGraphList } from '../lib/api'
 import type { WorkGraph, WorkTier } from '../lib/api'
 
 const LAYER_COLOR: Record<string, string> = { backend: '#A78BFA', frontend: '#FB923C', sdk: '#F472B6' }
@@ -150,10 +150,14 @@ export default function WorkGraphPage() {
   const tierColor = useTierColors()
   const [hover, setHover] = useState<string | null>(null)
 
-  const { data: reposData } = useQuery({ queryKey: ['repos'], queryFn: fetchRepos, staleTime: 60_000 })
-  const repos = reposData?.repos ?? []
+  // Only repos that actually have a stored graph (and that the caller's team
+  // can see) — avoids defaulting to a tracked repo with nothing generated.
+  const { data: listData, isLoading: listLoading } = useQuery({
+    queryKey: ['work-graphs'], queryFn: fetchWorkGraphList, staleTime: 60_000,
+  })
+  const repos = listData?.graphs ?? []
   const owner = params.get('owner') ?? repos[0]?.owner ?? ''
-  const repo = params.get('repo') ?? repos[0]?.name ?? ''
+  const repo = params.get('repo') ?? repos[0]?.repo ?? ''
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['work-graph', owner, repo],
@@ -187,19 +191,24 @@ export default function WorkGraphPage() {
               onChange={(e) => { const [o, r] = e.target.value.split('/'); setParams({ owner: o, repo: r }) }}
               className="h-9 rounded-[5px] border border-seam bg-panel px-2.5 text-[13px] text-ink"
             >
-              {repos.map((r) => <option key={r.id} value={`${r.owner}/${r.name}`}>{r.owner}/{r.name}</option>)}
+              {repos.map((r) => <option key={`${r.owner}/${r.repo}`} value={`${r.owner}/${r.repo}`}>{r.owner}/{r.repo}</option>)}
             </select>
           </label>
         )}
       </header>
 
-      {!owner && (
+      {!owner && !listLoading && (
         <ConsolePanel rail="Awaiting" status="idle">
-          <EmptyState icon={<Graph size={26} className="text-ink-disabled" weight="duotone" />} eyebrow="Work graph" title="No repository tracked" description="Add a repository from Explore first." />
+          <EmptyState
+            icon={<Graph size={26} className="text-ink-disabled" weight="duotone" />}
+            eyebrow="Work graph"
+            title="No work graph for your team yet"
+            description="Graphs appear here for repositories registered to your team. Add the repository in Explore, then generate its graph."
+          />
         </ConsolePanel>
       )}
 
-      {isLoading && <div className="py-24 text-center font-code text-[13px] text-ink-secondary">Loading work graph…</div>}
+      {(isLoading || listLoading) && <div className="py-24 text-center font-code text-[13px] text-ink-secondary">Loading work graph…</div>}
 
       {error && (
         <ConsolePanel rail="Not generated" designator={`${owner}/${repo}`} status="caution">

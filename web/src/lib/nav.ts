@@ -60,7 +60,7 @@ export const manageItems: NavItem[] = [
   { to: '/ramp',             label: 'Ramp',            Icon: TrendUp,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'hr'] },
   { to: '/reviews',          label: 'Reviews',         Icon: Eye,         roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/code-health',      label: 'Code Health',     Icon: Heartbeat,   roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
-  { to: '/work-graph',       label: 'Work Graph',      Icon: Graph,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
+  { to: '/work-graph',       label: 'Work Graph',      Icon: Graph,       roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto', 'developer', 'tester', 'junior_dev', 'member'] },
   { to: '/drift',            label: 'Drift Detect',    Icon: Warning,     roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/playbooks',        label: 'Playbooks',       Icon: ClipboardText, roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
   { to: '/reports',          label: 'Reports',         Icon: Scroll,      roles: ['senior_dev', 'senior', 'admin', 'ceo', 'cto'] },
