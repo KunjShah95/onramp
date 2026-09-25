@@ -43,6 +43,9 @@ test.describe('Frontend — Concurrent Load', () => {
             body: JSON.stringify({}),
           })
         })
+        // page.route does not cover WebSockets; accept the realtime socket
+        // locally so the absent backend doesn't surface ERR_CONNECTION_REFUSED.
+        await page.routeWebSocket(/\/api\/v1\/ws/, () => {})
         page.on('console', (msg) => {
           if (msg.type() === 'error') errors.push(msg.text().slice(0, 150))
         })
