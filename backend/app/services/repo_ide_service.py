@@ -69,8 +69,12 @@ class RepoIde:
         headers = {"Accept": "application/vnd.github+json", "User-Agent": "Onramp-IDE"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.request(method, f"{API}/repos/{self.owner}/{self.repo}{path}", headers=headers, json=body)
+        try:
+            # follow_redirects: renamed/transferred repos answer 301/307 (e.g. facebook/react).
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                resp = await client.request(method, f"{API}/repos/{self.owner}/{self.repo}{path}", headers=headers, json=body)
+        except httpx.HTTPError as e:
+            raise IdeError(f"GitHub unreachable: {type(e).__name__}", 502) from e
         if resp.status_code >= 400:
             msg = ""
             try:
@@ -83,7 +87,10 @@ class RepoIde:
                 raise IdeError(f"GitHub refused the write ({resp.status_code} {msg}). "
                                "Check your token has write access to this repository.", 403)
             raise IdeError(f"GitHub {resp.status_code}: {msg or 'request failed'}", 404 if resp.status_code == 404 else 502)
-        return resp.json() if resp.content else {}
+        try:
+            return resp.json() if resp.content else {}
+        except ValueError as e:
+            raise IdeError("GitHub returned an unexpected response", 502) from e
 
     async def branch_sha(self, branch: str) -> str:
         data = await self._req("GET", f"/git/ref/heads/{branch}")

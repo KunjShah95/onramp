@@ -60,6 +60,11 @@ async def ide_tree(owner: str, repo: str, ref: str = Query("main", max_length=20
         return await ide.tree(ref)
     except IdeError as e:
         _raise(e)
+    except HTTPException:
+        raise
+    except Exception as e:  # never let a crash escape as a bare 500 (loses CORS headers)
+        logger.exception("IDE request failed for %s/%s", owner, repo)
+        raise HTTPException(status_code=502, detail="Workspace operation failed") from e
 
 
 @router.get("/{owner}/{repo}/ide/file")
@@ -77,6 +82,11 @@ async def ide_file(
         return await ide.file(path, ref)
     except IdeError as e:
         _raise(e)
+    except HTTPException:
+        raise
+    except Exception as e:  # never let a crash escape as a bare 500 (loses CORS headers)
+        logger.exception("IDE request failed for %s/%s", owner, repo)
+        raise HTTPException(status_code=502, detail="Workspace operation failed") from e
 
 
 @router.post("/{owner}/{repo}/ide/commit")
@@ -94,6 +104,11 @@ async def ide_commit(owner: str, repo: str, body: IdeCommitRequest, user: dict =
         return result
     except IdeError as e:
         _raise(e)
+    except HTTPException:
+        raise
+    except Exception as e:  # never let a crash escape as a bare 500 (loses CORS headers)
+        logger.exception("IDE request failed for %s/%s", owner, repo)
+        raise HTTPException(status_code=502, detail="Workspace operation failed") from e
 
 
 @router.post("/{owner}/{repo}/ide/propose")

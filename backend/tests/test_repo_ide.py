@@ -212,3 +212,31 @@ async def test_apply_opens_pr_and_reports_success(orch):
     assert orch.github.writes == ["branch", "commit", "pr"]
     assert res["success"] is True and res["pr_number"] == 3 and res["files_changed"] == 1
     assert res["branch"].startswith("fix/issue-")
+
+
+async def test_follows_github_redirect_for_moved_repos(monkeypatch):
+    """Renamed/transferred repos answer 301 — must follow, not parse the redirect body."""
+    import httpx
+
+    def handler(request):
+        if "/repos/old/name/" in str(request.url):
+            return httpx.Response(301, headers={"Location": "https://api.github.com/repositories/1/git/ref/heads/main"},
+                                  json={"message": "Moved Permanently"})
+        return httpx.Response(200, json={"object": {"sha": "moved-sha"}})
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(svc.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    assert await RepoIde("old", "name", None).branch_sha("main") == "moved-sha"
+
+
+async def test_network_error_becomes_ide_error(monkeypatch):
+    import httpx
+
+    def handler(request):
+        raise httpx.ConnectError("down")
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(svc.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    with pytest.raises(IdeError) as exc:
+        await RepoIde("o", "r", None).branch_sha("main")
+    assert exc.value.status == 502

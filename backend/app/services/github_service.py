@@ -334,7 +334,7 @@ class GitHubService:
         if self.github_token:
             headers["Authorization"] = f"Bearer {self.github_token}"
         url = f"https://api.github.com{path}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             if method == "GET":
                 resp = await client.get(url, headers=headers)
             elif method == "POST":
