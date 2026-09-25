@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 import {
   ShieldCheck,
@@ -47,7 +48,11 @@ function relativeTime(iso: string): string {
 
 const PAGE_SIZE = 25
 
+const ADMIN_ROLES = new Set(['ceo', 'cto', 'admin'])
+
 export default function AuditLogPage() {
+  const { role } = useAuth()
+  const isAdmin = !!role && ADMIN_ROLES.has(role)
   const [events, setEvents] = useState<AdminAuditEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -62,6 +67,7 @@ export default function AuditLogPage() {
   const abortRef = useRef<AbortController | null>(null)
 
   const fetchEvents = useCallback(async () => {
+    if (!isAdmin) { setLoading(false); return }
     abortRef.current?.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
@@ -70,11 +76,12 @@ export default function AuditLogPage() {
       const result = await adminListAuditEvents({
         event_type: filterType || undefined,
         actor_id: filterActor || undefined,
-        limit: PAGE_SIZE * (page + 1),
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
       }, ctrl.signal)
       if (!ctrl.signal.aborted) {
         setEvents(result.events)
-        setTotalCount(result.count)
+        setTotalCount(result.total)
       }
     } catch (err: any) {
       if (!ctrl.signal.aborted) setError(err.message || 'Failed to load audit events.')
@@ -94,7 +101,7 @@ export default function AuditLogPage() {
   useEffect(() => { return () => abortRef.current?.abort() }, [])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-  const pageEvents = events.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const pageEvents = events
 
   async function handleExport(format: 'json' | 'csv') {
     try {
@@ -128,20 +135,24 @@ export default function AuditLogPage() {
         subtitle="Security and configuration events across all teams."
         actions={
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleExport('csv')}
-              className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
-            >
-              <FileCsv className="w-3.5 h-3.5" />
-              CSV
-            </button>
-            <button
-              onClick={() => handleExport('json')}
-              className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
-            >
-              <FileJs className="w-3.5 h-3.5" />
-              JSON
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => handleExport('csv')}
+                  className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
+                >
+                  <FileCsv className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                <button
+                  onClick={() => handleExport('json')}
+                  className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5"
+                >
+                  <FileJs className="w-3.5 h-3.5" />
+                  JSON
+                </button>
+              </>
+            )}
             <button
               onClick={() => setFilterVisible(!filterVisible)}
               className={`px-3 py-2 rounded-btn text-caption font-medium border transition-colors flex items-center gap-1.5 ${
@@ -155,7 +166,7 @@ export default function AuditLogPage() {
               {(filterType || filterActor) && <span className="w-1.5 h-1.5 rounded-full bg-go" />}
             </button>
             <button
-              onClick={fetchEvents}
+              onClick={() => fetchEventsStable.current()}
               disabled={loading}
               className="px-3 py-2 rounded-btn text-caption font-medium border border-seam text-ink-secondary hover:bg-well/20 hover:border-seam-strong transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
@@ -166,8 +177,17 @@ export default function AuditLogPage() {
         }
       />
 
+      {/* Access denied for non-admin */}
+      {!isAdmin && (
+        <div className="px-4 py-8 rounded-xl bg-panel border border-seam text-center">
+          <ShieldCheck className="w-10 h-10 text-ink-tertiary/30 mx-auto mb-3" weight="duotone" />
+          <p className="text-body-sm font-medium text-ink">Admin access required</p>
+          <p className="text-caption text-ink-tertiary mt-1">Audit logs are visible to admin, CTO, and CEO roles only.</p>
+        </div>
+      )}
+
       {/* Filters Panel */}
-      {filterVisible && (
+      {isAdmin && filterVisible && (
         <div className="p-4 rounded-xl bg-panel border border-seam">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-body-sm font-medium text-ink">Filter Events</h3>
@@ -216,16 +236,16 @@ export default function AuditLogPage() {
         </div>
       )}
 
-      {/* Error */}
-      {error && (
+      {/* Error + events table — admin only */}
+      {isAdmin && error && (
         <div className="px-3 sm:px-4 py-3 rounded-lg bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchEvents} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
+          <button onClick={() => fetchEventsStable.current()} className="text-caption underline ml-4 text-abort/70 hover:text-abort">Retry</button>
         </div>
       )}
 
       {/* Events Table */}
-      <ConsolePanel pad="none" className="overflow-hidden">
+      {isAdmin && <ConsolePanel pad="none" className="overflow-hidden">
         {loading && events.length === 0 ? (
           <div className="p-8 space-y-3" role="status" aria-label="Loading audit events">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -366,7 +386,7 @@ export default function AuditLogPage() {
             </div>
           </div>
         )}
-      </ConsolePanel>
+      </ConsolePanel>}
     </div>
   )
 }

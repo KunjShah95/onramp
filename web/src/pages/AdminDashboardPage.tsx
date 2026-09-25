@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 
 import { ShieldCheck, Users, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
+import { useAuth } from '../context/AuthContext'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
@@ -62,8 +63,12 @@ function relativeTime(iso: string): string {
 }
 
 
+const ADMIN_ROLES = new Set(['ceo', 'cto', 'admin'])
+
 export default function AdminDashboardPage() {
   const SIG = { ...SIG_STATIC, ...useThemeSignals() }
+  const { role } = useAuth()
+  const isAdmin = !!role && ADMIN_ROLES.has(role)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [usage, setUsage] = useState<number | null>(null)
@@ -275,57 +280,63 @@ export default function AdminDashboardPage() {
                       {configured && info.updated_at && (
                         <p className="text-caption text-ink-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
                       )}
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            if (editingProvider === p.id) {
-                              setEditingProvider(null); setProviderKeyInput('')
-                            } else {
-                              setEditingProvider(p.id); setProviderKeyInput('')
-                            }
-                          }}
-                          className="flex items-center gap-1.5 text-caption text-go hover:text-go/80 transition-colors"
-                        >
-                          <PencilSimple size={12} />
-                          {configured ? 'Update' : 'Add key'}
-                        </button>
-                        {configured && (confirmDeleteProvider !== p.id ? (
-                          <button
-                            onClick={() => setConfirmDeleteProvider(p.id)}
-                            className="flex items-center gap-1.5 text-caption text-ink-muted hover:text-abort transition-colors"
-                          >
-                            <Trash size={12} />
-                            Remove
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleDeleteProviderKey(p.id)}
-                            onBlur={() => setConfirmDeleteProvider(null)}
-                            className="flex items-center gap-1.5 text-caption font-semibold text-abort hover:text-abort/80 transition-colors"
-                          >
-                            <Trash size={12} />
-                            Confirm?
-                          </button>
-                        ))}
-                      </div>
-                      {editingProvider === p.id && (
-                        <div className="mt-2.5 flex items-center gap-2">
-                          <input
-                            type="password"
-                            value={providerKeyInput}
-                            onChange={(e) => setProviderKeyInput(e.target.value)}
-                            placeholder="sk-..."
-                            autoFocus
-                            className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-ink placeholder:text-ink-muted/30 outline-none focus:border-go/50 transition-colors"
-                          />
-                          <button
-                            onClick={handleSaveProviderKey}
-                            disabled={savingKey || !providerKeyInput.trim()}
-                            className="btn-primary !px-3 !py-1.5 text-caption shrink-0 disabled:opacity-40"
-                          >
-                            {savingKey ? <Spinner size={12} className="animate-spin" /> : 'Save'}
-                          </button>
-                        </div>
+                      {isAdmin ? (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => {
+                                if (editingProvider === p.id) {
+                                  setEditingProvider(null); setProviderKeyInput('')
+                                } else {
+                                  setEditingProvider(p.id); setProviderKeyInput('')
+                                }
+                              }}
+                              className="flex items-center gap-1.5 text-caption text-go hover:text-go/80 transition-colors"
+                            >
+                              <PencilSimple size={12} />
+                              {configured ? 'Update' : 'Add key'}
+                            </button>
+                            {configured && (confirmDeleteProvider !== p.id ? (
+                              <button
+                                onClick={() => setConfirmDeleteProvider(p.id)}
+                                className="flex items-center gap-1.5 text-caption text-ink-muted hover:text-abort transition-colors"
+                              >
+                                <Trash size={12} />
+                                Remove
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDeleteProviderKey(p.id)}
+                                onBlur={() => setConfirmDeleteProvider(null)}
+                                className="flex items-center gap-1.5 text-caption font-semibold text-abort hover:text-abort/80 transition-colors"
+                              >
+                                <Trash size={12} />
+                                Confirm?
+                              </button>
+                            ))}
+                          </div>
+                          {editingProvider === p.id && (
+                            <div className="mt-2.5 flex items-center gap-2">
+                              <input
+                                type="password"
+                                value={providerKeyInput}
+                                onChange={(e) => setProviderKeyInput(e.target.value)}
+                                placeholder="sk-..."
+                                autoFocus
+                                className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-ink placeholder:text-ink-muted/30 outline-none focus:border-go/50 transition-colors"
+                              />
+                              <button
+                                onClick={handleSaveProviderKey}
+                                disabled={savingKey || !providerKeyInput.trim()}
+                                className="btn-primary !px-3 !py-1.5 text-caption shrink-0 disabled:opacity-40"
+                              >
+                                {savingKey ? <Spinner size={12} className="animate-spin" /> : 'Save'}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-caption text-ink-muted/50 mt-1">Admin role required to modify</p>
                       )}
                     </div>
                   )

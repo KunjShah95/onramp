@@ -1,3 +1,4 @@
+﻿import logging
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import List, Optional
@@ -8,6 +9,8 @@ from app.api.v1.auth import get_current_user
 from app.services.agent_session_helper import get_session, complete_session, fail_session
 from app.api.v1.index_access import authorize_registered_repo
 import os
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/pr-review", tags=["pr-review"])
 
@@ -52,7 +55,7 @@ async def review_pr(
     """Review a GitHub PR and return structured feedback."""
     await authorize_registered_repo(user, request.repo_url)
     llm = getattr(req.app.state, "llm", None)
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
     sid = await get_session("pr_review", user_id=user.get("uid"), scratchpad={"repo_url": request.repo_url, "pr_number": request.pr_number})
     agent = PRReviewAgent(llm, github_token, session_id=sid) if sid else PRReviewAgent(llm, github_token)
 
@@ -82,7 +85,7 @@ async def review_pr(
         raise
     except Exception as e:
         await fail_session(sid, "pr_review")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/describe")
@@ -95,7 +98,7 @@ async def describe_pr(
     """Generate a PR description from the diff."""
     await authorize_registered_repo(user, request.repo_url)
     llm = getattr(req.app.state, "llm", None)
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
     agent = PRReviewAgent(llm, github_token)
 
     try:
@@ -111,12 +114,13 @@ async def describe_pr(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/auto-apply")
 async def auto_apply_suggestions(
     request: AutoApplyRequest,
+    req: Request,
     user: dict = Depends(get_current_user),
     _q=enforce_quota("pr_review"),
 ):
@@ -137,7 +141,7 @@ async def auto_apply_suggestions(
     roles = [t.get("role", "member") for t in (teams or []) if (t.get("team_id") or t.get("id")) == repo_team_id]
     if not any(ROLE_HIERARCHY.get(role, 0) >= ROLE_HIERARCHY["senior"] for role in roles):
         raise HTTPException(status_code=403, detail="Senior team role required to modify repository code")
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
     gh = GitHubService(github_token)
     try:
         results = await gh.apply_suggestions_bulk(
@@ -157,12 +161,13 @@ async def auto_apply_suggestions(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/auto-apply/single")
 async def auto_apply_single(
     request: AutoApplySingleRequest,
+    req: Request,
     user: dict = Depends(get_current_user),
     _q=enforce_quota("pr_review"),
 ):
@@ -174,7 +179,7 @@ async def auto_apply_single(
     roles = [t.get("role", "member") for t in (teams or []) if (t.get("team_id") or t.get("id")) == repo_team_id]
     if not any(ROLE_HIERARCHY.get(role, 0) >= ROLE_HIERARCHY["senior"] for role in roles):
         raise HTTPException(status_code=403, detail="Senior team role required to modify repository code")
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
     gh = GitHubService(github_token)
     try:
         result = await gh.apply_suggestion(
@@ -189,4 +194,4 @@ async def auto_apply_single(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")

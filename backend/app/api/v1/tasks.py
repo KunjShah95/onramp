@@ -1,7 +1,7 @@
 import os
 import re
 import logging
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
@@ -42,13 +42,23 @@ from app.services.notification_helpers import (
     notify_task_completed_all_channels,
 )
 from app.services.audit_service import log_event
-from app.services.cache_service import cached, invalidate_prefix
+from app.services.cache_service import invalidate_prefix
 
 logger = logging.getLogger("onramp.tasks")
 router = APIRouter(prefix="/tasks", tags=["workflow"])
 
 
 # ── Helpers ──────────────────────────────────────────────
+
+
+def _csv_safe(value: Any) -> Any:
+    """Prevent spreadsheet formula execution in exported CSV cells."""
+    if value is None:
+        return ""
+    text = str(value)
+    if text.startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + text
+    return text
 
 
 def _parse_pr_number(pr_url: str) -> Optional[int]:
@@ -106,11 +116,52 @@ async def _verify_task_access(task_id: str, uid: str) -> dict:
     if not task_team:
         raise HTTPException(status_code=403, detail="Access denied")
     teams = await get_user_teams(uid)
-    team_ids = {t.get("team_id") or t.get("id") for t in teams}
-    if task_team not in team_ids:
+    team_ids = {str(t.get("team_id") or t.get("id")) for t in teams if t.get("team_id") or t.get("id")}
+    if str(task_team) not in team_ids:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return task
+
+
+def _require_assignee(task: dict, uid: str) -> None:
+    """Task execution endpoints are assignee-only, not team-member-only."""
+    if not uid or str(task.get("assigned_to") or "") != str(uid):
+        raise HTTPException(status_code=403, detail="Only the task assignee may perform this action")
+
+
+async def _require_team_member_id(team_id: str, user_id: str) -> None:
+    """Ensure a task/template assignee is actually in the destination team."""
+    from app.services.team_service import get_team_members
+
+    members = await get_team_members(team_id)
+    member_ids = {
+        str(member.get("user_id") or member.get("uid") or member.get("id") or "")
+        for member in members or []
+    }
+    if str(user_id) not in member_ids:
+        raise HTTPException(status_code=400, detail="Assignee is not a member of this team")
+
+
+def _same_github_repo(left: str, right: str) -> bool:
+    """Compare GitHub repository identity without being fooled by .git/slashes."""
+    from app.services.repo_index_access import parse_github_repo
+
+    a = parse_github_repo(left or "")
+    b = parse_github_repo(right or "")
+    return bool(a and b and a[0].lower() == b[0].lower() and a[1].lower() == b[1].lower())
+
+
+async def _authorize_task_repo(user: dict, task: dict, repo_url: str) -> str:
+    """Authorize a server-token GitHub operation against the task's tenant."""
+    from app.api.v1.index_access import authorize_registered_repo
+
+    if not repo_url:
+        raise HTTPException(status_code=400, detail="Repository is required")
+    team_id = await authorize_registered_repo(user, repo_url, str(task.get("team_id")))
+    task_repo = task.get("repo_url") or ""
+    if task_repo and not _same_github_repo(task_repo, repo_url):
+        raise HTTPException(status_code=400, detail="Repository does not match the task repository")
+    return team_id
 
 
 # ── Request Schemas ──────────────────────────────────────────
@@ -234,6 +285,8 @@ class CreateTemplateRequest(BaseModel):
     module: Optional[str] = None
     priority: str = "medium"
     repo_url: Optional[str] = None
+    unlock_modules: Optional[List[str]] = None
+    estimated_hours: Optional[float] = None
 
     model_config = {"extra": "forbid"}
 
@@ -242,8 +295,14 @@ class CreateTemplateRequest(BaseModel):
             raise ValueError("Template name must be 200 characters or fewer")
         if self.description and len(self.description) > 5000:
             raise ValueError("Description must be 5000 characters or fewer")
-    unlock_modules: Optional[List[str]] = None
-    estimated_hours: Optional[float] = None
+        if self.repo_url and len(self.repo_url) > 2048:
+            raise ValueError("repo_url must be 2048 characters or fewer")
+        if self.priority not in ("low", "medium", "high", "critical"):
+            raise ValueError("priority must be low, medium, high, or critical")
+        if self.unlock_modules and len(self.unlock_modules) > 50:
+            raise ValueError("Cannot unlock more than 50 modules at once")
+        if self.estimated_hours is not None and not 0 <= self.estimated_hours <= 10000:
+            raise ValueError("estimated_hours must be between 0 and 10000")
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -304,6 +363,12 @@ async def create_task_endpoint(
     """Create a new task for a team the caller belongs to."""
     uid = user.get("uid", "")
     await _require_team_member(uid, request.team_id)
+    await _require_team_role(uid, request.team_id, "senior")
+    if request.assigned_to:
+        await _require_team_member_id(request.team_id, request.assigned_to)
+    if request.repo_url:
+        from app.api.v1.index_access import authorize_registered_repo
+        await authorize_registered_repo(user, request.repo_url, request.team_id)
     task = await create_task(
         team_id=request.team_id,
         created_by=uid,
@@ -316,6 +381,7 @@ async def create_task_endpoint(
         unlock_modules=request.unlock_modules,
         estimated_hours=request.estimated_hours,
         assigned_to=request.assigned_to,
+        quiz_required=request.quiz_required,
     )
     try:
         await log_event(
@@ -344,12 +410,15 @@ async def list_templates_endpoint(
     from app.services.team_service import get_user_teams
 
     uid = user.get("uid", "")
+    teams = await get_user_teams(uid)
+    team_ids = {str(t.get("team_id") or t.get("id")) for t in teams if t.get("team_id") or t.get("id")}
     if team_id:
-        teams = await get_user_teams(uid)
-        team_ids = {t.get("team_id") or t.get("id") for t in teams}
-        if team_id not in team_ids:
+        if str(team_id) not in team_ids:
             raise HTTPException(status_code=403, detail="Access denied")
-    templates = await task_template_service.list_templates(team_id=team_id, module=module)
+        team_ids = {str(team_id)}
+    templates = await task_template_service.list_templates(
+        team_ids=team_ids, module=module
+    )
     return {"templates": templates, "count": len(templates)}
 
 
@@ -372,8 +441,11 @@ async def create_template_endpoint(
     )
     if not target:
         raise HTTPException(status_code=403, detail="Access denied")
-    if target.get("role") not in ("admin", "ceo", "cto", "senior_dev"):
+    if target.get("role") not in ("admin", "ceo", "cto", "senior_dev", "senior"):
         raise HTTPException(status_code=403, detail="Only senior/admin roles can create templates")
+    if request.repo_url:
+        from app.api.v1.index_access import authorize_registered_repo
+        await authorize_registered_repo(user, request.repo_url, request.team_id)
     template = await task_template_service.create_template(
         team_id=request.team_id,
         created_by=uid,
@@ -399,10 +471,13 @@ async def update_template_endpoint(
     existing = await task_template_service.get_template(template_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Template not found")
-    await _require_team_role(uid, existing.get("team_id", ""), "senior")
+    await _require_team_role(uid, str(existing.get("team_id") or ""), "senior")
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if updates.get("repo_url"):
+        from app.api.v1.index_access import authorize_registered_repo
+        await authorize_registered_repo(user, updates["repo_url"], str(existing.get("team_id") or ""))
     template = await task_template_service.update_template(template_id, updates)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -427,15 +502,14 @@ async def delete_template_endpoint(
 
 
 @router.get("")
-@cached("tasks", ttl=60)
 async def list_tasks_endpoint(
     request: Request,
     team_id: Optional[str] = None,
     assigned_to: Optional[str] = None,
     created_by: Optional[str] = None,
     state: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     user: dict = Depends(get_current_user),
 ):
     """List tasks scoped to the caller's teams. Max 200 per page."""
@@ -468,6 +542,16 @@ async def list_tasks_endpoint(
     return {"tasks": page, "count": len(page), "total": total, "offset": offset, "limit": limit}
 
 
+@router.get("/export.csv")
+async def export_tasks_csv(
+    team_id: Optional[str] = None,
+    state: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Export tasks as CSV. Declared before /{task_id} to avoid route shadowing."""
+    return await _export_tasks_csv_impl(team_id=team_id, state=state, user=user)
+
+
 @router.get("/{task_id}", responses={404: {"description": "Task not found"}})
 async def get_task_endpoint(
     task_id: str,
@@ -483,11 +567,15 @@ async def update_task_endpoint(
     request: UpdateTaskRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Update task fields (non-state). Requires team membership."""
-    await _verify_task_access(task_id, user.get("uid", ""))
+    """Update task fields (non-state). Requires senior/admin role."""
+    uid = user.get("uid", "")
+    task = await _verify_task_access(task_id, uid)
+    await _require_team_role(uid, str(task.get("team_id") or ""), "senior")
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if updates.get("repo_url"):
+        await _authorize_task_repo(user, task, updates["repo_url"])
     result = await update_task(task_id, updates)
     if not result:
         raise HTTPException(status_code=404, detail="Task not found or task is in terminal state")
@@ -499,8 +587,10 @@ async def delete_task_endpoint(
     task_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Hard-delete a task. Requires team membership."""
-    await _verify_task_access(task_id, user.get("uid", ""))
+    """Hard-delete a task. Requires senior/admin role."""
+    uid = user.get("uid", "")
+    task = await _verify_task_access(task_id, uid)
+    await _require_team_role(uid, str(task.get("team_id") or ""), "senior")
     success = await delete_task(task_id)
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -516,12 +606,18 @@ async def transition_task_endpoint(
     request: TransitionRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Transition a task to a new state (generic endpoint). Requires team membership."""
+    """Transition a task to a new state (generic endpoint). Requires senior/admin role."""
     if request.new_state == "assigned":
         raise HTTPException(status_code=400, detail="Use POST /{task_id}/assign to assign tasks")
     uid = user.get("uid", "")
     existing_task = await _verify_task_access(task_id, uid)
-    await _require_team_role(uid, existing_task.get("team_id", ""), "senior")
+    await _require_team_role(uid, str(existing_task.get("team_id") or ""), "senior")
+    if request.pr_url:
+        pr_repo = _infer_repo_url(request.pr_url)
+        pr_number = _parse_pr_number(request.pr_url)
+        if not pr_repo or pr_number is None:
+            raise HTTPException(status_code=400, detail="pr_url must be a valid GitHub pull request URL")
+        await _authorize_task_repo(user, existing_task, pr_repo)
     try:
         task = await transition_task(
             task_id,
@@ -541,15 +637,17 @@ async def assign_task_endpoint(
     request: AssignRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Assign a task to a trainee. Requires team membership."""
+    """Assign a task to a trainee. Requires senior/admin role."""
     uid = user.get("uid", "")
     existing_task = await _verify_task_access(task_id, uid)
-    from app.services.team_service import get_team_members
-    members = await get_team_members(existing_task.get("team_id", ""))
-    if request.assignee_id not in {m.get("user_id") or m.get("uid") or m.get("id") for m in members}:
-        raise HTTPException(status_code=400, detail="Assignee is not a member of this team")
+    await _require_team_role(uid, str(existing_task.get("team_id") or ""), "senior")
+    await _require_team_member_id(str(existing_task.get("team_id") or ""), request.assignee_id)
     try:
         task = await assign_task(task_id, request.assignee_id, uid)
+        try:
+            await log_event("task_assigned", uid, task_id, team_id=existing_task.get("team_id"), metadata={"assignee_id": request.assignee_id})
+        except Exception:
+            logger.exception("Failed to log task assignment audit event")
         try:
             created_by_name = decrypt_field(user.get("name") or user.get("email", "A senior"))
             if task:
@@ -566,9 +664,10 @@ async def start_task_endpoint(
     task_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Mark task as in_progress (trainee starts working). Requires team membership."""
+    """Mark task as in_progress. Only the task assignee may start it."""
     uid = user.get("uid", "")
-    await _verify_task_access(task_id, uid)
+    task = await _verify_task_access(task_id, uid)
+    _require_assignee(task, uid)
     try:
         task = await start_task(task_id, uid)
         return task
@@ -590,13 +689,19 @@ async def submit_task_endpoint(
     the task's `ai_review` field for the senior to inspect.
     """
     uid = user.get("uid", "")
-    await _verify_task_access(task_id, uid)
-    # 0. PR URL validation — must be a real GitHub pull request URL.
-    if not _parse_pr_number(request.pr_url) or not _infer_repo_url(request.pr_url):
+    task = await _verify_task_access(task_id, uid)
+    _require_assignee(task, uid)
+    # PR URL validation happens before the state mutation. The PR repository
+    # must be registered to this task's team and must match task.repo_url before
+    # any server GitHub token is used for review/comment fetches.
+    pr_repo = _infer_repo_url(request.pr_url)
+    pr_number = _parse_pr_number(request.pr_url)
+    if not pr_repo or pr_number is None:
         raise HTTPException(
             status_code=400,
             detail="pr_url must be a valid GitHub pull request URL, e.g. https://github.com/owner/repo/pull/42",
         )
+    await _authorize_task_repo(user, task, pr_repo)
     # 1. Transition task to submitted
     try:
         task = await submit_task(task_id, uid, request.pr_url)
@@ -624,7 +729,7 @@ async def submit_task_endpoint(
     # 4. Run AI review if we have the needed data
     if repo_url and pr_number is not None:
         llm = getattr(req.app.state, "llm", None)
-        github_token = os.getenv("GITHUB_TOKEN")
+        github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
 
         try:
             agent = PRReviewAgent(llm, github_token)
@@ -783,22 +888,19 @@ async def raise_pr_endpoint(
     returned object includes the new ``pr_url``.
     """
     uid = user.get("uid", "")
-    await _verify_task_access(task_id, uid)
-
-    task = await get_task(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = await _verify_task_access(task_id, uid)
+    _require_assignee(task, uid)
 
     repo_url = task.get("repo_url") or ""
     if not repo_url:
         raise HTTPException(status_code=400, detail="Task has no repo_url — assign a repository first")
+    await _authorize_task_repo(user, task, repo_url)
 
-    # Parse owner/repo from the URL
-    import re as _re
-    m = _re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", repo_url.strip())
-    if not m:
+    from app.services.repo_index_access import parse_github_repo
+    parsed_repo = parse_github_repo(repo_url)
+    if not parsed_repo:
         raise HTTPException(status_code=400, detail=f"Cannot parse owner/repo from repo_url: {repo_url}")
-    owner, repo = m.group(1), m.group(2)
+    owner, repo = parsed_repo
 
     github_token = os.getenv("GITHUB_TOKEN") or ""
     gh = GitHubService(github_token=github_token)
@@ -832,7 +934,7 @@ async def raise_pr_endpoint(
         logger.exception("Failed to log raise-pr audit event")
 
     try:
-        await notify_task_submitted_all_channels(updated, decrypt_field(user.get("name") or user.get("email", "Dev")))
+        await notify_task_submitted_all_channels(updated, uid, decrypt_field(user.get("name") or user.get("email", "Dev")))
     except Exception:
         logger.exception("Failed to send raise-pr notification")
 
@@ -867,14 +969,13 @@ async def merge_pr_endpoint(
     repo_url_from_pr = _infer_repo_url(pr_url)
     if not pr_number or not repo_url_from_pr:
         raise HTTPException(status_code=400, detail="Cannot parse PR number/repo from pr_url")
-    from app.api.v1.index_access import authorize_registered_repo
-    await authorize_registered_repo(user, repo_url_from_pr, task.get("team_id"))
+    await _authorize_task_repo(user, task, repo_url_from_pr)
 
-    import re as _re
-    m = _re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", repo_url_from_pr.strip())
-    if not m:
+    from app.services.repo_index_access import parse_github_repo
+    parsed_repo = parse_github_repo(repo_url_from_pr)
+    if not parsed_repo:
         raise HTTPException(status_code=400, detail=f"Cannot parse owner/repo from pr_url: {pr_url}")
-    owner, repo = m.group(1), m.group(2)
+    owner, repo = parsed_repo
 
     github_token = os.getenv("GITHUB_TOKEN") or ""
     gh = GitHubService(github_token=github_token)
@@ -916,7 +1017,12 @@ async def cancel_task_endpoint(
     """Cancel a task. Requires team membership."""
     uid = user.get("uid", "")
     existing_task = await _verify_task_access(task_id, uid)
-    await _require_team_role(uid, existing_task.get("team_id", ""), "senior")
+    assignee_cancel_states = {"pending", "assigned", "in_progress", "needs_changes"}
+    if (
+        existing_task.get("assigned_to") != uid
+        or existing_task.get("state") not in assignee_cancel_states
+    ):
+        await _require_team_role(uid, existing_task.get("team_id", ""), "senior")
     try:
         task = await cancel_task(task_id, uid)
         return task
@@ -930,6 +1036,7 @@ async def cancel_task_endpoint(
 @router.post("/import-issue")
 async def import_issue_endpoint(
     request: ImportIssueRequest,
+    req: Request,
     user: dict = Depends(get_current_user),
 ):
     """One-click GitHub issue → task import.
@@ -944,6 +1051,7 @@ async def import_issue_endpoint(
     team_ids = {t.get("team_id") or t.get("id") for t in teams}
     if request.team_id not in team_ids:
         raise HTTPException(status_code=403, detail="Access denied")
+    await _require_team_role(uid, request.team_id, "senior")
     from app.api.v1.index_access import authorize_registered_repo
     await authorize_registered_repo(user, request.repo_url, request.team_id)
     if request.assigned_to:
@@ -952,7 +1060,7 @@ async def import_issue_endpoint(
         if request.assigned_to not in {m.get("user_id") or m.get("uid") or m.get("id") for m in members}:
             raise HTTPException(status_code=400, detail="Assignee is not a member of this team")
 
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token")
     gh = GitHubService(github_token)
     issue = await gh.get_issue(request.repo_url, request.issue_number)
     if not issue:
@@ -1007,6 +1115,7 @@ async def import_issue_endpoint(
 @router.post("/search-issues")
 async def search_issues_endpoint(
     request: SearchIssuesRequest,
+    req: Request,
     user: dict = Depends(get_current_user),
 ):
     """Search a GitHub repo's open issues by title/keyword.
@@ -1018,8 +1127,9 @@ async def search_issues_endpoint(
 
     uid = user.get("uid", "")
     from app.api.v1.index_access import authorize_registered_repo
-    await authorize_registered_repo(user, request.repo_url)
-    gh = _GitHubService(os.getenv("GITHUB_TOKEN"))
+    repo_team_id = await authorize_registered_repo(user, request.repo_url)
+    await _require_team_role(uid, repo_team_id, "senior")
+    gh = _GitHubService(os.getenv("GITHUB_TOKEN") or req.headers.get("X-GitHub-Token"))
     issues = await gh.search_issues(request.repo_url, request.query, limit=request.limit)
     payload = []
     for i in issues:
@@ -1156,12 +1266,15 @@ async def bulk_assign_endpoint(
     members = await get_team_members(request.team_id)
     if request.assignee_id not in {m.get("user_id") or m.get("uid") or m.get("id") for m in members}:
         raise HTTPException(status_code=400, detail="Assignee is not a member of this team")
-    result = await task_template_service.bulk_assign_templates(
-        team_id=request.team_id,
-        assignee_id=request.assignee_id,
-        template_ids=request.template_ids,
-        created_by=uid,
-    )
+    try:
+        result = await task_template_service.bulk_assign_templates(
+            team_id=request.team_id,
+            assignee_id=request.assignee_id,
+            template_ids=request.template_ids,
+            created_by=uid,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     await invalidate_prefix("tasks")
     return result
 
@@ -1208,8 +1321,7 @@ async def auto_assign_starter_endpoint(
 # ── CSV Export ──────────────────────────────────────────────
 
 
-@router.get("/export.csv")
-async def export_tasks_csv(
+async def _export_tasks_csv_impl(
     team_id: Optional[str] = None,
     state: Optional[str] = None,
     user: dict = Depends(get_current_user),
@@ -1235,10 +1347,10 @@ async def export_tasks_csv(
                      "estimated_hours", "actual_hours", "created_at", "completed_at", "pr_url"])
     for t in tasks:
         writer.writerow([
-            t.get("task_id", ""), t.get("title", ""), t.get("module", ""),
-            t.get("state", ""), t.get("priority", ""), t.get("assigned_to", ""),
-            t.get("repo_url", ""), t.get("estimated_hours", ""), t.get("actual_hours", ""),
-            t.get("created_at", ""), t.get("completed_at", ""), t.get("pr_url", ""),
+            _csv_safe(t.get("task_id", "")), _csv_safe(t.get("title", "")), _csv_safe(t.get("module", "")),
+            _csv_safe(t.get("state", "")), _csv_safe(t.get("priority", "")), _csv_safe(t.get("assigned_to", "")),
+            _csv_safe(t.get("repo_url", "")), _csv_safe(t.get("estimated_hours", "")), _csv_safe(t.get("actual_hours", "")),
+            _csv_safe(t.get("created_at", "")), _csv_safe(t.get("completed_at", "")), _csv_safe(t.get("pr_url", "")),
         ])
     buf.seek(0)
     return StreamingResponse(
@@ -1271,8 +1383,8 @@ async def export_time_stats_csv(
     writer = _csv.writer(buf)
     writer.writerow(["title", "module", "state", "estimated_hours", "actual_hours", "variance_hours", "variance_pct"])
     for r in stats.get("tasks", []):
-        writer.writerow([r["title"], r["module"], r["state"], r["estimated_hours"],
-                         r["actual_hours"], r["variance_hours"], r["variance_pct"]])
+        writer.writerow([_csv_safe(r["title"]), _csv_safe(r["module"]), _csv_safe(r["state"]), _csv_safe(r["estimated_hours"]),
+                         _csv_safe(r["actual_hours"]), _csv_safe(r["variance_hours"]), _csv_safe(r["variance_pct"])])
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),
@@ -1310,11 +1422,14 @@ async def user_progress_endpoint(
     from app.services.team_service import get_user_teams
 
     uid = user.get("uid", "")
+    caller_teams = await get_user_teams(uid)
+    caller_team_ids = {str(t.get("team_id") or t.get("id")) for t in caller_teams or []}
+    target_teams = await get_user_teams(user_id)
+    target_team_ids = {str(t.get("team_id") or t.get("id")) for t in target_teams or []}
+    if team_id and str(team_id) not in caller_team_ids:
+        raise HTTPException(status_code=403, detail="Access denied")
     if uid != user_id:
-        caller_teams = await get_user_teams(uid)
-        caller_team_ids = {t.get("team_id") or t.get("id") for t in caller_teams}
-        target_teams = await get_user_teams(user_id)
-        target_team_ids = {t.get("team_id") or t.get("id") for t in target_teams}
-        if not caller_team_ids.intersection(target_team_ids):
+        shared = caller_team_ids.intersection(target_team_ids)
+        if not shared or (team_id and str(team_id) not in shared):
             raise HTTPException(status_code=403, detail="Access denied")
     return await get_user_progress(user_id, team_id=team_id)

@@ -2,8 +2,8 @@ import { lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { copyText } from '../lib/clipboard'
-import { getUsageSummary, listTiers, listAgents, executeAgent, fetchModelCatalog, fetchRoutingMode, setRoutingMode, type RateLimitInfo, type AgentInfo, type ModelCatalog, type OpenRouterCatalogModel } from '../lib/api'
-import { Code, Copy, Check, Spinner, ShieldCheck, Play, Robot, Terminal, Gauge } from '@phosphor-icons/react'
+import { getUsageSummary, listTiers, listAgents, executeAgent, fetchModelCatalog, fetchRoutingMode, setRoutingMode, listApiKeys, createApiKey, revokeApiKey, type RateLimitInfo, type UsageSummary, type AgentInfo, type ModelCatalog, type OpenRouterCatalogModel, type ApiKey, type CreateApiKeyResult } from '../lib/api'
+import { Code, Copy, Check, Spinner, ShieldCheck, Play, Robot, Terminal, Gauge, Key, Plus, Trash } from '@phosphor-icons/react'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyRow } from '../components/ui/empty-state'
 import { cn } from '../lib/utils'
@@ -17,12 +17,13 @@ const CodeEditor = lazy(() => import('../components/ui/monaco-editor'))
  * abort-safe runs, safe result rendering, 44px targets, aria.
  * ------------------------------------------------------------------ */
 
-type TabId = 'models' | 'usage' | 'playground'
+type TabId = 'models' | 'usage' | 'playground' | 'keys'
 
 const TABS: { id: TabId; label: string; hint: string }[] = [
   { id: 'models', label: 'Models & routing', hint: 'Providers + catalog' },
   { id: 'usage', label: 'Usage & limits', hint: 'Spend + quotas' },
   { id: 'playground', label: 'Playground', hint: 'Try it live' },
+  { id: 'keys', label: 'API keys', hint: 'Keys & access' },
 ]
 
 /** Prefill params so the selected agent's required keys always exist. */
@@ -39,11 +40,11 @@ function templateParams(agent: AgentInfo | undefined): string {
 }
 
 export default function DeveloperPortal() {
-  const { activeTeamId } = useAuth()
+  const { activeTeamId, role } = useAuth()
   const toast = useToast()
   const [tab, setTab] = useState<TabId>('models')
 
-  const [usage, setUsage] = useState<any>(null)
+  const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [tierInfo, setTierInfo] = useState<RateLimitInfo | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
@@ -60,8 +61,7 @@ export default function DeveloperPortal() {
 
   async function fetchCatalog() {
     setCatalogLoading(true)
-    try { setCatalog(await fetchModelCatalog()) } catch { setCatalog(null) }
-    setCatalogLoading(false)
+    try { setCatalog(await fetchModelCatalog()) } catch { setCatalog(null) } finally { setCatalogLoading(false) }
   }
   async function fetchUsage() {
     if (!activeTeamId) return
@@ -140,10 +140,12 @@ export default function DeveloperPortal() {
           catalogSearch={catalogSearch} setCatalogSearch={setCatalogSearch}
           copiedId={copiedId} onCopy={handleCopy}
           routingMode={routingMode} routingModeLoading={routingModeLoading}
-          savingRoutingMode={savingRoutingMode} onRouting={handleSetRoutingMode} />
+          savingRoutingMode={savingRoutingMode} onRouting={handleSetRoutingMode}
+          isJuniorDev={role === 'junior_dev'} />
       )}
       {tab === 'usage' && <UsageTab usage={usage} tierInfo={tierInfo} />}
       {tab === 'playground' && <PlaygroundTab />}
+      {tab === 'keys' && <ApiKeysTab orgName={activeTeamId!} />}
     </div>
   )
 }
@@ -154,13 +156,16 @@ function ModelsTab(props: {
   catalog: ModelCatalog | null; catalogLoading: boolean; catalogSearch: string; setCatalogSearch: (v: string) => void
   copiedId: string | null; onCopy: (id: string, c: string) => void
   routingMode: number | null; routingModeLoading: boolean; savingRoutingMode: boolean; onRouting: (m: number) => void
+  isJuniorDev: boolean
 }) {
   return (
     <div className="space-y-5">
       <section className="card p-6">
         <h2 className="font-display text-[15px] font-semibold text-ink">How smart vs. how cheap?</h2>
         <p className="text-xs text-ink-tertiary mt-0.5 mb-4">One dial. Applies to chat + API on your next request.</p>
-        {props.routingModeLoading ? (
+        {props.isJuniorDev ? (
+          <p className="text-xs text-ink-tertiary py-2">Routing mode is set by your team admin.</p>
+        ) : props.routingModeLoading ? (
           <div className="flex items-center gap-2 py-2"><Spinner className="w-4 h-4 animate-spin text-go" /><span className="text-xs text-ink-tertiary">Loading…</span></div>
         ) : (
           <div className="grid grid-cols-3 gap-2 p-1 rounded-card bg-well border border-seam" role="radiogroup" aria-label="Routing mode">
@@ -203,22 +208,23 @@ function ModelsTab(props: {
 
 /* ================= Usage ================= */
 
-function UsageTab({ usage, tierInfo }: { usage: any; tierInfo: RateLimitInfo | null }) {
-  const pct = usage?.monthly_limit ? Math.min(100, Math.round(((usage.total_credits ?? 0) / usage.monthly_limit) * 100)) : 0
+function UsageTab({ usage, tierInfo }: { usage: UsageSummary | null; tierInfo: RateLimitInfo | null }) {
   return (
     <div className="space-y-5">
       <section className="card p-6">
         <h2 className="font-display text-[15px] font-semibold text-ink mb-3">This month</h2>
         {usage ? (
           <>
-            <div className="flex items-end justify-between gap-3 mb-2">
-              <p className="text-3xl font-bold text-ink tabular-nums">{usage.total_credits}<span className="text-base font-medium text-ink-tertiary"> / {usage.monthly_limit}</span></p>
-              <span className="font-mono text-xs text-go">{pct}%</span>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="rounded-card border border-seam bg-well/50 p-4">
+                <p className="text-3xl font-bold text-ink tabular-nums">{usage.total_credits ?? 0}</p>
+                <p className="text-xs text-ink-tertiary mt-1">credits used</p>
+              </div>
+              <div className="rounded-card border border-seam bg-well/50 p-4">
+                <p className="text-3xl font-bold text-ink tabular-nums">{usage.total_requests ?? 0}</p>
+                <p className="text-xs text-ink-tertiary mt-1">requests made</p>
+              </div>
             </div>
-            <div className="h-2 rounded-full bg-well overflow-hidden mb-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-              <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-abort' : 'bg-go')} style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-xs text-ink-tertiary mb-4">{new Date(usage.period_start).toLocaleDateString()} – {new Date(usage.period_end).toLocaleDateString()}</p>
             {Object.keys(usage.endpoint_breakdown || {}).length > 0 && (
               <ul className="space-y-1.5">
                 {Object.entries(usage.endpoint_breakdown).map(([ep, n]) => (
@@ -459,7 +465,7 @@ function PlaygroundTab() {
         <h2 className="font-display text-[15px] font-semibold text-ink mb-3">Core endpoints</h2>
         <div className="space-y-2.5">
           {([
-            { m: 'POST', p: '/api/v1/analyze', d: 'Index a repo', b: '{\n  "repo_url": "https://github.com/owner/repo",\n  "branch": "main"\n}' },
+            { m: 'POST', p: '/api/v1/explore/analyze', d: 'Index a repo', b: '{\n  "repo_url": "https://github.com/owner/repo",\n  "branch": "main"\n}' },
             { m: 'POST', p: '/api/v1/ask', d: 'Ask about indexed code', b: '{\n  "index_id": "abc123",\n  "question": "Where is the webhook signature verified?"\n}' },
           ] as const).map((e) => (
             <details key={e.p} className="rounded-card bg-panel border border-seam">
@@ -472,6 +478,153 @@ function PlaygroundTab() {
             </details>
           ))}
         </div>
+      </section>
+    </div>
+  )
+}
+
+/* ================= API Keys ================= */
+
+function ApiKeysTab({ orgName }: { orgName: string }) {
+  const toast = useToast()
+  const [keys, setKeys] = useState<ApiKey[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [freshKey, setFreshKey] = useState<CreateApiKeyResult | null>(null)
+  const [copiedKey, setCopiedKey] = useState(false)
+  const [revoking, setRevoking] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    listApiKeys(orgName)
+      .then((r) => setKeys(r.keys))
+      .catch(() => setKeys([]))
+      .finally(() => setLoading(false))
+  }, [orgName])
+
+  async function handleCreate() {
+    if (creating) return
+    setCreating(true)
+    try {
+      const result = await createApiKey(orgName, 'free', newKeyName || undefined)
+      setFreshKey(result)
+      setNewKeyName('')
+      setShowCreate(false)
+      const updated = await listApiKeys(orgName)
+      setKeys(updated.keys)
+    } catch (err: any) {
+      toast.error('Failed to create key', err.message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleRevoke(keyId: string) {
+    setRevoking(keyId)
+    try {
+      await revokeApiKey(keyId)
+      setKeys((prev) => prev.filter((k) => k.key_id !== keyId))
+      toast.success('Key revoked')
+    } catch (err: any) {
+      toast.error('Failed to revoke key', err.message)
+    } finally {
+      setRevoking(null)
+    }
+  }
+
+  async function handleCopyFreshKey() {
+    if (!freshKey) return
+    if (await copyText(freshKey.raw_key)) {
+      setCopiedKey(true)
+      setTimeout(() => setCopiedKey(false), 2000)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {freshKey && (
+        <section className="card p-6 border-go/30 bg-go/5">
+          <h2 className="font-display text-[15px] font-semibold text-ink mb-1 flex items-center gap-2"><Key size={15} className="text-go" /> New key created</h2>
+          <p className="text-xs text-ink-tertiary mb-3">Copy it now — it won't be shown again.</p>
+          <div className="flex items-center gap-2 rounded-card bg-well border border-seam px-4 py-3">
+            <code className="font-mono text-xs text-ink flex-1 truncate select-all">{freshKey.raw_key}</code>
+            <button type="button" onClick={handleCopyFreshKey}
+              className="min-h-[44px] min-w-[44px] rounded-btn flex items-center justify-center text-ink-muted hover:text-go shrink-0"
+              aria-label="Copy API key">
+              {copiedKey ? <Check size={15} className="text-go" /> : <Copy size={15} />}
+            </button>
+          </div>
+          <button type="button" onClick={() => setFreshKey(null)}
+            className="mt-3 text-[13px] text-ink-tertiary hover:text-ink underline">
+            Dismiss
+          </button>
+        </section>
+      )}
+
+      <section className="card p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-display text-[15px] font-semibold text-ink flex items-center gap-2"><Key size={15} /> API keys</h2>
+            <p className="text-xs text-ink-tertiary mt-0.5">Use in <code className="font-mono bg-well px-1 rounded">X-API-Key</code> header or Bearer token.</p>
+          </div>
+          {!showCreate && (
+            <button type="button" onClick={() => setShowCreate(true)}
+              className="btn btn-primary min-h-[44px] px-4 text-[13px] font-semibold inline-flex items-center gap-2">
+              <Plus size={14} weight="bold" /> New key
+            </button>
+          )}
+        </div>
+
+        {showCreate && (
+          <div className="mb-4 p-4 rounded-card bg-well border border-seam space-y-3">
+            <label className="field-label" htmlFor="key-name">Key name (optional)</label>
+            <input id="key-name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="e.g. CI runner" className="input w-full" maxLength={64}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()} />
+            <div className="flex gap-2">
+              <button type="button" onClick={handleCreate} disabled={creating}
+                className="btn btn-primary min-h-[44px] px-5 text-[13px] font-semibold inline-flex items-center gap-2 disabled:opacity-40">
+                {creating ? <Spinner size={14} className="animate-spin" /> : <Plus size={14} weight="bold" />}
+                {creating ? 'Creating…' : 'Create'}
+              </button>
+              <button type="button" onClick={() => { setShowCreate(false); setNewKeyName('') }}
+                className="min-h-[44px] px-4 rounded-btn border border-seam text-[13px] text-ink-tertiary hover:text-ink">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center gap-2 py-4"><Spinner className="w-4 h-4 animate-spin text-go" /><span className="text-xs text-ink-tertiary">Loading keys…</span></div>
+        ) : keys.length === 0 ? (
+          <EmptyRow label="No keys yet — create one to use the API outside your browser session." />
+        ) : (
+          <ul className="space-y-2">
+            {keys.map((k) => (
+              <li key={k.key_id} className="flex items-center gap-3 rounded-card border border-seam bg-panel px-4 py-3">
+                <Key size={14} className={k.is_active ? 'text-go shrink-0' : 'text-ink-muted shrink-0'} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-ink truncate">{k.name || <span className="text-ink-tertiary italic">unnamed</span>}</p>
+                  <p className="font-mono text-[11px] text-ink-tertiary truncate">
+                    {k.key_id} · {k.tier}{k.credits_used != null ? ` · ${k.credits_used} credits` : ''}
+                    {!k.is_active && <span className="ml-1 text-abort">revoked</span>}
+                  </p>
+                </div>
+                {k.is_active && (
+                  <button type="button" onClick={() => handleRevoke(k.key_id)}
+                    disabled={revoking === k.key_id}
+                    className="min-h-[44px] min-w-[44px] rounded-btn flex items-center justify-center text-ink-muted hover:text-abort disabled:opacity-40 shrink-0"
+                    aria-label="Revoke key">
+                    {revoking === k.key_id ? <Spinner size={14} className="animate-spin" /> : <Trash size={14} />}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   )
