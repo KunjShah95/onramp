@@ -75,4 +75,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 
 # Readiness is enforced externally by the orchestrator hitting /ready
 # (e.g. k8s readinessProbe / docker-compose healthcheck on the service).
-CMD sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${UVICORN_WORKERS:-4} --proxy-headers"
+CMD sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-${UVICORN_WORKERS:-4}} --proxy-headers"
