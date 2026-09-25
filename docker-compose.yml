@@ -165,6 +165,15 @@ services:
       - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-me-to-a-random-32-char-string}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+      # Inbound secret n8n workflows use to sign POSTs to Onramp
+      # (must match the backend's N8N_INBOUND_SECRET; see n8n/workflows/README.md)
+      - N8N_INBOUND_SECRET=${N8N_INBOUND_SECRET:-}
+      # Let Code nodes read $env.N8N_INBOUND_SECRET and require('crypto') for HMAC signing
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+      # Default Telegram chat the complete-bus workflow delivers to
+      # (Format Message node falls back to it via $env.TELEGRAM_CHAT_ID)
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:

@@ -1,5 +1,9 @@
 # n8n Workflows — ready to import
 
+> Running n8n locally on this device (daily commands, verified setup, smoke test, gotchas):
+> see **[`docs/n8n-local-setup.md`](../docs/n8n-local-setup.md)**. This file covers workflow
+> import and production deployment.
+
 Two directly-importable workflows for the faculty. No manual node building needed.
 
 | File | Direction | Trigger | What it does |

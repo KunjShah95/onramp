@@ -366,9 +366,12 @@ docker compose --profile n8n up -d
 # Webhook base (from host): http://localhost:5678/webhook/...
 ```
 
+> **Runbook for this device** (daily start commands, verified one-time setup, smoke test,
+> and Git Bash / n8n CLI gotchas): [`docs/n8n-local-setup.md`](./docs/n8n-local-setup.md)
+
 #### Production Deployment (Render)
 
-Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.n8n`. See [n8n Deployment Guide](./docs/n8n-deployment.md).
+Add n8n as a 4th service in `render.yaml` with persistent disk for `/home/node/.n8n` (see `render.yaml` and `Dockerfile.n8n`; deployment steps in `RENDER_DEPLOYMENT.md` and [`n8n/workflows/README.md`](./n8n/workflows/README.md)).
 
 ---
 
