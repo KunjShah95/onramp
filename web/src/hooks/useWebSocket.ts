@@ -161,10 +161,15 @@ function teardownSocket(): void {
   emitState()
 }
 
+// Token the server last rejected (close 4001). Don't hammer the endpoint with
+// the same credentials; retry once the token changes (login/refresh).
+let authRejectedToken: string | null | undefined
+
 function connect(): void {
   if (subscribers <= 0) return
 
   const token = getToken()
+  if (authRejectedToken !== undefined && authRejectedToken === token) return
   if (socket) {
     // Token changed (login/logout) — recycle the connection with the new token.
     if (socketToken !== token) teardownSocket()
@@ -189,18 +194,31 @@ function connect(): void {
   ws.onmessage = (event) => {
     if (socket !== ws) return
     try {
-      notifyListeners(JSON.parse(event.data) as WsEvent)
+      const parsed = JSON.parse(event.data) as WsEvent
+      if ((parsed as { type?: string }).type === 'connected') authRejectedToken = undefined
+      notifyListeners(parsed)
     } catch {
       // Ignore malformed messages
     }
   }
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     if (socket !== ws) return
     socket = null
     socketToken = null
     connectedFlag = false
     emitState()
+    if (event.code === 4001) {
+      // Not authenticated (e.g. logged out, expired session) — wait for a new token.
+      authRejectedToken = token
+      const waitForNewToken = () => {
+        if (subscribers <= 0) return
+        if (getToken() !== authRejectedToken) connect()
+        else reconnectTimer = setTimeout(waitForNewToken, 3000)
+      }
+      reconnectTimer = setTimeout(waitForNewToken, 3000)
+      return
+    }
     if (subscribers > 0) {
       const delay = Math.min(
         RECONNECT_MAX_DELAY,

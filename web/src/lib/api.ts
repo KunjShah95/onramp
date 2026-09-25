@@ -1925,8 +1925,9 @@ export async function createSubscription(data: {
 
 export async function getSubscription(
   teamId: string
-): Promise<Subscription> {
-  return get<Subscription>(`${API_BASE}/billing/subscriptions/${teamId}`)
+): Promise<Subscription | null> {
+  // null = no active subscription (free plan)
+  return get<Subscription | null>(`${API_BASE}/billing/subscriptions/${teamId}`)
 }
 
 export async function updateSubscription(

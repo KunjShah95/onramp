@@ -76,17 +76,14 @@ async def create_subscription(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/subscriptions/{team_id}",
-    responses={404: {"description": "No active subscription"}})
+@router.get("/subscriptions/{team_id}")
 async def get_subscription(
     team_id: str,
     user: dict = Depends(get_current_user),
 ):
+    """Active subscription for a team, or ``null`` when the team is on the free plan."""
     await require_team_membership(team_id, user)
-    sub = await billing.get_subscription(team_id)
-    if not sub:
-        raise HTTPException(status_code=404, detail="No active subscription")
-    return sub
+    return await billing.get_subscription(team_id)
 
 
 @router.patch("/subscriptions/{team_id}",

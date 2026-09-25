@@ -105,7 +105,7 @@ export default function CodeHealthPage() {
     } catch (err: any) {
       const msg: string = err?.message || 'Failed to compute health score.'
       // Backend answers 400 when the repo has no index yet — make that actionable.
-      const friendly = /repo_structure|index_id/i.test(msg)
+      const friendly = /not registered|repo_structure|index_id/i.test(msg)
         ? `${parsed.owner}/${parsed.repo} isn't indexed yet. Add it from Explore first, then score it here.`
         : msg
       setError(friendly)

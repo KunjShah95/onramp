@@ -82,8 +82,8 @@ export default function BillingPage() {
           const data = await getSubscription(teamId.trim())
           if (cancelled) return
           setSubscription(data)
-          setSelectedTier(data.tier)
-          if (data.tier === 'usage_based') fetchWallet()
+          setSelectedTier(data?.tier ?? null)
+          if (data?.tier === 'usage_based') fetchWallet()
         } catch {
           if (!cancelled) { setSubscription(null); setSelectedTier(null) }
         }
@@ -122,8 +122,8 @@ export default function BillingPage() {
     try {
       const data = await getSubscription(id.trim())
       setSubscription(data)
-      setSelectedTier(data.tier)
-      if (data.tier === 'usage_based') {
+      setSelectedTier(data?.tier ?? null)
+      if (data?.tier === 'usage_based') {
         await fetchWallet()
       }
     } catch {

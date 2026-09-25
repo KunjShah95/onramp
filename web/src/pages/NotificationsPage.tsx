@@ -60,7 +60,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState('')
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
-  const MAX_NOTIFICATIONS = 500
+  const MAX_NOTIFICATIONS = 200 // backend caps ?limit at 200 (422 above)
 
   const toast = useToast()
 

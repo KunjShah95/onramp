@@ -37,9 +37,25 @@ async def get_health(
             "repositories", [("owner", "==", owner), ("name", "==", repo)]
         )
         if repos and repos[0].get("url"):
-            index_id = index_id_for(repos[0]["url"])
+            repo_url = repos[0]["url"]
+            index_id = index_id_for(repo_url)
+            # Registered but never indexed (Explore not run yet): check the
+            # caller's team owns the registration, then build the index now
+            # instead of failing with "Index not found".
+            from app.services.repo_context import RepoContextService
+
+            service = RepoContextService()
+            if not await service.get(index_id):
+                await authorize_registered_repo(user, repo_url)
+                try:
+                    await service.build(repo_url)
+                except Exception as e:
+                    raise HTTPException(status_code=502, detail="Could not index repository") from e
     if not repo_structure and not index_id:
-        raise HTTPException(status_code=400, detail="Provide either repo_structure or index_id")
+        raise HTTPException(
+            status_code=400,
+            detail="Repository is not registered for your team — add it in Explore first (or provide repo_structure/index_id)",
+        )
     team_id = await authorize_repo_index(user, index_id) if index_id else None
     llm = getattr(req.app.state, "llm", None)
     sid = await get_session(
