@@ -26,6 +26,7 @@ import {
 import IdeEditor, { languageForPath } from '../components/ide/IdeEditor'
 import FileTree, { type ChangeKind } from '../components/ide/FileTree'
 import { EmptyRow } from '../components/ui/empty-state'
+import RegisterRepoPrompt, { isUnregisteredRepoError } from '../components/RegisterRepoPrompt'
 
 const BRIEF = '__brief__'
 
@@ -91,6 +92,7 @@ export default function AutonomousCodingPage() {
   const [panel, setPanel] = useState<Panel>('explorer')
   const [newFileOpen, setNewFileOpen] = useState(false)
   const [newFilePath, setNewFilePath] = useState('')
+  const [unregistered, setUnregistered] = useState<{ owner: string; repo: string } | null>(null)
 
   // ── Agent / SCM / output ──────────────────────────────────────────────
   const [brief, setBrief] = useState('')
@@ -122,6 +124,7 @@ export default function AutonomousCodingPage() {
     const parsed = parseRepo(input)
     if (!parsed) { toast.error('Invalid repository', 'Use owner/repo or a GitHub URL.'); return }
     setTreeLoading(true)
+    setUnregistered(null)
     say(`git fetch ${parsed.owner}/${parsed.repo}@${ref}`)
     try {
       const tree = await fetchIdeTree(parsed.owner, parsed.repo, ref)
@@ -140,7 +143,8 @@ export default function AutonomousCodingPage() {
       if (Object.keys(restored).length) say(`Restored ${Object.keys(restored).length} uncommitted change(s) from this browser.`, 'mission')
     } catch (e: any) {
       say(e.message || 'Could not load repository', 'abort')
-      toast.error('Could not open repository', e.message)
+      if (isUnregisteredRepoError(e.message)) setUnregistered(parsed)
+      else toast.error('Could not open repository', e.message)
     } finally {
       setTreeLoading(false)
     }
@@ -407,6 +411,12 @@ export default function AutonomousCodingPage() {
                 </div>
               </form>
 
+              {unregistered && (
+                <div className="p-3 border-b border-seam">
+                  <RegisterRepoPrompt owner={unregistered.owner} repo={unregistered.repo}
+                    onRegistered={() => openWorkspace(`${unregistered.owner}/${unregistered.repo}`, baseBranch)} />
+                </div>
+              )}
               {workspace && (
                 <>
                   <div className="px-3 pt-2 pb-1">

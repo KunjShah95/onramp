@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   Heartbeat, Code, WarningCircle, Bug, GitBranch, Sparkle,
   CaretRight, ArrowUpRight, BookOpen, TreeStructure, ArrowsClockwise, Files,
@@ -10,6 +10,7 @@ import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { useToast } from '../context/ToastContext'
+import RegisterRepoPrompt, { isUnregisteredRepoError } from '../components/RegisterRepoPrompt'
 import { fetchHealthScore, fetchRepos } from '../lib/api'
 import type { HealthScoreResult } from '../lib/api'
 
@@ -82,6 +83,7 @@ export default function CodeHealthPage() {
   const [result, setResult] = useState<HealthScoreResult | null>(null)
   const [analyzed, setAnalyzed] = useState<{ owner: string; repo: string } | null>(null)
   const [error, setError] = useState('')
+  const [unregistered, setUnregistered] = useState<{ owner: string; repo: string } | null>(null)
   const toast = useToast()
   const autoRan = useRef(false)
 
@@ -96,7 +98,7 @@ export default function CodeHealthPage() {
     const parsed = parseRepo(input)
     if (!parsed) { setError('Enter a GitHub repo as owner/repo or a full URL.'); return }
     setRepoUrl(`${parsed.owner}/${parsed.repo}`)
-    setLoading(true); setError(''); setResult(null)
+    setLoading(true); setError(''); setResult(null); setUnregistered(null)
     setSearchParams({ owner: parsed.owner, repo: parsed.repo }, { replace: true })
     try {
       const data = await fetchHealthScore(parsed.owner, parsed.repo, null)
@@ -104,12 +106,13 @@ export default function CodeHealthPage() {
       setAnalyzed(parsed)
     } catch (err: any) {
       const msg: string = err?.message || 'Failed to compute health score.'
-      // Backend answers 400 when the repo has no index yet — make that actionable.
-      const friendly = /not registered|repo_structure|index_id/i.test(msg)
-        ? `${parsed.owner}/${parsed.repo} isn't indexed yet. Add it from Explore first, then score it here.`
-        : msg
-      setError(friendly)
-      toast.error('Health check failed', friendly)
+      if (isUnregisteredRepoError(msg)) {
+        // Actionable inline prompt instead of a toast — registration fixes it.
+        setUnregistered(parsed)
+      } else {
+        setError(msg)
+        toast.error('Health check failed', msg)
+      }
     } finally { setLoading(false) }
   }
 
@@ -225,6 +228,13 @@ export default function CodeHealthPage() {
           </ConsolePanel>
         </div>
 
+        {unregistered && (
+          <div className="mb-6">
+            <RegisterRepoPrompt owner={unregistered.owner} repo={unregistered.repo}
+              onRegistered={() => analyze(`${unregistered.owner}/${unregistered.repo}`)} />
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="mb-6">
@@ -232,11 +242,6 @@ export default function CodeHealthPage() {
               <div className="flex items-center justify-between gap-4">
                 <span className="text-[13px] text-abort">{error}</span>
                 <div className="flex items-center gap-3 shrink-0">
-                  {/isn't indexed/.test(error) && (
-                    <Link to="/explore" className="text-[12px] text-mission hover:text-mission-lit underline">
-                      Open Explore
-                    </Link>
-                  )}
                   <button onClick={() => analyze(repoUrl)} disabled={loading} className="text-[12px] text-abort/70 hover:text-abort underline">
                     Retry
                   </button>
@@ -247,7 +252,7 @@ export default function CodeHealthPage() {
         )}
 
         {/* Empty */}
-        {!loading && !result && !error && (
+        {!loading && !result && !error && !unregistered && (
           <ConsolePanel rail="Awaiting" designator="No data yet" status="idle">
             <EmptyState
               icon={<Heartbeat size={26} className="text-ink-disabled" weight="duotone" />}

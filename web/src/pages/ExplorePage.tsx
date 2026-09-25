@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import RegisterRepoPrompt, { isUnregisteredRepoError } from '../components/RegisterRepoPrompt'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -449,7 +450,15 @@ export default function ExplorePage() {
           }
         />
 
-        {showError && (
+        {showError && isUnregisteredRepoError(showError) && parseRepoInput(repoUrl) ? (
+          <div className="mb-6">
+            <RegisterRepoPrompt
+              owner={parseRepoInput(repoUrl)!.owner}
+              repo={parseRepoInput(repoUrl)!.repo}
+              onRegistered={() => { setError(''); handleAnalyze() }}
+            />
+          </div>
+        ) : showError && (
           <div className="mb-6 px-4 py-3 rounded-[3px] bg-abort/10 border border-abort/20 text-abort text-body-sm flex items-center justify-between">
             <span>{showError}</span>
             <button
