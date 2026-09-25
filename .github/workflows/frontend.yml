@@ -74,6 +74,9 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: web
+        env:
+          # Canonical host for sitemap/robots/SEO snapshots (public, not a secret).
+          VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://developer-onboard.vercel.app' }}
 
       - name: Bundle size analysis
         run: npx vitest run test/bundle/bundle-analysis.test.ts --testTimeout 30000
