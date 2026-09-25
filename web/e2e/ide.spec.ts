@@ -69,17 +69,7 @@ test.describe('IDE — Autonomous Coding', () => {
 
     // Brief → agent proposes → change is applied to the working copy
     await page.getByRole('button', { name: 'Coding agent' }).click()
-    await page.evaluate(() => {
-      // Type the brief through Monaco's model when available; fall back to the textarea.
-      const w = window as any
-      const model = w.monaco?.editor?.getModels?.().find((m: any) => String(m.uri).endsWith('ISSUE.md'))
-      if (model) model.setValue('Fix the greeting typo')
-    })
-    const briefBox = page.locator('.monaco-editor textarea').first()
-    if (await page.getByRole('button', { name: /Propose changes/ }).isDisabled()) {
-      await briefBox.click()
-      await page.keyboard.type('Fix the greeting typo')
-    }
+    await page.getByLabel('Agent brief').fill('Fix the greeting typo')
     await page.getByRole('button', { name: /Propose changes/ }).click()
     await expect(page.getByText('Typo in greeting string').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(/1\/1 proposed edit/)).toBeVisible()
