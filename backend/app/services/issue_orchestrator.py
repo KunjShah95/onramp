@@ -14,8 +14,8 @@ class IssueOrchestrator:
           Apply Change -> Validation -> Review.
     """
 
-    def __init__(self, llm_client: LLMRouter):
-        self.github = GitHubService()
+    def __init__(self, llm_client: LLMRouter, github_token: Optional[str] = None):
+        self.github = GitHubService(token=github_token) if github_token else GitHubService()
         self.context = RepoContextService()
         self.agent = IssueResolutionAgent(llm_client)
         self.llm = llm_client
@@ -27,6 +27,7 @@ class IssueOrchestrator:
         branch: str = "main",
         team_id: Optional[str] = None,
         user_id: Optional[str] = None,
+        apply: bool = True,
     ) -> Dict[str, Any]:
         """The main entry point for resolving a specific issue.
 
@@ -70,14 +71,30 @@ class IssueOrchestrator:
 
             if not fixes:
                 return {
+                    "success": False,
                     "status": "no_fix_proposed",
-                    "analysis": analysis.dict()
+                    "analysis": analysis.dict(),
+                    "fixes": [],
+                    "error": "The agent could not find a concrete change for this brief.",
+                }
+
+            if not apply:
+                # Propose-only (IDE review flow): the caller applies the fixes to
+                # its working copy, lets the developer edit, and commits itself.
+                return {
+                    "success": True,
+                    "status": "proposed",
+                    "analysis": analysis.dict(),
+                    "fixes": [f.dict() for f in fixes],
+                    "summary": self._generate_basic_summary(issue_description, analysis, fixes),
+                    "session_id": session_id,
                 }
 
             # 5. Apply Fixes (to a temporary branch for validation)
             # The branch must exist before commit_to_branch can push to it.
             owner, repo = self._extract_owner_repo(repo_url)
-            fix_branch = f"fix/issue-{index_id[:8]}"
+            import time as _time
+            fix_branch = f"fix/issue-{index_id[:8]}-{int(_time.time())}"
             branch_ok = await self.github.create_branch(owner, repo, branch, fix_branch)
             if not branch_ok:
                 # No write access (or branch creation failed) — try a fork flow is
@@ -105,6 +122,16 @@ class IssueOrchestrator:
                 except Exception as e:
                     applied_results.append({"status": "failed", "error": str(e)})
 
+            applied = sum(1 for r in applied_results if r["status"] == "success")
+            failed = len(applied_results) - applied
+            pr = None
+            if applied:
+                pr = await self.github.create_pr(
+                    owner, repo, head=fix_branch, base=branch,
+                    title=f"fix: {issue_description.strip().splitlines()[0][:72]}",
+                    body=self._generate_basic_summary(issue_description, analysis, fixes),
+                )
+
             # 6. Validation (Placeholder for ValidationEngine)
             # We would call ValidationEngine().verify(repo_url, branch, analysis)
             validation_status = "pending_manual_verification"
@@ -113,6 +140,17 @@ class IssueOrchestrator:
             summary = self._generate_basic_summary(issue_description, analysis, fixes)
 
             result = {
+                "success": bool(applied and pr),
+                "pr_url": (pr or {}).get("pr_url"),
+                "pr_number": (pr or {}).get("pr_number"),
+                "branch": fix_branch,
+                "files_changed": len({f.file_path for f, r in zip(fixes, applied_results) if r["status"] == "success"}),
+                "patches_applied": applied,
+                "patches_failed": failed,
+                "error": None if (applied and pr) else (
+                    "No patch applied cleanly — the proposed search text did not match the file."
+                    if not applied else f"Changes pushed to {fix_branch}, but the pull request could not be opened."
+                ),
                 "status": "proposed_and_applied",
                 "analysis": analysis.dict(),
                 "fixes": [f.dict() for f in fixes],

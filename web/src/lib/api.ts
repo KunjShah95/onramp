@@ -13,7 +13,7 @@ import type {
 
 // Re-export the resolve-issue contract — AutonomousCodingPage imports these
 // from this module (the agent endpoints live here, the types live in types.ts).
-export type { ResolveIssueRequest, ResolveIssueResult } from './types'
+export type { ResolveIssueRequest, ResolveIssueResult, AgentFix } from './types'
 
 // Expected VITE_API_URL format: "http://localhost:8000" or "http://localhost:8000/api/v1"
 // If it already includes /api/v1, the path is not appended again.
@@ -2406,6 +2406,41 @@ export async function resolveRepoIssue(
   body: ResolveIssueRequest
 ): Promise<ResolveIssueResult> {
   return request<ResolveIssueResult>(`${API_BASE}/repos/${owner}/${repo}/resolve-issue`, body)
+}
+
+// ─── IDE workspace (tree · files · agent proposals · commit + PR) ───────────
+
+export interface IdeTreeEntry { path: string; type: 'file' | 'dir'; size: number | null }
+export interface IdeTree { ref: string; sha: string; truncated: boolean; entries: IdeTreeEntry[] }
+export interface IdeFile { path: string; ref: string; size: number; binary: boolean; too_large: boolean; content: string }
+export interface IdeCommitResult { branch: string; commit_sha: string; commit_url: string; files: number; pr_number?: number; pr_url?: string }
+
+const ideBase = (owner: string, repo: string) =>
+  `${API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/ide`
+
+export async function fetchIdeTree(owner: string, repo: string, ref: string): Promise<IdeTree> {
+  return get<IdeTree>(`${ideBase(owner, repo)}/tree?ref=${encodeURIComponent(ref)}`)
+}
+
+export async function fetchIdeFile(owner: string, repo: string, path: string, ref: string): Promise<IdeFile> {
+  return get<IdeFile>(`${ideBase(owner, repo)}/file?path=${encodeURIComponent(path)}&ref=${encodeURIComponent(ref)}`)
+}
+
+export async function ideCommit(owner: string, repo: string, body: {
+  base: string
+  branch?: string
+  message: string
+  files: { path: string; content: string | null }[]
+  open_pr?: boolean
+  pr_title?: string
+  pr_body?: string
+}): Promise<IdeCommitResult> {
+  return request<IdeCommitResult>(`${ideBase(owner, repo)}/commit`, body)
+}
+
+/** Ask the coding agent for changes without applying them (reviewed in the IDE). */
+export async function ideProposeChanges(owner: string, repo: string, issue_description: string, branch: string): Promise<ResolveIssueResult> {
+  return request<ResolveIssueResult>(`${ideBase(owner, repo)}/propose`, { issue_description, branch })
 }
 
 // ─── Repo Autopilot (repo URL → issues → Onramp tasks → PRs) ───────────────

@@ -205,6 +205,15 @@ const MONACO_THEMES = {
   },
 }
 
+/** Register + activate the Onramp Monaco theme for the current app theme. */
+export function applyOnrampMonacoTheme(monaco: any, theme: string): string {
+  const themeConfig = MONACO_THEMES[theme as keyof typeof MONACO_THEMES] || MONACO_THEMES.light
+  const name = 'onramp-' + theme
+  monaco.editor.defineTheme(name, { base: themeConfig.base, inherit: true, rules: [], colors: themeConfig.colors })
+  monaco.editor.setTheme(name)
+  return name
+}
+
 export interface CodeEditorProps {
   value: string
   onChange?: (value: string) => void

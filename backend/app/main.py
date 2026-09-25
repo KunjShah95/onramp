@@ -462,6 +462,8 @@ app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")
 app.include_router(ask.router, prefix="/api/v1")
 app.include_router(repositories.router, prefix="/api/v1")
+from app.api.v1 import repo_ide as repo_ide_router  # noqa: E402
+app.include_router(repo_ide_router.router, prefix="/api/v1")
 app.include_router(repo_index.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")

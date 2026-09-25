@@ -150,6 +150,8 @@ export interface ResolveIssueRequest {
   branch?: string
 }
 
+export type AgentFix = ProposedFix
+
 export interface ResolveIssueResult {
   /** Whether the agent completed its run and opened a pull request. */
   success: boolean
