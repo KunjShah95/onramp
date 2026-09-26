@@ -368,15 +368,45 @@ def _custom_openapi():
 
 app.openapi = _custom_openapi
 
-# Middleware is executed in reverse order of addition (last added = outermost)
-# Outermost -> Logging -> ResponseWrapper -> RateLimit -> Auth -> CORS -> Innermost (Router)
+# Middleware is executed in reverse order of addition (last added = outermost).
 # Allowed CORS origins are configured via the CORS_ALLOWED_ORIGINS env var
 # (comma-separated). Defaults to the local dev frontend.
+def _normalize_origin(origin: str) -> str:
+    """Strip whitespace and any trailing slashes from a CORS origin.
+
+    Browsers send the Origin header with no trailing slash, so a configured
+    value like "https://app.example.com/" never matches and every cross-origin
+    request is silently rejected with no Access-Control-Allow-Origin header.
+    Normalizing here makes a misconfigured deployment self-heal.
+    """
+    return origin.strip().rstrip("/")
+
+
 _cors_origins = [
-    origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000").split(",")
-    if origin.strip()
+    normalized
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000",
+    ).split(",")
+    if (normalized := _normalize_origin(origin))
 ]
+
+# Complements (never replaces) the explicit list — an origin is allowed if it
+# matches either. Empty by default, so only CORS_ALLOWED_ORIGINS applies unless
+# explicitly configured. Set this to admit preview deployments whose hostnames
+# cannot be enumerated, e.g. r"^https://[a-z0-9][a-z0-9-]*\.vercel\.app$".
+_cors_regex_raw = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", "").strip()
+_cors_regex = _cors_regex_raw or None
+
+# The effective origin list is otherwise invisible until a browser reports a
+# CORS failure. Log it at startup so the deployed config is readable in the
+# service logs instead of having to be guessed at.
+logging.getLogger("onramp.startup").info(
+    "CORS allowed origins (%d): %s | origin regex: %s",
+    len(_cors_origins),
+    ", ".join(_cors_origins) or "<none>",
+    _cors_regex or "<none>",
+)
 
 _doc_paths = ["/docs", "/redoc", "/openapi.json"] if _show_api_docs else []
 
@@ -417,12 +447,7 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSPNonceMiddleware)
-# CORS origin regex — no default wildcard. Set CORS_ALLOWED_ORIGIN_REGEX explicitly
-# to allow preview deployments (e.g. r"^https://[a-z0-9][a-z0-9-]*\.vercel\.app$").
-# Empty by default so only CORS_ALLOWED_ORIGINS is used unless explicitly configured.
-_cors_regex_raw = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", "")
-_cors_regex = _cors_regex_raw if _cors_regex_raw else None
-
+# _cors_origins / _cors_regex are parsed (and logged) near the top of this file.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
