@@ -1,10 +1,8 @@
 import SectionHeading from './SectionHeading'
 
 /* Calm proof strip — honest by design: no fake logos, no fabricated
- * quotes. Plain integration row + three quiet outcome cards.
- * Removed: motion fades and rises. */
-
-const INTEGRATIONS = ['GitHub', 'Slack', 'Linear']
+ * quotes. Three quiet outcome cards.
+ * Removed: integration name row, motion fades and rises. */
 
 const OUTCOMES = [
   {
@@ -34,15 +32,7 @@ export default function SocialProof() {
           sub="Not promises — the workflow your team gets: a live map, graded tasks, and a review queue."
         />
 
-        <div className="mt-10 flex flex-wrap items-center gap-x-10 gap-y-3 border-y border-seam py-5">
-          {INTEGRATIONS.map((c) => (
-            <span key={c} className="text-[15px] font-medium text-ink-tertiary">
-              {c}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {OUTCOMES.map((t) => (
             <div key={t.metric} className="rounded-md border border-seam bg-panel p-6">
               <div className="text-[15px] font-semibold text-ink">{t.metric}</div>
