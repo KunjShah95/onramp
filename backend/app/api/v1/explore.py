@@ -69,6 +69,9 @@ async def analyze_repo(
     # Authorization is completed before a client or server GitHub token can
     # reach ArchitectureExplorer/GitHubService.
     team_id = await _authorize_explore_target(user, request)
+    # HttpUrl is a pydantic object, not a str — the explorer's URL validation
+    # and JSON session payloads both need the plain string.
+    repo_url = str(request.repo_url)
     llm = getattr(req.app.state, "llm", None)
     github_token = _extract_github_token(request, req)
     sid = await get_session(
@@ -76,13 +79,13 @@ async def analyze_repo(
         user_id=user.get("uid"),
         team_id=team_id,
         index_id=request.index_id,
-        scratchpad={"repo_url": request.repo_url, "branch": request.branch},
+        scratchpad={"repo_url": repo_url, "branch": request.branch},
     )
     explorer = ArchitectureExplorer(llm, github_token=github_token, session_id=sid) if sid else ArchitectureExplorer(llm, github_token=github_token)
     before_route = getattr(llm, "last_route", None)
     try:
         result = await explorer.execute(
-            repo_url=request.repo_url,
+            repo_url=repo_url,
             branch=request.branch,
             index_id=request.index_id,
         )
@@ -95,7 +98,7 @@ async def analyze_repo(
         attach_served_route_header(llm, before_route, response)
         if isinstance(result, dict) and sid:
             result["session_id"] = sid
-        await complete_session(sid, "architecture_explorer", success=True, payload={"repo_url": request.repo_url, "index_id": request.index_id})
+        await complete_session(sid, "architecture_explorer", success=True, payload={"repo_url": repo_url, "index_id": request.index_id})
         # Persist a durable snapshot so the graph survives reloads and Redis
         # TTL expiry (best-effort — never block analysis on storage).
         if isinstance(result, dict):
@@ -104,7 +107,7 @@ async def analyze_repo(
 
                 await architecture_store.save_from_analyze(
                     result,
-                    repo_url=str(request.repo_url),
+                    repo_url=repo_url,
                     branch=request.branch,
                     index_id=request.index_id,
                 )

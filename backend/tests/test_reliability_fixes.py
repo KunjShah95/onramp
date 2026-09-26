@@ -73,6 +73,29 @@ def test_explore_none_result_returns_502(monkeypatch):
     assert "no result" in resp.json()["detail"]
 
 
+def test_explore_passes_repo_url_as_plain_str(monkeypatch):
+    """The explorer validates repo_url as a str; a pydantic HttpUrl made it
+    raise ValueError, which surfaced as a 500 for every analysis."""
+    seen = {}
+
+    class _RecordingExplorer:
+        def __init__(self, llm, github_token=None, session_id=None):
+            pass
+
+        async def execute(self, **kwargs):
+            seen["repo_url"] = kwargs["repo_url"]
+            return {"repo": "owner/repo"}
+
+    client = TestClient(_build_explore_app(monkeypatch, _RecordingExplorer))
+    resp = client.post(
+        "/api/v1/explore/analyze",
+        json={"repo_url": "https://github.com/owner/repo"},
+    )
+    assert resp.status_code == 200
+    assert type(seen["repo_url"]) is str
+    assert seen["repo_url"] == "https://github.com/owner/repo"
+
+
 # ── 1.4: broadcast is null-safe ───────────────────────────────────────────
 
 
