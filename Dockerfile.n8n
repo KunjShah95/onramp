@@ -8,11 +8,10 @@
 # N8N_INBOUND_SECRET (must match backend).
 FROM n8nio/n8n:2.41.0
 
-USER root
-RUN apk add --no-cache wget
-
+# n8n 2.x images ship without a package manager (no apk), so the healthcheck
+# uses the bundled node runtime instead of wget/curl.
 USER node
 EXPOSE 5678
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:5678/healthz || exit 1
+  CMD node -e "require('http').get('http://localhost:5678/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
