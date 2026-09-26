@@ -140,13 +140,15 @@ async def get_cached(
     if client:
         try:
             raw = await client.get(key)
-            if raw is not None:
+            # Whitespace-only entries were cached before set_cached guarded
+            # against them; treat them as a miss instead of replaying them.
+            if raw is not None and str(raw).strip():
                 return raw
         except Exception:
             logger.debug("Redis llm-cache get failed for %s", key)
     async with _LOCAL_CACHE_LOCK:
         entry = _LOCAL_CACHE.get(key)
-        if entry and entry[0] > time.time():
+        if entry and entry[0] > time.time() and str(entry[1]).strip():
             return entry[1]
         _LOCAL_CACHE.pop(key, None)
     return None
@@ -162,7 +164,7 @@ async def set_cached(
     scope: str = "global",
 ) -> None:
     """Store a response with TTL. Never raises (cache must be best-effort)."""
-    if not response:
+    if not response or not response.strip():
         return
     key = cache_key(query_type, prompt, system, max_tokens, scope=scope)
     client = await _redis()
@@ -312,7 +314,7 @@ async def get_semantic(
                 if sim < best_sim:
                     continue
                 best_sim, best = sim, entry.get("r")
-            return (best, best_sim) if best is not None else None
+            return (best, best_sim) if best is not None and str(best).strip() else None
         except Exception:
             logger.debug("Redis llm-sem cache read failed for %s", bucket)
 
@@ -348,7 +350,7 @@ async def set_semantic(
     Skips prompts with no distinctive content words or fewer than
     ``_MIN_PROMPT_LEN`` characters — there is nothing safe to match on.
     """
-    if not SEMANTIC_ENABLED or not response:
+    if not SEMANTIC_ENABLED or not response or not response.strip():
         return
     if len(_normalize(prompt)) < _MIN_PROMPT_LEN:
         return

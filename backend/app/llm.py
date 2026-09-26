@@ -446,6 +446,23 @@ class _ProviderHealth:
         }
 
 
+def _openrouter_fallback_body(provider: "ModelProvider", config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """OpenRouter-side model fallback for free models.
+
+    Free slugs are frequently rate-limited upstream (429); OpenRouter's
+    ``models`` list retries the next slug server-side in the same request.
+    Only applied when the pinned model is itself free, so a paid passthrough
+    model is never swapped for a different one.
+    """
+    if provider != ModelProvider.OPENROUTER:
+        return None
+    model = config.get("model") or ""
+    fallbacks = [m for m in config.get("fallback_models") or [] if m != model]
+    if not model.endswith(":free") or not fallbacks:
+        return None
+    return {"models": [model, *fallbacks][:3]}
+
+
 class LLMRouter:
     """Multi-provider LLM with query-type routing and fallback chain.
 
@@ -500,7 +517,16 @@ class LLMRouter:
         self.providers = {
             ModelProvider.OPENROUTER: {
                 "api_key": os.getenv("OPENROUTER_API_KEY"),
-                "model": "google/gemini-2.5-flash:free",
+                # OpenRouter retires :free slugs without notice (a dead slug
+                # 404s and silently pushes every call to the next provider),
+                # so the model and its server-side fallbacks are env-driven.
+                "model": os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"),
+                "fallback_models": [
+                    m.strip() for m in os.getenv(
+                        "OPENROUTER_FALLBACK_MODELS",
+                        "google/gemma-4-31b-it:free,qwen/qwen3.8-27b:free",
+                    ).split(",") if m.strip()
+                ],
                 "base_url": "https://openrouter.ai/api/v1",
                 "type": "openai_sdk",
                 "free": True,
@@ -1485,6 +1511,11 @@ class LLMRouter:
                 response = await self._call_provider(
                     provider, prompt, system, max_tokens, **call_kwargs
                 )
+                if not isinstance(response, str) or not response.strip():
+                    # Reasoning models (e.g. gpt-oss) return empty content when
+                    # the thinking budget eats max_tokens. Treat as a failure so
+                    # the chain moves on — and the empty reply is never cached.
+                    raise ValueError("empty completion")
                 self.health.record(provider, True)
                 if self.current_provider != provider:
                     logger.info(f"Switched to provider: {provider.value}")
@@ -1602,6 +1633,7 @@ class LLMRouter:
             model=config["model"],
             messages=messages,
             max_tokens=max_tokens,
+            extra_body=_openrouter_fallback_body(provider, config),
         )
         return resp.choices[0].message.content
 
@@ -1880,7 +1912,8 @@ class LLMRouter:
         messages.append({"role": "user", "content": prompt})
 
         stream = await client.chat.completions.create(
-            model=config["model"], messages=messages, max_tokens=max_tokens, stream=True
+            model=config["model"], messages=messages, max_tokens=max_tokens, stream=True,
+            extra_body=_openrouter_fallback_body(provider, config),
         )
         async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
