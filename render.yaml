@@ -48,6 +48,14 @@ envVarGroups:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      # Optional regex for Vercel preview deployments. Complements (never
+      # replaces) CORS_ALLOWED_ORIGINS — an origin is allowed if it matches
+      # either. Needed because every preview gets its own
+      # <hash>.vercel.app hostname, which cannot be enumerated in the list
+      # above. Non-secret, so the value ships here rather than being prompted.
+      # Read at backend/app/main.py:423 (allow_origin_regex).
+      - key: CORS_ALLOWED_ORIGIN_REGEX
+        value: '^https://[a-z0-9][a-z0-9-]*\.vercel\.app$'
       - key: BACKEND_URL
         sync: false
       - key: FRONTEND_URL
