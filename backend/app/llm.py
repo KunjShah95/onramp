@@ -446,6 +446,11 @@ class _ProviderHealth:
         }
 
 
+def _is_free_openrouter_model(model: str) -> bool:
+    """``:free`` slugs and the ``openrouter/free`` router cost nothing."""
+    return model.endswith(":free") or model == "openrouter/free"
+
+
 def _openrouter_fallback_body(provider: "ModelProvider", config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """OpenRouter-side model fallback for free models.
 
@@ -458,7 +463,7 @@ def _openrouter_fallback_body(provider: "ModelProvider", config: Dict[str, Any])
         return None
     model = config.get("model") or ""
     fallbacks = [m for m in config.get("fallback_models") or [] if m != model]
-    if not model.endswith(":free") or not fallbacks:
+    if not model.endswith(":free") or not fallbacks:  # routers fall back on their own
         return None
     return {"models": [model, *fallbacks][:3]}
 
@@ -514,13 +519,15 @@ class LLMRouter:
         # Provider config: api_key, model, base_url (for OpenAI-compatible), type, free flag
         # Ollama uses OLLAMA_BASE_URL (not an API key) as the availability signal.
         _ollama_base_url = os.getenv("OLLAMA_BASE_URL", "")
+        openrouter_model = os.getenv("OPENROUTER_MODEL", "").strip() or "openrouter/auto"
         self.providers = {
             ModelProvider.OPENROUTER: {
                 "api_key": os.getenv("OPENROUTER_API_KEY"),
-                # OpenRouter retires :free slugs without notice (a dead slug
-                # 404s and silently pushes every call to the next provider),
-                # so the model and its server-side fallbacks are env-driven.
-                "model": os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"),
+                # Default: OpenRouter's own auto-router (paid, picks the best
+                # model per prompt). Set OPENROUTER_MODEL=openrouter/free or a
+                # pinned ":free" slug for $0 routing; free slugs get
+                # OPENROUTER_FALLBACK_MODELS as server-side fallbacks.
+                "model": openrouter_model,
                 "fallback_models": [
                     m.strip() for m in os.getenv(
                         "OPENROUTER_FALLBACK_MODELS",
@@ -529,7 +536,10 @@ class LLMRouter:
                 ],
                 "base_url": "https://openrouter.ai/api/v1",
                 "type": "openai_sdk",
-                "free": True,
+                "free": _is_free_openrouter_model(openrouter_model),
+                # openrouter/* slugs are OpenRouter's own routers: an explicit
+                # operator choice to route through it, so it leads the chain.
+                "preferred": openrouter_model.startswith("openrouter/"),
             },
             ModelProvider.GEMINI: {
                 "api_key": os.getenv("GEMINI_API_KEY"),
@@ -864,6 +874,12 @@ class LLMRouter:
         cfg = self.providers[provider]
         score = 10.0 - rank * 0.5
 
+        if cfg.get("preferred"):
+            # Operator pinned a router model (e.g. openrouter/auto): lead the
+            # chain and skip the paid-reluctance penalty below. Health still
+            # demotes it when it starts failing, so failover is unchanged.
+            score += 3.0
+
         if provider == ModelProvider.OLLAMA:
             # "Free" here means "no API cost", not "as good as a configured
             # cloud provider" - Ollama is the documented last-resort local
@@ -877,7 +893,7 @@ class LLMRouter:
             score -= 6.0
         score += self.health.success_rate(provider) * 2.0
 
-        if not cfg["free"]:
+        if not cfg["free"] and not cfg.get("preferred"):
             # routing_mode dominates (a stated preference beats a heuristic
             # guess); complexity is a smaller modulator on top of it.
             #

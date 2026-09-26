@@ -77,7 +77,7 @@ def get_price(model: str) -> Dict[str, float]:
     no explicit INR rate. Unknown models fall back to :data:`DEFAULT_PRICE`.
     """
     entry = MODEL_PRICING.get(model)
-    if entry is None and model.endswith(":free"):
+    if entry is None and (model.endswith(":free") or model == "openrouter/free"):
         entry = {"input": 0.0, "output": 0.0}  # OpenRouter's own free tier
     if entry is None:
         # Try matching the bare model id (e.g. an OpenRouter-style

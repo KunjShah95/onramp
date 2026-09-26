@@ -95,6 +95,16 @@ def _reset_storage():
 
 
 @pytest.fixture(autouse=True)
+def _pin_free_openrouter_model(monkeypatch):
+    """Routing-policy tests assume a free OpenRouter model.
+
+    Production defaults to ``openrouter/auto`` (paid, preferred); tests that
+    cover that mode set OPENROUTER_MODEL themselves.
+    """
+    monkeypatch.setenv("OPENROUTER_MODEL", "test/free-model:free")
+
+
+@pytest.fixture(autouse=True)
 def _reset_inprocess_caches():
     """Clear the in-process LLM + repo-context caches between tests.
 

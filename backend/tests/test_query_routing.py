@@ -333,3 +333,33 @@ class TestOpenAIModelRouting:
         assert router.last_route["provider"] == "openrouter"  # free-first chain
         assert router.last_route["free"] is True
         assert router.last_route["query_type"] == "chat"
+
+
+class TestOpenRouterAutoRouting:
+    """OPENROUTER_MODEL=openrouter/auto: paid, operator-preferred router."""
+
+    def test_auto_leads_every_query_type_route(self, monkeypatch):
+        _set_all_keys(monkeypatch)
+        monkeypatch.setenv("OPENROUTER_MODEL", "openrouter/auto")
+        router = LLMRouter()
+        for qtype in (QueryType.CHAT, QueryType.STRUCTURED, QueryType.CODE, QueryType.REASONING):
+            assert router.resolve_route(qtype)[0] == ModelProvider.OPENROUTER, qtype
+
+    def test_auto_is_tracked_as_paid(self, monkeypatch):
+        _set_all_keys(monkeypatch)
+        monkeypatch.setenv("OPENROUTER_MODEL", "openrouter/auto")
+        router = LLMRouter()
+        info = router.route_info(ModelProvider.OPENROUTER)
+        assert info["model"] == "openrouter/auto"
+        assert info["free"] is False
+
+    def test_openrouter_free_router_is_free_and_preferred(self, monkeypatch):
+        _set_all_keys(monkeypatch)
+        monkeypatch.setenv("OPENROUTER_MODEL", "openrouter/free")
+        router = LLMRouter()
+        assert router.route_info(ModelProvider.OPENROUTER)["free"] is True
+        assert router.resolve_route(QueryType.STRUCTURED)[0] == ModelProvider.OPENROUTER
+
+    def test_default_model_is_auto(self, monkeypatch):
+        monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+        assert LLMRouter().providers[ModelProvider.OPENROUTER]["model"] == "openrouter/auto"
