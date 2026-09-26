@@ -409,7 +409,8 @@ class ParserService:
         ".sql",
     }
     IGNORE_DIRS = {
-        "node_modules", "__pycache__", ".git", "venv", "dist", "build",
+        "node_modules", "__pycache__", ".git", "venv", ".venv", "env",
+        "site-packages", "dist", "build",
         ".next", "vendor", ".tox", "target", "egg-info", ".eggs",
         ".cargo", "Cargo.lock",
     }

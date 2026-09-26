@@ -1,42 +1,127 @@
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import logging
+import posixpath
 import networkx as nx
 
 logger = logging.getLogger(__name__)
 
 
-def _resolve_module(mod: str, module_map: Dict, search_dir: Path) -> str:
-    """Resolve an import module name to an actual file path.
+_JS_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+_RESOLVABLE_EXTS = _JS_EXTS + (".py", ".go", ".rs", ".java", ".kt")
+_INDEX_FILES = ("index.ts", "index.tsx", "index.js", "index.jsx", "__init__.py")
 
-    Shared by the repo-context index and ArchitectureExplorer so both build
-    the identical graph for the same parsed entities.
+# Only source code becomes a graph node — docs, lockfiles and config would
+# otherwise drown the real modules (and collapse the graph to top-level dirs).
+_CODE_EXTS = frozenset(_RESOLVABLE_EXTS + (
+    ".rb", ".php", ".cs", ".swift", ".scala", ".c", ".cc", ".cpp", ".h", ".hpp",
+))
+_VENDOR_SEGMENTS = frozenset({
+    "node_modules", ".venv", "venv", "site-packages", "__pycache__", "dist", "build",
+})
+
+
+def _norm(path: str) -> str:
+    return path.replace("\\", "/")
+
+
+def _is_code_file(path: str) -> bool:
+    path = _norm(path)
+    if any(segment in _VENDOR_SEGMENTS for segment in path.split("/")):
+        return False
+    return posixpath.splitext(path)[1].lower() in _CODE_EXTS
+
+
+class _ModuleResolver:
+    """Resolve an import string to a file path inside the repository.
+
+    Handles JS/TS relative paths (``../lib/api``), ``@/`` src aliases,
+    Python absolute (``app.services.x``) and relative (``.x``) imports.
+    Bare package names (``react``, ``logging``) never resolve to an
+    unrelated same-named local file.
     """
-    if mod in module_map:
-        return module_map[mod]
 
-    dotted_mod = mod.replace("-", "_")
-    if dotted_mod in module_map:
-        return module_map[dotted_mod]
+    def __init__(self, paths):
+        self.paths = {_norm(p) for p in paths}
+        # "app/services/x" -> files whose extension-less path ends with it
+        self.by_suffix: Dict[str, List[str]] = {}
+        for path in self.paths:
+            stem, ext = posixpath.splitext(path)
+            if ext not in _RESOLVABLE_EXTS:
+                continue
+            parts = stem.split("/")
+            if len(parts) > 1 and parts[-1] in ("__init__", "index"):
+                parts = parts[:-1]
+            for i in range(len(parts)):
+                self.by_suffix.setdefault("/".join(parts[i:]), []).append(path)
 
-    as_path = mod.replace(".", "/")
-    if as_path in module_map:
-        return module_map[as_path]
+    def _first_file(self, base: str) -> str:
+        base = base.strip("/")
+        if base in self.paths:
+            return base
+        for ext in _RESOLVABLE_EXTS:
+            if base + ext in self.paths:
+                return base + ext
+        for index in _INDEX_FILES:
+            if f"{base}/{index}" in self.paths:
+                return f"{base}/{index}"
+        return ""
 
-    for ext in [".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java"]:
-        candidate = str(search_dir / as_path) + ext
-        if candidate in module_map.values():
-            return candidate
+    def _closest(self, candidates: List[str], source: str) -> str:
+        """Prefer the candidate sharing the longest directory prefix with source."""
+        def shared(path: str) -> int:
+            n = 0
+            for a, b in zip(path.split("/"), source.split("/")):
+                if a != b:
+                    break
+                n += 1
+            return n
+        return max(sorted(candidates), key=shared)
 
-    init_candidate = str(search_dir / as_path / "__init__.py")
-    if init_candidate in module_map.values():
-        return init_candidate
+    def _dotted(self, mod: str, source: str) -> str:
+        parts = [p for p in mod.split(".") if p]
+        src_dir = posixpath.dirname(source)
+        for n in range(len(parts), 0, -1):
+            key = "/".join(parts[:n])
+            candidates = self.by_suffix.get(key, [])
+            if n == 1:
+                # A single name only resolves to a sibling module; otherwise
+                # stdlib/package imports (``logging``) create false edges.
+                candidates = [c for c in candidates if posixpath.dirname(c) == src_dir
+                              or posixpath.dirname(posixpath.dirname(c)) == src_dir]
+            if candidates:
+                return self._closest(candidates, source)
+        return ""
 
-    index_candidate = str(search_dir / as_path / "index.ts")
-    if index_candidate in module_map.values():
-        return index_candidate
+    def resolve(self, mod: str, source: str) -> str:
+        mod = (mod or "").strip()
+        if not mod:
+            return ""
+        source = _norm(source)
+        src_dir = posixpath.dirname(source)
+        is_js = source.endswith(_JS_EXTS)
 
-    return ""
+        if mod.startswith("."):
+            if is_js or "/" in mod:
+                return self._first_file(posixpath.normpath(posixpath.join(src_dir, mod)))
+            level = len(mod) - len(mod.lstrip("."))
+            base_dir = src_dir
+            for _ in range(level - 1):
+                base_dir = posixpath.dirname(base_dir)
+            rest = mod[level:].replace(".", "/")
+            return self._first_file(posixpath.join(base_dir, rest) if rest else base_dir)
+
+        if mod.startswith(("@/", "~/")):
+            root = src_dir
+            while root and posixpath.basename(root) != "src":
+                root = posixpath.dirname(root)
+            return self._first_file(posixpath.join(root, mod[2:])) if root else ""
+
+        if is_js:
+            return ""  # bare specifier = npm package
+        if "/" in mod:
+            return self._first_file(mod)
+        return self._dotted(mod, source)
 
 
 def _is_entry_point(fpath: str) -> bool:
@@ -56,6 +141,73 @@ def _layer_for_path(path: str) -> str:
     return parts[0] if len(parts) > 1 else "(root)"
 
 
+def _adaptive_groups(nodes: List[str], max_nodes: int) -> Dict[str, List[str]]:
+    """Group files into at most ``max_nodes`` directory nodes.
+
+    Starts from top-level directories and repeatedly splits the largest
+    group into its children while the budget allows — so big folders
+    (``backend/app/services``) get resolved finely instead of the whole tree
+    being cut at one uniform depth.
+    """
+    def prefix(path: str, depth: int) -> str:
+        parts = path.split("/")
+        return "/".join(parts[:depth]) if len(parts) > depth else path
+
+    groups: Dict[str, List[str]] = {}
+    for node in nodes:
+        groups.setdefault(prefix(node, 1), []).append(node)
+    depth_of = {g: 1 for g in groups}
+
+    while True:
+        changed = False
+        for group in sorted((g for g in groups if len(groups[g]) > 1), key=lambda g: -len(groups[g])):
+            depth = depth_of[group] + 1
+            children: Dict[str, List[str]] = {}
+            for f in groups[group]:
+                children.setdefault(prefix(f, depth), []).append(f)
+            if len(children) == 1:
+                # Single sub-directory: descend without spending budget.
+                (child, files), = children.items()
+                del groups[group]
+                groups[child] = files
+                depth_of[child] = depth
+                changed = True
+                break
+            if len(groups) - 1 + len(children) <= max_nodes:
+                del groups[group]
+                for child, files in children.items():
+                    groups[child] = files
+                    depth_of[child] = depth
+                changed = True
+                break
+        if not changed:
+            return groups
+
+
+def _service_name(nodes: List[str], used: set, sizes: Optional[Dict[str, int]] = None) -> str:
+    """Name a cluster after the directory its members share.
+
+    Falls back to the cluster's largest member when the only shared prefix
+    is a top-level folder (``backend``), which says nothing on its own.
+    """
+    sizes = sizes or {}
+    dirs = [n if "." not in posixpath.basename(n) else posixpath.dirname(n) or n for n in nodes]
+    try:
+        common = posixpath.commonpath(dirs) if dirs else ""
+    except ValueError:
+        common = ""
+    if "/" not in common:
+        largest = max(sorted(nodes), key=lambda n: sizes.get(n, 1))
+        common = largest if len(nodes) == 1 else f"{largest} +{len(nodes) - 1}"
+    name = common
+    n = 2
+    while name in used:
+        name = f"{common} ({n})"
+        n += 1
+    used.add(name)
+    return name
+
+
 def build_dependency_graph(entities: Dict) -> "DependencyGraph":
     """Build a :class:`DependencyGraph` from parsed entities.
 
@@ -64,30 +216,34 @@ def build_dependency_graph(entities: Dict) -> "DependencyGraph":
     graphs are identical.
     """
     graph = DependencyGraph()
-    module_map = entities.get("module_map", {})
-    files = entities["files"]
+    all_files = entities["files"]
+    files = [f for f in all_files if _is_code_file(f["path"])] or all_files
+    node_paths = {_norm(f["path"]) for f in files}
+    resolver = _ModuleResolver(node_paths)
 
     for f in files:
-        graph.add_module(f["path"], {"language": f["language"]})
+        graph.add_module(_norm(f["path"]), {"language": f["language"]})
+
+    def link(source: str, module: str) -> None:
+        source = _norm(source)
+        if source not in node_paths:
+            return
+        resolved = resolver.resolve(module, source)
+        if resolved and resolved != source and resolved in node_paths:
+            graph.add_dependency(source, resolved)
 
     for imp in entities["imports"]:
-        source = imp["file"]
-        target_mod = imp["module"]
-        resolved = _resolve_module(target_mod, module_map, Path(source).parent)
-        if resolved:
-            graph.add_dependency(source, resolved)
+        link(imp["file"], imp["module"])
 
     for f in files:
         for dep in f.get("dependencies", []):
-            resolved = _resolve_module(dep, module_map, Path(f["path"]).parent)
-            if resolved and resolved != f["path"]:
-                graph.add_dependency(f["path"], resolved)
+            link(f["path"], dep)
 
     graph.add_module("__entry__", {"language": "meta"})
     for f in files:
         has_exports = len(f.get("exports", [])) > 0
         if has_exports or _is_entry_point(f["path"]):
-            graph.add_dependency("__entry__", f["path"])
+            graph.add_dependency("__entry__", _norm(f["path"]))
 
     return graph
 
@@ -132,12 +288,13 @@ class DependencyGraph:
     def get_services(self) -> List[Dict[str, Any]]:
         communities = nx.community.greedy_modularity_communities(self.graph.to_undirected())
         services = []
-        for i, community in enumerate(communities):
+        used: set = set()
+        for community in communities:
             nodes = sorted(node for node in community if not _is_meta_node(node))
             if not nodes:
                 continue
             services.append({
-                "name": f"service_{i + 1}",
+                "name": _service_name(nodes, used),
                 "files": nodes,
                 "description": f"Module cluster with {len(nodes)} files",
                 "layer": _layer_for_path(nodes[0]),
@@ -165,7 +322,10 @@ class DependencyGraph:
         undirected = self.graph.subgraph(
             node for node in self.graph.nodes if not _is_meta_node(node)
         ).to_undirected()
-        if nx.number_connected_components(undirected) > 3:
+        # Standalone files (scripts, configs) are not services.
+        undirected = undirected.subgraph(n for n in undirected.nodes if undirected.degree(n) > 0)
+        big_components = [c for c in nx.connected_components(undirected) if len(c) >= 5]
+        if len(big_components) > 3:
             return "microservices"
 
         return "monolith"
@@ -194,43 +354,18 @@ class DependencyGraph:
                 "is_collapsed": False,
             }
 
-        # Helper to get path prefix up to a given depth level
-        def get_prefix(path: str, depth: int) -> str:
-            parts = path.replace("\\", "/").split("/")
-            if len(parts) <= depth:
-                return path
-            return "/".join(parts[:depth])
-
-        # Find target depth resulting in node count <= max_nodes
-        max_path_depth = 1
-        for p in nodes:
-            max_path_depth = max(max_path_depth, len(p.replace("\\", "/").split("/")))
-
-        target_depth = max_path_depth
-        collapsed_nodes = set()
-
-        while target_depth > 1:
-            collapsed_nodes = {get_prefix(node, target_depth) for node in nodes}
-            if len(collapsed_nodes) <= max_nodes:
-                break
-            target_depth -= 1
-
-        # Fallback if even depth 1 is too big
-        if len(collapsed_nodes) > max_nodes:
-            collapsed_nodes = {get_prefix(node, 1) for node in nodes}
+        groups = _adaptive_groups(nodes, max_nodes)
+        prefix_of = {f: prefix for prefix, files in groups.items() for f in files}
 
         # Construct new collapsed NetworkX Graph
         collapsed_graph = nx.DiGraph()
 
         # Map collapsed prefix to list of files it represents
-        node_files: Dict[str, List[str]] = {}
-        node_languages: Dict[str, set] = {}
-
-        for node in nodes:
-            prefix = get_prefix(node, target_depth)
-            node_files.setdefault(prefix, []).append(node)
-            lang = self.graph.nodes[node].get("language", "unknown")
-            node_languages.setdefault(prefix, set()).add(lang)
+        node_files: Dict[str, List[str]] = {p: sorted(f) for p, f in groups.items()}
+        node_languages: Dict[str, set] = {
+            p: {self.graph.nodes[f].get("language", "unknown") for f in files}
+            for p, files in groups.items()
+        }
 
         # Add nodes with metadata
         for prefix, files in node_files.items():
@@ -247,8 +382,8 @@ class DependencyGraph:
         for source, target in self.graph.edges():
             if _is_meta_node(source) or _is_meta_node(target):
                 continue
-            src_prefix = get_prefix(source, target_depth)
-            tgt_prefix = get_prefix(target, target_depth)
+            src_prefix = prefix_of[source]
+            tgt_prefix = prefix_of[target]
             if src_prefix != tgt_prefix:
                 collapsed_graph.add_edge(src_prefix, tgt_prefix)
 
@@ -269,14 +404,16 @@ class DependencyGraph:
         services = []
         try:
             communities = nx.community.greedy_modularity_communities(collapsed_graph.to_undirected())
-            for i, community in enumerate(communities):
+            used: set = set()
+            for community in communities:
                 nodes_list = sorted(node for node in community if not _is_meta_node(node))
                 if not nodes_list:
                     continue
+                file_count = sum(len(node_files.get(n, [n])) for n in nodes_list)
                 services.append({
-                    "name": f"service_{i + 1}",
+                    "name": _service_name(nodes_list, used, {k: len(v) for k, v in node_files.items()}),
                     "files": nodes_list,
-                    "description": f"Module cluster with {len(nodes_list)} files",
+                    "description": f"Module cluster with {file_count} files",
                     "layer": _layer_for_path(nodes_list[0]),
                 })
         except Exception as exc:
@@ -301,11 +438,7 @@ class DependencyGraph:
         mermaid = "\n".join(lines)
 
         # Detect pattern
-        pattern = "monolith"
-        if len(services) > 3:
-            pattern = "microservices"
-        elif len(cycles) > 0:
-            pattern = "modular"
+        pattern = self.detect_architecture_pattern()
 
         return {
             "modules": list(collapsed_graph.nodes()),
