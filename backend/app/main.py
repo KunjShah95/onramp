@@ -46,6 +46,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
+from app.core.config import base_url_env, normalize_base_url
 from app.logging_config import configure_logging
 from app.llm import LLMClient
 from app.embeddings import EmbeddingRouter
@@ -214,13 +215,15 @@ def _validate_production_env() -> None:
     # Google app: ``{BACKEND_URL}/api/v1/auth/oauth/{provider}/callback``. A
     # plain-http backend URL (or a missing FRONTEND_URL for the post-consent
     # redirect) silently breaks the whole flow, so surface it at boot.
-    backend_url = os.getenv("BACKEND_URL", "")
+    # Read through the normalizing helper so the https:// check sees the same
+    # value the OAuth/session code will actually use, trailing slash or not.
+    backend_url = base_url_env("BACKEND_URL")
     if backend_url and not backend_url.startswith("https://"):
         warnings.append(
             "BACKEND_URL should use https:// in production — OAuth callback "
             "URLs must match the registered redirect URI exactly"
         )
-    frontend_url = os.getenv("FRONTEND_URL", "")
+    frontend_url = base_url_env("FRONTEND_URL")
     if frontend_url and not frontend_url.startswith("https://"):
         warnings.append("FRONTEND_URL should use https:// in production")
 
@@ -371,24 +374,19 @@ app.openapi = _custom_openapi
 # Middleware is executed in reverse order of addition (last added = outermost).
 # Allowed CORS origins are configured via the CORS_ALLOWED_ORIGINS env var
 # (comma-separated). Defaults to the local dev frontend.
-def _normalize_origin(origin: str) -> str:
-    """Strip whitespace and any trailing slashes from a CORS origin.
-
-    Browsers send the Origin header with no trailing slash, so a configured
-    value like "https://app.example.com/" never matches and every cross-origin
-    request is silently rejected with no Access-Control-Allow-Origin header.
-    Normalizing here makes a misconfigured deployment self-heal.
-    """
-    return origin.strip().rstrip("/")
-
-
+#
+# Each entry goes through base_url_env() to drop trailing slashes. Browsers send
+# the Origin header with no trailing slash, so a configured value like
+# "https://app.example.com/" never matches and every cross-origin request is
+# rejected with no Access-Control-Allow-Origin header — a failure that looks
+# like a network bug rather than a config typo.
 _cors_origins = [
     normalized
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
         "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000",
     ).split(",")
-    if (normalized := _normalize_origin(origin))
+    if (normalized := normalize_base_url(origin))
 ]
 
 # Complements (never replaces) the explicit list — an origin is allowed if it

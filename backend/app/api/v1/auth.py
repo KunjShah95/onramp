@@ -56,10 +56,7 @@ except RuntimeError:
 JWT_ACCESS_EXPIRY_MINUTES = int(os.getenv("JWT_ACCESS_EXPIRY_MINUTES", "15"))
 JWT_REFRESH_EXPIRY_DAYS = int(os.getenv("JWT_REFRESH_EXPIRY_DAYS", "30"))
 JWT_EXPIRY_HOURS = 168  # legacy fallback when no refresh flow used
-FRONTEND_URL = os.getenv(
-    "FRONTEND_URL",
-    os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-)
+FRONTEND_URL = _get_settings().frontend_url
 
 # Refresh-token persistence lives in app.services.refresh_token_service
 # (dedicated table + Redis-safe rotation lock, legacy dual-read). This module
@@ -473,10 +470,7 @@ def _oauth_redirect(token: str | None = None, refresh_token: str | None = None, 
     the caller passes the token via fragment — this function no longer emits
     ``?token=``.
     """
-    frontend_url = os.getenv(
-        "FRONTEND_URL",
-        os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-    )
+    frontend_url = _get_settings().frontend_url
     params: dict[str, str] = {}
     if error:
         params["error"] = error

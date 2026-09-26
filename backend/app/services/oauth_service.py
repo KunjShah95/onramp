@@ -23,6 +23,7 @@ from urllib.parse import urlencode
 
 import httpx
 
+from app.core.config import get_settings
 from app.services.user_service import create_user, get_user_by_email
 from app.services.team_service import create_personal_team
 from app.services.field_encryption import email_hash, email_hash_candidates, encrypt_field, decrypt_field
@@ -77,14 +78,12 @@ def _validate_oauth_config(provider: str) -> None:
                 "GitHub OAuth is not configured — set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET"
             )
 
-# Frontend URL for redirect after successful OAuth
-FRONTEND_URL = os.getenv(
-    "FRONTEND_URL",
-    os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-)
-
-# Backend public URL for OAuth redirect URIs
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Frontend URL for redirect after successful OAuth, and the backend public URL
+# used to build OAuth redirect URIs. Both come from base_url_env() so a
+# configured trailing slash can't produce a double-slash redirect URI that
+# fails to match the one registered with GitHub/Google.
+FRONTEND_URL = get_settings().frontend_url
+BACKEND_URL = get_settings().backend_url
 
 # OAuth state tokens are single-use CSRF tokens — they must not stay valid
 # forever. 10 minutes matches the typical OAuth round-trip budget.

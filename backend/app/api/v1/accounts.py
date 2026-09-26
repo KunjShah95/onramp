@@ -2,13 +2,13 @@
 
 import csv
 import io
-import os
 from html import escape
 import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
+from app.core.config import get_settings
 from app.api.v1.auth import get_current_user
 from app.middleware.access_guard import ROLE_HIERARCHY
 from app.services.account_service import create_provisioned_user, check_email_exists
@@ -19,10 +19,8 @@ router = APIRouter(prefix="/admin/accounts", tags=["admin-accounts"])
 
 logger = logging.getLogger("onramp.accounts")
 
-FRONTEND_URL = os.getenv(
-    "FRONTEND_URL",
-    os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0].strip(),
-)
+# Normalized (no trailing slash) so f"{FRONTEND_URL}/login" can't double up.
+FRONTEND_URL = get_settings().frontend_url
 
 # Roles that can create accounts
 CREATOR_ROLES = {"ceo", "cto", "senior_dev", "hr"}

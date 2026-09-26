@@ -46,6 +46,36 @@ def _float_env(key: str, default: float) -> float:
         return default
 
 
+def normalize_base_url(value: str) -> str:
+    """Strip surrounding whitespace and any trailing slashes from a base URL.
+
+    Every caller builds URLs by appending a path — ``f"{BACKEND_URL}/api/v1/
+    auth/oauth/github/callback"``. A configured value with a trailing slash
+    therefore produces a double slash, and the result no longer matches the
+    redirect URI registered with GitHub/Google, so OAuth fails in a way that
+    looks nothing like a config problem. Browsers likewise send ``Origin``
+    with no trailing slash, so the same typo silently breaks CORS.
+
+    Normalizing here makes a misconfigured deployment self-heal.
+    """
+    return value.strip().rstrip("/")
+
+
+def base_url_env(key: str, default: str = "") -> str:
+    """Read a base-URL env var, normalized via :func:`normalize_base_url`."""
+    return normalize_base_url(_str_env(key, default))
+
+
+def _default_frontend_url() -> str:
+    """Historical FRONTEND_URL fallback: the first configured CORS origin.
+
+    Preserved so a deployment that sets only CORS_ALLOWED_ORIGINS (a very
+    common setup) still resolves FRONTEND_URL to the real frontend.
+    """
+    first = _str_env("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")[0]
+    return first.strip().rstrip("/") or "http://localhost:5173"
+
+
 @dataclass
 class Settings:
     """Single source of truth for environment-driven configuration."""
@@ -63,6 +93,10 @@ class Settings:
     # -- Infra -----------------------------------------------------------
     database_url: str = ""
     redis_url: str = ""
+    # Public base URLs. Normalized (no trailing slash) so callers can append
+    # paths directly — see base_url_env().
+    frontend_url: str = ""
+    backend_url: str = ""
     # -- Lockout (mirrors lockout_service defaults) ----------------------
     lockout_max_attempts: int = 5
     lockout_duration_minutes: int = 15
@@ -97,6 +131,8 @@ def _load_settings() -> Settings:
         cookie_domain=_str_env("COOKIE_DOMAIN", ""),
         database_url=_str_env("DATABASE_URL", ""),
         redis_url=_str_env("REDIS_URL", ""),
+        frontend_url=base_url_env("FRONTEND_URL", _default_frontend_url()),
+        backend_url=base_url_env("BACKEND_URL", "http://localhost:8000"),
         lockout_max_attempts=_int_env("LOCKOUT_MAX_ATTEMPTS", 5),
         lockout_duration_minutes=_int_env("LOCKOUT_DURATION_MINUTES", 15),
         lockout_window_minutes=_int_env("LOCKOUT_WINDOW_MINUTES", 30),

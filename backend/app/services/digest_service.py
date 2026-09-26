@@ -295,5 +295,5 @@ def _notif_emoji(notif_type: str) -> str:
 
 
 def _frontend_url() -> str:
-    import os
-    return os.getenv("FRONTEND_URL", "https://onramp.dev")
+    from app.core.config import base_url_env
+    return base_url_env("FRONTEND_URL", "https://onramp.dev")

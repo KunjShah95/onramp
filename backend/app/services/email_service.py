@@ -5,6 +5,8 @@ import logging
 from html import escape as _escape
 from typing import Optional
 
+from app.core.config import base_url_env
+
 logger = logging.getLogger("onramp.email")
 
 SENDGRID_API_KEY_ENV = "SENDGRID_API_KEY"
@@ -191,6 +193,9 @@ async def send_digest_email(
                   and optionally a cta (call-to-action dict with text, url).
     """
     period_label = "Weekly" if period == "weekly" else "Daily"
+    # Resolved once, normalized — a trailing slash in FRONTEND_URL would
+    # otherwise emit "https://host//dashboard" links in every digest.
+    frontend_url = base_url_env("FRONTEND_URL", "https://onramp.dev")
 
     sections_html = ""
     for section in sections:
@@ -228,11 +233,11 @@ async def send_digest_email(
 </div>
 {sections_html}
 <div style="text-align:center;margin-top:24px">
-<a href="{os.getenv('FRONTEND_URL', 'https://onramp.dev')}/dashboard" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Open Dashboard →</a>
+<a href="{frontend_url}/dashboard" style="display:inline-block;background:#FF8C00;color:#3D1C00;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px">Open Dashboard →</a>
 </div>
 <p style="color:rgba(253,251,248,0.2);font-size:10px;text-align:center;margin-top:24px">
 You're receiving this because your notification preferences are set to {period} digests.
-<a href="{os.getenv('FRONTEND_URL', 'https://onramp.dev')}/settings/notifications" style="color:rgba(253,251,248,0.3)">Manage preferences</a>
+<a href="{frontend_url}/settings/notifications" style="color:rgba(253,251,248,0.3)">Manage preferences</a>
 </p>
 </div></body></html>"""
 
