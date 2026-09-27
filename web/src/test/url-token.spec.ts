@@ -12,8 +12,10 @@ const original = window.location
 const originalHistory = window.history.replaceState
 
 function setUrl(url: string) {
+  // `...original` (a Location) already carries pathname / search / hash, and
+  // `parseUrl` is what should win for them — so they are not repeated here.
   Object.defineProperty(window, 'location', {
-    value: { ...original, pathname: '/x', search: '', hash: '', href: url, ...parseUrl(url) },
+    value: { ...original, href: url, ...parseUrl(url) },
     writable: true,
   })
 }
