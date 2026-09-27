@@ -1,13 +1,5 @@
-﻿import { Link } from 'react-router-dom'
-import {
-  TreeStructure,
-  GithubLogo,
-  XLogo,
-  LinkedinLogo,
-  DiscordLogo,
-  ArrowUp,
-} from '@phosphor-icons/react'
-import type { Icon } from '@phosphor-icons/react'
+import { Link } from 'react-router-dom'
+import { TreeStructure, ArrowUp } from '@phosphor-icons/react'
 import { prefetchProps } from '../../lib/prefetch'
 
 interface FooterLink {
@@ -25,10 +17,10 @@ const COLUMNS: FooterColumn[] = [
   {
     title: 'Product',
     links: [
-      { label: 'Architecture map', href: '/#the-map' },
-      { label: 'How it works', href: '/#how-it-works' },
+      { label: 'Product', href: '/#product' },
       { label: 'Pricing', href: '/#pricing' },
       { label: 'Why Onramp', href: '/why-onramp' },
+      { label: 'Security', href: '/security' },
     ],
   },
   {
@@ -46,7 +38,7 @@ const COLUMNS: FooterColumn[] = [
       { label: 'Documentation', href: '/docs' },
       { label: 'Changelog', href: '/changelog' },
       { label: 'Support', href: '/support' },
-      { label: 'Security', href: '/security' },
+      { label: 'Trust center', href: '/trust' },
     ],
   },
   {
@@ -58,13 +50,6 @@ const COLUMNS: FooterColumn[] = [
       { label: 'SOC 2', href: '/soc-2' },
     ],
   },
-]
-
-const SOCIALS: { label: string; href: string; Icon: Icon }[] = [
-  { label: 'GitHub', href: 'https://github.com/onramp', Icon: GithubLogo },
-  { label: 'X', href: 'https://x.com/onramp', Icon: XLogo },
-  { label: 'LinkedIn', href: 'https://linkedin.com/company/onramp', Icon: LinkedinLogo },
-  { label: 'Discord', href: 'https://discord.gg/onramp', Icon: DiscordLogo },
 ]
 
 /**
@@ -84,47 +69,32 @@ export default function MarketingFooter() {
           {/* ── Identity ─────────────────────────────────────────── */}
           <div className="lg:col-span-4">
             <Link to="/" className="inline-flex items-center gap-2.5" aria-label="Onramp home">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-[var(--panel-raised)]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-[var(--room)]">
                 <TreeStructure size={16} weight="bold" />
               </span>
-              <span className="text-[15px] font-semibold tracking-tight text-ink">Onramp</span>
+              <span className="font-display text-[15px] font-semibold tracking-tight text-ink">Onramp</span>
             </Link>
 
             <p className="mt-5 max-w-sm text-[13.5px] leading-relaxed text-ink-secondary">
-              Onramp turns any repository into a live ramp — an architecture map, graded tasks,
-              and a review queue that keep new engineers shipping from week one.
+              Onramp turns your repository into a ramp for new engineers, so they ship in week one
+              and your seniors keep their afternoons.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 to="/register"
                 {...prefetchProps('/register')}
-                className="inline-flex h-10 items-center rounded-md bg-ink px-5 text-sm font-medium text-[var(--panel-raised)] transition-opacity hover:opacity-90"
+                className="inline-flex h-10 items-center rounded-lg bg-ink px-5 text-sm font-medium text-[var(--room)] transition-opacity hover:opacity-90"
               >
-                Try for free
+                Start free
               </Link>
               <Link
                 to="/contact"
                 {...prefetchProps('/contact')}
-                className="inline-flex h-10 items-center rounded-md border border-seam bg-panel px-5 text-sm font-medium text-ink transition-colors hover:bg-well"
+                className="inline-flex h-10 items-center rounded-lg border border-seam-strong px-5 text-sm font-medium text-ink transition-colors hover:bg-well"
               >
-                Talk to sales
+                Talk to us
               </Link>
-            </div>
-
-            <div className="mt-6 flex items-center gap-2">
-              {SOCIALS.map(({ label, href, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={label}
-                  className="flex h-9 w-9 items-center justify-center rounded-card border border-seam bg-panel text-ink-tertiary transition-colors hover:border-seam-strong hover:bg-well hover:text-ink"
-                >
-                  <Icon size={16} weight="bold" />
-                </a>
-              ))}
             </div>
           </div>
 
@@ -132,7 +102,7 @@ export default function MarketingFooter() {
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 lg:col-span-8">
             {COLUMNS.map((col) => (
               <nav key={col.title} aria-label={col.title}>
-                <h2 className="overline text-ink-muted">{col.title}</h2>
+                <h2 className="mk-label">{col.title}</h2>
                 <ul className="mt-4 space-y-2.5">
                   {col.links.map((l) => (
                     <li key={l.label}>
@@ -158,9 +128,6 @@ export default function MarketingFooter() {
           </p>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <span className="inline-flex items-center gap-1.5 font-code text-[11px] text-ink-muted">
-              map fresh · HEAD
-            </span>
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

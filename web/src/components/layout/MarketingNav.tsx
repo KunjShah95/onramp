@@ -1,102 +1,105 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { TreeStructure, List, X } from '@phosphor-icons/react'
 
 import { prefetchProps } from '../../lib/prefetch'
 import ThemeToggle from '../landing/ThemeToggle'
-import { useLandingTheme } from '../../hooks/useLandingTheme'
+import { cn } from '../../lib/utils'
 
 export interface NavLinkItem {
   label: string
   href: string
+  /** Deprecated: active state now comes from the current route. */
   active?: boolean
 }
 
 interface MarketingNavProps {
-  /** Optional custom links. Defaults to Docs / Why Onramp / Pricing / Changelog. */
+  /** Optional custom links. Defaults to the shared public sitemap. */
   links?: NavLinkItem[]
-  /** Whether the nav should be fixed (vs relative/static). Default true. */
+  /** Whether the nav should be fixed (vs static). Default true. */
   fixed?: boolean
 }
 
-const DEFAULT_LINKS: NavLinkItem[] = [
-  { label: 'Docs', href: '/docs' },
-  { label: 'Why Onramp', href: '/why-onramp' },
+export const DEFAULT_LINKS: NavLinkItem[] = [
+  { label: 'Product', href: '/#product' },
   { label: 'Pricing', href: '/#pricing' },
-  { label: 'Changelog', href: '/changelog' },
+  { label: 'Why Onramp', href: '/why-onramp' },
+  { label: 'Docs', href: '/docs' },
 ]
 
-export default function MarketingNav({
-  links = DEFAULT_LINKS,
-  fixed = true,
-}: MarketingNavProps) {
+/* One nav for every public surface. Hairline bar that gains a translucent
+ * backdrop once the page scrolls; brand mark, five links, one action. */
+export default function MarketingNav({ links = DEFAULT_LINKS, fixed = true }: MarketingNavProps) {
   const [open, setOpen] = useState(false)
-  const { isLight } = useLandingTheme()
+  const [scrolled, setScrolled] = useState(false)
+  const { pathname, hash } = useLocation()
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const isActive = (href: string) => {
+    const [path, anchor] = href.split('#')
+    if (anchor) return pathname === (path || '/') && hash === `#${anchor}`
+    return pathname === href
+  }
 
   return (
     <nav
-      className={[
-        'border-b backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-300',
-        fixed
-          ? isLight
-            ? 'fixed inset-x-0 top-0 z-50 border-black/5 bg-white/80'
-            : 'fixed inset-x-0 top-0 z-50 border-seam bg-room/70'
-          : 'border-transparent bg-transparent',
-      ].join(' ')}
+      className={cn(
+        'z-50 border-b transition-[background-color,border-color] duration-200',
+        fixed && 'fixed inset-x-0 top-0',
+        scrolled ? 'border-seam bg-room/80 backdrop-blur-md' : 'border-transparent bg-room/0',
+      )}
     >
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 lg:px-10">
-        {/* Logo — same gradient mark as LandingNav for identity unity */}
-        <Link to="/" className="group flex items-center gap-2.5" aria-label="Onramp home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-go text-white shadow-[0_0_20px_rgb(var(--accent-primary)/0.35)] transition-transform duration-200 group-">
-            <TreeStructure size={16} weight="bold" />
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 lg:px-8">
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Onramp home">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-[var(--room)]">
+            <TreeStructure size={14} weight="bold" />
           </span>
-          <span className="font-body text-sm font-bold tracking-tight text-ink">ONRAMP</span>
+          <span className="font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">Onramp</span>
         </Link>
 
-        {/* Center nav links */}
-        <div className="hidden items-center gap-8 md:flex">
-          {links.map((link) =>
-            link.active ? (
-              <span
-                key={link.label}
-                className="text-[13px] font-medium text-ink"
-              >
-                {link.label}
-              </span>
-            ) : (
-              <Link
-                key={link.label}
-                to={link.href}
-                {...prefetchProps(link.href)}
-                className="text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink"
-              >
-                {link.label}
-              </Link>
-            )
-          )}
+        <div className="hidden items-center gap-7 md:flex">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              to={l.href}
+              {...prefetchProps(l.href)}
+              aria-current={isActive(l.href) ? 'page' : undefined}
+              className={cn(
+                'text-[13.5px] transition-colors',
+                isActive(l.href) ? 'text-ink' : 'text-ink-secondary hover:text-ink',
+              )}
+            >
+              {l.label}
+            </Link>
+          ))}
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
+        <div className="flex items-center gap-2">
           <Link
             to="/login"
             {...prefetchProps('/login')}
-            className="hidden text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink sm:inline"
+            className="hidden px-2 text-[13.5px] text-ink-secondary transition-colors hover:text-ink sm:inline"
           >
             Log in
           </Link>
+          <ThemeToggle />
           <Link
             to="/register"
             {...prefetchProps('/register')}
-            className="inline-flex items-center rounded-md bg-accent-primary px-4 py-2 text-[13px] font-semibold text-[rgb(var(--accent-foreground))] transition-colors hover:bg-accent-primary-hover"
+            className="inline-flex h-9 items-center rounded-lg bg-ink px-4 text-[13.5px] font-medium text-[var(--room)] transition-opacity hover:opacity-90"
           >
-            Try for free
+            Start free
           </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="hit-slop flex h-9 w-9 items-center justify-center rounded-sm text-ink-secondary md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-ink-secondary md:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >
@@ -105,44 +108,22 @@ export default function MarketingNav({
         </div>
       </div>
 
-      {/* Mobile menu */}
-      
-        {open && (
-          <div className={`overflow-hidden border-t md:hidden ${isLight ? 'border-black/5 bg-white' : 'border-seam bg-base'}`}>
-            <div className="flex flex-col gap-1 px-6 py-4">
-              {links.map((link) =>
-                link.active ? (
-                  <span
-                    key={link.label}
-                    className="rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink"
-                  >
-                    {link.label}
-                  </span>
-                ) : (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    onClick={() => setOpen(false)}
-                    {...prefetchProps(link.href)}
-                    className={`rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
-                  >
-                    {link.label}
-                  </Link>
-                )
-              )}
-              <div className={`my-2 border-t ${isLight ? 'border-black/5' : 'border-seam'}`} />
+      {open && (
+        <div className="border-t border-seam bg-room md:hidden">
+          <div className="flex flex-col gap-1 px-6 py-4">
+            {[...links, { label: 'Log in', href: '/login' }].map((l) => (
               <Link
-                to="/login"
+                key={l.href}
+                to={l.href}
                 onClick={() => setOpen(false)}
-                {...prefetchProps('/login')}
-                className={`rounded-sm px-2 py-2.5 text-[14px] font-medium text-ink-secondary transition-colors hover:text-ink ${isLight ? 'hover:bg-black/5' : 'hover:bg-white/5'}`}
+                className="rounded-md px-2 py-2.5 text-[15px] text-ink-secondary hover:bg-well hover:text-ink"
               >
-                Log in
+                {l.label}
               </Link>
-            </div>
+            ))}
           </div>
-        )}
-      
+        </div>
+      )}
     </nav>
   )
 }

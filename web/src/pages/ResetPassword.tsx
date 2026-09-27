@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { readTokenFromUrl, scrubTokenFromUrl } from '../lib/urlToken'
 import { useToast } from '../context/ToastContext'
 import PageTransition from '../components/ui/page-transition'
 import AuthShell from '../components/ui/auth-shell'
@@ -23,8 +24,13 @@ function decodeTokenPayload(token: string): { exp?: number; iat?: number } | nul
 }
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') || ''
+  // Read before React Router's search params: the token now arrives in the
+  // fragment (never sent to a server), with a query fallback for links already
+  // sitting in inboxes.
+  const [initialToken] = useState(() => readTokenFromUrl())
+  const token = initialToken || ''
+  // Take it out of the address bar as soon as we have it in memory.
+  useEffect(() => { scrubTokenFromUrl() }, [])
   const navigate = useNavigate()
   const toast = useToast()
 

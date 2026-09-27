@@ -16,6 +16,8 @@ Available schedules (all times UTC):
       repository context indexes so first requests hit the cache)
     - API key expiry sweep: daily at 06:00 (auto-revoke expired keys,
       warn on approaching expiry)
+    - Analytics retention: daily at 04:20 (delete first-party analytics
+      events past the retention window)
 """
 
 from celery.schedules import crontab
@@ -41,6 +43,15 @@ BEAT_SCHEDULE = {
     "aggregate-daily-usage": {
         "task": "app.tasks.analytics_tasks.aggregate_daily_usage",
         "schedule": crontab(hour=2, minute=0),  # Nightly at 02:00 UTC
+        "options": {"queue": "analytics-tasks"},
+    },
+
+    # Analytics retention: daily at 04:20. Enforces the retention window
+    # promised on the Privacy page. The events endpoint stamps every row with
+    # a `day`, so this is a bounded sweep rather than a table scan.
+    "purge-analytics-events": {
+        "task": "app.tasks.analytics_tasks.purge_analytics_events",
+        "schedule": crontab(hour=4, minute=20),
         "options": {"queue": "analytics-tasks"},
     },
 

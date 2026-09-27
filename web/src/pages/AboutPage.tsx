@@ -16,13 +16,13 @@ const values = [
   },
   {
     icon: Sparkle,
-    title: 'Radical transparency',
-    desc: 'We show our work. Our AI attributes every answer to specific files and lines, so you can verify everything.',
+    title: 'Cited answers',
+    desc: 'We show our work. Every response returns file paths and line numbers, so you can verify it.',
   },
   {
     icon: Globe,
     title: 'Open ecosystems',
-    desc: 'We integrate with the tools you already use: GitHub, GitLab, Slack, Linear · and never lock you in.',
+    desc: 'We connect to the tools you already use — GitHub, GitLab, and Bitbucket for source, Slack and Linear for workflow — and read from your own repository.',
   },
   {
     icon: ShieldCheck,

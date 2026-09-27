@@ -52,7 +52,9 @@ const sections: LegalSection[] = [
   {
     heading: 'Cookies',
     paragraphs: [
-      'We use strictly necessary cookies for authentication sessions and a small set of analytics events to understand product usage. We do not use third-party advertising cookies.',
+      'We use strictly necessary cookies for authentication sessions. We do not use advertising or cross-site tracking cookies.',
+      'We measure product usage with our own first-party event endpoint, so that data stays in our infrastructure. Those events carry no cookies, no advertising identifier, and no fingerprinting. The visitor identifier is a salted hash that rotates daily, so sessions cannot be linked across days and cannot be traced back to a person. We record which pages are viewed, which calls to action are clicked and where on the page, and whether the cost calculator is used. We do not record page query strings, form values, or any text you type. If your browser sends a Do Not Track signal, we collect nothing.',
+      'We also use Vercel Analytics for aggregate page-view counts and site performance. It is cookie-free, does not use fingerprinting, and does not store your IP address. It does not record anything you type, and it cannot see your source code or repository content.',
     ],
   },
   {

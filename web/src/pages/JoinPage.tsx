@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import { readTokenFromUrl, scrubTokenFromUrl } from '../lib/urlToken'
 
 import { X, Spinner, ArrowLeft, UserPlus } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
@@ -12,13 +13,16 @@ import { homeForRole, useAuth, type TeamRole } from '../context/AuthContext'
 export default function JoinPage() {
   const toast = useToast()
   const { switchTeam } = useAuth()
-  const [searchParams] = useSearchParams()
+  // Fragment first (never transmitted to a server), query fallback for invite
+  // emails already in inboxes.
+  const [token] = useState(() => readTokenFromUrl())
   const navigate = useNavigate()
-  const token = searchParams.get('token')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [teamName, setTeamName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [authRequired, setAuthRequired] = useState(false)
+
+  useEffect(() => { scrubTokenFromUrl() }, [])
 
   useEffect(() => {
     if (!token) {

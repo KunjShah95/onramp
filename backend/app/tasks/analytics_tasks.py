@@ -165,6 +165,66 @@ def refresh_all_leaderboards(self) -> dict:
             loop.close()
 
 
+# ── Analytics Retention ─────────────────────────────────────────────────────
+
+@shared_task(
+    queue="analytics-tasks",
+    bind=True,
+    max_retries=2,
+)
+def purge_analytics_events(self) -> dict:
+    """Delete first-party analytics events past the retention window.
+
+    The events endpoint stores a ``day`` field on every row precisely so this
+    can be a bounded, indexable sweep rather than a scan. Retention is a
+    privacy control, not a housekeeping nicety: the Privacy page tells visitors
+    the data does not accumulate indefinitely, so something has to enforce it.
+
+    Runs daily via beat (``purge-analytics-events``).
+    """
+    import asyncio
+    from app.api.v1.analytics import COLLECTION, RETENTION_DAYS
+    from app.services.postgres_db import get_storage
+
+    cutoff_day = (
+        datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
+    ).strftime("%Y-%m-%d")
+
+    async def _run() -> dict:
+        storage = get_storage()
+        rows = await storage.query_documents(COLLECTION, [("day", "<", cutoff_day)])
+
+        stale_ids = [r.get("id") for r in rows if r.get("id")]
+        if not stale_ids:
+            return {"deleted": 0, "cutoff_day": cutoff_day}
+
+        # delete_documents is chunked internally; cap the batch so a large
+        # backlog cannot turn one run into a long lock-holding statement.
+        deleted = 0
+        for start in range(0, len(stale_ids), 500):
+            deleted += await storage.delete_documents(
+                COLLECTION, stale_ids[start:start + 500]
+            )
+        return {"deleted": deleted, "cutoff_day": cutoff_day}
+
+    loop = None
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_run())
+        logger.info(
+            "analytics retention: deleted %d event(s) older than %s",
+            result["deleted"], result["cutoff_day"],
+        )
+        return result
+    except Exception as exc:
+        logger.exception("Analytics retention purge failed")
+        raise self.retry(exc=exc)
+    finally:
+        if loop is not None and not loop.is_closed():
+            loop.close()
+
+
 # ── Team Dashboard Cache ─────────────────────────────────────────────────────
 
 @shared_task(

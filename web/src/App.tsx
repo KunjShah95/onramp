@@ -80,7 +80,6 @@ const SecurityPage = lazy(() => import('./pages/SecurityPage'))
 const DPAPage = lazy(() => import('./pages/DPAPage'))
 const SOC2Page = lazy(() => import('./pages/SOC2Page'))
 const TrustCenterPage = lazy(() => import('./pages/TrustCenterPage'))
-const ComparisonPage = lazy(() => import('./pages/ComparisonPage'))
 
 // New Phase 2-5 pages
 const HrDashboardPage = lazy(() => import('./pages/HrDashboardPage'))
@@ -135,11 +134,8 @@ export default function App() {
                   <ErrorBoundary><WhyOnrampPage /></ErrorBoundary>
                 </Suspense>
               } />
-              <Route path="/compare" element={
-                <Suspense fallback={<PageLoadingFallback />}>
-                  <ErrorBoundary><ComparisonPage /></ErrorBoundary>
-                </Suspense>
-              } />
+              {/* The comparison lives on Why Onramp (#compare); keep old links working. */}
+              <Route path="/compare" element={<Navigate to="/why-onramp#compare" replace />} />
               <Route path="/changelog" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><ChangelogPage /></ErrorBoundary>

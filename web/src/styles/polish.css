@@ -68,7 +68,9 @@ main {
 form .space-y-1\.5 > * + * { margin-top: 2px; }
 
 /* Icon + text rows never collapse their gap. */
-[class*="gap-1"], [class*="gap-2"] { row-gap: inherit; }
+/* Exact class tokens (~=), not substrings: *= also matched gap-10…gap-24 and
+   zeroed the row gap of every stacked grid on mobile. */
+[class~="gap-1"], [class~="gap-2"] { row-gap: inherit; }
 
 /* Anchor targets clear the sticky top bar. */
 [id] { scroll-margin-top: 64px; }

@@ -29,6 +29,7 @@ from app.services.postgres_db import get_storage
 from app.services.field_encryption import email_hash, email_hash_candidates, encrypt_field, decrypt_field
 from app.services.email_service import is_enabled as email_is_enabled
 from app.services.email_service import send_email
+from app.services.frontend_links import build_fragment_token_link
 from app.services.api_key_service import APIKeyService
 from app.services.team_service import create_personal_team
 
@@ -637,7 +638,7 @@ async def register(body: RegisterRequest):
         )
 
     # Send verification email (non-blocking best-effort)
-    verification_link = f"{FRONTEND_URL}/verify-email?token={verification_token}"
+    verification_link = build_fragment_token_link(FRONTEND_URL, "/verify-email", verification_token)
 
     try:
         if email_is_enabled():
@@ -991,6 +992,12 @@ _CSRF_EXEMPT_PREFIXES = (
     "/api/v1/auth/oauth/",
     "/api/v1/auth/csrf-token",
     "/api/v1/auth/logout",
+    # Analytics intake is anonymous and acts on no session — it reads an
+    # allowlist, writes pseudonymous rows, and returns 204. Requiring a CSRF
+    # token here would cost a round-trip before a first-time visitor's very
+    # first event for no security gain; abuse is bounded by the endpoint's own
+    # per-visitor rate limit and batch cap.
+    "/api/v1/events",
     "/api/v1/webhooks/",
     "/api/v1/billing/webhook",
     "/health",
@@ -1272,11 +1279,12 @@ async def forgot_password(body: ForgotPasswordRequest):
 
     # Build reset link
     # dev mode: logs token; production: sends email
-    reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
+    reset_link = build_fragment_token_link(FRONTEND_URL, "/reset-password", reset_token)
 
     email_sent = False
+    email_configured = email_is_enabled()
 
-    if email_is_enabled():
+    if email_configured:
         html = _build_reset_email_html(reset_link)
         email_sent = await send_email(
             to=user_email,
@@ -1284,14 +1292,27 @@ async def forgot_password(body: ForgotPasswordRequest):
             html_body=html,
         )
 
+    # Base response — identical for every address, registered or not.
+    response = {"ok": True, "message": "If an account exists, a reset link has been sent."}
+
     if not email_sent:
+        # A real, password-backed account exists, but no email left the building.
+        # Reporting it lets the UI offer a way forward instead of a green tick
+        # over an inbox that will stay empty.
+        response["delivery"] = "failed"
+        logger.warning(
+            "Password reset email NOT delivered (user=%s, provider_configured=%s). "
+            "The user will be shown a delivery failure rather than a success screen.",
+            user_row.id[:12],
+            email_configured,
+        )
         # Dev mode: log the reset link
         logger.info("=" * 60)
         if os.getenv("ENV", "development").lower() in ("development", "test"):
             logger.info("PASSWORD RESET LINK (dev mode): %s", reset_link)
         logger.info("=" * 60)
 
-    return {"ok": True, "message": "If an account exists, a reset link has been sent."}
+    return response
 
 
 @router.post("/forgot-password/resend")

@@ -127,8 +127,13 @@ async def _team_context(team_id: str) -> dict:
 
 async def agent_cost_benchmark(team_id: str) -> dict:
     """Compare every terminal agent's team monthly cost vs Onramp's flat
-    per-workspace price. Sorted cheapest-first; ``vs_onramp_usd`` is positive
-    when Onramp is cheaper, negative when the agent is."""
+    per-workspace price. Sorted cheapest-first.
+
+    ``vs_onramp_usd`` is ``onramp_monthly - team_monthly``: negative when
+    Onramp is the cheaper option, positive when the agent is. (This was
+    documented the other way round for a while, which only became visible
+    once the benchmark price dropped below a multi-seat agent bill.)
+    """
     from app.services.team_cost_settings import (
         get_team_cost_settings, resolve_benchmark_price,
     )

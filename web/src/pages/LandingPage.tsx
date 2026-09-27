@@ -1,183 +1,90 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import Seo from '../components/seo/Seo'
-import LandingNav from '../components/landing/LandingNav'
+import MarketingNav from '../components/layout/MarketingNav'
+import MarketingFooter from '../components/layout/MarketingFooter'
 import Hero from '../components/landing/Hero'
-import ProblemGrid from '../components/landing/ProblemGrid'
-import Solution from '../components/landing/Solution'
-import MetricsBoard from '../components/landing/MetricsBoard'
-import HowItWorks from '../components/landing/HowItWorks'
-import SocialProof from '../components/landing/SocialProof'
+import CostOfRamp from '../components/landing/CostOfRamp'
+import ProductBento from '../components/landing/ProductBento'
+import WeekOne from '../components/landing/WeekOne'
+import Roles from '../components/landing/Roles'
+import Trust from '../components/landing/Trust'
 import Pricing from '../components/landing/Pricing'
-import ClosingCta from '../components/landing/ClosingCta'
-import Footer from '../components/landing/Footer'
+import { CtaBand, FaqList, Section, SectionHeader, faqSchema, type Faq } from '../components/marketing/primitives'
+import { PLANS } from '../components/marketing/plans'
 import { useLandingTheme } from '../hooks/useLandingTheme'
+import { useTrackedPath } from '../lib/track'
 
-/* ─────────────────────────────────────────────────────────────────────────
- * Landing — "onboarding in days, not months" wedge build.
- *
- * Aceternity-style public identity with a light/dark toggle. Dark (default)
- * is the signature: true near-black canvas, one electric-cyan accent doing
- * all the color work, cursor spotlight, dot-grid floors, glow depth.
- * Light is the quiet daylight variant of the same system. Both modes pin
- * their own tokens (`.landing-premium` + optional `.landing-light`) so the
- * page never follows the app's theme.
- *   Hero · Problem (#the-gap) · Product (#the-map) · Metrics (#metrics) ·
- *   How it works · Customers · Pricing (#pricing) · CTA · Footer
- * ───────────────────────────────────────────────────────────────────────── */
+/* Landing, told as one story:
+ *   Hero (the promise, with the product in hand)
+ *   The cost (what onboarding costs you today, in your own numbers)
+ *   The product (what Onramp builds from one repo)
+ *   Week one (the new hire's first five days)
+ *   Who it's for (three people, before and after)
+ *   Security (plain facts, including what isn't done)
+ *   Pricing (matches checkout), FAQ, one closing CTA. */
 
-/** Build Product schema for pricing tiers (mirrors Pricing.tsx logic) */
-function buildProductSchemas() {
-  const teamPrice = 82 // annual price
-  const priceCurrency = 'USD'
+const FAQ: Faq[] = [
+  {
+    q: 'How long does setup take?',
+    a: 'Connect GitHub, pick a repository, and Onramp indexes it. Most codebases take 2 to 10 minutes. After that the map and paths update on every push without anyone maintaining them.',
+  },
+  {
+    q: 'Is this another coding assistant?',
+    a: 'No. Copilot and Cursor help people write code. Onramp helps people understand a codebase they did not write, and helps leads see how that is going. Most teams use both.',
+  },
+  {
+    q: 'Do the plans lock features?',
+    a: 'No. Every plan, Free included, gets the whole product. Plans differ by team members, repositories, and monthly AI credits.',
+  },
+  {
+    q: 'Is there a trial?',
+    a: 'Free is free for good on one repository. Professional includes a 14-day trial on your first subscription. No card is needed to start on Free.',
+  },
+  {
+    q: 'What happens to our source code?',
+    a: 'Onramp clones a repository to index it and deletes the clone afterwards. It keeps the derived documents and embeddings needed to answer questions, scoped to your workspace. We do not train models on customer code.',
+  },
+  {
+    q: 'Which languages are supported?',
+    a: 'Python, JavaScript, TypeScript, Go, Rust and Java get full parsing. Other languages are indexed as text with basic symbol extraction.',
+  },
+  {
+    q: 'Are you SOC 2 certified?',
+    a: 'Not yet. SOC 2 Type II is in progress. A Data Processing Agreement is available now, and the security page lists exactly what is and is not in place.',
+  },
+]
 
-  return [
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: 'Onramp Free',
-      description: 'For individuals exploring their own repo. Includes live architecture map and 100 AI mentor questions per month.',
-      brand: { '@type': 'Brand', name: 'Onramp' },
-      offers: {
-        '@type': 'Offer',
-        name: 'Free Plan',
-        price: '0',
-        priceCurrency,
-        availability: 'https://schema.org/InStock',
-        url: 'https://onramp.app/#pricing',
-        description: 'Free forever for individual developers',
-      },
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: '4.8',
-        reviewCount: '127',
-      },
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: 'Onramp Team',
-      description: 'Unlimited repositories, unlimited AI mentor questions, guided onboarding paths, and team insights. Per workspace, not per seat.',
-      brand: { '@type': 'Brand', name: 'Onramp' },
-      offers: {
-        '@type': 'Offer',
-        name: 'Team Plan',
-        price: String(teamPrice),
-        priceCurrency,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: String(teamPrice),
-          priceCurrency,
-          billingDuration: 'P1Y',
-          billingIncrement: 1,
-        },
-        availability: 'https://schema.org/InStock',
-        url: 'https://onramp.app/#pricing',
-        description: 'Per workspace, unlimited engineers. 14-day free trial, no credit card.',
-      },
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: '4.9',
-        reviewCount: '89',
-      },
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Product',
-      name: 'Onramp Enterprise',
-      description: 'For organizations needing SSO, self-hosting, audit logs, dedicated support, and SLA guarantees.',
-      brand: { '@type': 'Brand', name: 'Onramp' },
-      offers: {
-        '@type': 'Offer',
-        name: 'Enterprise Plan',
-        price: '0',
-        priceCurrency,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: '0',
-          priceCurrency,
-          description: 'Custom pricing — contact sales',
-        },
-        availability: 'https://schema.org/InStock',
-        url: 'https://onramp.app/#pricing',
-        description: 'Custom pricing. Contact sales for a quote.',
-      },
-    },
-  ]
-}
-
-/** Build FAQ schema for pricing section (mirrors Pricing.tsx logic) */
-function buildPricingFAQSchema() {
-  return {
+function productSchema() {
+  return PLANS.filter((p) => p.monthly !== null).map((p) => ({
     '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'What is included in the Free plan?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'The Free plan includes 1 repository, 100 AI mentor questions per month, the live architecture map, and community support. It is free forever for individual developers.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Is the Team plan per user or per workspace?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'The Team plan is a flat $99/month per workspace (or $82/month billed annually). It includes unlimited engineers — no per-seat pricing.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Does the Team plan require a credit card for the trial?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'No. The 14-day trial on the Team plan does not require a credit card. You can start exploring with your full team immediately.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Can I self-host Onramp?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Yes. Self-hosting via Docker Compose is available on the Enterprise plan. You can run Onramp in your own VPC or on-premise with full data sovereignty.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What LLM providers does Onramp support?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Onramp uses a free-first multi-provider router supporting OpenRouter, Gemini, Groq, NVIDIA, Mistral, OpenAI, Anthropic, Hugging Face, and local Ollama. Providers without API keys are skipped automatically.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Is Onramp SOC 2 compliant?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'SOC 2 Type II is in progress, not yet certified. See /security for current scope.',
-        },
-      },
-    ],
-  }
+    '@type': 'Product',
+    name: `Onramp ${p.name}`,
+    description: `${p.pitch} ${p.members}. ${p.features.join(', ')}.`,
+    brand: { '@type': 'Brand', name: 'Onramp' },
+    offers: {
+      '@type': 'Offer',
+      price: String(p.monthly),
+      priceCurrency: 'INR',
+      availability: 'https://schema.org/InStock',
+      url: 'https://onramp.app/#pricing',
+    },
+  }))
 }
 
 export default function LandingPage() {
   const { lightClass } = useLandingTheme()
   const { hash } = useLocation()
+  // The landing renders its own shell rather than MarketingLayout, so the
+  // path tracker is mounted here instead.
+  useTrackedPath()
 
-  // Deep-link support for /#pricing (and other section anchors) — React
-  // Router renders the page but doesn't scroll to the hash on its own.
+  // React Router renders the page but doesn't scroll to a hash on its own.
   useEffect(() => {
     if (!hash) return
-    const el = document.getElementById(hash.replace('#', ''))
+    const el = document.getElementById(hash.slice(1))
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [hash])
-
-  const productSchemas = buildProductSchemas()
-  const faqSchema = buildPricingFAQSchema()
 
   return (
     <div
@@ -185,26 +92,32 @@ export default function LandingPage() {
       className={`landing-premium${lightClass} min-h-screen scroll-smooth bg-room text-ink antialiased`}
     >
       <Seo
-        title="Onramp · Onboarding in days, not months"
-        description="Onramp turns your repo into a live ramp — learning paths, graded tasks, and a review queue. New devs land their first merged PR faster, seniors stop re-answering the same questions."
+        title="Onramp · New engineers ship in week one"
+        description="Onramp turns your repository into a ramp for new engineers: a live architecture map, learning paths from real code, first issues, and a dashboard that shows leads who is stuck."
         path="/"
-        schema={[...productSchemas, faqSchema]}
+        schema={[...productSchema(), faqSchema(FAQ)]}
       />
       <a href="#main-content" className="skip-link">Skip to content</a>
       <header>
-        <LandingNav />
+        <MarketingNav />
       </header>
       <main id="main-content">
         <Hero />
-        <ProblemGrid />
-        <Solution />
-        <MetricsBoard />
-        <HowItWorks />
-        <SocialProof />
+        <CostOfRamp />
+        <ProductBento />
+        <WeekOne />
+        <Roles />
+        <Trust />
         <Pricing />
-        <ClosingCta />
+        <Section id="faq">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+            <SectionHeader label="Questions" title="What teams ask before they connect a repo." />
+            <FaqList items={FAQ} />
+          </div>
+        </Section>
+        <CtaBand />
       </main>
-      <Footer />
+      <MarketingFooter />
     </div>
   )
 }

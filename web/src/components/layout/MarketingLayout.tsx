@@ -4,6 +4,7 @@ import MarketingFooter from './MarketingFooter'
 import PageTransition from '../ui/page-transition'
 import Seo, { type SeoProps } from '../seo/Seo'
 import { useLandingTheme } from '../../hooks/useLandingTheme'
+import { useTrackedPath } from '../../lib/track'
 
 interface MarketingLayoutProps {
   children: ReactNode
@@ -25,6 +26,9 @@ export default function MarketingLayout({
   seo,
 }: MarketingLayoutProps) {
   const { lightClass } = useLandingTheme()
+  // Keeps the reported page path correct across client-side navigation. The
+  // landing page renders its own shell, so it calls this directly.
+  useTrackedPath()
 
   return (
     <PageTransition>

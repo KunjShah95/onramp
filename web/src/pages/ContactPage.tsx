@@ -111,30 +111,28 @@ function buildContactSchema() {
       name: 'Onramp',
       url: 'https://onramp.app/',
       contactPoint: [
+        // No telephone: 555-01xx is the reserved fictional range, and a
+        // published number that no one answers is worse than no number.
         {
           '@type': 'ContactPoint',
-          telephone: '+1-555-123-4567',
           contactType: 'customer service',
           availableLanguage: 'English',
           email: 'hello@onramp.ai',
         },
         {
           '@type': 'ContactPoint',
-          telephone: '+1-555-123-4567',
           contactType: 'sales',
           availableLanguage: 'English',
           email: 'sales@onramp.ai',
         },
         {
           '@type': 'ContactPoint',
-          telephone: '+1-555-123-4567',
           contactType: 'technical support',
           availableLanguage: 'English',
           email: 'support@onramp.ai',
         },
         {
           '@type': 'ContactPoint',
-          telephone: '+1-555-123-4567',
           contactType: 'press',
           availableLanguage: 'English',
           email: 'press@onramp.ai',
@@ -196,7 +194,7 @@ export default function ContactPage() {
         {/* Service readout */}
         <MetricStrip className="mt-10 grid-cols-2 lg:grid-cols-4">
           <MetricCell label="First reply" value="1 day" sub="Monday to Friday" />
-          <MetricCell label="Support" value="24/7" sub="Team & Enterprise" />
+          <MetricCell label="Uptime SLA" value="None yet" sub="Being defined with partners" />
           <MetricCell label="Channels" value="8" sub="Email · GitHub · X · LinkedIn" />
           <MetricCell label="Based in" value="SF" sub="Pacific Time (PT)" />
         </MetricStrip>

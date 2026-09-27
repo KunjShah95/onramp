@@ -123,9 +123,8 @@ export default function SOC2Page() {
             <span className="font-mono text-[11px] uppercase tracking-widest text-[hsl(var(--foreground))]">SOC 2</span>
           </div>
           <h1 className="font-display text-4xl md:text-5xl mb-4 font-bold tracking-tight text-[hsl(var(--foreground))]">
-            SOC 2{' '}
-            <span className="italic text-[hsl(var(--accent))]">Type II</span>{' '}
-            compliance.
+            SOC 2 <span className="italic text-[hsl(var(--accent))]">Type II</span>: not yet
+            certified.
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl">
             Onramp is undergoing SOC 2 Type II certification, audited by an independent third party against

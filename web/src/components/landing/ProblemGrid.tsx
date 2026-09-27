@@ -3,7 +3,16 @@ import { MagnifyingGlass } from '@phosphor-icons/react'
 import SectionHeading from './SectionHeading'
 
 /* Calm problem grid — static panels, no spotlight, no staggered
- * motion, no bounce/pulse/spin loops. Quiet type, hairline borders. */
+ * motion, no bounce/pulse/spin loops. Quiet type, hairline borders.
+ *
+ * The metric slot states what is MISSING, not a fabricated quantity.
+ * Previously read "72 hours wasted per new hire", "18% of senior dev
+ * time", and "5.2 day average review wait" — plausible-sounding figures
+ * attributed to no study and no methodology. The "18% of senior dev
+ * time" string in particular is the kind of quantitative industry claim
+ * that is legally exposed (FTC Act §5) and that a technical buyer will
+ * immediately ask you to source. Absence of measurement is the real gap
+ * and it is the gap Onramp actually closes. */
 
 function ConfusionLoop() {
   return (
@@ -91,16 +100,16 @@ const TILES: Tile[] = [
     key: 'new-hire',
     title: 'New hires get lost',
     body: 'Open the repo, scroll the docs, find nothing. The scavenger hunt starts on day one.',
-    metric: '72 hours',
-    metricLabel: 'wasted per new hire',
+    metric: 'Not tracked',
+    metricLabel: 'time to first PR, before Onramp',
     loop: ConfusionLoop,
   },
   {
     key: 'mentoring',
     title: 'Seniors become a search engine',
-    body: 'The same architecture questions get answered for the fifth time this week.',
-    metric: '18%',
-    metricLabel: 'of senior dev time',
+    body: 'The same architecture questions get answered for the fifth time this week — and nothing records that it happened.',
+    metric: 'Not logged',
+    metricLabel: 'repeat architecture questions',
     loop: MentoringLoop,
   },
   {
@@ -108,15 +117,15 @@ const TILES: Tile[] = [
     title: 'Leadership flies blind',
     body: 'No signal between "hired" and "shipping". Onboarding is a black box.',
     metric: '0',
-    metricLabel: 'visibility into onboarding',
+    metricLabel: 'signals between hire and ship',
     loop: HealthLoop,
   },
   {
     key: 'reviews',
     title: 'Reviews stall',
     body: 'PRs pile up while reviewers answer questions a map would answer instantly.',
-    metric: '5.2 day',
-    metricLabel: 'average review wait',
+    metric: 'Not tracked',
+    metricLabel: 'review wait, before Onramp',
     loop: ReviewLoop,
   },
 ]

@@ -177,7 +177,8 @@ async def resolve_benchmark_price(team_id: Optional[str]) -> dict:
     1. an explicit team override in ``team_cost_settings`` (a leader
        deliberately calibrated the number),
     2. the team's **live subscription** (billing source of truth, INR → USD),
-    3. the platform default ``ONRAMP_PRICE_USD_PER_MONTH`` ($99/mo).
+    3. the platform default ``ONRAMP_PRICE_USD_PER_MONTH``, derived from the
+       real Professional plan price in INR at the platform FX rate (ramp_service).
 
     Returns ``{"price_usd", "price_inr", "price_source"}`` where
     ``price_source`` is ``"subscription"`` / ``"team"`` / ``"platform"``

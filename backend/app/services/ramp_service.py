@@ -55,7 +55,29 @@ def _env_float(name: str, default: float) -> float:
 SENIOR_HOURLY_RATE_USD = _env_float("ONRAMP_SENIOR_HOURLY_RATE", 90.0)   # fully-loaded senior dev cost / hour
 REVIEW_HOURS_PER_CYCLE = _env_float("ONRAMP_REVIEW_HOURS_PER_CYCLE", 0.5)  # review + feedback + context switch per change-request cycle
 STALLED_WEEKLY_HOURS = _env_float("ONRAMP_STALLED_WEEKLY_HOURS", 0.5)      # senior re-engagement (check-in / unblock) per stalled week
-ONRAMP_PRICE_USD_PER_MONTH = _env_float("ONRAMP_PRICE_USD_PER_MONTH", 99.0)  # benchmark price per workspace per month (real Team pricing: $99/mo, unlimited engineers)
+
+# Benchmark price for one workspace, per month.
+#
+# This was a hardcoded 99.0 USD while the plan we actually sell is 2999 INR
+# (Professional, billing_service.TIER_PRICING) — roughly $36 at the platform
+# rate. Because resolve_benchmark_price only prefers a live subscription when
+# one exists, the stale default applied to exactly the wrong audience:
+# prospects with no subscription yet, i.e. the people evaluating us, saw a
+# comparison built on a price we do not charge.
+#
+# It is now derived from the real price, in the same currency as billing, and
+# converted at the same ONRAMP_INR_TO_USD_RATE that team_cost_settings uses, so
+# the two can no longer disagree. Setting ONRAMP_PRICE_USD_PER_MONTH explicitly
+# still overrides everything.
+ONRAMP_PRICE_INR_PER_MONTH = _env_float("ONRAMP_PRICE_INR_PER_MONTH", 2999.0)
+ONRAMP_INR_TO_USD_RATE = _env_float("ONRAMP_INR_TO_USD_RATE", 84.0)  # INR per $1
+# Rounded to cents so the constant equals what the API actually reports. Left
+# unrounded it was 35.70238…, and every consumer that rounds for display
+# disagreed with it in the last decimal.
+ONRAMP_PRICE_USD_PER_MONTH = _env_float(
+    "ONRAMP_PRICE_USD_PER_MONTH",
+    round(ONRAMP_PRICE_INR_PER_MONTH / ONRAMP_INR_TO_USD_RATE, 2),
+)
 
 # Sensitivity band for the cost estimate (Phase 0 — the honest uncertainty
 # range, per PROBLEM.md's working numbers: rate $75-100/hr, a review cycle

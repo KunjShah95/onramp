@@ -66,7 +66,7 @@ function buildSupportFAQSchema() {
         name: 'How fast does Onramp support respond?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'We typically respond within one business day (Monday–Friday). Team and Enterprise plans include 24/7 support with faster SLA guarantees.',
+          text: 'We typically respond within one business day (Monday–Friday). We do not yet promise a 24/7 channel or an uptime SLA — we are defining service commitments and escalation paths with design partners, and we would rather say so than sell you an SLA we have not measured.',
         },
       },
       {

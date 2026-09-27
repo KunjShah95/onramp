@@ -855,7 +855,12 @@ export interface CostModelSettings {
   senior_hourly_rate_usd: number
   review_hours_per_cycle: number
   stalled_weekly_hours: number
-  /** Benchmark price per workspace per month (real Team pricing: $99/mo, unlimited engineers). */
+  /**
+   * Benchmark price per workspace per month, in USD, used by the cost model.
+   * NOTE: list pricing is INR (Professional ₹2,999/mo ≈ $35). This field is
+   * USD-denominated and defaults server-side via ONRAMP_PRICE_USD_PER_MONTH —
+   * keep it aligned with the live price or the savings figures are wrong.
+   */
   onramp_price_usd_per_month: number
 }
 
@@ -4521,6 +4526,12 @@ export async function testSsoConnection(teamId: string): Promise<{ success: bool
 export interface ForgotPasswordResponse {
   ok: boolean
   message: string
+  /**
+   * Present ONLY when a reset email genuinely failed to send for an account
+   * that exists. Absent in every other case, including for addresses with no
+   * account — so its presence is not a general account-existence signal.
+   */
+  delivery?: 'failed'
 }
 
 export interface ResetPasswordResponse {

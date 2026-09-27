@@ -83,10 +83,20 @@ const LAYERS: LayerSpec[] = [
   },
 ]
 
-// Horizontal centers of the four layer columns (SVG viewBox 0 0 900 520).
-const X_POS = [150, 375, 610, 845]
-const CENTER_Y = 260
-const NODE_SPACING = 48
+// Horizontal centers of the four layer columns.
+/* Geometry. The viewBox is cropped tight to the drawn content and the type is
+ * sized in the same units, because the old numbers fought each other: a
+ * 900x520 viewBox whose content only occupied y 18..371 left ~28% of the box
+ * empty, so preserveAspectRatio="meet" fitted to width, and the 10px labels
+ * rendered at 3.6px on a 375px screen. Cropping the box and scaling the type
+ * with it roughly doubles the on-screen size of every label.
+ *
+ * X_POS keeps the rightmost column far enough from the edge to fit an
+ * 11-character name ("API Gateway") in IBM Plex Mono at 18px without
+ * overflowing the viewBox. */
+const X_POS = [140, 360, 580, 800]
+const CENTER_Y = 200
+const NODE_SPACING = 76
 
 function nearestIndex(y: number, ys: number[]): number {
   let best = 0
@@ -151,11 +161,11 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
       aria-hidden="true"
     >
       <svg
-        viewBox="0 0 900 520"
-        className="h-full w-full max-w-[900px]"
+        viewBox="70 8 800 372"
+        className="h-full w-full max-w-[800px]"
         preserveAspectRatio="xMidYMid meet"
       >
-        <rect x="0" y="0" width="900" height="520" rx="6" fill="var(--panel)" />
+        <rect x="70" y="8" width="800" height="372" rx="6" fill="var(--panel)" />
         {/* dependency edges — quiet hairlines */}
         {edges.map((e, i) => (
           <line
@@ -171,12 +181,12 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
         {/* service nodes — one quiet accent, no neon rings */}
         {nodes.map((n) => (
           <g key={n.id}>
-            <circle cx={n.x} cy={n.y} r={6} fill={n.color} opacity="0.85" />
+            <circle cx={n.x} cy={n.y} r={7} fill={n.color} opacity="0.85" />
             <text
               x={n.x}
-              y={n.y + 24}
+              y={n.y + 25}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="18"
               fill="var(--ink-secondary)"
               fontFamily="ui-monospace, 'IBM Plex Mono', monospace"
             >
@@ -184,9 +194,9 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
             </text>
             <text
               x={n.x}
-              y={n.y + 37}
+              y={n.y + 46}
               textAnchor="middle"
-              fontSize="9"
+              fontSize="13"
               fill="var(--ink-tertiary)"
               fontFamily="ui-monospace, 'IBM Plex Mono', monospace"
             >
@@ -199,9 +209,9 @@ export default function ArchitectureMapStatic({ className = '' }: ArchitectureMa
           <text
             key={layer.label}
             x={X_POS[i]}
-            y="28"
+            y="30"
             textAnchor="middle"
-            fontSize="10"
+            fontSize="18"
             fontWeight={500}
             letterSpacing="0.08em"
             fill="var(--ink-tertiary)"

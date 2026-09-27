@@ -89,9 +89,11 @@ export default function AuthShell({
         <div className="relative z-10 p-10 xl:p-12">
           <div className="rounded-card border border-seam bg-panel px-5 py-4 shadow-seam">
             <p className="text-[13px] leading-[1.6] text-ink-secondary">
-              "Onramp cut our ramp time from 4 weeks to 5 days. New engineers ship to production in their first week."
+              Onramp indexes your repository into a dependency graph, then answers questions against
+              that graph — every response carries the file path and line numbers, so you can open
+              the source and check it.
             </p>
-            <p className="mt-2 font-code text-[11px] text-ink-tertiary">VP Engineering · Linear-style team · 14 services mapped</p>
+            <p className="mt-2 font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs · free-first routing</p>
           </div>
           <p className="mt-4 font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs · free-first routing</p>
         </div>

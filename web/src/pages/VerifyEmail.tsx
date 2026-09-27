@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import PageTransition from '../components/ui/page-transition'
 import AuthShell from '../components/ui/auth-shell'
 import Seo from '../components/seo/Seo'
 import { CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react'
+import { readTokenFromUrl, scrubTokenFromUrl } from '../lib/urlToken'
 
 import { API_BASE } from '../lib/api'
 
 export default function VerifyEmail() {
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  // Fragment first (never transmitted to a server), query fallback for links
+  // already in inboxes.
+  const [token] = useState(() => readTokenFromUrl())
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
   const [message, setMessage] = useState('Verifying your email...')
+
+  useEffect(() => { scrubTokenFromUrl() }, [])
 
   useEffect(() => {
     if (!token) {

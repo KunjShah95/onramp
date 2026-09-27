@@ -1,306 +1,280 @@
-import { ArrowRight, Brain, Code, Lightning } from '@phosphor-icons/react'
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Check, Minus } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
-import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
-import PhilosophyHero from '../components/landing/PhilosophyHero'
-import CostAtScaleCalculator from '../components/landing/CostAtScaleCalculator'
-import type { NavLinkItem } from '../components/layout/MarketingNav'
+import {
+  CtaBand,
+  FaqList,
+  PageHero,
+  PrimaryCta,
+  SecondaryCta,
+  Section,
+  SectionHeader,
+  faqSchema,
+  type Faq,
+} from '../components/marketing/primitives'
+import { cn } from '../lib/utils'
 
-const navLinks: NavLinkItem[] = [
-  { label: 'Docs', href: '/docs' },
-  { label: 'Why Onramp', href: '/why-onramp', active: true },
-  { label: 'Pricing', href: '/#pricing' },
-  { label: 'Changelog', href: '/changelog' },
+/* Why Onramp, and the comparison (#compare). The honest competitor for
+ * onboarding is not another AI tool; it's the wiki plus a senior's calendar.
+ * No claims about other vendors' internals or prices. */
+
+type Cell = { text: string; good?: boolean }
+
+const COLUMNS = ['Wiki and docs', 'Senior shadowing', 'Coding assistant', 'Onramp'] as const
+
+const ROWS: { k: string; cells: Cell[] }[] = [
+  {
+    k: 'Stays current',
+    cells: [
+      { text: 'Drifts from the code after it is written' },
+      { text: 'Current, but lives in one person’s head' },
+      { text: 'Not its job' },
+      { text: 'Re-indexed on every push', good: true },
+    ],
+  },
+  {
+    k: 'Shows the whole system',
+    cells: [
+      { text: 'If someone drew the diagram' },
+      { text: 'Once, on a whiteboard' },
+      { text: 'Works file by file' },
+      { text: 'Live architecture map from source', good: true },
+    ],
+  },
+  {
+    k: 'Structured learning',
+    cells: [
+      { text: 'If someone wrote a guide' },
+      { text: 'Ad hoc, depends on the week' },
+      { text: 'No' },
+      { text: 'Paths from your modules, with quizzes', good: true },
+    ],
+  },
+  {
+    k: 'Handles five hires at once',
+    cells: [
+      { text: 'Yes', good: true },
+      { text: 'No, senior time runs out' },
+      { text: 'Yes', good: true },
+      { text: 'Yes', good: true },
+    ],
+  },
+  {
+    k: 'Lead sees who is stuck',
+    cells: [
+      { text: 'No' },
+      { text: 'At the next one-on-one' },
+      { text: 'No' },
+      { text: 'Ramp dashboard with alerts', good: true },
+    ],
+  },
+  {
+    k: 'What it costs',
+    cells: [
+      { text: 'Writing time, then silent drift' },
+      { text: 'Senior hours for every hire' },
+      { text: 'Per seat' },
+      { text: 'Per team, from ₹999 a month', good: true },
+    ],
+  },
 ]
 
-/** Build FAQ schema for Why Onramp comparison page */
-function buildWhyOnrampFAQSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'How is Onramp different from GitHub Copilot or Cursor?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Coding agents like Copilot and Cursor re-read your entire codebase on every query, burning tokens per developer per session. Onramp indexes your codebase once, builds a persistent knowledge graph, and updates only the diff on each push. This means flat pricing per workspace (not per seat), grounded answers with file/line citations, and a cost model that doesn\'t scale with headcount.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Does Onramp replace coding agents?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'No — they\'re complementary. Coding agents are great for writing code. Onramp is for understanding code. Use Onramp to onboard new hires, explore architecture, and answer "where is X?" questions. Use coding agents for "write me a function that does Y." Onramp\'s graph actually makes coding agents more effective by giving them better context.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What does "flat pricing per workspace" mean?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'You pay $99/month (or $82/month billed annually) per workspace, regardless of how many engineers use it. No per-seat math, no token burn costs. A team of 5 and a team of 50 pay the same price.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'How does Onramp achieve token efficiency?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Three mechanisms: (1) Incremental indexing — only the git diff is re-processed on push, not the whole repo. (2) Free-first LLM router — routes through OpenRouter, Gemini, Groq, NVIDIA free tiers before paid fallbacks. (3) Redis semantic cache — identical or similar queries hit the cache instead of the LLM.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Can Onramp analyze private repositories?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Yes. Provide a GitHub personal access token with repo scope when connecting a private repository. The token is encrypted at rest and only used for cloning during analysis.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Is my source code stored by Onramp?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Onramp stores tenant-scoped derived documents and embeddings needed for search and answers. Temporary clones are removed after indexing; retention and deletion controls are being expanded.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What languages does Onramp support?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Full AST parsing for Python, JavaScript, TypeScript, Go, Rust, and Java. Other languages are indexed as text with basic symbol extraction. The architecture graph works across all supported languages in a single repo.',
-        },
-      },
-    ],
-  }
+const BELIEFS = [
+  {
+    n: '01',
+    title: 'Code is the only document that is never out of date.',
+    body: 'So Onramp reads source, not your wiki. The map, the paths and the answers all come from what is actually in the repository today.',
+  },
+  {
+    n: '02',
+    title: 'Understanding comes before output.',
+    body: 'A new engineer who knows why a service exists writes a better first PR than one who was handed a setup script and a ticket.',
+  },
+  {
+    n: '03',
+    title: 'Confidence comes from shipping early.',
+    body: 'A small merged PR on day five does more for a new hire than a month of reading. Onramp is built to get them there.',
+  },
+]
+
+const FAQ: Faq[] = [
+  {
+    q: 'Does Onramp replace Copilot or Cursor?',
+    a: 'No. They help people write code. Onramp helps people understand a codebase they did not write, and helps leads see how that is going. They are separate products and most teams use both.',
+  },
+  {
+    q: 'Why not just keep the wiki up to date?',
+    a: 'Because nobody does, and the wiki has no way of knowing it is wrong. Onramp builds from the code on every push, so there is nothing to keep up to date.',
+  },
+  {
+    q: 'How is it priced?',
+    a: 'Per team, not per seat. Free covers one member and one repository. Startup is ₹999 a month for up to 5 members, Professional is ₹2,999 a month for up to 20. Every plan includes every feature.',
+  },
+  {
+    q: 'Can we self-host?',
+    a: 'Not as a supported product yet. Docker deployment artifacts exist for controlled environments, and supported self-hosting is on the Enterprise roadmap. Talk to us about your constraints.',
+  },
+  {
+    q: 'Which languages are supported?',
+    a: 'Python, JavaScript, TypeScript, Go, Rust and Java get full parsing. Other languages are indexed as text with basic symbol extraction.',
+  },
+]
+
+function CompareCell({ cell, highlight }: { cell: Cell; highlight: boolean }) {
+  return (
+    <span className={cn('flex items-start gap-2', highlight ? 'text-ink' : 'text-ink-tertiary')}>
+      {cell.good ? (
+        <Check size={13} weight="bold" className={cn('mt-[3px] shrink-0', highlight ? 'text-go' : 'text-ink-tertiary')} />
+      ) : (
+        <Minus size={13} weight="bold" className="mt-[3px] shrink-0 text-ink-muted" />
+      )}
+      {cell.text}
+    </span>
+  )
 }
 
 export default function WhyOnrampPage() {
-  const faqSchema = buildWhyOnrampFAQSchema()
+  const { hash } = useLocation()
+
+  // /compare redirects here with #compare; scroll once the page mounts.
+  useEffect(() => {
+    if (!hash) return
+    const el = document.getElementById(hash.slice(1))
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }, [hash])
 
   return (
     <MarketingLayout
-      navLinks={navLinks}
       seo={{
-        title: 'Why Onramp, Not Coding Agents | Onramp',
-        description: 'Coding agents burn tokens re-reading your codebase on every change. Onramp indexes it once and answers from real context, a fraction of the cost at any team size.',
+        title: 'Why Onramp · Onboarding that doesn’t run on a senior’s calendar',
+        description:
+          'How Onramp compares with wikis, senior shadowing and coding assistants for onboarding engineers, and why teams use it alongside Copilot and Cursor.',
         path: '/why-onramp',
-        schema: faqSchema,
+        schema: faqSchema(FAQ),
       }}
     >
-      {/* Hero — same language as landing Hero */}
-      <div className="relative pt-12 pb-12 px-6 text-center max-w-3xl mx-auto">
-        <div>
-          <h1 className="mb-5 text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-ink sm:text-5xl">
-            Why Onramp, not coding agents.
-          </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-ink-secondary sm:text-[17px]">
-            Agents re-read the whole codebase on every change. Onramp indexes it once, updates the graph on the diff, and answers from real context — flat-priced, at any team size.
-          </p>
-        </div>
+      <div className="mx-auto max-w-6xl px-6 pb-20 pt-16 lg:px-8 lg:pb-24 lg:pt-20">
+        <PageHero
+          label="Why Onramp"
+          title="Your real onboarding tool is a wiki and a senior’s calendar."
+          lede="Every team already has an onboarding process. It is a doc that stopped being true last year, and the one engineer who still remembers why the queue exists. Onramp replaces both with something that reads the code."
+          actions={
+            <>
+              <PrimaryCta to="/register">Start free</PrimaryCta>
+              <SecondaryCta to="#compare">See the comparison</SecondaryCta>
+            </>
+          }
+        />
       </div>
 
-      {/* Philosophy Hero — split panel visual */}
-      <PhilosophyHero />
-
-      {/* Core Philosophy — two ruled panels, muted vs. accent */}
-      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-12 gap-4 mb-10">
-        {/* Why NOT Coding Agents — muted, ruled */}
-        <div className="md:col-span-5 rounded-card border border-seam bg-panel p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-card border border-seam bg-well text-ink-tertiary">
-              <Code size={18} weight="bold" />
-            </span>
-            <div>
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Why NOT coding agents</h2>
-              <p className="font-code text-[10px] uppercase tracking-[0.12em] text-ink-muted">The token-burn loop</p>
-            </div>
-          </div>
-          <ul className="space-y-3.5 text-[13.5px] leading-[1.6] text-ink-secondary">
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
-              <span><strong className="font-semibold text-ink">Burns tokens on every change.</strong> Each agent re-reads the whole codebase into context — multiplied by every dev and every product.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
-              <span><strong className="font-semibold text-ink">Cost scales with headcount.</strong> Per-seat subscriptions AND per-context token burn.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
-              <span><strong className="font-semibold text-ink">No lasting context.</strong> Every session starts from scratch. No graph persists.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-abort" />
-              <span><strong className="font-semibold text-ink">Paid keys for everything.</strong> Agents hit paid APIs constantly.</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Why Onramp — featured, accent rule, wider */}
-        <div className="md:col-span-7 rounded-card border border-seam bg-panel p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-card bg-go text-[rgb(var(--accent-foreground))]">
-              <Brain size={18} weight="bold" />
-            </span>
-            <div>
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Why Onramp</h2>
-              <p className="font-code text-[10px] uppercase tracking-[0.12em] text-go">Parse once · answer from source</p>
-            </div>
-          </div>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-[13.5px] leading-[1.6] text-ink-secondary">
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-go" />
-              <span><strong className="font-semibold text-ink">Reads your actual code.</strong> Parse → graph → answer.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-go" />
-              <span><strong className="font-semibold text-ink">Grounded answers.</strong> Every response cites files + lines.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-go" />
-              <span><strong className="font-semibold text-ink">Accessible to all levels.</strong> Senior or first PR.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-go" />
-              <span><strong className="font-semibold text-ink">Fast ramp.</strong> Zero to first PR in days.</span>
-            </li>
-          </ul>
-          <div className="mt-6 rounded-card border border-seam bg-well px-4 py-3">
-            <p className="font-code text-[11px] leading-[1.5] text-ink-secondary">Free-first LLM router + Redis semantic cache + incremental graph refresh — so most questions hit free tiers and only the diff is re-indexed on push.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* The Three Pillars — three equal ruled panels */}
-      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 py-16">
-        <div className="max-w-2xl mb-10">
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">Principles</p>
-          <h2 className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.02em] text-ink">Three beliefs about how devs actually learn.</h2>
-          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary">The philosophy is the product. Every wedge feature traces to one of these.</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {[
-            {
-              icon: Brain,
-              kicker: '01 · Context',
-              title: 'Context over commands',
-              desc: 'Understanding WHY a file exists matters more than running a setup script. We show intent behind code, not just steps.',
-            },
-            {
-              icon: Code,
-              kicker: '02 · Truth',
-              title: 'Code is truth',
-              desc: 'Docs rot. Comments lie. Code never does. We read source and cite files + lines.',
-            },
-            {
-              icon: Lightning,
-              kicker: '03 · Speed',
-              title: 'Speed builds confidence',
-              desc: 'Fast onboarding lets devs contribute. First PR on day two beats "understanding" on day thirty.',
-            },
-          ].map((pillar) => (
-            <div key={pillar.kicker} className="rounded-card border border-seam bg-panel p-6">
-              <div className="flex items-start justify-between gap-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-card border border-seam bg-well text-ink-tertiary">
-                  <pillar.icon size={18} weight="bold" />
-                </span>
-                <span className="font-code text-[10px] uppercase tracking-[0.14em] text-ink-muted">{pillar.kicker}</span>
-              </div>
-              <h3 className="mt-5 text-[15px] font-semibold text-ink">
-                {pillar.title}
-              </h3>
-              <p className="mt-2 text-[13.5px] leading-[1.6] text-ink-secondary">
-                {pillar.desc}
-              </p>
+      <Section id="compare" band>
+        <SectionHeader
+          label="The comparison"
+          title="Four ways to onboard an engineer."
+          lede="Onramp against what teams actually use today. Coding assistants are in here because people ask, not because they compete for the same job."
+        />
+        {/* Phones: one card per criterion, Onramp first. */}
+        <div className="mt-10 space-y-3 md:hidden">
+          {ROWS.map((r) => (
+            <div key={r.k} className="mk-card p-5">
+              <p className="text-[15px] font-semibold text-ink">{r.k}</p>
+              <dl className="mt-3 space-y-2.5 text-[14px] leading-[1.5]">
+                {[3, 0, 1, 2].map((i) => (
+                  <div key={i}>
+                    <dt className={cn('mk-label', i === 3 && 'text-go')}>{COLUMNS[i]}</dt>
+                    <dd className="mt-1">
+                      <CompareCell cell={r.cells[i]} highlight={i === 3} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Comparison Table — ruled panel, tabular */}
-      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 py-16">
-        <div className="max-w-2xl mb-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">The breakdown.</h2>
-          <p className="mt-2 text-[15px] leading-[1.6] text-ink-secondary">Side-by-side, same team size, same codebase churn.</p>
-        </div>
-        <div className="overflow-hidden rounded-card border border-seam bg-panel">
-          <div className="overflow-x-auto">
-            <Table className="text-[13.5px]">
-              <THead>
-                <TR className="bg-well">
-                  <TH className="px-6 py-3 font-code text-[11px] font-medium uppercase tracking-[0.08em]">Aspect</TH>
-                  <TH className="px-6 py-3 font-code text-[11px] font-medium uppercase tracking-[0.08em]">Coding agents</TH>
-                  <TH className="px-6 py-3 font-code text-[11px] font-medium uppercase tracking-[0.08em] text-go">Onramp</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {[
-                  ['Context', 'Re-reads the whole codebase per change', 'Indexed once · graph updates on change'],
-                  ['Cost model', 'Per-seat subs + per-dev token burn', 'Flat per-workspace price'],
-                  ['Cost at scale', 'Grows with devs × products × changes', 'Flat · never moves'],
-                  ['Token efficiency', 'Full re-read every session', 'Free-first routing + incremental refresh'],
-                  ['Understand WHY', 'No, just HOW', 'Yes, full context'],
-                ].map((row, idx) => (
-                  <TR key={idx} hoverable>
-                    <TD className="px-6 py-3.5 font-medium text-ink">{row[0]}</TD>
-                    <TD className="px-6 py-3.5 text-ink-tertiary">{row[1]}</TD>
-                    <TD className="px-6 py-3.5 font-medium text-ink">{row[2]}</TD>
-                  </TR>
+        <div className="mt-12 hidden overflow-x-auto rounded-xl border border-seam bg-room md:block">
+          <table className="w-full min-w-[760px] border-collapse text-left text-[14px] leading-[1.5]">
+            <thead>
+              <tr className="border-b border-seam">
+                <th className="mk-label w-[18%] px-5 py-4 font-medium" scope="col">
+                  <span className="sr-only">Criterion</span>
+                </th>
+                {COLUMNS.map((c) => (
+                  <th
+                    key={c}
+                    scope="col"
+                    className={cn(
+                      'mk-label px-5 py-4 font-medium',
+                      c === 'Onramp' && 'bg-go/[0.06] text-go',
+                    )}
+                  >
+                    {c}
+                  </th>
                 ))}
-              </TBody>
-            </Table>
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map((r) => (
+                <tr key={r.k} className="border-b border-seam last:border-b-0">
+                  <th scope="row" className="px-5 py-4 align-top text-[14px] font-medium text-ink">
+                    {r.k}
+                  </th>
+                  {r.cells.map((cell, i) => (
+                    <td key={i} className={cn('px-5 py-4 align-top', i === 3 && 'bg-go/[0.06]')}>
+                      <CompareCell cell={cell} highlight={i === 3} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section>
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-20">
+          <SectionHeader
+            label="Coding assistants"
+            title="They write code. Onramp explains it."
+          />
+          <div className="space-y-4 text-[16px] leading-[1.65] text-ink-secondary">
+            <p>
+              Copilot and Cursor are very good at producing the next function. They are not built to take
+              someone who joined on Monday and give them a working model of your system by Friday, or to tell
+              their lead that they have been stuck since Tuesday.
+            </p>
+            <p>
+              That is the job Onramp does. Keep your assistant. Give the person using it a map, a path and a
+              first issue, so the code it helps them write lands in the right place.
+            </p>
           </div>
         </div>
-      </div>
+      </Section>
 
-      {/* Cost at scale — multiple devs × multiple products */}
-      <div className="relative max-w-6xl mx-auto px-6 lg:px-8 py-16">
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">Calculator</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-            The cost at scale.
-          </h2>
-          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary">
-            Agents multiply devs × products × changes. Onramp stays flat. Move the sliders.
-          </p>
-        </div>
-        <div className="rounded-card border border-seam bg-panel p-4 sm:p-6">
-          <CostAtScaleCalculator />
-        </div>
-        <p className="text-center font-code text-[11px] text-ink-tertiary mt-6">
-          Modeled on public agent pricing (Aug 2026) + Onramp $99/mo workspace · benchmark on <Link to="/ramp" className="text-ink underline underline-offset-2">Ramp →</Link>
-        </p>
-      </div>
-
-      {/* CTA — ruled panel, same language as ClosingCta */}
-      <div className="relative max-w-3xl mx-auto px-6 lg:px-8 py-16 text-center">
-        <div className="rounded-card border border-seam bg-panel px-8 py-12">
-          <p className="font-code text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">Get started</p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            Ready to onboard your way.
-          </h2>
-          <p className="mt-3 text-[15px] leading-[1.6] text-ink-secondary max-w-xl mx-auto">
-            Join teams shipping faster because developers understand code from day one.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/#pricing"
-              className="inline-flex h-11 items-center gap-2 rounded-md bg-ink px-6 text-[15px] font-medium text-[var(--panel-raised)] transition-opacity hover:opacity-90"
+      <Section band>
+        <SectionHeader label="What we believe" title="Three ideas the product is built on." />
+        <ol className="mt-12 grid grid-cols-1 border-t border-seam md:grid-cols-3">
+          {BELIEFS.map((b, i) => (
+            <li
+              key={b.n}
+              className={cn('border-b border-seam py-8 md:border-b-0 md:py-10', i > 0 && 'md:border-l md:pl-8', i < 2 && 'md:pr-8')}
             >
-              Start 14-day trial
-              <ArrowRight size={16} weight="bold" />
-            </Link>
-            <Link to="/docs" className="inline-flex h-11 items-center rounded-md border border-seam bg-panel px-6 text-[15px] font-medium text-ink transition-colors hover:bg-well">
-              Read the docs
-            </Link>
-          </div>
+              <span className="mk-label">{b.n}</span>
+              <h3 className="mt-3 text-[19px] font-semibold leading-snug tracking-[-0.015em] text-ink">{b.title}</h3>
+              <p className="mt-3 text-[15px] leading-[1.65] text-ink-secondary">{b.body}</p>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section id="faq">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <SectionHeader label="Questions" title="Before you switch anything." />
+          <FaqList items={FAQ} />
         </div>
-      </div>
+      </Section>
+
+      <CtaBand title="Stop spending senior time on the tour." />
     </MarketingLayout>
   )
 }

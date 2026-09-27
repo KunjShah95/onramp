@@ -2,7 +2,16 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables BEFORE importing any modules that read them.
-load_dotenv()
+#
+# Skipped under ENV=test. load_dotenv() mutates os.environ permanently, so once
+# any test imported app.main, every later test in the same process inherited
+# backend/.env — including real LLM provider keys. That is a test-hygiene bug
+# with teeth: a live OPENROUTER_API_KEY silently changed provider routing (the
+# router preferred OpenRouter over Groq, so key-pool tests failed depending on
+# collection order), and a test making an outbound call could have spent real
+# credentials. tests/conftest.py sets ENV=test before any app import.
+if os.getenv("ENV", "").strip().lower() not in ("test", "testing"):
+    load_dotenv()
 
 
 def _normalize_runtime_environment() -> str:
@@ -54,6 +63,7 @@ from app.api.v1 import (
     repo_index as repo_index,
     accounts as accounts_router, admin as admin_router, agent_sessions as agent_sessions_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
+    analytics as analytics_router,
     autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router, integrations_n8n as n8n_router,
     mcp as mcp_router,
@@ -423,6 +433,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/refresh",               # refresh token exchange (auth via refresh token body)
     "/api/v1/auth/logout",                # logout (auth via refresh token cookie/body; revokes it)
     "/api/v1/auth/verify-email",          # email verification
+    "/api/v1/events",                     # first-party analytics intake (anonymous, allowlisted)
     "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
     "/api/v1/track/webhook",              # contributor webhook (raw-body HMAC verified)
     "/api/v1/webhooks",                   # generic webhook deliveries
@@ -508,6 +519,7 @@ app.include_router(integrations_router.router, prefix="/api/v1")
 app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(invites_router.router, prefix="/api/v1")
 app.include_router(accounts_router.router, prefix="/api/v1")
+app.include_router(analytics_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")

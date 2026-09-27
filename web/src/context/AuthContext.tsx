@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useLocation } from 'react-router-dom'
 import { setWsToken, clearTokens, getWsToken } from '../lib/neon-auth'
-import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken, clearCsrfToken } from '../lib/api'
+import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken, clearCsrfToken, type ForgotPasswordResponse } from '../lib/api'
 import { prefetchRoute, prefetchWorkspaceShell } from '../lib/prefetch'
 
 interface User {
@@ -59,7 +59,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ ok: boolean; message: string }>
+  resetPassword: (email: string) => Promise<ForgotPasswordResponse>
   clearError: () => void
   getIdToken: () => string | null
   switchTeam: (teamId: string) => Promise<void>

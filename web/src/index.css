@@ -1081,8 +1081,12 @@
     --ink-secondary-rgb: 71 85 105;
     --ink-tertiary: #64748B;
     --ink-tertiary-rgb: 100 116 139;
-    --ink-muted: #94A3B8;
-    --ink-muted-rgb: 148 163 184;
+    /* Was #94A3B8 — 2.56:1 on this theme's near-white surfaces, a WCAG AA
+       failure on every footer column heading and small label that used it.
+       #64748B is 4.76:1. It now equals --ink-tertiary; a failing contrast
+       ratio is not worth preserving a tonal step for. */
+    --ink-muted: #64748B;
+    --ink-muted-rgb: 100 116 139;
     --ink-disabled: #CBD5E1;
     --ink-disabled-rgb: 203 213 225;
     /* Premium light system â€” cyan-700 primary (same family as dark mode's
@@ -1182,8 +1186,12 @@
     --ink-secondary-rgb: 71 85 105;
     --ink-tertiary: #64748B;
     --ink-tertiary-rgb: 100 116 139;
-    --ink-muted: #94A3B8;
-    --ink-muted-rgb: 148 163 184;
+    /* Was #94A3B8 — 2.56:1 on this theme's near-white surfaces, a WCAG AA
+       failure on every footer column heading and small label that used it.
+       #64748B is 4.76:1. It now equals --ink-tertiary; a failing contrast
+       ratio is not worth preserving a tonal step for. */
+    --ink-muted: #64748B;
+    --ink-muted-rgb: 100 116 139;
     --ink-disabled: #CBD5E1;
     --ink-disabled-rgb: 203 213 225;
     --go: #0E7490;
@@ -1237,26 +1245,177 @@
     contain-intrinsic-size: 720px;
   }
 
-  .landing-premium .font-display {
-    font-family: 'Space Mono', ui-monospace, monospace;
-    letter-spacing: -0.02em;
-  }
-
-  .landing-premium .font-heading {
-    font-family: 'Space Mono', ui-monospace, monospace;
+  /* ── Marketing type system ─────────────────────────────────
+     Display: Schibsted Grotesk (character, tight). Body: Inter.
+     Data/labels: IBM Plex Mono. One face per job, fixed scale. */
+  .landing-premium .font-display,
+  .landing-premium .font-heading,
+  .landing-premium h1,
+  .landing-premium h2,
+  .landing-premium h3 {
+    font-family: 'Schibsted Grotesk', 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
   }
 
   .landing-premium .font-code {
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
   }
 
-  .landing-premium body,
-  .landing-premium p,
-  .landing-premium span,
-  .landing-premium a,
-  .landing-premium li,
-  .landing-premium button {
+  /* Body face for the whole marketing surface, set once on the container.
+     This used to be `.landing-premium body, p, span, a, li, button`, which is
+     specificity (0,1,1) — higher than any single-class utility (0,1,0). Every
+     font utility applied to those elements was silently out-specified: .overline
+     and .designator rendered in Inter instead of their declared faces. It also
+     split the body face in two, because .landing-premium body never matches
+     (<body> is an ancestor, not a descendant), so div/td/th/label inherited
+     Source Sans 3 from <body> while the <p> next to them got Inter. */
+  .landing-premium {
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .landing-premium .font-code,
+  .landing-premium .mk-label {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  /* 10px mono uppercase metadata, used for every label on public pages. */
+  .mk-label {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-tertiary);
+  }
+
+  /* Card depth: hairline border plus an inner top highlight. */
+  .mk-card {
+    border: 1px solid var(--seam);
+    background: var(--panel);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+  }
+  .landing-light .mk-card {
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 1), 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+
+  /* ── Signature: beam border on the hero product window ──────
+     The only looping motion on the public site. A slow conic
+     highlight travels the frame; everything else stays still. */
+  .mk-beam {
+    position: relative;
+    border-radius: 14px;
+    padding: 1px;
+    background:
+      conic-gradient(from var(--beam-angle),
+        transparent 0deg,
+        transparent 290deg,
+        rgb(var(--go-rgb) / 0.9) 330deg,
+        transparent 360deg),
+      var(--seam-strong);
+    animation: mk-beam-spin 9s linear infinite;
+  }
+  @keyframes mk-beam-spin {
+    to { --beam-angle: 360deg; }
+  }
+  .mk-glow {
+    position: absolute;
+    inset: 10% 8% -6% 8%;
+    z-index: -1;
+    border-radius: 9999px;
+    background: radial-gradient(closest-side, rgb(var(--go-rgb) / 0.22), transparent);
+    filter: blur(48px);
+    pointer-events: none;
+  }
+  .landing-light .mk-glow {
+    background: radial-gradient(closest-side, rgb(var(--go-rgb) / 0.12), transparent);
+  }
+
+  /* Hero entrance: one staggered rise on load, 80ms steps. */
+  .mk-rise {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: mk-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 80ms);
+  }
+  @keyframes mk-rise {
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Range inputs. `appearance-none` strips the native control, which also
+     strips the handle: Chrome, Safari and Edge render no thumb at all, leaving
+     a bare 4px bar with nothing to grab and no keyboard affordance. The landing
+     cost calculator (CostOfRamp) relies on this, so the thumb is redrawn here
+     rather than per-component. Track 4px, thumb 16px, margin -6px centres it
+     in WebKit; Firefox centres the thumb itself and needs no margin. */
+  input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--seam-strong);
+  }
+  input[type='range']::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--seam-strong);
+  }
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border-radius: 9999px;
+    background: var(--go);
+    border: 2px solid var(--panel);
+    box-shadow: 0 0 0 1px var(--seam-strong);
+  }
+  input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: var(--go);
+    border: 2px solid var(--panel);
+    box-shadow: 0 0 0 1px var(--seam-strong);
+  }
+  input[type='range']:hover::-webkit-slider-thumb,
+  input[type='range']:hover::-moz-range-thumb {
+    background: var(--go-lit);
+  }
+  input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgb(var(--go-rgb) / 0.35);
+  }
+  input[type='range']:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgb(var(--go-rgb) / 0.35);
+  }
+
+  /* Scroll-triggered section entrance, same easing and duration as .mk-rise so
+     the page has one motion vocabulary. The hidden state lives in .mk-reveal
+     and is only ever added by useScrollReveal, which guarantees it is removed
+     again — an element that stayed at opacity 0 would be a far worse defect
+     than a missing animation. */
+  .mk-reveal { opacity: 0; transform: translateY(10px); }
+  .mk-reveal.mk-in {
+    animation: mk-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+
+  /* Faint dot floor behind the hero only. */
+  .mk-dots {
+    background-image: radial-gradient(rgb(var(--ink-rgb) / 0.09) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 75%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mk-beam { animation: none; }
+    .mk-rise { animation: none; opacity: 1; transform: none; }
+    .mk-reveal { opacity: 1; transform: none; }
+    .mk-reveal.mk-in { animation: none; opacity: 1; transform: none; }
   }
 
   * {
@@ -1612,7 +1771,6 @@
   :where(button, a, input, select, textarea, [tabindex]):focus-visible {
     outline: 2px solid var(--go) !important;
     outline-offset: 2px;
-    border-radius: 6px;
   }
 
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -2003,3 +2161,9 @@
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 
+/* Registered so the hero beam border can animate its conic angle. */
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}

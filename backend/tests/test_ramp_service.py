@@ -319,10 +319,14 @@ async def test_ramp_vs_onramp_benchmark_roi():
     assert bench["senior_cost_usd"] == pytest.approx(90.0)
     # Ramp window: joined 30d ago, completed 10d ago → 20d → 0.66 months.
     assert bench["ramp_window_days"] == pytest.approx(20.0)
-    # Flat $99/mo × 0.66mo ≈ $65 (per-workspace, not per dev).
-    assert bench["onramp_price_usd_per_month"] == pytest.approx(99.0)
-    assert bench["onramp_cost_usd"] == 65
-    assert bench["roi_multiple"] == pytest.approx(1.4)
+    # Flat workspace price × 0.66mo (per-workspace, not per dev). Derived from
+    # the service constant so this cannot drift when pricing changes.
+    _price = ramp.ONRAMP_PRICE_USD_PER_MONTH
+    assert bench["onramp_price_usd_per_month"] == pytest.approx(_price)
+    assert bench["onramp_cost_usd"] == pytest.approx(_price * 0.66, abs=0.5)
+    assert bench["roi_multiple"] == pytest.approx(
+        bench["senior_cost_usd"] / bench["onramp_cost_usd"], rel=0.02
+    )
 
 
 async def test_benchmark_react_scoping_on_mixed_team():
@@ -364,14 +368,17 @@ async def test_benchmark_price_override_changes_onramp_cost():
     await _seed_bench_repo(storage, "team-bench-3", "webapp", "JavaScript", "https://github.com/acme/webapp")
     await _seed_bench_task(storage, "team-bench-3", "trainee-a", "A1", "https://github.com/acme/webapp")
 
-    at_99 = await ramp.ramp_vs_onramp_benchmark("team-bench-3")
-    await tcs.set_team_cost_settings("team-bench-3", "senior-1", {"onramp_price_usd_per_month": 198.0})
-    at_198 = await ramp.ramp_vs_onramp_benchmark("team-bench-3")
-    assert at_198["onramp_price_usd_per_month"] == pytest.approx(198.0)
-    # Doubling the price doubles the *unrounded* Onramp cost; both are rounded
-    # to whole dollars, so allow rounding error (65.05 → 65, 130.09 → 130).
-    assert at_198["onramp_cost_usd"] == pytest.approx(at_99["onramp_cost_usd"] * 2, abs=1)
-    assert at_198["roi_multiple"] < at_99["roi_multiple"]
+    at_default = await ramp.ramp_vs_onramp_benchmark("team-bench-3")
+    # Override to exactly double the platform default so "doubling the price
+    # doubles the cost" still holds. It used to be 99 → 198, which silently
+    # stopped being a doubling when the default changed to the real plan price.
+    _doubled = round(ramp.ONRAMP_PRICE_USD_PER_MONTH * 2, 2)
+    await tcs.set_team_cost_settings("team-bench-3", "senior-1", {"onramp_price_usd_per_month": _doubled})
+    at_doubled = await ramp.ramp_vs_onramp_benchmark("team-bench-3")
+    assert at_doubled["onramp_price_usd_per_month"] == pytest.approx(_doubled)
+    # Both are rounded for display, so allow rounding error.
+    assert at_doubled["onramp_cost_usd"] == pytest.approx(at_default["onramp_cost_usd"] * 2, abs=1)
+    assert at_doubled["roi_multiple"] < at_default["roi_multiple"]
 
 
 async def test_benchmark_snapshot_record_and_history():
@@ -515,19 +522,22 @@ async def test_agent_benchmark_math():
     bench = await absvc.agent_cost_benchmark("team-agent-1")
     assert bench["dev_count"] == 4  # 3 new_dev + senior, hr excluded
     assert bench["team_stack"] == "react"
-    assert bench["onramp_monthly_usd"] == 99.0
+    assert bench["onramp_monthly_usd"] == pytest.approx(ramp.ONRAMP_PRICE_USD_PER_MONTH)
     # Cheapest first → Gemini CLI Free at $0.
     assert bench["agents"][0]["slug"] == "gemini-cli-free"
 
+    _price = ramp.ONRAMP_PRICE_USD_PER_MONTH
     by_slug = {a["slug"]: a for a in bench["agents"]}
     claude = by_slug["claude-code-pro"]
     assert claude["team_monthly_usd"] == 80.0   # 4 × $20
-    assert claude["vs_onramp_usd"] == pytest.approx(19.0)  # 99 − 80
-    assert claude["onramp_equivalents"] == pytest.approx(0.81)
+    # vs_onramp_usd = onramp − team, so negative means Onramp is cheaper.
+    assert claude["vs_onramp_usd"] == pytest.approx(_price - 80.0)
+    assert claude["onramp_equivalents"] == pytest.approx(80.0 / _price, abs=0.01)
     gemini = by_slug["gemini-cli-free"]
-    assert gemini["vs_onramp_usd"] == pytest.approx(99.0)
+    # A free agent is still cheaper than a paid workspace.
+    assert gemini["vs_onramp_usd"] == pytest.approx(_price)
     max_tier = by_slug["claude-code-max"]
-    assert max_tier["vs_onramp_usd"] < 0  # $200/dev × 4 = $800 > Onramp
+    assert max_tier["vs_onramp_usd"] < 0  # $200/dev × 4 = $800, far above Onramp
 
 
 async def test_agent_benchmark_price_override():
@@ -541,14 +551,17 @@ async def test_agent_benchmark_price_override():
     await _seed_user(storage, "trainee-a", "Alice")
     await _seed_member(storage, "team-agent-2", "trainee-a", "junior_dev")
 
-    at_99 = await absvc.agent_cost_benchmark("team-agent-2")
+    at_default = await absvc.agent_cost_benchmark("team-agent-2")
     await tcs.set_team_cost_settings("team-agent-2", "senior-1", {"onramp_price_usd_per_month": 198.0})
     at_198 = await absvc.agent_cost_benchmark("team-agent-2")
     assert at_198["onramp_monthly_usd"] == 198.0
-    claude_99 = next(a for a in at_99["agents"] if a["slug"] == "claude-code-pro")
+    claude_default = next(a for a in at_default["agents"] if a["slug"] == "claude-code-pro")
     claude_198 = next(a for a in at_198["agents"] if a["slug"] == "claude-code-pro")
-    # 1 dev × $20 = $20; Onramp $99 → Onramp costs $79 more; at $198 → $178 more.
-    assert claude_99["vs_onramp_usd"] == pytest.approx(79.0)
+    # 1 dev × $20 = $20. At the platform default Onramp costs (default − 20)
+    # more than one Claude seat; at the $198 override it costs $178 more.
+    assert claude_default["vs_onramp_usd"] == pytest.approx(
+        ramp.ONRAMP_PRICE_USD_PER_MONTH - 20.0
+    )
     assert claude_198["vs_onramp_usd"] == pytest.approx(178.0)
 
 

@@ -7,6 +7,7 @@ from app.core.config import base_url_env
 from app.api.v1.auth import get_current_user
 from app.middleware.access_guard import require_minimum_role
 from app.services.field_encryption import decrypt_field_lenient as decrypt_field
+from app.services.frontend_links import build_fragment_token_link
 from app.services.invite_service import (
     create_invite,
     get_team_invites,
@@ -79,7 +80,9 @@ async def create_team_invite(
     # Send email notification
     try:
         from app.services.email_service import send_invite_email
-        invite_link = f"{base_url_env('FRONTEND_URL', 'http://localhost:5173')}/join?token={invite.get('token')}"
+        invite_link = build_fragment_token_link(
+            base_url_env('FRONTEND_URL', 'http://localhost:5173'), "/join", invite.get('token')
+        )
         invited_by_name = decrypt_field(user.get("name") or user.get("email", "A team member"))
         await send_invite_email(body.email, invite_link, team_name, invited_by_name)
     except Exception:

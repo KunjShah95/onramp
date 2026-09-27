@@ -19,7 +19,6 @@ const loaders: Record<string, Loader> = {
   // ── Public / marketing ──────────────────────────────
   '/': () => import('../pages/LandingPage'),
   '/why-onramp': () => import('../pages/WhyOnrampPage'),
-  '/compare': () => import('../pages/ComparisonPage'),
   '/changelog': () => import('../pages/ChangelogPage'),
   '/docs': () => import('../pages/DocsPage'),
   '/support': () => import('../pages/SupportPage'),
