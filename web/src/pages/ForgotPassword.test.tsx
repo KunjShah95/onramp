@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../test/test-utils'
+import { renderSettled, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
 import ForgotPassword from './ForgotPassword'
 
@@ -29,15 +29,15 @@ describe('ForgotPassword', () => {
     mockCheckProvider.mockResolvedValue({ email: 'x', registered: false, provider: null })
   })
 
-  it('renders the forgot password form', () => {
-    render(<ForgotPassword />)
+  it('renders the forgot password form', async () => {
+    await renderSettled(<ForgotPassword />)
     expect(screen.getByRole('heading', { name: /reset password/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
   })
 
   it('shows error on submit (password reset not available)', async () => {
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {
@@ -47,8 +47,8 @@ describe('ForgotPassword', () => {
     })
   })
 
-  it('links back to sign in', () => {
-    render(<ForgotPassword />)
+  it('links back to sign in', async () => {
+    await renderSettled(<ForgotPassword />)
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
   })
 
@@ -59,7 +59,7 @@ describe('ForgotPassword', () => {
   it('routes a Google account to Google instead of claiming an email was sent', async () => {
     mockCheckProvider.mockResolvedValue({ email: 'a@b.com', registered: true, provider: 'google' })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
 
@@ -74,7 +74,7 @@ describe('ForgotPassword', () => {
   it('offers the provider sign-in link for a GitHub account', async () => {
     mockCheckProvider.mockResolvedValue({ email: 'a@b.com', registered: true, provider: 'github' })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
 
@@ -89,7 +89,7 @@ describe('ForgotPassword', () => {
 
   it('sends a normal reset for a password account', async () => {
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {
@@ -102,7 +102,7 @@ describe('ForgotPassword', () => {
     // A lookup outage must never become a new way to lock someone out.
     mockCheckProvider.mockRejectedValue(new Error('network down'))
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {
@@ -123,7 +123,7 @@ describe('ForgotPassword', () => {
       delivery: 'failed',
     })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
 
@@ -136,7 +136,7 @@ describe('ForgotPassword', () => {
   it('offers a support route when delivery fails', async () => {
     mockForgotPassword.mockResolvedValue({ ok: true, message: 'sent', delivery: 'failed' })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
 
@@ -154,7 +154,7 @@ describe('ForgotPassword', () => {
     mockForgotPassword.mockResolvedValue({ ok: true, message: 'sent', delivery: 'failed' })
     mockResend.mockResolvedValue({ ok: true, message: 'sent', delivery: 'failed' })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {
@@ -173,7 +173,7 @@ describe('ForgotPassword', () => {
   it('does not show a failure screen when delivery is fine', async () => {
     mockForgotPassword.mockResolvedValue({ ok: true, message: 'sent' })
     const user = userEvent.setup()
-    render(<ForgotPassword />)
+    await renderSettled(<ForgotPassword />)
     await user.type(screen.getByLabelText(/email/i), 'a@b.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
     await waitFor(() => {

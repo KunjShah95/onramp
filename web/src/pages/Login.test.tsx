@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../test/test-utils'
+import { renderSettled, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
 import Login from './Login'
 
@@ -24,8 +24,8 @@ describe('Login', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the login form (two-stage: email → password)', () => {
-    render(<Login />)
+  it('renders the login form (two-stage: email → password)', async () => {
+    await renderSettled(<Login />)
     // Stage 1: email prompt + continue CTA
     expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
@@ -34,7 +34,7 @@ describe('Login', () => {
 
   it('calls auth login on valid submit', async () => {
     const user = userEvent.setup()
-    render(<Login />)
+    await renderSettled(<Login />)
     // Stage 1 — submit email to advance to password
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.click(screen.getByRole('button', { name: /continue/i }))
@@ -46,14 +46,14 @@ describe('Login', () => {
     })
   })
 
-  it('navigates to register page link', () => {
-    render(<Login />)
+  it('navigates to register page link', async () => {
+    await renderSettled(<Login />)
     expect(screen.getByRole('link', { name: /create free account/i })).toHaveAttribute('href', '/register')
   })
 
-  it('preserves a sanitized invitation return path, including its token query', () => {
+  it('preserves a sanitized invitation return path, including its token query', async () => {
     window.history.pushState({}, '', '/login?returnTo=%2Fjoin%3Ftoken%3Dinvite-123%23accept')
-    render(<Login />)
+    await renderSettled(<Login />)
 
     expect(screen.getByRole('link', { name: /create free account/i })).toHaveAttribute(
       'href',

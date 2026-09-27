@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../test/test-utils'
+import { renderSettled, screen, waitFor } from '../test/test-utils'
 import userEvent from '@testing-library/user-event'
 import Register from './Register'
 
@@ -24,8 +24,8 @@ describe('Register', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the registration form', () => {
-    render(<Register />)
+  it('renders the registration form', async () => {
+    await renderSettled(<Register />)
     expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
@@ -35,7 +35,7 @@ describe('Register', () => {
 
   it('validates password length', async () => {
     const user = userEvent.setup()
-    render(<Register />)
+    await renderSettled(<Register />)
     await user.type(screen.getByLabelText(/name/i), 'Test')
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.type(screen.getByLabelText(/^password$/i), 'short')
@@ -48,7 +48,7 @@ describe('Register', () => {
 
   it('calls auth register on valid submit', async () => {
     const user = userEvent.setup()
-    render(<Register />)
+    await renderSettled(<Register />)
     await user.type(screen.getByLabelText(/name/i), 'Test User')
     await user.type(screen.getByLabelText(/email/i), 'test@test.com')
     await user.type(screen.getByLabelText(/^password$/i), 'password123')
@@ -59,8 +59,8 @@ describe('Register', () => {
     })
   })
 
-  it('navigates to login page link', () => {
-    render(<Register />)
+  it('navigates to login page link', async () => {
+    await renderSettled(<Register />)
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, act } from './test-utils'
+import { renderSettled, screen, act } from './test-utils'
 import { Section } from '../components/marketing/primitives'
 
 /*
@@ -47,8 +47,8 @@ function fireIntersection(el: Element, isIntersecting: boolean) {
 }
 
 describe('Section scroll reveal', () => {
-  it('renders its children', () => {
-    render(
+  it('renders its children', async () => {
+    await renderSettled(
       <Section id="s">
         <p>section body</p>
       </Section>,
@@ -56,11 +56,11 @@ describe('Section scroll reveal', () => {
     expect(screen.getByText('section body')).toBeInTheDocument()
   })
 
-  it('never hides the section when IntersectionObserver is unavailable', () => {
+  it('never hides the section when IntersectionObserver is unavailable', async () => {
     // No observer at all: the content must render plainly rather than risk
     // being stuck at opacity 0 forever.
     globalThis.IntersectionObserver = undefined as unknown as typeof IntersectionObserver
-    const { container } = render(
+    const { container } = await renderSettled(
       <Section id="s">
         <p>no observer available</p>
       </Section>,
@@ -70,9 +70,9 @@ describe('Section scroll reveal', () => {
     expect(section.classList.contains('mk-in')).toBe(false)
   })
 
-  it('reveals when the section intersects the viewport', () => {
+  it('reveals when the section intersects the viewport', async () => {
     controllableIO()
-    const { container } = render(
+    const { container } = await renderSettled(
       <Section id="s">
         <p>intersecting</p>
       </Section>,
@@ -86,9 +86,9 @@ describe('Section scroll reveal', () => {
     expect(section.classList.contains('mk-in')).toBe(true)
   })
 
-  it('does not reveal while the section is still off screen', () => {
+  it('does not reveal while the section is still off screen', async () => {
     controllableIO()
-    const { container } = render(
+    const { container } = await renderSettled(
       <Section id="s">
         <p>below the fold</p>
       </Section>,
@@ -100,12 +100,12 @@ describe('Section scroll reveal', () => {
     expect(section.classList.contains('mk-in')).toBe(false)
   })
 
-  it('reveals on the failsafe timer if the observer never reports', () => {
+  it('reveals on the failsafe timer if the observer never reports', async () => {
     // An observer that is constructed but never fires is the exact failure that
     // would leave a section permanently invisible. The timer is the backstop.
     controllableIO()
     vi.useFakeTimers()
-    const { container } = render(
+    const { container } = await renderSettled(
       <Section id="s">
         <p>observer went quiet</p>
       </Section>,
