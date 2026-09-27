@@ -3,11 +3,17 @@
  * THESIS: The admin seat is the systems console — org fleet, treasury of LLM
  *   spend, and the security event log. Instrument panels, not neon cards.
  * OWN-WORLD: Daylit ops room, seated panels, signal-only colour, mono telemetry.
+ * DISCLOSURE: ten provider cards with inline editors is a form, not a
+ *   dashboard. The page now opens on what is unconfigured, filters the key
+ *   shelf to Configured / Unset, keeps each editor collapsed until it is
+ *   opened, and gives the quick actions real destinations instead of dead
+ *   buttons.
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
-import { ShieldCheck, Users, Heartbeat, Lock, PencilSimple, Trash, Spinner } from '@phosphor-icons/react'
+import { ShieldCheck, Users, Lock, PencilSimple, Trash, Spinner, Key, Gauge } from '@phosphor-icons/react'
 import { useAuth } from '../context/AuthContext'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
@@ -15,6 +21,8 @@ import StatusTile from '../components/ui/status-tile'
 import { PageHeader } from '../components/ui/page-header'
 import { AdminDashboardSkeleton } from '../components/ui/Skeleton'
 import { EmptyState } from '../components/ui/empty-state'
+import { NextUp, FilterChips, ShowMore, Disclosure } from '../components/ui/progressive'
+import { cn } from '../lib/utils'
 import {
   adminGetUsage, adminGetTeamUsage, adminListAuditEvents,
   adminListProviderKeys, adminSetProviderKey, adminDeleteProviderKey,
@@ -65,6 +73,111 @@ function relativeTime(iso: string): string {
 
 const ADMIN_ROLES = new Set(['ceo', 'cto', 'admin'])
 
+type ProviderOption = (typeof PROVIDER_OPTIONS)[number]
+
+/**
+ * One provider on the key shelf. The editor is a Disclosure, not an inline
+ * field that mounts for all ten providers — an input per card meant ten
+ * password fields in the tab order, nine of them invisible.
+ */
+function ProviderKeyCard({
+  provider, configured, info, canEdit, editing, value, saving, confirmDelete,
+  onEdit, onValueChange, onSave, onDeleteRequest, onDeleteConfirm, onDeleteCancel,
+}: {
+  provider: ProviderOption
+  configured: boolean
+  info?: AdminProviderKeyInfo
+  canEdit: boolean
+  editing: boolean
+  value: string
+  saving: boolean
+  confirmDelete: boolean
+  onEdit: () => void
+  onValueChange: (v: string) => void
+  onSave: () => void
+  onDeleteRequest: () => void
+  onDeleteConfirm: () => void
+  onDeleteCancel: () => void
+}) {
+  return (
+    <div className={cn(
+      'rounded-tile border p-3 transition-colors',
+      configured ? 'border-seam bg-well' : 'border-caution/25 bg-caution/[0.03]',
+    )}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn('w-2 h-2 rounded-tile shrink-0', configured ? 'bg-go' : 'bg-caution')} />
+          <span className="text-body-xs font-medium text-ink truncate">{provider.label}</span>
+        </div>
+        {configured ? (
+          <span className="font-code text-[9px] uppercase tracking-wider text-go bg-go/10 px-1.5 py-0.5 rounded shrink-0">Set</span>
+        ) : (
+          <span className="font-code text-[9px] uppercase tracking-wider text-caution bg-caution/10 px-1.5 py-0.5 rounded shrink-0">Unset</span>
+        )}
+      </div>
+      <p className="font-code text-[9px] text-ink-muted/60 mb-2 truncate">overrides {provider.envVar}</p>
+      {configured && info?.updated_at && (
+        <p className="text-caption text-ink-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
+      )}
+      {canEdit ? (
+        <>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onEdit}
+              aria-expanded={editing}
+              className="flex items-center gap-1.5 text-caption text-go hover:text-go/80 transition-colors"
+            >
+              <PencilSimple size={12} />
+              {configured ? 'Update' : 'Add key'}
+            </button>
+            {configured && (confirmDelete ? (
+              <button
+                onClick={onDeleteConfirm}
+                onBlur={onDeleteCancel}
+                className="flex items-center gap-1.5 text-caption font-semibold text-abort hover:text-abort/80 transition-colors"
+              >
+                <Trash size={12} />
+                Confirm?
+              </button>
+            ) : (
+              <button
+                onClick={onDeleteRequest}
+                className="flex items-center gap-1.5 text-caption text-ink-muted hover:text-abort transition-colors"
+              >
+                <Trash size={12} />
+                Remove
+              </button>
+            ))}
+          </div>
+          {editing && (
+            <div className="mt-2.5 flex items-center gap-2 reveal-row">
+              <input
+                type="password"
+                value={value}
+                onChange={(e) => onValueChange(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && value.trim() && !saving) onSave() }}
+                placeholder="sk-..."
+                autoFocus
+                aria-label={`${provider.label} API key`}
+                className="flex-1 min-w-0 rounded-tile border border-seam bg-base px-2.5 py-1.5 font-code text-body-xs text-ink placeholder:text-ink-muted/30 outline-none focus:border-go/50 transition-colors"
+              />
+              <button
+                onClick={onSave}
+                disabled={saving || !value.trim()}
+                className="btn-primary !px-3 !py-1.5 text-caption shrink-0 disabled:opacity-40"
+              >
+                {saving ? <Spinner size={12} className="animate-spin" /> : 'Save'}
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-caption text-ink-muted/60 mt-1">Admin role required to modify</p>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboardPage() {
   const SIG = { ...SIG_STATIC, ...useThemeSignals() }
   const { role } = useAuth()
@@ -81,6 +194,7 @@ export default function AdminDashboardPage() {
   const [providerKeyInput, setProviderKeyInput] = useState('')
   const [savingKey, setSavingKey] = useState(false)
   const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null)
+  const [keyFilter, setKeyFilter] = useState<'all' | 'configured' | 'unset'>('all')
   const toast = useToast()
 
   // Single loader shared by the mount effect (cancel-guarded) and the manual
@@ -155,6 +269,36 @@ export default function AdminDashboardPage() {
     { label: 'Active Members', value: members ?? 'N/A', color: 'text-ink' },
   ]
 
+  // ── Reduce the key shelf before rendering ten editors ────────────────
+  const keyRows = useMemo(
+    () => PROVIDER_OPTIONS.map((p) => {
+      const info = providerKeys[p.id]
+      return { ...p, info, configured: !!info?.configured }
+    }),
+    [providerKeys],
+  )
+  const configuredCount = keyRows.filter((r) => r.configured).length
+  const unsetCount = keyRows.length - configuredCount
+
+  const visibleKeys = useMemo(() => {
+    if (keyFilter === 'configured') return keyRows.filter((r) => r.configured)
+    if (keyFilter === 'unset') return keyRows.filter((r) => !r.configured)
+    // Default view leads with what is live; unset providers are a setup chore.
+    return [...keyRows].sort((a, b) => Number(b.configured) - Number(a.configured))
+  }, [keyRows, keyFilter])
+
+  const verdict = unsetCount > 0
+    ? {
+        tone: 'caution' as const,
+        headline: `${unsetCount} provider${unsetCount === 1 ? '' : 's'} not configured`,
+        detail: `The router falls back to environment variables for those. Set them here to take the platform over.`,
+      }
+    : {
+        tone: 'go' as const,
+        headline: `All ${keyRows.length} providers configured`,
+        detail: 'The router is fully under admin control — no env-var dependency.',
+      }
+
   return (
     <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
@@ -184,6 +328,31 @@ export default function AdminDashboardPage() {
         <div className="py-2"><AdminDashboardSkeleton /></div>
       ) : (
         <>
+          {/* ── What needs setup, then the board ─────────────────────── */}
+          <NextUp
+            tone={verdict.tone}
+            eyebrow="Platform setup"
+            headline={verdict.headline}
+            detail={verdict.detail}
+            primary={
+              unsetCount > 0
+                ? {
+                    id: 'unset',
+                    label: 'Show the unconfigured ones',
+                    detail: `${unsetCount} provider${unsetCount === 1 ? '' : 's'} to set`,
+                    icon: Key,
+                    tone: 'caution',
+                    onClick: () => setKeyFilter('unset'),
+                  }
+                : { id: 'keys', label: 'Review the key shelf', detail: `${configuredCount} configured`, icon: Key, tone: 'go' }
+            }
+            secondary={[
+              { id: 'audit', label: 'Full audit log', detail: 'Every security and config event', to: '/admin/audit', icon: ShieldCheck, tone: 'mission' },
+              { id: 'flags', label: 'Feature flags', detail: 'What is switched on for whom', to: '/admin/feature-flags', icon: Gauge, tone: 'mission' },
+              { id: 'users', label: 'Create an account', detail: 'Provision a seat by hand', to: '/admin/create-account', icon: Users, tone: 'ink' },
+            ]}
+          />
+
           {/* Systems telemetry */}
           <div>
             <ReadoutBank callsign="Systems" items={readouts} columns={4} />
@@ -259,88 +428,63 @@ export default function AdminDashboardPage() {
               <p className="text-caption text-ink-muted mb-4">
                 Platform-wide LLM &amp; embedding provider keys · configured here instead of <span className="font-code text-ink/80">backend/.env</span>. Encrypted at rest and applied to the router immediately.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {PROVIDER_OPTIONS.map((p) => {
-                  const info = providerKeys[p.id]
-                  const configured = !!info?.configured
-                  return (
-                    <div key={p.id} className="rounded-tile border border-seam bg-well p-3">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`w-2 h-2 rounded-tile shrink-0 ${configured ? 'bg-go' : 'bg-inset'}`} />
-                          <span className="text-body-xs font-medium text-ink truncate">{p.label}</span>
-                        </div>
-                        {configured ? (
-                          <span className="font-code text-[9px] uppercase tracking-wider text-go bg-go/10 px-1.5 py-0.5 rounded shrink-0">Set</span>
-                        ) : (
-                          <span className="font-code text-[9px] uppercase tracking-wider text-ink-muted/60 shrink-0">Env/Unset</span>
-                        )}
-                      </div>
-                      <p className="font-code text-[9px] text-ink-muted/60 mb-2 truncate">overrides {p.envVar}</p>
-                      {configured && info.updated_at && (
-                        <p className="text-caption text-ink-muted/70 mb-2">Updated {relativeTime(info.updated_at)}</p>
-                      )}
-                      {isAdmin ? (
-                        <>
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => {
-                                if (editingProvider === p.id) {
-                                  setEditingProvider(null); setProviderKeyInput('')
-                                } else {
-                                  setEditingProvider(p.id); setProviderKeyInput('')
-                                }
-                              }}
-                              className="flex items-center gap-1.5 text-caption text-go hover:text-go/80 transition-colors"
-                            >
-                              <PencilSimple size={12} />
-                              {configured ? 'Update' : 'Add key'}
-                            </button>
-                            {configured && (confirmDeleteProvider !== p.id ? (
-                              <button
-                                onClick={() => setConfirmDeleteProvider(p.id)}
-                                className="flex items-center gap-1.5 text-caption text-ink-muted hover:text-abort transition-colors"
-                              >
-                                <Trash size={12} />
-                                Remove
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleDeleteProviderKey(p.id)}
-                                onBlur={() => setConfirmDeleteProvider(null)}
-                                className="flex items-center gap-1.5 text-caption font-semibold text-abort hover:text-abort/80 transition-colors"
-                              >
-                                <Trash size={12} />
-                                Confirm?
-                              </button>
-                            ))}
-                          </div>
-                          {editingProvider === p.id && (
-                            <div className="mt-2.5 flex items-center gap-2">
-                              <input
-                                type="password"
-                                value={providerKeyInput}
-                                onChange={(e) => setProviderKeyInput(e.target.value)}
-                                placeholder="sk-..."
-                                autoFocus
-                                className="flex-1 min-w-0 rounded-tile border border-seam bg-well px-2.5 py-1.5 font-code text-body-xs text-ink placeholder:text-ink-muted/30 outline-none focus:border-go/50 transition-colors"
-                              />
-                              <button
-                                onClick={handleSaveProviderKey}
-                                disabled={savingKey || !providerKeyInput.trim()}
-                                className="btn-primary !px-3 !py-1.5 text-caption shrink-0 disabled:opacity-40"
-                              >
-                                {savingKey ? <Spinner size={12} className="animate-spin" /> : 'Save'}
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-caption text-ink-muted/50 mt-1">Admin role required to modify</p>
-                      )}
+
+              <FilterChips
+                label="Show"
+                value={keyFilter}
+                onChange={(v) => setKeyFilter(v as typeof keyFilter)}
+                options={[
+                  { value: 'all', label: 'All', count: keyRows.length },
+                  { value: 'configured', label: 'Configured', count: configuredCount },
+                  { value: 'unset', label: 'Not set', count: unsetCount },
+                ]}
+                summary={`${visibleKeys.length} of ${keyRows.length}`}
+              />
+
+              <div className="mt-4">
+                <ShowMore
+                  items={visibleKeys}
+                  limit={6}
+                  noun="provider"
+                  resetKey={keyFilter}
+                  emptyState={(
+                    <EmptyState
+                      eyebrow="Provider keys"
+                      title={keyFilter === 'unset' ? 'Everything is configured' : 'Nothing configured yet'}
+                      description={keyFilter === 'unset'
+                        ? 'Every provider in the catalogue has a key set on the platform.'
+                        : 'Add a key to take a provider under admin control.'}
+                      compact
+                    />
+                  )}
+                >
+                  {(rows) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {rows.map((p) => (
+                        <ProviderKeyCard
+                          key={p.id}
+                          provider={p}
+                          configured={p.configured}
+                          info={p.info}
+                          canEdit={isAdmin}
+                          editing={editingProvider === p.id}
+                          value={providerKeyInput}
+                          saving={savingKey}
+                          confirmDelete={confirmDeleteProvider === p.id}
+                          onEdit={() => {
+                            if (editingProvider === p.id) { setEditingProvider(null); setProviderKeyInput('') }
+                            else { setEditingProvider(p.id); setProviderKeyInput('') }
+                          }}
+                          onValueChange={setProviderKeyInput}
+                          onSave={handleSaveProviderKey}
+                          onDeleteRequest={() => setConfirmDeleteProvider(p.id)}
+                          onDeleteConfirm={() => handleDeleteProviderKey(p.id)}
+                          onDeleteCancel={() => setConfirmDeleteProvider(null)}
+                        />
+                      ))}
                     </div>
-                  )
-                })}
+                  )}
+                </ShowMore>
               </div>
               <div className="flex items-center gap-2 mt-4 text-caption text-ink-muted/70">
                 <Lock size={12} className="shrink-0" />
@@ -349,11 +493,37 @@ export default function AdminDashboardPage() {
             </ConsolePanel>
           </div>
 
-          {/* Org health + audit log */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div>
-              <ConsolePanel rail="Fleet · Org Health" designator="STATUS" status="go">
-                <div className="space-y-2.5">
+          {/* Quick actions — real destinations, not dead buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { label: 'Create an account', to: '/admin/create-account', icon: Users, hint: 'Provision a seat' },
+              { label: 'View the audit log', to: '/admin/audit', icon: ShieldCheck, hint: 'Security + config events' },
+              { label: 'Feature flags', to: '/admin/feature-flags', icon: Gauge, hint: 'What is on, and for whom' },
+            ].map((action) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                className="group flex items-center gap-3 rounded-card border border-seam bg-panel px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-out hover:-translate-y-px hover:border-seam-strong hover:bg-panel-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-go"
+              >
+                <action.icon size={16} weight="regular" className="text-ink-muted shrink-0 group-hover:text-go transition-colors" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-caption font-medium text-ink truncate">{action.label}</span>
+                  <span className="block text-caption text-ink-muted/70 truncate">{action.hint}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Deep surfaces — read on a schedule, not on every visit */}
+          <Disclosure
+            label="System health & audit tail"
+            designator="2 PANELS"
+            tone="idle"
+            hint={`Org totals · ${audit.length} recent events`}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <ConsolePanel rail="Fleet · Org Health" designator="STATUS" status="go" pad="none">
+                <div className="space-y-2.5 p-5">
                   {[
                     { label: 'Teams', value: teams ?? 0 },
                     { label: 'Members', value: members ?? 0 },
@@ -366,12 +536,10 @@ export default function AdminDashboardPage() {
                   ))}
                 </div>
               </ConsolePanel>
-            </div>
 
-            <div>
               <ConsolePanel rail="Event Log · Audit" designator={`${audit.length} EVENTS`} status="standby">
                 {audit.length === 0 ? (
-                  <EmptyState title="No audit events" description="Security and config events will appear here." />
+                  <EmptyState title="No audit events" description="Security and config events will appear here." compact />
                 ) : (
                   <div className="space-y-0.5">
                     {audit.map((entry, i) => {
@@ -393,21 +561,7 @@ export default function AdminDashboardPage() {
                 )}
               </ConsolePanel>
             </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Manage Users', icon: Users },
-              { label: 'View Audit Log', icon: ShieldCheck },
-              { label: 'System Health', icon: Heartbeat },
-            ].map((action) => (
-              <button key={action.label} className="btn-secondary justify-start gap-2.5 !py-2.5">
-                <action.icon size={16} weight="regular" className="text-ink-muted shrink-0" />
-                <span className="text-caption font-medium">{action.label}</span>
-              </button>
-            ))}
-          </div>
+          </Disclosure>
         </>
       )}
     </div>

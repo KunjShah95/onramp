@@ -99,7 +99,12 @@ export default function CostModelPanel() {
     )
   }
 
-  if (isError || !data) {
+  // A truthy envelope is not the same as a usable payload. The endpoint can
+  // answer 200 with `measured` / `sensitivity` absent (older backend, or a team
+  // with no measured data yet), and destructuring straight through turned that
+  // into an uncaught TypeError that took the whole Ramp page down. Fall back
+  // to the same "unavailable" surface the error path already renders.
+  if (isError || !data?.settings || !data.measured || !data.sensitivity) {
     return (
       <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
         <p className="text-sm text-abort font-medium" role="alert">Cost model unavailable.</p>

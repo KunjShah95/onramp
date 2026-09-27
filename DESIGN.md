@@ -1,9 +1,12 @@
 # Visual Constitution: Onramp Redesign
 
-> **Last updated:** 2026-09-19 — **calm revision.** The AI-SaaS motion layer (spotlights, glow
-> pools, animated ribbons, springs, count-ups, gradient headlines) has been removed from every
-> surface: landing, auth, dashboards, and workspace. See §06 for the motion policy and
-> `web/UI-REVIEW.md` for the audit this revision responds to.
+> **Last updated:** 2026-09-27 — **disclosure revision.** The calm motion policy (§06) stands and is
+> now joined by §07, Progressive Disclosure: five shared primitives (`NextUp`, `FilterChips`,
+> `ShowMore`, `Disclosure`, `DeepDive`) that every role console opens on and ranks its content
+> through. Motion was *added* here, but only where a user action earns it — see §06.
+> Previous: **calm revision** — the AI-SaaS motion layer (spotlights, glow pools, animated ribbons,
+> springs, count-ups, gradient headlines) was removed from every surface: landing, auth, dashboards,
+> and workspace. See §06 for the motion policy and `web/UI-REVIEW.md` for the audit it responds to.
 
 This document is the single source of truth for Onramp's design language. It defines a precise,
 editorial, and technical identity — *calm at first glance, deep on inspection.*
@@ -125,9 +128,42 @@ What remains:
 - CSS-only hover/focus transitions on interactive elements.
 - The loading spinner and the skeleton shimmer — signalling work in progress, not decorating it.
 - Opacity/visibility toggles driven by state (no animated entrance).
+- **Earned disclosure motion** (see §07): a region the user just opened or revealed
+  animates open over 160–280ms. This is the one place a size transition is allowed,
+  because the user caused it and the movement *is* the feedback.
 
 **Implementation:** motion is expressed with CSS transitions in `src/index.css` and the
 `.btn*` / `.input` / `.status-tile` component classes. `framer-motion` is no longer imported by
 application code; `src/components/ui/landing-motion.tsx` retains the historical primitive names as
 inert, static components so older call sites keep compiling. `useReducedMotion` is replaced by
 `prefersReducedMotion()` from `src/lib/device.ts`.
+
+---
+
+## 07 — Progressive Disclosure
+
+**Decision-Centricity (§01) only works if the page reduces its own choices first.** A role console
+that renders every panel, row and option at once has made the user do the sorting. The rule:
+
+> Reduce the choices first. Then show the details. Nothing is hidden — it is ranked, capped, and labelled.
+
+Five primitives carry this, all in `src/components/ui/progressive.tsx` and all covered by
+`src/test/progressive.spec.tsx` + `src/test/role-disclosure.spec.tsx`:
+
+| Primitive | Job | Rule |
+|---|---|---|
+| `NextUp` | One ranked first move, then the rest as quiet secondaries | Every role page opens on exactly one. A verdict with no action behind it stands down. |
+| `FilterChips` | Counted categories that narrow the field **before** the list | Counts always come from the *whole* set, never the filtered view — a chip must never report a number that changes when you press it. |
+| `ShowMore` | Caps a long list and states exactly what it withheld | No silent `slice()`. A truncated list that does not say so is a lie. Pass `resetKey` to re-cap when a filter reshapes the list. |
+| `Disclosure` | Collapses detail behind a trigger that names the contents | The collapsed state is still informative (`hint`). Children stay unmounted until opened. |
+| `DeepDive` | Seals the tail of a page — whole panels read on a schedule | Names every panel it holds, so opening it is an informed choice. |
+
+**Sealed ≠ hidden.** A sealed region always states its contents and count, and the primary action is
+never inside one. Disclosure reduces how much is on screen at once; it must never gate the only
+path to doing the work.
+
+**Accessibility is part of the contract, not a follow-up.** A disclosure trigger carries
+`aria-expanded` + `aria-controls`; a collapsed region is `inert`; filter chips report
+`aria-pressed` (never colour alone); every truncated list announces its count via `role="status"`.
+Form controls inside a disclosure still need real `<label htmlFor>` — sealing a form is not an
+excuse for leaving it unlabelled.

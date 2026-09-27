@@ -3383,7 +3383,8 @@ export interface WorkflowTask {
   pr_comments: Array<{ user: string; body: string; path: string; line: number | null; created_at: string }> | null
   peer_reviewed_by: string | null
   quiz_required: boolean
-  depends_on: string | null
+  /** The API sends an array of task ids; older rows may carry a single id. */
+  depends_on: string[] | string | null
   source_issue: { number: number; url?: string; repo_url?: string } | number | null
   created_at: string
   updated_at: string
