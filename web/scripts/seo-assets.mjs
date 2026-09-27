@@ -12,10 +12,15 @@
  *    correct per-route metadata. Served via explicit rewrites in vercel.json.
  *
  * Route manifest mirrors the <Seo> props in src/pages/*.tsx — keep in sync
- * when adding public pages (LandingPage, PricingPage, WhyOnrampPage,
- * DocsPage, ChangelogPage, SupportPage, AboutPage, BlogPage, BlogPostPage,
+ * when adding public pages (LandingPage, WhyOnrampPage, DocsPage,
+ * ChangelogPage, SupportPage, AboutPage, BlogPage, BlogPostPage,
  * ContactPage, CustomersPage, SecurityPage, SOC2Page, DPAPage, PrivacyPage,
  * TermsPage + slugs in src/data/blog.ts).
+ *
+ * Only routes that render their own content get a snapshot. `/pricing` and
+ * `/compare` are <Navigate> redirects onto landing-page anchors (#pricing,
+ * /why-onramp#compare) — they have no page of their own, so --check reports
+ * them as "no snapshot" and that is expected. Do NOT add them here.
  *
  * --check mode: `node scripts/seo-assets.mjs --check` verifies the manifest
  * without building — every ROUTES entry must exist as a <Route path> in

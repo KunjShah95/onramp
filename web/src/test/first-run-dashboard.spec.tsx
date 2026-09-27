@@ -3,9 +3,15 @@ import { render, screen } from './test-utils'
 
 vi.mock(import('../lib/api'), async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
+  // The blanket `?? {}` below is truthy, so authMe used to resolve `{}` and
+  // AuthContext built a phantom logged-in user (mapUser({}) → empty id/email).
+  // These tests are about the no-session state, so return null explicitly.
+  const noSession: Record<string, unknown> = { authMe: null }
   return Object.fromEntries(
     Object.entries(actual).map(([key, value]) => {
-      if (typeof value === 'function') return [key, vi.fn().mockResolvedValue({})]
+      if (typeof value === 'function') {
+        return [key, vi.fn().mockResolvedValue(key in noSession ? noSession[key] : {})]
+      }
       return [key, value]
     })
   )

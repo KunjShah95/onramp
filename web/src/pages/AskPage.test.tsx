@@ -12,6 +12,10 @@ const { mockIndexRepo, mockAsk } = vi.hoisted(() => ({
 vi.mock('../lib/api', () => ({
   indexRepo: (...args: unknown[]) => mockIndexRepo(...args),
   askQuestionStream: (...args: unknown[]) => mockAsk(...args),
+  // This factory replaces the whole module, so AuthContext's `authMe()` call
+  // would throw "No authMe export is defined" and log a spurious session
+  // failure. AskPage does not need a session.
+  authMe: async () => null,
 }))
 
 vi.mock('../components/ui/ModelPicker', () => ({

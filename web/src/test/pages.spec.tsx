@@ -1,9 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from './test-utils'
+import { renderSettled } from './test-utils'
 
 vi.mock(import('../lib/api'), async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   const defaults: Record<string, unknown> = {
+    // The blanket mock below resolves every function to `defaults[key] ?? {}`.
+    // authMe had no entry, so it resolved `{}` — truthy — and AuthContext built a
+    // phantom logged-in user via mapUser({}) with empty id/email/name for all 32
+    // page smoke tests. Give it a real session so pages render as a real user.
+    authMe: {
+      uid: 'u1',
+      email: 'dev@onramp.app',
+      name: 'Test',
+      provider: 'password',
+      position: 'Developer',
+      avatar_url: null,
+      github_username: null,
+    },
     fetchRepos: { repos: [] },
     fetchTraineeDashboard: {
       user: { id: 'u1', name: 'Test', role: 'member' },
@@ -39,8 +52,38 @@ vi.mock(import('../lib/api'), async (importOriginal) => {
     getQuota: { quota: {} },
     listTiers: { tiers: [] },
     adminListApiKeys: { keys: [] },
-    adminGetUsage: { total: 0, by_team: [] },
+    // Full AdminUsageResponse. The old partial `{ total, by_team }` left
+    // `tracked_requests` undefined, so AdminDashboardPage's
+    // `tracked_requests === 0` guard fell through to the populated branch and
+    // fmtUsd(undefined) threw once the async fetch settled.
+    adminGetUsage: {
+      period: '14d',
+      total_requests: 0,
+      total_credits: 0,
+      team_breakdown: {},
+      endpoint_breakdown: {},
+      tracked_requests: 0,
+      free_requests: 0,
+      paid_requests: 0,
+      free_pct: 0,
+      total_cost_usd: 0,
+      total_cost_avoided_usd: 0,
+      provider_series: [],
+    },
     adminGetTeamUsage: { teams: [] },
+    // GamificationPanel destructures `streak` and reads streak.current_streak
+    // unconditionally; the bare `{}` default left it undefined.
+    fetchGamificationSummary: {
+      user_id: 'u1',
+      total_xp: 0,
+      level: 1,
+      xp_progress: 0,
+      xp_needed: 100,
+      xp_breakdown: {},
+      badges: [],
+      badges_count: 0,
+      streak: { current_streak: 0, longest_streak: 0, last_active: null, streak_frozen: false },
+    },
     describePR: { description: '# PR Description\n\nTest' },
     adminListAuditEvents: { events: [] },
     adminListWebhooks: { webhooks: [] },
@@ -130,51 +173,51 @@ import ExecutivePage from '../pages/ExecutivePage'
 import NotFoundPage from '../pages/NotFoundPage'
 
 describe('Auth pages', () => {
-  it('renders Login', () => expect(() => render(<Login />)).not.toThrow())
-  it('renders Register', () => expect(() => render(<Register />)).not.toThrow())
-  it('renders ForgotPassword', () => expect(() => render(<ForgotPassword />)).not.toThrow())
-  it('renders JoinPage', () => expect(() => render(<JoinPage />)).not.toThrow())
+  it('renders Login', async () => { await expect(renderSettled(<Login />)).resolves.toBeDefined() })
+  it('renders Register', async () => { await expect(renderSettled(<Register />)).resolves.toBeDefined() })
+  it('renders ForgotPassword', async () => { await expect(renderSettled(<ForgotPassword />)).resolves.toBeDefined() })
+  it('renders JoinPage', async () => { await expect(renderSettled(<JoinPage />)).resolves.toBeDefined() })
 })
 
 describe('Landing/marketing pages', () => {
-  it('renders ChangelogPage', () => expect(() => render(<ChangelogPage />)).not.toThrow())
-  it('renders DocsPage', () => expect(() => render(<DocsPage />)).not.toThrow())
-  it('renders PrivacyPage', () => expect(() => render(<PrivacyPage />)).not.toThrow())
-  it('renders TermsPage', () => expect(() => render(<TermsPage />)).not.toThrow())
+  it('renders ChangelogPage', async () => { await expect(renderSettled(<ChangelogPage />)).resolves.toBeDefined() })
+  it('renders DocsPage', async () => { await expect(renderSettled(<DocsPage />)).resolves.toBeDefined() })
+  it('renders PrivacyPage', async () => { await expect(renderSettled(<PrivacyPage />)).resolves.toBeDefined() })
+  it('renders TermsPage', async () => { await expect(renderSettled(<TermsPage />)).resolves.toBeDefined() })
 })
 
 describe('Core workspace pages', () => {
-  it('renders ExplorePage', () => expect(() => render(<ExplorePage />)).not.toThrow())
-  it('renders DashboardPage', () => expect(() => render(<DashboardPage />)).not.toThrow())
-  it('renders TeamPage', () => expect(() => render(<TeamPage />)).not.toThrow())
-  it('renders TasksPage', () => expect(() => render(<TasksPage />)).not.toThrow())
-  it('renders Settings', () => expect(() => render(<Settings />)).not.toThrow())
-  it('renders Profile', () => expect(() => render(<Profile />)).not.toThrow())
-  it('renders BillingPage', () => expect(() => render(<BillingPage />)).not.toThrow())
+  it('renders ExplorePage', async () => { await expect(renderSettled(<ExplorePage />)).resolves.toBeDefined() })
+  it('renders DashboardPage', async () => { await expect(renderSettled(<DashboardPage />)).resolves.toBeDefined() })
+  it('renders TeamPage', async () => { await expect(renderSettled(<TeamPage />)).resolves.toBeDefined() })
+  it('renders TasksPage', async () => { await expect(renderSettled(<TasksPage />)).resolves.toBeDefined() })
+  it('renders Settings', async () => { await expect(renderSettled(<Settings />)).resolves.toBeDefined() })
+  it('renders Profile', async () => { await expect(renderSettled(<Profile />)).resolves.toBeDefined() })
+  it('renders BillingPage', async () => { await expect(renderSettled(<BillingPage />)).resolves.toBeDefined() })
 })
 
 describe('Feature pages (recently wired)', () => {
-  it('renders FirstIssuePage', () => expect(() => render(<FirstIssuePage />)).not.toThrow())
-  it('renders LearnPage', () => expect(() => render(<LearnPage />)).not.toThrow())
-  it('renders AskPage', () => expect(() => render(<AskPage />)).not.toThrow())
-  it('renders NotificationsPage', () => expect(() => render(<NotificationsPage />)).not.toThrow())
-  it('renders PlaybooksPage', () => expect(() => render(<PlaybooksPage />)).not.toThrow())
-  it('renders OnboardingReportPage', () => expect(() => render(<OnboardingReportPage />)).not.toThrow())
-  it('renders TraineeDashboard', () => expect(() => render(<TraineeDashboard />)).not.toThrow())
-  it('renders CodeHealthPage', () => expect(() => render(<CodeHealthPage />)).not.toThrow())
-  it('renders PRDescriptionPage', () => expect(() => render(<PRDescriptionPage />)).not.toThrow())
-  it('renders ReviewQueuePage', () => expect(() => render(<ReviewQueuePage />)).not.toThrow())
-  it('renders AdminDashboardPage', () => expect(() => render(<AdminDashboardPage />)).not.toThrow())
-  it('renders MemberDetailPage with route param', () => {
+  it('renders FirstIssuePage', async () => { await expect(renderSettled(<FirstIssuePage />)).resolves.toBeDefined() })
+  it('renders LearnPage', async () => { await expect(renderSettled(<LearnPage />)).resolves.toBeDefined() })
+  it('renders AskPage', async () => { await expect(renderSettled(<AskPage />)).resolves.toBeDefined() })
+  it('renders NotificationsPage', async () => { await expect(renderSettled(<NotificationsPage />)).resolves.toBeDefined() })
+  it('renders PlaybooksPage', async () => { await expect(renderSettled(<PlaybooksPage />)).resolves.toBeDefined() })
+  it('renders OnboardingReportPage', async () => { await expect(renderSettled(<OnboardingReportPage />)).resolves.toBeDefined() })
+  it('renders TraineeDashboard', async () => { await expect(renderSettled(<TraineeDashboard />)).resolves.toBeDefined() })
+  it('renders CodeHealthPage', async () => { await expect(renderSettled(<CodeHealthPage />)).resolves.toBeDefined() })
+  it('renders PRDescriptionPage', async () => { await expect(renderSettled(<PRDescriptionPage />)).resolves.toBeDefined() })
+  it('renders ReviewQueuePage', async () => { await expect(renderSettled(<ReviewQueuePage />)).resolves.toBeDefined() })
+  it('renders AdminDashboardPage', async () => { await expect(renderSettled(<AdminDashboardPage />)).resolves.toBeDefined() })
+  it('renders MemberDetailPage with route param', async () => {
     mockUseParams.mockReturnValue({ userId: 'user123' })
-    expect(() => render(<MemberDetailPage />)).not.toThrow()
+    await expect(renderSettled(<MemberDetailPage />)).resolves.toBeDefined()
   })
-  it('renders ModuleHealthPage with route param', () => {
+  it('renders ModuleHealthPage with route param', async () => {
     mockUseParams.mockReturnValue({ moduleName: 'react-basics' })
-    expect(() => render(<ModuleHealthPage />)).not.toThrow()
+    await expect(renderSettled(<ModuleHealthPage />)).resolves.toBeDefined()
   })
-  it('renders DevSpacePage', () => expect(() => render(<DevSpacePage />)).not.toThrow())
-  it('renders SeniorSpacePage', () => expect(() => render(<SeniorSpacePage />)).not.toThrow())
-  it('renders ExecutivePage', () => expect(() => render(<ExecutivePage />)).not.toThrow())
-  it('renders NotFoundPage', () => expect(() => render(<NotFoundPage />)).not.toThrow())
+  it('renders DevSpacePage', async () => { await expect(renderSettled(<DevSpacePage />)).resolves.toBeDefined() })
+  it('renders SeniorSpacePage', async () => { await expect(renderSettled(<SeniorSpacePage />)).resolves.toBeDefined() })
+  it('renders ExecutivePage', async () => { await expect(renderSettled(<ExecutivePage />)).resolves.toBeDefined() })
+  it('renders NotFoundPage', async () => { await expect(renderSettled(<NotFoundPage />)).resolves.toBeDefined() })
 })
