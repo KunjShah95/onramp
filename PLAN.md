@@ -67,7 +67,7 @@ All routes are lazy-loaded and RBAC-gated. Core set (full list in `web/src/pages
 |-------|------|---------|------------|
 | `/` | LandingPage | Marketing + feature showcase | ✅ Static |
 | `/why-onramp` | WhyOnrampPage | Cost-at-scale calculator (agents vs Onramp) | ✅ Static + benchmark API |
-| `/pricing` | PricingPage | Pricing tiers + comparison | ✅ Static |
+| `/pricing` | — | Redirects to `/#pricing` (LandingPage → `components/landing/Pricing`) | ↪️ Redirect |
 | `/changelog` | ChangelogPage | Release notes | ✅ Static |
 | `/docs` + `/docs/*` | DocsPage + DeveloperPortal | Documentation | ✅ Static |
 | `/login` | Login | JWT login + OAuth | ✅ Wired |

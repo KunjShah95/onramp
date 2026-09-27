@@ -125,7 +125,7 @@
 |-------|------|---------|
 | `/` | LandingPage | Landing / hero |
 | `/why-onramp` | WhyOnrampPage | Cost-at-scale calculator |
-| `/pricing` | PricingPage | Pricing tiers |
+| `/pricing` | — | Redirects to `/#pricing` (landing Pricing section) |
 | `/changelog` | ChangelogPage | Changelog |
 | `/docs` | DocsPage | Documentation |
 | `/developer` | DeveloperPortal | Developer portal |
