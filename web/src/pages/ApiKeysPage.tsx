@@ -15,7 +15,8 @@ import {
 } from '@phosphor-icons/react'
 import { PageHeader } from '../components/ui/page-header'
 import { useToast } from '../context/ToastContext'
-import { useAuth, KEY_MANAGER_ROLES } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
+import { KEY_MANAGER_ROLES } from '../lib/roles'
 import {
   listProviderKeys,
   setProviderKey,
