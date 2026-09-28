@@ -90,3 +90,28 @@ export function getISTClockParts(date: Date): { hours: string; minutes: string; 
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '00'
   return { hours: get('hour'), minutes: get('minute'), seconds: get('second') }
 }
+
+/**
+ * Words that stay upper-case when a machine identifier is humanized, so
+ * `ai_tier` reads "AI Tier" rather than "Ai Tier".
+ */
+const ACRONYMS = new Set(['ai', 'api', 'gpu', 'id', 'io', 'ip', 'ml', 'os', 'qa', 'rl', 'sso', 'ui', 'v2'])
+
+/**
+ * Turn a machine identifier into a display label: `usage_based` → "Usage Based".
+ *
+ * CSS `capitalize` is not enough — it upper-cases the first letter of the whole
+ * string and leaves separators in place, which is how `usage_based` ended up
+ * rendered to users as "Usage_based". Splits on `_`, `-`, and whitespace, drops
+ * empty segments from repeated separators, and upper-cases known acronyms.
+ */
+export function humanizeKey(key: string): string {
+  if (!key) return ''
+  return key
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((word) => (ACRONYMS.has(word.toLowerCase())
+      ? word.toUpperCase()
+      : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+    .join(' ')
+}
