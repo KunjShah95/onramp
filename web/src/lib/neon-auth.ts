@@ -59,13 +59,10 @@ export async function clearTokens(): Promise<void> {
   // Normalization must match api.ts getApiBaseUrl(): a bare host like
   // https://onramp-tlfo.onrender.com gets /api/v1 appended, otherwise
   // logout hits /auth/logout (missing prefix) and fails with CORS/404.
-  const API_BASE = (() => {
-    let url = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').trim().replace(/\/+$/, '')
-    if (url.endsWith('/api/v1') || url === '/api/v1') return url
-    if (url.endsWith('/api')) return `${url}/v1`
-    if (url.includes('/api')) return url
-    return `${url}/api/v1`
-  })()
+  // Normalization (and the production host allow-list) comes from api-base.ts.
+  // This module must not import from api.ts directly: api.ts imports setWsToken
+  // from here, so that edge would close a cycle around a module-level const.
+  const { API_BASE } = await import('./api-base')
   try {
     await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
