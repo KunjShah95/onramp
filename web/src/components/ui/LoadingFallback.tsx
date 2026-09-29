@@ -38,8 +38,13 @@ export function PageLoadingFallback() {
 
 export function FormLoadingFallback() {
   return (
-    <div role="status" aria-live="polite" aria-label="Loading form" className="min-h-screen flex items-center justify-center p-4">
-      <div className="bg-panel border border-seam rounded-card p-8 w-full max-w-[420px] space-y-4">
+    // The auth routes (/login, /register, /forgot-password, /verify-email) are
+    // top-level and have no shared layout, so nothing else supplies a main
+    // landmark while this Suspense fallback is on screen. An element can only
+    // carry one role, so main lives on the wrapper and the live-region status
+    // moved to the card. Centring stays on the wrapper to keep layout identical.
+    <div role="main" className="min-h-screen flex items-center justify-center p-4">
+      <div role="status" aria-live="polite" aria-label="Loading form" className="bg-panel border border-seam rounded-card p-8 w-full max-w-[420px] space-y-4">
         <div className="flex flex-col items-center mb-6">
           <SkeletonBase className="h-12 w-12 rounded-xl mb-4" />
           <SkeletonHeading className="w-40" />
@@ -75,7 +80,7 @@ export function LandingLoadingFallback() {
           <SkeletonButton className="w-32" />
         </div>
       </nav>
-      <div className="flex flex-col items-center justify-center pt-40 pb-20 px-6 space-y-6">
+      <div role="main" className="flex flex-col items-center justify-center pt-40 pb-20 px-6 space-y-6">
         <SkeletonBadge className="w-32" />
         <SkeletonBase className="h-16 w-[600px] max-w-full" />
         <SkeletonText className="w-[500px] max-w-full" />

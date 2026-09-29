@@ -70,11 +70,23 @@ async function assertNoCriticalViolations(page: any, pageName: string) {
 // Helper: check for ARIA landmarks
 async function checkLandmarks(page: any) {
   const landmarks = await page.evaluate(() => {
+    // Count both explicit ARIA roles and the implicit roles that semantic
+    // elements carry (<main>, <header>, <nav>, <footer>, <aside>, <search>).
+    // Querying only [role="..."] reported 0 landmarks on pages that do have
+    // real <main>/<header> markup, which made the log actively misleading.
     const roles = ['banner', 'navigation', 'main', 'complementary', 'contentinfo', 'search']
+    const implicit: Record<string, string> = {
+      banner: 'header',
+      navigation: 'nav',
+      main: 'main',
+      complementary: 'aside',
+      contentinfo: 'footer',
+    }
     const found: Record<string, number> = {}
     for (const role of roles) {
-      const elements = document.querySelectorAll(`[role="${role}"]`)
-      found[role] = elements.length
+      const explicit = document.querySelectorAll(`[role="${role}"]`).length
+      const semantic = implicit[role] ? document.querySelectorAll(implicit[role]).length : 0
+      found[role] = explicit + semantic
     }
     return found
   })
@@ -324,13 +336,18 @@ test.describe('a11y — Landmarks & Structure', () => {
   test('login page has proper ARIA landmarks', async ({ page }) => {
     await page.goto('/login')
     await page.waitForLoadState('networkidle')
-    await checkLandmarks(page)
+    const landmarks = await checkLandmarks(page)
+    // Assert: the auth pages ship no shared chrome, so without an explicit
+    // main landmark axe reports "region — all page content should be
+    // contained by landmarks" (WCAG 2.1 AA best practice).
+    expect(landmarks.main, 'login page must expose a main landmark').toBeGreaterThan(0)
   })
 
   test('register page has proper ARIA landmarks', async ({ page }) => {
     await page.goto('/register')
     await page.waitForLoadState('networkidle')
-    await checkLandmarks(page)
+    const landmarks = await checkLandmarks(page)
+    expect(landmarks.main, 'register page must expose a main landmark').toBeGreaterThan(0)
   })
 
   test('landing pricing section has proper ARIA landmarks', async ({ page }) => {
