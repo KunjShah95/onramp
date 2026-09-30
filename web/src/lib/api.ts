@@ -467,6 +467,34 @@ export async function askQuestion(
  * backend reports it after the stream. Returns when the stream completes
  * ([DONE]) or aborts via the signal.
  */
+/** Deterministic check of an answer's structural claims against the import graph. */
+export interface AnswerGrounding {
+  available: boolean
+  reason?: string
+  known_paths?: string[]
+  unknown_paths?: string[]
+  claims?: {
+    sentence: string
+    relation: string
+    source: string
+    target: string
+    source_text: string
+    target_text: string
+    verdict: 'direct' | 'indirect' | 'unsupported'
+  }[]
+  summary?: {
+    paths_checked: number
+    claims_checked: number
+    unsupported_claims: number
+    unknown_paths: number
+    score: number | null
+  }
+}
+
+export async function groundAnswer(indexId: string, answer: string): Promise<AnswerGrounding> {
+  return request<AnswerGrounding>(`${API_BASE}/ask/ground`, { index_id: indexId, answer })
+}
+
 export async function askQuestionStream(
   indexId: string,
   question: string,
@@ -485,7 +513,9 @@ export async function askQuestionStream(
   /** Optional explicit team scope for routing settings (BYOK keys + routing
    * dial). Membership is verified server-side; when omitted the user's
    * primary team is used. */
-  teamId?: string | null
+  teamId?: string | null,
+  /** Called once after the answer with its check against the repo graph. */
+  onGrounding?: (grounding: AnswerGrounding) => void
 ): Promise<void> {
   let res = await fetch(`${API_BASE}/ask/query/stream`, {
     method: 'POST',
@@ -542,6 +572,7 @@ export async function askQuestionStream(
         const parsed = JSON.parse(payload)
         if (parsed.error) throw new Error(parsed.error)
         if (parsed.route) onRoute?.(parsed.route)
+        if (parsed.grounding) onGrounding?.(parsed.grounding)
         if (parsed.token) onToken(parsed.token)
       } catch {
         // ignore malformed keep-alive lines
@@ -1382,6 +1413,218 @@ export async function fetchRepoGraphHistory(
 ): Promise<RepoGraphSnapshot[]> {
   const res = await fetchRepoGraph(owner, repo, { includeHistory: true, historyLimit: limit })
   return res.history ?? []
+}
+
+// ── Comprehension map (fog of war, fact checks, senior walkthroughs) ──
+export type ComprehensionNodeState = 'lit' | 'changed' | 'fog'
+
+export interface ComprehensionNode {
+  id: string
+  group: string
+  files: string[]
+  fan_in: number
+  fan_out: number
+  critical: boolean
+  state: ComprehensionNodeState
+  lit_source: string | null
+  lit_at: string | null
+  checkable: boolean
+  failed_attempts: number
+}
+
+export interface ComprehensionMap {
+  nodes: ComprehensionNode[]
+  edges: { source: string; target: string }[]
+  critical_path: string[]
+  next_up: string | null
+  progress: {
+    critical_total: number
+    critical_lit: number
+    critical_pct: number
+    overall_total: number
+    overall_lit: number
+    changed: number
+  }
+  snapshot: { commit: string | null; built_at: string | null }
+  branch: string
+  is_senior: boolean
+}
+
+export interface FactCheckQuestion {
+  id: string
+  node: string
+  kind: 'imports' | 'importers'
+  prompt: string
+  options: string[]
+}
+
+export interface FactCheckResult {
+  passed: boolean
+  results: { id: string; correct: boolean; answer: string[] | null }[]
+}
+
+export interface WalkthroughStep {
+  node: string
+  note: string
+  fingerprint?: string
+  status: 'fresh' | 'changed' | 'removed'
+}
+
+export interface Walkthrough {
+  id: string
+  title: string
+  summary: string
+  branch: string
+  author_uid: string
+  author_name: string
+  steps: WalkthroughStep[]
+  stale: boolean
+  stale_steps: number
+  completed: boolean
+  completed_count: number
+  pinned_commit: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ComprehensionTeamView {
+  members: {
+    uid: string
+    name: string
+    critical_lit: number
+    critical_total: number
+    critical_pct: number
+    overall_lit: number
+    changed: number
+    updated_at: string | null
+  }[]
+  stuck: { node: string; failed_checks: number; developers: number; critical: boolean }[]
+  critical_path: string[]
+  /** Critical modules by how many people demonstrably understand them (fewest first). */
+  bus_factor: { node: string; count: number; understood_by: string[] }[]
+}
+
+function comprehensionBase(owner: string, repo: string): string {
+  return `${API_BASE}/comprehension/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+}
+
+export async function fetchComprehensionMap(owner: string, repo: string, branch = 'main'): Promise<ComprehensionMap> {
+  return get<ComprehensionMap>(`${comprehensionBase(owner, repo)}/map?branch=${encodeURIComponent(branch)}`)
+}
+
+export async function fetchFactChecks(
+  owner: string, repo: string, node: string, branch = 'main'
+): Promise<{ node: string; questions: FactCheckQuestion[]; locked_for_seconds: number }> {
+  const qs = new URLSearchParams({ node, branch })
+  return get(`${comprehensionBase(owner, repo)}/checks?${qs}`)
+}
+
+export async function gradeFactChecks(
+  owner: string, repo: string, node: string, answers: Record<string, string[]>, branch = 'main'
+): Promise<FactCheckResult> {
+  return request<FactCheckResult>(`${comprehensionBase(owner, repo)}/checks/grade`, { node, answers, branch })
+}
+
+export async function fetchWalkthroughs(
+  owner: string, repo: string, branch = 'main'
+): Promise<{ walkthroughs: Walkthrough[]; coverage_gaps: string[]; can_author: boolean }> {
+  return get(`${comprehensionBase(owner, repo)}/walkthroughs?branch=${encodeURIComponent(branch)}`)
+}
+
+export async function createWalkthrough(
+  owner: string,
+  repo: string,
+  body: { title: string; summary?: string; branch?: string; steps: { node: string; note?: string }[] }
+): Promise<Walkthrough> {
+  return request<Walkthrough>(`${comprehensionBase(owner, repo)}/walkthroughs`, body)
+}
+
+/** Re-verify a tour against the current graph (optionally replacing steps). */
+export async function reverifyWalkthrough(
+  owner: string,
+  repo: string,
+  id: string,
+  body: { title?: string; summary?: string; steps?: { node: string; note?: string }[] } = {}
+): Promise<Walkthrough> {
+  return request<Walkthrough>(`${comprehensionBase(owner, repo)}/walkthroughs/${encodeURIComponent(id)}`, body, 'PUT')
+}
+
+export async function deleteWalkthrough(owner: string, repo: string, id: string): Promise<void> {
+  await fetchWithAuth<void>(`${comprehensionBase(owner, repo)}/walkthroughs/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export async function completeWalkthrough(
+  owner: string, repo: string, id: string
+): Promise<{ lit: string[]; skipped_stale: number; walkthrough: Walkthrough }> {
+  return request(`${comprehensionBase(owner, repo)}/walkthroughs/${encodeURIComponent(id)}/complete`, {})
+}
+
+export interface StarterIssue {
+  number: number
+  title: string
+  url: string
+  labels: string[]
+  modules: string[]
+  known_modules: string[]
+  unknown_modules: string[]
+  touches_critical: boolean
+  /** null when the issue names no file, so its radius can't be known. */
+  blast_radius: number | null
+  reason: string
+}
+
+export interface ChangeImpact {
+  changed_modules: string[]
+  affected_modules: string[]
+  blast_radius: number
+  touches_critical: string[]
+  unmapped_files: string[]
+  reviewers: { uid: string; name: string; understands_changed: string[]; understands_affected: number; score: number }[]
+  knowledge_gaps: string[]
+}
+
+export async function fetchStarterIssues(
+  owner: string, repo: string, branch = 'main'
+): Promise<{ issues: StarterIssue[]; labelled_good_first_issue: boolean }> {
+  return get(`${comprehensionBase(owner, repo)}/starter-issues?branch=${encodeURIComponent(branch)}`)
+}
+
+export async function fetchChangeImpact(
+  owner: string, repo: string, target: { nodes?: string[]; files?: string[] }, branch = 'main'
+): Promise<ChangeImpact> {
+  return request<ChangeImpact>(`${comprehensionBase(owner, repo)}/impact`, { ...target, branch })
+}
+
+export async function fetchPrImpact(
+  owner: string, repo: string, prNumber: number, branch = 'main'
+): Promise<ChangeImpact & { pr_number: number; files: string[] }> {
+  return get(`${comprehensionBase(owner, repo)}/pr/${prNumber}/impact?branch=${encodeURIComponent(branch)}`)
+}
+
+export interface ModuleContext {
+  node: string
+  who: {
+    /** From git history: authors by commits touching the module's files. */
+    wrote: { name: string; commits: number }[]
+    /** From the Knowledge Map: people who demonstrably understand it now. */
+    understands: string[]
+    bus_factor: number
+  }
+  why: {
+    history: { sha: string; author: string; date: string | null; subject: string; pr_number: number | null; pr_url: string | null }[]
+    decisions: { path: string; title: string; excerpt: string }[]
+    walkthrough_notes: { walkthrough_id: string; walkthrough: string; author: string; note: string; status: 'fresh' | 'changed' | 'removed' }[]
+  }
+  has_history: boolean
+}
+
+export async function fetchModuleContext(owner: string, repo: string, node: string, branch = 'main'): Promise<ModuleContext> {
+  const qs = new URLSearchParams({ node, branch })
+  return get<ModuleContext>(`${comprehensionBase(owner, repo)}/context?${qs}`)
+}
+
+export async function fetchComprehensionTeam(owner: string, repo: string, branch = 'main'): Promise<ComprehensionTeamView> {
+  return get<ComprehensionTeamView>(`${comprehensionBase(owner, repo)}/team?branch=${encodeURIComponent(branch)}`)
 }
 
 // ── Seed Data ─────────────────────────────────────────────────

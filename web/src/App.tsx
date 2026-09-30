@@ -51,6 +51,7 @@ const HRDashboard = lazy(() => import('./pages/HRDashboard'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
+const ComprehensionMapPage = lazy(() => import('./pages/ComprehensionMapPage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
 const AskPage = lazy(() => import('./pages/AskPage'))
@@ -260,6 +261,11 @@ export default function App() {
                   <Route path="/explore" element={
                     <Suspense fallback={<ExploreResultSkeleton />}>
                       <ErrorBoundary><ExplorePage /></ErrorBoundary>
+                    </Suspense>
+                  } />
+                  <Route path="/map" element={
+                    <Suspense fallback={<ExploreResultSkeleton />}>
+                      <ErrorBoundary><ComprehensionMapPage /></ErrorBoundary>
                     </Suspense>
                   } />
                   <Route path="/learn" element={

@@ -14,7 +14,8 @@ import { cn } from '../lib/utils'
 import { useToast } from '../context/ToastContext'
 import { useRoastMode } from '../context/RoastModeContext'
 import { useAuth } from '../context/AuthContext'
-import { indexRepo, askQuestionStream } from '../lib/api'
+import { indexRepo, askQuestionStream, type AnswerGrounding } from '../lib/api'
+import GroundingPanel from '../components/knowledge/GroundingPanel'
 import RoastModeToggle from '../components/ui/RoastModeToggle'
 import ModelPicker from '../components/ui/ModelPicker'
 import RoutingModePicker, { type RoutingModeValue } from '../components/ui/RoutingModePicker'
@@ -102,6 +103,8 @@ interface Message {
   timestamp: Date
   /** Provider/model that actually served this answer ("groq/llama-3.3-70b-versatile"). */
   route?: string
+  /** Deterministic check of the answer's file/relationship claims. */
+  grounding?: AnswerGrounding
 }
 
 const SUGGESTIONS = [
@@ -216,7 +219,12 @@ export default function AskPage() {
             prev.map((m) => (m.id === assistantId ? { ...m, route: served } : m))
           )
         },
-        activeTeamId ?? null
+        activeTeamId ?? null,
+        (grounding) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, grounding } : m))
+          )
+        }
       )
     } catch (err: any) {
       setMessages((prev) =>
@@ -349,6 +357,7 @@ export default function AskPage() {
                         <p className="font-body text-[13.5px] text-ink">{msg.content}</p>
                       )}
                     </div>
+                    {msg.role === 'assistant' && msg.grounding && <GroundingPanel grounding={msg.grounding} />}
                     <div className={cn('flex items-center gap-2 mt-1', msg.role === 'user' ? 'justify-end' : '')}>
                       <span className="font-code text-[10px] text-ink-tertiary">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
