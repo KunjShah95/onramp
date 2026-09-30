@@ -474,9 +474,36 @@ async def query_repo(
             except Exception:
                 pass
         attach_served_route_header(llm, before_route, response)
-        return {"answer": answer, "session_id": ask_session_id}
+        return {
+            "answer": answer,
+            "session_id": ask_session_id,
+            "grounding": await _safe_grounding(request.index_id, answer),
+        }
     except Exception as e:
         logger.exception("Internal error"); raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
+
+
+async def _safe_grounding(index_id: str, answer: str) -> Dict[str, Any]:
+    """Verify an answer's structural claims against the repo graph (never raises)."""
+    try:
+        from app.services.grounding_service import ground_for_index
+
+        return await ground_for_index(index_id, answer)
+    except Exception:
+        logger.exception("Grounding check failed for index %s", index_id)
+        return {"available": False, "reason": "Grounding check failed"}
+
+
+class GroundRequest(BaseModel):
+    index_id: str = Field(..., max_length=100)
+    answer: str = Field(..., min_length=1, max_length=50_000)
+
+
+@router.post("/ground")
+async def ground_answer(request: GroundRequest, user: dict = Depends(get_current_user)):
+    """Re-check any answer (e.g. from history) against the repository graph."""
+    await _authorize_index(user, request.index_id, None)
+    return await _safe_grounding(request.index_id, request.answer)
 
 
 @router.post("/query/stream")
@@ -523,6 +550,8 @@ async def query_repo_stream(
             after = getattr(llm, "last_route", None)
             if after is not None and after is not before_route and after.get("served"):
                 yield f"data: {json.dumps({'route': after['served']})}\n\n"
+            if full_answer:
+                yield f"data: {json.dumps({'grounding': await _safe_grounding(request.index_id, full_answer)})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
