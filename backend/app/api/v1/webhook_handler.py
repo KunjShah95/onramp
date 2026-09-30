@@ -300,6 +300,17 @@ async def _light_comprehension_from_pr(payload: dict) -> list:
         async def load_diff() -> str:
             return await GitHubService().get_pr_diff(f"https://github.com/{owner}/{name}", int(number))
 
+        async def load_comments() -> list:
+            return await GitHubService().get_pr_review_comments(f"https://github.com/{owner}/{name}", int(number))
+
+        # Review discussion is the "why" behind the change; keep it per file.
+        try:
+            from app.services.comprehension_service import record_pr_discussion
+
+            await record_pr_discussion(owner=owner, name=name, pr_number=int(number), load_comments=load_comments)
+        except Exception:
+            logger.exception("Failed to record PR review discussion")
+
         return await light_from_merged_pr(
             owner=owner,
             name=name,

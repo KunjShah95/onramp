@@ -42,6 +42,9 @@ logger = logging.getLogger("onramp.comprehension")
 
 STATE_COLLECTION = "comprehension_states"
 WALKTHROUGH_COLLECTION = "walkthroughs"
+DISCUSSION_COLLECTION = "module_discussions"
+MAX_DISCUSSIONS_PER_FILE = 10
+MIN_DISCUSSION_CHARS = 20
 
 # A fact check shows at most this many options, of which at most
 # MAX_CORRECT_SHOWN are true.
@@ -708,6 +711,7 @@ def module_context(
     names: Dict[str, str],
     walkthroughs: List[Dict[str, Any]],
     repo_url: str = "",
+    discussions: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """The "why" and "who" of one module, from evidence only.
 
@@ -784,9 +788,93 @@ def module_context(
             "history": history,
             "decisions": decisions,
             "walkthrough_notes": notes,
+            "discussions": sorted(
+                discussions or [], key=lambda d: str(d.get("created_at") or ""), reverse=True
+            )[:8],
         },
         "has_history": bool(history_by_file or ownership),
     }
+
+
+def _discussion_id(key: str, path: str) -> str:
+    return hashlib.sha256(f"{key}|{path}".encode("utf-8")).hexdigest()[:32]
+
+
+def select_discussions(comments: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """Keep substantive human review comments, grouped by file path.
+
+    Bots and one-word reviews ("LGTM", "nit") carry no rationale, so they are
+    dropped; what stays is the "why" reviewers wrote down on the diff.
+    """
+    by_path: Dict[str, List[Dict[str, Any]]] = {}
+    for c in comments:
+        path = str(c.get("path") or "").strip()
+        body = str(c.get("body") or "").strip()
+        user = c.get("user") or {}
+        login = str(user.get("login") if isinstance(user, dict) else user or "")
+        if not path or len(body) < MIN_DISCUSSION_CHARS:
+            continue
+        if login.endswith("[bot]") or (isinstance(user, dict) and user.get("type") == "Bot"):
+            continue
+        by_path.setdefault(path, []).append({
+            "author": login,
+            "body": body[:400],
+            "line": c.get("line"),
+            "created_at": c.get("created_at") or "",
+        })
+    return by_path
+
+
+async def record_pr_discussion(
+    *,
+    owner: str,
+    name: str,
+    pr_number: int,
+    load_comments: Callable[[], Awaitable[List[Dict[str, Any]]]],
+) -> int:
+    """Persist a merged PR's review discussion per file (registered repos only).
+
+    Returns the number of comments stored. Idempotent per (PR, comment time).
+    """
+    storage = get_storage()
+    repos = await storage.query_documents("repositories", [("owner", "==", owner), ("name", "==", name)])
+    if not repos or not repos[0].get("team_id"):
+        return 0
+    key = repo_key(owner, name)
+    pr_url = f"https://github.com/{owner}/{name}/pull/{pr_number}"
+    stored = 0
+    for path, entries in select_discussions(await load_comments()).items():
+        doc_id = _discussion_id(key, path)
+        existing = await storage.get_document(DISCUSSION_COLLECTION, doc_id)
+        items = list((existing or {}).get("entries") or [])
+        seen = {(e.get("pr_number"), e.get("created_at"), e.get("author")) for e in items}
+        for e in entries:
+            if (pr_number, e["created_at"], e["author"]) in seen:
+                continue
+            items.append({**e, "pr_number": pr_number, "pr_url": pr_url})
+            stored += 1
+        items.sort(key=lambda e: str(e.get("created_at") or ""), reverse=True)
+        payload = {"repo_key": key, "path": path, "entries": items[:MAX_DISCUSSIONS_PER_FILE], "updated_at": _iso()}
+        if existing:
+            await storage.update_document(DISCUSSION_COLLECTION, doc_id, payload)
+        else:
+            await storage.create_document(DISCUSSION_COLLECTION, doc_id, payload)
+    return stored
+
+
+async def discussions_for(key: str, files: Iterable[str]) -> List[Dict[str, Any]]:
+    """Stored review discussion for the given files (best-effort)."""
+    storage = get_storage()
+    out: List[Dict[str, Any]] = []
+    for path in sorted(set(files))[:200]:
+        try:
+            doc = await storage.get_document(DISCUSSION_COLLECTION, _discussion_id(key, path))
+        except Exception:
+            logger.debug("Discussion lookup failed for %s", path, exc_info=True)
+            continue
+        for e in (doc or {}).get("entries") or []:
+            out.append({**e, "path": path})
+    return out
 
 
 async def light_from_merged_pr(

@@ -1614,6 +1614,8 @@ export interface ModuleContext {
     history: { sha: string; author: string; date: string | null; subject: string; pr_number: number | null; pr_url: string | null }[]
     decisions: { path: string; title: string; excerpt: string }[]
     walkthrough_notes: { walkthrough_id: string; walkthrough: string; author: string; note: string; status: 'fresh' | 'changed' | 'removed' }[]
+    /** Substantive human review comments left on merged PRs touching the module. */
+    discussions: { path: string; author: string; body: string; line: number | null; created_at: string; pr_number: number; pr_url: string }[]
   }
   has_history: boolean
 }
