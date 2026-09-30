@@ -6,7 +6,8 @@ import { getUsageSummary, listTiers, listAgents, executeAgent, fetchModelCatalog
 import { Code, Copy, Check, Spinner, ShieldCheck, Play, Robot, Terminal, Gauge, Key, Plus, Trash } from '@phosphor-icons/react'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyRow } from '../components/ui/empty-state'
-import { cn } from '../lib/utils'
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
+import { cn, humanizeKey } from '../lib/utils'
 
 const CodeEditor = lazy(() => import('../components/ui/monaco-editor'))
 
@@ -245,30 +246,28 @@ function UsageTab({ usage, tierInfo }: { usage: UsageSummary | null; tierInfo: R
         <h2 className="font-display text-[15px] font-semibold text-ink mb-1 flex items-center gap-2"><Gauge size={16} className="text-go" /> Rate limits</h2>
         <p className="text-xs text-ink-tertiary mb-4">What each tier can do for workspace usage.</p>
         {tierInfo ? (
-          <div className="overflow-x-auto -mx-6 px-6 overscroll-x-contain">
-            <table className="w-full min-w-[560px] text-[13px]">
-              <thead>
-                <tr className="text-left font-mono text-[11px] uppercase tracking-wider text-ink-tertiary border-b border-seam">
-                  <th className="py-2 pr-3 font-medium">Tier</th>
-                  <th className="py-2 pr-3 font-medium">Per min</th>
-                  <th className="py-2 pr-3 font-medium">Per day</th>
-                  <th className="py-2 pr-3 font-medium">Credits/mo</th>
-                  <th className="py-2 font-medium">Repos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(tierInfo.tiers).map(([tier, l]) => (
-                  <tr key={tier} className="border-b border-seam last:border-0">
-                    <td className="py-2.5 pr-3 font-semibold text-ink capitalize">{tier}</td>
-                    <td className="py-2.5 pr-3 font-mono text-go">{l.requests_per_minute}</td>
-                    <td className="py-2.5 pr-3 font-mono">{l.requests_per_day.toLocaleString()}</td>
-                    <td className="py-2.5 pr-3 font-mono">{l.credits_per_month > 0 ? l.credits_per_month.toLocaleString() : '∞'}</td>
-                    <td className="py-2.5 font-mono">{l.max_repos < 0 ? '∞' : l.max_repos}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Tier</TH>
+                <TH>Per min</TH>
+                <TH>Per day</TH>
+                <TH>Credits/mo</TH>
+                <TH>Repos</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {Object.entries(tierInfo.tiers).map(([tier, l]) => (
+                <TR key={tier}>
+                  <TD className="font-semibold">{humanizeKey(tier)}</TD>
+                  <TD className="font-code text-go">{l.requests_per_minute}</TD>
+                  <TD className="font-code tabular-nums">{l.requests_per_day.toLocaleString()}</TD>
+                  <TD className="font-code tabular-nums">{l.credits_per_month > 0 ? l.credits_per_month.toLocaleString() : '∞'}</TD>
+                  <TD className="font-code tabular-nums">{l.max_repos < 0 ? '∞' : l.max_repos}</TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
         ) : (
           <p className="text-sm text-ink-tertiary flex items-center gap-2"><ShieldCheck size={16} /> Limits load with server connection.</p>
         )}

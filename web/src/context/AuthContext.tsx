@@ -11,6 +11,18 @@ import { useLocation } from 'react-router-dom'
 import { setWsToken, clearTokens, getWsToken } from '../lib/neon-auth'
 import { authLogin, authRegister, authMe, listTeams, forgotPassword as apiForgotPassword, refreshToken, clearCsrfToken, type ForgotPasswordResponse } from '../lib/api'
 import { prefetchRoute, prefetchWorkspaceShell } from '../lib/prefetch'
+import { homeForRole, type TeamRole } from '../lib/roles'
+
+// Role vocabulary and role-derived policy live in `lib/roles.ts` so this module
+// keeps only the Provider + hook. A context module that also exports plain
+// values cannot be Fast-Refreshed — Vite invalidates it, the context object
+// identity changes, and every `useAuth()` consumer throws "must be used within
+// an AuthProvider", white-screening the app on any edit. See lib/roles.ts.
+//
+// The type re-export below is safe (erased at compile time, so it never reaches
+// the runtime module graph); re-exporting a *value* here would reintroduce the
+// exact bug this split exists to prevent.
+export type { TeamRole } from '../lib/roles'
 
 interface User {
   id: string
@@ -43,17 +55,8 @@ interface AuthState {
   activeTeamId: string | null
 }
 
-export type TeamRole = 'ceo' | 'cto' | 'senior_dev' | 'developer' | 'tester' | 'junior_dev' | 'admin' | 'senior' | 'member' | 'hr'
-
-/** Roles allowed to create & manage team API keys (Settings + Developer Portal). */
-export const KEY_MANAGER_ROLES: TeamRole[] = ['ceo', 'cto', 'admin', 'senior', 'senior_dev', 'developer', 'tester']
-
-/** Role-appropriate landing page after login/register. */
-export function homeForRole(role: TeamRole | null | undefined): string {
-  if (role === 'hr') return '/hr/people'
-  if (role === 'junior_dev' || role === 'member') return '/my-progress'
-  return '/dashboard'
-}
+// Role vocabulary and role-derived policy live in `lib/roles.ts` so this module
+// keeps only the Provider + hook. See the note beside the import above.
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>

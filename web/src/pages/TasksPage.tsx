@@ -1,4 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+/*
+ * ─── TASKS · PROGRESSIVE DISCLOSURE ─────────────────────────────────────────
+ * The board has nine workflow columns; nobody arrives wanting all nine. The
+ * page opens on one ranked move (NextUp), narrows the field with counted
+ * buckets (FilterChips) before the board renders, and keeps rarely-used
+ * tooling (import, templates, time stats, export) behind a single Tools menu.
+ * The detail sheet leads with the action for the task's state; provenance,
+ * access and AI review sit behind labelled disclosures.
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 
 import { cn } from '../lib/utils'
 import {
@@ -17,6 +27,8 @@ import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { EmptyState } from '../components/ui/empty-state'
 import CardSpotlight from '../components/ui/card-spotlight'
+import { NextUp, FilterChips, Disclosure, type NextUpAction } from '../components/ui/progressive'
+import { BUCKET_ORDER, bucketCounts, inBucket, pickNextMove, type TaskBucket } from '../lib/task-buckets'
 
 import Pagination from '../components/ui/Pagination'
 import KanbanBoard, { type KanbanColumn, type KanbanTask } from '../components/ui/kanban-board'
@@ -29,7 +41,7 @@ import {
   Plus, X, Trash, MagnifyingGlass, Check, ArrowRight,
   ListBullets, SquaresFour, Star,
   Lock, ListChecks, UserCircle, Clock, GithubLogo, UsersThree, GraduationCap,
-  Copy, Lightning, DownloadSimple, DotsThree
+  Copy, Lightning, DownloadSimple, DotsThree, Wrench, Eye, ArrowCounterClockwise, Play, CheckCircle
 } from '@phosphor-icons/react'
 
 const PRIORITY_DOTS: Record<string, string> = {
@@ -101,13 +113,15 @@ function memberName(members: TeamMember[], uid: string | null | undefined): stri
 
 export default function TasksPage() {
   const toast = useToast()
-  const { activeTeamId } = useAuth()
+  const { activeTeamId, user } = useAuth()
+  const uid = user?.id || null
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeam, setSelectedTeam] = useState(activeTeamId ?? '')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
+  const [bucket, setBucket] = useState<TaskBucket>('all')
   const [view, setView] = useState<'board' | 'list'>('board')
   const [progress, setProgress] = useState<TeamProgress | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -544,24 +558,104 @@ export default function TasksPage() {
     }
   }
 
+  const counts = useMemo(() => bucketCounts(tasks, uid), [tasks, uid])
+  const nextMove = useMemo(() => pickNextMove(tasks, uid), [tasks, uid])
+
   const filteredTasks = tasks.filter((t) => {
+    if (!inBucket(t, bucket, uid)) return false
     if (!filter) return true
     const q = filter.toLowerCase()
+    // Match the assignee by display name as well as raw id — people search
+    // for "Ada", not a UUID.
     return t.title.toLowerCase().includes(q) || t.state.toLowerCase().includes(q) ||
+      memberName(members, t.assigned_to).toLowerCase().includes(q) ||
       (t.assigned_to && t.assigned_to.toLowerCase().includes(q)) || (t.module && t.module.toLowerCase().includes(q))
   })
   const totalPages = Math.ceil(filteredTasks.length / PAGE_SIZE)
   const paginatedTasks = filteredTasks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  // Reset page when filter changes
-  useEffect(() => { setPage(0) }, [filter])
+  // Reset page when the field is re-shaped
+  useEffect(() => { setPage(0) }, [filter, bucket])
+
+  // Escape closes the detail sheet from anywhere, not only when focus happens
+  // to sit on the backdrop.
+  useEffect(() => {
+    if (!selectedTask) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedTask(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selectedTask])
+
+  /** Answer the ranked move: filter to its bucket, and open the task if only one qualifies. */
+  function followMove(target: TaskBucket, taskId?: string) {
+    setBucket(target)
+    setFilter('')
+    if (taskId) {
+      const t = tasks.find((x) => x.task_id === taskId)
+      if (t) setSelectedTask(t)
+    }
+  }
+
+  // `[]` is truthy — the old `depends_on &&` check marked every task
+  // "Blocked". Only unfinished dependencies block; show them by title.
+  const openDeps = (() => {
+    const raw = selectedTask?.depends_on
+    const ids = Array.isArray(raw) ? raw : raw ? [raw] : []
+    return ids
+      .map((id) => tasks.find((t) => t.task_id === id) ?? { task_id: id, title: id, state: 'unknown' })
+      .filter((t) => t.state !== 'completed' && t.state !== 'cancelled')
+      .map((t) => t.title)
+  })()
+
+  const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`
+
+  const nextUpCopy: Record<typeof nextMove.kind, { headline: string; detail: string; tone: 'abort' | 'caution' | 'mission' | 'ink' | 'go'; primary: NextUpAction }> = {
+    'my-rework': {
+      headline: `${plural(nextMove.count, 'task')} came back with changes requested`,
+      detail: 'A reviewer is waiting on your fix — this unblocks fastest.',
+      tone: 'abort',
+      primary: { id: 'rework', label: nextMove.taskId ? 'Open the task' : 'Show rework', detail: 'Read the feedback, then resume', count: nextMove.count, icon: ArrowCounterClockwise, onClick: () => followMove('rework', nextMove.taskId) },
+    },
+    review: {
+      headline: `${plural(nextMove.count, 'task')} waiting on review`,
+      detail: 'Someone finished their part. A verdict gets them moving again.',
+      tone: 'caution',
+      primary: { id: 'review', label: nextMove.taskId ? 'Review it now' : 'Show review queue', detail: 'Approve, request changes, or route', count: nextMove.count, icon: Eye, onClick: () => followMove('review', nextMove.taskId) },
+    },
+    'my-active': {
+      headline: `${plural(nextMove.count, 'task')} in flight for you`,
+      detail: 'Finish the open leg and submit the PR to close the loop.',
+      tone: 'mission',
+      primary: { id: 'mine', label: nextMove.taskId ? 'Open my task' : 'Show my tasks', detail: 'Pick up where you left off', count: nextMove.count, icon: Play, onClick: () => followMove('mine', nextMove.taskId) },
+    },
+    unassigned: {
+      headline: `${plural(nextMove.count, 'task')} nobody owns yet`,
+      detail: 'Unowned work stalls quietly. Give each one an assignee.',
+      tone: 'ink',
+      primary: { id: 'unassigned', label: nextMove.taskId ? 'Assign it' : 'Show unassigned', detail: 'Pick an owner for each', count: nextMove.count, icon: UserCircle, onClick: () => followMove('unassigned', nextMove.taskId) },
+    },
+    clear: {
+      headline: tasks.length ? 'Nothing on the board is waiting on anyone' : 'This team has no tasks yet',
+      detail: tasks.length ? 'Good moment to queue the next piece of work.' : 'Create one, import a GitHub issue, or assign a starter plan.',
+      tone: 'go',
+      primary: { id: 'create', label: 'New task', detail: 'Title is all you need to start', icon: Plus, onClick: () => setShowCreate(true) },
+    },
+  }
+  const move = nextUpCopy[nextMove.kind]
+  // The runner-up moves, quiet and counted — never the one already promoted.
+  const secondaryMoves: NextUpAction[] = ([
+    { id: 'review', label: 'Needs review', detail: 'Submitted, peer or product review', count: counts.review, icon: Eye, tone: 'caution', onClick: () => followMove('review') },
+    { id: 'mine', label: 'Assigned to me', detail: 'Everything with your name on it', count: counts.mine, icon: UserCircle, tone: 'mission', onClick: () => followMove('mine') },
+    { id: 'unassigned', label: 'Unassigned', detail: 'Pending work without an owner', count: counts.unassigned, icon: UsersThree, tone: 'ink', onClick: () => followMove('unassigned') },
+    { id: 'done', label: 'Recently landed', detail: 'Approved and completed', count: counts.done, icon: CheckCircle, tone: 'go', onClick: () => followMove('done') },
+  ] as NextUpAction[]).filter((a) => a.id !== move.primary.id && (a.count ?? 0) > 0)
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] font-body text-ink relative">
         <PageHeader
           title="Tasks"
           eyebrow="Folio 02 · Tasks"
-          subtitle="Senior → Trainee workflow · assign, work, review, approve, unlock"
+          subtitle="Assign, work, review, approve — start with what is waiting on you"
           actions={
             <>
               <select value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}
@@ -569,6 +663,8 @@ export default function TasksPage() {
                 <option value="">Select team…</option>
                 {teams.map((t: any) => (<option key={t.team_id || t.id} value={t.team_id || t.id}>{t.name}</option>))}
               </select>
+              {/* Mobile: view, tools and create share one row; desktop flattens back into the header. */}
+              <div className="flex items-center gap-2 sm:contents">
               <div className="flex bg-well border border-seam rounded-card overflow-hidden p-0.5 gap-0.5">
                 {(['board', 'list'] as const).map((v) => (
                   <button key={v} onClick={() => setView(v)}
@@ -578,60 +674,51 @@ export default function TasksPage() {
                   </button>
                 ))}
               </div>
-              {/* Desktop: all actions inline; Mobile: collapsed into More */}
-              <div className="hidden sm:contents">
-                <button onClick={() => setShowImportIssue(!showImportIssue)} className="btn-secondary">
-                  <GithubLogo className="w-4 h-4" />
-                  Import Issue
-                </button>
-                <button onClick={() => setShowTimeStats(!showTimeStats)} className="btn-secondary">
-                  <Clock className="w-4 h-4" />
-                  Time Stats
-                </button>
-                <button onClick={() => setShowTemplates(!showTemplates)} className="btn-secondary">
-                  <Copy className="w-4 h-4" />
-                  Templates
-                </button>
-                <button onClick={handleExportTasks} className="btn-secondary"
-                  title="Download all tasks as CSV">
-                  <DownloadSimple className="w-4 h-4" />
-                  CSV
-                </button>
-              </div>
-              <div ref={moreRef} className="relative sm:hidden">
+              {/* Import, templates, time stats and export are weekly jobs, not
+                  daily ones — one Tools menu at every width keeps "New task"
+                  the only loud control in the header. */}
+              <div ref={moreRef} className="relative">
                 <button
                   onClick={() => setShowMore(v => !v)}
-                  aria-label="More actions"
+                  aria-label="Task tools"
                   aria-expanded={showMore}
                   aria-haspopup="menu"
-                  className="btn-secondary px-2.5"
+                  className="btn-secondary"
                 >
-                  <DotsThree size={18} weight="bold" />
+                  <Wrench className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tools</span>
+                  <DotsThree size={16} weight="bold" className="sm:hidden" />
                 </button>
-                
-                  {showMore && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-[5px] border border-seam bg-panel-raised shadow-overhead overflow-hidden z-30" role="menu">
-                      <button onClick={() => { setShowMore(false); setShowImportIssue(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
-                        <GithubLogo size={16} /> Import Issue
+                {showMore && (
+                  <div className="reveal-row absolute right-0 top-full mt-2 w-60 rounded-[5px] border border-seam bg-panel-raised shadow-overhead overflow-hidden z-30" role="menu">
+                    {([
+                      { key: 'import', icon: GithubLogo, label: 'Import GitHub issue', hint: 'Turn an issue into a task', on: () => setShowImportIssue(v => !v), active: showImportIssue },
+                      { key: 'tpl', icon: Copy, label: 'Templates & plans', hint: 'Reuse, bulk-assign, starter tasks', on: () => setShowTemplates(v => !v), active: showTemplates },
+                      { key: 'time', icon: Clock, label: 'Time stats', hint: 'Estimated vs actual hours', on: () => setShowTimeStats(v => !v), active: showTimeStats },
+                    ] as const).map(({ key, icon: Icon, label, hint, on, active }) => (
+                      <button key={key} onClick={() => { setShowMore(false); on() }} role="menuitemcheckbox" aria-checked={active}
+                        className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-well transition-colors">
+                        <Icon size={16} className={cn('mt-0.5 shrink-0', active ? 'text-go' : 'text-ink-tertiary')} />
+                        <span className="min-w-0">
+                          <span className="block text-sm text-ink">{label}</span>
+                          <span className="block text-caption text-ink-muted">{hint}</span>
+                        </span>
+                        {active && <Check size={12} weight="bold" className="ml-auto mt-1 shrink-0 text-go" />}
                       </button>
-                      <button onClick={() => { setShowMore(false); setShowTimeStats(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
-                        <Clock size={16} /> Time Stats
-                      </button>
-                      <button onClick={() => { setShowMore(false); setShowTemplates(v => !v) }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors" role="menuitem">
-                        <Copy size={16} /> Templates
-                      </button>
-                      <button onClick={() => { setShowMore(false); handleExportTasks() }} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors border-t border-seam" role="menuitem">
-                        <DownloadSimple size={16} /> Export CSV
-                      </button>
-                    </div>
-                  )}
-                
+                    ))}
+                    <button onClick={() => { setShowMore(false); handleExportTasks() }} role="menuitem"
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-ink hover:bg-well text-left transition-colors border-t border-seam">
+                      <DownloadSimple size={16} className="text-ink-tertiary" /> Export tasks CSV
+                    </button>
+                  </div>
+                )}
               </div>
-              <button onClick={() => setShowCreate(!showCreate)} className="btn">
+              <button onClick={() => setShowCreate(!showCreate)} className="btn flex-1 sm:flex-none">
                 <Plus className="w-4 h-4" weight="bold" />
                 <span className="hidden sm:inline">New Task</span>
-                <span className="sm:hidden">New</span>
+                <span className="sm:hidden">New task</span>
               </button>
+              </div>
             </>
           }
         />
@@ -681,7 +768,7 @@ export default function TasksPage() {
                             <div className="text-xs text-ink-secondary truncate">{iss.title}</div>
                             <div className="text-[10px] text-ink-tertiary font-mono">
                               #{iss.number}
-                              {iss.labels && iss.labels.length > 0 && ` Â· ${iss.labels.slice(0, 3).join(', ')}`}
+                              {iss.labels && iss.labels.length > 0 && ` · ${iss.labels.slice(0, 3).join(', ')}`}
                             </div>
                           </div>
                           <a href={iss.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-ink-tertiary/50 hover:text-go text-[10px] shrink-0">View ↗</a>
@@ -894,18 +981,6 @@ export default function TasksPage() {
           </CardSpotlight>
         )}
 
-        {progress && (
-          <div className="mb-6">
-            <MetricStrip className="grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
-              <MetricCell label="Total" value={progress.total} />
-              <MetricCell label="Completed" value={progress.completed} accent="text-go" />
-              <MetricCell label="In progress" value={progress.in_progress} accent="text-mission" />
-              <MetricCell label="Pending review" value={progress.pending_review} accent="text-caution" />
-              <MetricCell label="Blocked" value={progress.blocked} accent="text-abort" />
-            </MetricStrip>
-          </div>
-        )}
-
         {error && <div role="alert" className="mb-5 px-4 py-3 rounded-card bg-abort/5 border border-abort/20 text-abort text-sm">{error}</div>}
 
         {showCreate && (
@@ -964,26 +1039,63 @@ export default function TasksPage() {
           </CardSpotlight>
         )}
 
-        <div className="relative mb-5">
-          <MagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary/50 pointer-events-none" />
-          <input value={filter} onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter by title, state, or assignee…"
-            className="w-full bg-base border border-seam text-ink text-sm rounded-card pl-10 pr-4 py-2.5 outline-none focus:border-go/40 placeholder:text-ink-tertiary/30 transition-colors" />
-        </div>
+        {/* ── Reduce first: one ranked move, then counted buckets ── */}
+        {!loading && selectedTeam && (
+          <div className="mb-5 space-y-4">
+            <NextUp
+              eyebrow="Your next move"
+              tone={move.tone}
+              headline={move.headline}
+              detail={move.detail}
+              primary={move.primary}
+              secondary={secondaryMoves}
+              secondaryLimit={2}
+            />
+            {tasks.length > 0 && (
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <FilterChips
+                label="Show"
+                className="min-w-0 flex-1"
+                value={bucket}
+                onChange={(v) => setBucket(v as TaskBucket)}
+                options={BUCKET_ORDER.map(({ value, label }) => ({ value, label, count: counts[value] }))}
+                summary={`${filteredTasks.length} of ${tasks.length}`}
+              />
+              <div className="relative lg:w-72 shrink-0">
+                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary/60 pointer-events-none" />
+                <input value={filter} onChange={(e) => setFilter(e.target.value)}
+                  aria-label="Search tasks"
+                  placeholder="Search title, person, module…"
+                  className="w-full bg-base border border-seam text-ink text-sm rounded-card pl-9 pr-8 py-2 outline-none focus:border-go/40 placeholder:text-ink-tertiary/40 transition-colors" />
+                {filter && (
+                  <button onClick={() => setFilter('')} aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-tertiary hover:text-ink transition-colors">
+                    <X size={12} weight="bold" />
+                  </button>
+                )}
+              </div>
+            </div>
+            )}
+          </div>
+        )}
 
         {loading && <TasksPageSkeleton />}
 
         {!loading && view === 'board' && (
           filteredTasks.length === 0 ? (
             <EmptyState
-              title={filter ? 'No tasks match your filter' : 'No tasks yet'}
-              description={filter ? 'Try a different search.' : 'Create a task to get started'}
+              title={filter || bucket !== 'all' ? 'Nothing matches this view' : 'No tasks yet'}
+              description={filter || bucket !== 'all' ? 'Clear the search or switch to All.' : 'Create a task to get started'}
               icon={<ListChecks className="w-8 h-8" weight="thin" />}
             />
           ) : (
           <div className="overflow-x-auto pb-4">
             <KanbanBoard
-              columns={BOARD_COLUMNS}
+              // Narrowed view → only the columns that hold a match. The full
+              // nine-column pipeline is for the "All" overview.
+              columns={bucket === 'all' && !filter
+                ? BOARD_COLUMNS
+                : BOARD_COLUMNS.filter((c) => filteredTasks.some((t) => t.state === c.state))}
               tasks={filteredTasks as KanbanTask[]}
               priorityDot={PRIORITY_DOTS}
               onMoveTask={handleKanbanMove}
@@ -1006,8 +1118,8 @@ export default function TasksPage() {
             <div>
               {filteredTasks.length === 0 ? (
                 <EmptyState
-                  title={filter ? 'No tasks match your filter' : 'No tasks yet'}
-                  description={filter ? undefined : 'Create a task to get started'}
+                  title={filter || bucket !== 'all' ? 'Nothing matches this view' : 'No tasks yet'}
+                  description={filter || bucket !== 'all' ? 'Clear the search or switch to All.' : 'Create a task to get started'}
                   icon={<ListChecks className="w-8 h-8" weight="thin" />}
                 />
               ) : (
@@ -1055,6 +1167,24 @@ export default function TasksPage() {
               )}
             </div>
           </CardSpotlight>
+        )}
+
+        {!loading && progress && progress.total > 0 && (
+          <Disclosure
+            className="mt-6"
+            label="Team throughput"
+            designator="WORKFLOW"
+            tone={progress.blocked > 0 ? 'abort' : 'go'}
+            hint={`${progress.completed} of ${progress.total} done${progress.blocked ? ` · ${progress.blocked} blocked` : ''}`}
+          >
+            <MetricStrip className="grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+              <MetricCell label="Total" value={progress.total} />
+              <MetricCell label="Completed" value={progress.completed} accent="text-go" />
+              <MetricCell label="In progress" value={progress.in_progress} accent="text-mission" />
+              <MetricCell label="Pending review" value={progress.pending_review} accent="text-caution" />
+              <MetricCell label="Blocked" value={progress.blocked} accent="text-abort" />
+            </MetricStrip>
+          </Disclosure>
         )}
 
         {/* Task Detail Modal */}
@@ -1126,30 +1256,12 @@ export default function TasksPage() {
                       </div>
                     </div>
                   )}
-                  {selectedTask.depends_on && (
+                  {openDeps.length > 0 && (
                     <div className="bg-panel rounded-card p-3 border border-seam">
                       <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Dependency
+                        <Lock className="w-3 h-3" /> Blocked by
                       </div>
-                      <div className="text-xs text-mission font-mono">Blocked until {selectedTask.depends_on} completes</div>
-                    </div>
-                  )}
-                  {selectedTask.source_issue && (
-                    <div className="bg-panel rounded-card p-3 border border-seam">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <GithubLogo className="w-3 h-3" /> Source Issue
-                      </div>
-                      {(typeof selectedTask.source_issue === 'object'
-                        ? <a
-                            href={(selectedTask.source_issue as { url?: string }).url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-go font-mono hover:underline inline-flex items-center gap-1"
-                          >
-                            <GithubLogo className="w-3 h-3" />#{selectedTask.source_issue.number}
-                          </a>
-                        : <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
-                      )}
+                      <div className="text-xs text-mission truncate" title={openDeps.join(', ')}>{openDeps.join(', ')}</div>
                     </div>
                   )}
                   {selectedTask.quiz_required && selectedTask.module && (
@@ -1164,132 +1276,10 @@ export default function TasksPage() {
                       </div>
                     </div>
                   )}
-                  {selectedTask.peer_reviewed_by && (
-                    <div className="bg-panel rounded-card p-3 border border-seam">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
-                        <UsersThree className="w-3 h-3" /> Peer Reviewer
-                      </div>
-                      <div className="text-xs text-ink font-mono">{selectedTask.peer_reviewed_by}</div>
-                    </div>
-                  )}
-                  {selectedTask.repo_url && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Repository</div>
-                      <div className="text-mission font-mono text-[11px] break-all">{selectedTask.repo_url}</div>
-                    </div>
-                  )}
-                  {selectedTask.pr_url && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">PR URL</div>
-                      <a href={selectedTask.pr_url} target="_blank" rel="noreferrer" className="text-mission font-mono text-[11px] break-all hover:underline">{selectedTask.pr_url}</a>
-                    </div>
-                  )}
-                  {selectedTask.unlock_modules && selectedTask.unlock_modules.length > 0 && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Unlocks Modules</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedTask.unlock_modules.map((m, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/20">{m}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedTask.assigned_to && moduleAccessMap[selectedTask.assigned_to] && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Module Access</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {Array.from(moduleAccessMap[selectedTask.assigned_to]).map((m, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/25 inline-flex items-center gap-1">
-                            <Lock className="w-2.5 h-2.5" weight="fill" />{m}
-                          </span>
-                        ))}
-                        {moduleAccessMap[selectedTask.assigned_to].size === 0 && (
-                          <span className="text-[10px] text-ink-tertiary italic">No modules unlocked yet</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedTask.review_feedback && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Review Feedback</div>
-                      <div className="text-xs text-ink-secondary leading-relaxed">{typeof selectedTask.review_feedback === 'string' ? selectedTask.review_feedback : JSON.stringify(selectedTask.review_feedback)}</div>
-                    </div>
-                  )}
-                  {selectedTask.pr_comments && selectedTask.pr_comments.length > 0 && (
-                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
-                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <GithubLogo className="w-3 h-3" /> PR Inline Comments ({selectedTask.pr_comments.length})
-                      </div>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {selectedTask.pr_comments.map((c, i) => (
-                          <div key={i} className="text-[11px] bg-[rgb(var(--base-rgb)/0.6)] border border-seam rounded-card p-2.5">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-go font-mono font-semibold">@{c.user}</span>
-                              {c.path && <span className="text-ink-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
-                            </div>
-                            <p className="text-ink-secondary leading-relaxed">{c.body}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {selectedTask.ai_review && (
-                    <div className="bg-panel rounded-card p-4 border border-mission/25 md:col-span-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-[10px] text-mission uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                          <Star className="w-3 h-3" weight="fill" /> AI Code Review
-                        </div>
-                        <div className={cn('text-sm font-bold font-mono px-2.5 py-1 rounded-card',
-                          selectedTask.ai_review.score >= 80 ? 'bg-go/15 text-go' :
-                          selectedTask.ai_review.score >= 60 ? 'bg-go/15 text-go' : 'bg-abort/15 text-abort')}>
-                          {selectedTask.ai_review.score}/100
-                        </div>
-                      </div>
-                      <p className="text-xs text-ink-secondary leading-relaxed">{selectedTask.ai_review.summary}</p>
-                      {selectedTask.ai_review.issues.length > 0 && (
-                        <div>
-                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Issues ({selectedTask.ai_review.issues.length})</div>
-                          <div className="space-y-1.5">
-                            {selectedTask.ai_review.issues.map((issue, i) => (
-                              <div key={i} className={cn('text-[11px] px-2.5 py-2 rounded-card border flex items-start gap-2',
-                                issue.severity === 'error' ? 'bg-abort/5 border-abort/15 text-abort-300' :
-                                issue.severity === 'warning' ? 'bg-go/5 border-go/15 text-go' : 'bg-well/50 border-seam text-ink-tertiary')}>
-                                <span className="font-mono shrink-0 text-[10px] mt-0.5">{issue.file}:{issue.line}</span>
-                                <span className="flex-1">{issue.message}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {selectedTask.ai_review.positives.length > 0 && (
-                        <div>
-                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Positives</div>
-                          <div className="space-y-1">
-                            {selectedTask.ai_review.positives.map((p, i) => (
-                              <div key={i} className="text-[11px] text-go/80 flex items-start gap-1.5">
-                                <Check className="w-3 h-3 text-go mt-0.5" weight="bold" />{p}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {selectedTask.ai_review.recommendations.length > 0 && (
-                        <div>
-                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Recommendations</div>
-                          <div className="space-y-1">
-                            {selectedTask.ai_review.recommendations.map((r, i) => (
-                              <div key={i} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
-                                <ArrowRight className="w-3 h-3 text-mission mt-0.5" weight="bold" />{r}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
-                <div className="border-t border-seam pt-4 space-y-3">
+                <div className="rounded-card border border-seam bg-panel p-4 space-y-3">
+                  <div className="overline text-ink-muted">What happens next</div>
                   {selectedTask.state === 'pending' && (
                     <div className="flex gap-2 items-center">
                       <MemberSelect members={members} value={assignUserId} onChange={setAssignUserId} placeholder="Assign to a member…" className="flex-1" />
@@ -1387,6 +1377,184 @@ export default function TasksPage() {
                     </button>
                   )}
                 </div>
+
+                {/* Everything below is context, not action — closed by default,
+                    except reviewer feedback on work that bounced back. */}
+                {(selectedTask.review_feedback || (selectedTask.pr_comments?.length ?? 0) > 0) && (
+                  <Disclosure
+                    key={`fb-${selectedTask.task_id}`}
+                    label="Reviewer feedback"
+                    tone={selectedTask.state === 'needs_changes' ? 'abort' : 'idle'}
+                    hint={(selectedTask.pr_comments?.length ?? 0) > 0 ? `${selectedTask.pr_comments!.length} inline comment${selectedTask.pr_comments!.length === 1 ? '' : 's'}` : 'Summary'}
+                    defaultOpen={selectedTask.state === 'needs_changes'}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  {selectedTask.review_feedback && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Review Feedback</div>
+                      <div className="text-xs text-ink-secondary leading-relaxed">{typeof selectedTask.review_feedback === 'string' ? selectedTask.review_feedback : JSON.stringify(selectedTask.review_feedback)}</div>
+                    </div>
+                  )}
+                  {selectedTask.pr_comments && selectedTask.pr_comments.length > 0 && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <GithubLogo className="w-3 h-3" /> PR Inline Comments ({selectedTask.pr_comments.length})
+                      </div>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {selectedTask.pr_comments.map((c, i) => (
+                          <div key={i} className="text-[11px] bg-[rgb(var(--base-rgb)/0.6)] border border-seam rounded-card p-2.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-go font-mono font-semibold">@{c.user}</span>
+                              {c.path && <span className="text-ink-tertiary font-mono text-[10px]">{c.path}{c.line ? `:${c.line}` : ''}</span>}
+                            </div>
+                            <p className="text-ink-secondary leading-relaxed">{c.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                    </div>
+                  </Disclosure>
+                )}
+                {selectedTask.ai_review && (
+                  <Disclosure
+                    key={`ai-${selectedTask.task_id}`}
+                    label="AI code review"
+                    icon={Star}
+                    tone={selectedTask.ai_review.score >= 60 ? 'go' : 'abort'}
+                    hint={`${selectedTask.ai_review.score}/100 · ${selectedTask.ai_review.issues.length} issue${selectedTask.ai_review.issues.length === 1 ? '' : 's'}`}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  {selectedTask.ai_review && (
+                    <div className="md:col-span-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] text-mission uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                          <Star className="w-3 h-3" weight="fill" /> AI Code Review
+                        </div>
+                        <div className={cn('text-sm font-bold font-mono px-2.5 py-1 rounded-card',
+                          selectedTask.ai_review.score >= 80 ? 'bg-go/15 text-go' :
+                          selectedTask.ai_review.score >= 60 ? 'bg-go/15 text-go' : 'bg-abort/15 text-abort')}>
+                          {selectedTask.ai_review.score}/100
+                        </div>
+                      </div>
+                      <p className="text-xs text-ink-secondary leading-relaxed">{selectedTask.ai_review.summary}</p>
+                      {selectedTask.ai_review.issues.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Issues ({selectedTask.ai_review.issues.length})</div>
+                          <div className="space-y-1.5">
+                            {selectedTask.ai_review.issues.map((issue, i) => (
+                              <div key={i} className={cn('text-[11px] px-2.5 py-2 rounded-card border flex items-start gap-2',
+                                issue.severity === 'error' ? 'bg-abort/5 border-abort/15 text-abort-300' :
+                                issue.severity === 'warning' ? 'bg-go/5 border-go/15 text-go' : 'bg-well/50 border-seam text-ink-tertiary')}>
+                                <span className="font-mono shrink-0 text-[10px] mt-0.5">{issue.file}:{issue.line}</span>
+                                <span className="flex-1">{issue.message}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTask.ai_review.positives.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Positives</div>
+                          <div className="space-y-1">
+                            {selectedTask.ai_review.positives.map((p, i) => (
+                              <div key={i} className="text-[11px] text-go/80 flex items-start gap-1.5">
+                                <Check className="w-3 h-3 text-go mt-0.5" weight="bold" />{p}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedTask.ai_review.recommendations.length > 0 && (
+                        <div>
+                          <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1.5">Recommendations</div>
+                          <div className="space-y-1">
+                            {selectedTask.ai_review.recommendations.map((r, i) => (
+                              <div key={i} className="text-[11px] text-ink-secondary flex items-start gap-1.5">
+                                <ArrowRight className="w-3 h-3 text-mission mt-0.5" weight="bold" />{r}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                    </div>
+                  </Disclosure>
+                )}
+                {(selectedTask.source_issue || selectedTask.peer_reviewed_by || selectedTask.repo_url || selectedTask.pr_url || (selectedTask.unlock_modules?.length ?? 0) > 0 || (selectedTask.assigned_to && moduleAccessMap[selectedTask.assigned_to])) && (
+                  <Disclosure
+                    key={`ctx-${selectedTask.task_id}`}
+                    label="Links & access"
+                    hint={[selectedTask.pr_url && 'PR', selectedTask.repo_url && 'repo', (selectedTask.unlock_modules?.length ?? 0) > 0 && `unlocks ${selectedTask.unlock_modules!.length}`].filter(Boolean).join(' · ') || 'Provenance'}
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                  {selectedTask.source_issue && (
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <GithubLogo className="w-3 h-3" /> Source Issue
+                      </div>
+                      {(typeof selectedTask.source_issue === 'object'
+                        ? <a
+                            href={(selectedTask.source_issue as { url?: string }).url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-go font-mono hover:underline inline-flex items-center gap-1"
+                          >
+                            <GithubLogo className="w-3 h-3" />#{selectedTask.source_issue.number}
+                          </a>
+                        : <div className="text-xs text-go font-mono">#{selectedTask.source_issue}</div>
+                      )}
+                    </div>
+                  )}
+                  {selectedTask.peer_reviewed_by && (
+                    <div className="bg-panel rounded-card p-3 border border-seam">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <UsersThree className="w-3 h-3" /> Peer Reviewer
+                      </div>
+                      <div className="text-xs text-ink font-mono">{selectedTask.peer_reviewed_by}</div>
+                    </div>
+                  )}
+                  {selectedTask.repo_url && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">Repository</div>
+                      <div className="text-mission font-mono text-[11px] break-all">{selectedTask.repo_url}</div>
+                    </div>
+                  )}
+                  {selectedTask.pr_url && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-2">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-1">PR URL</div>
+                      <a href={selectedTask.pr_url} target="_blank" rel="noreferrer" className="text-mission font-mono text-[11px] break-all hover:underline">{selectedTask.pr_url}</a>
+                    </div>
+                  )}
+                  {selectedTask.unlock_modules && selectedTask.unlock_modules.length > 0 && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Unlocks Modules</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedTask.unlock_modules.map((m, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/20">{m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {selectedTask.assigned_to && moduleAccessMap[selectedTask.assigned_to] && (
+                    <div className="bg-panel rounded-card p-3 border border-seam md:col-span-3">
+                      <div className="text-[10px] text-ink-tertiary uppercase tracking-widest mb-2">Module Access</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Array.from(moduleAccessMap[selectedTask.assigned_to]).map((m, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-card bg-go/10 text-go text-[10px] font-mono border border-go/25 inline-flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5" weight="fill" />{m}
+                          </span>
+                        ))}
+                        {moduleAccessMap[selectedTask.assigned_to].size === 0 && (
+                          <span className="text-[10px] text-ink-tertiary italic">No modules unlocked yet</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                    </div>
+                  </Disclosure>
+                )}
               </div>
             </div>
           </div>

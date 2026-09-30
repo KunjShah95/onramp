@@ -1,6 +1,15 @@
-import { useState } from 'react'
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: Ramp visibility exists to intercept stuck developers. The page used
+ *   to open with three benchmark panels — cost model, agent comparison, token
+ *   efficiency — before showing a single person who was stuck. Now the
+ *   intervention list is first, the health score explains it, and the three
+ *   benchmarks plus the per-trainee table sit behind counted disclosures.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Compass, Info } from '@phosphor-icons/react'
+import { Compass, Info, Warning, Users } from '@phosphor-icons/react'
 import { cn } from '../lib/utils'
 import {
   fetchRampSummary,
@@ -20,6 +29,7 @@ import EfficiencyBenchmarkPanel from '../components/dashboard/EfficiencyBenchmar
 import ConsolePanel from '../components/ui/console-panel'
 import { SkeletonBase } from '../components/ui/Skeleton'
 import { PageHeader } from '../components/ui/page-header'
+import { NextUp, FilterChips, ShowMore, Disclosure } from '../components/ui/progressive'
 
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 
@@ -30,30 +40,6 @@ function formatDays(days: number | null | undefined): string {
 
 function formatUsd(v: number): string {
   return `$${Math.round(v).toLocaleString()}`
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  tone = 'default',
-}: {
-  label: string
-  value: string
-  sub?: string
-  tone?: 'default' | 'accent' | 'warn'
-}) {
-  const toneColor =
-    tone === 'accent' ? 'text-mission' : tone === 'warn' ? 'text-abort' : 'text-ink'
-  return (
-    <div className="rounded-card border border-seam bg-panel p-5">
-      <div className="overline text-ink-muted">{label}</div>
-      <div className={cn('mt-2 font-code tabular-nums text-2xl md:text-3xl font-semibold tracking-tight leading-none', toneColor)}>
-        {value}
-      </div>
-      {sub && <div className="mt-1.5 text-caption text-ink-muted">{sub}</div>}
-    </div>
-  )
 }
 
 function StuckCard({ entry }: { entry: RampStuckEntry }) {
@@ -184,6 +170,7 @@ export default function RampPage() {
   const { role, activeTeamId } = useAuth()
   const canRunCheck = isLeaderRole(role)
   const [checkResult, setCheckResult] = useState<string | null>(null)
+  const [band, setBand] = useState<'all' | 'stuck' | 'at_risk' | 'ramped'>('all')
 
   const { data, isLoading, error } = useQuery<RampSummary>({
     queryKey: ['ramp-summary', activeTeamId],
@@ -213,6 +200,44 @@ export default function RampPage() {
 
   const stuck = data?.stuck?.stuck ?? []
   const ramped = data?.ramped_count ?? 0
+  const profiles = data?.profiles ?? []
+
+  // ── Reduce the roster before the table renders ────────────────────────
+  const bandOf = (p: RampTraineeProfile): 'stuck' | 'at_risk' | 'ramped' =>
+    p.stuck_severity === 'high' ? 'stuck'
+      : p.stuck_severity === 'medium' ? 'at_risk'
+        : p.ramp_days != null ? 'ramped' : 'at_risk'
+
+  const bandCounts = useMemo(() => {
+    const counts = { all: profiles.length, stuck: 0, at_risk: 0, ramped: 0 }
+    for (const p of profiles) counts[bandOf(p)] += 1
+    return counts
+  }, [profiles])
+
+  const visibleProfiles = useMemo(
+    () => (band === 'all' ? profiles : profiles.filter((p) => bandOf(p) === band)),
+    [profiles, band],
+  )
+
+  const stuckCost = stuck.reduce((s, e) => s + e.senior_cost_usd, 0)
+
+  const verdict = stuck.length > 0
+    ? {
+        tone: 'abort' as const,
+        headline: `${stuck.length} developer${stuck.length === 1 ? '' : 's'} stuck — intercept now`,
+        detail: `~${formatUsd(stuckCost)} of senior time already spent on them. Every day of drift costs more.`,
+      }
+    : bandCounts.at_risk > 0
+      ? {
+          tone: 'caution' as const,
+          headline: `${bandCounts.at_risk} developer${bandCounts.at_risk === 1 ? '' : 's'} at risk`,
+          detail: 'Not stuck yet, but the signals are moving the wrong way. Worth a conversation.',
+        }
+      : {
+          tone: 'go' as const,
+          headline: 'Nobody is stuck on this team',
+          detail: `${ramped}/${data?.trainee_count ?? 0} have ramped. Re-run the check after the next hiring cohort.`,
+        }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -255,66 +280,102 @@ export default function RampPage() {
 
       {data && !error && (
         <>
+          {/* ── Intercept first. Everything below explains this verdict. ── */}
+          <NextUp
+            tone={verdict.tone}
+            eyebrow="Intervention"
+            headline={verdict.headline}
+            detail={verdict.detail}
+            primary={
+              stuck.length > 0
+                ? { id: 'first-stuck', label: 'Open the intervention list', detail: `${stuck.length} case${stuck.length === 1 ? '' : 's'} to work`, icon: Warning, tone: 'abort', onClick: () => document.getElementById('ramp-stuck')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+                : { id: 'roster', label: 'Open the per-trainee table', detail: `${bandCounts.at_risk} at risk`, icon: Users, tone: 'caution', onClick: () => document.getElementById('ramp-roster')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+            }
+            secondary={[
+              ...stuck.slice(0, 3).map((e) => ({
+                id: e.user_id,
+                label: e.name,
+                detail: e.signals[0]?.detail ?? 'stuck',
+                icon: Warning,
+                tone: 'abort' as const,
+                onClick: () => document.getElementById('ramp-stuck')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+              })),
+              { id: 'economics', label: 'Senior-time economics', detail: 'What ramp-up actually costs', icon: Compass, tone: 'mission' as const },
+            ]}
+          />
+
+          {/* ── The people, not the benchmarks ─────────────────────────── */}
+          {stuck.length > 0 && (
+            <div id="ramp-stuck">
+              <ConsolePanel
+                rail="Stuck Devs · Intercept Now"
+                designator={`${stuck.length} INTERVENTION`}
+                status="abort"
+                pad="none"
+              >
+                <div className="grid md:grid-cols-2 gap-3 p-3.5">
+                  {stuck.map((entry, i) => (
+                    <div key={entry.user_id} className="reveal-row" style={{ animationDelay: `${i * 40}ms` }}>
+                      <StuckCard entry={entry} />
+                    </div>
+                  ))}
+                </div>
+              </ConsolePanel>
+            </div>
+          )}
+
           {/* Health score with component breakdown */}
           <HealthCard health={health} />
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Team benchmark"
-              value={formatDays(data.benchmark_days)}
-              sub={`to first task · ${formatDays(data.first_pr_benchmark_days)} to first PR`}
-            />
-            <StatCard
-              label="Trainees"
-              value={`${ramped}/${data.trainee_count}`}
-              sub="ramped / total tracked"
-            />
-            <StatCard
-              label="Senior time"
-              value={`${Math.round(data.totals.senior_hours * 10) / 10}h`}
-              sub="estimated senior hours consumed"
-              tone="accent"
-            />
-            <StatCard
-              label="Senior cost"
-              value={formatUsd(data.totals.senior_cost_usd)}
-              sub={`~${data.cost_model?.settings?.senior_hourly_rate_usd ?? 90}/hr fully-loaded estimate`}
-              tone={stuck.length > 0 ? 'warn' : 'default'}
-            />
-          </div>
+          {/* Stat strip — one ruled band, not four floating cards */}
+          <MetricStripGrid
+            benchmark={formatDays(data.benchmark_days)}
+            benchmarkSub={`to first task · ${formatDays(data.first_pr_benchmark_days)} to first PR`}
+            trainees={`${ramped}/${data.trainee_count}`}
+            traineesSub="ramped / total tracked"
+            seniorTime={`${Math.round(data.totals.senior_hours * 10) / 10}h`}
+            seniorTimeSub="estimated senior hours consumed"
+            seniorCost={formatUsd(data.totals.senior_cost_usd)}
+            seniorCostSub={`~${data.cost_model?.settings?.senior_hourly_rate_usd ?? 90}/hr fully-loaded estimate`}
+            warn={stuck.length > 0}
+          />
 
-          {/* Phase 0 — cost-model assumptions under the hood */}
-          <CostModelPanel />
-
-          {/* Competitive benchmark — terminal coding agents vs Onramp */}
-          <AgentBenchmarkPanel />
-
-          {/* Efficiency story — tokens AND dollars: agents re-read, Onramp refreshes */}
-          <EfficiencyBenchmarkPanel />
-
-          {/* Stuck panel */}
-          {stuck.length > 0 && (
+          {/* Trainee table — filtered by band, then capped on a big team */}
+          <div id="ramp-roster" className="space-y-3">
+            <FilterChips
+              label="Show"
+              value={band}
+              onChange={(v) => setBand(v as typeof band)}
+              options={[
+                { value: 'all', label: 'All', count: bandCounts.all },
+                { value: 'stuck', label: 'Stuck', count: bandCounts.stuck },
+                { value: 'at_risk', label: 'At risk', count: bandCounts.at_risk },
+                { value: 'ramped', label: 'Ramped', count: bandCounts.ramped },
+              ]}
+              summary={`${visibleProfiles.length} of ${profiles.length}`}
+            />
             <ConsolePanel
-              rail="Stuck Devs · Intercept Now"
-              designator={`${stuck.length} INTERVENTION`}
-              status="abort"
+              rail="Per-Trainee Ramp"
+              action={<span className="text-caption text-ink-muted">sorted: not-yet-ramped first</span>}
               pad="none"
             >
-              <div className="grid md:grid-cols-2 gap-3 p-3.5">
-                {stuck.map((entry) => (
-                  <StuckCard key={entry.user_id} entry={entry} />
-                ))}
-              </div>
-            </ConsolePanel>
-          )}
-
-          {/* Trainee table */}
-          <ConsolePanel
-            rail="Per-Trainee Ramp"
-            action={<span className="text-caption text-ink-muted">sorted: not-yet-ramped first</span>}
-            pad="none"
-          >
+              <ShowMore
+                items={visibleProfiles}
+                limit={8}
+                noun="trainee"
+                resetKey={band}
+                /* One message per empty case. The band filter and "no trainees
+                   at all" are different situations and get different copy —
+                   previously both fired at once and the table said it twice. */
+                emptyState={(
+                  <p className="py-10 text-center text-body-sm text-ink-muted">
+                    {profiles.length === 0
+                      ? 'No trainees on this team yet. Add junior-dev members to start tracking ramps.'
+                      : 'No trainees in this band — try "All".'}
+                  </p>
+                )}
+              >
+                {(rows) => (
             <Table>
               <THead>
                 <TR>
@@ -329,7 +390,7 @@ export default function RampPage() {
                 </TR>
               </THead>
               <TBody>
-                {data.profiles.map((p) => {
+                {rows.map((p) => {
                   const delta = p.vs_benchmark_days
                   return (
                     <TR key={p.user_id} hoverable>
@@ -375,18 +436,67 @@ export default function RampPage() {
                     </TR>
                   )
                 })}
-                {data.profiles.length === 0 && (
-                  <TR>
-                    <TD colSpan={8} className="text-center text-ink-muted py-10">
-                      No trainees on this team yet. Add junior-dev members to start tracking ramps.
-                    </TD>
-                  </TR>
-                )}
               </TBody>
             </Table>
-          </ConsolePanel>
+                )}
+              </ShowMore>
+            </ConsolePanel>
+          </div>
+
+          {/* ── The economics, sealed. Three panels of benchmarking that a
+              leader wants on a schedule, not on every visit. ─────────── */}
+          <Disclosure
+            label="Cost model & competitive benchmarks"
+            designator="3 PANELS"
+            tone="idle"
+            hint="Senior hourly rate · agent comparison · token efficiency"
+          >
+            <div className="space-y-5">
+              {/* Phase 0 — cost-model assumptions under the hood */}
+              <CostModelPanel />
+
+              {/* Competitive benchmark — terminal coding agents vs Onramp */}
+              <AgentBenchmarkPanel />
+
+              {/* Efficiency story — tokens AND dollars: agents re-read, Onramp refreshes */}
+              <EfficiencyBenchmarkPanel />
+            </div>
+          </Disclosure>
         </>
       )}
+    </div>
+  )
+}
+
+/** The four ramp figures as one ruled band, not four floating cards. */
+function MetricStripGrid(props: {
+  benchmark: string
+  benchmarkSub: string
+  trainees: string
+  traineesSub: string
+  seniorTime: string
+  seniorTimeSub: string
+  seniorCost: string
+  seniorCostSub: string
+  warn: boolean
+}) {
+  const cells = [
+    { label: 'Team benchmark', value: props.benchmark, sub: props.benchmarkSub, tone: 'text-ink' },
+    { label: 'Trainees', value: props.trainees, sub: props.traineesSub, tone: 'text-ink' },
+    { label: 'Senior time', value: props.seniorTime, sub: props.seniorTimeSub, tone: 'text-mission' },
+    { label: 'Senior cost', value: props.seniorCost, sub: props.seniorCostSub, tone: props.warn ? 'text-abort' : 'text-ink' },
+  ]
+  return (
+    <div className="metric-strip grid-cols-2 lg:grid-cols-4">
+      {cells.map((c) => (
+        <div key={c.label} className="metric-cell">
+          <div className="overline text-ink-muted/80">{c.label}</div>
+          <div className={cn('font-code tabular-nums text-2xl md:text-[28px] font-semibold leading-none mt-2', c.tone)}>
+            {c.value}
+          </div>
+          <div className="text-caption text-ink-muted mt-1.5">{c.sub}</div>
+        </div>
+      ))}
     </div>
   )
 }

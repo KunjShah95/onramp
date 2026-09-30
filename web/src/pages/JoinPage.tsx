@@ -8,7 +8,8 @@ import PageTransition from '../components/ui/page-transition'
 import Seo from '../components/seo/Seo'
 import { acceptInvite } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import { homeForRole, useAuth, type TeamRole } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
+import { homeForRole, type TeamRole } from '../lib/roles'
 
 export default function JoinPage() {
   const toast = useToast()

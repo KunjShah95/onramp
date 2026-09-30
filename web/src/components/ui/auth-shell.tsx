@@ -44,7 +44,12 @@ export default function AuthShell({
   return (
     <div className={`landing-premium${lightClass} min-h-screen flex flex-col lg:flex-row bg-room text-ink antialiased font-body`}>
       {/* ── Left · brand editorial (hidden on mobile) ───────────────── */}
-      <div className="relative hidden lg:flex lg:w-[46%] xl:w-[44%] shrink-0 flex-col justify-between overflow-hidden border-r border-seam bg-panel-raised">
+      {/* <aside> (complementary landmark): on desktop the mobile brand bar
+          below is lg:hidden, so without this the wordmark, the "Where code
+          becomes a map." headline and the feature blurbs all sit outside every
+          landmark — axe flags "region: all page content should be contained by
+          landmarks" on /login, /register, /forgot-password and /reset-password. */}
+      <aside aria-label="About Onramp" className="relative hidden lg:flex lg:w-[46%] xl:w-[44%] shrink-0 flex-col justify-between overflow-hidden border-r border-seam bg-panel-raised">
         <div className="relative z-10 flex flex-col gap-10 p-10 xl:p-12">
           <Link to="/" className="inline-flex items-center gap-2.5 self-start" aria-label="Onramp home">
             <span className="flex h-8 w-8 items-center justify-center rounded-card bg-ink text-[var(--panel-raised)]">
@@ -95,9 +100,8 @@ export default function AuthShell({
             </p>
             <p className="mt-2 font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs · free-first routing</p>
           </div>
-          <p className="mt-4 font-code text-[11px] text-ink-tertiary">Indexed from source · not from docs · free-first routing</p>
         </div>
-      </div>
+      </aside>
 
       {/* ── Right · form rail ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col bg-room">

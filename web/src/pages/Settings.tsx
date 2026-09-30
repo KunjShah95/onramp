@@ -15,7 +15,8 @@ import { useAuth } from '../context/AuthContext'
 import { PageHeader } from '../components/ui/page-header'
 import { InlineLoading } from '../components/ui/Skeleton'
 import { cn } from '../lib/utils'
-import { useTheme, THEMES, ACCENT_COLORS, type Theme } from '../context/ThemeContext'
+import { useTheme } from '../context/ThemeContext'
+import { THEMES, ACCENT_COLORS, type Theme } from '../lib/themes'
 import {
   API_BASE,
   getNotificationPreferences,
