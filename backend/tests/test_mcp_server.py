@@ -26,7 +26,7 @@ def _app():
 
 def test_mcp_lists_only_read_only_repository_tools():
     tools = mcp_server.list_tools()
-    assert {tool["name"] for tool in tools} == {"repo_context", "repo_search"}
+    assert {tool["name"] for tool in tools} == {"repo_context", "repo_search", "change_briefing"}
     assert all("write" not in tool["description"].lower() for tool in tools)
 
 
@@ -44,7 +44,7 @@ def test_mcp_initialize_and_tools_list():
         json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
     )
     assert listed.status_code == 200
-    assert len(listed.json()["result"]["tools"]) == 2
+    assert len(listed.json()["result"]["tools"]) == 3
 
 
 def test_mcp_unknown_method_returns_jsonrpc_error():
