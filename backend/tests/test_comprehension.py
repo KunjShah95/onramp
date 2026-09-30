@@ -475,3 +475,44 @@ def test_context_endpoint_reads_snapshot_evolution(env):
     assert ctx["has_history"] is True
     assert ctx["why"]["decisions"][0]["path"] == "docs/adr/0003-pricing.md"
     assert ctx["who"]["wrote"][0]["name"] == "Ann"
+
+
+def test_select_discussions_drops_bots_and_one_liners():
+    from app.services.comprehension_service import select_discussions
+
+    out = select_discussions([
+        {"path": "app/core.py", "body": "LGTM", "user": {"login": "ann"}},
+        {"path": "app/core.py", "body": "Coverage report: 91% of lines covered here", "user": {"login": "codecov[bot]"}},
+        {"path": "app/core.py", "body": "Keep pricing here so the API stays thin; see ADR 3.", "user": {"login": "sam"}, "created_at": "2026-09-01"},
+        {"path": "", "body": "A general comment without a file path attached", "user": {"login": "sam"}},
+    ])
+    assert list(out) == ["app/core.py"]
+    assert [d["author"] for d in out["app/core.py"]] == ["sam"]
+
+
+def test_merged_pr_review_discussion_feeds_module_context(env, monkeypatch):
+    import asyncio
+
+    from app.api.v1 import webhook_handler
+    from app.services.github_service import GitHubService
+
+    async def fake_comments(self, repo_url, pr_number, limit=100):
+        return [{"path": "app/core.py", "body": "Rules must stay pure: no I/O in core, callers do I/O.", "user": {"login": "sam"}, "created_at": "2026-09-02T10:00:00Z", "line": 12}]
+
+    async def fake_diff(self, repo_url, pr_number):
+        return ""
+
+    monkeypatch.setattr(GitHubService, "get_pr_review_comments", fake_comments)
+    monkeypatch.setattr(GitHubService, "get_pr_diff", fake_diff)
+    payload = {
+        "repository": {"owner": {"login": env["owner"]}, "name": env["name"]},
+        "pull_request": {"number": 9, "user": {"login": "someone"}, "base": {"ref": "main"}},
+    }
+    asyncio.run(webhook_handler._light_comprehension_from_pr(payload))
+    asyncio.run(webhook_handler._light_comprehension_from_pr(payload))  # redelivery: no duplicate
+
+    ctx = env["client"]("junior").get(f"{env['base']}/context", params={"node": "app/core.py"}).json()
+    discussions = ctx["why"]["discussions"]
+    assert len(discussions) == 1
+    assert discussions[0]["author"] == "sam"
+    assert discussions[0]["pr_url"] == f"https://github.com/{env['owner']}/{env['name']}/pull/9"

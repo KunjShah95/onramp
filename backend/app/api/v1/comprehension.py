@@ -23,6 +23,7 @@ from app.services.comprehension_service import (
     build_map,
     changed_files_from_diff,
     comprehension_store,
+    discussions_for,
     module_context,
     grade_checks,
     pin_steps,
@@ -493,8 +494,11 @@ async def build_change_briefing(user: dict, owner: str, repo: str, files: List[s
         ctx = module_context(
             facts, node, evolution, states=[], names={}, walkthroughs=[],
             repo_url=_repo_url(owner, repo, scope),
+            discussions=await discussions_for(
+                repo_key(owner, repo), (facts.node_files.get(node) or []) + [node]
+            ),
         )
-        if ctx["why"]["history"] or ctx["why"]["decisions"]:
+        if ctx["why"]["history"] or ctx["why"]["decisions"] or ctx["why"]["discussions"]:
             why.append({
                 "module": node,
                 "recent_changes": [
@@ -502,6 +506,10 @@ async def build_change_briefing(user: dict, owner: str, repo: str, files: List[s
                     for c in ctx["why"]["history"][:3]
                 ],
                 "decisions": ctx["why"]["decisions"][:3],
+                "review_discussion": [
+                    {"author": d.get("author"), "body": d.get("body"), "pr_url": d.get("pr_url")}
+                    for d in ctx["why"]["discussions"][:3]
+                ],
                 "authors": [a["name"] for a in ctx["who"]["wrote"][:3]],
             })
     return {
@@ -529,9 +537,11 @@ async def get_module_context(
         raise HTTPException(status_code=404, detail="Node not in the current graph")
     states, names = await _team_states(owner, repo, scope, branch)
     walkthroughs = await comprehension_store.list_walkthroughs(repo_key(owner, repo), branch)
+    files = (facts.node_files.get(node) or []) + [node]
     return module_context(
         facts, node, snapshot.get("evolution") or {},
         states=states, names=names, walkthroughs=walkthroughs,
         repo_url=_repo_url(owner, repo, scope),
+        discussions=await discussions_for(repo_key(owner, repo), files),
     )
 

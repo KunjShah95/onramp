@@ -81,6 +81,7 @@ describe('ComprehensionMapPage', () => {
         history: [{ sha: 'b2', author: 'Ann', date: '1700000200', subject: 'Split pricing rules', pr_number: 42, pr_url: 'https://github.com/acme/shop/pull/42' }],
         decisions: [{ path: 'docs/adr/0003-pricing.md', title: 'Pricing lives in core', excerpt: 'Rules stay here' }],
         walkthrough_notes: [],
+        discussions: [{ path: 'app/core.py', author: 'rev', body: 'Keep pricing pure so the API stays thin.', line: 12, created_at: '2026-09-02', pr_number: 9, pr_url: 'https://github.com/acme/shop/pull/9' }],
       },
       has_history: true,
     })
@@ -207,6 +208,8 @@ describe('ComprehensionMapPage', () => {
     expect(await screen.findByText('Pricing lives in core')).toBeInTheDocument()
     expect(screen.getByText(/Only one person on the team understands this module/)).toBeInTheDocument()
     expect(screen.getByText('Wrote it: Ann (3)')).toBeInTheDocument()
+    expect(screen.getByText('Keep pricing pure so the API stays thin.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'PR #9' })).toHaveAttribute('href', 'https://github.com/acme/shop/pull/9')
     expect(screen.getByRole('link', { name: /PR #42/ })).toHaveAttribute('href', 'https://github.com/acme/shop/pull/42')
 
     await user.type(screen.getByLabelText('Pull request number'), '#42')

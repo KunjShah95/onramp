@@ -6,7 +6,7 @@
  * gap between them is the interesting part — authors leave, knowledge decays.
  */
 import { useQuery } from '@tanstack/react-query'
-import { ArrowSquareOut, ChatCircleText, GitCommit, Scroll, Spinner, UserCircle, Warning } from '@phosphor-icons/react'
+import { ArrowSquareOut, ChatCircleText, ChatsCircle, GitCommit, Scroll, Spinner, UserCircle, Warning } from '@phosphor-icons/react'
 
 import { fetchModuleContext } from '../../lib/api'
 import { cn } from '../../lib/utils'
@@ -31,7 +31,8 @@ export default function ModuleContextPanel({ owner, repo, node }: { owner: strin
   }
   if (q.isError || !q.data) return null
   const { who, why, has_history: hasHistory } = q.data
-  const empty = !why.history.length && !why.decisions.length && !why.walkthrough_notes.length
+  const discussions = why.discussions ?? []
+  const empty = !why.history.length && !why.decisions.length && !why.walkthrough_notes.length && !discussions.length
 
   return (
     <div className="border-t border-seam pt-3 space-y-3 text-caption">
@@ -81,6 +82,19 @@ export default function ModuleContextPanel({ owner, repo, node }: { owner: strin
                 <div className="text-ink-secondary">{n.note}</div>
                 <div className={cn('text-ink-tertiary', n.status !== 'fresh' && 'text-caution')}>
                   {n.author || 'A senior'} · {n.walkthrough}{n.status !== 'fresh' && ' · code changed since'}
+                </div>
+              </div>
+            </li>
+          ))}
+          {discussions.map((d, i) => (
+            <li key={`${d.pr_number}-${d.created_at}-${i}`} className="flex gap-1.5">
+              <ChatsCircle className="text-mission shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="text-ink-secondary whitespace-pre-wrap">{d.body}</div>
+                <div className="text-ink-tertiary">
+                  {d.author} in review ·{' '}
+                  <a href={d.pr_url} target="_blank" rel="noreferrer" className="text-go/80 hover:text-go">PR #{d.pr_number}</a>
+                  <span className="font-code"> · {d.path.split('/').pop()}{d.line ? `:${d.line}` : ''}</span>
                 </div>
               </div>
             </li>
