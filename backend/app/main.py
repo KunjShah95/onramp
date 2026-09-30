@@ -64,7 +64,7 @@ from app.api.v1 import (
     accounts as accounts_router, admin as admin_router, agent_sessions as agent_sessions_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     analytics as analytics_router,
-    autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
+    autopilot, comprehension, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router, integrations_n8n as n8n_router,
     mcp as mcp_router,
     invites as invites_router, learn, marketplace as marketplace_router,
@@ -492,6 +492,7 @@ app.state.embeddings = embeddings
 
 app.include_router(autopilot.router, prefix="/api/v1")
 app.include_router(explore.router, prefix="/api/v1")
+app.include_router(comprehension.router, prefix="/api/v1")
 app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")
 app.include_router(ask.router, prefix="/api/v1")

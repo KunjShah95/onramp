@@ -48,6 +48,30 @@ class ReadOnlyMCPServer:
                     "additionalProperties": False,
                 },
             },
+            {
+                "name": "change_briefing",
+                "description": (
+                    "Before editing files: blast radius, critical-path exposure, senior "
+                    "walkthrough notes on those modules, and who on the team understands them. "
+                    "Deterministic graph facts; read-only."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["owner", "repo", "files"],
+                    "properties": {
+                        "owner": {"type": "string", "maxLength": 100},
+                        "repo": {"type": "string", "maxLength": 100},
+                        "branch": {"type": "string", "maxLength": 100, "default": "main"},
+                        "files": {
+                            "type": "array",
+                            "items": {"type": "string", "maxLength": 500},
+                            "minItems": 1,
+                            "maxItems": 100,
+                        },
+                    },
+                    "additionalProperties": False,
+                },
+            },
         ]
 
     async def call_tool(self, user: dict, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,6 +79,8 @@ class ReadOnlyMCPServer:
             return await self._repo_context(user, arguments)
         if name == "repo_search":
             return await self._repo_search(user, arguments)
+        if name == "change_briefing":
+            return await self._change_briefing(user, arguments)
         raise MCPError(f"Unknown tool: {name}")
 
     async def _repo_context(self, user: dict, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -109,6 +135,22 @@ class ReadOnlyMCPServer:
                 for doc in documents
             ],
         }
+
+    async def _change_briefing(self, user: dict, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        owner = str(arguments.get("owner", "")).strip()
+        repo = str(arguments.get("repo", "")).strip()
+        branch = str(arguments.get("branch") or "main").strip()[:100]
+        files = arguments.get("files")
+        if not owner or not repo or not isinstance(files, list) or not files:
+            raise MCPError("owner, repo and a non-empty files list are required")
+        files = [str(f)[:500] for f in files[:100] if str(f).strip()]
+
+        from app.api.v1.comprehension import build_change_briefing
+
+        briefing = await build_change_briefing(user, owner, repo, files, branch)
+        briefing["senior_notes"] = briefing["senior_notes"][:20]
+        briefing["affected_modules"] = briefing["affected_modules"][:100]
+        return briefing
 
 
 mcp_server = ReadOnlyMCPServer()
