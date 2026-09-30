@@ -55,7 +55,7 @@ MarkupSafe==3.0.3
 msgpack==1.2.1
 multidict==6.7.1
 networkx==3.6.1
-oauthlib==3.3.1
+oauthlib==4.0.0
 openai==2.44.0
 packaging==26.2
 pgvector==0.5.0
