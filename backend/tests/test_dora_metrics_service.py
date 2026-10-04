@@ -213,6 +213,31 @@ class TestMTTR:
         result = await dora.mttr(TUID_TEAM_EMPTY, days=90)
         assert result["classification"] == "none"
 
+    async def test_reworked_completed_tasks_recover(self):
+        """Completed tasks that were sent back yield hours from first change request to completion."""
+        storage = get_storage()
+        now = datetime.now(timezone.utc)
+        for hours in (4, 8):
+            task = await _seed_completed_task(TUID_TEAM_ALPHA, TUID_USER_JUNIOR1, days_ago_completed=1)
+            completed = datetime.fromisoformat(task["completed_at"])
+            await storage.update_document("onramp_tasks", task["task_id"], {
+                **task,
+                "review_cycles": 1,
+                "first_change_request_at": (completed - timedelta(hours=hours)).isoformat(),
+            })
+        # Clean first-pass task: no failure, must not count.
+        await _seed_completed_task(TUID_TEAM_ALPHA, TUID_USER_JUNIOR1, days_ago_completed=1)
+        # Recovery completed outside the window: excluded.
+        old = await _seed_completed_task(TUID_TEAM_ALPHA, TUID_USER_JUNIOR1, days_ago_completed=120, days_ago_created=130)
+        await storage.update_document("onramp_tasks", old["task_id"], {
+            **old,
+            "first_change_request_at": (now - timedelta(days=125)).isoformat(),
+        })
+
+        result = await dora.mttr(TUID_TEAM_ALPHA, days=90)
+        assert result["classification"] != "none"
+        assert result["value"] == "6.0h"  # mean of 4h and 8h
+
 
 # ═══════════════════════════════════════════════════════════════
 # DORA Summary
