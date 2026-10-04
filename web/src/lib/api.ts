@@ -2193,11 +2193,21 @@ export async function createCheckoutSession(data: {
   success_url: string
   cancel_url: string
   billing_cycle?: 'monthly' | 'yearly'
-}): Promise<{ url: string; subscription_id: string; trial_days?: number }> {
-  return request<{ url: string; subscription_id: string; trial_days?: number }>(
+  coupon_code?: string
+}): Promise<{ url: string; subscription_id: string; trial_days?: number; coupon?: { code: string; summary: string } }> {
+  return request<{ url: string; subscription_id: string; trial_days?: number; coupon?: { code: string; summary: string } }>(
     `${API_BASE}/billing/checkout`,
     data
   )
+}
+
+export type CouponCheck =
+  | { valid: true; code: string; summary: string }
+  | { valid: false; message: string }
+
+/** Ask whether a promo code applies to this team and tier before checkout. */
+export async function checkCoupon(data: { team_id: string; tier: string; code: string }): Promise<CouponCheck> {
+  return request<CouponCheck>(`${API_BASE}/billing/coupons/check`, data)
 }
 
 export async function createCreditOrder(data: {
