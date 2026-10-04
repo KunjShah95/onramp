@@ -421,6 +421,9 @@ class Task(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_cycles: Mapped[int] = mapped_column(Integer, default=0)
     reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Set once, on the first needs_changes verdict — the "failure" start that
+    # DORA MTTR measures recovery from (reviewed_at is overwritten later).
+    first_change_request_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -467,6 +470,7 @@ class Task(Base):
             "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "review_cycles": self.review_cycles,
+            "first_change_request_at": self.first_change_request_at.isoformat() if self.first_change_request_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "created_at": self.created_at.isoformat(),

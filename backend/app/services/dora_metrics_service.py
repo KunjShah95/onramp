@@ -125,7 +125,6 @@ async def deployment_frequency(team_id: str, days: int = 90) -> dict:
     if days <= 0:
         raise ValueError("days must be a positive integer")
     storage = get_storage()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     tasks = await storage.query_documents(
         "onramp_tasks",
@@ -190,7 +189,6 @@ async def change_failure_rate(team_id: str, days: int = 90) -> dict:
     if days <= 0:
         raise ValueError("days must be a positive integer")
     storage = get_storage()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     tasks = await storage.query_documents(
         "onramp_tasks",
@@ -220,30 +218,38 @@ async def change_failure_rate(team_id: str, days: int = 90) -> dict:
 
 
 async def mttr(team_id: str, days: int = 90) -> dict:
-    """Compute Mean Time to Recover: avg hours from needs_changes to completed."""
+    """Compute Mean Time to Recover: avg hours from first change request to completed.
+
+    A "failure" is a reviewer sending the task back (needs_changes); recovery
+    is the task finally completing. Only tasks completed inside the window
+    count. Completed tasks always carry state ``completed``, so the failure
+    start comes from ``first_change_request_at`` rather than the current state.
+    """
     if days <= 0:
         raise ValueError("days must be a positive integer")
     storage = get_storage()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    now = datetime.now(timezone.utc)
 
     tasks = await storage.query_documents(
         "onramp_tasks",
-        [("team_id", "==", team_id)],
+        [
+            ("team_id", "==", team_id),
+            ("state", "==", "completed"),
+        ],
     )
 
     recoveries = []
     for t in tasks:
-        # Use needs_changes events as failure, completed_at as recovery
-        state = t.get("state", "")
+        failed = t.get("first_change_request_at")
         completed = t.get("completed_at")
-        created = t.get("created_at")
-        if "needs_changes" in str(state) and completed and created:
-            try:
-                recovery_hours = _days_between(created, completed) * 24
-                if recovery_hours <= days * 24:
-                    recoveries.append(recovery_hours)
-            except (ValueError, TypeError):
+        if not failed or not completed:
+            continue
+        try:
+            if _days_between(completed, now) > days:
                 continue
+            recoveries.append(_days_between(failed, completed) * 24)
+        except (ValueError, TypeError):
+            continue
 
     if not recoveries:
         return {"value": "N/A", "classification": "none"}
