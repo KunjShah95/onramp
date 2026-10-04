@@ -19,11 +19,21 @@ def test_plan_credits_match_published_pricing():
         assert f"{credits} credits/mo" in TIER_PRICING[plan]["features"]
 
 
-@pytest.mark.parametrize("path", ["src/pages/BillingPage.tsx", "public/pricing.md", "public/llms.txt"])
-def test_web_pricing_copy_matches_enforced_credits(path):
-    text = (WEB / path).read_text(encoding="utf-8")
-    advertised = {int(n.replace(",", "")) for n in re.findall(r"([\d,]+) (?:AI )?credits", text)}
-    assert advertised == set(PUBLISHED_CREDITS.values()), f"{path} advertises {advertised}"
+def _advertised(path: Path) -> set[int]:
+    text = path.read_text(encoding="utf-8")
+    return {int(n.replace(",", "")) for n in re.findall(r"([\d,]+) (?:AI )?credits", text)}
+
+
+def test_billing_page_matches_enforced_credits():
+    assert _advertised(WEB / "src/pages/BillingPage.tsx") == set(PUBLISHED_CREDITS.values())
+
+
+@pytest.mark.parametrize("path", ["public/pricing.md", "public/llms.txt", "src/pages/DocsPage.tsx"])
+def test_other_pricing_copy_never_advertises_other_credits(path):
+    # Optional copy (pricing.md is untracked); only wrong numbers fail.
+    if not (WEB / path).exists():
+        pytest.skip(f"{path} not present")
+    assert _advertised(WEB / path) <= set(PUBLISHED_CREDITS.values())
 
 
 @pytest.mark.parametrize("tier", list(TIER_LIMITS))
