@@ -2,6 +2,7 @@ import { ArrowRight, ChartLineUp, Compass, Flag, Gauge, Users } from '@phosphor-
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -56,11 +57,11 @@ function buildValidationSchema() {
     name: 'Validation program · Onramp',
     description:
       'Onramp is validating repository-grounded developer onboarding with a small design-partner cohort. No customer logos or outcome claims are published before they are measured.',
-    url: 'https://onramp.app/customers',
+    url: `${SITE_URL}/customers`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
   }
 }
@@ -71,8 +72,8 @@ function buildCustomersBreadcrumbSchema() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://onramp.app/' },
-      { '@type': 'ListItem', position: 2, name: 'Validation', item: 'https://onramp.app/customers' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Validation', item: `${SITE_URL}/customers` },
     ],
   }
 }

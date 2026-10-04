@@ -3,6 +3,7 @@ import os
 from typing import Optional, Dict, List
 import httpx
 
+from app.core.config import get_settings
 from app.services.webhook_service import get_integration_config
 from app.services.notification_service import get_preferences
 
@@ -54,12 +55,17 @@ def _format_task_message(task: dict, event: str, actor_name: str = "") -> str:
         lines.append(f"*PR:* <{pr_url}|View Pull Request>")
 
     lines.append("")
-    lines.append(":arrow_right: <https://onramp.app/tasks/" + task_id + "|View in Onramp>")
+    lines.append(f":arrow_right: <{_app_url()}/tasks/{task_id}|View in Onramp>")
 
     return "\n".join(lines)
 
 
 from app.services.outbound_url import OutboundURLError, validate_outbound_url
+
+
+def _app_url() -> str:
+    """Frontend base URL for deep links in Slack messages."""
+    return get_settings().frontend_url.rstrip("/")
 
 
 def _format_module_message(module: str, source: str) -> str:
@@ -68,7 +74,7 @@ def _format_module_message(module: str, source: str) -> str:
         f":unlock: *Module Access Granted*\n\n"
         f"You now have access to module: `{module}`\n"
         f"*Source:* {source}\n\n"
-        f":arrow_right: <https://onramp.app/tasks|View your tasks>"
+        f":arrow_right: <{_app_url()}/tasks|View your tasks>"
     )
 
 

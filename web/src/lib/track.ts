@@ -21,6 +21,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
+import { captureUtm } from './attribution'
 
 /** Must stay in sync with ALLOWED_EVENTS in the backend. Unknown names are dropped server-side. */
 export type EventName =
@@ -30,6 +31,10 @@ export type EventName =
   | 'pricing_tier_viewed'
   | 'signup_completed'
   | 'docs_opened'
+  | 'repo_connected'
+  | 'ask_answered'
+  | 'invite_sent'
+  | 'contact_submitted'
 
 export type EventProps = Record<string, string | number | boolean>
 
@@ -126,6 +131,7 @@ export function useTrackedPath(): void {
   const { pathname } = useLocation()
   useEffect(() => {
     currentPath = pathname.split('?')[0].split('#')[0] || '/'
+    captureUtm()
   }, [pathname])
 }
 

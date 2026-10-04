@@ -63,8 +63,13 @@ ALLOWED_EVENTS: dict[str, frozenset[str]] = {
     "section_viewed": frozenset({"section"}),
     "calculator_adjusted": frozenset({"control"}),
     "pricing_tier_viewed": frozenset({"tier"}),
-    "signup_completed": frozenset({"method"}),
+    "signup_completed": frozenset({"method", "utm_source", "utm_medium", "utm_campaign"}),
     "docs_opened": frozenset({"section"}),
+    # Activation funnel (GTM): anonymous counts, no repo names or question text.
+    "repo_connected": frozenset({"source"}),
+    "ask_answered": frozenset({"mode"}),
+    "invite_sent": frozenset(),
+    "contact_submitted": frozenset({"utm_source", "utm_medium", "utm_campaign"}),
 }
 
 MAX_EVENTS_PER_REQUEST = 20

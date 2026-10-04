@@ -88,10 +88,18 @@ class LoginRequest(BaseModel):
     remember_me: bool = False
 
 
+class SignupAttribution(BaseModel):
+    """First-touch campaign labels captured from the landing URL."""
+    utm_source: str | None = Field(default=None, max_length=64)
+    utm_medium: str | None = Field(default=None, max_length=64)
+    utm_campaign: str | None = Field(default=None, max_length=64)
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
+    attribution: SignupAttribution | None = None
 
 
 class AuthResponse(BaseModel):
@@ -564,6 +572,27 @@ async def github_unlink(user: dict = Depends(get_current_user)):
     return updated
 
 
+async def _record_signup_attribution(storage, uid: str, attribution, now: datetime) -> None:
+    """Store first-touch UTM labels for the GTM funnel. Best-effort."""
+    if attribution is None:
+        return
+    from app.api.v1.leads import clean_utm
+
+    data = {
+        "user_id": uid,
+        "utm_source": clean_utm(attribution.utm_source),
+        "utm_medium": clean_utm(attribution.utm_medium),
+        "utm_campaign": clean_utm(attribution.utm_campaign),
+        "created_at": now.isoformat(),
+    }
+    if not any(data[k] for k in ("utm_source", "utm_medium", "utm_campaign")):
+        return
+    try:
+        await storage.create_document("signup_attribution", uid, data)
+    except Exception:
+        logger.warning("failed to store signup attribution for %s", uid, exc_info=True)
+
+
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest):
     """Register a new user with email/password."""
@@ -605,6 +634,7 @@ async def register(body: RegisterRequest):
 
     storage = get_storage()
     await storage.create_document("users", uid, record)
+    await _record_signup_attribution(storage, uid, body.attribution, now)
 
     # Also set via ORM so the model's relationship tracking is consistent.
     # This is a dual-write: both the generic storage layer AND the ORM must

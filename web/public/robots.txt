@@ -36,4 +36,4 @@ Disallow: /checkout/
 Disallow: /account/
 Disallow: /*.json$
 
-Sitemap: https://onramp.app/sitemap.xml
+Sitemap: https://developer-onboard.vercel.app/sitemap.xml

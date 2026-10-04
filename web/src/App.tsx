@@ -217,6 +217,8 @@ export default function App() {
                   <ErrorBoundary><ContactPage /></ErrorBoundary>
                 </Suspense>
               } />
+              {/* Old slug read as a certification claim in link previews. */}
+              <Route path="/blog/onramp-achieves-soc-2-type-ii-certification" element={<Navigate to="/blog/soc-2-type-ii-status" replace />} />
               <Route path="/blog/:slug" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><BlogPostPage /></ErrorBoundary>

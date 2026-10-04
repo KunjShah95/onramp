@@ -1,7 +1,7 @@
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Envelope,
-  ChatCircle,
+  GithubLogo,
   MapPin,
   ArrowUpRight,
   BookOpenText,
@@ -10,6 +10,8 @@ import MarketingLayout from '../components/layout/MarketingLayout'
 import EditorialHero from '../components/marketing/EditorialHero'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
+import { createLead } from '../lib/api'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -24,18 +26,13 @@ interface Channel {
   external?: boolean
 }
 
-const EMAIL_CHANNELS: Channel[] = [
-  { label: 'General', value: 'hello@onramp.ai', href: 'mailto:hello@onramp.ai' },
-  { label: 'Sales', value: 'sales@onramp.ai', href: 'mailto:sales@onramp.ai' },
-  { label: 'Support', value: 'support@onramp.ai', href: 'mailto:support@onramp.ai' },
-  { label: 'Press', value: 'press@onramp.ai', href: 'mailto:press@onramp.ai' },
-]
+const REPO_URL = 'https://github.com/KunjShah95/onramp'
 
-const SOCIAL_CHANNELS: Channel[] = [
-  { label: 'GitHub', value: 'github.com/onramp', href: 'https://github.com/onramp', external: true },
-  { label: 'X', value: '@onramp', href: 'https://x.com/onramp', external: true },
-  { label: 'LinkedIn', value: '/company/onramp', href: 'https://linkedin.com/company/onramp', external: true },
-  { label: 'Discord', value: 'discord.gg/onramp', href: 'https://discord.gg/onramp', external: true },
+// Only channels we actually own and read. The form above is the primary
+// route; it lands in the team's lead inbox (POST /api/v1/leads).
+const GITHUB_CHANNELS: Channel[] = [
+  { label: 'Source', value: 'KunjShah95/onramp', href: REPO_URL, external: true },
+  { label: 'Bugs', value: 'Open an issue', href: `${REPO_URL}/issues/new`, external: true },
 ]
 
 type IconComponent = React.ComponentType<{ size?: number; weight?: 'bold' | 'duotone'; className?: string }>
@@ -105,45 +102,20 @@ function buildContactSchema() {
     '@type': 'ContactPage',
     name: 'Contact · Onramp',
     description: 'Talk to the Onramp team. We get back to you within one business day.',
-    url: 'https://onramp.app/contact',
+    url: `${SITE_URL}/contact`,
     mainEntity: {
       '@type': 'Organization',
       name: 'Onramp',
-      url: 'https://onramp.app/',
+      url: `${SITE_URL}/`,
       contactPoint: [
-        // No telephone: 555-01xx is the reserved fictional range, and a
-        // published number that no one answers is worse than no number.
-        {
-          '@type': 'ContactPoint',
-          contactType: 'customer service',
-          availableLanguage: 'English',
-          email: 'hello@onramp.ai',
-        },
         {
           '@type': 'ContactPoint',
           contactType: 'sales',
           availableLanguage: 'English',
-          email: 'sales@onramp.ai',
-        },
-        {
-          '@type': 'ContactPoint',
-          contactType: 'technical support',
-          availableLanguage: 'English',
-          email: 'support@onramp.ai',
-        },
-        {
-          '@type': 'ContactPoint',
-          contactType: 'press',
-          availableLanguage: 'English',
-          email: 'press@onramp.ai',
+          url: `${SITE_URL}/contact`,
         },
       ],
-      sameAs: [
-        'https://github.com/onramp',
-        'https://x.com/onramp',
-        'https://linkedin.com/company/onramp',
-        'https://discord.gg/onramp',
-      ],
+      sameAs: [REPO_URL],
     },
   }
 }
@@ -158,21 +130,48 @@ function buildContactBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Contact',
-        item: 'https://onramp.app/contact',
+        item: `${SITE_URL}/contact`,
       },
     ],
   }
 }
 
+type SendState = 'idle' | 'sending' | 'sent' | 'error'
+
 export default function ContactPage() {
   const contactSchema = buildContactSchema()
   const breadcrumbSchema = buildContactBreadcrumbSchema()
+  const [state, setState] = useState<SendState>('idle')
+  const [errorText, setErrorText] = useState('')
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = e.currentTarget
+    const field = (name: string) => String(new FormData(form).get(name) ?? '').trim()
+    setState('sending')
+    setErrorText('')
+    try {
+      await createLead({
+        name: field('name'),
+        email: field('email'),
+        company: field('company') || undefined,
+        subject: field('subject') || undefined,
+        message: field('message'),
+        website: field('website') || undefined,
+      })
+      form.reset()
+      setState('sent')
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : 'Something went wrong.')
+      setState('error')
+    }
+  }
 
   return (
     <MarketingLayout
@@ -195,15 +194,15 @@ export default function ContactPage() {
         <MetricStrip className="mt-10 grid-cols-2 lg:grid-cols-4">
           <MetricCell label="First reply" value="1 day" sub="Monday to Friday" />
           <MetricCell label="Uptime SLA" value="None yet" sub="Being defined with partners" />
-          <MetricCell label="Channels" value="8" sub="Email · GitHub · X · LinkedIn" />
-          <MetricCell label="Based in" value="SF" sub="Pacific Time (PT)" />
+          <MetricCell label="Channels" value="2" sub="This form · GitHub" />
+          <MetricCell label="Based in" value="India" sub="IST (UTC+5:30)" />
         </MetricStrip>
 
         <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
           {/* ── Message form ─────────────────────────────────────── */}
           <section id="message" className="lg:col-span-7" aria-labelledby="contact-form-title">
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={onSubmit}
               className="rounded-card border border-seam bg-panel"
             >
               <div className="border-b border-seam px-6 py-5">
@@ -254,12 +253,18 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {/* Honeypot: hidden from people and assistive tech; bots fill it. */}
+                <div aria-hidden="true" className="hidden">
+                  <label htmlFor="website">Website</label>
+                  <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+                </div>
+
                 <div>
-                  <label htmlFor="message" className="field-label">
+                  <label htmlFor="message-body" className="field-label">
                     Message
                   </label>
                   <textarea
-                    id="message"
+                    id="message-body"
                     name="message"
                     rows={6}
                     required
@@ -270,11 +275,15 @@ export default function ContactPage() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-seam px-6 py-4">
-                <p className="text-caption text-ink-tertiary">
-                  We'll only use your details to reply.
+                <p className="text-caption text-ink-tertiary" role="status" aria-live="polite">
+                  {state === 'sent'
+                    ? 'Thanks. Your message reached the team; we reply within one business day.'
+                    : state === 'error'
+                      ? `Not sent: ${errorText} You can also open a GitHub issue.`
+                      : "We'll only use your details to reply."}
                 </p>
-                <button type="submit" className="btn">
-                  Send message
+                <button type="submit" className="btn" disabled={state === 'sending'}>
+                  {state === 'sending' ? 'Sending…' : 'Send message'}
                 </button>
               </div>
             </form>
@@ -283,8 +292,7 @@ export default function ContactPage() {
           {/* ── Direct channels ──────────────────────────────────── */}
           <aside id="channels" className="lg:col-span-5" aria-label="Direct contact channels">
             <div className="overflow-hidden rounded-card border border-seam bg-panel">
-              <ChannelGroup icon={Envelope} title="Email" channels={EMAIL_CHANNELS} />
-              <ChannelGroup icon={ChatCircle} title="Social" channels={SOCIAL_CHANNELS} />
+              <ChannelGroup icon={GithubLogo} title="GitHub" channels={GITHUB_CHANNELS} />
 
               <div className="border-t border-seam px-5 py-5" id="office">
                 <div className="flex items-center gap-2">
@@ -294,11 +302,11 @@ export default function ContactPage() {
                 <dl className="mt-3 space-y-2">
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-body-sm text-ink-tertiary">Location</dt>
-                    <dd className="text-body-sm font-medium text-ink">San Francisco, CA</dd>
+                    <dd className="text-body-sm font-medium text-ink">India (remote team)</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-body-sm text-ink-tertiary">Time zone</dt>
-                    <dd className="text-body-sm font-medium text-ink">Pacific Time (PT)</dd>
+                    <dd className="text-body-sm font-medium text-ink">IST (UTC+5:30)</dd>
                   </div>
                 </dl>
               </div>

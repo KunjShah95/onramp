@@ -2,6 +2,7 @@ import { ShieldCheck, FileText, MagnifyingGlass, Certificate, ListChecks, Eye, C
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -45,19 +46,19 @@ function buildSOC2Schema() {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: 'SOC 2 Type II · Onramp',
-    description: 'SOC 2 Type II audit work in progress. Onramp is not yet certified.',
-    url: 'https://onramp.app/soc-2',
+    description: 'Onramp is not SOC 2 certified. SOC 2 Type II is on the roadmap.',
+    url: `${SITE_URL}/soc-2`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
     datePublished: '2025-01-01',
     dateModified: '2026-07-02',
     mainEntity: {
       '@type': 'Certification',
       name: 'SOC 2 Type II',
-      description: 'SOC 2 Type II certification work in progress for Security, Confidentiality, Availability, and Processing Integrity. Onramp is not yet certified.',
+      description: 'SOC 2 Type II for Security, Confidentiality, Availability, and Processing Integrity is on the roadmap. Onramp is not certified.',
       certificationStatus: 'In Progress — not certified',
       trustServicesCriteria: [
         'Security',
@@ -83,19 +84,19 @@ function buildSOC2BreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Security',
-        item: 'https://onramp.app/security',
+        item: `${SITE_URL}/security`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: 'SOC 2 Type II',
-        item: 'https://onramp.app/soc-2',
+        item: `${SITE_URL}/soc-2`,
       },
     ],
   }
@@ -110,7 +111,7 @@ export default function SOC2Page() {
       navLinks={navLinks}
       seo={{
         title: 'SOC 2 Type II · Onramp',
-        description: 'SOC 2 Type II audit work in progress. Onramp is not yet certified.',
+        description: 'Onramp is not SOC 2 certified. SOC 2 Type II is on the roadmap.',
         path: '/soc-2',
         schema: [soc2Schema, breadcrumbSchema],
       }}
@@ -127,8 +128,8 @@ export default function SOC2Page() {
             certified.
           </h1>
           <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-2xl">
-            Onramp is undergoing SOC 2 Type II certification, audited by an independent third party against
-            the AICPA Trust Services Criteria for Security, Confidentiality, Availability, and Processing Integrity.
+            Onramp is not SOC 2 certified and no independent audit report exists yet. A Type II audit against
+            the AICPA Trust Services Criteria (Security, Confidentiality, Availability, Processing Integrity) is on the roadmap.
           </p>
         </div>
 
@@ -136,9 +137,9 @@ export default function SOC2Page() {
         <div className="p-6 rounded-lg border border-[hsl(var(--accent))]/30 bg-[hsl(var(--accent))]/5 mb-12 flex items-start gap-4">
           <FileText size={24} weight="duotone" className="text-[hsl(var(--accent))] shrink-0 mt-0.5" />
           <div>
-            <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II · In progress</h2>
+            <h2 className="font-display font-semibold text-[hsl(var(--foreground))] mb-1">SOC 2 Type II · Not certified</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
-              Our Type II audit work is in progress. We have not completed certification, and this page will be updated when an independent auditor completes the review and any remediation. The controls listed below describe current work and roadmap items, not completed certification claims.
+              We have not been audited or certified. This page will be updated when an independent auditor is engaged and again when the review and any remediation are complete. The controls listed below describe current work and roadmap items, not completed certification claims.
             </p>
           </div>
         </div>

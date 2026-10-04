@@ -1,45 +1,49 @@
 # Onramp
 
-> AI-powered developer onboarding. Onramp indexes your codebase into a live architecture map and guides developers through their first PR — turning weeks of tribal knowledge gathering into days of self-serve productivity.
+> Onramp is a developer onboarding platform. It indexes a team's GitHub repository into a live architecture map, generates a guided learning path and right-sized first issues from that map, answers new-hire questions with file-and-line citations from the real code, and shows engineering leads which new developers are ramping and which are stuck.
 
 ## Key Pages
-- [Product Overview](https://onramp.app/) — What we do and how it works
-- [Why Onramp](https://onramp.app/why-onramp) — Comparison vs coding agents
-- [Pricing](https://onramp.app/#pricing) — Transparent, flat pricing
-- [Documentation](https://onramp.app/docs) — Guides, API reference, self-hosting
-- [Blog](https://onramp.app/blog) — Engineering insights and product updates
-- [Security](https://onramp.app/security) — current security controls, audit status, and policies
+- [Product overview](https://developer-onboard.vercel.app/): what Onramp does and how it works
+- [Why Onramp](https://developer-onboard.vercel.app/why-onramp): comparison with general-purpose coding agents and wikis
+- [Pricing](https://developer-onboard.vercel.app/pricing.md): plans, limits and prices (machine-readable)
+- [Docs](https://developer-onboard.vercel.app/docs): getting started, connecting a repo, API
+- [Blog](https://developer-onboard.vercel.app/blog): onboarding cost, time-to-first-PR, how the grounded mentor works
+- [Security](https://developer-onboard.vercel.app/security): current controls, and what is not yet in place
 
-## What We Do
+## The problem Onramp solves
+New engineers ramp by interrupting senior engineers. Institutional knowledge lives in seniors' heads and stale docs, so every hire re-asks the same questions, and engineering leads cannot see who is stuck until it shows up as missed delivery. Onramp makes the codebase answer first and makes the ramp visible.
 
-Onramp solves the developer onboarding problem by turning registered GitHub repositories into interactive knowledge maps. Instead of new hires spending 3-6 months piecing together tribal knowledge from senior engineers, Onramp parses the actual source code, builds a live dependency graph, and creates guided onboarding paths with an AI mentor that answers questions with file and line references.
+## Core capabilities
+- **Live architecture map**: a searchable dependency graph of the repository, rebuilt when the code changes
+- **Ask (grounded repo Q&A)**: plain-English questions answered from the indexed code, with file-and-line citations and an import-graph check on the answer
+- **Learning paths**: generated from the repository's own modules, with quizzes
+- **First issues**: scoped starter tasks sized for a new hire's first week
+- **Task and review queue**: assign, submit, review and approve onboarding tasks; merged PRs close the task
+- **Ramp dashboard for leads**: ramp days against a team benchmark, stuck-developer alerts, senior-time cost, reviewer load
+- **Knowledge map**: which people know which parts of the code, and where knowledge is concentrated in one person
 
-**Core capabilities:**
-- **Live Architecture Map**: Visual, searchable dependency graph updated on every push
-- **AI Codebase Mentor**: Ask questions in plain English, get answers grounded in your actual code with citations
-- **Guided Learning Paths**: Structured onboarding plans tailored to each hire's background
-- **First Issue Finder**: Curated, scope-appropriate first PRs for new developers
-- **Architecture Drift Detection**: Flags when the actual architecture diverges from documented design
-- **Time-to-First-PR Analytics**: Measure and improve onboarding velocity across teams
+## Who it is for
+- Engineering managers, CTOs and VPs of Engineering at teams hiring developers regularly (roughly 5 to 200 engineers)
+- Senior engineers who answer most of the new-hire questions
+- New developers joining an unfamiliar codebase
+- HR and people-ops teams running onboarding programs
 
-## Target Audience
-- **Primary**: Engineering managers, CTOs, and VPs of Engineering at companies with 10-500+ developers
-- **Secondary**: Developer experience teams, platform teams, onboarding program owners
-- **Tertiary**: Individual developers joining new teams, open source contributors
+## How it differs
+- **Grounded in the team's repository**: answers cite real files; a generic coding assistant has no view of the team's onboarding state
+- **Onboarding is a tracked workflow**: progress, gating, review and sign-off are recorded, not left in a wiki
+- **Visibility for leads is a by-product**: ramp and stuck signals come from tasks people already do
+- **Every feature on every plan**: plans differ by team size and volume, not by feature gates
+- **Multi-provider AI routing**: no single model provider is load-bearing
 
-## Key Differentiators
-- **Parse once, answer forever**: Unlike coding agents that re-read the entire codebase on every query (burning tokens), Onramp indexes once and incrementally updates the knowledge graph on each push
-- **Flat pricing, not per-seat**: $99/month per workspace for unlimited engineers — no per-dev token burn or seat math
-- **Free-first LLM routing**: Multi-provider router with OpenRouter, Gemini, Groq, NVIDIA free tiers before paid fallbacks
-- **Grounded answers**: Every AI response cites specific files and line numbers from the actual codebase
-- **Tenant-scoped derived context**: Temporary clones are removed after indexing; derived documents, embeddings, and graph symbols remain scoped to authorized workspace members
-- **SOC 2 Type II audit in progress**: Onramp is not yet certified
-- **Controlled deployment roadmap**: Docker artifacts are available; production self-hosting and private-cloud operations are roadmap items
+## Languages
+Repository indexing covers Python, JavaScript, TypeScript, Go, Rust and Java; other languages are indexed at file level.
 
-## Supported Languages
-Python, JavaScript, TypeScript, Go, Rust, Java — with AST-level parsing for each
+## Pricing summary (INR, billed via Razorpay)
+- **Free**: ₹0, 1 member, 1 repository, 50 AI credits per month
+- **Startup**: ₹999/month or ₹9,999/year, up to 5 members, 10 repositories, 5,000 AI credits per month
+- **Professional**: ₹2,999/month or ₹29,999/year, up to 20 members, 50 repositories, 50,000 AI credits per month, 14-day trial
+- **Enterprise**: custom pricing, unlimited members, repositories and credits; SSO and SLA scoped per customer
 
-## Pricing Summary
-- **Free**: 1 repository, 100 AI questions/month, live architecture map
-- **Team**: $99/mo (or $82/mo annual) per workspace — unlimited repos, unlimited questions, guided paths, GitHub/Slack/Linear sync
-- **Enterprise**: Custom — SSO/SAML, controlled self-hosting, audit logs, dedicated support, and contractual commitments are being defined
+## Status and honesty notes
+- Onramp is early. There are no published customer case studies yet.
+- Onramp is not SOC 2 certified. See the security page for the controls that are in place today.

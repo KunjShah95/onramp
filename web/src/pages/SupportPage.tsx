@@ -11,6 +11,7 @@ import { cn } from '../lib/utils'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import EditorialHero from '../components/marketing/EditorialHero'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -42,10 +43,10 @@ const channels: Channel[] = [
     Icon: ChatCircle,
   },
   {
-    title: 'Email support',
-    description: 'Prefer email? Write to us directly with as much detail as you can.',
-    href: 'mailto:support@onramp.ai',
-    cta: 'support@onramp.ai',
+    title: 'Report a bug',
+    description: 'Found something broken? Open a GitHub issue with steps to reproduce.',
+    href: 'https://github.com/KunjShah95/onramp/issues/new',
+    cta: 'Open an issue',
     Icon: Envelope,
   },
 ]
@@ -82,7 +83,7 @@ function buildSupportFAQSchema() {
         name: 'Can I get a demo before signing up?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes! Contact our sales team at sales@onramp.ai to schedule a personalized demo with an engineer who can walk through your specific use case.',
+          text: 'Yes! Send a message through the contact form at /contact to schedule a personalized demo with an engineer who can walk through your specific use case.',
         },
       },
       {
@@ -98,7 +99,7 @@ function buildSupportFAQSchema() {
         name: 'How do I report a security vulnerability?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Email security@onramp.ai with details. We run a responsible disclosure program and respond to all reports within 48 hours.',
+          text: 'Report it privately through GitHub security advisories at github.com/KunjShah95/onramp/security/advisories/new. Please do not open a public issue for security reports.',
         },
       },
       {
@@ -123,13 +124,13 @@ function buildSupportBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Support',
-        item: 'https://onramp.app/support',
+        item: `${SITE_URL}/support`,
       },
     ],
   }
