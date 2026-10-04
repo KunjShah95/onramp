@@ -4,6 +4,7 @@ import { Calendar, ArrowRight, Tag } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 import { posts } from '../data/blog'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -21,13 +22,13 @@ function buildBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Blog',
-        item: 'https://onramp.app/blog',
+        item: `${SITE_URL}/blog`,
       },
     ],
   }
@@ -40,26 +41,26 @@ function buildBlogSchema() {
     '@type': 'Blog',
     name: 'Onramp Blog',
     description: 'Engineering insights on developer onboarding, codebase analysis, and the AI that actually reads your code.',
-    url: 'https://onramp.app/blog',
+    url: `${SITE_URL}/blog`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://onramp.app/icon-512.svg',
+        url: `${SITE_URL}/icon-512.svg`,
       },
     },
     blogPosts: posts.map((post) => ({
       '@type': 'BlogPosting',
       headline: post.title,
       description: post.excerpt,
-      url: `https://onramp.app/blog/${post.slug}`,
+      url: `${SITE_URL}/blog/${post.slug}`,
       datePublished: post.dateISO,
       dateModified: post.dateModifiedISO ?? post.dateISO,
       author: {
         '@type': 'Person',
         name: post.author ?? 'Onramp Team',
-        url: post.authorUrl ?? 'https://onramp.app/about',
+        url: post.authorUrl ?? `${SITE_URL}/about`,
       },
       articleSection: post.category,
     })),

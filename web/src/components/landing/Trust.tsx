@@ -9,7 +9,7 @@ const FACTS = [
   { k: 'Clones are temporary', v: 'Repos are cloned to index, then the clone is deleted.' },
   { k: 'Your data stays yours', v: 'Derived documents and embeddings are scoped to your workspace. We do not train models on customer code.' },
   { k: 'Secrets are encrypted', v: 'Repository tokens and personal data are encrypted at rest. API keys are stored as HMAC hashes.' },
-  { k: 'Straight about compliance', v: 'SOC 2 Type II is in progress, not certified. A DPA is available today.' },
+  { k: 'Straight about compliance', v: 'Not SOC 2 certified; Type II is on the roadmap. A DPA is available today.' },
 ]
 
 export default function Trust() {

@@ -25,6 +25,8 @@ export { API_BASE }
 // Tokens are in HttpOnly cookies (set by backend).  We only need the
 // in-memory WS token for WebSocket connections.
 import { setWsToken } from './neon-auth'
+import { track } from './track'
+import { getUtm } from './attribution'
 
 /** Common fetch options for all API calls — sends cookies automatically. */
 const CREDS: RequestInit = { credentials: 'include' }
@@ -455,10 +457,12 @@ export async function askQuestion(
   indexId: string,
   question: string
 ): Promise<QAResult> {
-  return request<QAResult>(`${API_BASE}/ask/query`, {
+  const result = await request<QAResult>(`${API_BASE}/ask/query`, {
     index_id: indexId,
     question,
   })
+  track('ask_answered', { mode: 'query' })
+  return result
 }
 
 /**
@@ -567,7 +571,10 @@ export async function askQuestionStream(
       const line = evt.trim()
       if (!line.startsWith('data:')) continue
       const payload = line.slice(5).trim()
-      if (payload === '[DONE]') return
+      if (payload === '[DONE]') {
+        track('ask_answered', { mode: 'stream' })
+        return
+      }
       try {
         const parsed = JSON.parse(payload)
         if (parsed.error) throw new Error(parsed.error)
@@ -1242,9 +1249,11 @@ export async function registerRepo(data: {
   if (data.url) params.set('url', data.url)
   if (data.team_id) params.set('team_id', data.team_id)
   if (data.description) params.set('description', data.description)
-  return fetchWithAuth<RepoItem>(`${API_BASE}/repos?${params}`, {
+  const repo = await fetchWithAuth<RepoItem>(`${API_BASE}/repos?${params}`, {
     method: 'POST',
   })
+  track('repo_connected', { source: data.url ? 'url' : 'manual' })
+  return repo
 }
 
 export interface TraineeDashboardProgress {
@@ -4513,11 +4522,15 @@ export async function authRegister(
   password: string,
   name: string
 ): Promise<AuthResponse> {
-  return request<AuthResponse>(`${API_BASE}/auth/register`, {
+  const utm = getUtm()
+  const resp = await request<AuthResponse>(`${API_BASE}/auth/register`, {
     email,
     password,
     name,
+    ...(Object.keys(utm).length > 0 ? { attribution: utm } : {}),
   })
+  track('signup_completed', { method: 'password', ...utm })
+  return resp
 }
 
 export async function authMe(): Promise<AuthMeResponse | null> {
@@ -4775,11 +4788,31 @@ export interface TeamInvite {
   team_name?: string
 }
 
-export function createTeamInvite(teamId: string, email: string, role = 'member', message?: string) {
-  return request<{ invite_id: string; token: string; email: string; status: string }>(
+export async function createTeamInvite(teamId: string, email: string, role = 'member', message?: string) {
+  const invite = await request<{ invite_id: string; token: string; email: string; status: string }>(
     `${API_BASE}/invites/teams/${teamId}`,
     { email, role, message }
   )
+  track('invite_sent')
+  return invite
+}
+
+export interface LeadInput {
+  name: string
+  email: string
+  company?: string
+  subject?: string
+  message: string
+  /** Honeypot: rendered hidden; real visitors leave it empty. */
+  website?: string
+}
+
+/** Submit the public contact form. Anonymous; carries first-touch UTM labels. */
+export async function createLead(input: LeadInput): Promise<{ received: boolean }> {
+  const utm = getUtm()
+  const result = await request<{ received: boolean }>(`${API_BASE}/leads`, { ...input, ...utm })
+  track('contact_submitted', { ...utm })
+  return result
 }
 
 export function listTeamInvites(teamId: string) {

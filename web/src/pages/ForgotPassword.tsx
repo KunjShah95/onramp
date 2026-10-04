@@ -225,13 +225,10 @@ export default function ForgotPassword() {
 
               <div className="mt-6 border-t border-seam pt-5">
                 <p className="text-caption text-ink-tertiary mb-3">
-                  Still nothing? Email support and we&apos;ll reset it by hand.
+                  Still nothing? Send us a message and we&apos;ll reset it by hand.
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                  <a href="mailto:support@onramp.ai" className="btn btn-secondary">
-                    Email support
-                  </a>
-                  <Link to="/contact" className="btn btn-ghost">
+                  <Link to="/contact" className="btn btn-secondary">
                     Contact form
                   </Link>
                 </div>

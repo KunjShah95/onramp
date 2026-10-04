@@ -2,6 +2,7 @@ import { FileText, Envelope, ShieldCheck, Circle } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -41,11 +42,11 @@ function buildDPAStatusSchema() {
     name: 'Data processing status · Onramp',
     description:
       'Current Onramp data-processing program status, with a DPA and subprocessor terms still being finalized.',
-    url: 'https://onramp.app/dpa',
+    url: `${SITE_URL}/dpa`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
   }
 }
@@ -55,8 +56,8 @@ function buildDPABreadcrumbSchema() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://onramp.app/' },
-      { '@type': 'ListItem', position: 2, name: 'Data processing', item: 'https://onramp.app/dpa' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Data processing', item: `${SITE_URL}/dpa` },
     ],
   }
 }

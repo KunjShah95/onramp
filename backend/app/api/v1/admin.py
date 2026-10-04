@@ -598,3 +598,97 @@ async def unlock_account(
         "was_locked": was_locked,
         "message": "Account unlocked" if was_locked else "Account was not locked",
     }
+
+
+# ─── GTM: inbound leads and launch funnel ────────────────────────────────────
+
+
+@router.get("/leads")
+async def list_leads(
+    limit: int = Query(100, ge=1, le=500),
+    uid: str = Depends(_require_owner),
+):
+    """Contact-form submissions, newest first, with PII decrypted for follow-up."""
+    from app.services.field_encryption import decrypt_field_lenient
+    from app.services.postgres_db import get_storage
+
+    rows = await get_storage().list_documents("leads")
+    leads = []
+    for row in rows:
+        data = row.get("data") if isinstance(row.get("data"), dict) else row
+        leads.append({
+            "id": row.get("id"),
+            "name": decrypt_field_lenient(data.get("name")),
+            "email": decrypt_field_lenient(data.get("email")),
+            "company": data.get("company"),
+            "subject": data.get("subject"),
+            "message": decrypt_field_lenient(data.get("message")),
+            "utm_source": data.get("utm_source"),
+            "utm_medium": data.get("utm_medium"),
+            "utm_campaign": data.get("utm_campaign"),
+            "status": data.get("status", "new"),
+            "created_at": data.get("created_at"),
+        })
+    leads.sort(key=lambda lead: lead.get("created_at") or "", reverse=True)
+    return {"leads": leads[:limit], "count": len(leads)}
+
+
+def _within(created: object, cutoff: datetime) -> bool:
+    if isinstance(created, datetime):
+        stamp = created
+    else:
+        try:
+            stamp = datetime.fromisoformat(str(created))
+        except (TypeError, ValueError):
+            return False
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return stamp >= cutoff
+
+
+@router.get("/gtm-funnel")
+async def gtm_funnel(
+    days: int = Query(30, ge=1, le=180),
+    uid: str = Depends(_require_owner),
+):
+    """Launch funnel for the last ``days``: anonymous event counts, signups by
+    first-touch UTM source, and contact-form leads by source.
+
+    Event counts come from the first-party analytics table, so they are
+    pseudonymous and not linked to accounts; signups and leads are exact.
+    """
+    from collections import Counter
+    from app.services.postgres_db import get_storage
+
+    storage = get_storage()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_day = cutoff.strftime("%Y-%m-%d")
+
+    def flat(row: dict) -> dict:
+        return row.get("data") if isinstance(row.get("data"), dict) else row
+
+    events = Counter()
+    for row in await storage.list_documents("onramp_events"):
+        data = flat(row)
+        if str(data.get("day", "")) >= cutoff_day:
+            events[data.get("name", "unknown")] += 1
+
+    signups_by_source = Counter()
+    for row in await storage.list_documents("signup_attribution"):
+        data = flat(row)
+        if _within(data.get("created_at"), cutoff):
+            signups_by_source[data.get("utm_source") or "(none)"] += 1
+
+    leads_by_source = Counter()
+    for row in await storage.list_documents("leads"):
+        data = flat(row)
+        if _within(data.get("created_at"), cutoff):
+            leads_by_source[data.get("utm_source") or "(none)"] += 1
+
+    return {
+        "days": days,
+        "events": dict(events),
+        "attributed_signups_by_source": dict(signups_by_source),
+        "leads_by_source": dict(leads_by_source),
+        "leads_total": sum(leads_by_source.values()),
+    }

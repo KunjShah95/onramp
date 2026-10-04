@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { SITE_URL } from '../../lib/site'
 
 /*
  * Lightweight per-page SEO — no external dependency.
@@ -12,7 +13,7 @@ import { useEffect } from 'react'
  * Supports JSON-LD structured data via the `schema` prop for AEO/GEO optimization.
  */
 
-const BASE = (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/+$/, '') || 'https://onramp.app'
+const BASE = SITE_URL
 
 const DEFAULT_IMAGE = `${BASE}/og-image.png`
 

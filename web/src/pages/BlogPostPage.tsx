@@ -4,6 +4,7 @@ import { Calendar, Tag, ArrowLeft, ArrowRight, Clock, ShareNetwork } from '@phos
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
 import { posts } from '../data/blog'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Blog', href: '/blog' },
@@ -55,8 +56,8 @@ const articleContent: Record<string, string[]> = {
     'Finally, measure and iterate. Track time-to-first-PR as a continuous metric. Set targets (e.g., first PR within 5 days for senior hires) and review progress monthly. When the metric trends up, investigate what changed in your onboarding process.',
     'At Onramp, we are testing this framework with a small design-partner cohort. We will publish measured baselines and outcomes only after the validation data is reviewed.',
   ],
-  'onramp-achieves-soc-2-type-ii-certification': [
-    'SOC 2 Type II is an important milestone for Onramp, and we want to be precise about the current status: the Type II audit is in progress, and Onramp is not yet certified.',
+  'soc-2-type-ii-status': [
+    'SOC 2 Type II is an important milestone for Onramp, and we want to be precise about the current status: Onramp is not certified, and no independent audit report exists yet.',
     'The work includes defining and testing controls for access management, change management, incident response, vendor review, and data handling. Certification will be claimed only after the independent audit and any required remediation are complete.',
     'We are also strengthening tenant isolation, retention controls, backup restoration tests, and deployment evidence. Those controls are part of the program, not claims of completed certification.',
     'The security page is the source of truth for current status. If you need a compliance document or a scoped review, contact the team and we will explain what is currently available and what remains in progress.',
@@ -74,14 +75,14 @@ function buildArticleSchema(post: (typeof posts)[0], url: string) {
     author: {
       '@type': 'Person',
       name: post.author ?? 'Onramp Team',
-      url: post.authorUrl ?? 'https://onramp.app/about',
+      url: post.authorUrl ?? `${SITE_URL}/about`,
     },
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://onramp.app/icon-512.svg',
+        url: `${SITE_URL}/icon-512.svg`,
       },
     },
     datePublished: post.dateISO,
@@ -112,7 +113,7 @@ export default function BlogPostPage() {
   const prevPost = currentIndex > 0 ? posts[currentIndex - 1] : null
   const nextPost = currentIndex < posts.length - 1 ? posts[currentIndex + 1] : null
 
-  const pageUrl = `https://onramp.app/blog/${post.slug}`
+  const pageUrl = `${SITE_URL}/blog/${post.slug}`
   const articleSchema = buildArticleSchema(post, pageUrl)
 
   return (

@@ -141,12 +141,8 @@ describe('ForgotPassword', () => {
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: /email support/i })).toHaveAttribute(
-        'href',
-        'mailto:support@onramp.ai',
-      )
+      expect(screen.getByRole('link', { name: /contact form/i })).toHaveAttribute('href', '/contact')
     })
-    expect(screen.getByRole('link', { name: /contact form/i })).toHaveAttribute('href', '/contact')
     expect(screen.getByRole('button', { name: /try sending again/i })).toBeInTheDocument()
   })
 

@@ -14,6 +14,7 @@ import { CtaBand, FaqList, Section, SectionHeader, faqSchema, type Faq } from '.
 import { PLANS } from '../components/marketing/plans'
 import { useLandingTheme } from '../hooks/useLandingTheme'
 import { useTrackedPath } from '../lib/track'
+import { SITE_URL } from '../lib/site'
 
 /* Landing, told as one story:
  *   Hero (the promise, with the product in hand)
@@ -51,7 +52,7 @@ const FAQ: Faq[] = [
   },
   {
     q: 'Are you SOC 2 certified?',
-    a: 'Not yet. SOC 2 Type II is in progress. A Data Processing Agreement is available now, and the security page lists exactly what is and is not in place.',
+    a: 'No. SOC 2 Type II is on the roadmap and no audit report exists yet. A Data Processing Agreement is available now, and the security page lists exactly what is and is not in place.',
   },
 ]
 
@@ -67,7 +68,7 @@ function productSchema() {
       price: String(p.monthly),
       priceCurrency: 'INR',
       availability: 'https://schema.org/InStock',
-      url: 'https://onramp.app/#pricing',
+      url: `${SITE_URL}/#pricing`,
     },
   }))
 }
