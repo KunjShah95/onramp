@@ -1,3 +1,5 @@
+import { SITE_URL } from '../lib/site'
+
 export interface BlogPost {
   title: string
   slug: string
@@ -26,7 +28,7 @@ export const posts: BlogPost[] = [
     excerpt: 'Every new hire spends their first weeks piecing together tribal knowledge. Here\'s how that adds up, and what you can do about it.',
     readTime: '6 min read',
     author: 'Onramp Team',
-    authorUrl: 'https://onramp.app/about',
+    authorUrl: `${SITE_URL}/about`,
   },
   {
     title: 'Introducing architecture drift detection',
@@ -38,7 +40,7 @@ export const posts: BlogPost[] = [
     excerpt: 'Your codebase evolves. Your docs shouldn\'t lag behind. We\'re shipping real-time drift detection that flags deviations as they happen.',
     readTime: '4 min read',
     author: 'Onramp Team',
-    authorUrl: 'https://onramp.app/about',
+    authorUrl: `${SITE_URL}/about`,
   },
   {
     title: 'How we built a codebase-aware AI mentor',
@@ -50,7 +52,7 @@ export const posts: BlogPost[] = [
     excerpt: 'Behind the scenes of Onramp\'s AI: how we parse, index, and ground answers in real repository structure, with tenant-scoped derived context.',
     readTime: '12 min read',
     author: 'Onramp Team',
-    authorUrl: 'https://onramp.app/about',
+    authorUrl: `${SITE_URL}/about`,
   },
   {
     title: 'Measuring time-to-first-PR: a framework for onboarding velocity',
@@ -62,18 +64,18 @@ export const posts: BlogPost[] = [
     excerpt: 'If you can\'t measure it, you can\'t improve it. Here\'s how to benchmark and reduce the time between a developer\'s first commit and first merged PR.',
     readTime: '8 min read',
     author: 'Onramp Team',
-    authorUrl: 'https://onramp.app/about',
+    authorUrl: `${SITE_URL}/about`,
   },
   {
-    title: 'Onramp SOC 2 Type II: work in progress',
-    slug: 'onramp-achieves-soc-2-type-ii-certification',
+    title: 'Onramp and SOC 2 Type II: where we stand',
+    slug: 'soc-2-type-ii-status',
     category: 'Company',
     date: 'Jun 18, 2026',
     dateISO: '2026-06-18',
     dateModifiedISO: '2026-06-18',
-    excerpt: 'SOC 2 Type II is in progress and not yet certified. This post tracks scope and timeline; see /security for current status.',
+    excerpt: 'Onramp is not SOC 2 certified. This post explains the scope we plan to audit; see /security for current status.',
     readTime: '3 min read',
     author: 'Onramp Team',
-    authorUrl: 'https://onramp.app/about',
+    authorUrl: `${SITE_URL}/about`,
   },
 ]

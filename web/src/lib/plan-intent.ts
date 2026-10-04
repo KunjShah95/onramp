@@ -17,6 +17,31 @@ export function getPlanIntent(params: URLSearchParams): PlanIntent | null {
   return raw && (PLAN_INTENT_IDS as readonly string[]).includes(raw) ? (raw as PlanIntent) : null
 }
 
+const COUPON_KEY = 'onramp_coupon'
+const COUPON_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/
+
+/**
+ * Promo code carried from a launch link (`/?coupon=PHLAUNCH`) to checkout.
+ * Kept in sessionStorage because the visitor usually registers in between,
+ * and the register/login redirects only preserve `?plan=`.
+ */
+export function captureCouponIntent(search: string = typeof window !== 'undefined' ? window.location.search : ''): void {
+  try {
+    const raw = new URLSearchParams(search).get('coupon')
+    if (raw && COUPON_RE.test(raw)) sessionStorage.setItem(COUPON_KEY, raw.toUpperCase())
+  } catch {
+    /* storage unavailable: the code can still be typed at checkout */
+  }
+}
+
+export function getCouponIntent(): string {
+  try {
+    return sessionStorage.getItem(COUPON_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
 /** Billing URL that preserves the intent, e.g. `/billing?plan=professional`. */
 export function billingUrlWithPlan(plan: PlanIntent | null): string {
   return plan ? `/billing?plan=${plan}` : '/billing'

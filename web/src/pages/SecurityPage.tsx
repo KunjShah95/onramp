@@ -2,6 +2,7 @@ import { ShieldCheck, Lock, Eye, Cloud, FileLock } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -41,7 +42,7 @@ const categories = [
     icon: FileLock,
     title: 'Compliance',
     items: [
-      { label: 'Certifications', value: 'SOC 2 Type II in progress (not certified); GDPR controls in progress' },
+      { label: 'Certifications', value: 'Not SOC 2 certified (Type II on roadmap); GDPR controls in progress' },
       { label: 'Data processing', value: 'DPA template and subprocessor terms in progress; request a draft' },
       { label: 'Audit log', value: 'Audit events retained; immutable export on Enterprise roadmap' },
     ],
@@ -49,7 +50,7 @@ const categories = [
 ]
 
 const certifications = [
-  { name: 'SOC 2 Type II', status: 'In progress — not certified', desc: 'Third-party audit in progress; certification not yet achieved.' },
+  { name: 'SOC 2 Type II', status: 'Not certified', desc: 'On the roadmap. No independent audit report exists yet.' },
   { name: 'GDPR', status: 'In progress', desc: 'GDPR controls in progress; DPA available on request.' },
   { name: 'DPA', status: 'Available', desc: 'Standard Data Processing Agreement available for all customers.' },
   { name: 'Data residency', status: 'Roadmap', desc: 'Single-region deployment today; US/EU residency on Enterprise roadmap.' },
@@ -62,11 +63,11 @@ function buildSecuritySchema() {
     '@type': 'WebPage',
     name: 'Security · Onramp',
     description: 'Onramp security practices: encryption, access controls, SOC 2 Type II audit status, GDPR control progress, and a responsible disclosure program.',
-    url: 'https://onramp.app/security',
+    url: `${SITE_URL}/security`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
     mainEntity: {
       '@type': 'SecurityScheme',
@@ -83,7 +84,7 @@ function buildSecuritySchema() {
         mfa: 'Not enforced for admin accounts',
       },
       compliance: {
-        soc2: 'SOC 2 Type II in progress — not certified',
+        soc2: 'Not certified; SOC 2 Type II on roadmap',
         gdpr: 'Controls in progress',
         dpa: 'Available on request',
         dataResidency: 'Single-region today; US/EU residency on Enterprise roadmap',
@@ -102,13 +103,13 @@ function buildSecurityBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Security',
-        item: 'https://onramp.app/security',
+        item: `${SITE_URL}/security`,
       },
     ],
   }

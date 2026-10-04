@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, ArrowLeft, Code, Terminal } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const sections = [
   {
@@ -244,7 +245,7 @@ function buildHowToSchema() {
     '@type': 'HowTo',
     name: 'How to get started with Onramp',
     description: 'Step-by-step guide to analyzing your first repository with Onramp and using the AI codebase mentor.',
-    image: 'https://onramp.app/og-image.png',
+    image: `${SITE_URL}/og-image.png`,
     estimatedCost: {
       '@type': 'MonetaryAmount',
       currency: 'USD',
@@ -261,38 +262,38 @@ function buildHowToSchema() {
       {
         '@type': 'HowToStep',
         name: 'Create an Onramp account',
-        text: 'Sign up at onramp.app using GitHub, Google, or email. The free plan includes 1 repository and 100 AI mentor questions per month.',
-        url: 'https://onramp.app/register',
+        text: 'Sign up at developer-onboard.vercel.app using GitHub, Google, or email. The free plan includes 1 repository and 50 AI credits per month.',
+        url: `${SITE_URL}/register`,
       },
       {
         '@type': 'HowToStep',
         name: 'Navigate to the Explore tab',
         text: 'After logging in, click "Explore" in the navigation. This is where you add repositories for analysis.',
-        url: 'https://onramp.app/explore',
+        url: `${SITE_URL}/explore`,
       },
       {
         '@type': 'HowToStep',
         name: 'Paste a GitHub repository URL',
         text: 'Enter any public GitHub URL (e.g., https://github.com/vercel/next.js) or connect a private repo with a GitHub token.',
-        url: 'https://onramp.app/explore',
+        url: `${SITE_URL}/explore`,
       },
       {
         '@type': 'HowToStep',
         name: 'Wait for analysis to complete',
         text: 'Onramp clones, parses, and indexes the repository. Analysis takes ~30 seconds for small repos (<500 files), ~90 seconds for medium repos (<5k files), and 2-4 minutes for large repos (5k+ files).',
-        url: 'https://onramp.app/explore',
+        url: `${SITE_URL}/explore`,
       },
       {
         '@type': 'HowToStep',
         name: 'Explore the architecture graph',
         text: 'View the live dependency graph showing services, modules, and their relationships. Click any node to see file paths, functions, and AI-generated summaries.',
-        url: 'https://onramp.app/explore',
+        url: `${SITE_URL}/explore`,
       },
       {
         '@type': 'HowToStep',
         name: 'Ask questions about the codebase',
         text: 'Navigate to "Ask Codebase" and ask questions in plain English. Onramp returns grounded answers with exact file paths and line numbers.',
-        url: 'https://onramp.app/ask',
+        url: `${SITE_URL}/ask`,
       },
     ],
     totalTime: 'PT5M',

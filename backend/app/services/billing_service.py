@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta, timezone
 from app.services.postgres_db import get_storage, generate_id, idempotency_document_id
+from app.services.api_key_service import PLAN_LIMITS
 
 logger = logging.getLogger("onramp.billing")
 
@@ -19,10 +20,21 @@ RAZORPAY_PLAN_IDS = {
 
 
 # INR pricing (platform usage only — BYOK keeps AI token cost on the user's own keys).
+def _plan_features(plan: str) -> List[str]:
+    """Feature bullets generated from the enforced plan limits (no drift)."""
+    lim = PLAN_LIMITS[plan]
+    members, repos = lim["max_members"], lim["max_repos"]
+    return [
+        f"{members} member{'s' if members != 1 else ''}",
+        f"{repos} repo{'s' if repos != 1 else ''}",
+        f"{lim['credits_per_month']} credits/mo",
+    ]
+
+
 TIER_PRICING = {
-    "free": {"price_monthly": 0, "price_yearly": 0, "features": ["1 member", "1 repo", "50 credits/mo"]},
-    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": ["5 members", "10 repos", "5000 credits/mo"]},
-    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": ["20 members", "50 repos", "50000 credits/mo"]},
+    "free": {"price_monthly": 0, "price_yearly": 0, "features": _plan_features("free")},
+    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": _plan_features("startup")},
+    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": _plan_features("professional")},
     "usage_based": {"price_monthly": 499, "price_yearly": 4999, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
@@ -206,9 +218,19 @@ class BillingService:
         )
 
     async def create_checkout_session(
-        self, team_id: str, tier: str, success_url: str, cancel_url: str
+        self,
+        team_id: str,
+        tier: str,
+        success_url: str,
+        cancel_url: str,
+        coupon_code: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create a Razorpay subscription for a paid tier. Returns {url, subscription_id}."""
+        """Create a Razorpay subscription for a paid tier. Returns {url, subscription_id}.
+
+        ``coupon_code`` is checked here and applied through Razorpay (a delayed
+        ``start_at`` or an ``offer_id``); it is redeemed only when the verified
+        ``subscription.activated`` webhook arrives. See coupon_service.
+        """
         if tier not in SELF_SERVICE_TIERS:
             return {"error": "Tier is not available for self-service checkout"}
         if not self.is_razorpay_enabled():
@@ -217,16 +239,31 @@ class BillingService:
         if not plan_id:
             return {"error": f"No Razorpay plan configured for tier '{tier}'"}
 
+        coupon = None
+        if coupon_code and coupon_code.strip():
+            from app.services.coupon_service import CouponError, CouponService
+
+            try:
+                coupon = await CouponService(self.storage).check(coupon_code, tier, team_id)
+            except CouponError as exc:
+                return {"error": str(exc)}
+
         client = self._razorpay()
+        payload: Dict[str, Any] = {
+            "plan_id": plan_id,
+            "total_count": 12,
+            "quantity": 1,
+            "customer_notify": 1,
+            "notes": {"team_id": team_id, "tier": tier, "success_url": success_url, "cancel_url": cancel_url},
+        }
+        if coupon:
+            from app.services.coupon_service import CouponService
+
+            payload.update(CouponService.subscription_params(coupon))
+            payload["notes"]["coupon"] = coupon["code"]
 
         def _create():
-            return client.subscription.create({
-                "plan_id": plan_id,
-                "total_count": 12,
-                "quantity": 1,
-                "customer_notify": 1,
-                "notes": {"team_id": team_id, "tier": tier, "success_url": success_url, "cancel_url": cancel_url},
-            })
+            return client.subscription.create(payload)
 
         try:
             sub = await asyncio.to_thread(_create)
@@ -234,7 +271,12 @@ class BillingService:
             logger.error("Razorpay checkout creation failed: %s", exc)
             _sentry_report(exc, {"team_id": team_id, "tier": tier})
             return {"error": "Checkout creation failed"}
-        return {"url": sub.get("short_url"), "subscription_id": sub.get("id")}
+        result = {"url": sub.get("short_url"), "subscription_id": sub.get("id")}
+        if coupon:
+            from app.services.coupon_service import CouponService
+
+            result["coupon"] = {"code": coupon["code"], "summary": CouponService.summary(coupon)}
+        return result
 
     # ── Webhook processing ──────────────────────────────────────────────────
 
@@ -597,6 +639,16 @@ class BillingService:
                         "razorpay_subscription_id": subscription_id,
                     },
                 )
+            coupon_code = notes.get("coupon")
+            if coupon_code:
+                from app.services.coupon_service import CouponService
+
+                try:
+                    await CouponService(self.storage).redeem(coupon_code, team_id, subscription_id)
+                except Exception as exc:
+                    # Never fail activation over bookkeeping; the charge already happened.
+                    logger.error("coupon redemption failed for team %s: %s", team_id, exc)
+                    _sentry_report(exc, {"team_id": team_id, "coupon": coupon_code})
             return {"team_id": team_id, "subscription_id": subscription_id}
 
         elif event_type == "subscription.charged":

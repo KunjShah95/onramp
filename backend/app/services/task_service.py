@@ -387,6 +387,8 @@ async def transition_task(
         updates["reviewed_at"] = now
         updates["reviewed_by"] = user_id
         updates["review_cycles"] = int(task.get("review_cycles", 0) or 0) + 1
+        if not task.get("first_change_request_at"):
+            updates["first_change_request_at"] = now
         if feedback:
             updates["review_feedback"] = feedback
     elif new_state == "under_review":

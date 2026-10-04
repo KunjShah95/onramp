@@ -1,4 +1,5 @@
 import LegalLayout, { type LegalSection } from '../components/layout/LegalLayout'
+import { SITE_URL } from '../lib/site'
 
 const sections: LegalSection[] = [
   {
@@ -40,7 +41,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Data retention and deletion',
     paragraphs: [
-      'Account and team data are retained while your account is active. You may request deletion of your account and associated data at any time by contacting privacy@onramp.ai; we complete verified deletion requests within 30 days. Backups expire on a rolling schedule.',
+      'Account and team data are retained while your account is active. You may request deletion of your account and associated data at any time through the contact form at /contact; we complete verified deletion requests within 30 days. Backups expire on a rolling schedule.',
     ],
   },
   {
@@ -60,7 +61,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Your rights',
     paragraphs: [
-      'Depending on your jurisdiction (including the EU/EEA under GDPR and California under CCPA), you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain processing. To exercise these rights, email privacy@onramp.ai. You may also lodge a complaint with your local supervisory authority.',
+      'Depending on your jurisdiction (including the EU/EEA under GDPR and California under CCPA), you may have rights to access, correct, export, or delete your personal data, and to object to or restrict certain processing. To exercise these rights, email the contact form at /contact. You may also lodge a complaint with your local supervisory authority.',
     ],
   },
   {
@@ -84,11 +85,11 @@ function buildPrivacySchema() {
     '@type': 'WebPage',
     name: 'Privacy Policy · Onramp',
     description: 'How Onramp collects, uses, and protects your information across the web app, API, and SDK.',
-    url: 'https://onramp.app/privacy',
+    url: `${SITE_URL}/privacy`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
     datePublished: '2025-01-01',
     dateModified: '2026-07-02',
@@ -116,19 +117,19 @@ function buildPrivacyBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Legal',
-        item: 'https://onramp.app/privacy',
+        item: `${SITE_URL}/privacy`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: 'Privacy Policy',
-        item: 'https://onramp.app/privacy',
+        item: `${SITE_URL}/privacy`,
       },
     ],
   }

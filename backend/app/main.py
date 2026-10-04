@@ -64,7 +64,8 @@ from app.api.v1 import (
     accounts as accounts_router, admin as admin_router, agent_sessions as agent_sessions_router, ai_gateway, modelling, ask, audit as audit_router,
     auth, billing, contributor, dashboard, digest as digest_router,
     analytics as analytics_router,
-    autopilot, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
+    leads as leads_router,
+    autopilot, comprehension, explore, feature_flags as feature_flags_router, first_pr, gamification, health,
     hr_dashboard, integrations as integrations_router, integrations_n8n as n8n_router,
     mcp as mcp_router,
     invites as invites_router, learn, marketplace as marketplace_router,
@@ -434,6 +435,7 @@ app.add_middleware(AuthMiddleware, public_paths=[
     "/api/v1/auth/logout",                # logout (auth via refresh token cookie/body; revokes it)
     "/api/v1/auth/verify-email",          # email verification
     "/api/v1/events",                     # first-party analytics intake (anonymous, allowlisted)
+    "/api/v1/leads",                      # public contact form (honeypot + per-IP cap)
     "/api/v1/webhooks/github",            # GitHub webhook (HMAC signature verified)
     "/api/v1/track/webhook",              # contributor webhook (raw-body HMAC verified)
     "/api/v1/webhooks",                   # generic webhook deliveries
@@ -492,6 +494,7 @@ app.state.embeddings = embeddings
 
 app.include_router(autopilot.router, prefix="/api/v1")
 app.include_router(explore.router, prefix="/api/v1")
+app.include_router(comprehension.router, prefix="/api/v1")
 app.include_router(learn.router, prefix="/api/v1")
 app.include_router(first_pr.router, prefix="/api/v1")
 app.include_router(ask.router, prefix="/api/v1")
@@ -520,6 +523,7 @@ app.include_router(audit_router.router, prefix="/api/v1")
 app.include_router(invites_router.router, prefix="/api/v1")
 app.include_router(accounts_router.router, prefix="/api/v1")
 app.include_router(analytics_router.router, prefix="/api/v1")
+app.include_router(leads_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 app.include_router(quiz_router.router, prefix="/api/v1")
 app.include_router(digest_router.router, prefix="/api/v1")

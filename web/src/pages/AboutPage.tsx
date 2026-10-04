@@ -1,6 +1,7 @@
 import { UsersThree, Sparkle, Globe, ShieldCheck } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const navLinks: NavLinkItem[] = [
   { label: 'Docs', href: '/docs' },
@@ -38,17 +39,15 @@ function buildAboutSchema() {
     '@type': 'AboutPage',
     name: 'About Onramp',
     description: 'The team and mission behind Onramp — AI-powered developer onboarding for modern engineering teams.',
-    url: 'https://onramp.app/about',
+    url: `${SITE_URL}/about`,
     mainEntity: {
       '@type': 'Organization',
       name: 'Onramp',
       description: 'Onramp indexes your codebase into a live architecture map and guides developers through their first PR.',
-      url: 'https://onramp.app/',
-      logo: 'https://onramp.app/icon-512.svg',
+      url: `${SITE_URL}/`,
+      logo: `${SITE_URL}/icon-512.svg`,
       sameAs: [
-        'https://twitter.com/onramp_ai',
-        'https://linkedin.com/company/onramp-ai',
-        'https://github.com/onramp-ai',
+        'https://github.com/KunjShah95/onramp',
       ],
       foundingDate: '2025',
       knowsAbout: [
@@ -72,13 +71,13 @@ function buildAboutBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'About',
-        item: 'https://onramp.app/about',
+        item: `${SITE_URL}/about`,
       },
     ],
   }

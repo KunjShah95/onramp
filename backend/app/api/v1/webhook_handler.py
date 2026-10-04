@@ -279,6 +279,51 @@ async def _link_pr_to_tasks(payload: dict) -> dict:
     return {"linked": linked, "task_ids": linked_ids}
 
 
+async def _light_comprehension_from_pr(payload: dict) -> list:
+    """Light the modules a merged PR touched on its author's Knowledge Map.
+
+    Best-effort: a missing snapshot, unknown author or GitHub error must never
+    affect task completion.
+    """
+    try:
+        pr = payload.get("pull_request", {}) or {}
+        repo = payload.get("repository", {}) or {}
+        owner = ((repo.get("owner") or {}).get("login") or "").strip()
+        name = (repo.get("name") or "").strip()
+        number = pr.get("number")
+        login = _pr_author_login(payload)
+        if not (owner and name and number and login):
+            return []
+        from app.services.comprehension_service import light_from_merged_pr
+        from app.services.github_service import GitHubService
+
+        async def load_diff() -> str:
+            return await GitHubService().get_pr_diff(f"https://github.com/{owner}/{name}", int(number))
+
+        async def load_comments() -> list:
+            return await GitHubService().get_pr_review_comments(f"https://github.com/{owner}/{name}", int(number))
+
+        # Review discussion is the "why" behind the change; keep it per file.
+        try:
+            from app.services.comprehension_service import record_pr_discussion
+
+            await record_pr_discussion(owner=owner, name=name, pr_number=int(number), load_comments=load_comments)
+        except Exception:
+            logger.exception("Failed to record PR review discussion")
+
+        return await light_from_merged_pr(
+            owner=owner,
+            name=name,
+            login=login,
+            pr_number=int(number),
+            base_branch=(pr.get("base") or {}).get("ref", "") or "main",
+            load_diff=load_diff,
+        )
+    except Exception:
+        logger.exception("Failed to update comprehension map from merged PR")
+        return []
+
+
 async def _handle_pr_merged(payload: dict) -> dict:
     """Handle a merged pull_request (action=closed + merged=true).
 
@@ -293,6 +338,8 @@ async def _handle_pr_merged(payload: dict) -> dict:
 
     if not pr_url:
         return {"handled": False, "reason": "No PR URL in payload"}
+
+    comprehension_lit = await _light_comprehension_from_pr(payload)
 
     from app.services.task_service import get_task_by_pr_url, complete_task
 
@@ -310,6 +357,7 @@ async def _handle_pr_merged(payload: dict) -> dict:
         return {
             "handled": True,
             "pr_number": pr_number,
+            "comprehension_lit": comprehension_lit,
             "pr_url": pr_url,
             "task_completed": False,
             "reason": "No linked Onramp task found for this PR URL",
@@ -386,6 +434,7 @@ async def _handle_pr_merged(payload: dict) -> dict:
         return {
             "handled": True,
             "pr_number": pr_number,
+            "comprehension_lit": comprehension_lit,
             "task_id": task["task_id"],
             "task_completed": True,
             "source_issue_closed": closed,
@@ -393,7 +442,7 @@ async def _handle_pr_merged(payload: dict) -> dict:
         }
     except Exception:
         logger.exception("Failed to auto-complete task %s on PR merge", task.get("task_id"))
-        return {"handled": True, "pr_number": pr_number, "task_completed": False, "reason": "Completion failed"}
+        return {"handled": True, "pr_number": pr_number, "comprehension_lit": comprehension_lit, "task_completed": False, "reason": "Completion failed"}
 
 
 async def _handle_pr_event(payload: dict, event: str) -> dict:

@@ -383,6 +383,19 @@ class TestStateMachine:
         task = await ts.start_task(task["task_id"], TUID_USER_JUNIOR1)
         assert task["state"] == "in_progress"
 
+    async def test_first_change_request_stamped_once(self, sample_task):
+        """first_change_request_at marks the first rework verdict and never moves."""
+        task = await ts.create_task(**sample_task)
+        task = await _to_under_review(task)
+        task = await ts.review_task(task["task_id"], TUID_USER_SENIOR, {"comment": "Fix it"}, approve=False)
+        first = task["first_change_request_at"]
+        assert first is not None
+
+        task = await _to_under_review(task)  # needs_changes -> in_progress -> under_review
+        task = await ts.review_task(task["task_id"], TUID_USER_SENIOR, {"comment": "Again"}, approve=False)
+        assert task["review_cycles"] == 2
+        assert task["first_change_request_at"] == first
+
     async def test_product_review_route(self, sample_task):
         """Review can route to product_review instead of direct approval."""
         task = await ts.create_task(**sample_task)

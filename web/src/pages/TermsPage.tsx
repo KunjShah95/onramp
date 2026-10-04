@@ -1,4 +1,5 @@
 import LegalLayout, { type LegalSection } from '../components/layout/LegalLayout'
+import { SITE_URL } from '../lib/site'
 
 const sections: LegalSection[] = [
   {
@@ -10,7 +11,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Accounts',
     paragraphs: [
-      'You must provide accurate registration information and keep your credentials secure. You are responsible for all activity under your account and API keys. Notify us immediately at security@onramp.ai if you suspect unauthorized access.',
+      'You must provide accurate registration information and keep your credentials secure. You are responsible for all activity under your account and API keys. Notify us immediately through a private GitHub security advisory (github.com/KunjShah95/onramp/security/advisories/new) if you suspect unauthorized access.',
     ],
   },
   {
@@ -69,7 +70,7 @@ const sections: LegalSection[] = [
   {
     heading: 'Contact',
     paragraphs: [
-      'Questions about these terms: legal@onramp.ai.',
+      'Questions about these terms: use the contact form at /contact.',
     ],
   },
 ]
@@ -81,11 +82,11 @@ function buildTermsSchema() {
     '@type': 'WebPage',
     name: 'Terms of Service · Onramp',
     description: 'The terms that govern your use of Onramp, including liability limits and responsibilities when using AI-generated output.',
-    url: 'https://onramp.app/terms',
+    url: `${SITE_URL}/terms`,
     publisher: {
       '@type': 'Organization',
       name: 'Onramp',
-      logo: 'https://onramp.app/icon-512.svg',
+      logo: `${SITE_URL}/icon-512.svg`,
     },
     datePublished: '2025-01-01',
     dateModified: '2026-07-02',
@@ -110,19 +111,19 @@ function buildTermsBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Legal',
-        item: 'https://onramp.app/terms',
+        item: `${SITE_URL}/terms`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: 'Terms of Service',
-        item: 'https://onramp.app/terms',
+        item: `${SITE_URL}/terms`,
       },
     ],
   }

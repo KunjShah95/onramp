@@ -65,6 +65,27 @@ describe('AskPage', () => {
     })
   })
 
+  it('shows which claims the repo graph does not back', async () => {
+    mockAsk.mockImplementation(async (...args: unknown[]) => {
+      const onToken = args[2] as (t: string) => void
+      const onGrounding = args[9] as (g: unknown) => void
+      onToken('src/api.ts imports src/db.ts.')
+      onGrounding({
+        available: true,
+        known_paths: ['src/api.ts', 'src/db.ts'],
+        unknown_paths: ['src/ghost.ts'],
+        claims: [{ sentence: 'src/api.ts imports src/db.ts.', relation: 'imports', source: 'src/api.ts', target: 'src/db.ts', source_text: 'src/api.ts', target_text: 'src/db.ts', verdict: 'unsupported' }],
+        summary: { paths_checked: 3, claims_checked: 1, unsupported_claims: 1, unknown_paths: 1, score: 50 },
+      })
+    })
+
+    await ask()
+    const toggle = await screen.findByRole('button', { name: /2 statements not backed by the repo graph/i })
+    await userEvent.setup().click(toggle)
+    expect(screen.getByText('src/ghost.ts')).toBeInTheDocument()
+    expect(screen.getByText('no import path found')).toBeInTheDocument()
+  })
+
   it('does not show a served-by label when the stream reports no route', async () => {
     mockAsk.mockImplementation(async (_idx: string, _question: string, onToken: (t: string) => void) => {
       onToken('Plain answer without routing attribution.')
@@ -104,6 +125,7 @@ describe('AskPage', () => {
         'cost', // routing-mode dial
         expect.any(Function), // onRoute
         null, // no signed-in user → no active team
+        expect.any(Function), // onGrounding
       )
     })
   })

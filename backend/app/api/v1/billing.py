@@ -58,6 +58,13 @@ class CheckoutRequest(BaseModel):
     tier: str
     success_url: str
     cancel_url: str
+    coupon_code: str | None = Field(default=None, max_length=32)
+
+
+class CouponCheckRequest(BaseModel):
+    team_id: str
+    tier: str
+    code: str = Field(min_length=1, max_length=32)
 
 
 @router.post("/subscriptions")
@@ -141,11 +148,28 @@ async def create_checkout(
     """Create a Razorpay subscription checkout for a paid tier."""
     await require_team_admin(request.team_id, user)
     result = await billing.create_checkout_session(
-        request.team_id, request.tier, request.success_url, request.cancel_url
+        request.team_id, request.tier, request.success_url, request.cancel_url,
+        coupon_code=request.coupon_code,
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+@router.post("/coupons/check")
+async def check_coupon(
+    request: CouponCheckRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Tell a billing admin whether a code applies before they go to checkout."""
+    from app.services.coupon_service import CouponError, CouponService
+
+    await require_team_admin(request.team_id, user)
+    try:
+        coupon = await CouponService().check(request.code, request.tier, request.team_id)
+    except CouponError as exc:
+        return {"valid": False, "message": str(exc)}
+    return {"valid": True, "code": coupon["code"], "summary": CouponService.summary(coupon)}
 
 
 @router.post("/webhook")

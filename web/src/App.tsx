@@ -51,6 +51,7 @@ const HRDashboard = lazy(() => import('./pages/HRDashboard'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const ExplorePage = lazy(() => import('./pages/ExplorePage'))
+const ComprehensionMapPage = lazy(() => import('./pages/ComprehensionMapPage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const FirstIssuePage = lazy(() => import('./pages/FirstIssuePage'))
 const AskPage = lazy(() => import('./pages/AskPage'))
@@ -216,6 +217,8 @@ export default function App() {
                   <ErrorBoundary><ContactPage /></ErrorBoundary>
                 </Suspense>
               } />
+              {/* Old slug read as a certification claim in link previews. */}
+              <Route path="/blog/onramp-achieves-soc-2-type-ii-certification" element={<Navigate to="/blog/soc-2-type-ii-status" replace />} />
               <Route path="/blog/:slug" element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <ErrorBoundary><BlogPostPage /></ErrorBoundary>
@@ -260,6 +263,11 @@ export default function App() {
                   <Route path="/explore" element={
                     <Suspense fallback={<ExploreResultSkeleton />}>
                       <ErrorBoundary><ExplorePage /></ErrorBoundary>
+                    </Suspense>
+                  } />
+                  <Route path="/map" element={
+                    <Suspense fallback={<ExploreResultSkeleton />}>
+                      <ErrorBoundary><ComprehensionMapPage /></ErrorBoundary>
                     </Suspense>
                   } />
                   <Route path="/learn" element={
