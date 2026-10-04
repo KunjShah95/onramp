@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, checkCoupon, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
 import type { CreditWallet, LedgerEntry } from '../lib/api'
 import { cn } from '../lib/utils'
-import { getPlanIntent } from '../lib/plan-intent'
+import { getPlanIntent, captureCouponIntent, getCouponIntent } from '../lib/plan-intent'
 import { PageHeader } from '../components/ui/page-header'
 import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState } from '../components/ui/empty-state'
@@ -40,6 +40,29 @@ export default function BillingPage() {
   const [searchParams] = useSearchParams()
   const planIntent = getPlanIntent(searchParams)
   const tierRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  // Promo code: prefilled from a launch link (?coupon=) or typed here. Checked
+  // on Apply, and always re-checked server-side at checkout.
+  const [couponCode, setCouponCode] = useState(() => {
+    captureCouponIntent(searchParams.toString())
+    return getCouponIntent()
+  })
+  const [couponNote, setCouponNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const [checkingCoupon, setCheckingCoupon] = useState(false)
+
+  async function handleCheckCoupon() {
+    const code = couponCode.trim()
+    if (!code || !teamId.trim()) return
+    setCheckingCoupon(true)
+    try {
+      const res = await checkCoupon({ team_id: teamId.trim(), tier: planIntent && planIntent !== 'free' && planIntent !== 'enterprise' ? planIntent : 'startup', code })
+      setCouponNote(res.valid ? { ok: true, text: `${res.code}: ${res.summary}` } : { ok: false, text: res.message })
+    } catch (e) {
+      setCouponNote({ ok: false, text: e instanceof Error ? e.message : 'Could not check the code' })
+    } finally {
+      setCheckingCoupon(false)
+    }
+  }
 
   useEffect(() => {
     if (!planIntent || loading || !teamId) return
@@ -156,7 +179,8 @@ export default function BillingPage() {
       } else {
         const successUrl = `${window.location.origin}/billing?checkout=success&team_id=${teamId.trim()}`
         const cancelUrl = `${window.location.origin}/billing?checkout=cancelled`
-        const result = await createCheckoutSession({ team_id: teamId.trim(), tier, success_url: successUrl, cancel_url: cancelUrl })
+        const coupon = couponCode.trim()
+        const result = await createCheckoutSession({ team_id: teamId.trim(), tier, success_url: successUrl, cancel_url: cancelUrl, ...(coupon ? { coupon_code: coupon } : {}) })
         if (result.url) { window.location.href = result.url } else { setError('Payment system is not configured. Contact support or try again later.') }
       }
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create subscription') }
@@ -482,6 +506,32 @@ export default function BillingPage() {
               <Receipt className="w-3.5 h-3.5" aria-hidden /> Invoices over email
             </span>
           </div>
+
+          <form
+            className="mb-4 flex flex-wrap items-end gap-2"
+            onSubmit={(e) => { e.preventDefault(); void handleCheckCoupon() }}
+          >
+            <div>
+              <label htmlFor="coupon-code" className="field-label">Promo code</label>
+              <input
+                id="coupon-code"
+                className="input mt-1.5 w-48 uppercase"
+                value={couponCode}
+                maxLength={32}
+                autoComplete="off"
+                placeholder="Optional"
+                onChange={(e) => { setCouponCode(e.target.value); setCouponNote(null) }}
+              />
+            </div>
+            <button type="submit" className="btn btn-secondary" disabled={!couponCode.trim() || checkingCoupon}>
+              {checkingCoupon ? 'Checking…' : 'Apply'}
+            </button>
+            {couponNote && (
+              <p role="status" className={cn('w-full text-caption', couponNote.ok ? 'text-go' : 'text-abort')}>
+                {couponNote.text}
+              </p>
+            )}
+          </form>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
             {tiers.map((tier) => {

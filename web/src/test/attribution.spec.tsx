@@ -43,7 +43,7 @@ describe('ContactPage form', () => {
   async function fillAndSend() {
     const { default: ContactPage } = await import('../pages/ContactPage')
     render(<MemoryRouter><ContactPage /></MemoryRouter>)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     await user.type(screen.getByLabelText('Name'), 'Ada')
     await user.type(screen.getByLabelText('Email'), 'ada@example.com')
     await user.type(screen.getByLabelText('Message'), 'We hire every quarter.')
@@ -72,5 +72,19 @@ describe('ContactPage form', () => {
     const { default: ContactPage } = await import('../pages/ContactPage')
     const { container } = render(<MemoryRouter><ContactPage /></MemoryRouter>)
     expect(container.innerHTML).not.toMatch(/@onramp\.ai/)
+  })
+})
+
+describe('captureCouponIntent', () => {
+  it('carries a launch-link promo code to checkout, upper-cased', async () => {
+    const { captureCouponIntent, getCouponIntent } = await import('../lib/plan-intent')
+    captureCouponIntent('?coupon=phlaunch&utm_source=hn')
+    expect(getCouponIntent()).toBe('PHLAUNCH')
+  })
+
+  it('ignores codes that are not plain slugs', async () => {
+    const { captureCouponIntent, getCouponIntent } = await import('../lib/plan-intent')
+    captureCouponIntent('?coupon=%3Cimg%3E')
+    expect(getCouponIntent()).toBe('')
   })
 })

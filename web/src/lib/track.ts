@@ -22,6 +22,7 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { captureUtm } from './attribution'
+import { captureCouponIntent } from './plan-intent'
 
 /** Must stay in sync with ALLOWED_EVENTS in the backend. Unknown names are dropped server-side. */
 export type EventName =
@@ -132,6 +133,7 @@ export function useTrackedPath(): void {
   useEffect(() => {
     currentPath = pathname.split('?')[0].split('#')[0] || '/'
     captureUtm()
+    captureCouponIntent()
   }, [pathname])
 }
 

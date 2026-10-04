@@ -692,3 +692,59 @@ async def gtm_funnel(
         "leads_by_source": dict(leads_by_source),
         "leads_total": sum(leads_by_source.values()),
     }
+
+
+# ─── Billing coupons (launch codes, design-partner offers) ──────────────────
+
+
+class CouponCreateRequest(BaseModel):
+    code: str
+    kind: str  # "trial_days" | "razorpay_offer"
+    description: str = ""
+    tiers: list[str] = []
+    trial_days: Optional[int] = None
+    razorpay_offer_id: Optional[str] = None
+    max_redemptions: Optional[int] = None
+    expires_at: Optional[datetime] = None
+
+
+class CouponActiveRequest(BaseModel):
+    active: bool
+
+
+@router.get("/coupons")
+async def list_coupons(uid: str = Depends(_require_owner)):
+    from app.services.coupon_service import CouponService
+
+    coupons = await CouponService().list_coupons()
+    return {"coupons": coupons, "count": len(coupons)}
+
+
+@router.post("/coupons", status_code=201)
+async def create_coupon(body: CouponCreateRequest, uid: str = Depends(_require_owner)):
+    from app.services.coupon_service import CouponService
+
+    try:
+        return await CouponService().create_coupon(
+            body.code,
+            body.kind,
+            description=body.description,
+            tiers=body.tiers,
+            trial_days=body.trial_days,
+            razorpay_offer_id=body.razorpay_offer_id,
+            max_redemptions=body.max_redemptions,
+            expires_at=body.expires_at,
+            created_by=uid,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/coupons/{code}")
+async def set_coupon_active(code: str, body: CouponActiveRequest, uid: str = Depends(_require_owner)):
+    from app.services.coupon_service import CouponService
+
+    coupon = await CouponService().set_active(code, body.active)
+    if coupon is None:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+    return coupon
