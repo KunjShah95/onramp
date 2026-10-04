@@ -233,5 +233,6 @@ class TeamService:
         return await get_team_invites(team_id)
 
     async def change_tier(self, team_id: str, tier: str) -> dict:
-        max_members = 5 if tier == "startup" else (20 if tier == "professional" else 1)
+        from app.services.api_key_service import APIKeyService
+        max_members = APIKeyService.get_plan_limits(tier)["max_members"]
         return {"tier": tier, "max_members": max_members}
