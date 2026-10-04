@@ -68,7 +68,7 @@ async def _enforce(scope: str, action: str) -> tuple[int, str, Optional[dict]]:
             )
         return cost, tier, wallet
 
-    limits = APIKeyService.get_tier_limits(tier)
+    limits = APIKeyService.get_plan_limits(tier)
 
     quota = await _usage.check_quota(scope, limits)
     if not quota.get("within_quota", True):

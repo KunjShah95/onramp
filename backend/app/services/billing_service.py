@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta, timezone
 from app.services.postgres_db import get_storage, generate_id, idempotency_document_id
+from app.services.api_key_service import PLAN_LIMITS
 
 logger = logging.getLogger("onramp.billing")
 
@@ -19,10 +20,21 @@ RAZORPAY_PLAN_IDS = {
 
 
 # INR pricing (platform usage only — BYOK keeps AI token cost on the user's own keys).
+def _plan_features(plan: str) -> List[str]:
+    """Feature bullets generated from the enforced plan limits (no drift)."""
+    lim = PLAN_LIMITS[plan]
+    members, repos = lim["max_members"], lim["max_repos"]
+    return [
+        f"{members} member{'s' if members != 1 else ''}",
+        f"{repos} repo{'s' if repos != 1 else ''}",
+        f"{lim['credits_per_month']} credits/mo",
+    ]
+
+
 TIER_PRICING = {
-    "free": {"price_monthly": 0, "price_yearly": 0, "features": ["1 member", "1 repo", "50 credits/mo"]},
-    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": ["5 members", "10 repos", "5000 credits/mo"]},
-    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": ["20 members", "50 repos", "50000 credits/mo"]},
+    "free": {"price_monthly": 0, "price_yearly": 0, "features": _plan_features("free")},
+    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": _plan_features("startup")},
+    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": _plan_features("professional")},
     "usage_based": {"price_monthly": 499, "price_yearly": 4999, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
