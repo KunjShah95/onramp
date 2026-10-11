@@ -113,6 +113,11 @@ async def accept_invite(token: str, user_id: str) -> dict:
         await storage.update_document(COLLECTION, invite["id"], {"status": "expired"})
         raise ValueError("Invite has expired")
 
+    # Seat check before claiming, so a full team leaves the invite pending
+    # and it can still be accepted once the team upgrades.
+    from app.services.entitlements import ensure_seat_available
+    await ensure_seat_available(invite["team_id"])
+
     # Atomically claim the invite before adding the member — prevents a
     # TOCTOU race where two concurrent requests both pass the status check
     # and both call add_member.

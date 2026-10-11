@@ -17,6 +17,8 @@ from app.services.invite_service import (
 )
 from app.services.user_service import get_user_by_email
 from app.services.cache_service import cached, invalidate_prefix
+from app.services.entitlements import PlanLimitReached, ensure_seat_available
+from app.services._shared.errors import to_http
 
 logger = logging.getLogger("onramp.invites")
 router = APIRouter(prefix="/invites", tags=["team-invites"])
@@ -49,6 +51,10 @@ async def create_team_invite(
     _: None = require_minimum_role("senior"),
 ):
     """Create a pending invite for a new team member. Senior+ only."""
+    try:
+        await ensure_seat_available(team_id, count_pending_invites=True)
+    except PlanLimitReached as exc:
+        raise to_http(exc) from exc
     invite = await create_invite(
         team_id=team_id,
         email=body.email,
@@ -150,6 +156,8 @@ async def accept_team_invite(
     try:
         result = await accept_invite(token, user.get("uid", ""))
         return result
+    except PlanLimitReached as exc:
+        raise to_http(exc) from exc
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

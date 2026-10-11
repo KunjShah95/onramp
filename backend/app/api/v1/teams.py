@@ -283,6 +283,12 @@ async def list_members(
 async def add_member(team_id: str, request: AddMemberRequest, user: dict = Depends(get_current_user), _: None = require_minimum_role("senior")):
     if request.role not in {"member", "junior_dev", "developer", "tester", "hr", "senior", "senior_dev"}:
         raise HTTPException(status_code=400, detail="Unsupported team role")
+    from app.services.entitlements import PlanLimitReached, ensure_seat_available
+    from app.services._shared.errors import to_http
+    try:
+        await ensure_seat_available(team_id)
+    except PlanLimitReached as exc:
+        raise to_http(exc) from exc
     result = await team_service.add_member(team_id, request.user, request.role)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])

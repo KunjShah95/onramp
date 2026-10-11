@@ -13,6 +13,7 @@ from fastapi import Request, HTTPException, Depends
 from app.services.api_key_service import APIKeyService
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
+from app.services.entitlements import limits_for
 from app.services.credit_service import CreditService, InsufficientCreditsError
 from app.services.team_service import get_user_teams
 from app.services._shared.errors import PaymentRequired, QuotaExceeded, to_http as _to_http
@@ -68,7 +69,10 @@ async def _enforce(scope: str, action: str) -> tuple[int, str, Optional[dict]]:
             )
         return cost, tier, wallet
 
-    limits = APIKeyService.get_tier_limits(tier)
+    # Monthly allowance is what the plan advertises (entitlements.PLAN_LIMITS);
+    # rate limits still come from the API-key tier. 0 = unlimited in check_quota.
+    plan_credits = limits_for(tier)["credits_per_month"]
+    limits = {**APIKeyService.get_tier_limits(tier), "credits_per_month": plan_credits or 0}
 
     quota = await _usage.check_quota(scope, limits)
     if not quota.get("within_quota", True):

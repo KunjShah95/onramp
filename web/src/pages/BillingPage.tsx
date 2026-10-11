@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
-import type { CreditWallet, LedgerEntry } from '../lib/api'
+import { createSubscription, getSubscription, cancelSubscription, createCheckoutSession, updateSubscription, getPlanUsage, listTeams, getCreditWallet, getCreditLedger, createCreditOrder, verifyCreditOrder, CREDIT_COSTS_LIST } from '../lib/api'
+import type { CreditWallet, LedgerEntry, PlanUsage } from '../lib/api'
 import { cn } from '../lib/utils'
 import { getPlanIntent } from '../lib/plan-intent'
 import { PageHeader } from '../components/ui/page-header'
@@ -27,6 +27,8 @@ export default function BillingPage() {
   const [subscribingTier, setSubscribingTier] = useState<string | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [usage, setUsage] = useState<PlanUsage | null>(null)
 
   // Wallet state
   const [wallet, setWallet] = useState<CreditWallet | null>(null)
@@ -50,13 +52,15 @@ export default function BillingPage() {
     }
   }, [planIntent, loading, teamId])
 
+  // Prices mirror TIER_PRICING in backend/app/services/billing_service.py.
   const tiers = [
-    { id: 'free', price: 0, label: 'Free', tagline: 'For side projects', cta: 'Downgrade to Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
-    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, label: 'Usage-Based', tagline: 'Pay for what you run', cta: 'Choose Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
-    { id: 'startup', price: 999, label: 'Startup', tagline: 'For small teams shipping', cta: 'Choose Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
-    { id: 'professional', price: 2999, label: 'Professional', tagline: 'For teams scaling onboarding', cta: 'Choose Professional', popular: true, blurb: '14-day trial on first subscribe', features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
-    { id: 'enterprise', price: 0, label: 'Enterprise', tagline: 'Security & scale', cta: 'Contact Sales', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
+    { id: 'free', price: 0, yearly: 0, label: 'Free', tagline: 'For side projects', cta: 'Downgrade to Free', features: ['1 team member', '1 repository', '50 credits/month', 'Community support'] },
+    ...(usageBasedEnabled ? [{ id: 'usage_based', price: 499, yearly: 4999, label: 'Usage-Based', tagline: 'Pay for what you run', cta: 'Choose Usage-Based', features: ['1 team member', '1 repository', 'Pay per query', 'Email support'] }] : []),
+    { id: 'startup', price: 999, yearly: 9999, label: 'Startup', tagline: 'For small teams shipping', cta: 'Choose Startup', features: ['5 team members', '10 repositories', '5,000 credits/month', 'Email support'] },
+    { id: 'professional', price: 2999, yearly: 29999, label: 'Professional', tagline: 'For teams scaling onboarding', cta: 'Choose Professional', popular: true, blurb: '14-day trial on first subscribe', features: ['20 team members', '50 repositories', '50,000 credits/month', 'Priority support'] },
+    { id: 'enterprise', price: 0, yearly: 0, label: 'Enterprise', tagline: 'Security & scale', cta: 'Contact Sales', features: ['Unlimited members', 'Unlimited repos', 'Unlimited credits', 'Dedicated support', 'SSO', 'SLA'] },
   ]
+  const TIER_RANK: Record<string, number> = { free: 0, usage_based: 1, startup: 2, professional: 3, enterprise: 4 }
 
   useEffect(() => {
     let cancelled = false
@@ -83,7 +87,9 @@ export default function BillingPage() {
           if (cancelled) return
           setSubscription(data)
           setSelectedTier(data?.tier ?? null)
+          if (data?.billing_cycle === 'yearly') setCycle('yearly')
           if (data?.tier === 'usage_based') fetchWallet()
+          getPlanUsage(teamId.trim()).then((u) => { if (!cancelled) setUsage(u) }).catch(() => { if (!cancelled) setUsage(null) })
         } catch {
           if (!cancelled) { setSubscription(null); setSelectedTier(null) }
         }
@@ -126,6 +132,7 @@ export default function BillingPage() {
       if (data?.tier === 'usage_based') {
         await fetchWallet()
       }
+      getPlanUsage(id.trim()).then(setUsage).catch(() => setUsage(null))
     } catch {
       setSubscription(null); setSelectedTier(null)
     }
@@ -148,18 +155,33 @@ export default function BillingPage() {
       window.location.href = '/contact?plan=enterprise'
       return
     }
+    // A paid plan that's already billing changes in place (Razorpay prorates
+    // upgrades; downgrades wait for renewal). Going back to Free is a cancel.
+    const onPaidPlan = Boolean(subscription?.razorpay_subscription_id) && subscription?.tier !== 'free'
+    if (tier === 'free' && onPaidPlan) {
+      setShowCancelConfirm(true)
+      return
+    }
     setSubscribingTier(tier)
     try {
       if (tier === 'free') {
         await createSubscription({ team_id: teamId.trim(), tier, billing_cycle: 'monthly' })
         setSelectedTier(tier); await fetchSubscription(); toast.success('Subscribed', `${tier} plan activated`)
+      } else if (onPaidPlan) {
+        const result = await updateSubscription(teamId.trim(), { tier, billing_cycle: cycle })
+        await fetchSubscription()
+        if (result.change_applies === 'cycle_end') {
+          toast.info('Plan change scheduled', `Switches to ${tierLabel(tier)} at your next renewal.`)
+        } else {
+          toast.success('Plan upgraded', `You're on ${tierLabel(tier)} now — the difference is prorated.`)
+        }
       } else {
         const successUrl = `${window.location.origin}/billing?checkout=success&team_id=${teamId.trim()}`
         const cancelUrl = `${window.location.origin}/billing?checkout=cancelled`
-        const result = await createCheckoutSession({ team_id: teamId.trim(), tier, success_url: successUrl, cancel_url: cancelUrl })
+        const result = await createCheckoutSession({ team_id: teamId.trim(), tier, success_url: successUrl, cancel_url: cancelUrl, billing_cycle: cycle })
         if (result.url) { window.location.href = result.url } else { setError('Payment system is not configured. Contact support or try again later.') }
       }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create subscription') }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to change plan') }
     finally { setSubscribingTier(null) }
   }
 
@@ -168,12 +190,28 @@ export default function BillingPage() {
     if (!teamId.trim() || !subscription || cancelling) return
     setCancelling(true)
     try {
-      await cancelSubscription(teamId.trim())
-      setSubscription(null); setSelectedTier(null); setWallet(null)
+      const result = await cancelSubscription(teamId.trim())
       setShowCancelConfirm(false)
-      toast.info('Plan cancelled', 'Access continues until period ends.')
+      if (result.at_period_end) {
+        setSubscription({ ...subscription, cancel_at_period_end: true, pending_tier: null })
+        toast.info('Renewal cancelled', result.current_period_end
+          ? `No further charges. Access continues until ${formatDate(result.current_period_end)}.`
+          : 'No further charges. Access continues until the period ends.')
+      } else {
+        setSubscription(null); setSelectedTier(null); setWallet(null)
+        toast.info('Plan cancelled', 'Your team is back on Free.')
+        getPlanUsage(teamId.trim()).then(setUsage).catch(() => setUsage(null))
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to cancel'); toast.error('Failed to cancel plan') }
     finally { setCancelling(false) }
+  }
+
+  function tierLabel(id: string) {
+    return tiers.find((t) => t.id === id)?.label ?? id.replace('_', ' ')
+  }
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
   function loadRazorpayScript(): Promise<boolean> {
@@ -244,10 +282,10 @@ export default function BillingPage() {
         <PageHeader
           eyebrow="Folio · Billing"
           title="Billing & plans"
-          subtitle="One subscription per team workspace. Prices in INR, billed monthly. Cancel anytime — access continues to period end."
+          subtitle="One subscription per team workspace. Prices in INR, billed monthly or yearly. Cancel anytime — access continues to period end."
           pills={subscription ? [
             { label: 'plan', value: subscription.tier },
-            { label: 'per month', value: `₹${subscription.price}` },
+            { label: subscription.billing_cycle === 'yearly' ? 'per year' : 'per month', value: `₹${subscription.price}` },
             { label: 'status', value: subscription.status },
           ] : undefined}
           actions={
@@ -301,7 +339,7 @@ export default function BillingPage() {
             designator={activeTeamName.toUpperCase().slice(0, 24)}
             status={planStatus}
             live={loading}
-            action={subscription && canManage ? (
+            action={subscription && canManage && !subscription.cancel_at_period_end ? (
               <button
                 onClick={() => setShowCancelConfirm(true)}
                 className="text-caption font-medium text-abort/80 hover:text-abort underline underline-offset-2 decoration-abort/30 hover:decoration-abort transition-colors"
@@ -325,7 +363,7 @@ export default function BillingPage() {
                   <div className="text-caption text-ink-tertiary mt-0.5 capitalize">{subscription.billing_cycle} billing</div>
                 </div>
                 <div className="bg-panel p-4">
-                  <div className="overline text-ink-muted mb-1.5">Monthly price</div>
+                  <div className="overline text-ink-muted mb-1.5">{subscription.billing_cycle === 'yearly' ? 'Yearly price' : 'Monthly price'}</div>
                   <div className="font-display text-display-sm text-ink tabular-nums">₹{Number(subscription.price).toLocaleString('en-IN')}</div>
                   <div className="text-caption text-ink-tertiary mt-0.5">excl. taxes</div>
                 </div>
@@ -347,6 +385,17 @@ export default function BillingPage() {
                     <span className={cn('w-1.5 h-1.5 rounded-full', subscription.status === 'active' ? 'bg-go-lit' : 'bg-caution-lit')} aria-hidden />
                     {subscription.status}
                   </span>
+                  {subscription.cancel_at_period_end ? (
+                    <div className="text-caption text-caution mt-1.5">
+                      Renewal off{subscription.current_period_end ? ` · ends ${formatDate(subscription.current_period_end)}` : ''}
+                    </div>
+                  ) : subscription.trial_end && new Date(subscription.trial_end) > new Date() ? (
+                    <div className="text-caption text-ink-tertiary mt-1.5">Trial ends {formatDate(subscription.trial_end)}</div>
+                  ) : subscription.pending_tier ? (
+                    <div className="text-caption text-ink-tertiary mt-1.5">Switches to {tierLabel(subscription.pending_tier)} at renewal</div>
+                  ) : subscription.current_period_end ? (
+                    <div className="text-caption text-ink-tertiary mt-1.5">Renews {formatDate(subscription.current_period_end)}</div>
+                  ) : null}
                   {!canManage && (
                     <div className="text-caption text-ink-tertiary mt-1.5">Only admins can change plans.</div>
                   )}
@@ -364,6 +413,39 @@ export default function BillingPage() {
               </div>
             )}
           </ConsolePanel>
+        </div>
+      )}
+
+      {/* ── What the plan includes vs. what the team uses ── */}
+      {teamId && usage && (
+        <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="Plan usage">
+          {([
+            { key: 'members', label: 'Team members' },
+            { key: 'repos', label: 'Repositories' },
+            { key: 'credits', label: 'AI credits this month' },
+          ] as const).map(({ key, label }) => {
+            const { used, limit } = usage[key]
+            const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
+            const full = limit !== null && used >= limit
+            return (
+              <div key={key} className="rounded-card border border-seam bg-panel p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="overline text-ink-muted">{label}</span>
+                  <span className={cn('font-mono text-caption tabular-nums', full ? 'text-caution' : 'text-ink-secondary')}>
+                    {used.toLocaleString('en-IN')} / {limit === null ? '∞' : limit.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                {limit !== null && (
+                  <div className="mt-2.5 h-1.5 rounded-pill bg-well overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${label} used`}>
+                    <div className={cn('h-full rounded-pill transition-all', full ? 'bg-caution' : 'bg-go')} style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+                {full && key !== 'credits' && (
+                  <p className="text-caption text-ink-tertiary mt-2">Limit reached — upgrade to add more.</p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -478,17 +560,40 @@ export default function BillingPage() {
               <div className="index-kicker mb-1.5">Tier matrix</div>
               <h2 className="font-display text-display-sm text-ink tracking-tight">Choose the plan that fits this team</h2>
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-caption text-ink-tertiary shrink-0">
-              <Receipt className="w-3.5 h-3.5" aria-hidden /> Invoices over email
-            </span>
+            <div role="group" aria-label="Billing period" className="flex shrink-0 items-center gap-1 rounded-input border border-seam bg-panel p-1">
+              {(['monthly', 'yearly'] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={cycle === c}
+                  onClick={() => setCycle(c)}
+                  className={cn(
+                    'rounded-tile px-3 py-1.5 text-caption capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/40',
+                    cycle === c ? 'bg-ink text-[var(--room)]' : 'text-ink-secondary hover:text-ink'
+                  )}
+                >
+                  {c}{c === 'yearly' && <span className="ml-1.5 opacity-70">2 months free</span>}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
             {tiers.map((tier) => {
-              const isCurrent = selectedTier === tier.id
+              const paidTier = tier.price > 0
+              const isCurrent = selectedTier === tier.id && (!paidTier || (subscription?.billing_cycle || 'monthly') === cycle)
               const isIntent = planIntent === tier.id && !isCurrent
               const busy = subscribingTier === tier.id
-              const disabled = !teamId.trim() || isCurrent || !canManage || subscribingTier !== null
+              const onPaidPlan = Boolean(subscription?.razorpay_subscription_id) && subscription?.tier !== 'free'
+              // A plan set to cancel can't be changed until it ends; then a fresh checkout starts.
+              const locked = Boolean(subscription?.cancel_at_period_end) && tier.id !== 'enterprise'
+              const disabled = !teamId.trim() || isCurrent || !canManage || subscribingTier !== null || locked
+              const cta = onPaidPlan && tier.id !== 'enterprise' && tier.id !== subscription?.tier
+                ? (TIER_RANK[tier.id] > TIER_RANK[subscription?.tier] ? `Upgrade to ${tier.label}` : `Downgrade to ${tier.label}`)
+                : onPaidPlan && tier.id === subscription?.tier
+                  ? `Switch to ${cycle}`
+                  : tier.cta
+              const shownPrice = cycle === 'yearly' ? tier.yearly : tier.price
               return (
                 <div key={tier.id} className="h-full">
                   <article
@@ -525,10 +630,10 @@ export default function BillingPage() {
                     <p className="text-caption text-ink-tertiary mt-0.5 mb-3">{tier.tagline}{(tier as any).blurb ? ` · ${(tier as any).blurb}` : ''}</p>
 
                     <div className="mb-4 min-h-[44px]">
-                      {tier.price > 0 ? (
+                      {paidTier ? (
                         <p className="flex items-baseline gap-1">
-                          <span className="font-display text-[30px] leading-none font-bold text-ink tabular-nums">₹{tier.price.toLocaleString('en-IN')}</span>
-                          <span className="text-caption text-ink-muted">/mo</span>
+                          <span className="font-display text-[30px] leading-none font-bold text-ink tabular-nums">₹{shownPrice.toLocaleString('en-IN')}</span>
+                          <span className="text-caption text-ink-muted">{cycle === 'yearly' ? '/yr' : '/mo'}</span>
                         </p>
                       ) : (
                         <p className="font-display text-[22px] leading-[44px] text-ink-secondary">{tier.id === 'enterprise' ? 'Custom' : '₹0'}</p>
@@ -549,7 +654,7 @@ export default function BillingPage() {
                     <button
                       onClick={() => handleCreateSubscription(tier.id)}
                       disabled={disabled}
-                      title={!teamId.trim() ? 'Select a team first' : !canManage ? 'Only a team admin can change plans' : ''}
+                      title={!teamId.trim() ? 'Select a team first' : !canManage ? 'Only a team admin can change plans' : locked ? 'Your plan is set to cancel — pick a new plan after it ends' : ''}
                       aria-busy={busy}
                       className={cn(
                         'w-full py-2.5 rounded-btn text-body-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-go/50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2',
@@ -561,7 +666,7 @@ export default function BillingPage() {
                       )}
                     >
                       {busy && <Spinner className="w-4 h-4 animate-spin" aria-hidden />}
-                      {isCurrent ? 'Current plan' : busy ? 'Redirecting…' : tier.cta}
+                      {isCurrent ? 'Current plan' : busy ? (onPaidPlan ? 'Updating…' : 'Redirecting…') : cta}
                     </button>
                   </article>
                 </div>
@@ -585,8 +690,10 @@ export default function BillingPage() {
         <div className="p-5">
           <p className="text-body-sm text-ink-secondary leading-relaxed">
             Cancel the <span className="font-semibold text-ink capitalize">{subscription?.tier?.replace('_', ' ')}</span> plan
-            for <span className="font-semibold text-ink">{activeTeamName}</span>? Your team keeps
-            access until the end of the billing period.
+            for <span className="font-semibold text-ink">{activeTeamName}</span>? Renewal stops now and you
+            won't be charged again. Your team keeps access until
+            {subscription?.current_period_end ? ` ${formatDate(subscription.current_period_end)}` : ' the end of the billing period'}, then
+            moves to Free.
           </p>
           <div className="flex justify-end gap-2.5 mt-5">
             <button onClick={() => setShowCancelConfirm(false)} disabled={cancelling} className="btn-secondary">

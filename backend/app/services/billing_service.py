@@ -16,6 +16,62 @@ RAZORPAY_PLAN_IDS = {
     "professional": os.getenv("RAZORPAY_PLAN_PROFESSIONAL"),
     "usage_based": os.getenv("RAZORPAY_PLAN_USAGE_BASED"),
 }
+# A Razorpay plan has a fixed period, so yearly billing needs its own plans.
+RAZORPAY_YEARLY_PLAN_IDS = {
+    "startup": os.getenv("RAZORPAY_PLAN_STARTUP_YEARLY"),
+    "professional": os.getenv("RAZORPAY_PLAN_PROFESSIONAL_YEARLY"),
+    "usage_based": os.getenv("RAZORPAY_PLAN_USAGE_BASED_YEARLY"),
+}
+BILLING_CYCLES = ("monthly", "yearly")
+# Razorpay requires a finite total_count. ~10 years either way, so a
+# subscription renews until the customer cancels instead of "completing"
+# (and silently dropping the team to free) after its first year.
+TOTAL_BILLING_CYCLES = {"monthly": 120, "yearly": 10}
+# Free trial on a team's first paid subscription (advertised on the pricing page).
+TRIAL_DAYS = {"professional": 14}
+TIER_RANK = {"free": 0, "usage_based": 1, "startup": 2, "professional": 3, "enterprise": 4}
+
+
+def _plan_id(tier: str, billing_cycle: str) -> Optional[str]:
+    ids = RAZORPAY_YEARLY_PLAN_IDS if billing_cycle == "yearly" else RAZORPAY_PLAN_IDS
+    return ids.get(tier)
+
+
+def _plan_lookup(plan_id: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """Map a Razorpay plan id back to ``(tier, billing_cycle)``."""
+    if not plan_id:
+        return None, None
+    for cycle, ids in (("monthly", RAZORPAY_PLAN_IDS), ("yearly", RAZORPAY_YEARLY_PLAN_IDS)):
+        for tier, pid in ids.items():
+            if pid and pid == plan_id:
+                return tier, cycle
+    return None, None
+
+
+def _as_datetime(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str) and value:
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return None
+
+
+def _from_epoch(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromtimestamp(int(value), tz=timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        logger.warning("Invalid Razorpay timestamp: %r", value)
+        return None
+
+
+class BillingProviderError(Exception):
+    """Razorpay rejected or could not complete a subscription change."""
 
 
 # INR pricing (platform usage only — BYOK keeps AI token cost on the user's own keys).
@@ -27,6 +83,11 @@ TIER_PRICING = {
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
 SELF_SERVICE_TIERS = {"free", "startup", "professional", "usage_based"}
+
+
+def _price(tier: str, billing_cycle: str) -> int:
+    pricing = TIER_PRICING.get(tier, TIER_PRICING["free"])
+    return pricing["price_yearly"] if billing_cycle == "yearly" else pricing["price_monthly"]
 
 
 # Razorpay subscription event → local subscription status mapping.
@@ -172,13 +233,100 @@ class BillingService:
         })
         return {**sub, "tier": tier, "price": price, "status": status}
 
-    async def cancel_subscription(self, team_id: str) -> bool:
+    async def get_billing_record(self, team_id: str) -> Optional[Dict[str, Any]]:
+        """The team's subscription row in any status (team_id is unique)."""
+        subs = await self.storage.query_documents(self.COLLECTION, [("team_id", "==", team_id)])
+        return subs[0] if subs else None
+
+    async def cancel_subscription(self, team_id: str) -> Optional[Dict[str, Any]]:
+        """Cancel a team's plan. Returns the updated subscription, or None if none is active.
+
+        A Razorpay-backed plan is cancelled at the provider — otherwise the
+        customer keeps getting charged and the next ``subscription.charged``
+        webhook re-activates it. Paid periods run to their end
+        (``cancel_at_period_end``); a plan still in its free trial ends now.
+        Raises BillingProviderError when Razorpay cannot be reached.
+        """
         sub = await self.get_subscription(team_id)
         if not sub:
-            return False
+            return None
         sub_id = sub.get("subscription_id", sub.get("id", ""))
-        await self.storage.update_document(self.COLLECTION, sub_id, {"status": "canceled"})
-        return True
+        rzp_id = sub.get("razorpay_subscription_id")
+
+        if rzp_id:
+            if not self.is_razorpay_enabled():
+                raise BillingProviderError("Billing provider is not configured; cannot stop renewal")
+            trial_end = _as_datetime(sub.get("trial_end"))
+            at_cycle_end = not (trial_end and trial_end > _utcnow())
+            client = self._razorpay()
+            try:
+                await asyncio.to_thread(
+                    client.subscription.cancel, rzp_id, {"cancel_at_cycle_end": 1 if at_cycle_end else 0}
+                )
+            except Exception as exc:
+                logger.error("Razorpay cancel failed for %s: %s", rzp_id, exc)
+                _sentry_report(exc, {"team_id": team_id, "razorpay_subscription_id": rzp_id})
+                raise BillingProviderError("Could not cancel with the billing provider") from exc
+            if at_cycle_end:
+                updates = {"cancel_at_period_end": True, "pending_tier": None}
+                await self.storage.update_document(self.COLLECTION, sub_id, updates)
+                return {**sub, **updates}
+
+        updates = {"status": "canceled", "cancel_at_period_end": False}
+        await self.storage.update_document(self.COLLECTION, sub_id, updates)
+        return {**sub, **updates}
+
+    async def change_plan(self, team_id: str, tier: str, billing_cycle: Optional[str] = None) -> Dict[str, Any]:
+        """Move a Razorpay-backed subscription to another paid plan.
+
+        Upgrades (higher tier, or monthly→yearly) apply now and Razorpay
+        prorates; downgrades apply at the end of the paid cycle and are held
+        in ``pending_tier`` until Razorpay reports the new plan.
+        Raises ValueError for invalid requests, BillingProviderError when
+        Razorpay rejects the change.
+        """
+        sub = await self.get_subscription(team_id)
+        if not sub or not sub.get("razorpay_subscription_id"):
+            raise ValueError("No paid subscription to change — start one with checkout")
+        if sub.get("cancel_at_period_end"):
+            raise ValueError("This plan is set to cancel; start a new plan after it ends")
+        if tier not in SELF_SERVICE_TIERS or tier == "free":
+            raise ValueError("Choose a paid self-service plan, or cancel to return to Free")
+        cycle = billing_cycle or sub.get("billing_cycle") or "monthly"
+        if cycle not in BILLING_CYCLES:
+            raise ValueError(f"Unknown billing cycle: {cycle}")
+        current_tier = sub.get("tier", "free")
+        current_cycle = sub.get("billing_cycle") or "monthly"
+        if tier == current_tier and cycle == current_cycle:
+            raise ValueError("Already on this plan")
+        plan_id = _plan_id(tier, cycle)
+        if not plan_id:
+            raise ValueError(f"No Razorpay plan configured for {tier} ({cycle})")
+        if not self.is_razorpay_enabled():
+            raise BillingProviderError("Billing provider is not configured")
+
+        upgrade = (TIER_RANK.get(tier, 0), cycle == "yearly") > (
+            TIER_RANK.get(current_tier, 0), current_cycle == "yearly"
+        )
+        client = self._razorpay()
+        try:
+            await asyncio.to_thread(client.subscription.edit, sub["razorpay_subscription_id"], {
+                "plan_id": plan_id,
+                "schedule_change_at": "now" if upgrade else "cycle_end",
+                "customer_notify": 1,
+            })
+        except Exception as exc:
+            logger.error("Razorpay plan change failed for team %s: %s", team_id, exc)
+            _sentry_report(exc, {"team_id": team_id, "tier": tier, "billing_cycle": cycle})
+            raise BillingProviderError("The billing provider rejected the plan change") from exc
+
+        sub_id = sub.get("subscription_id", sub.get("id", ""))
+        if upgrade:
+            updates = {"tier": tier, "billing_cycle": cycle, "price": _price(tier, cycle), "pending_tier": None}
+        else:
+            updates = {"pending_tier": tier}
+        await self.storage.update_document(self.COLLECTION, sub_id, updates)
+        return {**sub, **updates, "change_applies": "now" if upgrade else "cycle_end"}
 
     async def attach_razorpay(self, team_id: str, razorpay_customer_id: str, razorpay_subscription_id: str) -> bool:
         sub = await self.get_subscription(team_id)
@@ -206,27 +354,52 @@ class BillingService:
         )
 
     async def create_checkout_session(
-        self, team_id: str, tier: str, success_url: str, cancel_url: str
+        self, team_id: str, tier: str, success_url: str, cancel_url: str, billing_cycle: str = "monthly"
     ) -> Dict[str, Any]:
-        """Create a Razorpay subscription for a paid tier. Returns {url, subscription_id}."""
-        if tier not in SELF_SERVICE_TIERS:
+        """Create a recurring Razorpay subscription for a paid tier.
+
+        Returns ``{url, subscription_id, trial_days}``.
+        """
+        if tier not in SELF_SERVICE_TIERS or tier == "free":
             return {"error": "Tier is not available for self-service checkout"}
+        if billing_cycle not in BILLING_CYCLES:
+            return {"error": f"Unknown billing cycle: {billing_cycle}"}
         if not self.is_razorpay_enabled():
             return {"error": "Razorpay is not configured", "stub": True}
-        plan_id = RAZORPAY_PLAN_IDS.get(tier)
+        plan_id = _plan_id(tier, billing_cycle)
         if not plan_id:
-            return {"error": f"No Razorpay plan configured for tier '{tier}'"}
+            return {"error": f"No Razorpay plan configured for {tier} ({billing_cycle})"}
+
+        record = await self.get_billing_record(team_id)
+        if (
+            record
+            and record.get("status") == "active"
+            and record.get("razorpay_subscription_id")
+            and record.get("tier") != "free"
+            and not record.get("cancel_at_period_end")
+        ):
+            return {"error": "Team already has a paid plan — change plan instead of starting a new one"}
+
+        # One trial per team: only if it has never had a Razorpay subscription.
+        trial_days = 0 if (record or {}).get("razorpay_subscription_id") else TRIAL_DAYS.get(tier, 0)
+
+        payload: Dict[str, Any] = {
+            "plan_id": plan_id,
+            "total_count": TOTAL_BILLING_CYCLES[billing_cycle],
+            "quantity": 1,
+            "customer_notify": 1,
+            "notes": {
+                "team_id": team_id, "tier": tier, "billing_cycle": billing_cycle,
+                "success_url": success_url, "cancel_url": cancel_url,
+            },
+        }
+        if trial_days:
+            payload["start_at"] = int((_utcnow() + timedelta(days=trial_days)).timestamp())
 
         client = self._razorpay()
 
         def _create():
-            return client.subscription.create({
-                "plan_id": plan_id,
-                "total_count": 12,
-                "quantity": 1,
-                "customer_notify": 1,
-                "notes": {"team_id": team_id, "tier": tier, "success_url": success_url, "cancel_url": cancel_url},
-            })
+            return client.subscription.create(payload)
 
         try:
             sub = await asyncio.to_thread(_create)
@@ -234,7 +407,7 @@ class BillingService:
             logger.error("Razorpay checkout creation failed: %s", exc)
             _sentry_report(exc, {"team_id": team_id, "tier": tier})
             return {"error": "Checkout creation failed"}
-        return {"url": sub.get("short_url"), "subscription_id": sub.get("id")}
+        return {"url": sub.get("short_url"), "subscription_id": sub.get("id"), "trial_days": trial_days}
 
     # ── Webhook processing ──────────────────────────────────────────────────
 
@@ -557,63 +730,35 @@ class BillingService:
         subscription_id = data_obj.get("id")
         notes = data_obj.get("notes") or {}
 
-        if event_type == "subscription.activated":
-            team_id = notes.get("team_id")
-            if not team_id:
-                logger.warning("subscription.activated missing team_id in notes")
-                return {"warning": "missing team_id"}
-            # Checkout creates the Razorpay subscription directly, so a local
-            # record may not exist. A direct API-created paid record may instead
-            # exist as ``pending`` and must be activated by this verified event.
-            local = await self.storage.query_documents(
-                self.COLLECTION, [("team_id", "==", team_id)]
-            )
-            if local:
-                local_id = local[0].get("subscription_id", local[0].get("id", ""))
-                await self.storage.update_document(
-                    self.COLLECTION,
-                    local_id,
-                    {
-                        "status": "active",
-                        "razorpay_customer_id": data_obj.get("customer_id"),
-                        "razorpay_subscription_id": subscription_id,
-                        "updated_at": _utcnow(),
-                    },
-                )
-            else:
-                plan_id = data_obj.get("plan_id")
-                tier = next(
-                    (t for t, pid in RAZORPAY_PLAN_IDS.items() if pid == plan_id),
-                    "startup",
-                )
-                sub = await self.create_subscription(
-                    team_id, tier, "monthly", verified_checkout=True
-                )
-                await self.storage.update_document(
-                    self.COLLECTION,
-                    sub["subscription_id"],
-                    {
-                        "razorpay_customer_id": data_obj.get("customer_id"),
-                        "razorpay_subscription_id": subscription_id,
-                    },
-                )
-            return {"team_id": team_id, "subscription_id": subscription_id}
+        if event_type in ("subscription.authenticated", "subscription.activated"):
+            # authenticated fires when the mandate is set up (the start of a
+            # free trial); activated when billing starts. Both grant access.
+            return await self._activate_from_razorpay(event_type, data_obj)
 
         elif event_type == "subscription.charged":
             if not subscription_id:
                 return {"warning": "missing subscription id"}
-            plan_id = data_obj.get("plan_id")
-            tier = next((t for t, pid in RAZORPAY_PLAN_IDS.items() if pid == plan_id), None)
+            tier, cycle = _plan_lookup(data_obj.get("plan_id"))
             updates: dict = {"status": "active"}
             if tier:
-                updates["tier"] = tier
-            current_end = data_obj.get("current_end")
-            if current_end:
-                try:
-                    updates["current_period_end"] = datetime.fromtimestamp(int(current_end), tz=timezone.utc)
-                except (TypeError, ValueError, OverflowError, OSError):
-                    logger.warning(f"Invalid current_end in subscription.charged: {current_end!r}")
+                updates.update({"tier": tier, "billing_cycle": cycle, "pending_tier": None})
+            for field, key in (("current_period_start", "current_start"), ("current_period_end", "current_end")):
+                when = _from_epoch(data_obj.get(key))
+                if when:
+                    updates[field] = when
             await self._update_subscription_by_razorpay_id(subscription_id, updates)
+            return {"subscription_id": subscription_id, "tier": tier}
+
+        elif event_type == "subscription.updated":
+            # A plan change took effect (now for upgrades, at cycle end for downgrades).
+            if not subscription_id:
+                return {"warning": "missing subscription id"}
+            tier, cycle = _plan_lookup(data_obj.get("plan_id"))
+            if not tier:
+                return {"subscription_id": subscription_id, "warning": "unknown plan"}
+            await self._update_subscription_by_razorpay_id(
+                subscription_id, {"tier": tier, "billing_cycle": cycle, "pending_tier": None}
+            )
             return {"subscription_id": subscription_id, "tier": tier}
 
         elif event_type in ("subscription.cancelled", "subscription.completed",
@@ -622,7 +767,10 @@ class BillingService:
             # Status-only sync events — see SUBSCRIPTION_STATUS_MAP.
             if subscription_id:
                 status = SUBSCRIPTION_STATUS_MAP[event_type]
-                await self._update_subscription_by_razorpay_id(subscription_id, {"status": status})
+                updates = {"status": status}
+                if status in ("canceled", "completed"):
+                    updates.update({"cancel_at_period_end": False, "pending_tier": None})
+                await self._update_subscription_by_razorpay_id(subscription_id, updates)
                 return {"subscription_id": subscription_id, "status": status}
             return {"warning": "missing subscription id"}
 
@@ -642,6 +790,53 @@ class BillingService:
         else:
             logger.debug(f"Unhandled Razorpay webhook event type: {event_type}")
             return {"unhandled": True}
+
+    async def _activate_from_razorpay(self, event_type: str, data_obj: dict) -> dict:
+        """Grant a team its paid plan from a verified Razorpay subscription event."""
+        subscription_id = data_obj.get("id")
+        notes = data_obj.get("notes") or {}
+        team_id = notes.get("team_id")
+        if not team_id:
+            logger.warning("%s missing team_id in notes", event_type)
+            return {"warning": "missing team_id"}
+
+        record = await self.get_billing_record(team_id)
+        tier, cycle = _plan_lookup(data_obj.get("plan_id"))
+        tier = tier or notes.get("tier") or (record or {}).get("tier")
+        if tier not in SELF_SERVICE_TIERS or tier == "free":
+            tier = "startup"
+        cycle = cycle or notes.get("billing_cycle") or (record or {}).get("billing_cycle")
+        if cycle not in BILLING_CYCLES:
+            cycle = "monthly"
+
+        updates: Dict[str, Any] = {
+            "tier": tier,
+            "billing_cycle": cycle,
+            "price": _price(tier, cycle),
+            "status": "active",
+            "razorpay_customer_id": data_obj.get("customer_id"),
+            "razorpay_subscription_id": subscription_id,
+            "cancel_at_period_end": False,
+            "pending_tier": None,
+            "updated_at": _utcnow(),
+        }
+        start_at = _from_epoch(data_obj.get("start_at"))
+        if event_type == "subscription.authenticated" and start_at and start_at > _utcnow():
+            updates["trial_end"] = start_at
+        current_end = _from_epoch(data_obj.get("current_end"))
+        if current_end:
+            updates["current_period_end"] = current_end
+
+        if record:
+            await self.storage.update_document(
+                self.COLLECTION, record.get("subscription_id", record.get("id", "")), updates
+            )
+        else:
+            # Checkout creates the Razorpay subscription directly, so a local
+            # record may not exist yet.
+            sub = await self.create_subscription(team_id, tier, cycle, verified_checkout=True)
+            await self.storage.update_document(self.COLLECTION, sub["subscription_id"], updates)
+        return {"team_id": team_id, "subscription_id": subscription_id, "tier": tier}
 
     # ── Webhook event log queries ────────────────────────────────────────────
 
@@ -677,11 +872,8 @@ class BillingService:
 
         # Automatically update price when tier is updated
         if "tier" in updates:
-            tier = updates["tier"]
-            billing_cycle = sub.get("billing_cycle", "monthly")
-            pricing = TIER_PRICING.get(tier, TIER_PRICING["free"])
-            price = pricing["price_monthly"] if billing_cycle == "monthly" else pricing["price_yearly"]
-            updates["price"] = price
+            billing_cycle = updates.get("billing_cycle") or sub.get("billing_cycle", "monthly")
+            updates["price"] = _price(updates["tier"], billing_cycle)
 
         await self.storage.update_document(self.COLLECTION, sub_id, updates)
         return True

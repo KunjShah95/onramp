@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from pydantic import BaseModel, Field
-from app.services.billing_service import BillingService
+from app.services.billing_service import BillingService, BillingProviderError
 from app.services.credit_service import CreditService
 from app.services.team_service import get_team_members
 from app.api.v1.auth import get_current_user
@@ -46,6 +46,7 @@ class CreateSubscriptionRequest(BaseModel):
 
 class UpdateBillingRequest(BaseModel):
     tier: str
+    billing_cycle: str | None = None
 
 
 class AttachRazorpayRequest(BaseModel):
@@ -58,6 +59,7 @@ class CheckoutRequest(BaseModel):
     tier: str
     success_url: str
     cancel_url: str
+    billing_cycle: str = "monthly"
 
 
 @router.post("/subscriptions")
@@ -93,11 +95,23 @@ async def update_subscription(
     request: UpdateBillingRequest,
     user: dict = Depends(get_current_user),
 ):
+    """Change plan. A paid (Razorpay) plan is changed at the provider:
+    upgrades apply now with proration, downgrades at the end of the cycle.
+    Moving from Free to a paid plan goes through ``/billing/checkout``."""
     await require_team_admin(team_id, user)
+    current = await billing.get_subscription(team_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="No active subscription")
     try:
+        if current.get("razorpay_subscription_id"):
+            return await billing.change_plan(team_id, request.tier, request.billing_cycle)
+        if request.tier not in ("free", "enterprise"):
+            raise HTTPException(status_code=400, detail="Start a paid plan through /billing/checkout")
         result = await billing.update_subscription(team_id, request.tier)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except BillingProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     if not result:
         raise HTTPException(status_code=404, detail="No active subscription")
     return result
@@ -109,11 +123,19 @@ async def cancel_subscription(
     team_id: str,
     user: dict = Depends(get_current_user),
 ):
+    """Cancel the team's plan. Paid plans stay active until the period ends."""
     await require_team_admin(team_id, user)
-    success = await billing.cancel_subscription(team_id)
-    if not success:
+    try:
+        sub = await billing.cancel_subscription(team_id)
+    except BillingProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if not sub:
         raise HTTPException(status_code=404, detail="No active subscription")
-    return {"canceled": True}
+    return {
+        "canceled": True,
+        "at_period_end": bool(sub.get("cancel_at_period_end")),
+        "current_period_end": sub.get("current_period_end"),
+    }
 
 
 @router.post("/subscriptions/{team_id}/razorpay")
@@ -141,7 +163,8 @@ async def create_checkout(
     """Create a Razorpay subscription checkout for a paid tier."""
     await require_team_admin(request.team_id, user)
     result = await billing.create_checkout_session(
-        request.team_id, request.tier, request.success_url, request.cancel_url
+        request.team_id, request.tier, request.success_url, request.cancel_url,
+        billing_cycle=request.billing_cycle,
     )
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -167,6 +190,31 @@ async def razorpay_webhook(request: Request):
         permanent = any(w in err.lower() for w in ("signature", "not configured"))
         raise HTTPException(status_code=400 if permanent else 500, detail=err)
     return result
+
+
+@router.get("/usage/{team_id}")
+async def get_plan_usage(
+    team_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """What the team's plan includes and how much of it is used."""
+    from app.services.entitlements import limits_for, team_tier
+    from app.services.postgres_db import get_storage
+    from app.services.usage_tracker import UsageTracker
+
+    await require_team_membership(team_id, user)
+    tier = await team_tier(team_id)
+    limits = limits_for(tier)
+    storage = get_storage()
+    members = await storage.query_documents("team_members", [("team_id", "==", team_id)])
+    repos = await storage.query_documents("repositories", [("team_id", "==", team_id)])
+    usage = await UsageTracker().get_usage(team_id, period="month")
+    return {
+        "tier": tier,
+        "members": {"used": len(members), "limit": limits["members"]},
+        "repos": {"used": len(repos), "limit": limits["repos"]},
+        "credits": {"used": usage.get("total_credits", 0), "limit": limits["credits_per_month"]},
+    }
 
 
 @router.get("/pricing")

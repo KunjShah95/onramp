@@ -80,11 +80,12 @@ class TestSubscriptionCRUD:
         await service.create_subscription(
             "team_1", "startup", "monthly", verified_checkout=True
         )
-        assert await service.cancel_subscription("team_1") is True
+        canceled = await service.cancel_subscription("team_1")
+        assert canceled["status"] == "canceled"
         assert await service.get_subscription("team_1") is None
 
     async def test_cancel_nonexistent_returns_false(self, service):
-        assert await service.cancel_subscription("nonexistent") is False
+        assert await service.cancel_subscription("nonexistent") is None
 
     async def test_attach_razorpay_ids(self, service):
         await service.create_subscription(

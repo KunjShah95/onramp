@@ -304,7 +304,8 @@ export async function request<T>(url: string, body?: unknown, method?: string, r
     let message = `API error ${res.status}`
     try {
       const err = JSON.parse(text)
-      if (err.detail) message = err.detail
+      // Domain errors (plan limits, quota) send detail as {error, code, ...}.
+      if (err.detail) message = typeof err.detail === 'string' ? err.detail : err.detail.error || err.detail.message || message
       else if (err.message) message = err.message
     } catch {
       if (text && text.length < 500) {
@@ -352,7 +353,8 @@ async function get<T>(url: string, retried = false, signal?: AbortSignal): Promi
     let message = `API error ${res.status}`
     try {
       const err = JSON.parse(text)
-      if (err.detail) message = err.detail
+      // Domain errors (plan limits, quota) send detail as {error, code, ...}.
+      if (err.detail) message = typeof err.detail === 'string' ? err.detail : err.detail.error || err.detail.message || message
       else if (err.message) message = err.message
     } catch {
       if (text && text.length < 500) {
@@ -425,7 +427,8 @@ export async function fetchWithAuth<T>(url: string, init: RequestInit = {}, retr
     let message = `API error ${res.status}`
     try {
       const err = JSON.parse(text)
-      if (err.detail) message = err.detail
+      // Domain errors (plan limits, quota) send detail as {error, code, ...}.
+      if (err.detail) message = typeof err.detail === 'string' ? err.detail : err.detail.error || err.detail.message || message
       else if (err.message) message = err.message
     } catch {
       if (text && text.length < 500) {
@@ -1911,7 +1914,21 @@ export interface Subscription {
   razorpay_customer_id?: string
   razorpay_subscription_id?: string
   razorpay_payment_id?: string
+  current_period_end?: string | null
+  /** Renewal stopped; access continues until current_period_end. */
+  cancel_at_period_end?: boolean
+  trial_end?: string | null
+  /** Downgrade scheduled for the next renewal. */
+  pending_tier?: string | null
   created_at: string
+}
+
+export interface PlanUsage {
+  tier: string
+  /** limit null = unlimited */
+  members: { used: number; limit: number | null }
+  repos: { used: number; limit: number | null }
+  credits: { used: number; limit: number | null }
 }
 
 export interface PricingTier {
@@ -1938,18 +1955,24 @@ export async function getSubscription(
 export async function updateSubscription(
   teamId: string,
   data: Partial<{ tier: string; billing_cycle: string }>
-): Promise<Subscription> {
-  return request<Subscription>(
+): Promise<Subscription & { change_applies?: 'now' | 'cycle_end' }> {
+  return request<Subscription & { change_applies?: 'now' | 'cycle_end' }>(
     `${API_BASE}/billing/subscriptions/${teamId}`,
     data,
     'PATCH'
   )
 }
 
-export async function cancelSubscription(teamId: string): Promise<void> {
-  await fetchWithAuth<void>(`${API_BASE}/billing/subscriptions/${teamId}`, {
+export async function cancelSubscription(
+  teamId: string
+): Promise<{ canceled: boolean; at_period_end: boolean; current_period_end: string | null }> {
+  return fetchWithAuth(`${API_BASE}/billing/subscriptions/${teamId}`, {
     method: 'DELETE',
   })
+}
+
+export async function getPlanUsage(teamId: string): Promise<PlanUsage> {
+  return get<PlanUsage>(`${API_BASE}/billing/usage/${teamId}`)
 }
 
 export async function attachRazorpay(
@@ -1975,8 +1998,9 @@ export async function createCheckoutSession(data: {
   tier: string
   success_url: string
   cancel_url: string
-}): Promise<{ url: string; subscription_id: string }> {
-  return request<{ url: string; subscription_id: string }>(
+  billing_cycle?: 'monthly' | 'yearly'
+}): Promise<{ url: string; subscription_id: string; trial_days?: number }> {
+  return request<{ url: string; subscription_id: string; trial_days?: number }>(
     `${API_BASE}/billing/checkout`,
     data
   )

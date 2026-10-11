@@ -129,6 +129,13 @@ async def create_repo(
     if ROLE_HIERARCHY.get((membership or {}).get("role", "member"), 0) < ROLE_HIERARCHY["senior"]:
         raise HTTPException(status_code=403, detail="Senior team role required to register a repository")
 
+    from app.services.entitlements import PlanLimitReached, ensure_repo_slot_available
+    from app.services._shared.errors import to_http
+    try:
+        await ensure_repo_slot_available(str(resolved_team_id))
+    except PlanLimitReached as exc:
+        raise to_http(exc) from exc
+
     # A server-wide GITHUB_TOKEN must not be used to prove that an arbitrary
     # member can see a private repository. Public repositories work without a
     # user token; private repositories require the caller's own GitHub token.

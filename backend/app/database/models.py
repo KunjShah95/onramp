@@ -27,6 +27,7 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
     CheckConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, attributes
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -682,6 +683,12 @@ class Subscription(Base):
     razorpay_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     razorpay_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     razorpay_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Cancellation is scheduled for period end; access continues until Razorpay
+    # sends subscription.cancelled/completed.
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), nullable=False)
+    trial_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Downgrade scheduled at cycle end; applied when Razorpay reports the new plan.
+    pending_tier: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -707,6 +714,9 @@ class Subscription(Base):
             "razorpay_customer_id": self.razorpay_customer_id,
             "razorpay_subscription_id": self.razorpay_subscription_id,
             "razorpay_payment_id": self.razorpay_payment_id,
+            "cancel_at_period_end": bool(self.cancel_at_period_end),
+            "trial_end": self.trial_end.isoformat() if self.trial_end else None,
+            "pending_tier": self.pending_tier,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
