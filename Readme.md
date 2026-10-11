@@ -1047,3 +1047,11 @@ MIT — see [LICENSE](LICENSE).
 ---
 
 *Built with ❤️ for developers who want to ship faster.*
+
+---
+
+## Case study
+
+The full write-up of OnRamp (problem, architecture, trade-offs and results) lives at **[kunjshah.in/projects/onramp](https://kunjshah.in/projects/onramp)**.
+
+Built by [Kunj Shah](https://kunjshah.in), AI engineer.
