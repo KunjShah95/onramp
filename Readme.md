@@ -783,6 +783,31 @@ All accounts share the same password: **`demo123`**
 > [http://localhost:5173/register](http://localhost:5173/register) or use OAuth
 > (Google/GitHub) if configured.
 
+### Foundation Team Accounts (`@foundation.dev`)
+
+These are the accounts in the shared Neon dev database. They all belong to one
+team and share one password, which is kept out of this public repo — ask a
+maintainer for it. Login was verified for
+every account on 2026-09-29.
+
+| Email | Team role |
+| ------- | ------ |
+| `admin@foundation.dev` | admin |
+| `ceo@foundation.dev` | ceo |
+| `cto@foundation.dev` | cto |
+| `hr@foundation.dev` | hr |
+| `senior1@foundation.dev` | senior_dev |
+| `senior2@foundation.dev` | senior_dev |
+| `junior1@foundation.dev` | junior_dev (GitHub linked) |
+| `junior2@foundation.dev` | junior_dev |
+| `junior3@foundation.dev` | junior_dev |
+| `junior4@foundation.dev` | junior_dev |
+
+> **Notes:** Every account has `password_reset_required` set, so the app may
+> ask for a new password on first sign-in. Auth endpoints are rate-limited to
+> 10 requests per minute per client, and `/auth/me` counts toward that limit.
+> If you script logins across many accounts, space them out.
+
 ---
 
 ## Contributing
