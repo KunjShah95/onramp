@@ -45,6 +45,7 @@ DEFAULT_RULES: dict[str, RateLimitRule] = {
     "llm":        RateLimitRule("token_bucket", limit=20, window=60),
     "auth":       RateLimitRule("token_bucket", limit=10, window=60),
     "auth_reset": RateLimitRule("token_bucket", limit=3, window=900),   # 3 per 15 min
+    "lead":       RateLimitRule("token_bucket", limit=5, window=3600),  # public contact form
     "admin":      RateLimitRule("token_bucket", limit=60, window=60),
     "api":        RateLimitRule("token_bucket", limit=200, window=60),
 }
@@ -62,6 +63,7 @@ ROUTE_GROUP_PREFIXES: list[tuple[str, str]] = [
     ("llm",        "/v1/"),  # OpenAI-compatible gateway gets the strict LLM bucket
     ("auth_reset", "/api/v1/auth/forgot-password"),
     ("auth_reset", "/api/v1/auth/reset-password"),
+    ("lead",       "/api/v1/leads"),
     ("auth",       "/api/v1/auth/"),
     ("admin",      "/api/v1/admin/"),
 ]

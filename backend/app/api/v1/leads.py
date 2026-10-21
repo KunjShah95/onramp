@@ -9,19 +9,17 @@ the ``leads`` collection (email and name encrypted at rest, like user PII) and,
 when ``LEADS_NOTIFY_EMAIL`` and SendGrid are configured, a notification email
 goes to the team. Platform admins read them via ``GET /api/v1/admin/leads``.
 
-Abuse controls: a hidden honeypot field, strict length limits, and a per-IP
-hourly cap keyed by an HMAC of the IP (the IP itself is never stored).
+Abuse controls: a hidden honeypot field, strict length limits, and an atomic
+Redis-backed per-IP hourly cap enforced by RateLimitMiddleware.
 """
 
-import hashlib
-import hmac
 import html
 import logging
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, EmailStr, Field
 
 from app.services.field_encryption import encrypt_field
@@ -31,8 +29,6 @@ logger = logging.getLogger("onramp.leads")
 router = APIRouter(tags=["leads"])
 
 COLLECTION = "leads"
-_RATE_WINDOW_SECONDS = 3600
-_RATE_MAX = 5
 _UTM_RE = re.compile(r"^[A-Za-z0-9._\-]{1,64}$")
 
 
@@ -49,47 +45,11 @@ class LeadIn(BaseModel):
     website: str | None = Field(default=None, max_length=200)
 
 
-def _client_ip(request: Request) -> str:
-    if os.getenv("TRUST_PROXY", "false").lower() == "true":
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
-def _ip_key(ip: str) -> str:
-    secret = os.getenv("JWT_SECRET", "onramp-leads-unconfigured")
-    return hmac.new(secret.encode(), ip.encode(), hashlib.sha256).hexdigest()[:32]
-
-
 def clean_utm(value: str | None) -> str | None:
     """Keep a UTM value only if it is a short slug; drop anything else."""
     if value and _UTM_RE.match(value):
         return value
     return None
-
-
-async def _over_rate_limit(storage, key: str, now: datetime) -> bool:
-    """Per-IP hourly cap. Fails open so a storage hiccup never blocks a lead."""
-    try:
-        rows = await storage.query_documents("rate_limits", [("key", "==", key)])
-        cutoff = now - timedelta(seconds=_RATE_WINDOW_SECONDS)
-        recent = 0
-        for row in rows:
-            try:
-                if datetime.fromisoformat(row.get("created_at", "")) >= cutoff:
-                    recent += 1
-            except (TypeError, ValueError):
-                continue
-        if recent >= _RATE_MAX:
-            return True
-        await storage.create_document("rate_limits", generate_id(), {
-            "key": key,
-            "created_at": now.isoformat(),
-        })
-    except Exception:
-        logger.debug("lead rate limit check skipped", exc_info=True)
-    return False
 
 
 async def _notify(lead: LeadIn) -> None:
@@ -122,8 +82,6 @@ async def create_lead(lead: LeadIn, request: Request) -> dict:
 
     now = datetime.now(timezone.utc)
     storage = get_storage()
-    if await _over_rate_limit(storage, f"leads:{_ip_key(_client_ip(request))}", now):
-        raise HTTPException(status_code=429, detail="Too many messages. Please try again later.")
 
     lead_id = generate_id()
     await storage.create_document(COLLECTION, lead_id, {

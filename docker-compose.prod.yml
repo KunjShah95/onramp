@@ -42,7 +42,7 @@ services:
       target: production
     restart: unless-stopped
     ports:
-      - "8001:8000"   # host:8001 → container:8000 (avoids conflict with local server)
+      - "127.0.0.1:8001:8000"   # local diagnostics only; public traffic must pass through the frontend proxy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
       interval: 30s
