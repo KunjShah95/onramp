@@ -142,12 +142,14 @@ vi.mock(import('../lib/api'), async (importOriginal) => {
 })
 
 import DevSpacePage from '../pages/DevSpacePage'
+import ExecutivePage from '../pages/ExecutivePage'
 import HrPeoplePage from '../pages/HrPeoplePage'
 import RampPage from '../pages/RampPage'
 import AdminDashboardPage from '../pages/AdminDashboardPage'
 import TraineeDashboard from '../pages/TraineeDashboard'
 import OnboardingHubPage from '../pages/OnboardingHubPage'
 import SeniorSpacePage from '../pages/SeniorSpacePage'
+import { fetchSeedRoleData } from '../lib/api'
 
 /**
  * The rail's headline — the one ranked verdict the page opens on. Waits for
@@ -344,7 +346,39 @@ describe('Onboarding hub — remaining work leads', () => {
   })
 })
 
+describe('Executive — the one decision is actionable', () => {
+  it('keeps the fleet primary live when nothing needs a decision', async () => {
+    await renderSettled(<ExecutivePage />)
+    const primary = screen.getByRole('button', { name: /Review the fleet/ })
+    expect(document.getElementById('exec-fleet')).toBeInTheDocument()
+    await userEvent.setup().click(primary)
+  })
+
+  it('routes past-due revenue to the treasury panel, not a dead button', async () => {
+    // activeTeamId resolves during auth bootstrap (teams[0] in the mock), so
+    // ExecutivePage's seed fetch runs twice — mockResolvedValue (not Once)
+    // keeps the past-due response in the final settled state.
+    vi.mocked(fetchSeedRoleData).mockResolvedValue({
+      role: 'executive',
+      portal: 'web',
+      data: {
+        mrr: 30000,
+        mrr_growth: 15,
+        stats: { repos_analyzed: 4, active_teams: 2, total_users: 12, api_calls_24h: 60 },
+        billing_summary: { past_due: 2, canceled: 1, trialing: 0 },
+        active_subscriptions: 5,
+        top_teams: [],
+      },
+    })
+    await renderSettled(<ExecutivePage />)
+    const primary = screen.getByRole('button', { name: /Open treasury/ })
+    expect(document.getElementById('exec-treasury')).toBeInTheDocument()
+    await userEvent.setup().click(primary)
+  })
+})
+
 describe('Senior space — reviews first, and no duplicated roster', () => {
+
   it('leads with the review queue', async () => {
     await renderSettled(<SeniorSpacePage />)
     expect(await railHeadline()).toMatch(/2 reviews waiting on you/)

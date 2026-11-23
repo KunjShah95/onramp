@@ -136,8 +136,8 @@ export default function ExecutivePage() {
             detail={verdict.detail}
             primary={
               openAlerts > 0
-                ? { id: 'billing', label: 'Open treasury', detail: 'Resolve past-due accounts', icon: CreditCard, tone: 'abort' }
-                : { id: 'fleet', label: 'Review the fleet', detail: 'Team-by-team completion', icon: Users, tone: 'go' }
+                ? { id: 'billing', label: 'Open treasury', detail: 'Resolve past-due accounts', icon: CreditCard, tone: 'abort', onClick: () => document.getElementById('exec-treasury')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+                : { id: 'fleet', label: 'Review the fleet', detail: 'Team-by-team completion', icon: Users, tone: 'go', onClick: () => document.getElementById('exec-fleet')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
             }
             secondary={[
               { id: 'ramp', label: 'Ramp & senior-time cost', detail: 'New-hire throughput and its price', to: '/ramp', icon: TrendUp, tone: 'mission' },
@@ -187,7 +187,7 @@ export default function ExecutivePage() {
             </div>
 
             {/* Top Teams */}
-            <div className="lg:col-span-2">
+            <div id="exec-fleet" className="lg:col-span-2">
               <ConsolePanel rail="Fleet · Top Teams" designator={`${topTeams.length} TRACKED`} status="standby">
                 {!topTeams.length ? (
                   <EmptyState title="No teams" description="Teams will appear once created." compact />
@@ -225,7 +225,7 @@ export default function ExecutivePage() {
           {/* Treasury + audit */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Billing */}
-            <div>
+            <div id="exec-treasury">
               <ConsolePanel rail="Treasury · Billing" designator={`${d?.active_subscriptions ?? 0} SUBS`} status="go">
                 <div className="space-y-2.5">
                   {[

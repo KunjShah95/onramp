@@ -628,7 +628,7 @@ export default function SeniorSpacePage() {
             secondary={[
               { id: 'health', label: 'Code health', detail: 'Repo-level quality metrics', to: '/code-health', icon: Heartbeat, tone: 'mission' },
               { id: 'work-graph', label: 'Work graph', detail: 'Who is blocked on whom', to: '/work-graph', icon: Users, tone: 'ink' },
-              { id: 'modules', label: 'Module access', detail: 'What this team can reach', icon: Lock, tone: 'ink' },
+              { id: 'modules', label: 'Module access', detail: 'What this team can reach', icon: Lock, tone: 'ink', onClick: () => document.getElementById('senior-modules')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
               { id: 'ramp', label: 'Ramp visibility', detail: 'New-hire throughput and its price', to: '/ramp', icon: Compass, tone: 'ink' },
             ]}
           />
@@ -773,13 +773,14 @@ export default function SeniorSpacePage() {
             </Disclosure>
           </div>
 
-          <Disclosure
-            label="Module access"
-            designator="RBAC"
-            tone="idle"
-            icon={Lock}
-            hint={`${defaultModules.length} modules · static grant list`}
-          >
+          <div id="senior-modules">
+            <Disclosure
+              label="Module access"
+              designator="RBAC"
+              tone="idle"
+              icon={Lock}
+              hint={`${defaultModules.length} modules · static grant list`}
+            >
             <div className="space-y-2">
               {defaultModules.map((mod) => (
                 <TaskRow
@@ -796,6 +797,7 @@ export default function SeniorSpacePage() {
               ))}
             </div>
           </Disclosure>
+          </div>
 
           <Disclosure
             label="API cost tracking"

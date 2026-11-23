@@ -284,7 +284,16 @@ function NextUpButton({
       </button>
     )
   }
-  return <div className={shell}>{inner}</div>
+  // Stand-down rule (DESIGN.md §07): a verdict row with no action renders
+  // text, never button chrome for a no-op. Wire the action or remove the row.
+  if (row) {
+    return (
+      <div className="w-full px-4 py-2.5">
+        {inner}
+      </div>
+    )
+  }
+  return null
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -13,18 +13,12 @@ from app.services.field_encryption import decrypt_field_lenient
 class FakeStorage:
     def __init__(self):
         self.docs = []
-        self.rate_docs = []
 
     async def query_documents(self, collection, filters):
-        if collection == "rate_limits":
-            return list(self.rate_docs)
         return []
 
     async def create_document(self, collection, doc_id, data):
-        if collection == "rate_limits":
-            self.rate_docs.append(data)
-        else:
-            self.docs.append((collection, doc_id, data))
+        self.docs.append((collection, doc_id, data))
         return data
 
 
@@ -73,12 +67,34 @@ def test_honeypot_submission_is_dropped_silently(client, storage):
     assert storage.docs == []
 
 
-def test_rate_limit_blocks_after_cap(client, storage):
-    now = datetime.now(timezone.utc).isoformat()
-    storage.rate_docs = [{"key": "x", "created_at": now}] * leads_mod._RATE_MAX
-    res = client.post("/api/v1/leads", json=VALID)
-    assert res.status_code == 429
-    assert storage.docs == []
+def test_rate_limit_blocks_after_cap(monkeypatch):
+    """The per-IP hourly cap lives in RateLimitMiddleware (lead group), not the
+    endpoint — the endpoint-level limiter was replaced by the Redis-backed
+    middleware. Exercise the real path, same pattern as
+    test_rate_limit_middleware.py."""
+    from starlette.applications import Starlette
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
+
+    from app.middleware.rate_limit import DEFAULT_RULES, RateLimitMiddleware
+
+    monkeypatch.setenv("ENV", "development")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.delenv("RATE_LIMIT_LEAD", raising=False)
+
+    rule = DEFAULT_RULES["lead"]
+    assert rule.window == 3600  # hourly cap for the public contact form
+
+    async def handler(request):
+        return JSONResponse({"received": True})
+
+    app = Starlette(routes=[Route("/api/v1/leads", handler, methods=["POST"])])
+    app.add_middleware(RateLimitMiddleware)
+    client = TestClient(app)
+
+    for i in range(rule.limit):
+        assert client.post("/api/v1/leads").status_code == 200, f"Failed on iteration {i}"
+    assert client.post("/api/v1/leads").status_code == 429
 
 
 @pytest.mark.parametrize("bad", [

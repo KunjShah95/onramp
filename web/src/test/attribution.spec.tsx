@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, within, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { captureUtm, getUtm } from '../lib/attribution'
@@ -11,6 +11,9 @@ vi.mock('../components/layout/MarketingLayout', () => ({
 }))
 
 beforeEach(() => {
+  // Explicit cleanup: auto-cleanup alone proved flaky under parallel workers
+  // (a leaked prior render made global queries find two ContactPages).
+  cleanup()
   sessionStorage.clear()
   createLead.mockReset()
 })
@@ -40,33 +43,41 @@ describe('captureUtm', () => {
 })
 
 describe('ContactPage form', () => {
+  // Scope every query to this test's own render so a stray mount elsewhere
+  // in the document can never produce "found multiple elements".
   async function fillAndSend() {
     const { default: ContactPage } = await import('../pages/ContactPage')
-    render(<MemoryRouter><ContactPage /></MemoryRouter>)
+    const { container } = render(<MemoryRouter><ContactPage /></MemoryRouter>)
+    const view = within(container)
     const user = userEvent.setup({ delay: null })
-    await user.type(screen.getByLabelText('Name'), 'Ada')
-    await user.type(screen.getByLabelText('Email'), 'ada@example.com')
-    await user.type(screen.getByLabelText('Message'), 'We hire every quarter.')
-    await user.click(screen.getByRole('button', { name: /send message/i }))
+    await user.type(view.getByLabelText('Name'), 'Ada')
+    await user.type(view.getByLabelText('Email'), 'ada@example.com')
+    await user.type(view.getByLabelText('Message'), 'We hire every quarter.')
+    await user.click(view.getByRole('button', { name: /send message/i }))
+    return view
   }
 
+  // These drive a real form: a dynamic import, typing, submit, and an async
+  // success render. Under the full parallel suite on slower machines the
+  // 15s file default is too tight (intermittent flake), so allow 30s here.
+  const SLOW = 30000
   it('submits the message as a lead instead of discarding it', async () => {
     createLead.mockResolvedValue({ received: true })
-    await fillAndSend()
-    await waitFor(() => expect(createLead).toHaveBeenCalledTimes(1))
+    const view = await fillAndSend()
+    await waitFor(() => expect(createLead).toHaveBeenCalledTimes(1), { timeout: SLOW })
     expect(createLead.mock.calls[0][0]).toMatchObject({
       name: 'Ada',
       email: 'ada@example.com',
       message: 'We hire every quarter.',
     })
-    expect(await screen.findByText(/your message reached the team/i)).toBeInTheDocument()
-  })
+    expect(await view.findByText(/your message reached the team/i, { timeout: SLOW })).toBeInTheDocument()
+  }, SLOW)
 
   it('tells the visitor when sending fails', async () => {
     createLead.mockRejectedValue(new Error('Too many messages.'))
-    await fillAndSend()
-    expect(await screen.findByText(/not sent: too many messages/i)).toBeInTheDocument()
-  })
+    const view = await fillAndSend()
+    expect(await view.findByText(/not sent: too many messages/i, { timeout: SLOW })).toBeInTheDocument()
+  }, SLOW)
 
   it('lists no mailbox on a domain we do not own', async () => {
     const { default: ContactPage } = await import('../pages/ContactPage')
