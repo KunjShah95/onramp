@@ -191,6 +191,20 @@ TIER_LIMITS = {
     "enterprise": {"requests_per_minute": 2000, "requests_per_day": 100000, "credits_per_month": 100000, "max_repos": -1},
 }
 
+# Limits per *subscription plan* — the numbers published on the pricing page
+# (billing_service.TIER_PRICING feature strings are generated from these).
+# Kept apart from TIER_LIMITS (API-key tiers): the two namespaces share the
+# name "free" but not the allowance. Rate fields inherit from the key tier the
+# plan maps to; credits/repos/members are the plan's own. 0 credits = no
+# monthly allowance (usage_based draws from the prepaid wallet); -1 = no cap.
+PLAN_LIMITS = {
+    "free": {**TIER_LIMITS["free"], "credits_per_month": 50, "max_repos": 1, "max_members": 1},
+    "startup": {**TIER_LIMITS["pro"], "credits_per_month": 5000, "max_repos": 10, "max_members": 5},
+    "professional": {**TIER_LIMITS["enterprise"], "credits_per_month": 50000, "max_repos": 50, "max_members": 20},
+    "usage_based": {**TIER_LIMITS["usage_based"], "max_repos": 1, "max_members": 1},
+    "enterprise": {**TIER_LIMITS["enterprise"], "max_members": -1},
+}
+
 # Default credit cost for any action not explicitly listed.
 DEFAULT_CREDIT_COST = 5
 
@@ -673,9 +687,22 @@ class APIKeyService:
 
     @classmethod
     def get_tier_limits(cls, tier: str) -> dict:
-        """Return limits for a given tier."""
-        mapped_tier = TIER_MAPPING.get(tier, "free")
-        return TIER_LIMITS.get(mapped_tier, TIER_LIMITS["free"])
+        """Return limits for an API-key tier (free/pro/team/usage_based/enterprise).
+
+        Subscription plan names are accepted for backwards compatibility and
+        mapped to their key tier. Unknown tiers get the free limits.
+        """
+        if tier in TIER_LIMITS:
+            return TIER_LIMITS[tier]
+        return TIER_LIMITS.get(TIER_MAPPING.get(tier, "free"), TIER_LIMITS["free"])
+
+    @classmethod
+    def get_plan_limits(cls, plan: Optional[str]) -> dict:
+        """Return limits for a subscription plan — what quota enforcement uses.
+
+        Unknown or missing plans get the free plan.
+        """
+        return PLAN_LIMITS.get(plan or "free", PLAN_LIMITS["free"])
 
     @classmethod
     def map_subscription_tier(cls, subscription_tier: str) -> str:

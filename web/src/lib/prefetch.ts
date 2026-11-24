@@ -47,6 +47,7 @@ const loaders: Record<string, Loader> = {
   // ── Workspace (authed shell) ────────────────────────
   '/dashboard': () => import('../pages/DashboardPage'),
   '/explore': () => import('../pages/ExplorePage'),
+  '/map': () => import('../pages/ComprehensionMapPage'),
   '/learn': () => import('../pages/LearnPage'),
   '/ask': () => import('../pages/AskPage'),
   '/first-issue': () => import('../pages/FirstIssuePage'),

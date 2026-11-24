@@ -1615,6 +1615,167 @@ class DynamicDocument(Base):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+class ComprehensionState(Base):
+    """Per-user progress and check attempts for one repository branch."""
+
+    __tablename__ = "comprehension_states"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    uid: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    repo_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    branch: Mapped[str] = mapped_column(String(255), nullable=False, default="main")
+    team_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lit: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    attempts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_comprehension_states_repo_branch", "repo_key", "branch"),
+        Index("ix_comprehension_states_team", "team_id"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "uid": self.uid, "repo_key": self.repo_key,
+            "branch": self.branch, "team_id": self.team_id,
+            "lit": self.lit or {}, "attempts": self.attempts or {},
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Walkthrough(Base):
+    """Senior authored architecture walkthrough pinned to a graph snapshot."""
+
+    __tablename__ = "walkthroughs"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    repo_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    branch: Mapped[str] = mapped_column(String(255), nullable=False, default="main")
+    team_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    author_uid: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    author_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    steps: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    pinned_commit: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    completed_by: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    verified_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_walkthroughs_repo_branch", "repo_key", "branch"),
+        Index("ix_walkthroughs_team", "team_id"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "repo_key": self.repo_key, "branch": self.branch,
+            "team_id": self.team_id, "author_uid": self.author_uid,
+            "author_name": self.author_name, "title": self.title,
+            "summary": self.summary, "steps": self.steps or [],
+            "pinned_commit": self.pinned_commit, "completed_by": self.completed_by or [],
+            "verified_by": self.verified_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class ModuleDiscussion(Base):
+    """Substantive PR review discussion retained per repository file."""
+
+    __tablename__ = "module_discussions"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    repo_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    entries: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_module_discussions_repo_path", "repo_key", "path"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "repo_key": self.repo_key, "path": self.path,
+            "entries": self.entries or [],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Lead(Base):
+    """Encrypted inbound contact-form submission."""
+
+    __tablename__ = "leads"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str] = mapped_column(Text, nullable=False)
+    company: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    utm_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="new")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_leads_created_at", "created_at"),
+        Index("ix_leads_utm_source", "utm_source"),
+        {"extend_existing": True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "name": self.name, "email": self.email,
+            "company": self.company, "subject": self.subject, "message": self.message,
+            "utm_source": self.utm_source, "utm_medium": self.utm_medium,
+            "utm_campaign": self.utm_campaign, "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class SignupAttribution(Base):
+    """First-touch campaign attribution for a registered user."""
+
+    __tablename__ = "signup_attribution"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    utm_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    utm_medium: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    utm_campaign: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = ({"extend_existing": True},)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "user_id": self.user_id,
+            "utm_source": self.utm_source, "utm_medium": self.utm_medium,
+            "utm_campaign": self.utm_campaign,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Agent Sessions & Messages — stateful inter-agent communication
+# ═══════════════════════════════════════════════════════════════════════════
+
+
 class AgentSession(Base):
     """Stateful conversation/session for an agent thread.
 

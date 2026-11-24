@@ -1,6 +1,7 @@
 import { ArrowRight, GitPullRequest, ChartBar, ArrowCounterClockwise, Star, Megaphone, Plus, CaretUp, Hexagon } from '@phosphor-icons/react'
 import MarketingLayout from '../components/layout/MarketingLayout'
 import type { NavLinkItem } from '../components/layout/MarketingNav'
+import { SITE_URL } from '../lib/site'
 
 const entries = [
   {
@@ -114,7 +115,7 @@ function buildChangelogSchema() {
     '@type': 'ItemList',
     name: 'Onramp Changelog',
     description: 'Product updates and release notes for Onramp — the AI-powered developer onboarding platform.',
-    url: 'https://onramp.app/changelog',
+    url: `${SITE_URL}/changelog`,
     numberOfItems: entries.length,
     itemListElement: entries.map((entry, i) => ({
       '@type': 'ListItem',
@@ -142,13 +143,13 @@ function buildChangelogBreadcrumbSchema() {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://onramp.app/',
+        item: `${SITE_URL}/`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Changelog',
-        item: 'https://onramp.app/changelog',
+        item: `${SITE_URL}/changelog`,
       },
     ],
   }

@@ -32,6 +32,17 @@ interface Props {
   selectedNodeId?: string | null
   searchQuery?: string
   activeGroups?: Set<string> | null
+  /**
+   * Optional comprehension overlay: `fog` nodes render desaturated, `changed`
+   * nodes get a caution ring. Omit for the plain architecture view.
+   */
+  nodeStates?: Record<string, 'lit' | 'changed' | 'fog'>
+  /** Nodes on the critical path get an emphasised outer ring. */
+  criticalIds?: Set<string>
+  /** Ordered node ids of an active walkthrough; its hops are highlighted. */
+  pathIds?: string[]
+  /** Nodes to flag with a warning ring, e.g. the blast radius of a change. */
+  highlightIds?: Set<string>
 }
 
 export { PALETTE } from './graph-theme'
@@ -84,6 +95,10 @@ export default function ForceGraph({
   selectedNodeId,
   searchQuery,
   activeGroups,
+  nodeStates,
+  criticalIds,
+  pathIds,
+  highlightIds,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -387,7 +402,46 @@ export default function ForceGraph({
         .attr('font-weight', isSelected ? 'bold' : 'normal')
         .attr('opacity', isSelected ? 1 : 0.82)
     })
-  }, [structVersion, selectedNodeId, searchQuery, activeGroups, rawNodes])
+
+    // Comprehension overlay: fog / knowledge decay / critical path / tour.
+    if (nodeStates || criticalIds || pathIds || highlightIds) {
+      const fogFill = `rgb(${themeRgb('--border-rgb', '140 140 140')})`
+      const onPath = new Set(pathIds ?? [])
+      const hops = new Set<string>()
+      for (let i = 1; i < (pathIds?.length ?? 0); i++) {
+        hops.add(`${pathIds![i - 1]}→${pathIds![i]}`)
+        hops.add(`${pathIds![i]}→${pathIds![i - 1]}`)
+      }
+      node.each(function (this: SVGGElement, d: GraphNode) {
+        const el = d3Select(this)
+        const state = nodeStates?.[d.id] ?? 'lit'
+        const critical = criticalIds?.has(d.id) ?? false
+        const inTour = onPath.has(d.id)
+        const flagged = highlightIds?.has(d.id) ?? false
+        const color = groupColorsRef.current.get(d.group) ?? '#666'
+        const selected = d.id === selectedNodeId
+        el.select('.node-core')
+          .attr('fill', state === 'fog' && !inTour ? fogFill : color)
+          .attr('fill-opacity', state === 'fog' && !inTour ? 0.35 : 1)
+        el.select('.node-glow')
+          .attr('stroke', flagged ? '#D9534F' : state === 'changed' ? '#E8A33D' : color)
+          .attr('stroke-dasharray', state === 'changed' ? '3 2' : null)
+          .attr('stroke-width', inTour || selected || flagged ? 4 : critical ? 3 : 2)
+          .attr('stroke-opacity', inTour || selected || flagged ? 0.95 : state === 'changed' ? 0.9 : critical ? 0.6 : state === 'fog' ? 0.1 : 0.3)
+        el.select('.node-label')
+          .attr('opacity', inTour || selected ? 1 : state === 'fog' ? 0.4 : 0.85)
+      })
+      if (pathIds && pathIds.length > 1) {
+        link.each(function (this: SVGLineElement, d: GraphEdge) {
+          const s = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id
+          const t = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id
+          const el = d3Select(this)
+          const hop = hops.has(`${s}→${t}`)
+          el.attr('stroke-width', hop ? 2.6 : 1.2).attr('stroke-opacity', hop ? 1 : 0.25)
+        })
+      }
+    }
+  }, [structVersion, selectedNodeId, searchQuery, activeGroups, rawNodes, nodeStates, criticalIds, pathIds, highlightIds])
 
   return (
     <div ref={containerRef} className="w-full h-full min-h-[400px] relative">

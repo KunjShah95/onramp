@@ -135,11 +135,11 @@ const ROUTES = [
     type: 'article',
   },
   {
-    route: '/blog/onramp-achieves-soc-2-type-ii-certification',
-    file: 'blog-onramp-achieves-soc-2-type-ii-certification.html',
-    title: 'SOC 2 Type II: work in progress | Onramp Blog',
+    route: '/blog/soc-2-type-ii-status',
+    file: 'blog-soc-2-type-ii-status.html',
+    title: 'Onramp and SOC 2 Type II: where we stand | Onramp Blog',
     description:
-      'SOC 2 Type II audit work is in progress. Onramp is not yet certified; see the security page for current status.',
+      'Onramp is not SOC 2 certified. This post explains the scope we plan to audit; see /security for current status.',
     type: 'article',
   },
   {

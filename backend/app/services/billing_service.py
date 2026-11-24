@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta, timezone
 from app.services.postgres_db import get_storage, generate_id, idempotency_document_id
+from app.services.api_key_service import PLAN_LIMITS
 
 logger = logging.getLogger("onramp.billing")
 
@@ -75,10 +76,21 @@ class BillingProviderError(Exception):
 
 
 # INR pricing (platform usage only — BYOK keeps AI token cost on the user's own keys).
+def _plan_features(plan: str) -> List[str]:
+    """Feature bullets generated from the enforced plan limits (no drift)."""
+    lim = PLAN_LIMITS[plan]
+    members, repos = lim["max_members"], lim["max_repos"]
+    return [
+        f"{members} member{'s' if members != 1 else ''}",
+        f"{repos} repo{'s' if repos != 1 else ''}",
+        f"{lim['credits_per_month']} credits/mo",
+    ]
+
+
 TIER_PRICING = {
-    "free": {"price_monthly": 0, "price_yearly": 0, "features": ["1 member", "1 repo", "50 credits/mo"]},
-    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": ["5 members", "10 repos", "5000 credits/mo"]},
-    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": ["20 members", "50 repos", "50000 credits/mo"]},
+    "free": {"price_monthly": 0, "price_yearly": 0, "features": _plan_features("free")},
+    "startup": {"price_monthly": 999, "price_yearly": 9999, "features": _plan_features("startup")},
+    "professional": {"price_monthly": 2999, "price_yearly": 29999, "features": _plan_features("professional")},
     "usage_based": {"price_monthly": 499, "price_yearly": 4999, "features": ["1 member", "1 repo", "Pay per query (usage-based)"]},
     "enterprise": {"price_monthly": 0, "price_yearly": 0, "features": ["Custom", "Unlimited", "Dedicated support"]},
 }
@@ -354,11 +366,15 @@ class BillingService:
         )
 
     async def create_checkout_session(
-        self, team_id: str, tier: str, success_url: str, cancel_url: str, billing_cycle: str = "monthly"
+        self, team_id: str, tier: str, success_url: str, cancel_url: str,
+        billing_cycle: str = "monthly", coupon_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a recurring Razorpay subscription for a paid tier.
 
-        Returns ``{url, subscription_id, trial_days}``.
+        Returns ``{url, subscription_id, trial_days}``; ``coupon_code`` is
+        checked here and applied through Razorpay (a delayed ``start_at`` or
+        an ``offer_id``); it is redeemed only when the verified
+        ``subscription.activated`` webhook arrives. See coupon_service.
         """
         if tier not in SELF_SERVICE_TIERS or tier == "free":
             return {"error": "Tier is not available for self-service checkout"}
@@ -393,11 +409,31 @@ class BillingService:
                 "success_url": success_url, "cancel_url": cancel_url,
             },
         }
+
+        coupon = None
+        if coupon_code and coupon_code.strip():
+            from app.services.coupon_service import CouponError, CouponService
+
+            try:
+                coupon = await CouponService(self.storage).check(coupon_code, tier, team_id)
+            except CouponError as exc:
+                return {"error": str(exc)}
+        if coupon:
+            # Offers go to Razorpay (offer_id); the code is recorded in notes
+            # for redemption on activation.
+            payload.update(CouponService.subscription_params(coupon))
+            payload["notes"]["coupon"] = coupon["code"]
+
+        # Trial timing: a trial-days coupon supplies (or overrides) the
+        # start_at; a non-trial coupon replaces the default per-tier trial.
+        if coupon and coupon.get("kind") == "trial_days":
+            trial_days = int(coupon.get("trial_days") or 0)
+        elif coupon:
+            trial_days = 0
         if trial_days:
             payload["start_at"] = int((_utcnow() + timedelta(days=trial_days)).timestamp())
 
         client = self._razorpay()
-
         def _create():
             return client.subscription.create(payload)
 
@@ -407,7 +443,12 @@ class BillingService:
             logger.error("Razorpay checkout creation failed: %s", exc)
             _sentry_report(exc, {"team_id": team_id, "tier": tier})
             return {"error": "Checkout creation failed"}
-        return {"url": sub.get("short_url"), "subscription_id": sub.get("id"), "trial_days": trial_days}
+        result = {"url": sub.get("short_url"), "subscription_id": sub.get("id"), "trial_days": trial_days}
+        if coupon:
+            from app.services.coupon_service import CouponService
+
+            result["coupon"] = {"code": coupon["code"], "summary": CouponService.summary(coupon)}
+        return result
 
     # ── Webhook processing ──────────────────────────────────────────────────
 
@@ -836,6 +877,19 @@ class BillingService:
             # record may not exist yet.
             sub = await self.create_subscription(team_id, tier, cycle, verified_checkout=True)
             await self.storage.update_document(self.COLLECTION, sub["subscription_id"], updates)
+
+        # Port of the branch's coupon redemption: checkouts that carried a
+        # ``coupon_code`` in notes get the code redeemed on activation.
+        coupon_code = notes.get("coupon")
+        if coupon_code:
+            from app.services.coupon_service import CouponService
+
+            try:
+                await CouponService(self.storage).redeem(coupon_code, team_id, subscription_id)
+            except Exception as exc:
+                # Never fail activation over bookkeeping; the charge already happened.
+                logger.error("coupon redemption failed for team %s: %s", team_id, exc)
+                _sentry_report(exc, {"team_id": team_id, "coupon": coupon_code})
         return {"team_id": team_id, "subscription_id": subscription_id, "tier": tier}
 
     # ── Webhook event log queries ────────────────────────────────────────────

@@ -132,6 +132,11 @@ class RepoContextService:
             # Evolution layer: git-history signals (commits, ownership) —
             # deterministic and free, captured while the clone exists.
             evolution = await self.git_evolution(repo_path)
+            # "Why" layer: decision records (ADRs, architecture docs) and the
+            # code paths each one discusses — captured while the tree exists.
+            evolution["decision_records"] = self.decision_records(
+                repo_path, [f.get("path", "") for f in entities.get("files", [])]
+            )
         finally:
             if repo_path:
                 shutil.rmtree(repo_path, ignore_errors=True)
@@ -173,6 +178,62 @@ class RepoContextService:
         return None
 
     @staticmethod
+    def decision_records(repo_path: str, code_paths: List[str], max_docs: int = 50) -> List[Dict[str, Any]]:
+        """Find ADR/design docs and which code files each one mentions.
+
+        Deterministic text scan: a doc "mentions" a file when it names its
+        full path, or a file name that is unique in the repo. Bounded in
+        document count and size; unreadable files are skipped.
+        """
+        import os
+        import re as _re
+
+        code = [c.replace("\\", "/").strip("/") for c in code_paths if c]
+        by_base: Dict[str, List[str]] = {}
+        for c in code:
+            by_base.setdefault(c.rsplit("/", 1)[-1].lower(), []).append(c)
+        token_re = _re.compile(r"[A-Za-z0-9_@./-]+\.[A-Za-z0-9]{1,6}")
+        records: List[Dict[str, Any]] = []
+        root = os.path.abspath(repo_path)
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if not d.startswith(".") and d not in {"node_modules", "vendor", "dist", "build", "__pycache__"}]
+            for fn in sorted(filenames):
+                if not fn.lower().endswith((".md", ".mdx", ".rst", ".adoc")):
+                    continue
+                rel = os.path.relpath(os.path.join(dirpath, fn), root).replace(os.sep, "/")
+                low = rel.lower()
+                is_decision = (
+                    "/adr" in "/" + low or "adr-" in low or "decision" in low or "/rfc" in "/" + low
+                    or fn.upper() in {"ARCHITECTURE.MD", "DESIGN.MD"}
+                )
+                if not is_decision:
+                    continue
+                try:
+                    with open(os.path.join(dirpath, fn), encoding="utf-8", errors="replace") as fh:
+                        text = fh.read(200_000)
+                except OSError:
+                    continue
+                title = next((ln.lstrip("# ").strip() for ln in text.splitlines() if ln.startswith("#")), fn)
+                mentions: List[str] = []
+                excerpt = ""
+                for line in text.splitlines():
+                    for tok in token_re.findall(line):
+                        t = tok.strip("./")
+                        hit = t if t in code else None
+                        if hit is None:
+                            owners = by_base.get(t.rsplit("/", 1)[-1].lower()) or []
+                            hit = owners[0] if len(owners) == 1 else None
+                        if hit and hit not in mentions:
+                            mentions.append(hit)
+                            if not excerpt:
+                                excerpt = line.strip()[:240]
+                if mentions:
+                    records.append({"path": rel, "title": title[:160], "mentions": mentions[:50], "excerpt": excerpt})
+                if len(records) >= max_docs:
+                    return records
+        return records
+
+    @staticmethod
     async def git_evolution(repo_path: str, max_commits: int = 50) -> Dict[str, Any]:
         """Git-history signals for the evolution layer (deterministic, no LLM).
 
@@ -201,6 +262,14 @@ class RepoContextService:
             return ""
 
         from collections import Counter, defaultdict
+
+        history_depth = int(os.getenv("REPO_HISTORY_DEPTH", "200"))
+        if history_depth > 0 and (await _git("rev-parse", "--is-shallow-repository")).strip() == "true":
+            try:
+                await asyncio.wait_for(_git("fetch", "--quiet", f"--deepen={history_depth}"), timeout=45)
+            except asyncio.TimeoutError:
+                logger.info("repo_context: history deepen timed out for %s", repo_path)
+        max_commits = max(max_commits, history_depth)
 
         commits: List[Dict[str, Any]] = []
         raw = await _git(
@@ -251,12 +320,30 @@ class RepoContextService:
                 "authors": [a for a, _ in tally.most_common(3)],
             }
 
+        # Per-file history with commit subjects: "@@" marks a commit header,
+        # following lines are the files it touched.
+        raw_hist = await _git(
+            "log", "-n", str(max_commits),
+            "--pretty=format:@@%h|%an|%at|%s", "--name-only",
+        )
+        file_history: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        header: Optional[Dict[str, Any]] = None
+        for line in raw_hist.splitlines():
+            if line.startswith("@@"):
+                sha, author, ts, subject = (line[2:].split("|", 3) + [""] * 4)[:4]
+                header = {"sha": sha, "author": author, "date": ts or None, "subject": subject[:200]}
+                continue
+            path = line.strip()
+            if header and path and len(file_history[path]) < 5:
+                file_history[path].append(header)
+
         head_files = await _git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD")
         return {
             "commit_count": len(commits),
             "recent_commits": commits,
             "top_contributors": [a for a, _ in author_counts.most_common(5)],
             "file_ownership": ownership,
+            "file_history": dict(file_history),
             "head_changed_files": [f for f in head_files.splitlines() if f.strip()],
         }
 

@@ -8,6 +8,7 @@ via the JWT and registers the connection with the ConnectionManager.
 import asyncio
 import logging
 import json
+import os
 import time
 from collections import defaultdict
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -42,11 +43,13 @@ _ws_pending_lock = asyncio.Lock()
 
 async def _check_ws_rate_limit(websocket: WebSocket) -> bool:
     """Return True if IP is within pending-connection limit, False if throttled."""
-    # Extract client IP (X-Forwarded-For when behind proxy, else client.host)
+    # Match the HTTP rate limiter: forwarded addresses are trusted only when
+    # the deployment explicitly enables TRUST_PROXY and the reverse proxy
+    # sanitizes X-Forwarded-For. Otherwise use the socket peer address.
     ip = ""
     try:
         fwd = websocket.headers.get("x-forwarded-for", "")
-        if fwd:
+        if os.getenv("TRUST_PROXY", "false").lower() == "true" and fwd:
             ip = fwd.split(",")[0].strip()
         elif websocket.client:
             ip = websocket.client.host

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.services.usage_tracker import UsageTracker
 from app.services.billing_service import BillingService
+from app.services.api_key_service import APIKeyService
 from app.api.v1.auth import get_current_user
 from app.services.team_service import get_team_members, get_user_teams
 from app.services.task_service import (
@@ -269,24 +270,22 @@ async def usage_dashboard(
     """Return comprehensive usage dashboard for the user's team/org."""
     org_name = await _get_user_team(user, team_id)
 
-    now = datetime.now(timezone.utc)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    week_start = now - timedelta(days=7)
-    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
     month_usage = await _usage.get_usage(org_name, period="month")
     week_usage = await _usage.get_usage(org_name, period="week")
     day_usage = await _usage.get_usage(org_name, period="day")
 
     sub = await _billing.get_subscription(org_name)
     tier = sub.get("tier") if sub else "free"
-    limits = BillingService.get_pricing().get(tier, BillingService.get_pricing()["free"])
+    # Same limits the quota dependency enforces (app.services.quota._enforce),
+    # so the dashboard never shows headroom the API won't actually grant.
+    limits = APIKeyService.get_plan_limits(tier)
 
     return {
         "org_name": org_name,
         "tier": tier,
         "limits": {
-            "monthly_credits": limits.get("features", [])[2] if len(limits.get("features", [])) > 2 else "N/A",
+            # 0 = no monthly allowance (usage_based draws from the credit wallet)
+            "monthly_credits": limits.get("credits_per_month", 0),
         },
         "periods": {
             "month": {
@@ -305,7 +304,7 @@ async def usage_dashboard(
                 "endpoint_breakdown": day_usage.get("endpoint_breakdown", {}),
             },
         },
-        "quota": await _usage.check_quota(org_name, {"credits_per_month": 5000}),
+        "quota": await _usage.check_quota(org_name, limits),
     }
 
 

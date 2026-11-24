@@ -3,7 +3,7 @@ import {
   GitPullRequest, ChartBar, ListChecks, BugBeetle, Gear,
   BookOpenText, Question, ShieldCheck, Heartbeat, Eye, Code,
   Star, Rocket, FileCode, Bell, Flag, Storefront, Warning, Robot,
-  Users, TrendUp, CreditCard, ClipboardText, Scroll, Graph,
+  Users, TrendUp, CreditCard, ClipboardText, Scroll, Graph, MapTrifold,
   type Icon,
 } from '@phosphor-icons/react'
 
@@ -31,6 +31,7 @@ export const portalItems: NavItem[] = [
 export const workspaceItems: NavItem[] = [
   { to: '/dashboard',   label: 'Dashboard',   Icon: House,          roles: ['senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/explore',     label: 'Explore',     Icon: Compass,        roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
+  { to: '/map',         label: 'Knowledge Map', Icon: MapTrifold,   roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/ask',         label: 'Ask Codebase', Icon: ChatCircleDots, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/learn',       label: 'Learn',        Icon: GraduationCap, roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },
   { to: '/tasks',       label: 'Tasks',        Icon: ListChecks,    roles: ['junior_dev', 'member', 'senior_dev', 'developer', 'tester', 'admin', 'ceo', 'cto', 'senior'] },

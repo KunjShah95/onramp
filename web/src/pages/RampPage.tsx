@@ -300,7 +300,7 @@ export default function RampPage() {
                 tone: 'abort' as const,
                 onClick: () => document.getElementById('ramp-stuck')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
               })),
-              { id: 'economics', label: 'Senior-time economics', detail: 'What ramp-up actually costs', icon: Compass, tone: 'mission' as const },
+              { id: 'economics', label: 'Senior-time economics', detail: 'What ramp-up actually costs', icon: Compass, tone: 'mission' as const, onClick: () => document.getElementById('ramp-economics')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
             ]}
           />
 
@@ -445,12 +445,13 @@ export default function RampPage() {
 
           {/* ── The economics, sealed. Three panels of benchmarking that a
               leader wants on a schedule, not on every visit. ─────────── */}
-          <Disclosure
-            label="Cost model & competitive benchmarks"
-            designator="3 PANELS"
-            tone="idle"
-            hint="Senior hourly rate · agent comparison · token efficiency"
-          >
+          <div id="ramp-economics">
+            <Disclosure
+              label="Cost model & competitive benchmarks"
+              designator="3 PANELS"
+              tone="idle"
+              hint="Senior hourly rate · agent comparison · token efficiency"
+            >
             <div className="space-y-5">
               {/* Phase 0 — cost-model assumptions under the hood */}
               <CostModelPanel />
@@ -461,7 +462,8 @@ export default function RampPage() {
               {/* Efficiency story — tokens AND dollars: agents re-read, Onramp refreshes */}
               <EfficiencyBenchmarkPanel />
             </div>
-          </Disclosure>
+            </Disclosure>
+          </div>
         </>
       )}
     </div>

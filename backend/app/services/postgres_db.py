@@ -164,6 +164,11 @@ _MODEL_REGISTRY: dict[str, tuple] = {
     "onramp_webhook_deliveries":      (db_models.WebhookDelivery, "id", False, False),
     "onramp_feature_flags":           (db_models.FeatureFlag, "id", False, False),
     "task_templates":                 (db_models.TaskTemplate, "template_id", False, False),
+    "comprehension_states":          (db_models.ComprehensionState, "id", False, False),
+    "walkthroughs":                  (db_models.Walkthrough, "id", False, False),
+    "module_discussions":             (db_models.ModuleDiscussion, "id", False, False),
+    "leads":                          (db_models.Lead, "id", False, False),
+    "signup_attribution":             (db_models.SignupAttribution, "id", False, False),
 }
 
 

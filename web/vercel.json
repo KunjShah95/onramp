@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/blog/onramp-achieves-soc-2-type-ii-certification",
+      "destination": "/blog/soc-2-type-ii-status",
+      "permanent": true
+    }
+  ],
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
@@ -90,8 +97,8 @@
       "destination": "/seo/blog-measuring-time-to-first-pr.html"
     },
     {
-      "source": "/blog/onramp-achieves-soc-2-type-ii-certification",
-      "destination": "/seo/blog-onramp-achieves-soc-2-type-ii-certification.html"
+      "source": "/blog/soc-2-type-ii-status",
+      "destination": "/seo/blog-soc-2-type-ii-status.html"
     },
     {
       "source": "/contact",
