@@ -85,6 +85,17 @@ export default function EfficiencyBenchmarkPanel() {
     return null
   }
 
+  // Same partial-payload hazard as the two sibling benchmark panels: a truthy
+  // envelope with a missing `onramp.measured` used to throw on the first read.
+  if (!data?.agent || !data.onramp?.measured || !data.onramp?.graph_refresh || !data.assumptions) {
+    return (
+      <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
+        <p className="text-sm text-abort font-medium" role="alert">Efficiency benchmark unavailable.</p>
+        <p className="text-caption text-ink-muted mt-1">Retry — no projections were recalculated.</p>
+      </section>
+    )
+  }
+
   const { agent, onramp, assumptions } = data
   const freePct = onramp.measured.free_pct
   const sliderValue = changes ?? assumptions.changes_per_month

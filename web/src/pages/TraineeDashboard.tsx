@@ -5,11 +5,14 @@
  *   card wall; an instrument panel with a flight plan.
  * OWN-WORLD: Daylit ops room, seated panels, signal-only colour, mono telemetry.
  *   Progress reads as a mission timeline (unlocked modules = cleared stages).
+ * DISCLOSURE: a trainee never wants "here are 14 tasks" — they want "do this
+ *   one next". The page opens on the single next step, the repo work is ranked
+ *   by whether a PR can be raised right now, and both long lists are capped.
  * ───────────────────────────────────────────────────────────────────────────
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { GraduationCap, ArrowRight, BookOpenText, GitPullRequest, Check, GitBranch, X, Robot } from '@phosphor-icons/react'
+import { GraduationCap, BookOpenText, GitPullRequest, Check, GitBranch, X, Robot, ListChecks, ChatCircleDots } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import MissionTimeline, { type Stage } from '../components/ui/mission-timeline'
@@ -18,6 +21,7 @@ import { EmptyState } from '../components/ui/empty-state'
 import { PageHeader } from '../components/ui/page-header'
 import { TraineeDashboardSkeleton } from '../components/ui/Skeleton'
 import GamificationPanel from '../components/gamification/GamificationPanel'
+import { NextUp, ShowMore, Disclosure } from '../components/ui/progressive'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { fetchTraineeDashboard, raisePR } from '../lib/api'
@@ -59,7 +63,6 @@ export default function TraineeDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [selectedModule, setSelectedModule] = useState<string | null>(null)
   const [raisingPR, setRaisingPR] = useState<RaisePRState | null>(null)
   const [prBranch, setPrBranch] = useState('')
   const [prBase, setPrBase] = useState('main')
@@ -123,6 +126,29 @@ export default function TraineeDashboard() {
     }
   }, [activeTeamId])
 
+  // ── Derived above the early returns on purpose ─────────────────────────
+  // These are pure derivations of `data`, so they are computed unconditionally
+  // rather than after the `if (loading)` / `if (!data)` bailouts — a hook below
+  // an early return is a rules-of-hooks violation that only shows up once the
+  // query resolves. Empty inputs during load are harmless.
+  const modules = useMemo(() => data?.modules ?? [], [data])
+  const recentTasks = useMemo(() => data?.recent_tasks ?? [], [data])
+
+  // Rank the repo work by what a trainee can act on right now.
+  const repoTasks = useMemo(
+    () => recentTasks.filter((t: TraineeTask) => Boolean((t as any).repo_url)),
+    [recentTasks],
+  )
+  const prReady = useMemo(
+    () => repoTasks.filter((t) => ['in_progress', 'assigned'].includes(t.state) && !(t as any).pr_url),
+    [repoTasks],
+  )
+  const prOpen = useMemo(
+    () => repoTasks.filter((t) => Boolean((t as any).pr_url)),
+    [repoTasks],
+  )
+  const nextTask = prReady[0] ?? repoTasks[0] ?? null
+
   if (loading) return <TraineeDashboardSkeleton />
 
   // ── Header (shared across error / empty / loaded states) ──
@@ -171,7 +197,7 @@ export default function TraineeDashboard() {
     )
   }
 
-  const { progress, modules, recent_tasks } = data
+  const { progress, recent_tasks } = data
   // Backend completion_rate is already a percentage (0–100) — do NOT multiply.
   const completionPct = Math.round(progress.completion_rate ?? 0)
 
@@ -200,10 +226,74 @@ export default function TraineeDashboard() {
     { id: 'orbit', label: 'Orbit', designator: 'GOAL', state: 'upcoming' },
   ]
 
+  // ── Rank the repo work by what a trainee can act on right now ──────────
+  // (repoTasks / prReady / prOpen / nextTask are derived above the early
+  // returns — see the note there.)
+
+  const verdict = prReady.length > 0
+    ? { tone: 'caution' as const, headline: `Raise a PR on ${prReady[0].title}`, detail: 'The work is done enough to show. A senior cannot review what is not on a branch.' }
+    : progress.pending_review > 0
+      ? { tone: 'mission' as const, headline: `${progress.pending_review} submission${progress.pending_review === 1 ? '' : 's'} with a senior`, detail: 'Nothing to do but keep going — the ball is in their court.' }
+      : progress.in_progress > 0
+        ? { tone: 'go' as const, headline: `${progress.in_progress} task${progress.in_progress === 1 ? '' : 's'} in progress`, detail: 'Pick the oldest one and close it out.' }
+        : { tone: 'go' as const, headline: 'Start your next module', detail: 'Nothing is open. Take the next piece of the learning path.' }
+
   return (
     <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto flex items-start gap-6">
       <div className="flex-1 min-w-0 space-y-6">
         {header}
+
+        {/* ── One next step, then everything else ────────────────────── */}
+        <NextUp
+          tone={verdict.tone}
+          eyebrow="Your next step"
+          headline={verdict.headline}
+          detail={verdict.detail}
+          primary={
+            prReady.length > 0
+              ? {
+                  id: 'raise-pr',
+                  label: 'Raise the pull request',
+                  detail: prReady[0].title,
+                  icon: GitPullRequest,
+                  tone: 'caution',
+                  count: prReady.length,
+                  onClick: () => {
+                    const repoUrl: string = (prReady[0] as any).repo_url ?? ''
+                    setRaisingPR({ taskId: prReady[0].task_id, taskTitle: prReady[0].title, repoUrl })
+                    setPrBranch(''); setPrBase('main')
+                    setPrTitle(`feat: ${prReady[0].title}`); setPrBody('')
+                  },
+                }
+              : progress.in_progress > 0
+                ? { id: 'tasks', label: 'Open my tasks', detail: 'Continue the in-flight work', icon: ListChecks, to: '/tasks' }
+                : { id: 'learn', label: 'Continue the learning path', detail: 'Next module in the sequence', icon: BookOpenText, to: '/learn' }
+          }
+          secondary={[
+            ...(nextTask && (nextTask as any).repo_url
+              ? [{
+                  id: 'agent',
+                  label: 'Open in the autonomous agent',
+                  detail: 'Hand the ticket to a bot',
+                  icon: Robot,
+                  tone: 'mission' as const,
+                  onClick: () => navigate(`/autonomous?repo=${encodeURIComponent((nextTask as any).repo_url)}&task_id=${encodeURIComponent(nextTask.task_id)}`),
+                }]
+              : []),
+            ...(prOpen.length
+              ? [{
+                  id: 'view-pr',
+                  label: 'View your open PR',
+                  detail: prOpen[0].title,
+                  icon: GitPullRequest,
+                  tone: 'go' as const,
+                  onClick: () => window.open((prOpen[0] as any).pr_url, '_blank', 'noopener,noreferrer'),
+                }]
+              : []),
+            { id: 'hub', label: 'Onboarding checklist', detail: `${progress.modules_unlocked?.length ?? 0} modules unlocked`, icon: BookOpenText, to: '/onboarding-hub', tone: 'ink' },
+            { id: 'ask', label: 'Ask the codebase', detail: 'Get unblocked without a human', icon: ChatCircleDots, to: '/ask', tone: 'ink' },
+          ]}
+        />
 
         {/* Telemetry */}
         <ReadoutBank callsign="Trainee" items={readouts} columns={4} />
@@ -215,7 +305,7 @@ export default function TraineeDashboard() {
           </div>
         </ConsolePanel>
 
-        {/* Unlocked Modules */}
+        {/* Unlocked Modules — a grant history, so it is capped behind a count */}
         <ConsolePanel
           rail="Unlocked Modules"
           designator={`${modules.length} GRANTED`}
@@ -224,125 +314,146 @@ export default function TraineeDashboard() {
           {modules.length === 0 ? (
             <EmptyState icon={<BookOpenText className="w-10 h-10 text-ink-tertiary/30" weight="fill" />} title="No modules unlocked yet" description="Modules unlock as you complete onboarding tasks." />
           ) : (
-            <div className="space-y-1.5">
-              {modules.map((mod, i) => (
-                <div
-                  key={`${mod.module}-${i}`}
-                  onClick={() => setSelectedModule(selectedModule === mod.module ? null : mod.module)}
-                  className={cn(
-                    'flex items-center gap-3 p-2.5 rounded-tile bg-well border transition-colors cursor-pointer',
-                    selectedModule === mod.module ? 'border-go/40' : 'border-seam hover:border-seam-strong',
-                  )}
-                >
-                  <span className="w-7 h-7 rounded-tile bg-go/10 border border-go/25 flex items-center justify-center shrink-0 text-go">
-                    <Check size={13} weight="bold" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm font-medium text-ink font-code truncate">{mod.module}</p>
-                    <p className="text-caption text-ink-muted">Granted {new Date(mod.granted_at).toLocaleDateString()} · {mod.source}</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-ink-muted shrink-0" />
+            <ShowMore items={modules} limit={4} noun="module" resetKey={activeTeamId ?? 'none'}>
+              {(visible) => (
+                <div className="space-y-1.5">
+                  {visible.map((mod, i) => (
+                    <div
+                      key={`${mod.module}-${i}`}
+                      className="flex items-center gap-3 p-2.5 rounded-tile bg-well border border-seam"
+                    >
+                      <span className="w-7 h-7 rounded-tile bg-go/10 border border-go/25 flex items-center justify-center shrink-0 text-go">
+                        <Check size={13} weight="bold" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body-sm font-medium text-ink font-code truncate">{mod.module}</p>
+                        <p className="text-caption text-ink-muted">Granted {new Date(mod.granted_at).toLocaleDateString()} · {mod.source}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </ShowMore>
           )}
         </ConsolePanel>
 
-        {/* Assigned Repo Tasks */}
-        {recent_tasks.some((t: TraineeTask) => (t as any).repo_url) && (
+        {/* Assigned Repo Tasks — actionables first, then the rest */}
+        {repoTasks.length > 0 && (
           <ConsolePanel rail="Assigned Repositories" designator="WORK ON IT" status="go" live>
-            <div className="space-y-2">
-              {recent_tasks
-                .filter((t: TraineeTask) => (t as any).repo_url)
-                .map((task: TraineeTask) => {
-                  const repoUrl: string = (task as any).repo_url ?? ''
-                  const prUrl: string = (task as any).pr_url ?? ''
-                  const isSafeHttpUrl = (u: string) => {
-                    try { const p = new URL(u); return p.protocol === 'https:' || p.protocol === 'http:' } catch { return false }
-                  }
-                  const canRaisePR = ['in_progress', 'assigned'].includes(task.state) && !prUrl
-                  const alreadySubmitted = ['submitted', 'under_review', 'approved', 'completed'].includes(task.state)
-                  return (
-                    <div key={task.task_id} className="p-3 rounded-tile bg-well border border-seam space-y-2">
-                      <div className="flex items-start gap-3">
-                        <GitBranch size={14} className="text-go shrink-0 mt-0.5" weight="bold" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
-                          {isSafeHttpUrl(repoUrl) ? (
-                            <a href={repoUrl} target="_blank" rel="noreferrer" className="text-caption text-go/80 hover:text-go font-code truncate block">
-                              {repoUrl.replace('https://github.com/', '')}
+            <ShowMore items={[...prReady, ...repoTasks.filter((t) => !prReady.includes(t))]} limit={3} noun="repository" resetKey={activeTeamId ?? 'none'}>
+              {(tasks) => (
+                <div className="space-y-2">
+                  {tasks.map((task: TraineeTask) => {
+                    const repoUrl: string = (task as any).repo_url ?? ''
+                    const prUrl: string = (task as any).pr_url ?? ''
+                    const isSafeHttpUrl = (u: string) => {
+                      try { const p = new URL(u); return p.protocol === 'https:' || p.protocol === 'http:' } catch { return false }
+                    }
+                    const canRaisePR = ['in_progress', 'assigned'].includes(task.state) && !prUrl
+                    const alreadySubmitted = ['submitted', 'under_review', 'approved', 'completed'].includes(task.state)
+                    return (
+                      <div key={task.task_id} className={cn('p-3 rounded-tile border space-y-2', canRaisePR ? 'bg-caution/[0.05] border-caution/25' : 'bg-well border-seam')}>
+                        <div className="flex items-start gap-3">
+                          <GitBranch size={14} className="text-go shrink-0 mt-0.5" weight="bold" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
+                            {isSafeHttpUrl(repoUrl) ? (
+                              <a href={repoUrl} target="_blank" rel="noreferrer" className="text-caption text-go/80 hover:text-go font-code truncate block">
+                                {repoUrl.replace('https://github.com/', '')}
+                              </a>
+                            ) : (
+                              <span className="text-caption text-ink-muted font-code truncate block">{repoUrl.replace('https://github.com/', '')}</span>
+                            )}
+                          </div>
+                          <span className="font-code text-caption text-ink-muted shrink-0">{statusLabel(task.state)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => navigate(`/autonomous?repo=${encodeURIComponent(repoUrl)}&task_id=${encodeURIComponent(task.task_id)}`)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-base border border-seam text-ink-secondary hover:border-go/40 hover:text-go transition-colors"
+                          >
+                            <Robot size={11} weight="bold" />
+                            Open in Agent
+                          </button>
+                          {canRaisePR && (
+                            <button
+                              onClick={() => {
+                                setRaisingPR({ taskId: task.task_id, taskTitle: task.title, repoUrl })
+                                setPrBranch('')
+                                setPrBase('main')
+                                setPrTitle(`feat: ${task.title}`)
+                                setPrBody('')
+                              }}
+                              className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-go text-white hover:bg-go-lit transition-colors"
+                            >
+                              <GitPullRequest size={11} weight="bold" />
+                              Raise PR
+                            </button>
+                          )}
+                          {prUrl && isSafeHttpUrl(prUrl) && (
+                            <a
+                              href={prUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-mission/10 border border-mission/20 text-mission hover:bg-mission/20 transition-colors"
+                            >
+                              <GitPullRequest size={11} weight="bold" />
+                              View PR
                             </a>
-                          ) : (
-                            <span className="text-caption text-ink-muted font-code truncate block">{repoUrl.replace('https://github.com/', '')}</span>
+                          )}
+                          {alreadySubmitted && !prUrl && (
+                            <span className="text-caption text-ink-muted font-code">Submitted for review</span>
                           )}
                         </div>
-                        <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => navigate(`/autonomous?repo=${encodeURIComponent(repoUrl)}&task_id=${encodeURIComponent(task.task_id)}`)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-base border border-seam text-ink-secondary hover:border-go/40 hover:text-go transition-colors"
-                        >
-                          <Robot size={11} weight="bold" />
-                          Open in Agent
-                        </button>
-                        {canRaisePR && (
-                          <button
-                            onClick={() => {
-                              setRaisingPR({ taskId: task.task_id, taskTitle: task.title, repoUrl })
-                              setPrBranch('')
-                              setPrBase('main')
-                              setPrTitle(`feat: ${task.title}`)
-                              setPrBody('')
-                            }}
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-go text-white hover:bg-go-lit transition-colors"
-                          >
-                            <GitPullRequest size={11} weight="bold" />
-                            Raise PR
-                          </button>
-                        )}
-                        {prUrl && isSafeHttpUrl(prUrl) && (
-                          <a
-                            href={prUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-[3px] bg-mission/10 border border-mission/20 text-mission hover:bg-mission/20 transition-colors"
-                          >
-                            <GitPullRequest size={11} weight="bold" />
-                            View PR
-                          </a>
-                        )}
-                        {alreadySubmitted && !prUrl && (
-                          <span className="text-caption text-ink-muted font-code">Submitted for review</span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
+                    )
+                  })}
+                </div>
+              )}
+            </ShowMore>
           </ConsolePanel>
         )}
 
-        {/* Recent Tasks */}
+        {/* Recent Tasks — capped; the log is context, not the workspace */}
         <ConsolePanel rail="Recent Tasks" designator="EVENT LOG" status="standby" live>
           {recent_tasks.length === 0 ? (
             <EmptyState icon={<GitPullRequest className="w-10 h-10 text-ink-tertiary/30" weight="fill" />} title="No tasks yet" description="Tasks from your learning path will appear here." />
           ) : (
-            <div className="space-y-0.5">
-              {recent_tasks.map((task: TraineeTask) => (
-                <div key={task.task_id} className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
-                      <span className="text-caption text-ink-muted font-code">{task.module} · {relativeTime(task.updated_at)}</span>
+            <ShowMore items={recent_tasks} limit={5} noun="task" resetKey={activeTeamId ?? 'none'}>
+              {(tasks) => (
+                <div className="space-y-0.5">
+                  {tasks.map((task: TraineeTask) => (
+                    <div key={task.task_id} className="flex items-center gap-3 p-2 rounded-tile hover:bg-well/60 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="font-code text-caption text-ink-muted">{statusLabel(task.state)}</span>
+                          <span className="text-caption text-ink-muted font-code">{task.module} · {relativeTime(task.updated_at)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </ShowMore>
           )}
         </ConsolePanel>
+
+        {/* Gamification is a nice-to-have; it no longer costs a permanent
+            sidebar slot on a page that now has a real focus rail. */}
+        <Disclosure
+          label="Streak & achievements"
+          designator="GAMIFICATION"
+          tone="idle"
+          hint="XP, level, badges"
+        >
+          <div className="lg:hidden">
+            <GamificationPanel />
+          </div>
+          <p className="text-caption text-ink-muted lg:hidden">
+            On a wide screen this panel is pinned in the right-hand rail instead.
+          </p>
+        </Disclosure>
       </div>
 
       {/* Raise PR modal */}

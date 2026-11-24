@@ -1,6 +1,7 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
-import { useAuth, homeForRole } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
+import { homeForRole } from '../lib/roles'
 import { useToast } from '../context/ToastContext'
 import { getPlanIntent, billingUrlWithPlan } from '../lib/plan-intent'
 import PageTransition from '../components/ui/page-transition'

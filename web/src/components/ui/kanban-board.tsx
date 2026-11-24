@@ -29,7 +29,7 @@ export interface KanbanTask {
   module?: string | null
   estimated_hours?: number | null
   assigned_to?: string | null
-  depends_on?: string | null
+  depends_on?: string[] | string | null
   actual_hours?: number | null
 }
 
@@ -181,8 +181,9 @@ export default function KanbanBoard({
                         {task.estimated_hours != null && (
                           <span className="font-code text-[10px] text-ink-muted">~{task.estimated_hours}h</span>
                         )}
-                        {task.depends_on && (
-                          <span className="rounded-sm border border-mission/20 bg-mission/5 px-1.5 py-0.5 font-code text-[10px] text-mission" title={`Blocked until ${task.depends_on} completes`}>
+                        {/* `[]` is truthy — count, don't test, or every card reads "dep". */}
+                        {(Array.isArray(task.depends_on) ? task.depends_on.length > 0 : !!task.depends_on) && (
+                          <span className="rounded-sm border border-mission/20 bg-mission/5 px-1.5 py-0.5 font-code text-[10px] text-mission" title="Has an upstream dependency — open the task for detail">
                             dep
                           </span>
                         )}

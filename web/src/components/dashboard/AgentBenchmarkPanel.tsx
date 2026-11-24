@@ -64,7 +64,11 @@ export default function AgentBenchmarkPanel() {
     )
   }
 
-  if (isError || !data) {
+  // A 200 with a partial body still blows up on `current.agents` — see the
+  // matching guard in CostModelPanel. An empty agent list is also "nothing to
+  // compare yet", not a crash.
+  const agentRows = data?.current?.agents
+  if (isError || !data || !data.current || !Array.isArray(agentRows) || agentRows.length === 0) {
     return (
       <section className="rounded-tile bg-base border border-abort/20 p-4 shadow-seam">
         <p className="text-sm text-abort font-medium" role="alert">Agent benchmark unavailable.</p>
@@ -75,7 +79,7 @@ export default function AgentBenchmarkPanel() {
   }
 
   const { current, history } = data
-  const rows = current.agents
+  const rows = agentRows
   const cheapest = rows[0]
   const isReact = current.team_stack === 'react' || current.team_stack === 'mixed'
 

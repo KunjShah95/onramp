@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { homeForRole } from '../context/AuthContext'
+import { homeForRole } from '../lib/roles'
 import { resolveGuardAccess } from '../components/auth/RoleGuard'
-import type { TeamRole } from '../context/AuthContext'
+import type { TeamRole } from '../lib/roles'
 
 describe('homeForRole (post-login landing page)', () => {
   it('sends HR to their people page', () => {

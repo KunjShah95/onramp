@@ -18,6 +18,7 @@ import { statusLabel } from '../components/ui/status-badge'
 import ConsolePanel from '../components/ui/console-panel'
 import { EmptyRow } from '../components/ui/empty-state'
 import { StatusVerdict, ConsoleCard } from '../components/ui/first-principles'
+import { Disclosure, ShowMore } from '../components/ui/progressive'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table'
 const DoraMetricsPanel = lazy(() => import('../components/dashboard/DoraMetricsPanel'))
@@ -366,17 +367,22 @@ export default function DashboardPage() {
             </ConsoleCard>
           </div>
 
-          {/* ── Ramp · Senior-Time ─────────────────────────────────────── */}
+          {/* Ramp + Autopilot: leader-only, read on a schedule. Two heavy
+              panels a senior saw on every visit — now behind one labelled
+              disclosure so the verdict, readouts and queue land first. */}
           {showRamp && (
             <div className="mb-6">
-              <RampPanel />
-            </div>
-          )}
-
-          {/* ── Autopilot · Repo Pipeline ──────────────────────────────── */}
-          {showRamp && (
-            <div className="mb-6">
-              <AutopilotPanel />
+              <Disclosure
+                label="Ramp & autopilot"
+                designator="2 PANELS"
+                tone="idle"
+                hint="Senior-time cost · stuck devs · repo pipeline"
+              >
+                <div className="space-y-5">
+                  <RampPanel />
+                  <AutopilotPanel />
+                </div>
+              </Disclosure>
             </div>
           )}
 
@@ -387,48 +393,54 @@ export default function DashboardPage() {
               {pending_reviews.length === 0 ? (
                 <div className="text-center py-6 text-ink-muted text-body-sm">Review queue clear. Good velocity.</div>
               ) : (
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>Task</TH>
-                      <TH>Status</TH>
-                      <TH>Module</TH>
-                      <TH className="hidden md:table-cell">By</TH>
-                      <TH className="hidden sm:table-cell">Submitted</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {pending_reviews.slice(0, 5).map((pr) => (
-                      <TR key={pr.task_id} hoverable onClick={() => navigate('/reviews')}>
-                        <TD>
-                          <span className="font-medium">{pr.title}</span>
-                        </TD>
-                        <TD><span className="font-code text-caption text-ink-muted">{statusLabel(pr.state)}</span></TD>
-                        <TD>
-                          {pr.module ? (
-                            <Link
-                              to={`/module/${encodeURIComponent(pr.module)}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="font-code text-caption text-mission hover:text-mission-lit transition-colors"
-                            >
-                              {pr.module}
-                            </Link>
-                          ) : (
-                            <span className="text-ink-muted">N/A</span>
-                          )}
-                        </TD>
-                        <TD className="hidden md:table-cell text-ink-secondary">
-                          {memberName(pr.assigned_to) || 'N/A'}
-                        </TD>
-                        <TD className="hidden sm:table-cell">
-                          <span className="font-code text-caption text-ink-muted tabular-nums">
-                            {pr.created_at ? new Date(pr.created_at).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
+                /* Capped, and the footer states how many are withheld. The old
+                   slice(0, 5) silently dropped the rest of the queue. */
+                <ShowMore items={pending_reviews} limit={5} noun="review" resetKey={activeTeamId ?? 'none'}>
+                  {(reviews) => (
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>Task</TH>
+                          <TH>Status</TH>
+                          <TH>Module</TH>
+                          <TH className="hidden md:table-cell">By</TH>
+                          <TH className="hidden sm:table-cell">Submitted</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {reviews.map((pr) => (
+                          <TR key={pr.task_id} hoverable onClick={() => navigate('/reviews')}>
+                            <TD>
+                              <span className="font-medium">{pr.title}</span>
+                            </TD>
+                            <TD><span className="font-code text-caption text-ink-muted">{statusLabel(pr.state)}</span></TD>
+                            <TD>
+                              {pr.module ? (
+                                <Link
+                                  to={`/module/${encodeURIComponent(pr.module)}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-code text-caption text-mission hover:text-mission-lit transition-colors"
+                                >
+                                  {pr.module}
+                                </Link>
+                              ) : (
+                                <span className="text-ink-muted">N/A</span>
+                              )}
+                            </TD>
+                            <TD className="hidden md:table-cell text-ink-secondary">
+                              {memberName(pr.assigned_to) || 'N/A'}
+                            </TD>
+                            <TD className="hidden sm:table-cell">
+                              <span className="font-code text-caption text-ink-muted tabular-nums">
+                                {pr.created_at ? new Date(pr.created_at).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  )}
+                </ShowMore>
               )}
             </Panel>
           </div>

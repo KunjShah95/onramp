@@ -33,10 +33,22 @@ export function prefersSlowNetwork(): boolean {
   return t === 'slow-2g' || t === '2g'
 }
 
-/** True when the user prefers reduced motion. */
+/**
+ * True when the user prefers reduced motion.
+ *
+ * `matchMedia` is feature-detected rather than assumed: it is absent under SSR,
+ * in jsdom without a stub, and in a few embedded webviews. A capability check
+ * that throws takes the whole render down with it, and "no answer" has exactly
+ * one safe meaning here — the caller already has a CSS reduced-motion fallback,
+ * so the answer is "no".
+ */
 export function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
 }
 
 /**

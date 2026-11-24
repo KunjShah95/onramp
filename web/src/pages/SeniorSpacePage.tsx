@@ -1,13 +1,23 @@
+/*
+ * ─── DIRECTION CONTRACT · ONRAMP MISSION CONTROL ────────────────────────────
+ * THESIS: A senior's day is review work. The page opens on the queue, merges
+ *   the two panels that rendered the same member_progress data twice, caps the
+ *   roster, and seals the two surfaces a senior touches weekly (repo assignment,
+ *   module access) instead of parking a 6-field form above the fold.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 import { useState, useEffect, useMemo } from 'react'
 
 import {
   Eye, Heartbeat, Users, CheckCircle, GitBranch, ArrowRight, Warning,
+  Lock, Spinner, Compass,
 } from '@phosphor-icons/react'
 import ConsolePanel from '../components/ui/console-panel'
 import { EmptyState, EmptyRow } from '../components/ui/empty-state'
 import { InlineLoading } from '../components/ui/Skeleton'
 import { PageHeader } from '../components/ui/page-header'
 import { MetricStrip, MetricCell } from '../components/ui/metric-strip'
+import { NextUp, ShowMore, Disclosure, FilterChips, TaskRow } from '../components/ui/progressive'
 import { cn } from '../lib/utils'
 import {
   fetchCTODashboard, fetchReposByTeam, getTeamMembers,
@@ -54,9 +64,13 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
   const [prs, setPRs] = useState<WorkflowTask[]>([])
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
+  // A failed fetch used to be swallowed, so a dead API looked exactly like an
+  // empty queue — the worst possible lie on the panel that matters most.
+  const [loadError, setLoadError] = useState('')
 
   async function loadPRs(): Promise<void> {
     setLoading(true)
+    setLoadError('')
     try {
       const [submittedResult, underReviewResult] = await Promise.all([
         listTasks({ team_id: teamId, state: 'submitted' }),
@@ -70,8 +84,9 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
         if (!seen.has(t.task_id)) { seen.add(t.task_id); merged.push(t) }
       }
       setPRs(merged)
-    } catch {
+    } catch (err: unknown) {
       // Keep the last known-good queue; individual actions surface their errors.
+      setLoadError(err instanceof Error ? err.message : 'Could not load the review queue.')
     } finally {
       setLoading(false)
     }
@@ -113,71 +128,90 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
     <ConsolePanel
       rail="PR Review Queue"
       designator="senior · merge"
-      status={prs.length > 0 ? 'caution' : 'go'}
+      status={loadError ? 'abort' : prs.length > 0 ? 'caution' : 'go'}
       live={prs.length > 0}
+      action={
+        <button
+          onClick={() => void loadPRs()}
+          disabled={loading}
+          className="text-caption text-ink-tertiary/60 hover:text-go transition-colors font-semibold disabled:opacity-50"
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      }
     >
       {loading ? (
         <InlineLoading label="Loading PRs…" />
+      ) : loadError && prs.length === 0 ? (
+        <div className="flex items-center justify-between gap-3 rounded-tile bg-abort/[0.06] border border-abort/25 px-3 py-2.5">
+          <p className="text-caption text-abort font-code">{loadError}</p>
+          <button onClick={() => void loadPRs()} className="btn-secondary shrink-0 !px-3 !py-1.5 text-caption">
+            Retry
+          </button>
+        </div>
       ) : prs.length === 0 ? (
         <EmptyRow label="No PRs awaiting review." />
       ) : (
-        <div className="space-y-3">
-          {prs.map((task) => {
-            const busy = actionId === task.task_id || actionId === task.task_id + ':merge'
-            const isApproved = task.state === 'approved'
-            return (
-              <div key={task.task_id} className="p-3 rounded-[3px] bg-well/30 border border-seam space-y-2">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
-                    {task.pr_url && (
-                      <a
-                        href={task.pr_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-caption text-go/80 hover:text-go font-code truncate block"
-                      >
-                        {task.pr_url.replace('https://github.com/', '')}
-                      </a>
-                    )}
+        <>
+          {loadError && (
+            <p className="mb-3 rounded-tile bg-caution/[0.06] border border-caution/25 px-3 py-2 text-caption text-caution font-code">
+              Showing the last known queue — refresh failed: {loadError}
+            </p>
+          )}
+          <div className="space-y-3">
+            {prs.map((task) => {
+              const busy = actionId === task.task_id || actionId === task.task_id + ':merge'
+              const isApproved = task.state === 'approved'
+              return (
+                <div key={task.task_id} className="p-3 rounded-[3px] bg-well/30 border border-seam space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-sm font-medium text-ink truncate">{task.title}</p>
+                      {task.pr_url && (
+                        <a
+                          href={task.pr_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-caption text-go/80 hover:text-go font-code truncate block"
+                        >
+                          {task.pr_url.replace('https://github.com/', '')}
+                        </a>
+                      )}
+                    </div>
+                    <span className={cn(
+                      'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
+                      task.state === 'submitted' ? 'bg-caution/10 text-caution' : 'bg-mission/10 text-mission',
+                    )}>
+                      {task.state?.replace('_', ' ')}
+                    </span>
                   </div>
-                  <span className={cn(
-                    'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
-                    task.state === 'submitted' ? 'bg-caution/10 text-caution' : 'bg-mission/10 text-mission',
-                  )}>
-                    {task.state?.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!isApproved && (
+                  <div className="flex items-center gap-2">
+                    {!isApproved && (
+                      <button
+                        disabled={busy}
+                        onClick={() => handleApprove(task)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go/10 border border-go/30 text-go hover:bg-go/20 disabled:opacity-50 transition-colors"
+                      >
+                        <CheckCircle size={11} weight="fill" />
+                        {actionId === task.task_id ? 'Approving…' : 'Approve'}
+                      </button>
+                    )}
                     <button
                       disabled={busy}
-                      onClick={() => handleApprove(task)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go/10 border border-go/30 text-go hover:bg-go/20 disabled:opacity-50 transition-colors"
+                      onClick={() => handleMerge(task)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go text-white hover:bg-go-lit disabled:opacity-50 transition-colors"
                     >
-                      <CheckCircle size={11} weight="fill" />
-                      {actionId === task.task_id ? 'Approving…' : 'Approve'}
+                      {actionId === task.task_id + ':merge'
+                        ? <Spinner size={11} className="animate-spin" />
+                        : <GitBranch size={11} weight="bold" />}
+                      {actionId === task.task_id + ':merge' ? 'Merging…' : 'Merge PR'}
                     </button>
-                  )}
-                  <button
-                    disabled={busy}
-                    onClick={() => handleMerge(task)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-caption font-semibold rounded-[3px] bg-go text-white hover:bg-go-lit disabled:opacity-50 transition-colors"
-                  >
-                    <GitBranch size={11} weight="bold" />
-                    {actionId === task.task_id + ':merge' ? 'Merging…' : 'Merge PR'}
-                  </button>
-                  <button
-                    onClick={loadPRs}
-                    className="ml-auto text-caption text-ink-tertiary/50 hover:text-ink-secondary transition-colors"
-                  >
-                    Refresh
-                  </button>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </ConsolePanel>
   )
@@ -187,7 +221,7 @@ function PRReviewPanel({ teamId }: { teamId: string }) {
 
 interface TeamMemberRaw { user_id: string; name: string; role: string }
 
-function AssignRepoPanel({ teamId }: { teamId: string }) {
+function AssignRepoForm({ teamId }: { teamId: string }) {
   const toast = useToast()
   const [members, setMembers] = useState<TeamMemberRaw[]>([])
   const [repos, setRepos] = useState<RepoItem[]>([])
@@ -278,12 +312,14 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
   }
 
   return (
-    <ConsolePanel rail="Assign Repository" designator="senior · assign" status="go">
-      <div className="space-y-4">
-        {/* Developer picker */}
+    <div className="space-y-4">
+        {/* Every control is explicitly labelled. These were bare <label>
+            elements with no htmlFor, so the form announced as four anonymous
+            comboboxes to a screen-reader user. */}
         <div className="space-y-1.5">
-          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Developer</label>
+          <label htmlFor="assign-dev" className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Developer</label>
           <select
+            id="assign-dev"
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
             className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors"
@@ -300,10 +336,11 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
           </select>
         </div>
 
-        {/* Repo source toggle */}
-        <div className="flex items-center gap-2">
+        {/* Repo source toggle — a two-way choice, not a free-text field */}
+        <div className="flex items-center gap-2" role="group" aria-label="Repository source">
           <button
             onClick={() => setUseManual(false)}
+            aria-pressed={!useManual}
             className={cn(
               'px-3 py-1 text-caption rounded-[3px] border transition-colors',
               !useManual
@@ -315,6 +352,7 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
           </button>
           <button
             onClick={() => setUseManual(true)}
+            aria-pressed={useManual}
             className={cn(
               'px-3 py-1 text-caption rounded-[3px] border transition-colors',
               useManual
@@ -326,11 +364,13 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
           </button>
         </div>
 
-        {/* Repo selector or URL input */}
+        {/* Repo selector or URL input — only the visible branch is mounted,
+            so the form is one question deep instead of two at once. */}
         {!useManual ? (
           <div className="space-y-1.5">
-            <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Repository</label>
+            <label htmlFor="assign-repo" className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Repository</label>
             <select
+              id="assign-repo"
               value={selectedRepoId}
               onChange={(e) => setSelectedRepoId(e.target.value)}
               className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors"
@@ -346,51 +386,54 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
               ))}
             </select>
             {repos.length === 0 && (
-              <p className="text-caption text-ink-tertiary/50">
-                No registered repos found. Switch to "Any GitHub URL" to assign directly.
+              <p className="text-caption text-ink-tertiary/60">
+                No registered repos found. Switch to &quot;Any GitHub URL&quot; to assign directly.
               </p>
             )}
           </div>
         ) : (
           <div className="space-y-1.5">
-            <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">GitHub URL</label>
+            <label htmlFor="assign-repo-url" className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">GitHub URL</label>
             <input
+              id="assign-repo-url"
               type="url"
               value={manualUrl}
               onChange={(e) => setManualUrl(e.target.value)}
               placeholder="https://github.com/owner/repo"
-              className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40"
+              className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/50"
             />
           </div>
         )}
 
         {/* Task title */}
         <div className="space-y-1.5">
-          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Task title</label>
+          <label htmlFor="assign-title" className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Task title</label>
           <input
+            id="assign-title"
             type="text"
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
             placeholder="e.g. Work on facebook/react repository"
-            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40"
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/50"
           />
         </div>
 
         {/* Description (optional) */}
         <div className="space-y-1.5">
-          <label className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Notes <span className="text-ink-tertiary/40 normal-case">(optional)</span></label>
+          <label htmlFor="assign-notes" className="text-caption text-ink-tertiary/70 font-medium uppercase tracking-widest">Notes <span className="text-ink-tertiary/50 normal-case">(optional)</span></label>
           <textarea
+            id="assign-notes"
             value={taskDesc}
             onChange={(e) => setTaskDesc(e.target.value)}
             rows={2}
             placeholder="What should they focus on? Any specific files or issues?"
-            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/40 resize-none"
+            className="w-full bg-base border border-seam text-ink text-body-sm rounded-[3px] px-3 py-2 focus:outline-none focus:border-go/60 focus:ring-1 focus:ring-go/30 transition-colors placeholder:text-ink-muted/50 resize-none"
           />
         </div>
 
         {/* Feedback */}
         {successMsg && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-[3px] bg-go/10 border border-go/20 text-go text-body-sm">
+          <div className="flash-ok flex items-center gap-2 px-3 py-2 rounded-[3px] bg-go/10 border border-go/20 text-go text-body-sm">
             <CheckCircle size={14} weight="fill" />
             {successMsg}
           </div>
@@ -409,7 +452,7 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-go text-white text-body-sm font-semibold rounded-[3px] hover:bg-go-lit disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {assigning ? (
-            <>Assigning…</>
+            <><Spinner size={14} className="animate-spin" /> Assigning…</>
           ) : (
             <>
               <GitBranch size={14} weight="bold" />
@@ -419,39 +462,57 @@ function AssignRepoPanel({ teamId }: { teamId: string }) {
           )}
         </button>
 
-        {/* Recent assignments */}
+        {/* Recent assignments — capped; this is a receipt, not a ledger */}
         {recentAssignments.length > 0 && (
           <div className="pt-2 border-t border-seam space-y-2">
             <p className="text-caption text-ink-tertiary/60 font-medium uppercase tracking-widest">Recent assignments</p>
-            {recentAssignments.map((t) => (
-              <div key={t.task_id} className="flex items-center justify-between p-2.5 rounded-[3px] bg-well/20 border border-seam">
-                <div className="min-w-0 flex-1">
-                  <p className="text-body-xs text-ink font-medium truncate">{t.title}</p>
-                  <p className="text-caption text-ink-tertiary/50 truncate">{t.repo_url}</p>
+            <ShowMore items={recentAssignments} limit={3} noun="assignment">
+              {(items) => (
+                <div className="space-y-2">
+                  {items.map((t) => (
+                    <div key={t.task_id} className="flex items-center justify-between p-2.5 rounded-[3px] bg-well/20 border border-seam">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body-xs text-ink font-medium truncate">{t.title}</p>
+                        <p className="text-caption text-ink-tertiary/50 truncate">{t.repo_url}</p>
+                      </div>
+                      <span className={cn(
+                        'ml-3 shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
+                        t.state === 'completed' ? 'bg-go/10 text-go' :
+                        t.state === 'in_progress' ? 'bg-mission/10 text-mission' :
+                        'bg-caution/10 text-caution'
+                      )}>
+                        {t.state?.replace('_', ' ')}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <span className={cn(
-                  'ml-3 shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
-                  t.state === 'completed' ? 'bg-go/10 text-go' :
-                  t.state === 'in_progress' ? 'bg-mission/10 text-mission' :
-                  'bg-caution/10 text-caution'
-                )}>
-                  {t.state?.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
+              )}
+            </ShowMore>
           </div>
         )}
-      </div>
-    </ConsolePanel>
+    </div>
   )
 }
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
+type RosterBand = 'all' | 'needs_help' | 'on_track' | 'complete'
+
+const bandOf = (completion: number): Exclude<RosterBand, 'all'> =>
+  completion < 60 ? 'needs_help' : completion < 100 ? 'on_track' : 'complete'
+
+const BAND_LABEL: Record<RosterBand, string> = {
+  all: 'All',
+  needs_help: 'Needs help',
+  on_track: 'On track',
+  complete: 'Complete',
+}
+
 export default function SeniorSpacePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dashboard, setDashboard] = useState<any>(null)
+  const [band, setBand] = useState<RosterBand>('all')
   const { activeTeamId } = useAuth()
 
   useEffect(() => {
@@ -483,12 +544,26 @@ export default function SeniorSpacePage() {
     timestamp: r.created_at,
   })) ?? []
 
+  // One roster, derived once. This used to be rendered twice — once as "Code
+  // Health" and again as "Team Progress" — with the same member_progress rows.
   const teamMembers: TeamMember[] = d?.member_progress?.map((m: any) => ({
     name: m.name,
     role: m.role ?? 'Developer',
     completion: m.completion_rate ?? 0,
   })) ?? []
 
+  const bandCounts = useMemo(() => {
+    const counts: Record<RosterBand, number> = { all: teamMembers.length, needs_help: 0, on_track: 0, complete: 0 }
+    for (const m of teamMembers) counts[bandOf(m.completion)] += 1
+    return counts
+  }, [teamMembers])
+
+  const roster = useMemo(
+    () => (band === 'all' ? teamMembers : teamMembers.filter((m) => bandOf(m.completion) === band)),
+    [teamMembers, band],
+  )
+
+  const stuckCount = bandCounts.needs_help
   const metrics = [
     { label: 'Pending reviews', value: reviews.length, color: 'text-caution' },
     { label: 'Code health', value: `${d?.completion_rate ?? 0}%`, color: 'text-go' },
@@ -512,7 +587,7 @@ export default function SeniorSpacePage() {
       )}
 
       {loading ? (
-        <div className="space-y-6">
+        <div className="space-y-6" role="status" aria-label="Loading senior space">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-24 rounded-card bg-panel border border-seam animate-skeleton" />
@@ -525,6 +600,39 @@ export default function SeniorSpacePage() {
         </div>
       ) : (
         <>
+          {/* ── One verdict, one move ────────────────────────────────── */}
+          <NextUp
+            tone={reviews.length > 0 ? 'caution' : stuckCount > 0 ? 'mission' : 'go'}
+            eyebrow="Your next move"
+            headline={
+              reviews.length > 0
+                ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} waiting on you`
+                : stuckCount > 0
+                  ? `${stuckCount} team member${stuckCount === 1 ? '' : 's'} below 60% completion`
+                  : 'Queue is clear and the team is on track'
+            }
+            detail={
+              reviews.length > 0
+                ? 'Approve or merge to unblock someone — it is the highest-leverage thing on this page.'
+                : stuckCount > 0
+                  ? 'Filter the roster to "Needs help" to see exactly who is behind.'
+                  : 'Assign a repository or adjust module access when the week calls for it.'
+            }
+            primary={
+              reviews.length > 0
+                ? { id: 'queue', label: 'Open the PR queue', detail: 'Oldest submitted first', icon: GitBranch, count: reviews.length, tone: 'caution', onClick: () => document.getElementById('senior-pr-queue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+                : stuckCount > 0
+                  ? { id: 'roster', label: 'Show who needs help', detail: `${stuckCount} below 60%`, icon: Users, tone: 'mission', onClick: () => setBand('needs_help') }
+                  : { id: 'assign', label: 'Assign a repository', detail: 'Give someone real work', icon: CheckCircle, tone: 'go', onClick: () => document.getElementById('senior-assign')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+            }
+            secondary={[
+              { id: 'health', label: 'Code health', detail: 'Repo-level quality metrics', to: '/code-health', icon: Heartbeat, tone: 'mission' },
+              { id: 'work-graph', label: 'Work graph', detail: 'Who is blocked on whom', to: '/work-graph', icon: Users, tone: 'ink' },
+              { id: 'modules', label: 'Module access', detail: 'What this team can reach', icon: Lock, tone: 'ink' },
+              { id: 'ramp', label: 'Ramp visibility', detail: 'New-hire throughput and its price', to: '/ramp', icon: Compass, tone: 'ink' },
+            ]}
+          />
+
           {/* Metrics — one ruled strip */}
           <div>
             <MetricStrip className="grid-cols-2 lg:grid-cols-4">
@@ -534,26 +642,34 @@ export default function SeniorSpacePage() {
             </MetricStrip>
           </div>
 
-          {/* Review Queue + Code Health */}
+          {/* Review Queue + Team Roster */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <ConsolePanel rail="Review Queue" designator={`${reviews.length} pending`} status="caution">
+              <ConsolePanel
+                rail="Review Queue"
+                designator={`${reviews.length} pending`}
+                status={reviews.length ? 'caution' : 'go'}
+              >
                 {reviews.length === 0 ? (
-                  <EmptyState icon={<Eye className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No pending reviews" description="All caught up on reviews." />
+                  <EmptyState icon={<Eye className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No pending reviews" description="All caught up on reviews." compact />
                 ) : (
+                  /* The queue is the page's primary work: show it in full rather
+                     than capping it behind a "show more". */
                   <div className="space-y-2">
                     {reviews.map((review) => {
                       const cfg = statusConfig[review.status]
                       return (
-                        <div key={review.id} className="flex items-start gap-3 p-3 rounded-card bg-well/20 border border-seam hover:border-caution/30 transition-colors cursor-pointer">
-                          <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', cfg.color.replace('text', 'bg'))} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-body-xs text-ink font-medium truncate">{review.title}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', cfg.bg, cfg.color)}>{cfg.label}</span>
-                              <span className="text-caption text-ink-tertiary/50 font-code">{review.module}</span>
-                              <span className="text-caption text-ink-tertiary/40">by {review.author}</span>
-                              <span className="text-caption text-ink-tertiary/40">· {review.timestamp}</span>
+                        <div key={review.id} className="rounded-tile p-3 border border-seam transition-colors hover:border-caution/30" style={{ background: 'color-mix(in srgb, var(--caution) 4%, transparent)' }}>
+                          <div className="flex items-start gap-3">
+                            <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', cfg.color.replace('text', 'bg'))} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-body-xs text-ink font-medium truncate">{review.title}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', cfg.bg, cfg.color)}>{cfg.label}</span>
+                                <span className="text-caption text-ink-tertiary/50 font-code">{review.module}</span>
+                                <span className="text-caption text-ink-tertiary/40">by {review.author}</span>
+                                <span className="text-caption text-ink-tertiary/40">· {review.timestamp}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -565,122 +681,130 @@ export default function SeniorSpacePage() {
             </div>
 
             <div>
-              <ConsolePanel rail="Code Health" designator={`${d?.completion_rate ?? 0}%`} status="go">
+              <ConsolePanel rail="Team Roster" designator={`${teamMembers.length} MEMBERS`} status={stuckCount ? 'caution' : 'go'}>
                 {teamMembers.length === 0 ? (
-                  <EmptyState icon={<Heartbeat className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No team data" description="Member progress data will appear here." />
+                  <EmptyState icon={<Users className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No team data" description="Member progress data will appear here." compact />
                 ) : (
-                  <div className="space-y-3">
-                    {teamMembers.map((m) => (
-                      <div key={m.name} className="p-3 rounded-card bg-well/20 border border-seam">
-                        <div className="flex items-center justify-between">
-                          <span className="text-body-xs font-medium text-ink">{m.name}</span>
-                          <span className={cn('text-caption font-code tabular-nums', m.completion >= 80 ? 'text-go' : m.completion >= 60 ? 'text-go' : 'text-abort')}>
-                            {m.completion}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-well overflow-hidden mb-1.5">
-                          <div
-                            className={cn('h-full rounded-full transition-all duration-700', m.completion >= 80 ? 'bg-success' : m.completion >= 60 ? 'bg-go' : 'bg-error')}
-                            style={{ width: `${m.completion}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-caption text-ink-tertiary/50">
-                          <span>{m.role}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ConsolePanel>
-            </div>
-          </div>
-
-          {/* Module Access + Team Progress */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <ConsolePanel rail="Module Access">
-                <div className="space-y-2">
-                  {defaultModules.map((mod) => (
-                    <div key={mod.module} className="flex items-center justify-between p-2.5 rounded-card bg-well/20 border border-seam">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded bg-go/10 flex items-center justify-center">
-                          <CheckCircle className="w-3.5 h-3.5 text-go" weight="fill" />
-                        </div>
-                        <div>
-                          <p className="text-body-xs text-ink font-medium">{mod.module}</p>
-                          <p className="text-caption text-ink-tertiary/60">{mod.permission}</p>
-                        </div>
-                      </div>
-                      <span className="text-caption font-medium text-go">Granted</span>
+                  <>
+                    {/* Band filters first, then a capped roster. */}
+                    <FilterChips
+                      label="Band"
+                      value={band}
+                      onChange={(v) => setBand(v as RosterBand)}
+                      options={(Object.keys(BAND_LABEL) as RosterBand[]).map((k) => ({
+                        value: k,
+                        label: BAND_LABEL[k],
+                        count: bandCounts[k],
+                      }))}
+                      summary={`${roster.length} of ${teamMembers.length}`}
+                    />
+                    <div className="mt-3.5">
+                      <ShowMore
+                        items={roster}
+                        limit={5}
+                        noun="member"
+                        resetKey={band}
+                        emptyState={<EmptyRow label="Nobody in this band." />}
+                      >
+                        {(members) => (
+                          <div className="divide-y divide-seam">
+                            {members.map((m) => {
+                              const needsHelp = bandOf(m.completion) === 'needs_help'
+                              return (
+                                <div key={m.name} className="py-2.5">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-body-xs font-medium text-ink truncate">{m.name}</span>
+                                    <span className={cn(
+                                      'text-caption font-code tabular-nums shrink-0',
+                                      m.completion >= 80 ? 'text-go' : m.completion >= 60 ? 'text-go' : 'text-abort',
+                                    )}>
+                                      {m.completion}%
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 rounded-tile bg-well overflow-hidden mt-1.5">
+                                    <div
+                                      className={cn(
+                                        'h-full rounded-tile transition-[width] duration-500',
+                                        m.completion >= 80 ? 'bg-success' : m.completion >= 60 ? 'bg-go' : 'bg-error',
+                                      )}
+                                      style={{ width: `${m.completion}%` }}
+                                    />
+                                  </div>
+                                  <div className="mt-1 flex items-center gap-2 text-caption text-ink-tertiary/50">
+                                    <span>{m.role}</span>
+                                    {needsHelp && (
+                                      <span className="text-abort">· needs help</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </ShowMore>
                     </div>
-                  ))}
-                </div>
-              </ConsolePanel>
-            </div>
-
-            <div>
-              <ConsolePanel rail="Team Progress">
-                {teamMembers.length === 0 ? (
-                  <EmptyState icon={<Users className="w-8 h-8 text-ink-tertiary/30" weight="duotone" />} title="No team members" description="Team progress data will appear here." />
-                ) : (
-                  <div className="space-y-3">
-                    {teamMembers.map((member) => (
-                      <div key={member.name} className="flex items-center gap-3 p-2.5 rounded-card hover:bg-well/20 transition-colors">
-                        <div className="w-8 h-8 rounded-card bg-go/10 border border-go/20 flex items-center justify-center text-caption font-bold text-go shrink-0">
-                          {member.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-body-xs text-ink font-medium">{member.name}</span>
-                            <span className={cn('text-caption font-code tabular-nums', member.completion >= 80 ? 'text-go' : member.completion >= 60 ? 'text-go' : 'text-abort')}>
-                              {member.completion}%
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-caption text-ink-tertiary/60">{member.role}</span>
-                          </div>
-                          <div className="h-1 rounded-full bg-well overflow-hidden mt-1.5">
-                            <div
-                              className={cn('h-full rounded-full transition-all duration-700', member.completion >= 80 ? 'bg-success' : member.completion >= 60 ? 'bg-go' : 'bg-error')}
-                              style={{ width: `${member.completion}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  </>
                 )}
               </ConsolePanel>
             </div>
           </div>
 
-          {/* API Cost Tracking */}
-          <div>
-            <ConsolePanel rail="API Cost Tracking" designator="Per key · budget">
-              <ApiCostTracking />
-            </ConsolePanel>
-          </div>
-
-          {/* PR Review & Merge */}
+          {/* PR Review & Merge — the actionable queue, anchored for the rail */}
           {activeTeamId && (
-            <div>
+            <div id="senior-pr-queue">
               <PRReviewPanel teamId={activeTeamId} />
             </div>
           )}
 
-          {/* Assign Repository */}
-          {activeTeamId && (
-            <div>
-              <AssignRepoPanel teamId={activeTeamId} />
-            </div>
-          )}
-          {!activeTeamId && (
-            <div>
-              <ConsolePanel rail="Assign Repository" designator="senior · assign" status="standby">
+          {/* ── Sealed surfaces: touched weekly, not hourly ─────────── */}
+          <div id="senior-assign">
+            <Disclosure
+              label="Assign a repository"
+              designator="senior · assign"
+              tone="go"
+              icon={GitBranch}
+              hint="Pick a developer and a repo — opens a task for them"
+            >
+              {activeTeamId ? (
+                <AssignRepoForm teamId={activeTeamId} />
+              ) : (
                 <p className="text-body-sm text-ink-tertiary/60">No active team — join a team to assign repos.</p>
-              </ConsolePanel>
+              )}
+            </Disclosure>
+          </div>
+
+          <Disclosure
+            label="Module access"
+            designator="RBAC"
+            tone="idle"
+            icon={Lock}
+            hint={`${defaultModules.length} modules · static grant list`}
+          >
+            <div className="space-y-2">
+              {defaultModules.map((mod) => (
+                <TaskRow
+                  key={mod.module}
+                  leading={
+                    <span className="w-6 h-6 rounded-tile bg-go/10 flex items-center justify-center">
+                      <CheckCircle className="w-3.5 h-3.5 text-go" weight="fill" />
+                    </span>
+                  }
+                  title={mod.module}
+                  meta={mod.permission}
+                  trailing={<span className="text-caption font-medium text-go">Granted</span>}
+                />
+              ))}
             </div>
-          )}
+          </Disclosure>
+
+          <Disclosure
+            label="API cost tracking"
+            designator="PER KEY · BUDGET"
+            tone="idle"
+            hint="Credential spend against budget"
+          >
+            <ApiCostTracking />
+          </Disclosure>
         </>
       )}
     </div>

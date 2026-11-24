@@ -4,11 +4,15 @@
  *   revenue trajectory, fleet status, treasury. Leadership metrics render as a
  *   plotboard + mono readouts, never a row of identical hero cards.
  * OWN-WORLD: Daylit ops room, seated panels, signal-only colour, mono telemetry.
+ * DISCLOSURE: a board of nine panels is a wall. The page now opens on the one
+ *   decision the C-suite has to make today (past-due revenue, stuck hires),
+ *   then money + fleet, and only then a sealed "deep dive" carrying the five
+ *   analytical panels. They stay unmounted until asked for.
  * ───────────────────────────────────────────────────────────────────────────
  */
 import { useState, useEffect, useMemo } from 'react'
 
-import { TrendUp, CaretUp, CaretDown } from '@phosphor-icons/react'
+import { TrendUp, CaretUp, CaretDown, CreditCard, Users } from '@phosphor-icons/react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -17,6 +21,7 @@ import ReadoutBank, { type Readout } from '../components/ui/readout-bank'
 import StatusTile from '../components/ui/status-tile'
 import { PageHeader } from '../components/ui/page-header'
 import { EmptyState } from '../components/ui/empty-state'
+import { NextUp, ShowMore, DeepDive } from '../components/ui/progressive'
 import { cn } from '../lib/utils'
 import { fetchSeedRoleData } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -78,6 +83,20 @@ export default function ExecutivePage() {
     { label: 'Credits · 24h', value: d?.stats?.api_calls_24h ?? 0, color: 'text-mission' },
   ]
 
+  // ── The one thing that needs a decision ────────────────────────────
+  const pastDue = d?.billing_summary?.past_due ?? 0
+  const churned = d?.billing_summary?.canceled ?? 0
+  const trialing = d?.billing_summary?.trialing ?? 0
+  const openAlerts = pastDue + churned
+
+  const verdict = openAlerts > 0
+    ? { tone: 'abort' as const, headline: `${pastDue} account${pastDue === 1 ? '' : 's'} past due`, detail: `${churned} canceled · ${trialing} on trial. Treasury is the only thing here that needs a decision today.` }
+    : trialing > 0
+      ? { tone: 'caution' as const, headline: `${trialing} account${trialing === 1 ? '' : 's'} trialing`, detail: 'No past-due revenue. Decide which trials convert before the window closes.' }
+      : { tone: 'go' as const, headline: 'Revenue is clean', detail: `${d?.active_subscriptions ?? 0} active subscriptions · nothing past due.` }
+
+  const topTeams = useMemo(() => (d?.top_teams ?? []) as any[], [d?.top_teams])
+
   return (
     <div className="min-h-[calc(100vh-4rem)] max-w-6xl mx-auto space-y-6">
       {/* Header */}
@@ -99,8 +118,8 @@ export default function ExecutivePage() {
       )}
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="h-28 rounded-card bg-panel border border-seam animate-skeleton" />
+        <div className="space-y-6" role="status" aria-label="Loading executive console">
+          <div className="h-24 rounded-card bg-panel border border-seam animate-skeleton" />
           <div className="h-56 rounded-card bg-panel border border-seam animate-skeleton" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="h-64 rounded-card bg-panel border border-seam animate-skeleton" />
@@ -109,6 +128,24 @@ export default function ExecutivePage() {
         </div>
       ) : (
         <>
+          {/* ── One decision, then the board ─────────────────────────── */}
+          <NextUp
+            tone={verdict.tone}
+            eyebrow="Needs a decision"
+            headline={verdict.headline}
+            detail={verdict.detail}
+            primary={
+              openAlerts > 0
+                ? { id: 'billing', label: 'Open treasury', detail: 'Resolve past-due accounts', icon: CreditCard, tone: 'abort' }
+                : { id: 'fleet', label: 'Review the fleet', detail: 'Team-by-team completion', icon: Users, tone: 'go' }
+            }
+            secondary={[
+              { id: 'ramp', label: 'Ramp & senior-time cost', detail: 'New-hire throughput and its price', to: '/ramp', icon: TrendUp, tone: 'mission' },
+              { id: 'reviews', label: 'Review queue', detail: 'What is blocking the team', to: '/reviews', icon: Users, tone: 'ink' },
+              { id: 'admin', label: 'Provider keys & LLM spend', detail: 'Treasury on the platform side', to: '/admin', icon: CreditCard, tone: 'ink' },
+            ]}
+          />
+
           {/* Big board readouts */}
           <div>
             <ReadoutBank callsign="Org" items={readouts} columns={4} />
@@ -151,31 +188,35 @@ export default function ExecutivePage() {
 
             {/* Top Teams */}
             <div className="lg:col-span-2">
-              <ConsolePanel rail="Fleet · Top Teams" designator={`${d?.top_teams?.length ?? 0} TRACKED`} status="standby">
-                {!d?.top_teams?.length ? (
-                  <EmptyState title="No teams" description="Teams will appear once created." />
+              <ConsolePanel rail="Fleet · Top Teams" designator={`${topTeams.length} TRACKED`} status="standby">
+                {!topTeams.length ? (
+                  <EmptyState title="No teams" description="Teams will appear once created." compact />
                 ) : (
-                  <div className="space-y-2.5">
-                    {d.top_teams.map((team: any) => (
-                      <div key={team.name} className="p-2.5 rounded-tile bg-well border border-seam">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-body-xs font-medium text-ink truncate">{team.name}</span>
-                          <span className="text-caption text-ink-muted font-code">{team.members} crew</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
-                            <div className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} style={{ width: `${team.completion_rate}%` }} />
+                  <ShowMore items={topTeams} limit={3} noun="team" resetKey={activeTeamId ?? 'none'}>
+                    {(teams) => (
+                      <div className="space-y-2.5">
+                        {teams.map((team: any) => (
+                          <div key={team.name} className="p-2.5 rounded-tile bg-well border border-seam">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-body-xs font-medium text-ink truncate">{team.name}</span>
+                              <span className="text-caption text-ink-muted font-code shrink-0">{team.members} crew</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 rounded-tile bg-well overflow-hidden border border-seam">
+                                <div className={cn('h-full', team.completion_rate >= 80 ? 'bg-success' : team.completion_rate >= 60 ? 'bg-info' : 'bg-error')} style={{ width: `${team.completion_rate}%` }} />
+                              </div>
+                              <span className={cn('readout text-caption tabular-nums shrink-0', team.completion_rate >= 80 ? 'text-go' : team.completion_rate >= 60 ? 'text-mission' : 'text-abort')}>
+                                {team.completion_rate}%
+                              </span>
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-1 text-caption text-ink-muted">
+                              <TrendUp size={11} weight="bold" /> <span className="font-code">Velocity {team.velocity}x</span>
+                            </div>
                           </div>
-                          <span className={cn('readout text-caption tabular-nums', team.completion_rate >= 80 ? 'text-go' : team.completion_rate >= 60 ? 'text-mission' : 'text-abort')}>
-                            {team.completion_rate}%
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-1 text-caption text-ink-muted">
-                          <TrendUp size={11} weight="bold" /> <span className="font-code">Velocity {team.velocity}x</span>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </ShowMore>
                 )}
               </ConsolePanel>
             </div>
@@ -240,35 +281,35 @@ export default function ExecutivePage() {
             </div>
           </div>
 
-          {/* Ramp · Senior-Time — health score, ramp cost + stuck devs for the C-suite */}
-          <div>
+          {/* ── Deep dive · sealed until asked for ────────────────────
+              Five panels of genuine leadership analysis, none of which is a
+              daily read. Sealing them keeps the essentials above the fold and
+              keeps five charts off the initial render. */}
+          <DeepDive
+            label="Leadership deep dive"
+            eyebrow="5 panels · analysis"
+            summary="Ramp & senior-time · onboarding cohorts · retention curves · headcount flow · credential cost"
+          >
+            {/* Ramp · Senior-Time — health score, ramp cost + stuck devs for the C-suite */}
             <RampPanel />
-          </div>
 
-          {/* Cohort trend — onboarding improvement across hiring cohorts */}
-          <div>
+            {/* Cohort trend — onboarding improvement across hiring cohorts */}
             <CohortTrendPanel />
-          </div>
 
-          {/* Retention curves + headcount flow — survival & hiring/attrition */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div>
+            {/* Retention curves + headcount flow — survival & hiring/attrition */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <RetentionCurvesPanel />
-            </div>
-            <div>
               <HeadcountFlowPanel />
             </div>
-          </div>
 
-          {/* Credential cost tracking — live API key budgets for the C-suite */}
-          <div>
+            {/* Credential cost tracking — live API key budgets for the C-suite */}
             <ConsolePanel rail="Credential Cost · Tracking" designator="Live · gateway" status="go">
               <p className="text-caption text-ink-muted mb-4 font-code">
                 API key spend vs. budget · live from the gateway.
               </p>
               <ApiCostTracking />
             </ConsolePanel>
-          </div>
+          </DeepDive>
         </>
       )}
     </div>

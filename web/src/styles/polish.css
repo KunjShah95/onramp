@@ -431,11 +431,107 @@ code, .font-code { overflow-wrap: anywhere; }
   to { opacity: 1; }
 }
 
+/* ═══════════ 8 · PROGRESSIVE DISCLOSURE — show, then detail ═══════════
+   The "Before" failure mode: a page opens with every panel, row and option
+   already on screen, so the user has no idea where to start. These are the
+   primitives that fix it. Every transition below is EARNED — it is driven by
+   a user action (a click, a filter, a reveal), never by mount or by scroll.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Collapsible region. `grid-template-rows: 0fr → 1fr` animates to the
+   content's natural height with no JS measurement, so a panel can never
+   guess a pixel height and clip itself. `.disclose-clip` does the hiding. */
+.disclose-region {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--dur-med) var(--ease-out),
+    opacity var(--dur-fast) ease;
+}
+.disclose-region > .disclose-clip {
+  overflow: hidden;
+  min-height: 0;
+}
+.disclose-region[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* The trigger chevron points at the direction of travel and rotates 90° once
+   the region is open, so the control state is readable without the label. */
+.disclose-chevron {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.disclose-trigger[aria-expanded="true"] .disclose-chevron {
+  transform: rotate(90deg);
+}
+
+/* Rows appended by a "show more" settle in as they arrive. Re-keyed by index
+   so appending never re-plays the animation on the rows already visible. */
+.reveal-row {
+  animation: reveal-up var(--dur-med) var(--ease-out) both;
+}
+
+/* Counted filter chips — the "reduce the choices first" control. One hairline
+   row, monospace count, active chip carries the signal colour. */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--seam);
+  background: transparent;
+  color: var(--ink-tertiary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease;
+}
+.filter-chip:hover {
+  border-color: var(--seam-strong);
+  color: var(--ink-secondary);
+  background: rgb(var(--well-rgb) / 0.5);
+}
+.filter-chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--go) 10%, transparent);
+  border-color: color-mix(in srgb, var(--go) 32%, transparent);
+  color: var(--go);
+}
+.filter-chip[data-empty="true"]:not([aria-pressed="true"]) {
+  opacity: 0.45;
+}
+
+/* Chips scroll sideways on narrow screens instead of wrapping into a tower. */
+.chip-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Bleed to the viewport edges on mobile so the row reads as scrollable. */
+  margin-inline: calc(var(--sp-4) * -1);
+  padding-inline: var(--sp-4);
+}
+.chip-rail::-webkit-scrollbar { display: none; }
+@media (min-width: 768px) {
+  .chip-rail { margin-inline: 0; padding-inline: 0; }
+  .chip-rail[data-wrap="true"] { flex-wrap: wrap; overflow-x: visible; }
+}
+
 /* ── Reduced motion: everything settles instantly ── */
 @media (prefers-reduced-motion: reduce) {
   .animate-skeleton::after { animation: none !important; opacity: 0.5; }
   .reveal, .reveal-1, .reveal-2, .reveal-3,
-  .modal-enter, .backdrop-enter, .empty-tile,
+  .reveal-row, .modal-enter, .backdrop-enter, .empty-tile,
   .route-progress, .dot-live::after {
     animation: none !important;
   }

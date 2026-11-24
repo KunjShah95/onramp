@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-import type { TeamRole } from '../../context/AuthContext'
+import type { TeamRole } from '../../lib/roles'
 
 interface RoleGuardProps {
   allowedRoles?: TeamRole[]

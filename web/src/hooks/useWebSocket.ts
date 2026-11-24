@@ -1,10 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { getToken } from '../lib/neon-auth'
+import { apiOrigin } from '../lib/api-base'
 
-const API_BASE = (() => {
-  const url = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
-  return url.replace(/\/+$/, '').replace('/api/v1', '')
-})()
+const API_BASE = apiOrigin()
 
 export interface WsNotificationEvent {
   type: 'notification'

@@ -29,10 +29,11 @@
  * are reported as info only (auth pages like /login are intentionally
  * excluded from snapshots).
  *
- * Host policy (fail-closed): when VITE_APP_URL is unset the canonical host
- * falls back to https://onramp.app. That is fine for local runs, but under
- * CI (process.env.CI set) it is a hard error — prod builds must set
- * VITE_APP_URL. Bypass explicitly with ALLOW_DEFAULT_HOST=1.
+ * Host policy (fail-closed): the canonical host is resolved from the built
+ * index.html, then VITE_APP_URL, then Vercel's auto-injected
+ * VERCEL_PROJECT_PRODUCTION_URL. Only if all three are absent does it fall
+ * back to https://onramp.app — fine for local runs, but under CI
+ * (process.env.CI set) that is a hard error. Bypass with ALLOW_DEFAULT_HOST=1.
  *
  * Sitemap lastmod: stamped per-URL from git history (last commit touching
  * the route's source file, see ROUTE_SOURCES). Falls back to today when
@@ -191,6 +192,10 @@ function resolveBase(template) {
   if (m && /^https?:\/\//.test(m[1])) return { base: m[1].replace(/\/+$/, '') || FALLBACK_HOST, fallback: false }
   const env = process.env.VITE_APP_URL?.replace(/\/+$/, '')
   if (env && /^https?:\/\//.test(env)) return { base: env, fallback: false }
+  // Vercel injects the production host automatically. Prefer it over the
+  // placeholder so a linked Vercel project needs no manual env setup.
+  const vercel = (process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || '').replace(/\/+$/, '')
+  if (vercel) return { base: `https://${vercel}`, fallback: false }
   return { base: FALLBACK_HOST, fallback: true }
 }
 
@@ -357,6 +362,25 @@ for (const asset of ['sitemap.xml', 'robots.txt']) {
     console.log(`[seo-assets] rewrote host in dist/${asset}`)
   } else {
     console.log(`[seo-assets] dist/${asset} already host-consistent`)
+  }
+}
+
+// 1b. dist/index.html: Vite leaves `%VITE_APP_URL%` as a literal when the var
+// is unset at build time (e.g. a Vercel build with no VITE_APP_URL). That
+// literal would ship to users in the canonical/og/twitter tags, so stamp the
+// resolved host into it.
+{
+  const raw = readFileSync(indexPath, 'utf8')
+  const after = raw
+    .split('%VITE_APP_URL%')
+    .join(base)
+    .split(FALLBACK_HOST)
+    .join(base)
+  if (after !== raw) {
+    writeFileSync(indexPath, after)
+    console.log('[seo-assets] rewrote host in dist/index.html')
+  } else {
+    console.log('[seo-assets] dist/index.html already host-consistent')
   }
 }
 
